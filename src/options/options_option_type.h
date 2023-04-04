@@ -4,11 +4,11 @@
 #include <string>
 
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/value_semantic.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/smart_ptr/make_shared_object.hpp>
 
 namespace AqualinkAutomate::Options
 {
@@ -31,6 +31,13 @@ namespace AqualinkAutomate::Options
 
 	public:
 		bool IsPresent(boost::program_options::variables_map& vm) const;
+
+	public:
+		template<typename T>
+		const T& As(boost::program_options::variables_map& vm) const
+		{
+			return vm[m_LongName.c_str()].as<T>();
+		}
 
 	private:
 		const std::string m_LongName;

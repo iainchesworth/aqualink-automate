@@ -12,12 +12,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Web
 {
-	AppOptionPtr OPTION_INTERFACE{ make_appoption("interface", "Specific IP address to which to bind", boost::program_options::value<std::string>()->default_value("127.0.0.1")) };
+	AppOptionPtr OPTION_ADDRESS{ make_appoption("address", "Specific IP address to which to bind", boost::program_options::value<std::string>()->default_value("0.0.0.0")) };
 	AppOptionPtr OPTION_PORT{ make_appoption("port", "Specific port number on which to listen", boost::program_options::value<uint16_t>()->default_value(80)) };
 
 	std::vector WebOptionsCollection
 	{
-		OPTION_INTERFACE,
+		OPTION_ADDRESS,
 		OPTION_PORT
 	};
 
@@ -35,9 +35,14 @@ namespace AqualinkAutomate::Options::Web
 		return options;
 	}
 
-	void HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map vm)
 	{
+		Settings settings;
 
+		if (OPTION_ADDRESS->IsPresent(vm)) { settings.address = boost::asio::ip::make_address(OPTION_ADDRESS->As<std::string>(vm)); }
+		if (OPTION_PORT->IsPresent(vm)) { settings.port = OPTION_PORT->As<uint16_t>(vm); }
+
+		return settings;
 	}
 
 }

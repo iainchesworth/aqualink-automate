@@ -45,20 +45,22 @@ namespace AqualinkAutomate::Options::App
 	{
 		if (OPTION_HELP->IsPresent(vm))
 		{
-			LogTrace(Channel::Options, "Help option not provided; doing nothing...");
-		}
-		else
-		{
 			// Display the help information to the user.
 			std::cout << options << std::endl;
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
 		}
+		else
+		{
+			LogTrace(Channel::Options, "Help option not provided; doing nothing...");
+		}
 	}
 
-	void HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map vm)
 	{
+		Settings settings;
+
 		if (OPTION_DEBUG->IsPresent(vm))
 		{
 			LogTrace(Channel::Options, "Setting global logging severity level filter to Debug");
@@ -73,20 +75,22 @@ namespace AqualinkAutomate::Options::App
 		{
 			// Do nothing...
 		}
+
+		return settings;
 	}
 
 	void HandleVersion(boost::program_options::variables_map vm)
 	{
 		if (OPTION_VERSION->IsPresent(vm))
 		{
-			LogTrace(Channel::Options, "Version option not provided; doing nothing...");
-		}
-		else
-		{
 			// Display the version information to the user.
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
+		}
+		else
+		{
+			LogTrace(Channel::Options, "Version option not provided; doing nothing...");
 		}
 	}
 

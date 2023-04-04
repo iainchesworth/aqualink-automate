@@ -6,10 +6,13 @@
     "boost-asio",
     "boost-circular-buffer",
     "boost-describe",
+    "boost-iostreams",
     "boost-log",
     "boost-phoenix",
     "boost-program-options",
     "boost-signals2",
-    "boost-system"
+    "boost-statechart",
+    "boost-system",
+    "opentelemetry-cpp"
   ]
 }

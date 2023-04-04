@@ -4,15 +4,19 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 
+#include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
 #include "options/options_initialise.h"
+#include "options/options_settings.h"
 #include "protocol/protocol_jandy.h"
+#include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
 #include "signals/signal_awaitable.h"
+#include "signals/signal_cleanup.h"
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
@@ -30,12 +34,32 @@ int main(int argc, char *argv[])
         Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Trace);
         Logging::Initialise();
 
-        Options::Initialise(argc, argv);
+        Options::Settings settings;
+        Options::Initialise(settings, argc, argv);
+
+        LogInfo(Channel::Main, "Starting AqualinkAutomate...");
+
+        std::shared_ptr<Serial::SerialPort> serial_port;
+
+        if (!settings.developer.replay_file.empty())
+        {
+            LogInfo(Channel::Main, "Enabling developer mode");
+            serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
+            serial_port->open(settings.developer.replay_file);
+        }
+        else
+        {
+            // Normal mode as no developer mode options are enabled.
+            serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
+            Serial::Initialise(settings, serial_port);
+        }
+
+        CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
+        Protocol::Jandy::Jandy jandy_protocol_handler(serial_port);
+        boost::asio::co_spawn(io_context, jandy_protocol_handler.HandleProtocol(), boost::asio::detached);
 
         boost::asio::signal_set ss(io_context);
         boost::asio::co_spawn(io_context, Signal_Awaitable(ss), boost::asio::detached);
-
-        LogInfo(Channel::Main, "Starting AqualinkAutomate...");
 
         io_context.run();
 

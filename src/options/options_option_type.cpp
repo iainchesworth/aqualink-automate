@@ -35,7 +35,7 @@ namespace AqualinkAutomate::Options
 
 	bool AppOption::IsPresent(boost::program_options::variables_map& vm) const
 	{
-		return (0 != vm.count(m_LongName.c_str()));
+		return (0 < vm.count(m_LongName.c_str()));
 	}
 
 }

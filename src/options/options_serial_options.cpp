@@ -36,9 +36,13 @@ namespace AqualinkAutomate::Options::Serial
 		return options;
 	}
 
-	void HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map vm)
 	{
+		Settings settings;
 
+		if (OPTION_SERIALPORT->IsPresent(vm)) { settings.serial_port = OPTION_SERIALPORT->As<std::string>(vm); }
+
+		return settings;
 	}
 
 }

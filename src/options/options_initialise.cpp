@@ -3,6 +3,7 @@
 #include "exceptions/exception_optionparsingfailed.h"
 #include "logging/logging.h"
 #include "options/options_app_options.h"
+#include "options/options_developer_options.h"
 #include "options/options_initialise.h"
 #include "options/options_serial_options.h"
 #include "options/options_web_options.h"
@@ -13,7 +14,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Options
 {
 
-	void Initialise(int argc, char* argv[])
+	void Initialise(Settings& settings, int argc, char* argv[])
 	{
 		try
 		{
@@ -23,6 +24,7 @@ namespace AqualinkAutomate::Options
 
 			cmdline_options
 				.add(App::Options())
+				.add(Developer::Options())
 				.add(Serial::Options())
 				.add(Web::Options());
 
@@ -38,9 +40,10 @@ namespace AqualinkAutomate::Options
 			App::HandleVersion(variables);
 
 			// Handle the various options and configure the application.
-			App::HandleOptions(variables);
-			Serial::HandleOptions(variables);
-			Web::HandleOptions(variables);
+			settings.app = App::HandleOptions(variables);
+			settings.developer = Developer::HandleOptions(variables);
+			settings.serial = Serial::HandleOptions(variables);
+			settings.web = Web::HandleOptions(variables);
 		}
 		catch (const boost::program_options::error& po_err)
 		{

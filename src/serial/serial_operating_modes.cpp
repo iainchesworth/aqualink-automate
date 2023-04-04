@@ -1,4 +1,4 @@
-#include "serial/serial_port.h"
+#include "serial/serial_operating_modes.h"
 
 namespace AqualinkAutomate::Serial
 {

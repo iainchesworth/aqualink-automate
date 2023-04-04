@@ -14,8 +14,8 @@ namespace AqualinkAutomate::Messages
 		UnknownMessage() : Message(MESSAGE_TYPE) {};
 
 	public:
-		void serialize(std::ostream& stream) const override;
-		void deserialize(std::istream& stream) override;
+		void Serialize(std::ostream& stream) const override;
+		void Deserialize(std::istream& stream) override;
 	};
 
 }
