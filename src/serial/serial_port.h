@@ -22,16 +22,16 @@ namespace AqualinkAutomate::Serial
 	class SerialPort : public std::enable_shared_from_this<SerialPort>
 	{
 		using MockSerialPort = AqualinkAutomate::Developer::mock_serial_port;
-		using MockSerialPortPtr = std::shared_ptr<MockSerialPort>;
+		using MockSerialPortPtr = std::unique_ptr<MockSerialPort>;
 		using RealSerialPort = boost::asio::serial_port;
-		using RealSerialPortPtr = std::shared_ptr<RealSerialPort>;
+		using RealSerialPortPtr = std::unique_ptr<RealSerialPort>;
 
 	public:
 		SerialPort(boost::asio::io_context& io_context, OperatingModes operating_mode = OperatingModes::Real) :
 			m_IOContext(io_context),
 			m_OperatingMode(operating_mode),
-			m_MockSerialPort(std::make_shared<MockSerialPort>(io_context)),
-			m_RealSerialPort(std::make_shared<RealSerialPort>(io_context))
+			m_MockSerialPort(std::make_unique<MockSerialPort>(io_context)),
+			m_RealSerialPort(std::make_unique<RealSerialPort>(io_context))
 		{
 		}
 

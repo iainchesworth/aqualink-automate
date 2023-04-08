@@ -24,8 +24,11 @@ namespace AqualinkAutomate::Logging
 			case Channel::Exceptions:
 				return GlobalLogger_Exceptions::get();
 
-			case Channel::Main: 
+			case Channel::Main:
 				return GlobalLogger_Main::get();
+
+			case Channel::Messages: 
+				return GlobalLogger_Messages::get();
 
 			case Channel::Options:
 				return GlobalLogger_Options::get();

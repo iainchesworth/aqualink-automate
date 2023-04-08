@@ -1,4 +1,4 @@
-#include "protocol/protocol_handler.h"
+#include "protocol/protocol_errors.h"
 
 namespace AqualinkAutomate::Protocol
 {

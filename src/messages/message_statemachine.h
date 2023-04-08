@@ -15,7 +15,11 @@ namespace AqualinkAutomate::Messages
 	struct WaitingForHeader;
 	struct ProcessingMessage;
 
-	struct MessageGeneratorMachine : boost::statechart::state_machine<MessageGeneratorMachine, WaitingForHeader> {};
+	struct MessageGeneratorMachine : boost::statechart::state_machine<MessageGeneratorMachine, WaitingForHeader> 
+	{
+		MessageGeneratorMachine();
+		~MessageGeneratorMachine();
+	};
 
 	struct WaitingForHeader : boost::statechart::simple_state<WaitingForHeader, MessageGeneratorMachine>
 	{

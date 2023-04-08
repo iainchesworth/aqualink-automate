@@ -11,7 +11,8 @@ add_executable(
 	aqualink-automate 
 	src/aqualink-automate.cpp 
 	src/developer/mock_serial_port.cpp
-	
+	src/equipment/equipment_base.cpp
+	src/equipment/jandy_equipment.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp
@@ -23,8 +24,11 @@ add_executable(
 	src/logging/logging_initialise.cpp 
 	src/logging/logging_severity_filter.cpp
 	src/logging/logging_severity_levels.cpp
+	src/messages/jandy_message_generator.cpp
+	src/messages/jandy_message_handler.cpp
 	src/messages/message.cpp
 	src/messages/message_generator.cpp
+	src/messages/message_handler.cpp
 	src/messages/message_statemachine.cpp
 	src/messages/message_types.cpp
 	src/messages/message_unknown.cpp
@@ -35,8 +39,8 @@ add_executable(
 	src/options/options_serial_options.cpp
 	src/options/options_settings.cpp
 	src/options/options_web_options.cpp
+	src/protocol/protocol_errors.cpp
 	src/protocol/protocol_handler.cpp
-	src/protocol/protocol_jandy.cpp
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp

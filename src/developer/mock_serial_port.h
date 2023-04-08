@@ -85,7 +85,7 @@ namespace AqualinkAutomate::Developer
 
 			if (is_open())
 			{
-				ec = make_error_code(boost::system::errc::device_or_resource_busy);
+				ec = boost::asio::error::already_open;
 			}
 			else
 			{
@@ -119,16 +119,10 @@ namespace AqualinkAutomate::Developer
 			// Again, we're not actually closing a real serial port, so this
 			// function just sets the "is_open" flag to false.
 
-			if (!m_IsOpen)
-			{
-				ec = make_error_code(boost::system::errc::bad_file_descriptor);
-			}
-			else
-			{
-				ec = {};
-				m_DeviceName.clear();
-				m_IsOpen = false;
-			}
+			ec = {};
+
+			m_DeviceName.clear();
+			m_IsOpen = false;
 		}
 
 		void cancel()
@@ -143,8 +137,14 @@ namespace AqualinkAutomate::Developer
 
 		void cancel(boost::system::error_code& ec)
 		{
-			ec = {};
-			m_WriteDelayTimer.cancel();
+			if (!m_IsOpen)
+			{
+				ec = boost::asio::error::bad_descriptor;
+			}
+			else
+			{
+				m_WriteDelayTimer.cancel(ec);
+			}
 		}
 
 		boost::asio::executor get_executor()
