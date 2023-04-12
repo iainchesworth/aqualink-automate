@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Protocol
 		}
 
 	public:
-		boost::asio::awaitable<std::expected<typename MESSAGE_GENERATOR::MessageType, AqualinkAutomate::ErrorCodes::ErrorCode>> HandleProtocol()
+		boost::asio::awaitable<std::expected<typename MESSAGE_GENERATOR::MessageType, boost::system::error_code>> HandleProtocol()
 		{
 			std::array<uint8_t, 16> read_buffer;
 			bool continue_processing = true;
@@ -58,11 +58,11 @@ namespace AqualinkAutomate::Protocol
 								// Process the message...as per protocol requirements
 								///TODO -> message.value();
 							}
-							else if (message.error() == ErrorCodes::Protocol::DataAvailableToProcess())
+							else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
 							{
 								// Continue processing data looking for messages in the buffer...
 							}
-							else if (message.error() == ErrorCodes::Protocol::WaitingForMoreData())
+							else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData))
 							{
 								process_packets = false;
 							}
@@ -92,7 +92,7 @@ namespace AqualinkAutomate::Protocol
 			
 			} while (continue_processing);
 
-			co_return std::unexpected<ErrorCodes::ErrorCode>(ErrorCodes::Protocol::UnknownFailure());
+			co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::UnknownFailure));
 		}
 
 	private:

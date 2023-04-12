@@ -8,7 +8,9 @@
 #include <vector>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/system/error_code.hpp>
 
+#include "errors/error_codes.h"
 #include "logging/logging.h"
 #include "messages/message.h"
 
@@ -17,12 +19,11 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
-	template<typename MESSAGE_TYPE = std::shared_ptr<AqualinkAutomate::Messages::Message>, typename ERROR_TYPE = uint32_t>
+	template<typename MESSAGE_TYPE = std::shared_ptr<AqualinkAutomate::Messages::Message>>
 	class MessageGenerator
 	{
 	public:
 		typedef MESSAGE_TYPE MessageType;
-		typedef ERROR_TYPE ErrorType;
 
 	public:
 		MessageGenerator() : m_SerialData(), m_SerialDataMutex() {}
@@ -39,7 +40,7 @@ namespace AqualinkAutomate::Messages
 		}
 
 	public: 
-		virtual boost::asio::awaitable<std::expected<MessageType, ErrorType>> GenerateMessageFromRawData() = 0;
+		virtual boost::asio::awaitable<std::expected<MessageType, boost::system::error_code>> GenerateMessageFromRawData() = 0;
 
 	protected:
 		std::vector<std::uint8_t> m_SerialData;

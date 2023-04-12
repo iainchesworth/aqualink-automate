@@ -5,6 +5,8 @@
 #include <expected>
 #include <span>
 
+#include <boost/system/error_code.hpp>
+
 #include "messages/jandy/jandy_message_generator.h"
 
 namespace AqualinkAutomate::Messages::Jandy
@@ -13,7 +15,7 @@ namespace AqualinkAutomate::Messages::Jandy
 	class JandyMessageFactory
 	{
 	public:
-		static std::expected<JandyMessageGenerator::MessageType, JandyMessageGenerator::ErrorType> CreateFromSerialData(const std::span<const std::byte>& message_bytes);
+		static std::expected<JandyMessageGenerator::MessageType, boost::system::error_code> CreateFromSerialData(const std::span<const std::byte>& message_bytes);
 	};
 
 }

@@ -18,14 +18,14 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages::Jandy
 {
 
-	std::expected<JandyMessageGenerator::MessageType, JandyMessageGenerator::ErrorType> JandyMessageFactory::CreateFromSerialData(const std::span<const std::byte>& message_bytes)
+	std::expected<JandyMessageGenerator::MessageType, boost::system::error_code> JandyMessageFactory::CreateFromSerialData(const std::span<const std::byte>& message_bytes)
 	{
-		JandyMessageGenerator::ErrorType return_value;
+		boost::system::error_code return_value;
 
 		if (2 > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "Attempted to generate a message from an invalid packet: data was too short");
-			return_value = ErrorCodes::Protocol::InvalidPacketFormat();
+			return_value = make_error_code(ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat);
 		}
 		else
 		{
@@ -72,7 +72,7 @@ namespace AqualinkAutomate::Messages::Jandy
 			return message;
 		}
 
-		return std::unexpected<JandyMessageGenerator::ErrorType>(return_value);
+		return std::unexpected<boost::system::error_code>(return_value);
 	}
 
 }
