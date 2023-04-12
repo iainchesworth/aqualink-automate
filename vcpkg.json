@@ -13,7 +13,6 @@
     "boost-signals2",
     "boost-statechart",
     "boost-system",
-    "opentelemetry-cpp",
-    "mpmcqueue"
+    "boost-test"
   ]
 }

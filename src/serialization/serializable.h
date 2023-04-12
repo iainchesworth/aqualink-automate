@@ -1,6 +1,7 @@
 #pragma once
 
-#include <iostream>
+#include <cstddef>
+#include <span>
 
 namespace AqualinkAutomate::Serialization
 {
@@ -8,8 +9,8 @@ namespace AqualinkAutomate::Serialization
     class Serializable
     {
     public:
-        virtual void Serialize(std::ostream& stream) const = 0;
-        virtual void Deserialize(std::istream& stream) = 0;
+        // virtual void Serialize(std::ostream& stream) const = 0;
+        virtual void Deserialize(const std::span<const std::byte>& message_bytes) = 0;
     };
 
 } 

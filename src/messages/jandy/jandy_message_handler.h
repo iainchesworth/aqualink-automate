@@ -2,7 +2,7 @@
 
 #include "messages/message_handler.h"
 
-namespace AqualinkAutomate::Messages
+namespace AqualinkAutomate::Messages::Jandy
 {
 
 	class JandyMessageHandler : public MessageHandler
@@ -12,4 +12,4 @@ namespace AqualinkAutomate::Messages
 	};
 
 }
-// namespace AqualinkAutomate::Messages
+// namespace AqualinkAutomate::Messages::Jandy

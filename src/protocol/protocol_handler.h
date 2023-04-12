@@ -3,17 +3,21 @@
 #include <cstdint>
 #include <expected>
 #include <format>
+#include <span>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
+#include "errors/error_codes.h"
+#include "errors/protocol_error_codes.h"
 #include "logging/logging.h"
 #include "messages/message.h"
 #include "messages/message_generator.h"
-#include "messages/message_statemachine.h"
-#include "protocol/protocol_errors.h"
 #include "serial/serial_port.h"
 #include "utility/array_standard_formatter.h"
+
+using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::ErrorCodes;
 
 namespace AqualinkAutomate::Protocol
 {
@@ -28,7 +32,7 @@ namespace AqualinkAutomate::Protocol
 		}
 
 	public:
-		boost::asio::awaitable<std::expected<typename MESSAGE_GENERATOR::Message, ProtocolError>> HandleProtocol()
+		boost::asio::awaitable<std::expected<typename MESSAGE_GENERATOR::MessageType, AqualinkAutomate::ErrorCodes::ErrorCode>> HandleProtocol()
 		{
 			std::array<uint8_t, 16> read_buffer;
 			bool continue_processing = true;
@@ -43,29 +47,52 @@ namespace AqualinkAutomate::Protocol
 					LogDebug(Logging::Channel::Serial, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
 					LogTrace(Logging::Channel::Serial, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer, bytes_read));
 					{
-						if (auto message = m_MessageGenerator.GenerateMessageFromRawData(read_buffer, bytes_read); !message.has_value())
+						m_MessageGenerator.InjectRawSerialData(std::span(read_buffer.begin(), bytes_read));
+						bool process_packets = true;
+
+						do
 						{
-							///TODO - NO MESSAGE, KEEP READING
-						}
-						else
-						{
-							co_return message.value();
-						}
+							auto message = co_await m_MessageGenerator.GenerateMessageFromRawData();
+							if (message.has_value())
+							{
+								// Process the message...as per protocol requirements
+								///TODO -> message.value();
+							}
+							else if (message.error() == ErrorCodes::Protocol::DataAvailableToProcess())
+							{
+								// Continue processing data looking for messages in the buffer...
+							}
+							else if (message.error() == ErrorCodes::Protocol::WaitingForMoreData())
+							{
+								process_packets = false;
+							}
+							else
+							{
+								LogDebug(Logging::Channel::Serial, "Protocol error while processing Jandy messages.");
+								continue_processing = false;
+								process_packets = false;
+							}
+
+						} while (process_packets);
 					}
 					break;
 
 				case boost::system::errc::operation_canceled:
 				case boost::asio::error::operation_aborted:
 					LogDebug(Logging::Channel::Serial, "Serial port's async_read_some() was cancelled.");
-					co_return std::unexpected<ProtocolError>(ProtocolError::Failure);
+					continue_processing = false;
+					break;
 
 				default:
 					LogError(Logging::Channel::Serial, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
 					LogDebug(Logging::Channel::Serial, std::format("Error message: {}", ec.message()));
-					co_return std::unexpected<ProtocolError>(ProtocolError::Failure);
+					continue_processing = false;
+					break;
 				}
 			
 			} while (continue_processing);
+
+			co_return std::unexpected<ErrorCodes::ErrorCode>(ErrorCodes::Protocol::UnknownFailure());
 		}
 
 	private:

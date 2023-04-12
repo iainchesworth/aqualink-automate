@@ -5,7 +5,7 @@
 #include <boost/asio/io_context.hpp>
 
 #include "developer/mock_serial_port.h"
-#include "equipment/jandy_equipment.h"
+#include "equipment/jandy/jandy_equipment.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "logging/logging.h"
@@ -25,6 +25,7 @@ using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Equipment;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
+using namespace AqualinkAutomate::Messages::Jandy;
 using namespace AqualinkAutomate::Protocol;
 using namespace AqualinkAutomate::Serial;
 using namespace AqualinkAutomate::Signals;
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
 
         CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
-        Equipment::JandyEquipment jandy_equipment(*serial_port);
+        Equipment::Jandy::JandyEquipment jandy_equipment(*serial_port);
         boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 
         boost::asio::signal_set ss(io_context);
