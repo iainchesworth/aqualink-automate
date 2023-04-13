@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <span>
+
 #include "messages/jandy/messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages::Jandy::Messages
@@ -12,7 +16,11 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 		virtual ~JandyMessageLongMessage();
 
 	public:
-		void Deserialize(const std::span<const std::byte>& message_bytes);
+		virtual std::string Print() const override;
+
+	public:
+		virtual void Serialize(std::span<const std::byte>& message_bytes) const override;
+		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
 	};
 
 }

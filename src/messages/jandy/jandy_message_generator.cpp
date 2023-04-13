@@ -127,7 +127,7 @@ namespace AqualinkAutomate::Messages::Jandy
 					else
 					{
 						// Step 3b -> If checksum passes, convert to message, clear all bytes, go back to Step 2
-						auto message_span = std::as_bytes(std::span(packet_one_start_it + 2, packet_one_end_it - 1));
+						auto message_span = std::as_bytes(std::span(packet_one_start_it, packet_one_end_it + 2));
 						auto message = JandyMessageFactory::CreateFromSerialData(message_span);
 
 						BufferCleanUp_ClearBytesFromBeginToPos(packet_one_end_it + 2);  // Account for the DLE,ETX bytes
@@ -165,7 +165,7 @@ namespace AqualinkAutomate::Messages::Jandy
 
 	void JandyMessageGenerator::BufferCleanUp_HasEndOfPacketWithinMaxDistance(const auto& p1s, const auto& p1e, const auto& p2s)
 	{
-		if (MAXIMUM_PACKET_LENGTH >= m_SerialData.size())
+		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= m_SerialData.size())
 		{
 			// Not enough data in the buffer to do anything at this point in time...ignore.
 		}
@@ -188,9 +188,9 @@ namespace AqualinkAutomate::Messages::Jandy
 				auto serial_data_begin = m_SerialData.cbegin();
 				m_SerialData.erase(serial_data_begin, p1s);
 			}
-			else if (MAXIMUM_PACKET_LENGTH < (distance_between_start_and_end + m_PacketEndSeq.size()))
+			else if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH < (distance_between_start_and_end + m_PacketEndSeq.size()))
 			{
-				LogDebug(Channel::Messages, std::format("Packet end sequence not present within {} bytes of start sequence; ignoring this particular packet", MAXIMUM_PACKET_LENGTH));
+				LogDebug(Channel::Messages, std::format("Packet end sequence not present within {} bytes of start sequence; ignoring this particular packet", Messages::JandyMessage::MAXIMUM_PACKET_LENGTH));
 
 				// The distance between the start and the end is larger than the maximum packet size...erase everything up to the end iterator (plus end bytes).
 				auto serial_data_begin = m_SerialData.begin();

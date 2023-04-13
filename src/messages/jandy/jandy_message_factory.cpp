@@ -4,6 +4,7 @@
 #include "logging/logging.h"
 #include "messages/jandy/jandy_message_constants.h"
 #include "messages/jandy/jandy_message_factory.h"
+#include "messages/jandy/formatters/jandy_message_formatters.h"
 #include "messages/jandy/messages/jandy_message_ack.h"
 #include "messages/jandy/messages/jandy_message_message.h"
 #include "messages/jandy/messages/jandy_message_message_long.h"
@@ -29,7 +30,7 @@ namespace AqualinkAutomate::Messages::Jandy
 		}
 		else
 		{
-			const auto message_type = message_bytes[1];
+			const auto message_type = message_bytes[Messages::JandyMessage::Index_MessageType];
 			std::shared_ptr<Messages::JandyMessage> message;
 
 			switch (static_cast<JandyMessageTypes>(message_type))
@@ -59,16 +60,18 @@ namespace AqualinkAutomate::Messages::Jandy
 				message = std::make_shared<Messages::JandyMessageLongMessage>();
 				break;
 
-			case JandyMessageTypes::MessageLoopSt:
+			case JandyMessageTypes::MessageLoopStart:
 			case JandyMessageTypes::Unknown:
 			default:
-				LogDebug(Channel::Messages, "Generating: Jandy Unknown message");
+				LogDebug(Channel::Messages, std::format("Generating: Jandy Unknown message (type: 0x{:02x})", static_cast<uint8_t>(message_type)));
 				message = std::make_shared<Messages::JandyUnknownMessage>();
 				break;
 			}
 
 			LogTrace(Channel::Messages, "Attempting to deserialize serial bytes into generated message");
 			message->Deserialize(message_bytes);
+
+			LogTrace(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
 			return message;
 		}
 

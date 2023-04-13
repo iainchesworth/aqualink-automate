@@ -35,6 +35,8 @@ add_library(
 	src/logging/logging_initialise.cpp 
 	src/logging/logging_severity_filter.cpp
 	src/logging/logging_severity_levels.cpp
+	src/logging/formatters/logging_formatters.cpp 
+	src/messages/jandy/formatters/jandy_message_formatters.cpp
 	src/messages/jandy/messages/jandy_message.cpp
 	src/messages/jandy/messages/jandy_message_ack.cpp
 	src/messages/jandy/messages/jandy_message_message.cpp
@@ -58,6 +60,7 @@ add_library(
 	src/options/options_serial_options.cpp
 	src/options/options_settings.cpp
 	src/options/options_web_options.cpp	
+	src/options/validators/severity_level_validator.cpp 
 	src/protocol/protocol_handler.cpp
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
