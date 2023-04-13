@@ -38,5 +38,10 @@ namespace AqualinkAutomate::Options
 		return (0 < vm.count(m_LongName.c_str()));
 	}
 
+	bool AppOption::IsPresentAndNotJustDefaulted(boost::program_options::variables_map& vm) const
+	{
+		return (IsPresent(vm) && !(vm[m_LongName.c_str()].defaulted()));
+	}
+
 }
 // namespace AqualinkAutomate::Options

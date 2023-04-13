@@ -44,10 +44,12 @@ namespace AqualinkAutomate::Protocol
 				switch (ec.value())
 				{
 				case boost::system::errc::success:
-					LogDebug(Logging::Channel::Serial, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
-					LogTrace(Logging::Channel::Serial, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer, bytes_read));
 					{
-						m_MessageGenerator.InjectRawSerialData(std::span(read_buffer.begin(), bytes_read));
+						auto read_buffer_span = std::span(read_buffer.begin(), bytes_read);
+						LogTrace(Logging::Channel::Serial, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer_span, read_buffer_span.size()));
+						LogTrace(Logging::Channel::Serial, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
+
+						m_MessageGenerator.InjectRawSerialData(read_buffer_span);
 						bool process_packets = true;
 
 						do
@@ -77,9 +79,14 @@ namespace AqualinkAutomate::Protocol
 					}
 					break;
 
+				case boost::asio::error::eof:
+					LogDebug(Logging::Channel::Serial, "Serial port's connection was closed by the peer...cannot continue.");
+					continue_processing = false;
+					break;
+
 				case boost::system::errc::operation_canceled:
 				case boost::asio::error::operation_aborted:
-					LogDebug(Logging::Channel::Serial, "Serial port's async_read_some() was cancelled.");
+					LogDebug(Logging::Channel::Serial, "Serial port's async_read_some() was cancelled or an error occurred.");
 					continue_processing = false;
 					break;
 

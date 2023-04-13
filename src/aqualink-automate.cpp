@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     {
         boost::asio::io_context io_context;
 
-        Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Trace);
+        Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Info);
         Logging::Initialise();
 
         Options::Settings settings;
@@ -46,11 +46,15 @@ int main(int argc, char *argv[])
 
         std::shared_ptr<Serial::SerialPort> serial_port;
 
-        if (!settings.developer.replay_file.empty())
+        if (settings.developer.dev_mode_enabled)
         {
             LogInfo(Channel::Main, "Enabling developer mode");
-            serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
-            serial_port->open(settings.developer.replay_file);
+            
+            if (!settings.developer.replay_file.empty())
+            {
+                serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
+                serial_port->open(settings.developer.replay_file);
+            }
         }
         else
         {

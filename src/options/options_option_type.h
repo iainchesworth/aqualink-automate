@@ -17,10 +17,10 @@ namespace AqualinkAutomate::Options
 		inline static const std::string SEPERATOR{ "," };
 
 	private:
-		AppOption(const std::string& long_name, const std::string& description);
-		AppOption(const std::string& long_name, const std::string& description, const boost::program_options::value_semantic* s);
-		AppOption(const std::string& long_name, const std::string& short_name, const std::string& description);
-		AppOption(const std::string& long_name, const std::string& short_name, const std::string& description, const boost::program_options::value_semantic* s);
+		explicit AppOption(const std::string& long_name, const std::string& description);
+		explicit AppOption(const std::string& long_name, const std::string& description, const boost::program_options::value_semantic* s);
+		explicit AppOption(const std::string& long_name, const std::string& short_name, const std::string& description);
+		explicit AppOption(const std::string& long_name, const std::string& short_name, const std::string& description, const boost::program_options::value_semantic* s);
 
 	private:
 		AppOption(const AppOption&) = delete;
@@ -31,6 +31,7 @@ namespace AqualinkAutomate::Options
 
 	public:
 		bool IsPresent(boost::program_options::variables_map& vm) const;
+		bool IsPresentAndNotJustDefaulted(boost::program_options::variables_map& vm) const;
 
 	public:
 		template<typename T>

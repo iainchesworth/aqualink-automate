@@ -227,6 +227,22 @@ BOOST_AUTO_TEST_CASE(PacketStartsButIsIncomplete)
 	RunTests();
 }
 
+BOOST_AUTO_TEST_CASE(FollowingPacketStartsButIsIncomplete)
+{
+	std::array<uint8_t, 16> test_data =
+	{
+		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x98, 0x10, 0xFF, 0x10, 0xFF, 0x00, 0x01
+	};
+
+	SetupTestData(std::span(test_data));
+
+	QueueTest(Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 01");
+	QueueTest(Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
+	QueueTest(StopTests, "STOPPING TEST");
+
+	RunTests();
+}
+
 BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLength)
 {
 	std::array<uint8_t, 288> test_data =

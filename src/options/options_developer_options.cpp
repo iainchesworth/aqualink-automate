@@ -13,16 +13,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Developer
 {
-	// AppOptionPtr OPTION_DEVMODE{ make_appoption("dev-mode", "Enable developer mode", boost::program_options::bool_switch())};
+	AppOptionPtr OPTION_DEVMODE{ make_appoption("dev-mode", "Enable developer mode", boost::program_options::bool_switch()->default_value(false)) };
 	AppOptionPtr OPTION_DEVREPLAYFILE{ make_appoption("replay-filename", "Developer replay file from which to source test data", boost::program_options::value<std::string>()) };
-	// AppOptionPtr OPTION_DEVREPLAYSERIAL{ make_appoption("replay-serialport", "Developer replay serial port from which to source test data", boost::program_options::value<std::string>()->default_value("COM5")) };
-	// AppOptionPtr OPTION_DEVREPLAYBAUDRATE{ make_appoption("replay", "Desired developer replay serial port baud rate setting", boost::program_options::value<uint32_t>()->default_value(9600)) };
 
 	std::vector DeveloperOptionsCollection
 	{
-		/*OPTION_DEVMODE,
-		OPTION_DEVSERIALPORT,
-		OPTION_DEVBAUDRATE*/
+		OPTION_DEVMODE,
 		OPTION_DEVREPLAYFILE
 	};
 
@@ -44,9 +40,7 @@ namespace AqualinkAutomate::Options::Developer
 	{
 		Settings settings;
 		
-		// if (OPTION_DEVMODE->IsPresent(vm)) { settings.dev_mode_enabled = OPTION_DEVMODE->As<bool>(vm); }
-		// if (OPTION_DEVSERIALPORT->IsPresent(vm)) { settings.dev_serial_port = OPTION_DEVSERIALPORT->As<std::string>(vm); }
-
+		if (OPTION_DEVMODE->IsPresent(vm)) { settings.dev_mode_enabled = OPTION_DEVMODE->As<bool>(vm); }
 		if (OPTION_DEVREPLAYFILE->IsPresent(vm)) { settings.replay_file = OPTION_DEVREPLAYFILE->As<std::string>(vm); }
 
 		return settings;

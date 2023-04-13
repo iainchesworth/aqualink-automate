@@ -13,6 +13,7 @@ namespace AqualinkAutomate::Logging
 		{
 			{Channel::Exceptions, DEFAULT_SEVERITY},
 			{Channel::Main, DEFAULT_SEVERITY},
+			{Channel::Messages, DEFAULT_SEVERITY},
 			{Channel::Options, DEFAULT_SEVERITY},
 			{Channel::Platform, DEFAULT_SEVERITY},
 			{Channel::Serial, DEFAULT_SEVERITY},

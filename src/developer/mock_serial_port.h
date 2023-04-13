@@ -3,23 +3,36 @@
 #include <algorithm>
 #include <chrono>
 #include <coroutine>
+#include <iostream>
+#include <limits>
 #include <memory>
 #include <string>
 #include <random>
+#include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/bind_allocator.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/dispatch.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/executor.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/recycling_allocator.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/stream.hpp>
 #include <boost/system/system_error.hpp>
+
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Developer
 {
@@ -35,147 +48,34 @@ namespace AqualinkAutomate::Developer
 	class mock_serial_port
 	{
 	public:
-		explicit mock_serial_port(boost::asio::io_context& io_context) : 
-			m_IOContext(io_context),
-			m_WriteDelayTimer(m_IOContext),
-			m_RandomDevice{},
-			m_Distribution(32, 127)
-		{
-		}
-
-		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name)
-			: mock_serial_port(io_context)
-		{
-			open(device_name);
-		}
-
-		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name, boost::system::error_code& ec)
-			: mock_serial_port(io_context)
-		{
-			open(device_name, ec);
-		}
-
-		~mock_serial_port()
-		{
-			close();
-		}
+		explicit mock_serial_port(boost::asio::io_context& io_context);
+		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name);
+		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name, boost::system::error_code& ec);
+		~mock_serial_port();
 
 		mock_serial_port(const mock_serial_port&) = default;
 		mock_serial_port(mock_serial_port&&) noexcept = default;
 		mock_serial_port& operator=(const mock_serial_port&) = default;
 		mock_serial_port& operator=(mock_serial_port&&) noexcept = default;
 
-		void open(const std::string& device_name)
-		{
-			// We're not actually opening a real serial port, so this function
-			// doesn't do anything except set the "is_open" flag.
+		void open(const std::string& device_name);
+		void open(const std::string& device_name, boost::system::error_code& ec);
 
-			boost::system::error_code ec;
-			open(device_name, ec);
-			if (ec)
-			{
-				throw boost::system::system_error(ec);
-			}
-		}
+		bool is_open() const;
 
-		void open(const std::string& device_name, boost::system::error_code& ec)
-		{
-			// We're not actually opening a real serial port, so this function
-			// doesn't do anything except set the "is_open" flag.
+		void close();
+		void close(boost::system::error_code& ec);
 
-			if (is_open())
-			{
-				ec = boost::asio::error::already_open;
-			}
-			else
-			{
-				ec = {};
+		void cancel();
+		void cancel(boost::system::error_code& ec);
 
-				m_IsOpen = true;
-				m_DeviceName = device_name;
-			}
-		}
+		boost::asio::executor get_executor();
 
-		bool is_open() const
-		{
-			return m_IsOpen;
-		}
-
-		void close()
-		{
-			// Again, we're not actually closing a real serial port, so this
-			// function just sets the "is_open" flag to false.
-
-			boost::system::error_code ec;
-			close(ec);
-			if (ec)
-			{
-				throw boost::system::system_error(ec);
-			}
-		}
-
-		void close(boost::system::error_code& ec)
-		{
-			// Again, we're not actually closing a real serial port, so this
-			// function just sets the "is_open" flag to false.
-
-			ec = {};
-
-			m_DeviceName.clear();
-			m_IsOpen = false;
-		}
-
-		void cancel()
-		{
-			boost::system::error_code ec;
-			cancel(ec);
-			if (ec)
-			{
-				throw boost::system::system_error(ec);
-			}
-		}
-
-		void cancel(boost::system::error_code& ec)
-		{
-			if (!m_IsOpen)
-			{
-				ec = boost::asio::error::bad_descriptor;
-			}
-			else
-			{
-				m_WriteDelayTimer.cancel(ec);
-			}
-		}
-
-		boost::asio::executor get_executor()
-		{
-			return m_IOContext.get_executor();
-		}
-
-		void set_option(const boost::asio::serial_port_base::baud_rate& option, boost::system::error_code& ec)
-		{
-			m_Options.baud_rate = option;
-		}
-
-		void set_option(const boost::asio::serial_port_base::character_size& option, boost::system::error_code& ec)
-		{
-			m_Options.character_size = option;
-		}
-
-		void set_option(const boost::asio::serial_port_base::flow_control& option, boost::system::error_code& ec)
-		{
-			m_Options.flow_control = option;
-		}
-
-		void set_option(const boost::asio::serial_port_base::parity& option, boost::system::error_code& ec)
-		{
-			m_Options.parity = option;
-		}
-
-		void set_option(const boost::asio::serial_port_base::stop_bits& option, boost::system::error_code& ec)
-		{
-			m_Options.stop_bits = option;
-		}
+		void set_option(const boost::asio::serial_port_base::baud_rate& option, boost::system::error_code& ec);
+		void set_option(const boost::asio::serial_port_base::character_size& option, boost::system::error_code& ec);
+		void set_option(const boost::asio::serial_port_base::flow_control& option, boost::system::error_code& ec);
+		void set_option(const boost::asio::serial_port_base::parity& option, boost::system::error_code& ec);
+		void set_option(const boost::asio::serial_port_base::stop_bits& option, boost::system::error_code& ec);
 
 		template <typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(ReadToken, void(boost::system::error_code, std::size_t)) async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
@@ -189,6 +89,10 @@ namespace AqualinkAutomate::Developer
 				if (!m_IsOpen)
 				{
 					ec = boost::asio::error::bad_descriptor;
+				}
+				else if (!m_MockData)
+				{
+					bytes_transferred = HandleFileRead(buffer_, ec);
 				}
 				else
 				{
@@ -282,6 +186,105 @@ namespace AqualinkAutomate::Developer
 		}
 
 	private:
+		template <typename MutableBufferSequence>
+		std::size_t HandleFileRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
+		{	
+			enum FileReadErrors : std::size_t
+			{
+				ErrorFileReachedEOF,
+				ErrorDuringRead,
+				NoDataWasRead,
+				ReadSuccessfully
+			};
+
+			auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
+			{
+				FileReadErrors return_value = NoDataWasRead;
+
+				if (source_stream.eof())
+				{
+					return_value = ErrorFileReachedEOF;
+				}
+				else
+				{
+					std::string line;
+									
+					if (std::getline(source_stream, line, '|'); source_stream.eof() || source_stream.fail() || source_stream.bad())
+					{
+						LogTrace(Channel::Serial, "Failed to read data from the source file; either an error occurred or file reached eof.");
+						return_value = source_stream.eof() ? ErrorFileReachedEOF : ErrorDuringRead;
+					}
+					else if (4 != line.size())
+					{
+						/// TODO Didn't get a value in the format 0x##...
+						LogDebug(Channel::Serial, std::format("Read data from the source file however it was not in the expected forrmat; sequence -> {}", line));
+					}
+					else
+					{
+						uint8_t converted_value;
+
+						auto [p, ec] = std::from_chars(line.data()+2, line.data()+4, converted_value, 16);
+						if (std::errc() == ec)
+						{
+							output_buffer = converted_value;
+							return_value = ReadSuccessfully;
+						}
+						else if (ec == std::errc::result_out_of_range)
+						{
+							LogTrace(Channel::Serial, std::format("Could not convert data read from file (out-of-range); sequence -> {}", line));
+						}
+						else if (ec == std::errc::invalid_argument)
+						{
+							LogTrace(Channel::Serial, std::format("Could not convert data read from file (invalid argument); sequence -> {}", line));
+						}
+						else
+						{
+							LogTrace(Channel::Serial, std::format("Could not convert data read from file (unknown error); sequence -> {}", line));
+						}
+					}					
+				}
+
+				return return_value;
+			};
+
+			auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
+			{
+				std::size_t elems_read = 0;
+				bool keep_reading = true;
+
+				do
+				{
+					const FileReadErrors result = read_single_value_from_file(source_stream, output_buffer[elems_read]);
+					switch (result)
+					{
+					case FileReadErrors::ErrorFileReachedEOF:
+						ec = boost::asio::error::eof;
+						keep_reading = false;
+
+					case FileReadErrors::ErrorDuringRead:
+					case FileReadErrors::NoDataWasRead:
+						ec = boost::asio::error::operation_aborted;
+						keep_reading = false; 
+						break;
+
+					case FileReadErrors::ReadSuccessfully:
+						ec = make_error_code(boost::system::errc::success);
+						elems_read++; 
+						break;
+					}
+
+				} while (keep_reading && (number_of_elems > elems_read));
+				
+				return elems_read;
+			};
+
+			const auto length_to_copy = boost::asio::buffer_size(buffer);
+			auto length_read = read_from_file(m_File, static_cast<uint8_t *>(buffer.data()), length_to_copy, ec);
+
+			return length_read;
+		}
+
+	private:
 		mock_serial_port_options m_Options;
 		
 	private:
@@ -290,7 +293,11 @@ namespace AqualinkAutomate::Developer
 		std::random_device m_RandomDevice;
 		std::uniform_int_distribution<> m_Distribution;
 		std::string m_DeviceName;
+		bool m_MockData{ true };
 		bool m_IsOpen{ false };
+
+	private:
+		boost::iostreams::stream<boost::iostreams::file_source> m_File;
 	};
 
 }

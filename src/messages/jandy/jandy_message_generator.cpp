@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Messages::Jandy
 
 		if (!BufferValidation_ContainsMoreThanZeroBytes())
 		{
-			LogDebug(Channel::Messages, "The internal serial data buffer is empty; ignoring message generation.");
+			LogTrace(Channel::Messages, "The internal serial data buffer is empty; ignoring message generation.");
 			co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 		}
 		else if (!BufferValidation_HasStartOfPacket())
@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Messages::Jandy
 			// Clear the internal buffer....it doesn't contain anything useful.
 			m_SerialData.clear();
 
-			LogDebug(Channel::Messages, "The internal serial data buffer does not contain a packet start sequence; ignoring message generation");
+			LogTrace(Channel::Messages, "The internal serial data buffer does not contain a packet start sequence; ignoring message generation");
 			co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 		}
 		else
@@ -53,10 +53,11 @@ namespace AqualinkAutomate::Messages::Jandy
 
 			if (m_SerialData.end() == packet_one_start_it)
 			{
-				LogDebug(Channel::Messages, "Cannot find start of Aqualink packet; clearing serial buffer.");
-
 				// If no header found, clear all stored serial bytes and terminate
 				m_SerialData.clear();
+
+				LogTrace(Channel::Messages, "Cannot find start of packet in serial data; clearing serial buffer.");
+				co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 			}
 			else
 			{
@@ -72,24 +73,27 @@ namespace AqualinkAutomate::Messages::Jandy
 					// There's an DLE,STX prior to this packets ETX,DLE...this is an error state.
 
 					LogTrace(Channel::Messages, std::format("Searching for overlapping packets: packet one end: {}, packet two start: {}", packet_one_end_index, packet_two_start_index));
-					LogDebug(Channel::Messages, "Found the start of a second packet before the current packet terminator bytes.");
+					LogTrace(Channel::Messages, "Found the start of a second packet before the current packet terminator bytes.");
 
 					// Clear all stored serial bytes up to the start of the new packet.
 					m_SerialData.erase(m_SerialData.begin(), m_SerialData.begin() + packet_two_start_index);
+					co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
 				}
 				else if ((!packet_one_end_found) && (packet_two_start_found))
 				{
 					auto packet_two_start_index = std::distance(m_SerialData.begin(), packet_two_start_it);
 
-					LogDebug(Channel::Messages, "Found the start of a second packet before the current packet terminator bytes.");
+					LogTrace(Channel::Messages, "Found the start of a second packet before the current packet terminator bytes.");
 
 					// Clear all stored serial bytes up to the start of the new packet.
 					m_SerialData.erase(m_SerialData.begin(), m_SerialData.begin() + packet_two_start_index);
+					co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
 				}
 				else if (!packet_one_end_found)
 				{
 					// The packet is not complete....do nothing at this point.
-					LogDebug(Channel::Messages, "End of current packet not yet received; awaiting more serial data.");
+					LogTrace(Channel::Messages, "End of current packet not yet received; awaiting more serial data.");
+					co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 				}
 				else
 				{
@@ -104,6 +108,21 @@ namespace AqualinkAutomate::Messages::Jandy
 						// Step 3a -> If checksum fails, clear bytes and terminate (which happens below)...
 						LogDebug(Channel::Messages, "Packet failed checksum check; removing packet data from serial buffer.");
 						BufferCleanUp_ClearBytesFromBeginToPos(packet_one_end_it + 2);  // Account for the DLE,ETX bytes
+
+						// Determine the return value.  This is going to be one of:
+						//
+						//    a) DataAvailableToProcess -> there is the start of the next packet in the buffer so processing should continue.
+						//    b) WaitingForMoreData     -> more data needs to be read from the serial port before processing should continue.
+						//
+						
+						if (packet_two_start_found)
+						{
+							co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
+						}
+						else
+						{
+							co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+						}
 					}
 					else
 					{
@@ -116,22 +135,13 @@ namespace AqualinkAutomate::Messages::Jandy
 					}
 				}
 			}
-
-			// Determine the return value.  This is going to be one of:
-			//
-			//    a) DataAvailableToProcess -> there is the start of the next packet in the buffer so processing should continue.
-			//    b) WaitingForMoreData     -> more data needs to be read from the serial port before processing should continue.
-			//
-
-			if (m_SerialData.end() != PacketProcessing_GetPacketLocation(m_PacketStartSeq))
-			{
-				co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
-			}
-			else
-			{
-				co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
-			}
 		}
+
+		// Getting here means there's been a problem processing the data...give up, erase the buffer, and ask for more data.
+		m_SerialData.clear();
+
+		LogDebug(Channel::Messages, "Unexpected failure while processing the internal serial data buffer; clearing serial data.");
+		co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 	}
 
 	bool JandyMessageGenerator::BufferValidation_ContainsMoreThanZeroBytes() const
@@ -148,7 +158,7 @@ namespace AqualinkAutomate::Messages::Jandy
 	{
 		// Erase all bytes to the end of this packet.
 		auto packet_one_end_index = std::distance(m_SerialData.begin(), position);
-		LogDebug(Channel::Messages, "Packet processing complete; removing packet data from serial buffer.");
+		LogTrace(Channel::Messages, "Packet processing complete; removing packet data from serial buffer.");
 		LogTrace(Channel::Messages, std::format("Clearing {} elements from the serial data.", packet_one_end_index));
 		m_SerialData.erase(m_SerialData.begin(), m_SerialData.begin() + packet_one_end_index);
 	}
