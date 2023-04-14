@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Messages
 		virtual ~Message();
 
 	public:
-		virtual std::string Print() const = 0;
+		virtual std::string ToString() const = 0;
 
 	public:
 		virtual void Serialize(std::span<const std::byte>& message_bytes) const = 0;

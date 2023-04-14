@@ -10,6 +10,16 @@
 #include "messages/jandy/jandy_message_factory.h"
 #include "messages/jandy/jandy_message_generator.h"
 #include "messages/jandy/jandy_message_processors.h"
+#include "messages/jandy/jandy_message_registration.h"
+#include "messages/jandy/messages/jandy_message_ack.h"
+#include "messages/jandy/messages/jandy_message_message.h"
+#include "messages/jandy/messages/jandy_message_message_long.h"
+#include "messages/jandy/messages/jandy_message_probe.h"
+#include "messages/jandy/messages/jandy_message_status.h"
+#include "messages/jandy/messages/jandy_message_unknown.h"
+#include "messages/jandy/messages/aquarite/aquarite_message_getid.h"
+#include "messages/jandy/messages/aquarite/aquarite_message_percent.h"
+#include "messages/jandy/messages/aquarite/aquarite_message_ppm.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -21,6 +31,16 @@ namespace AqualinkAutomate::Messages::Jandy
 	JandyMessageGenerator::JandyMessageGenerator() :
 		MessageGenerator()
 	{
+		auto ack_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyAckMessage>(Jandy::JandyMessageTypes::Ack);
+		auto message_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyMessageMessage>(Jandy::JandyMessageTypes::Message);
+		auto messagelong_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyMessageLongMessage>(Jandy::JandyMessageTypes::MessageLong);
+		auto probe_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyProbeMessage>(Jandy::JandyMessageTypes::Probe);
+		auto status_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyStatusMessage>(Jandy::JandyMessageTypes::Status);
+		auto unknown_message = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::JandyUnknownMessage>(Jandy::JandyMessageTypes::Unknown);
+
+		auto getid_aquaritemessage = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::Aquarite::AquariteMessage_GetId>(Jandy::JandyMessageTypes::AQUARITE_GetId);
+		auto percent_aquaritemessage = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::Aquarite::AquariteMessage_Percent>(Jandy::JandyMessageTypes::AQUARITE_Percent);
+		auto ppm_aquaritemessage = Jandy::Messages::JandyMessageRegistration<Jandy::Messages::Aquarite::AquariteMessage_PPM>(Jandy::JandyMessageTypes::AQUARITE_PPM);
 	}
 
 	boost::asio::awaitable<std::expected<JandyMessageGenerator::MessageType, boost::system::error_code>> JandyMessageGenerator::GenerateMessageFromRawData()
@@ -128,7 +148,7 @@ namespace AqualinkAutomate::Messages::Jandy
 					{
 						// Step 3b -> If checksum passes, convert to message, clear all bytes, go back to Step 2
 						auto message_span = std::as_bytes(std::span(packet_one_start_it, packet_one_end_it + 2));
-						auto message = JandyMessageFactory::CreateFromSerialData(message_span);
+						auto message = JandyMessageFactory::Instance().CreateFromSerialData(message_span);
 
 						BufferCleanUp_ClearBytesFromBeginToPos(packet_one_end_it + 2);  // Account for the DLE,ETX bytes
 						co_return message;

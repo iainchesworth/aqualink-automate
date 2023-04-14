@@ -5,7 +5,9 @@
 namespace AqualinkAutomate::Messages::Jandy::Messages
 {
 
-	JandyMessage::JandyMessage() : m_Destination(DefaultDestination)
+	JandyMessage::JandyMessage() : 
+		m_Destination(DefaultDestination), 
+		m_MessageType()
 	{
 	}
 
@@ -18,9 +20,14 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 		return m_Destination;
 	}
 
-	std::string JandyMessage::Print() const
+	const uint8_t JandyMessage::MessageType() const
 	{
-		return std::format("Destination: 0x{:02x}", DestinationId());
+		return m_MessageType;
+	}
+
+	std::string JandyMessage::ToString() const
+	{
+		return std::format("Destination: 0x{:02x}, Message Type 0x{:02x}", DestinationId(), MessageType());
 	}
 
 	void JandyMessage::Serialize(std::span<const std::byte>& message_bytes) const
@@ -29,14 +36,21 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 
 	void JandyMessage::Deserialize(const std::span<const std::byte>& message_bytes)
 	{
-		if ((MINIMUM_PACKET_LENGTH > message_bytes.size()) || (MAXIMUM_PACKET_LENGTH < message_bytes.size()))
-		{
-			// LogDebug
-		}
-		else
+		if (PacketIsValid(message_bytes))
 		{
 			m_Destination = static_cast<uint8_t>(message_bytes[Index_DestinationId]);
+			m_MessageType = static_cast<uint8_t>(message_bytes[Index_MessageType]);
 		}
+	}
+
+	bool JandyMessage::PacketIsValid(const std::span<const std::byte>& message_bytes) const
+	{
+		bool packet_is_valid = true;
+
+		packet_is_valid &= (MINIMUM_PACKET_LENGTH <= message_bytes.size());
+		packet_is_valid &= (MAXIMUM_PACKET_LENGTH >= message_bytes.size());
+
+		return packet_is_valid;
 	}
 
 }

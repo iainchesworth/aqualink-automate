@@ -5,7 +5,6 @@
   "dependencies": [
     "boost-asio",
     "boost-circular-buffer",
-    "boost-describe",
     "boost-iostreams",
     "boost-log",
     "boost-phoenix",
@@ -13,6 +12,7 @@
     "boost-signals2",
     "boost-statechart",
     "boost-system",
-    "boost-test"
+    "boost-test",
+    "magic-enum"
   ]
 }

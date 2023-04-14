@@ -12,7 +12,9 @@
 #include "messages/jandy/messages/jandy_message_probe.h"
 #include "messages/jandy/messages/jandy_message_status.h"
 #include "messages/jandy/messages/jandy_message_unknown.h"
-
+#include "messages/jandy/messages/aquarite/aquarite_message_getid.h"
+#include "messages/jandy/messages/aquarite/aquarite_message_percent.h"
+#include "messages/jandy/messages/aquarite/aquarite_message_ppm.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -39,6 +41,6 @@ struct std::formatter<Derived, CharT> : std::formatter<std::string>
 	template<typename Context>
 	auto format(Derived& msg, Context& context) const
 	{
-		return std::formatter<std::string>::format(msg.Print(), context);
+		return std::formatter<std::string>::format(msg.ToString(), context);
 	}
 };

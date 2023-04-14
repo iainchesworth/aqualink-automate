@@ -29,16 +29,21 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 
 	public:
 		const uint8_t DestinationId() const;
+		const uint8_t MessageType() const;
 
 	public:
-		virtual std::string Print() const override;
+		virtual std::string ToString() const override;
 
 	public:
 		virtual void Serialize(std::span<const std::byte>& message_bytes) const override;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
 
 	protected:
+		bool PacketIsValid(const std::span<const std::byte>& message_bytes) const;
+
+	protected:
 		uint8_t m_Destination;
+		uint8_t m_MessageType;
 	};
 
 }

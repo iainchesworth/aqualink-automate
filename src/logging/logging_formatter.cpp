@@ -3,9 +3,9 @@
 #include <iomanip>
 #include <string>
 
-#include <boost/describe.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/formatting_ostream.hpp>
+#include <magic_enum.hpp>
 
 #include "logging/logging_attributes.h"
 #include "logging/logging_formatter.h"
@@ -23,8 +23,8 @@ namespace AqualinkAutomate::Logging
 			return std::format(
 				"{:08}: <{}>\t({}) [{}:{}] {}",
 				rec[line_id].get<uint32_t>(),
-				boost::describe::enum_to_string(rec[severity].get<Severity>(), "UNKNOWN"),
-				boost::describe::enum_to_string(rec[channel].get<Channel>(), "UNKNOWN"),
+				magic_enum::enum_name(rec[severity].get<Severity>()),
+				magic_enum::enum_name(rec[channel].get<Channel>()),
 				rec[source_file].get<std::string>(),
 				rec[source_line].get<uint32_t>(),
 				rec[boost::log::expressions::smessage].get<std::string>());
@@ -35,8 +35,8 @@ namespace AqualinkAutomate::Logging
 			return std::format(
 				"{:08}: <{}>\t({}) {}",
 				rec[line_id].get<uint32_t>(),
-				boost::describe::enum_to_string(rec[severity].get<Severity>(), "UNKNOWN"),
-				boost::describe::enum_to_string(rec[channel].get<Channel>(), "UNKNOWN"),
+				magic_enum::enum_name(rec[severity].get<Severity>()),
+				magic_enum::enum_name(rec[channel].get<Channel>()),
 				rec[boost::log::expressions::smessage].get<std::string>());
 		};
 

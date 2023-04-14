@@ -6,14 +6,13 @@
 
 #include "messages/jandy/messages/jandy_message.h"
 
-namespace AqualinkAutomate::Messages::Jandy::Messages
+namespace AqualinkAutomate::Messages::Jandy::Messages::Aquarite
 {
-
-	class JandyProbeMessage : public JandyMessage
+	class AquariteMessage : public JandyMessage
 	{
 	public:
-		JandyProbeMessage();
-		virtual ~JandyProbeMessage();
+		AquariteMessage();
+		virtual ~AquariteMessage();
 
 	public:
 		virtual std::string ToString() const override;
@@ -24,4 +23,4 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 	};
 
 }
-// namespace AqualinkAutomate::Messages::Jandy::Messages;
+// namespace AqualinkAutomate::Messages::Jandy::Messages::Aquarite

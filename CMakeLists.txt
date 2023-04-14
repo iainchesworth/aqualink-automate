@@ -8,6 +8,7 @@ project(aqualink-automate VERSION 0.0.1 LANGUAGES C CXX)
 option(ENABLE_TESTS "Enable unit tests" ON)
 
 find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options unit_test_framework)
+find_package(magic_enum REQUIRED)
 
 #------------------------------------------------------------------------------
 #
@@ -44,11 +45,16 @@ add_library(
 	src/messages/jandy/messages/jandy_message_probe.cpp
 	src/messages/jandy/messages/jandy_message_status.cpp
 	src/messages/jandy/messages/jandy_message_unknown.cpp
+	src/messages/jandy/messages/aquarite/aquarite_message.cpp
+	src/messages/jandy/messages/aquarite/aquarite_message_percent.cpp
+	src/messages/jandy/messages/aquarite/aquarite_message_getid.cpp
+	src/messages/jandy/messages/aquarite/aquarite_message_ppm.cpp
 	src/messages/jandy/jandy_message_constants.cpp	
 	src/messages/jandy/jandy_message_factory.cpp
 	src/messages/jandy/jandy_message_generator.cpp
 	src/messages/jandy/jandy_message_handler.cpp
 	src/messages/jandy/jandy_message_processors.cpp
+	src/messages/jandy/jandy_message_registration.cpp
 	src/messages/jandy/jandy_message_type.cpp
 	src/messages/message.cpp
 	src/messages/message_generator.cpp
@@ -68,8 +74,7 @@ add_library(
 	src/serialization/serializable.cpp
 	src/signals/signal_awaitable.cpp
 	src/signals/signal_cleanup.cpp
-	src/signals/signal_handler.cpp
-	src/utility/describe_enumerators_as_array.cpp
+	src/signals/signal_handler.cpp	
 	src/utility/get_terminal_column_width.cpp
 )
 
@@ -93,7 +98,7 @@ endif(LINUX)
 
 target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
 target_include_directories(libaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/src")
-target_include_directories(libaqualink-automate SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(libaqualink-automate SYSTEM PUBLIC ${Boost_INCLUDE_DIRS} ${magic_enum_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------
 #

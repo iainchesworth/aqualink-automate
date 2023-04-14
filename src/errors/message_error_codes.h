@@ -7,6 +7,7 @@ namespace AqualinkAutomate::ErrorCodes
 	enum Message_ErrorCodes
 	{
 		Error_InvalidMessageData = 1000,
+		Error_CannotFindGenerator,
 		Error_UnknownMessageType
 	};
 

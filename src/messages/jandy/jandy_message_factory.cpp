@@ -1,16 +1,14 @@
+#include <format>
 #include <memory>
+#include <typeinfo>
+#include <utility>
 
+#include "errors/message_error_codes.h"
 #include "errors/protocol_error_codes.h"
 #include "logging/logging.h"
 #include "messages/jandy/jandy_message_constants.h"
 #include "messages/jandy/jandy_message_factory.h"
 #include "messages/jandy/formatters/jandy_message_formatters.h"
-#include "messages/jandy/messages/jandy_message_ack.h"
-#include "messages/jandy/messages/jandy_message_message.h"
-#include "messages/jandy/messages/jandy_message_message_long.h"
-#include "messages/jandy/messages/jandy_message_probe.h"
-#include "messages/jandy/messages/jandy_message_status.h"
-#include "messages/jandy/messages/jandy_message_unknown.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::ErrorCodes;
@@ -19,8 +17,29 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages::Jandy
 {
 
+	JandyMessageFactory::JandyMessageFactory() : 
+		m_Generators{}
+	{
+	}
+
+	JandyMessageFactory::~JandyMessageFactory()
+	{
+	}
+
+	JandyMessageFactory& JandyMessageFactory::Instance()
+	{
+		static JandyMessageFactory instance;
+		return instance;
+	}
+
+	bool JandyMessageFactory::Register(const JandyMessageTypes type, const JandyMessageInstanceGenerator generator)
+	{
+		return m_Generators.insert(std::make_pair(type, generator)).second;
+	}
+
 	std::expected<JandyMessageGenerator::MessageType, boost::system::error_code> JandyMessageFactory::CreateFromSerialData(const std::span<const std::byte>& message_bytes)
 	{
+		std::shared_ptr<Messages::JandyMessage> message{ nullptr };
 		boost::system::error_code return_value;
 
 		if (2 > message_bytes.size())
@@ -30,49 +49,31 @@ namespace AqualinkAutomate::Messages::Jandy
 		}
 		else
 		{
-			const auto message_type = message_bytes[Messages::JandyMessage::Index_MessageType];
-			std::shared_ptr<Messages::JandyMessage> message;
-
-			switch (static_cast<JandyMessageTypes>(message_type))
+			const auto message_type = static_cast<JandyMessageTypes>(message_bytes[Messages::JandyMessage::Index_MessageType]);
+			if (auto it = m_Generators.find(message_type); m_Generators.end() != it)
 			{
-			case JandyMessageTypes::Probe:
-				LogDebug(Channel::Messages, "Generating: Jandy Probe message");
-				message = std::make_shared<Messages::JandyProbeMessage>();
-				break;
-
-			case JandyMessageTypes::Ack:
-				LogDebug(Channel::Messages, "Generating: Jandy Ack message");
-				message = std::make_shared<Messages::JandyAckMessage>();
-				break;
-
-			case JandyMessageTypes::Status:
-				LogDebug(Channel::Messages, "Generating: Jandy Status message");
-				message = std::make_shared<Messages::JandyStatusMessage>();
-				break;
-
-			case JandyMessageTypes::Message:
-				LogDebug(Channel::Messages, "Generating: Jandy Message message");
-				message = std::make_shared<Messages::JandyMessageMessage>();
-				break;
-
-			case JandyMessageTypes::MessageLong:
-				LogDebug(Channel::Messages, "Generating: Jandy Message Long message");
-				message = std::make_shared<Messages::JandyMessageLongMessage>();
-				break;
-
-			case JandyMessageTypes::MessageLoopStart:
-			case JandyMessageTypes::Unknown:
-			default:
+				LogDebug(Channel::Messages, "Generating: Jandy message");
+				message = it->second();
+			}
+			else if (it = m_Generators.find(JandyMessageTypes::Unknown); m_Generators.end() != it)
+			{
 				LogDebug(Channel::Messages, std::format("Generating: Jandy Unknown message (type: 0x{:02x})", static_cast<uint8_t>(message_type)));
-				message = std::make_shared<Messages::JandyUnknownMessage>();
-				break;
+				message = it->second();
+			}
+			else
+			{
+				LogDebug(Channel::Messages, std::format("Both message type (0x{:02x}) and JandyUnknownMessage generators missing from JandyMessageFactory", static_cast<uint8_t>(message_type)));
+				return_value = make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator);
 			}
 
-			LogTrace(Channel::Messages, "Attempting to deserialize serial bytes into generated message");
-			message->Deserialize(message_bytes);
+			if (nullptr != message)
+			{
+				LogTrace(Channel::Messages, "Attempting to deserialize serial bytes into generated message");
+				message->Deserialize(message_bytes);
 
-			LogTrace(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
-			return message;
+				LogTrace(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
+				return message;
+			}
 		}
 
 		return std::unexpected<boost::system::error_code>(return_value);

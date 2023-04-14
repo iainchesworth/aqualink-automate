@@ -8,6 +8,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages::Jandy::Messages
 {
+
 	JandyProbeMessage::JandyProbeMessage() : JandyMessage()
 	{
 	}
@@ -16,11 +17,9 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 	{
 	}
 
-	std::string JandyProbeMessage::Print() const
+	std::string JandyProbeMessage::ToString() const
 	{
-		std::string printable_output{};
-		printable_output = JandyMessage::Print();
-		return printable_output;
+		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
 	void JandyProbeMessage::Serialize(std::span<const std::byte>& message_bytes) const
@@ -29,9 +28,12 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 
 	void JandyProbeMessage::Deserialize(const std::span<const std::byte>& message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyProbeMessage type", message_bytes.size()));
+		if (PacketIsValid(message_bytes))
+		{
+			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyProbeMessage type", message_bytes.size()));
 
-		JandyMessage::Deserialize(message_bytes);
+			JandyMessage::Deserialize(message_bytes);
+		}
 	}
 
 }

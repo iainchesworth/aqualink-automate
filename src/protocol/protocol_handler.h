@@ -9,6 +9,7 @@
 #include <boost/asio/use_awaitable.hpp>
 
 #include "errors/error_codes.h"
+#include "errors/message_error_codes.h"
 #include "errors/protocol_error_codes.h"
 #include "logging/logging.h"
 #include "messages/message.h"
@@ -67,6 +68,10 @@ namespace AqualinkAutomate::Protocol
 							else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData))
 							{
 								process_packets = false;
+							}
+							else if (message.error() == make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator))
+							{
+								// This means there was a packet that could not be deserialised while processing....
 							}
 							else
 							{
