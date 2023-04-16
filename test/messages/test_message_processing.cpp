@@ -9,11 +9,14 @@
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "errors/error_codes.h"
 #include "logging/logging.h"
-#include "messages/jandy/jandy_message_constants.h"
-#include "messages/jandy/jandy_message_generator.h"
-#include "messages/jandy/messages/jandy_message_ack.h"
+#include "jandy/errors/jandy_errors_messages.h"
+#include "jandy/errors/jandy_errors_protocol.h"
+#include "jandy/formatters/jandy_message_formatters.h"
+#include "jandy/generator/jandy_message_generator.h"
+#include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_constants.h"
+#include "jandy/types/jandy_types.h"
 
 #include "utilities/unit_test_ostream_support.h"
 
@@ -26,8 +29,6 @@ using namespace AqualinkAutomate::ErrorCodes;
 using namespace AqualinkAutomate::ErrorCodes::Protocol;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
-using namespace AqualinkAutomate::Messages::Jandy;
-using namespace AqualinkAutomate::Messages::Jandy::Messages;
 
 class MessageProcessing_TestFixture
 {
@@ -56,7 +57,7 @@ public:
 			BOOST_TEST(result.has_value());
 			if (result.has_value())
 			{
-				JandyMessageGenerator::MessageType message = result.value();
+				Types::JandyMessageTypePtr message = result.value();
 				BOOST_TEST(nullptr != message);
 			}
 		};
@@ -111,14 +112,14 @@ public:
 	}
 
 public:
-	using TestReturnType = std::expected<JandyMessageGenerator::MessageType, boost::system::error_code>;
+	using TestReturnType = std::expected<Types::JandyMessageTypePtr, Types::JandyErrorCode>;
 	std::function<void(const TestReturnType& result)> Test_DataAvailableToProcess;
 	std::function<void(const TestReturnType& result)> Test_ValidMessageOfAnyType;
 	std::function<void(const TestReturnType& result)> Test_WaitingForMoreData;
 	std::function<void(const TestReturnType& result)> StopTests;
 
 private:
-	JandyMessageGenerator m_JandyMessageGenerator;
+	Generators::JandyMessageGenerator m_JandyMessageGenerator;
 	boost::asio::io_context m_IOContext;
 };
 
@@ -322,7 +323,7 @@ BOOST_AUTO_TEST_CASE(ValidPackets_50)
 		if ((result.has_value()) && (nullptr != result.value()))
 		{
 			auto message_ptr = result.value();
-			BOOST_TEST(Jandy::Messages::JandyAckMessage() == *message_ptr);
+			BOOST_TEST(Messages::JandyAckMessage() == *message_ptr);
 		}
 	};
 

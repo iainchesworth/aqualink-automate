@@ -5,15 +5,14 @@
 #include <boost/asio/io_context.hpp>
 
 #include "developer/mock_serial_port.h"
-#include "equipment/jandy/jandy_equipment.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
+#include "jandy/jandy.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
 #include "options/options_initialise.h"
 #include "options/options_settings.h"
-#include "messages/message_handler.h"
 #include "protocol/protocol_handler.h"
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
@@ -22,10 +21,10 @@
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::Bridges;
 using namespace AqualinkAutomate::Equipment;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
-using namespace AqualinkAutomate::Messages::Jandy;
 using namespace AqualinkAutomate::Protocol;
 using namespace AqualinkAutomate::Serial;
 using namespace AqualinkAutomate::Signals;
@@ -65,7 +64,12 @@ int main(int argc, char *argv[])
 
         CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
-        Equipment::Jandy::JandyEquipment jandy_equipment(*serial_port);
+        Generators::JandyMessageGenerator jandy_message_generator;
+        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator);
+        boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
+
+        Bridges::Bridge_JandyMessages jandy_message_bridge;
+        Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler, jandy_message_bridge);
         boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 
         boost::asio::signal_set ss(io_context);

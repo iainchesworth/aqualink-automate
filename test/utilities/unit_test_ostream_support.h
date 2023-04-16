@@ -2,11 +2,11 @@
 
 #include <iostream>
 
-#include "errors/error_codes.h"
-#include "errors/protocol_error_codes.h"
-#include "messages/message.h"
-#include "messages/jandy/messages/jandy_message.h"
-#include "messages/jandy/messages/jandy_message_ack.h"
+#include "interfaces/imessage.h"
+#include "jandy/errors/jandy_errors_messages.h"
+#include "jandy/errors/jandy_errors_protocol.h"
+#include "jandy/messages/jandy_message.h"
+#include "jandy/messages/jandy_message_ack.h"
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -20,9 +20,13 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 }
 // AqualinkAutomate::ErrorCodes::Protocol
 
-namespace AqualinkAutomate::Messages
+namespace AqualinkAutomate::Interfaces
 {
-    std::ostream& boost_test_print_type(std::ostream& os, Message const& right);
+    template<typename MESSAGE_ID>
+    std::ostream& boost_test_print_type(std::ostream& os, IMessage<MESSAGE_ID> const& right)
+    {
+        return os;
+    }
 }
 // AqualinkAutomate::Messages
 

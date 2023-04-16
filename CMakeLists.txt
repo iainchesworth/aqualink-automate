@@ -18,63 +18,79 @@ find_package(magic_enum REQUIRED)
 #------------------------------------------------------------------------------
 
 add_library(
-	libaqualink-automate 
+	libaqualink-automate
 	src/developer/mock_serial_port.cpp
-	src/equipment/equipment_base.cpp
-	src/equipment/jandy/jandy_equipment.cpp
-	src/errors/error_codes.cpp
-	src/errors/message_error_codes.cpp
-	src/errors/protocol_error_codes.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp
+	src/interfaces/ibridge.cpp
+	src/interfaces/iequipment.cpp
+	src/interfaces/igenerator.cpp
+	src/interfaces/imessage.cpp
+	src/interfaces/iserialport.cpp
+	src/interfaces/iserializable.cpp
+	src/jandy/bridge/jandy_message_bridge.cpp
+	src/jandy/equipment/jandy_equipment.cpp
+	src/jandy/errors/jandy_errors_messages.cpp
+	src/jandy/errors/jandy_errors_protocol.cpp
+	src/jandy/factories/jandy_message_factory.cpp
+	src/jandy/factories/jandy_message_factory_registration.cpp
+	src/jandy/formatters/jandy_message_formatters.cpp
+	src/jandy/generator/jandy_message_generator.cpp
+	src/jandy/jandy.cpp
+	src/jandy/messages/aquarite/aquarite_message.cpp
+	src/jandy/messages/aquarite/aquarite_message_getid.cpp
+	src/jandy/messages/aquarite/aquarite_message_percent.cpp
+	src/jandy/messages/aquarite/aquarite_message_ppm.cpp
+	src/jandy/messages/iaq/iaq_message.cpp
+	src/jandy/messages/iaq/iaq_message_control_ready.cpp
+	src/jandy/messages/iaq/iaq_message_message_long.cpp
+	src/jandy/messages/iaq/iaq_message_page_button.cpp
+	src/jandy/messages/iaq/iaq_message_page_continue.cpp
+	src/jandy/messages/iaq/iaq_message_page_end.cpp
+	src/jandy/messages/iaq/iaq_message_page_message.cpp
+	src/jandy/messages/iaq/iaq_message_page_start.cpp
+	src/jandy/messages/iaq/iaq_message_poll.cpp
+	src/jandy/messages/iaq/iaq_message_startup.cpp
+	src/jandy/messages/iaq/iaq_message_table_message.cpp
+	src/jandy/messages/jandy_message.cpp
+	src/jandy/messages/jandy_message_ack.cpp
+	src/jandy/messages/jandy_message_constants.cpp
+	src/jandy/messages/jandy_message_ids.cpp
+	src/jandy/messages/jandy_message_message.cpp
+	src/jandy/messages/jandy_message_message_long.cpp
+	src/jandy/messages/jandy_message_probe.cpp
+	src/jandy/messages/jandy_message_status.cpp
+	src/jandy/messages/jandy_message_unknown.cpp
+	src/jandy/types/jandy_types.cpp
+	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
 	src/logging/logging_attributes.cpp
 	src/logging/logging_channels.cpp
 	src/logging/logging_formatter.cpp
-	src/logging/logging_initialise.cpp 
+	src/logging/logging_initialise.cpp
 	src/logging/logging_severity_filter.cpp
 	src/logging/logging_severity_levels.cpp
-	src/logging/formatters/logging_formatters.cpp 
-	src/messages/jandy/formatters/jandy_message_formatters.cpp
-	src/messages/jandy/messages/jandy_message.cpp
-	src/messages/jandy/messages/jandy_message_ack.cpp
-	src/messages/jandy/messages/jandy_message_message.cpp
-	src/messages/jandy/messages/jandy_message_message_long.cpp
-	src/messages/jandy/messages/jandy_message_probe.cpp
-	src/messages/jandy/messages/jandy_message_status.cpp
-	src/messages/jandy/messages/jandy_message_unknown.cpp
-	src/messages/jandy/messages/aquarite/aquarite_message.cpp
-	src/messages/jandy/messages/aquarite/aquarite_message_percent.cpp
-	src/messages/jandy/messages/aquarite/aquarite_message_getid.cpp
-	src/messages/jandy/messages/aquarite/aquarite_message_ppm.cpp
-	src/messages/jandy/jandy_message_constants.cpp	
-	src/messages/jandy/jandy_message_factory.cpp
-	src/messages/jandy/jandy_message_generator.cpp
-	src/messages/jandy/jandy_message_handler.cpp
-	src/messages/jandy/jandy_message_processors.cpp
-	src/messages/jandy/jandy_message_registration.cpp
-	src/messages/jandy/jandy_message_type.cpp
-	src/messages/message.cpp
-	src/messages/message_generator.cpp
-	src/messages/message_handler.cpp
 	src/options/options_app_options.cpp
 	src/options/options_developer_options.cpp
 	src/options/options_initialise.cpp
 	src/options/options_option_type.cpp
 	src/options/options_serial_options.cpp
 	src/options/options_settings.cpp
-	src/options/options_web_options.cpp	
-	src/options/validators/severity_level_validator.cpp 
+	src/options/options_web_options.cpp
+	src/options/validators/severity_level_validator.cpp
 	src/protocol/protocol_handler.cpp
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
-	src/serialization/serializable.cpp
+	src/signals/async_signal.cpp
+	src/signals/async_slot.cpp
 	src/signals/signal_awaitable.cpp
 	src/signals/signal_cleanup.cpp
-	src/signals/signal_handler.cpp	
+	src/signals/signal_handler.cpp
+	src/utility/array_standard_formatter.cpp
+	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp
 )
 
@@ -112,7 +128,7 @@ add_executable(
 	src/aqualink-automate.cpp 
 )
 
-target_link_libraries(aqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options)
+target_link_libraries(aqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options magic_enum::magic_enum)
 
 #------------------------------------------------------------------------------
 #
@@ -132,7 +148,7 @@ if(ENABLE_TESTS)
 
 	target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)
 	target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test")
-	target_link_libraries(testaqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options Boost::unit_test_framework)
+	target_link_libraries(testaqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options Boost::unit_test_framework magic_enum::magic_enum)
 
 	enable_testing()
 	add_test(AqualinkAutomateTests testaqualink-automate)

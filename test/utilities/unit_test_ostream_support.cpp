@@ -12,9 +12,8 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 }
 // AqualinkAutomate::ErrorCodes::Protocol
 
-namespace AqualinkAutomate::Messages
+namespace AqualinkAutomate::Interfaces
 {
-    std::ostream& boost_test_print_type(std::ostream& os, Message const& right) { return os; };
 }
 // AqualinkAutomate::Messages
 

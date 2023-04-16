@@ -4,38 +4,65 @@
 #include <expected>
 #include <format>
 #include <span>
+#include <vector>
 
 #include <boost/asio/as_tuple.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
-#include "errors/error_codes.h"
-#include "errors/message_error_codes.h"
-#include "errors/protocol_error_codes.h"
+#include "interfaces/ibridge.h"
+#include "interfaces/igenerator.h"
+#include "interfaces/imessage.h"
+#include "interfaces/iserialport.h"
+#include "jandy/errors/jandy_errors_messages.h"
+#include "jandy/errors/jandy_errors_protocol.h"
 #include "logging/logging.h"
-#include "messages/message.h"
-#include "messages/message_generator.h"
 #include "serial/serial_port.h"
 #include "utility/array_standard_formatter.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::ErrorCodes;
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Protocol
 {
-	template<typename MESSAGE_GENERATOR>
+	template<typename GENERATOR_TYPE>
 	class ProtocolHandler
 	{
 	public:
-		ProtocolHandler(AqualinkAutomate::Serial::SerialPort& serial_port) :
+		ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port, GENERATOR_TYPE& generator) :
 			m_SerialPort(serial_port),
-			m_MessageGenerator()
+			m_Generator(generator)
+		{
+		}
+
+		~ProtocolHandler()
 		{
 		}
 
 	public:
-		boost::asio::awaitable<std::expected<typename MESSAGE_GENERATOR::MessageType, boost::system::error_code>> HandleProtocol()
+		boost::asio::awaitable<void> Run()
 		{
-			std::array<uint8_t, 16> read_buffer;
+			bool continue_processing = true;
+
+			do
+			{
+				if (continue_processing = co_await HandleProtocol())
+				{
+					
+				}
+				else
+				{
+					LogDebug(Channel::Serial, std::format("Error occured during processing serial data in the protocol handler"));
+				}
+
+			} while (continue_processing);
+		}
+
+	public:
+		boost::asio::awaitable<bool> HandleProtocol()
+		{
+			std::array<Interfaces::ISerialPort::DataType, 16> read_buffer;
 			bool continue_processing = true;
 
 			do
@@ -47,19 +74,21 @@ namespace AqualinkAutomate::Protocol
 				case boost::system::errc::success:
 					{
 						auto read_buffer_span = std::span(read_buffer.begin(), bytes_read);
-						LogTrace(Logging::Channel::Serial, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer_span, read_buffer_span.size()));
-						LogTrace(Logging::Channel::Serial, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
+						LogTrace(Channel::Serial, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer_span, read_buffer_span.size()));
+						LogTrace(Channel::Serial, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
 
-						m_MessageGenerator.InjectRawSerialData(read_buffer_span);
+						m_Generator.InjectRawSerialData(read_buffer_span);
 						bool process_packets = true;
 
 						do
 						{
-							auto message = co_await m_MessageGenerator.GenerateMessageFromRawData();
+							auto message = co_await m_Generator.GenerateMessageFromRawData();
 							if (message.has_value())
 							{
+								LogDebug(Channel::Serial, "Message received; emitting signal to registered bridges.");
+
 								// Process the message...as per protocol requirements
-								///TODO -> message.value();
+								///FIXME
 							}
 							else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
 							{
@@ -85,31 +114,31 @@ namespace AqualinkAutomate::Protocol
 					break;
 
 				case boost::asio::error::eof:
-					LogDebug(Logging::Channel::Serial, "Serial port's connection was closed by the peer...cannot continue.");
+					LogDebug(Channel::Serial, "Serial port's connection was closed by the peer...cannot continue.");
 					continue_processing = false;
 					break;
 
 				case boost::system::errc::operation_canceled:
 				case boost::asio::error::operation_aborted:
-					LogDebug(Logging::Channel::Serial, "Serial port's async_read_some() was cancelled or an error occurred.");
+					LogDebug(Channel::Serial, "Serial port's async_read_some() was cancelled or an error occurred.");
 					continue_processing = false;
 					break;
 
 				default:
-					LogError(Logging::Channel::Serial, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
-					LogDebug(Logging::Channel::Serial, std::format("Error message: {}", ec.message()));
+					LogError(Channel::Serial, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
+					LogDebug(Channel::Serial, std::format("Error message: {}", ec.message()));
 					continue_processing = false;
 					break;
 				}
 			
 			} while (continue_processing);
 
-			co_return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::UnknownFailure));
+			co_return false;
 		}
 
 	private:
-		AqualinkAutomate::Serial::SerialPort& m_SerialPort;
-		MESSAGE_GENERATOR m_MessageGenerator;
+		Serial::SerialPort& m_SerialPort;
+		GENERATOR_TYPE& m_Generator;
 	};
 }
 // namespace AqualinkAutomate::Protocol

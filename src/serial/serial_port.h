@@ -1,6 +1,7 @@
 #pragma once
 
 #include <coroutine>
+#include <cstdint>
 #include <optional>
 #include <memory>
 #include <span>
@@ -14,12 +15,13 @@
 #include <boost/system/error_code.hpp>
 
 #include "developer/mock_serial_port.h"
+#include "interfaces/iserialport.h"
 #include "serial/serial_operating_modes.h"
 
 namespace AqualinkAutomate::Serial
 {
 
-	class SerialPort : public std::enable_shared_from_this<SerialPort>
+	class SerialPort : public Interfaces::ISerialPort, public std::enable_shared_from_this<SerialPort>
 	{
 		using MockSerialPort = AqualinkAutomate::Developer::mock_serial_port;
 		using MockSerialPortPtr = std::unique_ptr<MockSerialPort>;
