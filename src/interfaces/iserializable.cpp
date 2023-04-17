@@ -3,7 +3,13 @@
 namespace AqualinkAutomate::Interfaces
 {
 
-	// NOTHING HERE
+	ISerializable::ISerializable()
+	{
+	}
+
+	ISerializable::~ISerializable()
+	{
+	}
 
 }
 // namespace AqualinkAutomate::Interfaces

@@ -37,6 +37,11 @@ namespace AqualinkAutomate::Messages
 		virtual ~AquariteMessage_PPM();
 
 	public:
+		uint8_t GeneratingPercentage() const;
+		uint16_t SaltConcentrationPPM() const;
+		AquariteStatuses Status() const;
+
+	public:
 		virtual std::string ToString() const;
 
 	public:

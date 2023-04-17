@@ -1,6 +1,7 @@
 #include <format>
 
 #include "logging/logging.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_status.h"
 
 using namespace AqualinkAutomate;
@@ -9,7 +10,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	JandyStatusMessage::JandyStatusMessage() : JandyMessage()
+	JandyStatusMessage::JandyStatusMessage() : JandyMessage(JandyMessageIds::Status)
 	{
 	}
 

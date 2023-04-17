@@ -1,6 +1,7 @@
 #include <format>
 
 #include "logging/logging.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 
 using namespace AqualinkAutomate;
@@ -10,13 +11,18 @@ namespace AqualinkAutomate::Messages
 {
 
 	AquariteMessage_Percent::AquariteMessage_Percent() : 
-		AquariteMessage(), 
+		AquariteMessage(JandyMessageIds::AQUARITE_Percent),
 		m_Percent(0)
 	{
 	}
 
 	AquariteMessage_Percent::~AquariteMessage_Percent()
 	{
+	}
+
+	uint8_t AquariteMessage_Percent::GeneratingPercentage() const
+	{
+		return m_Percent;
 	}
 
 	std::string AquariteMessage_Percent::ToString() const

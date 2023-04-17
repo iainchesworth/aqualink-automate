@@ -20,6 +20,10 @@ namespace AqualinkAutomate::Interfaces
 		{
 		}
 
+		virtual ~IGenerator()
+		{
+		}
+
 	public:
 		void InjectRawSerialData(const std::span<const SERIAL_DATA_TYPE>& read_buffer)
 		{

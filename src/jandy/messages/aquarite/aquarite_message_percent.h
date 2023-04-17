@@ -20,6 +20,9 @@ namespace AqualinkAutomate::Messages
 		virtual ~AquariteMessage_Percent();
 
 	public:
+		uint8_t GeneratingPercentage() const;
+
+	public:
 		virtual std::string ToString() const;
 
 	public:

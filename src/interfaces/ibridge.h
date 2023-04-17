@@ -7,6 +7,15 @@ namespace AqualinkAutomate::Interfaces
 	class IBridge
 	{
 	public:
+		IBridge()
+		{
+		}
+
+		virtual ~IBridge()
+		{
+		}
+
+	public:
 		virtual void Notify(const MESSAGE_TYPE& message) = 0;
 	};
 

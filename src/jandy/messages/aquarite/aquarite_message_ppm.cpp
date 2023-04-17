@@ -3,6 +3,7 @@
 #include <magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
 
 using namespace AqualinkAutomate;
@@ -12,7 +13,7 @@ namespace AqualinkAutomate::Messages
 {
 
 	AquariteMessage_PPM::AquariteMessage_PPM() : 
-		AquariteMessage(),
+		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
 		m_PPM(0),
 		m_Status(AquariteStatuses::Unknown)
 	{
@@ -20,6 +21,21 @@ namespace AqualinkAutomate::Messages
 
 	AquariteMessage_PPM::~AquariteMessage_PPM()
 	{
+	}
+
+	uint8_t AquariteMessage_PPM::GeneratingPercentage() const
+	{
+		return 0;
+	}
+
+	uint16_t AquariteMessage_PPM::SaltConcentrationPPM() const
+	{
+		return m_PPM;
+	}
+
+	AquariteStatuses AquariteMessage_PPM::Status() const
+	{
+		return m_Status;
 	}
 
 	std::string AquariteMessage_PPM::ToString() const

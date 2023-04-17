@@ -9,7 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	IAQMessage::IAQMessage() : JandyMessage()
+	IAQMessage::IAQMessage(const JandyMessageIds& msg_id) : JandyMessage(msg_id)
 	{
 	}
 

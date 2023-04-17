@@ -12,11 +12,14 @@ namespace AqualinkAutomate::Logging
 	{
 		std::map<Channel, Severity> MinimumSeverityLevelPerChannel =
 		{
+			{Channel::Devices, DEFAULT_SEVERITY},
+			{Channel::Equipment, DEFAULT_SEVERITY},
 			{Channel::Exceptions, DEFAULT_SEVERITY},
 			{Channel::Main, DEFAULT_SEVERITY},
 			{Channel::Messages, DEFAULT_SEVERITY},
 			{Channel::Options, DEFAULT_SEVERITY},
 			{Channel::Platform, DEFAULT_SEVERITY},
+			{Channel::Protocol, DEFAULT_SEVERITY},
 			{Channel::Serial, DEFAULT_SEVERITY},
 			{Channel::Signals, DEFAULT_SEVERITY}
 		};

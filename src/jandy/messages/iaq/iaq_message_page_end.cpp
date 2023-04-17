@@ -2,6 +2,7 @@
 
 #include "logging/logging.h"
 #include "jandy/messages/iaq/iaq_message_page_end.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -9,7 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	IAQMessage_PageEnd::IAQMessage_PageEnd() : IAQMessage()
+	IAQMessage_PageEnd::IAQMessage_PageEnd() : 
+		IAQMessage(JandyMessageIds::IAQ_PageEnd)
 	{
 	}
 

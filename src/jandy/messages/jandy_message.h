@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t MINIMUM_PACKET_LENGTH = 7;
 
 	public:
-		JandyMessage(const JandyMessageIds& msg_id = JandyMessageIds::Unknown);
+		JandyMessage(const JandyMessageIds& msg_id);
 		virtual ~JandyMessage();
 
 	public:

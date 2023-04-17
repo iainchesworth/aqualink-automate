@@ -8,6 +8,10 @@ namespace AqualinkAutomate::Interfaces
     class ISerialPort
     {
     public:
+        ISerialPort();
+        virtual ~ISerialPort();
+
+    public:
         using DataType = uint8_t;
     };
 

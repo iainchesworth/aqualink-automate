@@ -2,13 +2,14 @@
 
 #include "logging/logging.h"
 #include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
-	JandyAckMessage::JandyAckMessage() : JandyMessage()
+	JandyAckMessage::JandyAckMessage() : JandyMessage(JandyMessageIds::Ack)
 	{
 	}
 

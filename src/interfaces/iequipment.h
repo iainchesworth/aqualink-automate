@@ -23,6 +23,10 @@ namespace AqualinkAutomate::Interfaces
 		{
 		}
 
+		virtual ~IEquipment()
+		{
+		}
+
 	public:
 		boost::asio::awaitable<void> Run()
 		{

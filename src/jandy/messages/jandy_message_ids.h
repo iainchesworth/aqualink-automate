@@ -40,11 +40,8 @@ namespace AqualinkAutomate::Messages
 		IAQ_PageContinue = 0x40,
 		IAQ_MessageLong = 0x2C,
 
-		Unknown_PDA_04 = 0x04,
-		Unknown_PDA_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
 		Unknown_IAQ_2D = 0x2D,
-		Unknown_IAQ_31 = 0x31,
 		Unknown_ReadyControl = 0x80,
 		Unknown = 0xFF
 	};

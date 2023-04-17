@@ -2,6 +2,7 @@
 
 #include "logging/logging.h"
 #include "jandy/messages/iaq/iaq_message_message_long.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -9,7 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	IAQMessage_MessageLong::IAQMessage_MessageLong() : IAQMessage()
+	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
+		IAQMessage(JandyMessageIds::IAQ_MessageLong)
 	{
 	}
 

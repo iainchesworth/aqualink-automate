@@ -1,6 +1,7 @@
 #include <format>
 
 #include "logging/logging.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
 
 using namespace AqualinkAutomate;
@@ -9,7 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	AquariteMessage_GetId::AquariteMessage_GetId() : AquariteMessage()
+	AquariteMessage_GetId::AquariteMessage_GetId() : 
+		AquariteMessage(JandyMessageIds::AQUARITE_GetId)
 	{
 	}
 

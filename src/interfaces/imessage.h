@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstddef>
 #include <string>
-#include <span>
+#include <type_traits>
 
 namespace AqualinkAutomate::Interfaces
 {
@@ -15,13 +14,28 @@ namespace AqualinkAutomate::Interfaces
 		{
 		}
 
+		virtual ~IMessage()
+		{
+		}
+
+	public:
+		MESSAGE_ID MessageId() const
+		{
+			return m_MessageId;
+		}
+
 	public:
 		virtual std::string ToString() const = 0;
 
 	public:
 		bool operator==(const IMessage& other) const
 		{
-			return std::is_same<decltype(*this), decltype(other)>::value;
+			bool is_equal = true;
+
+			is_equal &= (std::is_same<decltype(*this), decltype(other)>::value);
+			is_equal &= (m_MessageId == other.m_MessageId);
+
+			return is_equal;
 		}
 
 	private:

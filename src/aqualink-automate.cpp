@@ -65,10 +65,11 @@ int main(int argc, char *argv[])
         CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
         Generators::JandyMessageGenerator jandy_message_generator;
-        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator);
+        Bridges::Bridge_JandyMessages jandy_message_bridge;
+
+        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator, jandy_message_bridge);
         boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
 
-        Bridges::Bridge_JandyMessages jandy_message_bridge;
         Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler, jandy_message_bridge);
         boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 

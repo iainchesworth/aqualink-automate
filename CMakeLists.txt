@@ -24,12 +24,14 @@ add_library(
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp
 	src/interfaces/ibridge.cpp
+	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp
 	src/interfaces/igenerator.cpp
 	src/interfaces/imessage.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
 	src/jandy/bridge/jandy_message_bridge.cpp
+	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
@@ -92,6 +94,7 @@ add_library(
 	src/utility/array_standard_formatter.cpp
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp
+	src/utility/value_debouncer.cpp
 )
 
 if(WIN32)

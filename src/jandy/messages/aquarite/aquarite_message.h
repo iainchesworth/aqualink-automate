@@ -5,13 +5,14 @@
 #include <span>
 
 #include "jandy/messages/jandy_message.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {
 	class AquariteMessage : public JandyMessage
 	{
 	public:
-		AquariteMessage();
+		AquariteMessage(const JandyMessageIds& msg_id);
 		virtual ~AquariteMessage();
 
 	public:
