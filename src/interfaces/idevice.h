@@ -25,8 +25,10 @@ namespace AqualinkAutomate::Interfaces
 
     private:
         void StartWaitForTimeout();
-        void KickTimeoutWatchdog();
         void TimeoutOccurred(const boost::system::error_code& ec);
+
+    protected:
+        void KickTimeoutWatchdog();
 
     private:
         const DeviceId m_Id;

@@ -43,7 +43,6 @@ namespace AqualinkAutomate::Interfaces
 
     void IDevice::KickTimeoutWatchdog()
     {
-        m_TimeoutTimer.cancel();
         StartWaitForTimeout();
     }
 

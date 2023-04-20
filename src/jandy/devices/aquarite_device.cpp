@@ -67,6 +67,9 @@ namespace AqualinkAutomate::Devices
 	void AquariteDevice::Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg)
 	{
 		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_GetId signal.");
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
 	}
 
 	void AquariteDevice::Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg)
@@ -74,6 +77,9 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_Percent signal.");
 		LogDebug(Channel::Devices, std::format("Aquarite Device: received new requested generating level -> {}%", msg.GeneratingPercentage()));
 		RequestedGeneratingLevel(msg.GeneratingPercentage());
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
 	}
 
 	void AquariteDevice::Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg)
@@ -81,6 +87,9 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_PPM signal.");
 		LogDebug(Channel::Devices, std::format("Aquarite Device: received new reported status and salt concentration -> {} and {} PPM", magic_enum::enum_name(msg.Status()), msg.SaltConcentrationPPM()));
 		ReportedGeneratingLevel(msg.SaltConcentrationPPM());		
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
 	}
 
 }

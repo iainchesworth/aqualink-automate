@@ -30,7 +30,6 @@ namespace AqualinkAutomate::Logging
 		};
 
 		std::string sev_string;
-		Severity sev_enum;
 		
 		boost::program_options::validators::check_first_occurrence(v);
 		sev_string = boost::program_options::validators::get_single_string(values);
@@ -40,7 +39,7 @@ namespace AqualinkAutomate::Logging
 
 		if (auto enum_value = magic_enum::enum_cast<AqualinkAutomate::Logging::Severity>(capitalize(sev_string)); enum_value.has_value())
 		{
-			v = boost::any(sev_enum);
+			v = boost::any(enum_value.value());
 		}
 		else
 		{

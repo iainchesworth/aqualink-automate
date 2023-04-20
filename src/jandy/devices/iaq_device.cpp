@@ -60,6 +60,9 @@ namespace AqualinkAutomate::Devices
 	void IAQDevice::Slot_IAQ_Poll(const Messages::IAQMessage_Poll& msg)
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_Poll signal.");
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
 	}
 
 	void IAQDevice::Slot_IAQ_StartUp(const Messages::IAQMessage_StartUp& msg)
