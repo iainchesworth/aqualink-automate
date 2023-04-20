@@ -21,7 +21,6 @@
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Bridges;
 using namespace AqualinkAutomate::Equipment;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
@@ -65,13 +64,13 @@ int main(int argc, char *argv[])
         CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
         Generators::JandyMessageGenerator jandy_message_generator;
-        Bridges::Bridge_JandyMessages jandy_message_bridge;
 
-        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator, jandy_message_bridge);
+        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator);
         boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
 
-        Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler, jandy_message_bridge);
-        boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
+        Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler);
+        CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { jandy_equipment.Stop(); } });
+        //FIXME -> blocks coroutines!!!  boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 
         boost::asio::signal_set ss(io_context);
         boost::asio::co_spawn(io_context, Signal_Awaitable(ss), boost::asio::detached);

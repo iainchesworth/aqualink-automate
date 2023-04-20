@@ -4,12 +4,13 @@
 #include <string>
 #include <span>
 
+#include "interfaces/imessagesignal.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
 {
 
-	class AquariteMessage_GetId : public AquariteMessage
+	class AquariteMessage_GetId : public AquariteMessage, public Interfaces::IMessageSignal<AquariteMessage_GetId>
 	{
 	public:
 		AquariteMessage_GetId();

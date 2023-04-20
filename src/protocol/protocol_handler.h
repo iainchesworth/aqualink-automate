@@ -10,9 +10,9 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
-#include "interfaces/ibridge.h"
 #include "interfaces/igenerator.h"
 #include "interfaces/imessage.h"
+#include "interfaces/imessagesignal.h"
 #include "interfaces/iserialport.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
@@ -26,14 +26,13 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Protocol
 {
-	template<typename GENERATOR_TYPE, typename BRIDGE_TYPE>
+	template<typename GENERATOR_TYPE>
 	class ProtocolHandler
 	{
 	public:
-		ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port, GENERATOR_TYPE& generator, BRIDGE_TYPE& bridge) :
+		ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port, GENERATOR_TYPE& generator) :
 			m_SerialPort(serial_port),
-			m_Generator(generator),
-			m_Bridge(bridge)
+			m_Generator(generator)
 		{
 		}
 
@@ -83,10 +82,13 @@ namespace AqualinkAutomate::Protocol
 							auto message = co_await m_Generator.GenerateMessageFromRawData();
 							if (message.has_value())
 							{
-								LogDebug(Channel::Protocol, "Message received; emitting signal to registered bridges.");
+								LogDebug(Channel::Protocol, "Message received; emitting signal to listening consumer slots.");
 
-								// Process the message...as per protocol requirements
-								m_Bridge.Notify(message.value());
+								if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalBase>(message.value()); nullptr != signal_ptr)
+								{
+									// Process the message...as per protocol requirements
+									signal_ptr->Signal();
+								}
 							}
 							else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
 							{
@@ -137,7 +139,6 @@ namespace AqualinkAutomate::Protocol
 	private:
 		Serial::SerialPort& m_SerialPort;
 		GENERATOR_TYPE& m_Generator;
-		BRIDGE_TYPE& m_Bridge;
 	};
 }
 // namespace AqualinkAutomate::Protocol

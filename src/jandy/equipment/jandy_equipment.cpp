@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <boost/bind/bind.hpp>
+#include <magic_enum.hpp>
 
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/equipment/jandy_equipment.h"
@@ -12,15 +13,15 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler, MessageBridge& message_bridge) :
-		IEquipment(io_context, protocol_handler, message_bridge),
+	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler) :
+		IEquipment(io_context, protocol_handler),
 		m_IOContext(io_context),
 		m_Devices()
 	{
-		m_MessageBridge.Signal_AllJandyMessages.connect(boost::bind(&JandyEquipment::Slot_AllMessageTypes, this, boost::placeholders::_1));
-		m_MessageBridge.Signal_Aquarite_GetId.connect(boost::bind(&JandyEquipment::Slot_Aquarite_GetId, this, boost::placeholders::_1));
-		m_MessageBridge.Signal_Aquarite_Percent.connect(boost::bind(&JandyEquipment::Slot_Aquarite_Percent, this, boost::placeholders::_1));
-		m_MessageBridge.Signal_Aquarite_PPM.connect(boost::bind(&JandyEquipment::Slot_Aquarite_PPM, this, boost::placeholders::_1));
+		// Messages::JandyMessage::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_AllMessageTypes, this, boost::placeholders::_1));
+		Messages::AquariteMessage_GetId::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_GetId, this, boost::placeholders::_1));
+		Messages::AquariteMessage_Percent::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_Percent, this, boost::placeholders::_1));
+		Messages::AquariteMessage_PPM::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_PPM, this, boost::placeholders::_1));
 	}
 
 	auto JandyEquipment::IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id)
@@ -34,30 +35,26 @@ namespace AqualinkAutomate::Equipment
 		return device_it;
 	}
 
-	void JandyEquipment::Slot_AllMessageTypes(const Types::JandyMessageTypePtr& msg)
+	void JandyEquipment::Slot_AllMessageTypes(const Types::JandyMessageTypePtr msg)
 	{
 		m_MessagesProcessed++;
 
 		LogDebug(Channel::Equipment, std::format("STUFF SIGNAL -> SLOT....TOTAL MESSAGES: {}", m_MessagesProcessed));
 	}
 
-	void JandyEquipment::Slot_Aquarite_GetId(const std::shared_ptr<Messages::AquariteMessage_GetId>& msg)
+	void JandyEquipment::Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg)
 	{
 		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_GetId signal.");
 	}
 
-	void JandyEquipment::Slot_Aquarite_Percent(const std::shared_ptr<Messages::AquariteMessage_Percent>& msg)
+	void JandyEquipment::Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg)
 	{
 		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_Percent signal.");
 
-		if (nullptr == msg)
+		if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
 		{
-			LogDebug(Channel::Equipment, "Received an invalid AquariteMessage_Percent message...received a nullptr");
-		}
-		else if (auto device = IsDeviceRegistered(msg->DestinationId()); m_Devices.end() == device)
-		{
-			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg->DestinationId());
-			aquarite_device->RequestedGeneratingLevel(msg->GeneratingPercentage());
+			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
+			aquarite_device->RequestedGeneratingLevel(msg.GeneratingPercentage());
 
 			m_Devices.push_back(std::move(aquarite_device));
 		}
@@ -67,24 +64,20 @@ namespace AqualinkAutomate::Equipment
 		}
 		else
 		{
-			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new requested generating level -> {}%", msg->GeneratingPercentage()));
-			aquarite_device->RequestedGeneratingLevel(msg->GeneratingPercentage());
+			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new requested generating level -> {}%", msg.GeneratingPercentage()));
+			aquarite_device->RequestedGeneratingLevel(msg.GeneratingPercentage());
 		}
 	}
 
-	void JandyEquipment::Slot_Aquarite_PPM(const std::shared_ptr<Messages::AquariteMessage_PPM>& msg)
+	void JandyEquipment::Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg)
 	{
 		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_PPM signal.");
 
-		if (nullptr == msg)
+		if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
 		{
-			LogDebug(Channel::Equipment, "Received an invalid AquariteMessage_PPM message...received a nullptr");
-		}
-		else if (auto device = IsDeviceRegistered(msg->DestinationId()); m_Devices.end() == device)
-		{
-			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg->DestinationId());
-			aquarite_device->ReportedGeneratingLevel(msg->GeneratingPercentage());
-			aquarite_device->ReportedGeneratingLevel(msg->SaltConcentrationPPM());
+			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
+			aquarite_device->ReportedGeneratingLevel(msg.SaltConcentrationPPM());
+			///TODO STATUS
 
 			m_Devices.push_back(std::move(aquarite_device));
 		}
@@ -94,10 +87,14 @@ namespace AqualinkAutomate::Equipment
 		}
 		else
 		{
-			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new reported generating level and salt concentration -> {}% and {} PPM", msg->GeneratingPercentage(), msg->SaltConcentrationPPM()));
-			aquarite_device->ReportedGeneratingLevel(msg->GeneratingPercentage());
-			aquarite_device->ReportedGeneratingLevel(msg->SaltConcentrationPPM());
+			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new reported status and salt concentration -> {} and {} PPM", magic_enum::enum_name(msg.Status()), msg.SaltConcentrationPPM()));
+			aquarite_device->ReportedGeneratingLevel(msg.SaltConcentrationPPM());
+			///TODO STATUS
 		}
+	}
+
+	void JandyEquipment::StopAndCleanUp()
+	{
 	}
 }
 // namespace AqualinkAutomate::Equipment

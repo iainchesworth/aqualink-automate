@@ -11,7 +11,6 @@
 
 #include "interfaces/igenerator.h"
 #include "interfaces/iserialport.h"
-#include "jandy/bridge/jandy_message_bridge.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "jandy/messages/jandy_message_constants.h"

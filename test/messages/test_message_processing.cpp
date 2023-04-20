@@ -1,8 +1,10 @@
 #include <array>
+#include <coroutine>
 #include <cstdint>
 #include <random>
 #include <span>
 
+#include <boost/asio.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>

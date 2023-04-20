@@ -23,11 +23,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	uint8_t AquariteMessage_PPM::GeneratingPercentage() const
-	{
-		return 0;
-	}
-
 	uint16_t AquariteMessage_PPM::SaltConcentrationPPM() const
 	{
 		return m_PPM;

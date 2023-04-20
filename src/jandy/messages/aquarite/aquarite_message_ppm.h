@@ -5,6 +5,7 @@
 #include <string>
 #include <span>
 
+#include "interfaces/imessagesignal.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -26,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		Unknown = 0xFE
 	};
 
-	class AquariteMessage_PPM : public AquariteMessage
+	class AquariteMessage_PPM : public AquariteMessage, public Interfaces::IMessageSignal<AquariteMessage_PPM>
 	{
 	public:
 		static const uint8_t Index_PPM = 4;
@@ -37,7 +38,6 @@ namespace AqualinkAutomate::Messages
 		virtual ~AquariteMessage_PPM();
 
 	public:
-		uint8_t GeneratingPercentage() const;
 		uint16_t SaltConcentrationPPM() const;
 		AquariteStatuses Status() const;
 

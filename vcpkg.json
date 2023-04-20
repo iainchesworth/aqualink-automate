@@ -13,6 +13,7 @@
     "boost-statechart",
     "boost-system",
     "boost-test",
+    "cppcoro",
     "magic-enum"
   ]
 }

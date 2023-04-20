@@ -1,4 +1,4 @@
-#include "interfaces/ibridge.h"
+#include "interfaces/imessagesignal.h"
 
 namespace AqualinkAutomate::Interfaces
 {

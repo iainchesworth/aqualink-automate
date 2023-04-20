@@ -1,6 +1,5 @@
 #pragma once
 
-#include "jandy/bridge/jandy_message_bridge.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"

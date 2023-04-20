@@ -5,12 +5,13 @@
 #include <string>
 #include <span>
 
+#include "interfaces/imessagesignal.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
 {
 
-	class AquariteMessage_Percent : public AquariteMessage
+	class AquariteMessage_Percent : public AquariteMessage, public Interfaces::IMessageSignal<AquariteMessage_Percent>
 	{
 	public:
 		static const uint8_t Index_Percent = 4;
