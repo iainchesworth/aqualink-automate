@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_PageButton::IAQMessage_PageButton() : 
-		IAQMessage(JandyMessageIds::IAQ_PageButton)
+		IAQMessage(JandyMessageIds::IAQ_PageButton),
+		Interfaces::IMessageSignal<IAQMessage_PageButton>()
 	{
 	}
 

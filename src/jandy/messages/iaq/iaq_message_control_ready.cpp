@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_ControlReady::IAQMessage_ControlReady() : 
-		IAQMessage(JandyMessageIds::IAQ_ControlReady)
+		IAQMessage(JandyMessageIds::IAQ_ControlReady),
+		Interfaces::IMessageSignal<IAQMessage_ControlReady>()
 	{
 	}
 

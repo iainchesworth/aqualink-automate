@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	AquariteMessage_GetId::AquariteMessage_GetId() : 
-		AquariteMessage(JandyMessageIds::AQUARITE_GetId)
+		AquariteMessage(JandyMessageIds::AQUARITE_GetId),
+		Interfaces::IMessageSignal<AquariteMessage_GetId>()
 	{
 	}
 

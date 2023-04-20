@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_Poll::IAQMessage_Poll() : 
-		IAQMessage(JandyMessageIds::IAQ_Poll)
+		IAQMessage(JandyMessageIds::IAQ_Poll),
+		Interfaces::IMessageSignal<IAQMessage_Poll>()
 	{
 	}
 

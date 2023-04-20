@@ -9,7 +9,9 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
-	JandyAckMessage::JandyAckMessage() : JandyMessage(JandyMessageIds::Ack)
+	JandyAckMessage::JandyAckMessage() : 
+		JandyMessage(JandyMessageIds::Ack),
+		Interfaces::IMessageSignal<JandyAckMessage>()
 	{
 	}
 

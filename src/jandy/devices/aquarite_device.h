@@ -8,6 +8,9 @@
 #include <boost/asio/io_context.hpp>
 
 #include "interfaces/idevice.h"
+#include "jandy/messages/aquarite/aquarite_message_getid.h"
+#include "jandy/messages/aquarite/aquarite_message_percent.h"
+#include "jandy/messages/aquarite/aquarite_message_ppm.h"
 #include "utility/value_debouncer.h"
 
 namespace AqualinkAutomate::Devices
@@ -49,10 +52,14 @@ namespace AqualinkAutomate::Devices
 		SaltConcentration_InPPM ReportedSaltConcentration() const;
 
 	private:
-		bool m_IsOperating = false;
 		Utility::ValueDebouncer<Generating_InPercent, TypeWithTimeComparator<Generating_InPercent>> m_Requested;
 		Generating_InPercent m_Reported;
 		SaltConcentration_InPPM m_SaltPPM;
+
+	private:
+		void Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg);
+		void Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg);
+		void Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg);
 	};
 
 }

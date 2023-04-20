@@ -1,12 +1,25 @@
 #include <algorithm>
 #include <format>
+#include <type_traits>
 #include <utility>
 
-#include <boost/bind/bind.hpp>
-#include <magic_enum.hpp>
-
 #include "jandy/devices/aquarite_device.h"
+#include "jandy/devices/iaq_device.h"
 #include "jandy/equipment/jandy_equipment.h"
+#include "jandy/messages/aquarite/aquarite_message_getid.h"
+#include "jandy/messages/aquarite/aquarite_message_percent.h"
+#include "jandy/messages/aquarite/aquarite_message_ppm.h"
+#include "jandy/messages/iaq/iaq_message_control_ready.h"
+#include "jandy/messages/iaq/iaq_message_message_long.h"
+#include "jandy/messages/iaq/iaq_message_page_button.h"
+#include "jandy/messages/iaq/iaq_message_page_continue.h"
+#include "jandy/messages/iaq/iaq_message_page_end.h"
+#include "jandy/messages/iaq/iaq_message_page_message.h"
+#include "jandy/messages/iaq/iaq_message_page_start.h"
+#include "jandy/messages/iaq/iaq_message_poll.h"
+#include "jandy/messages/iaq/iaq_message_startup.h"
+#include "jandy/messages/iaq/iaq_message_table_message.h"
+#include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -18,10 +31,59 @@ namespace AqualinkAutomate::Equipment
 		m_IOContext(io_context),
 		m_Devices()
 	{
-		// Messages::JandyMessage::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_AllMessageTypes, this, boost::placeholders::_1));
-		Messages::AquariteMessage_GetId::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_GetId, this, boost::placeholders::_1));
-		Messages::AquariteMessage_Percent::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_Percent, this, boost::placeholders::_1));
-		Messages::AquariteMessage_PPM::GetSignal()->connect(boost::bind(&JandyEquipment::Slot_Aquarite_PPM, this, boost::placeholders::_1));
+		auto create_aquarite_device = [this](const auto& msg)
+		{
+			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
+			{
+				auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
+				m_Devices.push_back(std::move(aquarite_device));
+			}
+		};
+
+		Messages::AquariteMessage_GetId::GetSignal()->connect(create_aquarite_device);
+		Messages::AquariteMessage_Percent::GetSignal()->connect(create_aquarite_device);
+		Messages::AquariteMessage_PPM::GetSignal()->connect(create_aquarite_device);
+
+		auto create_iaq_device = [this](const auto & msg)
+		{
+			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
+			{
+				auto iaq_device = std::make_shared<Devices::IAQDevice>(m_IOContext, msg.DestinationId());
+				m_Devices.push_back(std::move(iaq_device));
+			}
+		};
+
+		Messages::IAQMessage_ControlReady::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_MessageLong::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_PageButton::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_PageContinue::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_PageEnd::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_PageMessage::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_PageStart::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_Poll::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_StartUp::GetSignal()->connect(create_iaq_device);
+		Messages::IAQMessage_TableMessage::GetSignal()->connect(create_iaq_device);
+
+		auto message_statistics_capture = [this](const auto& msg)
+		{
+			LogDebug(Channel::Equipment, std::format("STUFF SIGNAL -> SLOT....TOTAL MESSAGES: {}", m_MessagesProcessed));
+			m_MessagesProcessed++;
+		};
+
+		Messages::AquariteMessage_GetId::GetSignal()->connect(message_statistics_capture);
+		Messages::AquariteMessage_Percent::GetSignal()->connect(message_statistics_capture);
+		Messages::AquariteMessage_PPM::GetSignal()->connect(message_statistics_capture);
+
+		Messages::IAQMessage_ControlReady::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_MessageLong::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_PageButton::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_PageContinue::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_PageEnd::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_PageMessage::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_PageStart::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_Poll::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_StartUp::GetSignal()->connect(message_statistics_capture);
+		Messages::IAQMessage_TableMessage::GetSignal()->connect(message_statistics_capture);
 	}
 
 	auto JandyEquipment::IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id)
@@ -33,64 +95,6 @@ namespace AqualinkAutomate::Equipment
 		);
 
 		return device_it;
-	}
-
-	void JandyEquipment::Slot_AllMessageTypes(const Types::JandyMessageTypePtr msg)
-	{
-		m_MessagesProcessed++;
-
-		LogDebug(Channel::Equipment, std::format("STUFF SIGNAL -> SLOT....TOTAL MESSAGES: {}", m_MessagesProcessed));
-	}
-
-	void JandyEquipment::Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg)
-	{
-		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_GetId signal.");
-	}
-
-	void JandyEquipment::Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg)
-	{
-		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_Percent signal.");
-
-		if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
-		{
-			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
-			aquarite_device->RequestedGeneratingLevel(msg.GeneratingPercentage());
-
-			m_Devices.push_back(std::move(aquarite_device));
-		}
-		else if (auto aquarite_device = std::dynamic_pointer_cast<Devices::AquariteDevice>(*device); nullptr == aquarite_device)
-		{
-			LogDebug(Channel::Equipment, std::format("Failed to convert device to an Aquarite device; original device destination id -> {}", (*device)->Id()));
-		}
-		else
-		{
-			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new requested generating level -> {}%", msg.GeneratingPercentage()));
-			aquarite_device->RequestedGeneratingLevel(msg.GeneratingPercentage());
-		}
-	}
-
-	void JandyEquipment::Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg)
-	{
-		LogDebug(Channel::Equipment, "Jandy Equipment received a AquariteMessage_PPM signal.");
-
-		if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
-		{
-			auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
-			aquarite_device->ReportedGeneratingLevel(msg.SaltConcentrationPPM());
-			///TODO STATUS
-
-			m_Devices.push_back(std::move(aquarite_device));
-		}
-		else if (auto aquarite_device = std::dynamic_pointer_cast<Devices::AquariteDevice>(*device); nullptr == aquarite_device)
-		{
-			LogDebug(Channel::Equipment, std::format("Failed to convert device to an Aquarite device; original device destination id -> {}", (*device)->Id()));
-		}
-		else
-		{
-			LogDebug(Channel::Equipment, std::format("Aquarite Device: received new reported status and salt concentration -> {} and {} PPM", magic_enum::enum_name(msg.Status()), msg.SaltConcentrationPPM()));
-			aquarite_device->ReportedGeneratingLevel(msg.SaltConcentrationPPM());
-			///TODO STATUS
-		}
 	}
 
 	void JandyEquipment::StopAndCleanUp()

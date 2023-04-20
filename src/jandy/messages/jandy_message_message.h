@@ -4,12 +4,13 @@
 #include <string>
 #include <span>
 
+#include "interfaces/imessagesignal.h"
 #include "jandy/messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
 {
 
-	class JandyMessageMessage : public JandyMessage
+	class JandyMessageMessage : public JandyMessage, public Interfaces::IMessageSignal<JandyMessageMessage>
 	{
 	public:
 		JandyMessageMessage();

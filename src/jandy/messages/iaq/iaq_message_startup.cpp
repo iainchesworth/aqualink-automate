@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_StartUp::IAQMessage_StartUp() : 
-		IAQMessage(JandyMessageIds::IAQ_StartUp)
+		IAQMessage(JandyMessageIds::IAQ_StartUp),
+		Interfaces::IMessageSignal<IAQMessage_StartUp>()
 	{
 	}
 

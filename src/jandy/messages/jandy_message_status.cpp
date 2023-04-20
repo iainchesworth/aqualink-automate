@@ -10,7 +10,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	JandyStatusMessage::JandyStatusMessage() : JandyMessage(JandyMessageIds::Status)
+	JandyStatusMessage::JandyStatusMessage() : 
+		JandyMessage(JandyMessageIds::Status),
+		Interfaces::IMessageSignal<JandyStatusMessage>()
 	{
 	}
 

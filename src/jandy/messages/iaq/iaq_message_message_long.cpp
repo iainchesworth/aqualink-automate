@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
-		IAQMessage(JandyMessageIds::IAQ_MessageLong)
+		IAQMessage(JandyMessageIds::IAQ_MessageLong),
+		Interfaces::IMessageSignal<IAQMessage_MessageLong>()
 	{
 	}
 

@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_PageContinue::IAQMessage_PageContinue() : 
-		IAQMessage(JandyMessageIds::IAQ_PageContinue)
+		IAQMessage(JandyMessageIds::IAQ_PageContinue),
+		Interfaces::IMessageSignal<IAQMessage_PageContinue>()
 	{
 	}
 

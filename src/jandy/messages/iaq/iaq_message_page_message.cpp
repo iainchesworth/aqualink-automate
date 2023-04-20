@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_PageMessage::IAQMessage_PageMessage() : 
-		IAQMessage(JandyMessageIds::IAQ_PageMessage)
+		IAQMessage(JandyMessageIds::IAQ_PageMessage),
+		Interfaces::IMessageSignal<IAQMessage_PageMessage>()
 	{
 	}
 

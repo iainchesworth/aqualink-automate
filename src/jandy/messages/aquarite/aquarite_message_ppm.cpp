@@ -14,6 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	AquariteMessage_PPM::AquariteMessage_PPM() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
+		Interfaces::IMessageSignal<AquariteMessage_PPM>(),
 		m_PPM(0),
 		m_Status(AquariteStatuses::Unknown)
 	{

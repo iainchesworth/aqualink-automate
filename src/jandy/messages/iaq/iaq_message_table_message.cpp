@@ -11,7 +11,8 @@ namespace AqualinkAutomate::Messages
 {
 
 	IAQMessage_TableMessage::IAQMessage_TableMessage() : 
-		IAQMessage(JandyMessageIds::IAQ_TableMessage)
+		IAQMessage(JandyMessageIds::IAQ_TableMessage),
+		Interfaces::IMessageSignal<IAQMessage_TableMessage>()
 	{
 	}
 

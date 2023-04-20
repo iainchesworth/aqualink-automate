@@ -4,12 +4,13 @@
 #include <string>
 #include <span>
 
+#include "interfaces/imessagesignal.h"
 #include "jandy/messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
 
-	class IAQMessage_TableMessage : public IAQMessage
+	class IAQMessage_TableMessage : public IAQMessage, public Interfaces::IMessageSignal<IAQMessage_TableMessage>
 	{
 	public:
 		IAQMessage_TableMessage();

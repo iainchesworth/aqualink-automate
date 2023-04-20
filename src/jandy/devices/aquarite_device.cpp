@@ -1,4 +1,10 @@
+#include <format>
+
+#include <boost/bind/bind.hpp>
+#include <magic_enum.hpp>
+
 #include "jandy/devices/aquarite_device.h"
+#include "logging/logging.h"
 
 using namespace AqualinkAutomate;
 
@@ -18,6 +24,10 @@ namespace AqualinkAutomate::Devices
 	{
 		// Note that this is a debounced value so is initialised differently.
 		m_Requested = std::make_pair(requested_percentage, std::chrono::system_clock::now());
+
+		Messages::AquariteMessage_GetId::GetSignal()->connect(boost::bind(&AquariteDevice::Slot_Aquarite_GetId, this, boost::placeholders::_1));
+		Messages::AquariteMessage_Percent::GetSignal()->connect(boost::bind(&AquariteDevice::Slot_Aquarite_Percent, this, boost::placeholders::_1));
+		Messages::AquariteMessage_PPM::GetSignal()->connect(boost::bind(&AquariteDevice::Slot_Aquarite_PPM, this, boost::placeholders::_1));
 	}
 
 	AquariteDevice::~AquariteDevice()
@@ -52,6 +62,25 @@ namespace AqualinkAutomate::Devices
 	AquariteDevice::SaltConcentration_InPPM AquariteDevice::ReportedSaltConcentration() const
 	{
 		return m_SaltPPM;
+	}
+
+	void AquariteDevice::Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg)
+	{
+		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_GetId signal.");
+	}
+
+	void AquariteDevice::Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg)
+	{
+		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_Percent signal.");
+		LogDebug(Channel::Devices, std::format("Aquarite Device: received new requested generating level -> {}%", msg.GeneratingPercentage()));
+		RequestedGeneratingLevel(msg.GeneratingPercentage());
+	}
+
+	void AquariteDevice::Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg)
+	{
+		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_PPM signal.");
+		LogDebug(Channel::Devices, std::format("Aquarite Device: received new reported status and salt concentration -> {} and {} PPM", magic_enum::enum_name(msg.Status()), msg.SaltConcentrationPPM()));
+		ReportedGeneratingLevel(msg.SaltConcentrationPPM());		
 	}
 
 }
