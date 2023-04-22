@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <span>
+#include <string>
 
 #include "interfaces/imessagesignal.h"
 #include "jandy/messages/iaq/iaq_message.h"

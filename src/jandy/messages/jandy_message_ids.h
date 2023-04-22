@@ -27,6 +27,7 @@ namespace AqualinkAutomate::Messages
 		PDA_Highlight = 0x08,
 		PDA_Clear = 0x09,
 		PDA_ShiftLines = 0x0F,
+		PDA_HighlightChars = 0x10,
 
 		// IAQ commands
 		IAQ_PageMessage = 0x25,

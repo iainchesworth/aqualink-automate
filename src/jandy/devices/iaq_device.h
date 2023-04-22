@@ -15,12 +15,17 @@
 #include "jandy/messages/iaq/iaq_message_poll.h"
 #include "jandy/messages/iaq/iaq_message_startup.h"
 #include "jandy/messages/iaq/iaq_message_table_message.h"
+#include "jandy/utility/screen_data_page.h"
+#include "jandy/utility/screen_data_page_updater.h"
 
 namespace AqualinkAutomate::Devices
 {
 
 	class IAQDevice : public Interfaces::IDevice
 	{
+		static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
+		static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
+
 		const std::chrono::seconds IAQ_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
@@ -38,6 +43,14 @@ namespace AqualinkAutomate::Devices
 		void Slot_IAQ_Poll(const Messages::IAQMessage_Poll& msg);
 		void Slot_IAQ_StartUp(const Messages::IAQMessage_StartUp& msg);
 		void Slot_IAQ_TableMessage(const Messages::IAQMessage_TableMessage& msg);
+
+	private:
+		Utility::ScreenDataPage<IAQ_STATUS_PAGE_LINES> m_StatusPage;
+		Utility::ScreenDataPage<IAQ_MESSAGE_TABLE_LINES> m_TableInfo;
+
+	private:
+		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage<IAQ_STATUS_PAGE_LINES>> m_SM_PageUpdate;
+		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage<IAQ_MESSAGE_TABLE_LINES>> m_SM_TableUpdate;
 	};
 
 }

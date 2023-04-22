@@ -13,8 +13,16 @@ namespace AqualinkAutomate::Messages
 	class IAQMessage_TableMessage : public IAQMessage, public Interfaces::IMessageSignal<IAQMessage_TableMessage>
 	{
 	public:
+		static const uint8_t Index_LineId = 4;
+		static const uint8_t Index_LineText = 5;
+
+	public:
 		IAQMessage_TableMessage();
 		virtual ~IAQMessage_TableMessage();
+
+	public:
+		uint8_t LineId() const;
+		std::string Line() const;
 
 	public:
 		virtual std::string ToString() const;
@@ -22,6 +30,10 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual void Serialize(std::span<const std::byte>& message_bytes) const;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes);
+
+	private:
+		uint8_t m_LineId;
+		std::string m_Line;
 	};
 
 }

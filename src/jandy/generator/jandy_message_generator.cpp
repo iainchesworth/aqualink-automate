@@ -43,12 +43,12 @@ namespace AqualinkAutomate::Generators
 	JandyMessageGenerator::JandyMessageGenerator() :
 		Interfaces::IGenerator<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>()
 	{
-		auto ack_message = Factory::JandyMessageRegistration<Messages::JandyAckMessage>(JandyMessageIds::Ack);
-		auto message_message = Factory::JandyMessageRegistration<Messages::JandyMessageMessage>(JandyMessageIds::Message);
-		auto messagelong_message = Factory::JandyMessageRegistration<Messages::JandyMessageLongMessage>(JandyMessageIds::MessageLong);
-		auto probe_message = Factory::JandyMessageRegistration<Messages::JandyProbeMessage>(JandyMessageIds::Probe);
-		auto status_message = Factory::JandyMessageRegistration<Messages::JandyStatusMessage>(JandyMessageIds::Status);
-		auto unknown_message = Factory::JandyMessageRegistration<Messages::JandyUnknownMessage>(JandyMessageIds::Unknown);
+		auto ack_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Ack>(JandyMessageIds::Ack);
+		auto message_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Message>(JandyMessageIds::Message);
+		auto messagelong_message = Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong>(JandyMessageIds::MessageLong);
+		auto probe_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Probe>(JandyMessageIds::Probe);
+		auto status_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Status>(JandyMessageIds::Status);
+		auto unknown_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown>(JandyMessageIds::Unknown);
 
 		auto getid_aquaritemessage = Factory::JandyMessageRegistration<Messages::AquariteMessage_GetId>(JandyMessageIds::AQUARITE_GetId);
 		auto percent_aquaritemessage = Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent>(JandyMessageIds::AQUARITE_Percent);

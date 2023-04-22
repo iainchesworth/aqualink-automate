@@ -10,11 +10,11 @@
 namespace AqualinkAutomate::Messages
 {
 
-	class JandyUnknownMessage : public JandyMessage, public Interfaces::IMessageSignal<JandyUnknownMessage>
+	class JandyMessage_Unknown : public JandyMessage, public Interfaces::IMessageSignal<JandyMessage_Unknown>
 	{
 	public:
-		JandyUnknownMessage();
-		virtual ~JandyUnknownMessage();
+		JandyMessage_Unknown();
+		virtual ~JandyMessage_Unknown();
 
 	public:
 		virtual std::string ToString() const override;

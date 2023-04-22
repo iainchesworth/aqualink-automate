@@ -10,30 +10,30 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	JandyStatusMessage::JandyStatusMessage() : 
+	JandyMessage_Status::JandyMessage_Status() : 
 		JandyMessage(JandyMessageIds::Status),
-		Interfaces::IMessageSignal<JandyStatusMessage>()
+		Interfaces::IMessageSignal<JandyMessage_Status>()
 	{
 	}
 
-	JandyStatusMessage::~JandyStatusMessage()
+	JandyMessage_Status::~JandyMessage_Status()
 	{
 	}
 
-	std::string JandyStatusMessage::ToString() const
+	std::string JandyMessage_Status::ToString() const
 	{
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyStatusMessage::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage_Status::Serialize(std::span<const std::byte>& message_bytes) const
 	{
 	}
 
-	void JandyStatusMessage::Deserialize(const std::span<const std::byte>& message_bytes)
+	void JandyMessage_Status::Deserialize(const std::span<const std::byte>& message_bytes)
 	{
 		if (PacketIsValid(message_bytes))
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyStatusMessage type", message_bytes.size()));
+			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Status type", message_bytes.size()));
 
 			JandyMessage::Deserialize(message_bytes);
 

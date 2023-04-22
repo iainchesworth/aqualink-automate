@@ -63,7 +63,8 @@ namespace AqualinkAutomate::Messages
 			{
 				m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
 
-				for (auto& elem : message_bytes.subspan(Index_LineText, message_bytes.size() - 8))
+				const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
+				for (auto& elem : message_bytes.subspan(Index_LineText, length_to_copy))
 				{
 					// Convert to char and push into the string.
 					m_Line.push_back(static_cast<char>(elem));

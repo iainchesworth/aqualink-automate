@@ -31,12 +31,12 @@ namespace std
 {
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyAckMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageLongMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyProbeMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyStatusMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyUnknownMessage& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Ack& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Message& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_MessageLong& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Probe& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Status& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Unknown& obj);
 
 }
 // namespace std

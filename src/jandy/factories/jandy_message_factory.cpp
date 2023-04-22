@@ -59,7 +59,7 @@ namespace AqualinkAutomate::Factories
 			}
 			else
 			{
-				LogDebug(Channel::Messages, std::format("Both message type (0x{:02x}) and JandyUnknownMessage generators missing from JandyMessageFactory", static_cast<uint8_t>(message_type)));
+				LogDebug(Channel::Messages, std::format("Both message type (0x{:02x}) and JandyMessage_Unknown generators missing from JandyMessageFactory", static_cast<uint8_t>(message_type)));
 				return_value = make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator);
 			}
 

@@ -7,6 +7,7 @@
     "boost-circular-buffer",
     "boost-iostreams",
     "boost-log",
+    "boost-msm",
     "boost-phoenix",
     "boost-program-options",
     "boost-signals2",

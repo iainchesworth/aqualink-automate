@@ -325,7 +325,7 @@ BOOST_AUTO_TEST_CASE(ValidPackets_50)
 		if ((result.has_value()) && (nullptr != result.value()))
 		{
 			auto message_ptr = result.value();
-			BOOST_TEST(Messages::JandyAckMessage() == *message_ptr);
+			BOOST_TEST(Messages::JandyMessage_Ack() == *message_ptr);
 		}
 	};
 

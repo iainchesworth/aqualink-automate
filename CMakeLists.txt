@@ -13,7 +13,7 @@ project(aqualink-automate VERSION 0.0.1 LANGUAGES C CXX)
 
 option(ENABLE_TESTS "Enable unit tests" ON)
 
-find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options unit_test_framework)
+find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options system unit_test_framework)
 find_package(magic_enum REQUIRED)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -42,6 +42,7 @@ add_library(
 	src/interfaces/iserializable.cpp
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
+	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
@@ -65,6 +66,11 @@ add_library(
 	src/jandy/messages/iaq/iaq_message_poll.cpp
 	src/jandy/messages/iaq/iaq_message_startup.cpp
 	src/jandy/messages/iaq/iaq_message_table_message.cpp
+	src/jandy/messages/pda/pda_message.cpp 
+	src/jandy/messages/pda/pda_message_clear.cpp 
+	src/jandy/messages/pda/pda_message_highlight.cpp 
+	src/jandy/messages/pda/pda_message_highlight_chars.cpp 
+	src/jandy/messages/pda/pda_message_shiftlines.cpp 
 	src/jandy/messages/jandy_message.cpp
 	src/jandy/messages/jandy_message_ack.cpp
 	src/jandy/messages/jandy_message_constants.cpp
@@ -75,6 +81,8 @@ add_library(
 	src/jandy/messages/jandy_message_status.cpp
 	src/jandy/messages/jandy_message_unknown.cpp
 	src/jandy/types/jandy_types.cpp
+	src/jandy/utility/screen_data_page.cpp
+	src/jandy/utility/screen_data_page_updater.cpp
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -103,9 +111,13 @@ add_library(
 	src/signals/signal_handler.cpp
 	src/utility/array_standard_formatter.cpp
 	src/utility/circular_buffer_wrapping_iterator.cpp
-	src/utility/get_terminal_column_width.cpp
+	src/utility/get_terminal_column_width.cpp	
 	src/utility/value_debouncer.cpp
 )
+
+if(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
+	target_compile_options (libaqualink-automate PRIVATE "/bigobj")
+endif(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
 
 if(WIN32)
 target_sources(

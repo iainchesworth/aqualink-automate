@@ -1,11 +1,21 @@
 #include <algorithm>
 #include <format>
+#include <numeric>
 #include <type_traits>
 #include <utility>
 
+#include <magic_enum.hpp>
+
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/iaq_device.h"
+#include "jandy/devices/onetouch_device.h"
 #include "jandy/equipment/jandy_equipment.h"
+#include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_message.h"
+#include "jandy/messages/jandy_message_message_long.h"
+#include "jandy/messages/jandy_message_probe.h"
+#include "jandy/messages/jandy_message_status.h"
+#include "jandy/messages/jandy_message_unknown.h"
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
@@ -19,6 +29,10 @@
 #include "jandy/messages/iaq/iaq_message_poll.h"
 #include "jandy/messages/iaq/iaq_message_startup.h"
 #include "jandy/messages/iaq/iaq_message_table_message.h"
+#include "jandy/messages/pda/pda_message_clear.h"
+#include "jandy/messages/pda/pda_message_highlight.h"
+#include "jandy/messages/pda/pda_message_highlight_chars.h"
+#include "jandy/messages/pda/pda_message_shiftlines.h"
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
@@ -44,7 +58,7 @@ namespace AqualinkAutomate::Equipment
 		Messages::AquariteMessage_Percent::GetSignal()->connect(create_aquarite_device);
 		Messages::AquariteMessage_PPM::GetSignal()->connect(create_aquarite_device);
 
-		auto create_iaq_device = [this](const auto & msg)
+		auto create_iaq_device = [this](const auto& msg)
 		{
 			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
 			{
@@ -64,12 +78,46 @@ namespace AqualinkAutomate::Equipment
 		Messages::IAQMessage_StartUp::GetSignal()->connect(create_iaq_device);
 		Messages::IAQMessage_TableMessage::GetSignal()->connect(create_iaq_device);
 
-		auto message_statistics_capture = [this](const auto& msg)
+		auto create_onetouch_device = [this](const auto& msg)
 		{
-			LogDebug(Channel::Equipment, std::format("STUFF SIGNAL -> SLOT....TOTAL MESSAGES: {}", m_MessagesProcessed));
-			m_MessagesProcessed++;
+			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
+			{
+				auto onetouch_device = std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.DestinationId());
+				m_Devices.push_back(std::move(onetouch_device));
+			}
 		};
 
+		Messages::JandyMessage_MessageLong::GetSignal()->connect(create_onetouch_device);
+		Messages::PDAMessage_Clear::GetSignal()->connect(create_onetouch_device);
+		Messages::PDAMessage_Highlight::GetSignal()->connect(create_onetouch_device);
+		Messages::PDAMessage_HighlightChars::GetSignal()->connect(create_onetouch_device);
+		Messages::PDAMessage_ShiftLines::GetSignal()->connect(create_onetouch_device);
+
+		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
+			{
+				m_MessageStats[id] = 0;
+			}
+		);
+
+		auto message_statistics_capture = [this](const auto& msg)
+		{
+			m_MessageStats[msg.MessageId()]++;
+
+			LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[msg.MessageId()], magic_enum::enum_name(msg.MessageId())));
+			LogTrace(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
+				{
+					return previous + elem.second;
+				})
+			));
+		};
+
+		Messages::JandyMessage_Ack::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_Message::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_MessageLong::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_Probe::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_Status::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_Unknown::GetSignal()->connect(message_statistics_capture);
+		
 		Messages::AquariteMessage_GetId::GetSignal()->connect(message_statistics_capture);
 		Messages::AquariteMessage_Percent::GetSignal()->connect(message_statistics_capture);
 		Messages::AquariteMessage_PPM::GetSignal()->connect(message_statistics_capture);

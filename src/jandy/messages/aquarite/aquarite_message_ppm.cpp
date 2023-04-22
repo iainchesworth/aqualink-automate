@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Messages
 			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
 
 			m_PPM = static_cast<uint16_t>(message_bytes[Index_PPM]) * 100;
-			m_Status = static_cast<AquariteStatuses>(message_bytes[Index_Status]);
+			m_Status = magic_enum::enum_cast<AquariteStatuses>(static_cast<uint8_t>(message_bytes[Index_Status])).value_or(AquariteStatuses::Unknown);
 
 			AquariteMessage::Deserialize(message_bytes);
 

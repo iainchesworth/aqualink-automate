@@ -20,7 +20,7 @@ namespace AqualinkAutomate::Interfaces
 namespace AqualinkAutomate::Messages::Jandy::Messages
 {
     std::ostream& boost_test_print_type(std::ostream& os, JandyMessage const& right) { return os; };
-    std::ostream& boost_test_print_type(std::ostream& os, JandyAckMessage const& right) { return os; };
+    std::ostream& boost_test_print_type(std::ostream& os, JandyMessage_Ack const& right) { return os; };
 }
 // AqualinkAutomate::Messages::Jandy::Messages
 

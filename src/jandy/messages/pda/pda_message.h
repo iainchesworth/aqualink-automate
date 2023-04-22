@@ -4,17 +4,16 @@
 #include <string>
 #include <span>
 
-#include "interfaces/imessagesignal.h"
 #include "jandy/messages/jandy_message.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {
-
-	class JandyMessage_Ack : public JandyMessage, public Interfaces::IMessageSignal<JandyMessage_Ack>
+	class PDAMessage : public JandyMessage
 	{
 	public:
-		JandyMessage_Ack();
-		virtual ~JandyMessage_Ack();
+		PDAMessage(const JandyMessageIds& msg_id);
+		virtual ~PDAMessage();
 
 	public:
 		virtual std::string ToString() const override;
