@@ -11,6 +11,7 @@ namespace AqualinkAutomate::Logging
 		Messages,
 		Options,
 		Platform,
+		Profiling,
 		Protocol,
 		Serial,
 		Signals

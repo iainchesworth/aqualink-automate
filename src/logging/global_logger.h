@@ -17,6 +17,7 @@ namespace AqualinkAutomate::Logging
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Messages, Logger);
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Options, Logger);
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Platform, Logger);
+	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Profiling, Logger);
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Protocol, Logger);
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Serial, Logger);
 	BOOST_LOG_GLOBAL_LOGGER(GlobalLogger_Signals, Logger);

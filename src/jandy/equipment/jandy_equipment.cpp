@@ -104,11 +104,6 @@ namespace AqualinkAutomate::Equipment
 			m_MessageStats[msg.MessageId()]++;
 
 			LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[msg.MessageId()], magic_enum::enum_name(msg.MessageId())));
-			LogTrace(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
-				{
-					return previous + elem.second;
-				})
-			));
 		};
 
 		Messages::JandyMessage_Ack::GetSignal()->connect(message_statistics_capture);
@@ -147,6 +142,16 @@ namespace AqualinkAutomate::Equipment
 
 	void JandyEquipment::StopAndCleanUp()
 	{
+		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
+			{
+				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_MessageStats[id], magic_enum::enum_name(id)));
+				LogInfo(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
+					{
+						return previous + elem.second;
+					})
+				));
+			}
+		);
 	}
 }
 // namespace AqualinkAutomate::Equipment

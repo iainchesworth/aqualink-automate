@@ -2,7 +2,6 @@
 #include <format>
 #include <ranges>
 
-#include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <magic_enum.hpp>
 

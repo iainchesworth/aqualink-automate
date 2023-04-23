@@ -8,7 +8,11 @@
 #include "logging/formatters/logging_formatters.h"
 #include "options/options_developer_options.h"
 #include "options/options_option_type.h"
+#include "options/validators/profiler_type_validator.h"
 #include "options/validators/severity_level_validator.h"
+#include "profiling/profiler_factory.h"
+#include "profiling/profiler_types.h"
+#include "profiling/formatters/profiling_formatters.h"
 #include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate;
@@ -25,9 +29,11 @@ namespace AqualinkAutomate::Options::Developer
 	AppOptionPtr OPTION_LOGLEVEL_MESSAGES{ make_appoption("loglevel-messages", "Set the logging level for Channel::Messages", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_OPTIONS{ make_appoption("loglevel-options", "Set the logging level for Channel::Options", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_PLATFORM{ make_appoption("loglevel-platform", "Set the logging level for Channel::Platform", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+	AppOptionPtr OPTION_LOGLEVEL_PROFILING{ make_appoption("loglevel-profiling", "Set the logging level for Channel::Profiling", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_PROTCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) }; 
 	AppOptionPtr OPTION_LOGLEVEL_SERIAL{ make_appoption("loglevel-serial", "Set the logging level for Channel::Serial", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_SIGNALS{ make_appoption("loglevel-signals", "Set the logging level for Channel::Signals", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+	AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Profiling::ProfilerTypes>()->multitoken()) };
 
 	std::vector DeveloperOptionsCollection
 	{
@@ -40,9 +46,11 @@ namespace AqualinkAutomate::Options::Developer
 		OPTION_LOGLEVEL_MESSAGES,
 		OPTION_LOGLEVEL_OPTIONS,
 		OPTION_LOGLEVEL_PLATFORM,
+		OPTION_LOGLEVEL_PROFILING,
 		OPTION_LOGLEVEL_PROTCOL,
 		OPTION_LOGLEVEL_SERIAL,
-		OPTION_LOGLEVEL_SIGNALS
+		OPTION_LOGLEVEL_SIGNALS,
+		OPTION_PROFILER
 	};
 
 	boost::program_options::options_description Options()
@@ -73,9 +81,12 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_LOGLEVEL_MESSAGES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Messages, OPTION_LOGLEVEL_MESSAGES->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_OPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Options, OPTION_LOGLEVEL_OPTIONS->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_PLATFORM->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Platform, OPTION_LOGLEVEL_PLATFORM->As<Severity>(vm)); }
+		if (OPTION_LOGLEVEL_PROFILING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROFILING->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_PROTCOL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROTCOL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SERIAL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Serial, OPTION_LOGLEVEL_SERIAL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SIGNALS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Signals, OPTION_LOGLEVEL_SIGNALS->As<Severity>(vm)); }
+
+		if (OPTION_PROFILER->IsPresent(vm)) { Profiling::ProfilerFactory::SetProfiler(OPTION_PROFILER->As<Profiling::ProfilerTypes>(vm)); }
 
 		return settings;
 	}

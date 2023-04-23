@@ -17,6 +17,7 @@
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "logging/logging.h"
+#include "profiling/profiler_factory.h"
 #include "serial/serial_port.h"
 #include "utility/array_standard_formatter.h"
 
@@ -61,6 +62,9 @@ namespace AqualinkAutomate::Protocol
 		{
 			std::array<Interfaces::ISerialPort::DataType, 16> read_buffer;
 			bool continue_processing = true;
+
+			auto profiler = Profiling::ProfilerFactory::GetProfiler();
+			profiler->StartProfiling();
 
 			do
 			{ 
@@ -132,6 +136,8 @@ namespace AqualinkAutomate::Protocol
 				}
 			
 			} while (continue_processing);
+
+			profiler->StopProfiling();
 
 			co_return false;
 		}

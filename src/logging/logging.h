@@ -42,6 +42,9 @@ namespace AqualinkAutomate::Logging
 			case Channel::Platform:
 				return GlobalLogger_Platform::get();
 
+			case Channel::Profiling:
+				return GlobalLogger_Profiling::get();
+
 			case Channel::Protocol:
 				return GlobalLogger_Protocol::get();
 

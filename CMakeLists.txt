@@ -2,6 +2,10 @@
 
 set(VCPKG_ROOT "deps/vcpkg")
 set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+set(Boost_NO_WARN_NEW_VERSIONS 1)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (POLICY CMP0141)
   # Enable Hot Reload for MSVC compilers if supported.
@@ -12,13 +16,26 @@ endif()
 project(aqualink-automate VERSION 0.0.1 LANGUAGES C CXX)
 
 option(ENABLE_TESTS "Enable unit tests" ON)
+option(ENABLE_PROFILING "Enable profiling" ON)
 
 find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options system unit_test_framework)
 find_package(magic_enum REQUIRED)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_PROFILING)
+
+find_package(Tracy CONFIG REQUIRED)
+
+include(cmake/tools/profiling_uprof.cmake)
+include(cmake/tools/profiling_vtune.cmake)
+
+endif(ENABLE_PROFILING)
 
 #------------------------------------------------------------------------------
 #
@@ -38,6 +55,7 @@ add_library(
 	src/interfaces/igenerator.cpp
 	src/interfaces/imessage.cpp
 	src/interfaces/imessagesignal.h
+	src/interfaces/iprofiler.h
 	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
 	src/jandy/devices/aquarite_device.cpp 
@@ -99,7 +117,16 @@ add_library(
 	src/options/options_serial_options.cpp
 	src/options/options_settings.cpp
 	src/options/options_web_options.cpp
+	src/options/validators/profiler_type_validator.cpp
 	src/options/validators/severity_level_validator.cpp
+	src/profiling/noop_profiler.cpp
+	src/profiling/profiler_factory.cpp
+	src/profiling/profiler_registry.cpp
+	src/profiling/profiler_types.cpp
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:src/profiling/uprof_profiler.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:src/profiling/vtune_profiler.cpp>
+	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/tracy_profiler.cpp>	
+	src/profiling/formatters/profiling_formatters.cpp
 	src/protocol/protocol_handler.cpp
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
@@ -126,7 +153,19 @@ target_sources(
 	src/platform/utility/get_terminal_column_width_win32.cpp
 )
 
-target_compile_definitions(libaqualink-automate PUBLIC -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DNOMINMAX -DWIN32_LEAN_AND_MEAN -DVC_EXTRALEAN)
+target_compile_definitions(
+	libaqualink-automate 
+	PUBLIC 
+	-D_SCL_SECURE_NO_WARNINGS
+	-D_CRT_SECURE_NO_WARNINGS
+	-D_WIN32_WINNT=0x0601 
+	-DWINVER=0x0601 
+	-DWIN32_LEAN_AND_MEAN 
+	-DVC_EXTRALEAN
+	-DNOGDI
+	-DNOGDICAPMASKS
+	-DNOMINMAX 
+)
 endif(WIN32)
 
 if(LINUX)
@@ -138,8 +177,19 @@ target_sources(
 endif(LINUX)
 
 target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+
 target_include_directories(libaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/src")
-target_include_directories(libaqualink-automate SYSTEM PUBLIC ${Boost_INCLUDE_DIRS} ${magic_enum_INCLUDE_DIRS})
+
+target_include_directories(
+	libaqualink-automate 
+	SYSTEM 
+	PUBLIC 
+	${Boost_INCLUDE_DIRS} 
+	${magic_enum_INCLUDE_DIRS}
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
+	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
+)
 
 #------------------------------------------------------------------------------
 #
@@ -153,7 +203,21 @@ add_executable(
 	src/aqualink-automate.cpp 
 )
 
-target_link_libraries(aqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options magic_enum::magic_enum)
+target_link_libraries(
+	aqualink-automate 
+	PRIVATE 
+	libaqualink-automate 
+	Boost::boost 
+	Boost::coroutine 
+	Boost::iostreams 
+	Boost::log 
+	Boost::log_setup 
+	Boost::program_options 
+	magic_enum::magic_enum
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
+	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
+)
 
 #------------------------------------------------------------------------------
 #
@@ -173,7 +237,23 @@ if(ENABLE_TESTS)
 
 	target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)
 	target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test")
-	target_link_libraries(testaqualink-automate PRIVATE libaqualink-automate Boost::boost Boost::coroutine Boost::iostreams Boost::log Boost::log_setup Boost::program_options Boost::unit_test_framework magic_enum::magic_enum)
+
+	target_link_libraries(
+		testaqualink-automate 
+		PRIVATE 
+		libaqualink-automate 
+		Boost::boost 
+		Boost::coroutine 
+		Boost::iostreams 
+		Boost::log 
+		Boost::log_setup 
+		Boost::program_options 
+		Boost::unit_test_framework 
+		magic_enum::magic_enum
+		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
+		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
+		$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
+	)
 
 	enable_testing()
 	add_test(AqualinkAutomateTests testaqualink-automate)
