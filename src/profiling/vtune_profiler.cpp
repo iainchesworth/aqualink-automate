@@ -1,21 +1,18 @@
-#include "profiling/profiler_registry.h"
-#include "profiling/profiler_types.h"
 #include "profiling/vtune_profiler.h"
+#include "profiling/factories/profiler_factory_registration.h"
+#include "profiling/types/profiling_types.h"
 
 namespace AqualinkAutomate::Profiling
 {
 
-	static ProfilerAutoRegister<VTune_Profiler> reg_VTuneProfiler(ProfilerTypes::VTune);
+	const Factory::ProfilerRegistration<VTune_Profiler> VTune_Profiler::g_VTuneProfilerRegistration(AqualinkAutomate::Types::ProfilerTypes::VTune);
+	const Factory::ProfilingUnitRegistration<Profiling::Domain, Profiling::Frame, Profiling::Zone> g_VTuneProfilingUnitRegistration(AqualinkAutomate::Types::ProfilerTypes::VTune);
 
 	void VTune_Profiler::StartProfiling()
 	{
 	}
 
 	void VTune_Profiler::StopProfiling()
-	{
-	}
-
-	void VTune_Profiler::MeasureZone(const Zone& zone)
 	{
 	}
 

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -63,6 +64,9 @@ namespace AqualinkAutomate::Messages
 		ButtonStatuses m_ButtonStatus;
 		ButtonTypes m_ButtonType;
 		std::string m_ButtonName;
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton> g_IAQMessage_PageButton_Registration;
 	};
 
 }

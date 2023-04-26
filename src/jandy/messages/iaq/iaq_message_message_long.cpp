@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::IAQMessage_MessageLong> IAQMessage_MessageLong::g_IAQMessage_MessageLong_Registration(JandyMessageIds::IAQ_MessageLong);
+
 	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
 		IAQMessage(JandyMessageIds::IAQ_MessageLong),
 		Interfaces::IMessageSignal<IAQMessage_MessageLong>()

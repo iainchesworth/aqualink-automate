@@ -3,8 +3,12 @@
 #include <cstdint>
 #include <expected>
 #include <format>
+#include <memory>
 #include <span>
 #include <vector>
+
+#include <chrono>
+#include <thread>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/io_context.hpp>
@@ -17,13 +21,14 @@
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "logging/logging.h"
-#include "profiling/profiler_factory.h"
+#include "profiling/profiling.h"
 #include "serial/serial_port.h"
 #include "utility/array_standard_formatter.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::ErrorCodes;
 using namespace AqualinkAutomate::Logging;
+using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Protocol
 {
@@ -32,9 +37,11 @@ namespace AqualinkAutomate::Protocol
 	{
 	public:
 		ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port, GENERATOR_TYPE& generator) :
+			m_ProfilingDomain(),
 			m_SerialPort(serial_port),
 			m_Generator(generator)
 		{
+			static_cast<void>(Factory::ProfilerFactory::Instance().Get()->CreateDomain("ProtocolHandler"));
 		}
 
 		~ProtocolHandler()
@@ -44,15 +51,21 @@ namespace AqualinkAutomate::Protocol
 	public:
 		boost::asio::awaitable<void> Run()
 		{
+			auto pu_frame = Factory::ProfilingUnitFactory::Instance().CreateFrame("ProtocolHandler::Run");
+
 			bool continue_processing = true;
 
 			do
 			{
+				pu_frame->Start();
+
 				continue_processing = co_await HandleProtocol();
 				if (!continue_processing)
 				{
 					LogDebug(Channel::Protocol, std::format("Error occured during processing serial data in the protocol handler"));
 				}
+
+				pu_frame->End();
 
 			} while (continue_processing);
 		}
@@ -63,17 +76,18 @@ namespace AqualinkAutomate::Protocol
 			std::array<Interfaces::ISerialPort::DataType, 16> read_buffer;
 			bool continue_processing = true;
 
-			auto profiler = Profiling::ProfilerFactory::GetProfiler();
-			profiler->StartProfiling();
-
 			do
 			{ 
+				static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleProtocol -> Getting Serial Data", std::source_location::current(), Profiling::UnitColours::Red));
+
 				auto buffer = boost::asio::buffer(read_buffer, read_buffer.size());
 				auto [ec, bytes_read] = co_await m_SerialPort.async_read_some(buffer, boost::asio::as_tuple(boost::asio::use_awaitable));
 				switch (ec.value())
 				{
 				case boost::system::errc::success:
 					{
+						static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleProtocol -> Injecting Serial Data", std::source_location::current(), Profiling::UnitColours::Green));
+					
 						auto read_buffer_span = std::span(read_buffer.begin(), bytes_read);
 						LogTrace(Channel::Protocol, std::format("The following bytes were read from the serial device: {:.{}})", read_buffer_span, read_buffer_span.size()));
 						LogTrace(Channel::Protocol, std::format("Successfully yield'd -> async_read_some() ({} bytes read)", bytes_read));
@@ -83,6 +97,8 @@ namespace AqualinkAutomate::Protocol
 
 						do
 						{
+							static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleProtocol -> Generating Messages", std::source_location::current(), Profiling::UnitColours::Blue));
+
 							auto message = co_await m_Generator.GenerateMessageFromRawData();
 							if (message.has_value())
 							{
@@ -90,6 +106,8 @@ namespace AqualinkAutomate::Protocol
 
 								if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalBase>(message.value()); nullptr != signal_ptr)
 								{
+									static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleProtocol -> Signalling Signals", std::source_location::current(), Profiling::UnitColours::Yellow));
+
 									// Process the message...as per protocol requirements
 									signal_ptr->Signal();
 								}
@@ -137,12 +155,11 @@ namespace AqualinkAutomate::Protocol
 			
 			} while (continue_processing);
 
-			profiler->StopProfiling();
-
 			co_return false;
 		}
 
 	private:
+		Profiling::DomainPtr m_ProfilingDomain;
 		Serial::SerialPort& m_SerialPort;
 		GENERATOR_TYPE& m_Generator;
 	};

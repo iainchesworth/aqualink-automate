@@ -9,33 +9,13 @@
 #include "jandy/factories/jandy_message_factory.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/generator/jandy_message_generator.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_message.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/aquarite/aquarite_message_getid.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
-#include "jandy/messages/iaq/iaq_message.h"
-#include "jandy/messages/iaq/iaq_message_control_ready.h"
-#include "jandy/messages/iaq/iaq_message_message_long.h"
-#include "jandy/messages/iaq/iaq_message_page_button.h"
-#include "jandy/messages/iaq/iaq_message_page_continue.h"
-#include "jandy/messages/iaq/iaq_message_page_end.h"
-#include "jandy/messages/iaq/iaq_message_page_message.h"
-#include "jandy/messages/iaq/iaq_message_page_start.h"
-#include "jandy/messages/iaq/iaq_message_poll.h"
-#include "jandy/messages/iaq/iaq_message_startup.h"
-#include "jandy/messages/iaq/iaq_message_table_message.h"
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
+#include "profiling/profiling.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
-using namespace AqualinkAutomate::Messages;
+using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Generators
 {
@@ -43,31 +23,13 @@ namespace AqualinkAutomate::Generators
 	JandyMessageGenerator::JandyMessageGenerator() :
 		Interfaces::IGenerator<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>()
 	{
-		auto ack_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Ack>(JandyMessageIds::Ack);
-		auto message_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Message>(JandyMessageIds::Message);
-		auto messagelong_message = Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong>(JandyMessageIds::MessageLong);
-		auto probe_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Probe>(JandyMessageIds::Probe);
-		auto status_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Status>(JandyMessageIds::Status);
-		auto unknown_message = Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown>(JandyMessageIds::Unknown);
-
-		auto getid_aquaritemessage = Factory::JandyMessageRegistration<Messages::AquariteMessage_GetId>(JandyMessageIds::AQUARITE_GetId);
-		auto percent_aquaritemessage = Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent>(JandyMessageIds::AQUARITE_Percent);
-		auto ppm_aquaritemessage = Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM>(JandyMessageIds::AQUARITE_PPM);
-
-		auto controlready_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_ControlReady>(JandyMessageIds::IAQ_ControlReady);
-		auto messagelong_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_MessageLong>(JandyMessageIds::IAQ_MessageLong);
-		auto pagebutton_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton>(JandyMessageIds::IAQ_PageButton);
-		auto pagecontinue_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_PageContinue>(JandyMessageIds::IAQ_PageContinue);
-		auto pageend_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_PageEnd>(JandyMessageIds::IAQ_PageEnd);
-		auto pagemessage_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_PageMessage>(JandyMessageIds::IAQ_PageMessage);
-		auto pagestart_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_PageStart>(JandyMessageIds::IAQ_PageStart);
-		auto poll_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_Poll>(JandyMessageIds::IAQ_Poll);
-		auto start_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_StartUp>(JandyMessageIds::IAQ_StartUp);
-		auto tablemessage_iaqmessage = Factory::JandyMessageRegistration<Messages::IAQMessage_TableMessage>(JandyMessageIds::IAQ_TableMessage);
+		static_cast<void>(Factory::ProfilerFactory::Instance().Get()->CreateDomain("JandyMessageGenerator"));
 	}
 
 	boost::asio::awaitable<Types::JandyExpectedMessageType> JandyMessageGenerator::GenerateMessageFromRawData()
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Generating Message", std::source_location::current()));
+
 		// Step 2 -> Read the bytes looking for a message header.
 
 		if (!BufferValidation_ContainsMoreThanZeroBytes())
@@ -171,7 +133,7 @@ namespace AqualinkAutomate::Generators
 					{
 						// Step 3b -> If checksum passes, convert to message, clear all bytes, go back to Step 2
 						auto message_span = std::as_bytes(std::span(packet_one_start_it, packet_one_end_it + 2));
-						auto message = Factories::JandyMessageFactory::Instance().CreateFromSerialData(message_span);
+						auto message = Factory::JandyMessageFactory::Instance().CreateFromSerialData(message_span);
 
 						BufferCleanUp_ClearBytesFromBeginToPos(packet_one_end_it + 2);  // Account for the DLE,ETX bytes
 						co_return message;
@@ -189,16 +151,22 @@ namespace AqualinkAutomate::Generators
 
 	bool JandyMessageGenerator::BufferValidation_ContainsMoreThanZeroBytes() const
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has More Than Zero Bytes", std::source_location::current()));
+
 		return (0 != m_SerialData.size());
 	}
 
 	bool JandyMessageGenerator::BufferValidation_HasStartOfPacket() const
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has Start Of Packet", std::source_location::current()));
+
 		return (m_SerialData.end() != std::search(m_SerialData.begin(), m_SerialData.end(), m_PacketStartSeq.begin(), m_PacketStartSeq.end()));
 	}
 
 	void JandyMessageGenerator::BufferCleanUp_ClearBytesFromBeginToPos(const auto& position)
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Clearing Bytes", std::source_location::current()));
+
 		// Erase all bytes to the end of this packet.
 		auto packet_one_end_index = std::distance(m_SerialData.begin(), position);
 		LogTrace(Channel::Messages, "Packet processing complete; removing packet data from serial buffer.");
@@ -208,6 +176,8 @@ namespace AqualinkAutomate::Generators
 
 	void JandyMessageGenerator::BufferCleanUp_HasEndOfPacketWithinMaxDistance(const auto& p1s, const auto& p1e, const auto& p2s)
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Has End Of Packet", std::source_location::current()));
+
 		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= m_SerialData.size())
 		{
 			// Not enough data in the buffer to do anything at this point in time...ignore.
@@ -248,6 +218,8 @@ namespace AqualinkAutomate::Generators
 
 	void JandyMessageGenerator::PacketProcessing_OutputSerialDataToConsole(auto& p1s, auto& p1e, auto& p2s)
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", std::source_location::current()));
+
 		std::string output_message;
 		std::size_t elem_position = 0;
 
@@ -283,11 +255,15 @@ namespace AqualinkAutomate::Generators
 
 	std::vector<uint8_t>::iterator JandyMessageGenerator::PacketProcessing_GetPacketLocation(const auto& needle)
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Single)", std::source_location::current()));
+
 		return std::search(m_SerialData.begin(), m_SerialData.end(), needle.begin(), needle.end());
 	}
 
 	void JandyMessageGenerator::PacketProcessing_GetPacketLocations(auto& p1s, auto& p1e, auto& p2s)
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", std::source_location::current()));
+
 		p1e = m_SerialData.end();
 		p2s = m_SerialData.end();
 
@@ -304,6 +280,8 @@ namespace AqualinkAutomate::Generators
 
 	bool JandyMessageGenerator::PacketValidation_ChecksumIsValid(const auto& message_span) const
 	{
+		static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Validation -> Validate Checksum", std::source_location::current()));
+
 		const auto length_minus_checksum_and_footer = message_span.size() - 3;
 		const uint8_t original_checksum = static_cast<uint8_t>(message_span[length_minus_checksum_and_footer]);
 		const auto span_to_check = message_span.first(length_minus_checksum_and_footer);

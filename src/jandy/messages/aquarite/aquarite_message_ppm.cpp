@@ -12,6 +12,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM> AquariteMessage_PPM::g_AquariteMessage_PPM_Registration(JandyMessageIds::AQUARITE_PPM);
+
 	AquariteMessage_PPM::AquariteMessage_PPM() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
 		Interfaces::IMessageSignal<AquariteMessage_PPM>(),

@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Factory
 	public:
 		JandyMessageRegistration(const Messages::JandyMessageIds type)
 		{
-			Factories::JandyMessageFactory::Instance().Register(type, []() -> Types::JandyMessageTypePtr
+			Factory::JandyMessageFactory::Instance().Register(type, []() -> Types::JandyMessageTypePtr
 				{
 					return std::make_shared<MESSAGE_TYPE>();
 				}

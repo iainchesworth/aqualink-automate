@@ -15,7 +15,7 @@
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
-namespace AqualinkAutomate::Factories
+namespace AqualinkAutomate::Factory
 {
 
 	JandyMessageFactory::JandyMessageFactory() : 
@@ -77,4 +77,4 @@ namespace AqualinkAutomate::Factories
 	}
 
 }
-// namespace AqualinkAutomate::Factories
+// namespace AqualinkAutomate::Factory

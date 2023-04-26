@@ -1,52 +1,21 @@
 #pragma once
 
-#include <chrono>
+#include <expected>
 #include <string>
+
+#include <boost/functional/hash.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+
+#include "profiling/profiling_units/domain.h"
+#include "profiling/profiling_units/frame.h"
+#include "profiling/profiling_units/zone.h"
 
 namespace AqualinkAutomate::Interfaces
 {
-    
-    namespace Profiling
-    {
-    
-        class Zone {
-        public:
-            Zone(const std::string& name) : 
-                m_Name(name),
-                m_StartTime(std::chrono::high_resolution_clock::now()),
-                m_EndTime(m_StartTime)
-            {
-            }
-
-            void End() 
-            {
-                m_EndTime = std::chrono::high_resolution_clock::now();
-            }
-
-            std::string Name() const 
-            {
-                return m_Name;
-            }
-
-            auto Duration() const 
-            {
-                return std::chrono::duration_cast<std::chrono::microseconds>(m_EndTime - m_StartTime);
-            }
-
-        private:
-            std::string m_Name;
-            std::chrono::high_resolution_clock::time_point m_StartTime;
-            std::chrono::high_resolution_clock::time_point m_EndTime;
-        };
-
-    }
-    // namespace Profiling
 
 	class IProfiler
 	{
-    public:
-        using Zone = Profiling::Zone;
-
 	public:
 		virtual ~IProfiler() = default;
 
@@ -54,8 +23,13 @@ namespace AqualinkAutomate::Interfaces
 		virtual void StartProfiling() = 0;
 		virtual void StopProfiling() = 0;
 
-    public:
-        virtual void MeasureZone(const Zone& zone) = 0;
+	public:
+		virtual std::expected<Profiling::DomainPtr, bool> CreateDomain(const std::string& name) const;
+		virtual std::expected<Profiling::FramePtr, bool> CreateFrame(Profiling::DomainPtr domain, const std::string& name) const;
+		virtual std::expected<Profiling::ZonePtr, bool> CreateZone(Profiling::FramePtr frame, const std::string& name) const;
+
+	private:
+		mutable std::unordered_map<boost::uuids::uuid, Profiling::DomainPtr, boost::hash<boost::uuids::uuid>> m_Domains;
 	};
 
 }

@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
+
 	JandyMessage_Status::JandyMessage_Status() : 
 		JandyMessage(JandyMessageIds::Status),
 		Interfaces::IMessageSignal<JandyMessage_Status>()

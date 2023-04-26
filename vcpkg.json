@@ -11,8 +11,10 @@
     "boost-program-options",
     "boost-signals2",
     "boost-statechart",
+    "boost-static-string",
     "boost-system",
     "boost-test",
+    "boost-uuid",
     "magic-enum",
     "tracy"
   ]

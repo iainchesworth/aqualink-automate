@@ -9,6 +9,9 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
+
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Ack> JandyMessage_Ack::g_JandyMessage_Ack_Registration(JandyMessageIds::Ack);
+
 	JandyMessage_Ack::JandyMessage_Ack() : 
 		JandyMessage(JandyMessageIds::Ack),
 		Interfaces::IMessageSignal<JandyMessage_Ack>()

@@ -7,7 +7,7 @@
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/types/jandy_types.h"
 
-namespace AqualinkAutomate::Factories
+namespace AqualinkAutomate::Factory
 {
 
 	typedef Types::JandyMessageTypePtr(*JandyMessageInstanceGenerator)();
@@ -36,4 +36,4 @@ namespace AqualinkAutomate::Factories
 	};
 
 }
-// namespace AqualinkAutomate::Factories
+// namespace AqualinkAutomate::Factory

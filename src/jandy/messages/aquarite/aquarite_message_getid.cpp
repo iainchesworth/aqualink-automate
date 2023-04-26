@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::AquariteMessage_GetId> AquariteMessage_GetId::g_AquariteMessage_GetId_Registration(JandyMessageIds::AQUARITE_GetId);
+
 	AquariteMessage_GetId::AquariteMessage_GetId() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_GetId),
 		Interfaces::IMessageSignal<AquariteMessage_GetId>()

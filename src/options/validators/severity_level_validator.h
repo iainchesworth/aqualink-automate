@@ -15,6 +15,15 @@ namespace AqualinkAutomate::Options::Validators
 }
 // namespace AqualinkAutomate::Options::Validators
 
+//=============================================================================
+//
+// BOOST Program Options requires validators to be in the namespace of the
+// type or entry being validated.
+// 
+//     -> AqualinkAutomate::Logging for Severity
+//
+//=============================================================================
+
 namespace AqualinkAutomate::Logging
 {
 	void validate(boost::any& v, std::vector<std::string> const& values, Severity*, int);

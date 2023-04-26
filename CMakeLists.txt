@@ -54,8 +54,9 @@ add_library(
 	src/interfaces/iequipment.cpp
 	src/interfaces/igenerator.cpp
 	src/interfaces/imessage.cpp
-	src/interfaces/imessagesignal.h
-	src/interfaces/iprofiler.h
+	src/interfaces/imessagesignal.cpp
+	src/interfaces/iprofiler.cpp
+	src/interfaces/iprofilingunit.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
 	src/jandy/devices/aquarite_device.cpp 
@@ -120,13 +121,22 @@ add_library(
 	src/options/validators/profiler_type_validator.cpp
 	src/options/validators/severity_level_validator.cpp
 	src/profiling/noop_profiler.cpp
-	src/profiling/profiler_factory.cpp
-	src/profiling/profiler_registry.cpp
-	src/profiling/profiler_types.cpp
+	src/profiling/profiling.cpp
+	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/tracy_profiler.cpp>	
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:src/profiling/uprof_profiler.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:src/profiling/vtune_profiler.cpp>
-	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/tracy_profiler.cpp>	
+	src/profiling/factories/profiler_factory.cpp
+	src/profiling/factories/profiler_factory_registration.cpp
+	src/profiling/factories/profiling_unit_factory.cpp 
+	src/profiling/factories/profiling_unit_factory_registration.cpp 
 	src/profiling/formatters/profiling_formatters.cpp
+	src/profiling/profiling_units/domain.cpp 
+	src/profiling/profiling_units/frame.cpp 
+	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_frame.cpp>	
+	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_zone.cpp>	
+	src/profiling/profiling_units/timed_zone.cpp 
+	src/profiling/profiling_units/zone.cpp 
+	src/profiling/types/profiling_types.cpp
 	src/protocol/protocol_handler.cpp
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
@@ -164,7 +174,7 @@ target_compile_definitions(
 	-DVC_EXTRALEAN
 	-DNOGDI
 	-DNOGDICAPMASKS
-	-DNOMINMAX 
+	-DNOMINMAX
 )
 endif(WIN32)
 
@@ -177,6 +187,12 @@ target_sources(
 endif(LINUX)
 
 target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+
+target_compile_definitions(
+	libaqualink-automate 
+	PUBLIC 
+	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
+)
 
 target_include_directories(libaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/src")
 
@@ -206,7 +222,7 @@ add_executable(
 target_link_libraries(
 	aqualink-automate 
 	PRIVATE 
-	libaqualink-automate 
+	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
 	Boost::boost 
 	Boost::coroutine 
 	Boost::iostreams 
@@ -241,7 +257,7 @@ if(ENABLE_TESTS)
 	target_link_libraries(
 		testaqualink-automate 
 		PRIVATE 
-		libaqualink-automate 
+		"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
 		Boost::boost 
 		Boost::coroutine 
 		Boost::iostreams 

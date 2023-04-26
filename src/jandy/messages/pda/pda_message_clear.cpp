@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::PDAMessage_Clear> PDAMessage_Clear::g_PDAMessage_Clear_Registration(JandyMessageIds::PDA_Clear);
+
 	PDAMessage_Clear::PDAMessage_Clear() :
 		PDAMessage(JandyMessageIds::PDA_Clear),
 		Interfaces::IMessageSignal<PDAMessage_Clear>()

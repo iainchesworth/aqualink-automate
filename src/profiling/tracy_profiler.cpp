@@ -1,11 +1,16 @@
-#include "profiling/profiler_registry.h"
-#include "profiling/profiler_types.h"
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyC.h>
+
 #include "profiling/tracy_profiler.h"
+#include "profiling/factories/profiler_factory_registration.h"
+#include "profiling/profiling_units/tracy_zone.h"
+#include "profiling/types/profiling_types.h"
 
 namespace AqualinkAutomate::Profiling
 {
 
-	static ProfilerAutoRegister<Tracy_Profiler> reg_UProfProfiler(ProfilerTypes::Tracy);
+	const Factory::ProfilerRegistration<Tracy_Profiler>Tracy_Profiler::g_TracyProfilerRegistration(AqualinkAutomate::Types::ProfilerTypes::Tracy);
+	const Factory::ProfilingUnitRegistration<Profiling::Domain, Profiling::TracyFrame, Profiling::TracyZone> g_TracyProfilingUnitRegistration(AqualinkAutomate::Types::ProfilerTypes::Tracy);
 
 	void Tracy_Profiler::StartProfiling()
 	{
@@ -15,8 +20,9 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	void Tracy_Profiler::MeasureZone(const Zone& zone)
+	std::expected<ZonePtr, bool> Tracy_Profiler::CreateZone(FramePtr frame, const std::string& name) const
 	{
+		return std::make_shared<TracyZone>(name);
 	}
 
 }

@@ -10,8 +10,8 @@
 #include "options/options_option_type.h"
 #include "options/validators/profiler_type_validator.h"
 #include "options/validators/severity_level_validator.h"
-#include "profiling/profiler_factory.h"
-#include "profiling/profiler_types.h"
+#include "profiling/factories/profiler_factory.h"
+#include "profiling/types/profiling_types.h"
 #include "profiling/formatters/profiling_formatters.h"
 #include "utility/get_terminal_column_width.h"
 
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Options::Developer
 	AppOptionPtr OPTION_LOGLEVEL_PROTCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) }; 
 	AppOptionPtr OPTION_LOGLEVEL_SERIAL{ make_appoption("loglevel-serial", "Set the logging level for Channel::Serial", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_SIGNALS{ make_appoption("loglevel-signals", "Set the logging level for Channel::Signals", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
-	AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Profiling::ProfilerTypes>()->multitoken()) };
+	AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Types::ProfilerTypes>()->multitoken()) };
 
 	std::vector DeveloperOptionsCollection
 	{
@@ -86,7 +86,7 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_LOGLEVEL_SERIAL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Serial, OPTION_LOGLEVEL_SERIAL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SIGNALS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Signals, OPTION_LOGLEVEL_SIGNALS->As<Severity>(vm)); }
 
-		if (OPTION_PROFILER->IsPresent(vm)) { Profiling::ProfilerFactory::SetProfiler(OPTION_PROFILER->As<Profiling::ProfilerTypes>(vm)); }
+		if (OPTION_PROFILER->IsPresent(vm)) { Factory::ProfilerFactory::Instance().SetDesired(OPTION_PROFILER->As<Types::ProfilerTypes>(vm)); }
 
 		return settings;
 	}

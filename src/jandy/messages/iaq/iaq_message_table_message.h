@@ -5,6 +5,7 @@
 #include <span>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -34,6 +35,9 @@ namespace AqualinkAutomate::Messages
 	private:
 		uint8_t m_LineId;
 		std::string m_Line;
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::IAQMessage_TableMessage> g_IAQMessage_TableMessage_Registration;
 	};
 
 }

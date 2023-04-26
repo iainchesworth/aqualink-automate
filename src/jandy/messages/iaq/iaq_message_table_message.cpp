@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::IAQMessage_TableMessage> IAQMessage_TableMessage::g_IAQMessage_TableMessage_Registration(JandyMessageIds::IAQ_TableMessage);
+
 	IAQMessage_TableMessage::IAQMessage_TableMessage() : 
 		IAQMessage(JandyMessageIds::IAQ_TableMessage),
 		Interfaces::IMessageSignal<IAQMessage_TableMessage>(),

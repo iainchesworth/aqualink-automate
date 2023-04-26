@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::PDAMessage_ShiftLines> PDAMessage_ShiftLines::g_PDAMessage_ShiftLines_Registration(JandyMessageIds::PDA_ShiftLines);
+
 	PDAMessage_ShiftLines::PDAMessage_ShiftLines() :
 		PDAMessage(JandyMessageIds::PDA_ShiftLines),
 		Interfaces::IMessageSignal<PDAMessage_ShiftLines>()

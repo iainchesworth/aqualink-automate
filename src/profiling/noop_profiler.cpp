@@ -11,9 +11,5 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	void NoOp_Profiler::MeasureZone(const Zone& zone)
-	{
-	}
-
 }
 // namespace AqualinkAutomate::Profiling

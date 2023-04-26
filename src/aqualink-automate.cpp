@@ -13,6 +13,7 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options_initialise.h"
 #include "options/options_settings.h"
+#include "profiling/profiling.h"
 #include "protocol/protocol_handler.h"
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
@@ -24,6 +25,7 @@ using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Equipment;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
+using namespace AqualinkAutomate::Profiling;
 using namespace AqualinkAutomate::Protocol;
 using namespace AqualinkAutomate::Serial;
 using namespace AqualinkAutomate::Signals;
@@ -36,6 +38,11 @@ int main(int argc, char *argv[])
 
         Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Info);
         Logging::Initialise();
+
+        if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+        {
+            profiler->StartProfiling();
+        }
 
         Options::Settings settings;
         Options::Initialise(settings, argc, argv);
@@ -76,6 +83,11 @@ int main(int argc, char *argv[])
         boost::asio::co_spawn(io_context, Signal_Awaitable(ss), boost::asio::detached);
 
         io_context.run();
+
+        if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+        {
+            profiler->StopProfiling();
+        }
 
         LogInfo(Channel::Main, "Stopping AqualinkAutomate...");
 

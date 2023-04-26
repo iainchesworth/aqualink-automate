@@ -1,8 +1,4 @@
 #include "developer/mock_serial_port.h"
-#include "logging/logging.h"
-
-using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Developer
 {
@@ -12,6 +8,7 @@ namespace AqualinkAutomate::Developer
 		m_RandomDevice{},
 		m_Distribution(32, 127)
 	{
+		static_cast<void>(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port"));
 	}
 
 	mock_serial_port::mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name)

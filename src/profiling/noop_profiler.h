@@ -10,7 +10,6 @@ namespace AqualinkAutomate::Profiling
 	public:
 		virtual void StartProfiling() override;
 		virtual void StopProfiling() override;
-		virtual void MeasureZone(const Zone& zone) override;
 	};
 
 }

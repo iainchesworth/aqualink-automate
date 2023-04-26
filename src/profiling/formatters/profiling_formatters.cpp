@@ -10,12 +10,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Profiling
 {
 
-	std::istream& operator>>(std::istream& istream, AqualinkAutomate::Profiling::ProfilerTypes& v)
+	std::istream& operator>>(std::istream& istream, AqualinkAutomate::Types::ProfilerTypes& v)
 	{
 		std::string enum_name;
 		istream >> enum_name;
 
-		if (auto enum_value = magic_enum::enum_cast<AqualinkAutomate::Profiling::ProfilerTypes>(enum_name); enum_value.has_value())
+		if (auto enum_value = magic_enum::enum_cast<AqualinkAutomate::Types::ProfilerTypes>(enum_name); enum_value.has_value())
 		{
 			v = enum_value.value();
 		}

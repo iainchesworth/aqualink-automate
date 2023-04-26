@@ -6,6 +6,7 @@
 #include <span>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -32,6 +33,9 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		uint8_t m_Percent;
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent> g_AquariteMessage_Percent_Registration;
 	};
 
 }

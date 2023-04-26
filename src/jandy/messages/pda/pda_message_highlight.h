@@ -5,6 +5,7 @@
 #include <span>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/pda/pda_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -22,6 +23,9 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual void Serialize(std::span<const std::byte>& message_bytes) const;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes);
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> g_PDAMessage_Highlight_Registration;
 	};
 
 }

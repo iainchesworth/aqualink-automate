@@ -6,6 +6,7 @@
 #include <span>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -51,6 +52,9 @@ namespace AqualinkAutomate::Messages
 	private:
 		uint16_t m_PPM;
 		AquariteStatuses m_Status;
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM> g_AquariteMessage_PPM_Registration;
 	};
 
 }

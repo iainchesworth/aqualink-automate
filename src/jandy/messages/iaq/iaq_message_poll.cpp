@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::IAQMessage_Poll> IAQMessage_Poll::g_IAQMessage_Poll_Registration(JandyMessageIds::IAQ_Poll);
+
 	IAQMessage_Poll::IAQMessage_Poll() : 
 		IAQMessage(JandyMessageIds::IAQ_Poll),
 		Interfaces::IMessageSignal<IAQMessage_Poll>()

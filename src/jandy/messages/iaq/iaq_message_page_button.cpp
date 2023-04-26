@@ -12,6 +12,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton> IAQMessage_PageButton::g_IAQMessage_PageButton_Registration(JandyMessageIds::IAQ_PageButton);
+
 	IAQMessage_PageButton::IAQMessage_PageButton() : 
 		IAQMessage(JandyMessageIds::IAQ_PageButton),
 		Interfaces::IMessageSignal<IAQMessage_PageButton>(),

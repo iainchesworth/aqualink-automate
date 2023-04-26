@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_Registration(JandyMessageIds::Unknown);
+
 	JandyMessage_Unknown::JandyMessage_Unknown() : 
 		JandyMessage(JandyMessageIds::Unknown),
 		Interfaces::IMessageSignal<JandyMessage_Unknown>()

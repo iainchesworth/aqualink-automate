@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> PDAMessage_Highlight::g_PDAMessage_Highlight_Registration(JandyMessageIds::PDA_Highlight);
+
 	PDAMessage_Highlight::PDAMessage_Highlight() :
 		PDAMessage(JandyMessageIds::PDA_Highlight),
 		Interfaces::IMessageSignal<PDAMessage_Highlight>()

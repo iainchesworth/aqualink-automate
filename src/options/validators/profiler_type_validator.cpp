@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Options::Validators
 }
 // namespace AqualinkAutomate::Options::Validators
 
-namespace AqualinkAutomate::Profiling
+namespace AqualinkAutomate::Types
 {
 
 	void validate(boost::any& v, std::vector<std::string> const& values, ProfilerTypes* target_type, int)
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Profiling
 
 		auto case_insensitive_comp = [](char lhs, char rhs) { return std::tolower(lhs) == std::tolower(rhs); };
 
-		if (auto enum_value = magic_enum::enum_cast<AqualinkAutomate::Profiling::ProfilerTypes>(profiler_string, case_insensitive_comp); enum_value.has_value())
+		if (auto enum_value = magic_enum::enum_cast<ProfilerTypes>(profiler_string, case_insensitive_comp); enum_value.has_value())
 		{
 			v = boost::any(enum_value.value());
 		}
@@ -45,4 +45,4 @@ namespace AqualinkAutomate::Profiling
 	}
 
 }
-// namespace AqualinkAutomate::Profiling
+// namespace AqualinkAutomate::Types

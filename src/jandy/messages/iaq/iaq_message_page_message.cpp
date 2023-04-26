@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageMessage> IAQMessage_PageMessage::g_IAQMessage_PageMessage_Registration(JandyMessageIds::IAQ_PageMessage);
+
 	IAQMessage_PageMessage::IAQMessage_PageMessage() : 
 		IAQMessage(JandyMessageIds::IAQ_PageMessage),
 		Interfaces::IMessageSignal<IAQMessage_PageMessage>(),

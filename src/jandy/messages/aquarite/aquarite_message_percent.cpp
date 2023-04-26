@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
+	const Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent> AquariteMessage_Percent::g_AquariteMessage_Percent_Registration(JandyMessageIds::AQUARITE_Percent);
+
 	AquariteMessage_Percent::AquariteMessage_Percent() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_Percent),
 		Interfaces::IMessageSignal<AquariteMessage_Percent>(),

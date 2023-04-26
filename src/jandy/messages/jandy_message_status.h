@@ -5,6 +5,7 @@
 #include <span>
 
 #include "interfaces/imessagesignal.h"
+#include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -22,6 +23,9 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual void Serialize(std::span<const std::byte>& message_bytes) const override;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
+
+	private:
+		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;
 	};
 
 }
