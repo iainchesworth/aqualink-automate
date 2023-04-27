@@ -7,7 +7,7 @@
 
 #include "interfaces/imessage.h"
 #include "interfaces/iserializable.h"
-#include "jandy/devices/device_types.h"
+#include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
@@ -29,8 +29,8 @@ namespace AqualinkAutomate::Messages
 		virtual ~JandyMessage();
 
 	public:
-		const Devices::DeviceType DestinationId() const;
-		const uint8_t MessageType() const;
+		const Devices::JandyDeviceType Destination() const;
+		const uint8_t RawId() const;
 		const uint8_t MessageLength() const;
 		const uint8_t ChecksumValue() const;
 
@@ -45,8 +45,8 @@ namespace AqualinkAutomate::Messages
 		bool PacketIsValid(const std::span<const std::byte>& message_bytes) const;
 
 	protected:
-		Devices::DeviceType m_Destination;
-		uint8_t m_MessageType;
+		Devices::JandyDeviceType m_Destination;
+		uint8_t m_RawId;
 		uint8_t m_MessageLength;
 		uint8_t m_ChecksumValue;
 	};

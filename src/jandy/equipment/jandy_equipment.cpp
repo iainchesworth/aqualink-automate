@@ -56,47 +56,47 @@ namespace AqualinkAutomate::Equipment
 
 		auto identify_and_add_device = [this](const auto& msg)
 		{
-			if (msg.MessageType() == static_cast<uint8_t>(Messages::JandyMessageIds::Probe))
+			if (Messages::JandyMessageIds::Probe == msg.Id())
 			{
 				// A probe message is just the Aqualink master looking for a (potentially non-existant) device...do nothing.
 			}
-			else if (m_IdentifiedDeviceIds.contains(msg.DestinationId().Raw()))
+			else if (m_IdentifiedDeviceIds.contains(msg.Destination().Raw()))
 			{
 				// Already have this device in the devices list...do nothing.
 			}
 			else 
 			{
-				switch (msg.DestinationId().Class())
+				switch (msg.Destination().Class())
 				{
 				case Devices::DeviceClasses::IAQ:
-					m_Devices.push_back(std::move(std::make_shared<Devices::IAQDevice>(m_IOContext, msg.DestinationId().Raw())));
+					m_Devices.push_back(std::move(std::make_shared<Devices::IAQDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::OneTouch:
-					m_Devices.push_back(std::move(std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.DestinationId().Raw())));
+					m_Devices.push_back(std::move(std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::PDA:
-					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.DestinationId().Raw())));
+					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::SWG_Aquarite:
-					m_Devices.push_back(std::move(std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId().Raw())));
+					m_Devices.push_back(std::move(std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				default:
-					LogDebug(Channel::Equipment, std::format("Device class ({}, 0x{:02x}) not supported.", magic_enum::enum_name(msg.DestinationId().Class()), msg.DestinationId().Raw()));
+					LogDebug(Channel::Equipment, std::format("Device class ({}, 0x{:02x}) not supported.", magic_enum::enum_name(msg.Destination().Class()), msg.Destination().Raw()));
 					break;
 				}
 
 				// So we've handled this device...no need to keep repeating ourselves...
-				m_IdentifiedDeviceIds.insert(msg.DestinationId().Raw());
+				m_IdentifiedDeviceIds.insert(msg.Destination().Raw());
 			}
 
 			// Capture statistics, given we are processing every message.
-			m_MessageStats[msg.MessageId()]++;
+			m_MessageStats[msg.Id()]++;
 
-			LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[msg.MessageId()], magic_enum::enum_name(msg.MessageId())));
+			LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[msg.Id()], magic_enum::enum_name(msg.Id())));
 		};
 
 		Messages::JandyMessage_Ack::GetSignal()->connect(identify_and_add_device);
@@ -128,10 +128,11 @@ namespace AqualinkAutomate::Equipment
 			LogWarning(
 				Channel::Equipment, 
 				std::format(
-					"Unknown message received -> cannot process: destination {} (0x{:02x}), message id 0x{:02x}, length {} bytes, checksum 0x{:02x}", 
-					magic_enum::enum_name(msg.DestinationId().Class()),
-					msg.DestinationId().Raw(),
-					static_cast<uint32_t>(msg.MessageType()),
+					"Unknown message received -> cannot process: destination {} (0x{:02x}), message id {} (0x{:02x}), length {} bytes, checksum 0x{:02x}", 
+					magic_enum::enum_name(msg.Destination().Class()),
+					msg.Destination().Raw(),
+					magic_enum::enum_name(msg.Id()),
+					msg.RawId(),
 					msg.MessageLength(),
 					msg.ChecksumValue()
 				)

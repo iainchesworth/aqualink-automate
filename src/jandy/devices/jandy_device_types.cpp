@@ -1,13 +1,13 @@
-#include "jandy/devices/device_types.h"
+#include "jandy/devices/jandy_device_types.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	DeviceType::DeviceType()
+	JandyDeviceType::JandyDeviceType()
 	{
 	}
 
-	DeviceType::DeviceType(uint8_t device_id) :
+	JandyDeviceType::JandyDeviceType(uint8_t device_id) :
 		m_DeviceClass(DeviceClasses::Unknown),
 		m_RawId(device_id)
 	{
@@ -23,13 +23,13 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
-	DeviceType::DeviceType(const DeviceType& other) :
+	JandyDeviceType::JandyDeviceType(const JandyDeviceType& other) :
 		m_DeviceClass(other.m_DeviceClass),
 		m_RawId(other.m_RawId)
 	{
 	}
 
-	DeviceType& DeviceType::operator=(const DeviceType& other)
+	JandyDeviceType& JandyDeviceType::operator=(const JandyDeviceType& other)
 	{
 		if (this != &other)
 		{
@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Devices
 		return *this;
 	}
 
-	DeviceType::DeviceType(DeviceType&& other) noexcept :
+	JandyDeviceType::JandyDeviceType(JandyDeviceType&& other) noexcept :
 		m_DeviceClass(std::move(other.m_DeviceClass)),
 		m_RawId(std::move(other.m_RawId))
 	{
@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Devices
 		other.m_RawId = 0xFF;
 	}
 
-	DeviceType& DeviceType::operator=(DeviceType&& other) noexcept
+	JandyDeviceType& JandyDeviceType::operator=(JandyDeviceType&& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -66,12 +66,12 @@ namespace AqualinkAutomate::Devices
 		return *this;
 	}
 
-	DeviceClasses DeviceType::Class() const
+	DeviceClasses JandyDeviceType::Class() const
 	{
 		return m_DeviceClass;
 	}
 
-	uint8_t DeviceType::Raw() const
+	uint8_t JandyDeviceType::Raw() const
 	{
 		return m_RawId;
 	}

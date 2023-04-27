@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "dependencies": [
     "boost-asio",
+    "boost-beast",
     "boost-circular-buffer",
     "boost-iostreams",
     "boost-log",
@@ -16,6 +17,7 @@
     "boost-test",
     "boost-uuid",
     "magic-enum",
+    "mqtt-cpp",
     "tracy"
   ]
 }

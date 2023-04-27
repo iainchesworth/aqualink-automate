@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Interfaces
 	{
 	public:
 		IMessage(const MESSAGE_ID message_id) : 
-			m_MessageId(message_id)
+			m_Id(message_id)
 		{
 		}
 
@@ -19,9 +19,9 @@ namespace AqualinkAutomate::Interfaces
 		}
 
 	public:
-		MESSAGE_ID MessageId() const
+		MESSAGE_ID Id() const
 		{
-			return m_MessageId;
+			return m_Id;
 		}
 
 	public:
@@ -33,13 +33,13 @@ namespace AqualinkAutomate::Interfaces
 			bool is_equal = true;
 
 			is_equal &= (std::is_same<decltype(*this), decltype(other)>::value);
-			is_equal &= (m_MessageId == other.m_MessageId);
+			is_equal &= (m_Id == other.m_Id);
 
 			return is_equal;
 		}
 
 	private:
-		MESSAGE_ID m_MessageId;
+		MESSAGE_ID m_Id;
 	};
 
 }

@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Devices
 		};
 	*/
 
-	class DeviceType
+	class JandyDeviceType
 	{
 		using DeviceClassAndIds = std::pair<DeviceClasses, std::vector<uint8_t>>;
 		using DeviceClassAndIdsList = std::list<DeviceClassAndIds>;
@@ -67,14 +67,14 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		DeviceType();
-		DeviceType(uint8_t device_id);
+		JandyDeviceType();
+		JandyDeviceType(uint8_t device_id);
 
 	public:
-		DeviceType(const DeviceType& other);
-		DeviceType& operator=(const DeviceType& other);
-		DeviceType(DeviceType&& other) noexcept;
-		DeviceType& operator=(DeviceType&& other) noexcept;
+		JandyDeviceType(const JandyDeviceType& other);
+		JandyDeviceType& operator=(const JandyDeviceType& other);
+		JandyDeviceType(JandyDeviceType&& other) noexcept;
+		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept;
 
 	public:
 		DeviceClasses Class() const;

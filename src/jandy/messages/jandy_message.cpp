@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Messages
 		Interfaces::IMessage<JandyMessageIds>(msg_id),
 		Interfaces::ISerializable(),
 		m_Destination(), 
-		m_MessageType(0),
+		m_RawId(0),
 		m_MessageLength(0),
 		m_ChecksumValue(0)
 	{
@@ -21,14 +21,14 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	const Devices::DeviceType JandyMessage::DestinationId() const
+	const Devices::JandyDeviceType JandyMessage::Destination() const
 	{
 		return m_Destination;
 	}
 
-	const uint8_t JandyMessage::MessageType() const
+	const uint8_t JandyMessage::RawId() const
 	{
-		return m_MessageType;
+		return m_RawId;
 	}
 
 	const uint8_t JandyMessage::MessageLength() const
@@ -43,7 +43,13 @@ namespace AqualinkAutomate::Messages
 
 	std::string JandyMessage::ToString() const
 	{
-		return std::format("Destination: {} (0x{:02x}), Message Type 0x{:02x}", magic_enum::enum_name(DestinationId().Class()), DestinationId().Raw(), MessageType());
+		return std::format(
+			"Destination: {} (0x{:02x}), Message Type: {} (0x{:02x})", 
+			magic_enum::enum_name(Destination().Class()), 
+			Destination().Raw(), 
+			magic_enum::enum_name(Id()),
+			RawId()
+		);
 	}
 
 	void JandyMessage::Serialize(std::span<const std::byte>& message_bytes) const
@@ -54,8 +60,8 @@ namespace AqualinkAutomate::Messages
 	{
 		if (PacketIsValid(message_bytes))
 		{
-			m_Destination = std::move(Devices::DeviceType(static_cast<uint8_t>(message_bytes[Index_DestinationId])));
-			m_MessageType = static_cast<uint8_t>(message_bytes[Index_MessageType]);
+			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(message_bytes[Index_DestinationId])));
+			m_RawId = static_cast<uint8_t>(message_bytes[Index_MessageType]);
 			m_MessageLength = message_bytes.size_bytes();
 			m_ChecksumValue = static_cast<uint8_t>(message_bytes[m_MessageLength - 3]);
 		}

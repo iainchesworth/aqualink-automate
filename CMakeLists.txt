@@ -20,6 +20,7 @@ option(ENABLE_PROFILING "Enable profiling" ON)
 
 find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options system unit_test_framework)
 find_package(magic_enum REQUIRED)
+find_package(mqtt_cpp_iface CONFIG REQUIRED)
 
 #------------------------------------------------------------------------------
 #
@@ -60,8 +61,8 @@ add_library(
 	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
 	src/jandy/devices/aquarite_device.cpp 
-	src/jandy/devices/device_types.cpp 
 	src/jandy/devices/iaq_device.cpp 
+	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
@@ -99,7 +100,7 @@ add_library(
 	src/jandy/messages/jandy_message_message.cpp
 	src/jandy/messages/jandy_message_message_long.cpp
 	src/jandy/messages/jandy_message_probe.cpp
-	src/jandy/messages/jandy_message_status.cpp
+	src/jandy/messages/jandy_message_status.cpp	 
 	src/jandy/messages/jandy_message_unknown.cpp
 	src/jandy/types/jandy_types.cpp
 	src/jandy/utility/screen_data_page.cpp
@@ -188,7 +189,7 @@ target_sources(
 )
 endif(LINUX)
 
-target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 
 target_compile_definitions(
 	libaqualink-automate 
@@ -232,6 +233,7 @@ target_link_libraries(
 	Boost::log_setup 
 	Boost::program_options 
 	magic_enum::magic_enum
+	mqtt_cpp_iface::mqtt_cpp_iface 
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
 	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
@@ -268,6 +270,7 @@ if(ENABLE_TESTS)
 		Boost::program_options 
 		Boost::unit_test_framework 
 		magic_enum::magic_enum
+	mqtt_cpp_iface::mqtt_cpp_iface 
 		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
 		$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>

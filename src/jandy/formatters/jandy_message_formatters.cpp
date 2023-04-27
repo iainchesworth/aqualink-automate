@@ -20,10 +20,11 @@ namespace std
 	{
 		auto output = std::format
 		(
-			"Destination: {} (0x{:02x}), Message Type 0x{:02x}", 
-			magic_enum::enum_name(obj.DestinationId().Class()), 
-			obj.DestinationId().Raw(), 
-			obj.MessageType()
+			"Destination: {} (0x{:02x}), Message Type: {} (0x{:02x})", 
+			magic_enum::enum_name(obj.Destination().Class()), 
+			obj.Destination().Raw(), 
+			magic_enum::enum_name(obj.Id()),
+			obj.RawId()
 		);
 
 		os << output;
