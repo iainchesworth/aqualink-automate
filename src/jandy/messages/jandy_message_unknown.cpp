@@ -9,7 +9,10 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
-
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_PDA_1B_Registration(JandyMessageIds::Unknown_PDA_1B);
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_IAQ_2D_Registration(JandyMessageIds::Unknown_IAQ_2D);
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_IAQ_70_Registration(JandyMessageIds::Unknown_IAQ_70);
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_ReadyControl_Registration(JandyMessageIds::Unknown_ReadyControl);
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_Registration(JandyMessageIds::Unknown);
 
 	JandyMessage_Unknown::JandyMessage_Unknown() : 

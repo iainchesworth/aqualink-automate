@@ -60,8 +60,10 @@ add_library(
 	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
 	src/jandy/devices/aquarite_device.cpp 
+	src/jandy/devices/device_types.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
+	src/jandy/devices/pda_device.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp

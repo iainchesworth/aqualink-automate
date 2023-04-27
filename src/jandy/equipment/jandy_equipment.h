@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
@@ -30,6 +31,7 @@ namespace AqualinkAutomate::Equipment
 	private:
 		boost::asio::io_context& m_IOContext;
 		std::vector<std::shared_ptr<Interfaces::IDevice>> m_Devices;
+		std::unordered_set<uint8_t> m_IdentifiedDeviceIds;
 		std::unordered_map<Messages::JandyMessageIds, uint32_t> m_MessageStats;
 	};
 

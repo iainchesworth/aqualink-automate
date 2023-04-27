@@ -9,6 +9,7 @@
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/onetouch_device.h"
+#include "jandy/devices/pda_device.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_message.h"
@@ -43,90 +44,101 @@ namespace AqualinkAutomate::Equipment
 	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler) :
 		IEquipment(io_context, protocol_handler),
 		m_IOContext(io_context),
-		m_Devices()
+		m_Devices(),
+		m_IdentifiedDeviceIds(),
+		m_MessageStats()
 	{
-		auto create_aquarite_device = [this](const auto& msg)
-		{
-			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
-			{
-				auto aquarite_device = std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId());
-				m_Devices.push_back(std::move(aquarite_device));
-			}
-		};
-
-		Messages::AquariteMessage_GetId::GetSignal()->connect(create_aquarite_device);
-		Messages::AquariteMessage_Percent::GetSignal()->connect(create_aquarite_device);
-		Messages::AquariteMessage_PPM::GetSignal()->connect(create_aquarite_device);
-
-		auto create_iaq_device = [this](const auto& msg)
-		{
-			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
-			{
-				auto iaq_device = std::make_shared<Devices::IAQDevice>(m_IOContext, msg.DestinationId());
-				m_Devices.push_back(std::move(iaq_device));
-			}
-		};
-
-		Messages::IAQMessage_ControlReady::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_MessageLong::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_PageButton::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_PageContinue::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_PageEnd::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_PageMessage::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_PageStart::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_Poll::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_StartUp::GetSignal()->connect(create_iaq_device);
-		Messages::IAQMessage_TableMessage::GetSignal()->connect(create_iaq_device);
-
-		auto create_onetouch_device = [this](const auto& msg)
-		{
-			if (auto device = IsDeviceRegistered(msg.DestinationId()); m_Devices.end() == device)
-			{
-				auto onetouch_device = std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.DestinationId());
-				m_Devices.push_back(std::move(onetouch_device));
-			}
-		};
-
-		Messages::JandyMessage_MessageLong::GetSignal()->connect(create_onetouch_device);
-		Messages::PDAMessage_Clear::GetSignal()->connect(create_onetouch_device);
-		Messages::PDAMessage_Highlight::GetSignal()->connect(create_onetouch_device);
-		Messages::PDAMessage_HighlightChars::GetSignal()->connect(create_onetouch_device);
-		Messages::PDAMessage_ShiftLines::GetSignal()->connect(create_onetouch_device);
-
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
 				m_MessageStats[id] = 0;
 			}
 		);
 
-		auto message_statistics_capture = [this](const auto& msg)
+		auto identify_and_add_device = [this](const auto& msg)
 		{
+			if (msg.MessageType() == static_cast<uint8_t>(Messages::JandyMessageIds::Probe))
+			{
+				// A probe message is just the Aqualink master looking for a (potentially non-existant) device...do nothing.
+			}
+			else if (m_IdentifiedDeviceIds.contains(msg.DestinationId().Raw()))
+			{
+				// Already have this device in the devices list...do nothing.
+			}
+			else 
+			{
+				switch (msg.DestinationId().Class())
+				{
+				case Devices::DeviceClasses::IAQ:
+					m_Devices.push_back(std::move(std::make_shared<Devices::IAQDevice>(m_IOContext, msg.DestinationId().Raw())));
+					break;
+
+				case Devices::DeviceClasses::OneTouch:
+					m_Devices.push_back(std::move(std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.DestinationId().Raw())));
+					break;
+
+				case Devices::DeviceClasses::PDA:
+					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.DestinationId().Raw())));
+					break;
+
+				case Devices::DeviceClasses::SWG_Aquarite:
+					m_Devices.push_back(std::move(std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.DestinationId().Raw())));
+					break;
+
+				default:
+					LogDebug(Channel::Equipment, std::format("Device class ({}, 0x{:02x}) not supported.", magic_enum::enum_name(msg.DestinationId().Class()), msg.DestinationId().Raw()));
+					break;
+				}
+
+				// So we've handled this device...no need to keep repeating ourselves...
+				m_IdentifiedDeviceIds.insert(msg.DestinationId().Raw());
+			}
+
+			// Capture statistics, given we are processing every message.
 			m_MessageStats[msg.MessageId()]++;
 
 			LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[msg.MessageId()], magic_enum::enum_name(msg.MessageId())));
 		};
 
-		Messages::JandyMessage_Ack::GetSignal()->connect(message_statistics_capture);
-		Messages::JandyMessage_Message::GetSignal()->connect(message_statistics_capture);
-		Messages::JandyMessage_MessageLong::GetSignal()->connect(message_statistics_capture);
-		Messages::JandyMessage_Probe::GetSignal()->connect(message_statistics_capture);
-		Messages::JandyMessage_Status::GetSignal()->connect(message_statistics_capture);
-		Messages::JandyMessage_Unknown::GetSignal()->connect(message_statistics_capture);
-		
-		Messages::AquariteMessage_GetId::GetSignal()->connect(message_statistics_capture);
-		Messages::AquariteMessage_Percent::GetSignal()->connect(message_statistics_capture);
-		Messages::AquariteMessage_PPM::GetSignal()->connect(message_statistics_capture);
+		Messages::JandyMessage_Ack::GetSignal()->connect(identify_and_add_device);
+		Messages::JandyMessage_Message::GetSignal()->connect(identify_and_add_device);
+		Messages::JandyMessage_MessageLong::GetSignal()->connect(identify_and_add_device);
+		Messages::JandyMessage_Probe::GetSignal()->connect(identify_and_add_device);
+		Messages::JandyMessage_Status::GetSignal()->connect(identify_and_add_device);
+		Messages::JandyMessage_Unknown::GetSignal()->connect(identify_and_add_device);		
+		Messages::AquariteMessage_GetId::GetSignal()->connect(identify_and_add_device);
+		Messages::AquariteMessage_Percent::GetSignal()->connect(identify_and_add_device);
+		Messages::AquariteMessage_PPM::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_ControlReady::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_MessageLong::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_PageButton::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_PageContinue::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_PageEnd::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_PageMessage::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_PageStart::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_Poll::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_StartUp::GetSignal()->connect(identify_and_add_device);
+		Messages::IAQMessage_TableMessage::GetSignal()->connect(identify_and_add_device);
+		Messages::PDAMessage_Clear::GetSignal()->connect(identify_and_add_device);
+		Messages::PDAMessage_Highlight::GetSignal()->connect(identify_and_add_device);
+		Messages::PDAMessage_HighlightChars::GetSignal()->connect(identify_and_add_device);
+		Messages::PDAMessage_ShiftLines::GetSignal()->connect(identify_and_add_device);
 
-		Messages::IAQMessage_ControlReady::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_MessageLong::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_PageButton::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_PageContinue::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_PageEnd::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_PageMessage::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_PageStart::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_Poll::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_StartUp::GetSignal()->connect(message_statistics_capture);
-		Messages::IAQMessage_TableMessage::GetSignal()->connect(message_statistics_capture);
+		auto display_unknown_messages = [this](const auto& msg)
+		{
+			LogWarning(
+				Channel::Equipment, 
+				std::format(
+					"Unknown message received -> cannot process: destination {} (0x{:02x}), message id 0x{:02x}, length {} bytes, checksum 0x{:02x}", 
+					magic_enum::enum_name(msg.DestinationId().Class()),
+					msg.DestinationId().Raw(),
+					static_cast<uint32_t>(msg.MessageType()),
+					msg.MessageLength(),
+					msg.ChecksumValue()
+				)
+			);
+		};
+
+		Messages::JandyMessage_Unknown::GetSignal()->connect(display_unknown_messages);
 	}
 
 	auto JandyEquipment::IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id)

@@ -25,6 +25,10 @@ namespace AqualinkAutomate::Messages
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
 
 	private:
+		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> g_JandyMessage_Unknown_PDA_1B_Registration;
+		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> g_JandyMessage_Unknown_IAQ_2D_Registration;
+		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> g_JandyMessage_Unknown_IAQ_70_Registration;
+		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> g_JandyMessage_Unknown_ReadyControl_Registration;
 		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> g_JandyMessage_Unknown_Registration;
 	};
 

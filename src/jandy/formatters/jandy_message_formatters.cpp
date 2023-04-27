@@ -1,3 +1,5 @@
+#include <magic_enum.hpp>
+
 #include "jandy/formatters/jandy_message_formatters.h"
 
 using namespace AqualinkAutomate;
@@ -16,7 +18,13 @@ namespace std
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage& obj)
 	{
-		auto output = std::format("Destination: 0x{:02x}", obj.DestinationId());
+		auto output = std::format
+		(
+			"Destination: {} (0x{:02x}), Message Type 0x{:02x}", 
+			magic_enum::enum_name(obj.DestinationId().Class()), 
+			obj.DestinationId().Raw(), 
+			obj.MessageType()
+		);
 
 		os << output;
 		return os;
