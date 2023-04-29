@@ -105,6 +105,9 @@ add_library(
 	src/jandy/types/jandy_types.cpp
 	src/jandy/utility/screen_data_page.cpp
 	src/jandy/utility/screen_data_page_updater.cpp
+	src/jandy/utility/screen_data_page_updater_context.cpp
+	src/jandy/utility/screen_data_page_updater_evshift.cpp
+	src/jandy/utility/screen_data_page_updater_evupdate.cpp
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp

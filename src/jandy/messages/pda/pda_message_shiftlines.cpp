@@ -14,12 +14,30 @@ namespace AqualinkAutomate::Messages
 
 	PDAMessage_ShiftLines::PDAMessage_ShiftLines() :
 		PDAMessage(JandyMessageIds::PDA_ShiftLines),
-		Interfaces::IMessageSignal<PDAMessage_ShiftLines>()
+		Interfaces::IMessageSignal<PDAMessage_ShiftLines>(),
+		m_FirstLineId(0),
+		m_LastLineId(0),
+		m_LineShift(0)
 	{
 	}
 
 	PDAMessage_ShiftLines::~PDAMessage_ShiftLines()
 	{
+	}
+
+	uint8_t PDAMessage_ShiftLines::FirstLineId() const
+	{
+		return m_FirstLineId;
+	}
+
+	uint8_t PDAMessage_ShiftLines::LastLineId() const
+	{
+		return m_LastLineId;
+	}
+
+	int8_t PDAMessage_ShiftLines::LineShift() const
+	{
+		return m_LineShift;
 	}
 
 	std::string PDAMessage_ShiftLines::ToString() const
@@ -36,6 +54,25 @@ namespace AqualinkAutomate::Messages
 		if (PacketIsValid(message_bytes))
 		{
 			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
+
+			if (message_bytes.size() < Index_FirstLineId)
+			{
+				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise FirstLineId.");
+			}
+			else if (message_bytes.size() < Index_LastLineId)
+			{
+				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LastLineId.");
+			}
+			else if (message_bytes.size() < Index_LineShift)
+			{
+				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LineShift.");
+			}
+			else
+			{
+				m_FirstLineId = static_cast<uint8_t>(message_bytes[Index_FirstLineId]);
+				m_LastLineId = static_cast<uint8_t>(message_bytes[Index_LastLineId]);
+				m_LineShift = static_cast<int8_t>(message_bytes[Index_LineShift]);
+			}
 
 			PDAMessage::Deserialize(message_bytes);
 

@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Devices
 	void IAQDevice::Slot_IAQ_PageEnd(const Messages::IAQMessage_PageEnd& msg)
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_PageEnd signal.");
-		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evEnd());
+		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evSequenceEnd());
 	}
 
 	void IAQDevice::Slot_IAQ_PageMessage(const Messages::IAQMessage_PageMessage& msg)
@@ -74,14 +74,15 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evUpdating(msg.LineId(), msg.Line()));
+			m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
 		}
 	}
 
 	void IAQDevice::Slot_IAQ_PageStart(const Messages::IAQMessage_PageStart& msg)
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_PageStart signal.");
-		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evStart());
+		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evSequenceStart());
+		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evClear());
 	}
 
 	void IAQDevice::Slot_IAQ_Poll(const Messages::IAQMessage_Poll& msg)

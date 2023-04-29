@@ -49,12 +49,12 @@ namespace AqualinkAutomate::Factory
 			const auto message_type = static_cast<Messages::JandyMessageIds>(message_bytes[Messages::JandyMessage::Index_MessageType]);
 			if (auto it = m_Generators.find(message_type); m_Generators.end() != it)
 			{
-				LogDebug(Channel::Messages, "Generating: Jandy message");
+				LogTrace(Channel::Messages, "Generating: Jandy message");
 				message = it->second();
 			}
 			else if (it = m_Generators.find(Messages::JandyMessageIds::Unknown); m_Generators.end() != it)
 			{
-				LogDebug(Channel::Messages, std::format("Generating: Jandy Unknown message (type: 0x{:02x})", static_cast<uint8_t>(message_type)));
+				LogTrace(Channel::Messages, std::format("Generating: Jandy Unknown message (type: 0x{:02x})", static_cast<uint8_t>(message_type)));
 				message = it->second();
 			}
 			else

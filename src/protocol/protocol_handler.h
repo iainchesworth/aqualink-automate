@@ -102,7 +102,7 @@ namespace AqualinkAutomate::Protocol
 							auto message = co_await m_Generator.GenerateMessageFromRawData();
 							if (message.has_value())
 							{
-								LogDebug(Channel::Protocol, "Message received; emitting signal to listening consumer slots.");
+								LogTrace(Channel::Protocol, "Message received; emitting signal to listening consumer slots.");
 
 								if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalBase>(message.value()); nullptr != signal_ptr)
 								{

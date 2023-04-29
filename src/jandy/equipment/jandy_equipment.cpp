@@ -69,18 +69,22 @@ namespace AqualinkAutomate::Equipment
 				switch (msg.Destination().Class())
 				{
 				case Devices::DeviceClasses::IAQ:
+					LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: 0x{:02x}", msg.Destination().Raw()));
 					m_Devices.push_back(std::move(std::make_shared<Devices::IAQDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::OneTouch:
+					LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: 0x{:02x}", msg.Destination().Raw()));
 					m_Devices.push_back(std::move(std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::PDA:
+					LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", msg.Destination().Raw()));
 					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::SWG_Aquarite:
+					LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: 0x{:02x}", msg.Destination().Raw()));
 					m_Devices.push_back(std::move(std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 

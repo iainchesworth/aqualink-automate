@@ -11,63 +11,28 @@
 #include <boost/statechart/state_machine.hpp>
 #include <boost/statechart/transition.hpp>
 
+#include "logging/logging.h"
+#include "jandy/utility/screen_data_page_updater_context.h"
+#include "jandy/utility/screen_data_page_updater_evshift.h"
+#include "jandy/utility/screen_data_page_updater_evupdate.h"
+
+using namespace AqualinkAutomate::Logging;
+
 namespace AqualinkAutomate::Utility
 {
 
 	namespace ScreenDataPageUpdaterImpl
-	{
+	{		
+		class evSequenceStart : public boost::statechart::event<evSequenceStart> {};
+
+		class evSequenceEnd : public boost::statechart::event<evSequenceEnd> {};
+
+		class evClear : public boost::statechart::event<evClear> {};
+		
+		template<typename PAGE_TYPE> struct Tracking;
 
 		template<typename PAGE_TYPE>
-		class Context
-		{
-		public:
-			Context(PAGE_TYPE& page) :
-				Page(page)
-			{
-			};
-
-		public:
-			PAGE_TYPE& Page;
-		};
-
-		class evStart : public boost::statechart::event<evStart> {};
-		class evEnd : public boost::statechart::event<evEnd> {};
-
-		class evUpdating : public boost::statechart::event<evUpdating>
-		{
-		public:
-			using Line = std::pair<uint8_t, std::string>;
-
-		public:
-			evUpdating(uint8_t line_id, const std::string& line_text) :
-				m_Line({ line_id, line_text })
-			{
-			}
-
-			evUpdating(Line& line) :
-				m_Line(line)
-			{
-			}
-
-			Line::first_type Id() const
-			{
-				return m_Line.first;
-			}
-
-			Line::second_type Text() const
-			{
-				return m_Line.second;
-			}
-
-		private:
-			const Line m_Line;
-		};
-
-		template<typename PAGE_TYPE> struct Waiting;
-		template<typename PAGE_TYPE> struct Updating;
-
-		template<typename PAGE_TYPE>
-		struct StateMachine : boost::statechart::state_machine<StateMachine<PAGE_TYPE>, Waiting<PAGE_TYPE>>, Context<PAGE_TYPE>
+		struct StateMachine : boost::statechart::state_machine<StateMachine<PAGE_TYPE>, Tracking<PAGE_TYPE>>, Context<PAGE_TYPE>
 		{
 			StateMachine(PAGE_TYPE& page) :
 				Context<PAGE_TYPE>(page)
@@ -76,39 +41,67 @@ namespace AqualinkAutomate::Utility
 		};
 
 		template<typename PAGE_TYPE>
-		struct Waiting : boost::statechart::simple_state<Waiting<PAGE_TYPE>, StateMachine<PAGE_TYPE>>
-		{
-			typedef boost::statechart::custom_reaction<evStart> reactions;
-
-			boost::statechart::result react(const evStart& ev)
-			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
-
-				for (auto& line : ctx.Page)
-				{
-					line.clear();
-				}
-
-				return this->transit< Updating<PAGE_TYPE>>();
-			}
-		};
-
-		template<typename PAGE_TYPE>
-		struct Updating : boost::statechart::simple_state<Updating<PAGE_TYPE>, StateMachine<PAGE_TYPE>>
+		struct Tracking : boost::statechart::simple_state<Tracking<PAGE_TYPE>, StateMachine<PAGE_TYPE>>
 		{
 			typedef boost::mpl::list<
-				boost::statechart::custom_reaction<evUpdating>,
-				boost::statechart::transition<evEnd, Waiting<PAGE_TYPE>>
+				boost::statechart::custom_reaction<evSequenceStart>,
+				boost::statechart::custom_reaction<evSequenceEnd>,
+				boost::statechart::custom_reaction<evClear>,
+				boost::statechart::custom_reaction<evShift>,
+				boost::statechart::custom_reaction<evUpdate>
 			> reactions;
 
-			boost::statechart::result react(const evUpdating& ev)
+			//-----------------------------------------------------------------
+			//
+			//  Event Handlers
+			//
+			//-----------------------------------------------------------------
+
+			boost::statechart::result react(const evSequenceStart& ev)
+			{
+				return this->transit<Tracking<PAGE_TYPE>>();
+			}
+
+			boost::statechart::result react(const evSequenceEnd& ev)
+			{
+				return this->transit<Tracking<PAGE_TYPE>>();
+			}
+
+			boost::statechart::result react(const evClear& ev)
 			{
 				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
 
-				ctx.Page[ev.Id()] = ev.Text();
+				ctx.ClearLines();
 
-				return this->transit<Updating<PAGE_TYPE>>();
+				return this->transit<Tracking<PAGE_TYPE>>();
 			}
+
+			boost::statechart::result react(const evShift& ev)
+			{
+				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+
+				ctx.ShiftLines(ev.Direction(), ev.FirstLineId(), ev.LastLineId(), ev.NumberOfShifts());
+
+				return this->transit<Tracking<PAGE_TYPE>>();
+			}
+
+			boost::statechart::result react(const evUpdate& ev)
+			{
+				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+
+				///FIXME Validate the line id is within the size permitted.
+				if (ev.Id() >= ctx().size())
+				{
+					LogDebug(Channel::Devices, "Attempted to update a page line that is does not exist in the page.");
+				}
+				else
+				{
+					ctx()[ev.Id()] = ev.Text();
+				}
+
+				return this->transit<Tracking<PAGE_TYPE>>();
+			}
+
 		};
 
 	}

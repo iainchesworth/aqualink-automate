@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
+#include <utility>
 
 namespace AqualinkAutomate::Utility
 {
