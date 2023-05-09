@@ -21,8 +21,10 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_DataStart = 4;
 
 	public:
+		static const uint8_t PACKET_HEADER_LENGTH = 4;
+		static const uint8_t PACKET_FOOTER_LENGTH = 3;
 		static const uint8_t MAXIMUM_PACKET_LENGTH = 128;
-		static const uint8_t MINIMUM_PACKET_LENGTH = 7;
+		static const uint8_t MINIMUM_PACKET_LENGTH = PACKET_HEADER_LENGTH + PACKET_FOOTER_LENGTH;
 
 	public:
 		JandyMessage(const JandyMessageIds& msg_id);
@@ -48,6 +50,8 @@ namespace AqualinkAutomate::Messages
 		Devices::JandyDeviceType m_Destination;
 		uint8_t m_RawId;
 		uint8_t m_MessageLength;
+		uint8_t m_PayloadLength;
+		std::vector<uint8_t> m_Payload;
 		uint8_t m_ChecksumValue;
 	};
 

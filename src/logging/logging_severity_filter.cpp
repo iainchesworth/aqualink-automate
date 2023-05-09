@@ -12,6 +12,7 @@ namespace AqualinkAutomate::Logging
 	{
 		std::map<Channel, Severity> MinimumSeverityLevelPerChannel =
 		{
+			{Channel::Certificates, DEFAULT_SEVERITY},
 			{Channel::Devices, DEFAULT_SEVERITY},
 			{Channel::Equipment, DEFAULT_SEVERITY},
 			{Channel::Exceptions, DEFAULT_SEVERITY},
@@ -22,7 +23,8 @@ namespace AqualinkAutomate::Logging
 			{Channel::Profiling, DEFAULT_SEVERITY},
 			{Channel::Protocol, DEFAULT_SEVERITY},
 			{Channel::Serial, DEFAULT_SEVERITY},
-			{Channel::Signals, DEFAULT_SEVERITY}
+			{Channel::Signals, DEFAULT_SEVERITY},
+			{Channel::Web, DEFAULT_SEVERITY}
 		};
 
 		void SetGlobalFilterLevel(Severity severity)

@@ -10,8 +10,8 @@ namespace AqualinkAutomate::Devices
 
 	IAQDevice::IAQDevice(boost::asio::io_context& io_context, IDevice::DeviceId id) :
 		IDevice(io_context, id, IAQ_TIMEOUT_DURATION),
-		m_StatusPage(),
-		m_TableInfo(),
+		m_StatusPage(IAQ_STATUS_PAGE_LINES),
+		m_TableInfo(IAQ_MESSAGE_TABLE_LINES),
 		m_SM_PageUpdate(m_StatusPage),
 		m_SM_TableUpdate(m_TableInfo)
 	{

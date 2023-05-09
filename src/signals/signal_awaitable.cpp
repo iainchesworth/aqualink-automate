@@ -1,4 +1,5 @@
 #include <exception>
+#include <format>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
@@ -13,7 +14,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Signals
 {
-	boost::asio::awaitable<void> Signal_Awaitable(boost::asio::signal_set& signals)
+	void Signal_Awaitable(boost::asio::signal_set& signals)
 	{
 		try
 		{
@@ -28,25 +29,28 @@ namespace AqualinkAutomate::Signals
 			signals.add(SIGQUIT);
 #endif // SIGQUIT
 
-			auto [ec, signal_number] = co_await signals.async_wait(boost::asio::as_tuple(boost::asio::use_awaitable));
-			switch (ec.value())
-			{
-			case boost::system::errc::success:
-				LogTrace(Channel::Signals, "Successfully yield'd -> async_waited() for signal handler");
-				SignalHandler(signal_number);
-				break;
+			signals.async_wait([&](const boost::system::error_code& ec, int signal_number)
+				{
+					switch (ec.value())
+					{
+					case boost::system::errc::success:
+						LogTrace(Channel::Signals, "Successfully yield'd -> async_waited() for signal handler");
+						SignalHandler(signal_number);
+						break;
 
-			case boost::system::errc::operation_canceled:
-				LogDebug(Channel::Signals, "Signal handler's aysnc_wait was cancelled.");
-			default:
-				LogError(Channel::Signals, std::format("Error occured in signal handler.  Error Code: {}", ec.value()));
-				LogDebug(Channel::Signals, std::format("Error message: {}", ec.message()));
-				break;
-			}
+					case boost::system::errc::operation_canceled:
+						LogDebug(Channel::Signals, "Signal handler's aysnc_wait was cancelled.");
+					default:
+						LogError(Channel::Signals, std::format("Error occured in signal handler.  Error Code: {}", ec.value()));
+						LogDebug(Channel::Signals, std::format("Error message: {}", ec.message()));
+						break;
+					}
+				}
+			);
 		}
 		catch (const std::exception& ex)
 		{
-			//FIXME
+			LogError(Channel::Signals, std::format("Exception occured while attempting to wait for signal handler: message -> {}", ex.what()));
 		}
 	}
 }

@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Serial
 	{
 		if (nullptr == serial_port)
 		{
-			///FIXME
+			LogWarning(Channel::Serial, "Attempted to configure a serial port object that has not been created");
 		}
 		else if (serial_port->is_open())
 		{
@@ -31,7 +31,7 @@ namespace AqualinkAutomate::Serial
 
 			LogDebug(Channel::Serial, std::format("Configuring serial device: {}", settings.serial.serial_port));
 			serial_port->set_option(boost::asio::serial_port::baud_rate(9600), ec);
-			serial_port->set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::even), ec);
+			serial_port->set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none), ec);
 			serial_port->set_option(boost::asio::serial_port::character_size(8), ec);
 			serial_port->set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one), ec);
 			serial_port->set_option(boost::asio::serial_port::flow_control(boost::asio::serial_port::flow_control::none), ec);

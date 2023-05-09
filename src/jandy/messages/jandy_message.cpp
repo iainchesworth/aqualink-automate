@@ -1,4 +1,6 @@
 #include <format>
+#include <ranges>
+#include <vector>
 
 #include <magic_enum.hpp>
 
@@ -13,6 +15,8 @@ namespace AqualinkAutomate::Messages
 		m_Destination(), 
 		m_RawId(0),
 		m_MessageLength(0),
+		m_PayloadLength(0),
+		m_Payload(),
 		m_ChecksumValue(0)
 	{
 	}
@@ -63,7 +67,28 @@ namespace AqualinkAutomate::Messages
 			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(message_bytes[Index_DestinationId])));
 			m_RawId = static_cast<uint8_t>(message_bytes[Index_MessageType]);
 			m_MessageLength = message_bytes.size_bytes();
-			m_ChecksumValue = static_cast<uint8_t>(message_bytes[m_MessageLength - 3]);
+			m_PayloadLength = m_MessageLength - MINIMUM_PACKET_LENGTH;
+			m_ChecksumValue = static_cast<uint8_t>(message_bytes[m_MessageLength - PACKET_FOOTER_LENGTH]);
+
+			auto payload_bytes = message_bytes.subspan(PACKET_HEADER_LENGTH, message_bytes.size() - MINIMUM_PACKET_LENGTH);
+
+			bool last_byte_was_0x10 = false;
+
+			std::vector filtered_data(payload_bytes.begin(), payload_bytes.end());
+			std::erase_if(
+				filtered_data,
+				[&last_byte_was_0x10](std::byte current_byte) -> bool
+				{
+					bool should_remove = last_byte_was_0x10 && current_byte == std::byte{ 0x00 };
+					last_byte_was_0x10 = current_byte == std::byte{ 0x10 };
+					return should_remove;
+				}
+			);
+
+			for (auto& elem : filtered_data)
+			{
+				m_Payload.push_back(static_cast<uint8_t>(elem));
+			}
 		}
 	}
 

@@ -4,6 +4,7 @@ namespace AqualinkAutomate::Logging
 {
 	enum class Channel
 	{
+		Certificates,
 		Devices,
 		Equipment,
 		Exceptions,
@@ -14,7 +15,8 @@ namespace AqualinkAutomate::Logging
 		Profiling,
 		Protocol,
 		Serial,
-		Signals
+		Signals,
+		Web
 	};
 }
 // namespace AqualinkAutomate::Logging

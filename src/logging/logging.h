@@ -21,6 +21,9 @@ namespace AqualinkAutomate::Logging
 		{
 			switch (channel)
 			{
+			case Channel::Certificates:
+				return GlobalLogger_Certificates::get();
+
 			case Channel::Devices:
 				return GlobalLogger_Devices::get();
 
@@ -53,6 +56,9 @@ namespace AqualinkAutomate::Logging
 
 			case Channel::Signals:
 				return GlobalLogger_Signals::get();
+
+			case Channel::Web:
+				return GlobalLogger_Web::get();
 
 			default:
 				std::unreachable();

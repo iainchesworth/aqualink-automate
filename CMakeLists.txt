@@ -19,8 +19,11 @@ option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "Enable profiling" ON)
 
 find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options system unit_test_framework)
+find_package(Crow CONFIG REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 #------------------------------------------------------------------------------
 #
@@ -47,10 +50,18 @@ endif(ENABLE_PROFILING)
 
 add_library(
 	libaqualink-automate
+	src/certificates/certificate_pemformat.cpp 
+	src/certificates/certificate_staticdata.cpp 
+	src/certificates/certificate_management.cpp 
+	src/certificates/certificate_verification.cpp 
 	src/developer/mock_serial_port.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
-	src/exceptions/exception_optionshelporversion.cpp	
+	src/exceptions/exception_optionshelporversion.cpp 
+	src/exceptions/exception_webserver.cpp 
+	src/http/crow_custom_logger.cpp 
+	src/http/webroute_jandyequipment.cpp 
+	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp
 	src/interfaces/igenerator.cpp
@@ -58,11 +69,13 @@ add_library(
 	src/interfaces/imessagesignal.cpp
 	src/interfaces/iprofiler.cpp
 	src/interfaces/iprofilingunit.cpp
-	src/interfaces/iserialport.cpp
 	src/interfaces/iserializable.cpp
+	src/interfaces/iserialport.cpp
+	src/interfaces/iwebroute.cpp 
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_device_types.cpp
+	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
@@ -104,10 +117,12 @@ add_library(
 	src/jandy/messages/jandy_message_unknown.cpp
 	src/jandy/types/jandy_types.cpp
 	src/jandy/utility/screen_data_page.cpp
+	src/jandy/utility/screen_data_page_processor.cpp 
 	src/jandy/utility/screen_data_page_updater.cpp
 	src/jandy/utility/screen_data_page_updater_context.cpp
 	src/jandy/utility/screen_data_page_updater_evshift.cpp
 	src/jandy/utility/screen_data_page_updater_evupdate.cpp
+	src/jandy/utility/string_manipulation.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -155,7 +170,7 @@ add_library(
 	src/utility/array_standard_formatter.cpp
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	
-	src/utility/value_debouncer.cpp
+	src/utility/value_debouncer.cpp 
 )
 
 if(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
@@ -197,6 +212,7 @@ target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 target_compile_definitions(
 	libaqualink-automate 
 	PUBLIC 
+	CROW_ENABLE_SSL 
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
 
@@ -207,7 +223,10 @@ target_include_directories(
 	SYSTEM 
 	PUBLIC 
 	${Boost_INCLUDE_DIRS} 
+	${Crow_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
+	${nlohmann_json_INCLUDE_DIRS}
+	${OpenSSL_INCLUDE_DIRS}
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
@@ -235,8 +254,12 @@ target_link_libraries(
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
+	Crow::Crow
 	magic_enum::magic_enum
 	mqtt_cpp_iface::mqtt_cpp_iface 
+	nlohmann_json::nlohmann_json
+	OpenSSL::SSL 
+	OpenSSL::Crypto
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
 	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
@@ -272,8 +295,12 @@ if(ENABLE_TESTS)
 		Boost::log_setup 
 		Boost::program_options 
 		Boost::unit_test_framework 
+		Crow::Crow
 		magic_enum::magic_enum
-	mqtt_cpp_iface::mqtt_cpp_iface 
+		mqtt_cpp_iface::mqtt_cpp_iface 
+		nlohmann_json::nlohmann_json
+		OpenSSL::SSL 
+		OpenSSL::Crypto
 		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
 		$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>

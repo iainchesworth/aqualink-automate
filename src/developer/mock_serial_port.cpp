@@ -94,7 +94,8 @@ namespace AqualinkAutomate::Developer
 		m_DeviceName.clear();
 		m_IsOpen = false;
 		m_MockData = true;
-		m_File.close();
+
+		if (m_File && m_File.is_open()) m_File.close();
 	}
 
 	void mock_serial_port::cancel()

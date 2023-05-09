@@ -71,7 +71,7 @@ namespace AqualinkAutomate::Utility
 			{
 				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
 
-				ctx.ClearLines();
+				ctx().Clear();
 
 				return this->transit<Tracking<PAGE_TYPE>>();
 			}
@@ -80,7 +80,7 @@ namespace AqualinkAutomate::Utility
 			{
 				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
 
-				ctx.ShiftLines(ev.Direction(), ev.FirstLineId(), ev.LastLineId(), ev.NumberOfShifts());
+				ctx().ShiftLines(ev.Direction(), ev.FirstLineId(), ev.LastLineId(), ev.NumberOfShifts());
 
 				return this->transit<Tracking<PAGE_TYPE>>();
 			}
@@ -90,7 +90,7 @@ namespace AqualinkAutomate::Utility
 				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
 
 				///FIXME Validate the line id is within the size permitted.
-				if (ev.Id() >= ctx().size())
+				if (ev.Id() >= ctx().Size())
 				{
 					LogDebug(Channel::Devices, "Attempted to update a page line that is does not exist in the page.");
 				}

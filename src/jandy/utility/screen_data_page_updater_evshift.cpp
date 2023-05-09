@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 {
 
-	evShift::evShift(ShiftDirections direction, uint8_t first_line, uint8_t last_line, uint8_t number_of_shifts) :
+	evShift::evShift(ScreenDataPage::ShiftDirections direction, uint8_t first_line, uint8_t last_line, uint8_t number_of_shifts) :
 		m_Direction(direction),
 		m_FirstLineId(first_line),
 		m_LastLineId(last_line),
@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 	{
 	}
 
-	ShiftDirections ScreenDataPageUpdaterImpl::evShift::Direction() const
+	ScreenDataPage::ShiftDirections ScreenDataPageUpdaterImpl::evShift::Direction() const
 	{
 		return m_Direction;
 	}

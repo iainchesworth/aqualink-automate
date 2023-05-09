@@ -5,7 +5,7 @@
 
 #include <boost/statechart/event.hpp>
 
-#include "jandy/utility/screen_data_page_updater_context.h"
+#include "jandy/utility/screen_data_page.h"
 
 namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 {
@@ -13,16 +13,16 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 	class evShift : public boost::statechart::event<evShift>
 	{
 	public:
-		evShift(ShiftDirections direction, uint8_t first_line, uint8_t last_line, uint8_t number_of_shifts);
+		evShift(ScreenDataPage::ShiftDirections direction, uint8_t first_line, uint8_t last_line, uint8_t number_of_shifts);
 
 	public:
-		ShiftDirections Direction() const;
+		ScreenDataPage::ShiftDirections Direction() const;
 		uint8_t FirstLineId() const;
 		uint8_t LastLineId() const;
 		uint8_t NumberOfShifts() const;
 
 	public:
-		const ShiftDirections m_Direction;
+		const ScreenDataPage::ShiftDirections m_Direction;
 		const uint8_t m_FirstLineId;
 		const uint8_t m_LastLineId;
 		const uint8_t m_NumberOfShifts;

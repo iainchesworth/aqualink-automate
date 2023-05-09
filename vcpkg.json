@@ -16,8 +16,11 @@
     "boost-system",
     "boost-test",
     "boost-uuid",
+    "crow",
     "magic-enum",
     "mqtt-cpp",
+    "nlohmann-json",
+    "openssl",
     "tracy"
   ]
 }

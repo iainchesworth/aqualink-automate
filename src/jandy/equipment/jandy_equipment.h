@@ -13,12 +13,22 @@
 #include "jandy/generator/jandy_message_generator.h"
 #include "protocol/protocol_handler.h"
 
+// Forward declarations
+namespace AqualinkAutomate::HTTP
+{
+	class WebRoute_JandyEquipment;
+}
+// namespace AqualinkAutomate::HTTP
+
 using namespace AqualinkAutomate;
 
 namespace AqualinkAutomate::Equipment
 {
+
 	class JandyEquipment : public Interfaces::IEquipment<Protocol::ProtocolHandler<Generators::JandyMessageGenerator>>
 	{
+		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment;
+
 	public:
 		JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler);
 

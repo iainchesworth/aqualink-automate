@@ -8,6 +8,7 @@
 
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/iaq_device.h"
+#include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/pda_device.h"
 #include "jandy/equipment/jandy_equipment.h"
@@ -81,6 +82,11 @@ namespace AqualinkAutomate::Equipment
 				case Devices::DeviceClasses::PDA:
 					LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", msg.Destination().Raw()));
 					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.Destination().Raw())));
+					break;
+
+				case Devices::DeviceClasses::RS_Keypad:
+					LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: 0x{:02x}", msg.Destination().Raw()));
+					m_Devices.push_back(std::move(std::make_shared<Devices::KeypadDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::SWG_Aquarite:
