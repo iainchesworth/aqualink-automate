@@ -7,6 +7,7 @@
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/formatters/jandy_message_formatters.h"
 #include "jandy/generator/jandy_message_generator.h"
+#include "jandy/generator/jandy_rawdata_generator.h"
 #include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_constants.h"

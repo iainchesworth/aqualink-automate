@@ -73,6 +73,7 @@ add_library(
 	src/interfaces/iserialport.cpp
 	src/interfaces/iwebroute.cpp 
 	src/jandy/devices/aquarite_device.cpp 
+	src/jandy/devices/emulated_onetouch_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/keypad_device.cpp 
@@ -85,6 +86,7 @@ add_library(
 	src/jandy/factories/jandy_message_factory_registration.cpp
 	src/jandy/formatters/jandy_message_formatters.cpp
 	src/jandy/generator/jandy_message_generator.cpp
+	src/jandy/generator/jandy_rawdata_generator.cpp 
 	src/jandy/jandy.cpp
 	src/jandy/messages/aquarite/aquarite_message.cpp
 	src/jandy/messages/aquarite/aquarite_message_getid.cpp

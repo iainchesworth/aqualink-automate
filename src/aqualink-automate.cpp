@@ -13,6 +13,7 @@
 #include "http/crow_custom_logger.h"
 #include "http/webroute_jandyequipment.h"
 #include "jandy/jandy.h"
+#include "jandy/devices/emulated_onetouch_device.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
@@ -102,12 +103,17 @@ int main(int argc, char *argv[])
         //---------------------------------------------------------------------
 
         Generators::JandyMessageGenerator jandy_message_generator;
+        Generators::JandyRawDataGenerator jandy_rawdata_generator;
 
-        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator);
+        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator, jandy_rawdata_generator);
         boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
 
         Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler);
         CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { jandy_equipment.Stop(); } });
+
+        auto onetouch_emulated = std::make_unique<Devices::OneTouchDevice_Emulated>(io_context, 0x41);
+        jandy_equipment.AddEmulatedDevice(std::move(onetouch_emulated));
+
         //FIXME -> blocks coroutines!!!  boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 
         //---------------------------------------------------------------------

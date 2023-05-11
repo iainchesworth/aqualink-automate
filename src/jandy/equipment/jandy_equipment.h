@@ -11,6 +11,7 @@
 #include "interfaces/idevice.h"
 #include "interfaces/iequipment.h"
 #include "jandy/generator/jandy_message_generator.h"
+#include "jandy/generator/jandy_rawdata_generator.h"
 #include "protocol/protocol_handler.h"
 
 // Forward declarations
@@ -25,7 +26,7 @@ using namespace AqualinkAutomate;
 namespace AqualinkAutomate::Equipment
 {
 
-	class JandyEquipment : public Interfaces::IEquipment<Protocol::ProtocolHandler<Generators::JandyMessageGenerator>>
+	class JandyEquipment : public Interfaces::IEquipment<Protocol::ProtocolHandler<Generators::JandyMessageGenerator, Generators::JandyRawDataGenerator>>
 	{
 		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment;
 
@@ -35,12 +36,15 @@ namespace AqualinkAutomate::Equipment
 	private:
 		auto IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id);
 
+	public:
+		bool AddEmulatedDevice(std::unique_ptr<Interfaces::IDevice> device);
+
 	private:
 		void StopAndCleanUp() override;
 
 	private:
 		boost::asio::io_context& m_IOContext;
-		std::vector<std::shared_ptr<Interfaces::IDevice>> m_Devices;
+		std::vector<std::unique_ptr<Interfaces::IDevice>> m_Devices;
 		std::unordered_set<uint8_t> m_IdentifiedDeviceIds;
 		std::unordered_map<Messages::JandyMessageIds, uint32_t> m_MessageStats;
 	};

@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Generators
 {
 
 	JandyMessageGenerator::JandyMessageGenerator() :
-		Interfaces::IGenerator<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>()
+		Interfaces::IGenerator_RawDataToMessage<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>()
 	{
 		static_cast<void>(Factory::ProfilerFactory::Instance().Get()->CreateDomain("JandyMessageGenerator"));
 	}

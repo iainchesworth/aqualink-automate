@@ -71,27 +71,27 @@ namespace AqualinkAutomate::Equipment
 				{
 				case Devices::DeviceClasses::IAQ:
 					LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: 0x{:02x}", msg.Destination().Raw()));
-					m_Devices.push_back(std::move(std::make_shared<Devices::IAQDevice>(m_IOContext, msg.Destination().Raw())));
+					m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::OneTouch:
 					LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: 0x{:02x}", msg.Destination().Raw()));
-					m_Devices.push_back(std::move(std::make_shared<Devices::OneTouchDevice>(m_IOContext, msg.Destination().Raw())));
+					m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::PDA:
 					LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", msg.Destination().Raw()));
-					m_Devices.push_back(std::move(std::make_shared<Devices::PDADevice>(m_IOContext, msg.Destination().Raw())));
+					m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::RS_Keypad:
 					LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: 0x{:02x}", msg.Destination().Raw()));
-					m_Devices.push_back(std::move(std::make_shared<Devices::KeypadDevice>(m_IOContext, msg.Destination().Raw())));
+					m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				case Devices::DeviceClasses::SWG_Aquarite:
 					LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: 0x{:02x}", msg.Destination().Raw()));
-					m_Devices.push_back(std::move(std::make_shared<Devices::AquariteDevice>(m_IOContext, msg.Destination().Raw())));
+					m_Devices.push_back(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, msg.Destination().Raw())));
 					break;
 
 				default:
@@ -154,13 +154,32 @@ namespace AqualinkAutomate::Equipment
 
 	auto JandyEquipment::IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id)
 	{
-		auto device_it = std::find_if(m_Devices.cbegin(), m_Devices.cend(), [device_id](const std::shared_ptr<Interfaces::IDevice> existing_device)
+		auto const& device_it = std::find_if(m_Devices.cbegin(), m_Devices.cend(), [device_id](const std::unique_ptr<Interfaces::IDevice>& existing_device)
 			{
 				return (existing_device->Id() == device_id);
 			}
 		);
 
 		return device_it;
+	}
+
+	bool JandyEquipment::AddEmulatedDevice(std::unique_ptr<Interfaces::IDevice> device)
+	{
+		bool added_device = false;
+
+		if (m_Devices.end() != IsDeviceRegistered(device->Id()))
+		{
+			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id (0x{:02x}) already registered", device->Id()));
+		}
+		else
+		{
+			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: 0x{:02x}", device->Id()));
+
+			m_IdentifiedDeviceIds.insert(device->Id());
+			m_Devices.push_back(std::move(device));
+		}
+
+		return added_device;
 	}
 
 	void JandyEquipment::StopAndCleanUp()

@@ -102,13 +102,13 @@ namespace AqualinkAutomate::Messages
 		{
 			LogWarning(Channel::Messages, "Failed during JandyMessage_Status deserialising; packet was not validly formatted");
 		}
-		else if (JandyMessage::Deserialize(message_bytes); (STATUS_PAYLOAD_LENGTH != m_PayloadLength) || (STATUS_PAYLOAD_LENGTH != m_Payload.size()))
+		else if (JandyMessage::Deserialize(message_bytes); STATUS_PAYLOAD_LENGTH != m_Payload.size())
 		{
-			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {} vs {}", STATUS_PAYLOAD_LENGTH, m_PayloadLength, m_Payload.size()));
+			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, m_Payload.size()));
 		}
 		else
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", m_PayloadLength));
+			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", m_Payload.size()));
 
 			m_Payload_Byte0 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte0*>(&(m_Payload[0])));
 			m_Payload_Byte1 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte1*>(&(m_Payload[1])));
@@ -120,7 +120,7 @@ namespace AqualinkAutomate::Messages
 				Channel::Messages, 
 				std::format(
 					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 
-					m_PayloadLength, 
+					m_Payload.size(),
 					message_bytes.size_bytes(), 
 					m_Payload[0], 
 					m_Payload[0],

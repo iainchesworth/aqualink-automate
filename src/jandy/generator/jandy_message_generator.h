@@ -19,13 +19,13 @@
 namespace AqualinkAutomate::Generators
 {
 
-	class JandyMessageGenerator : public Interfaces::IGenerator<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>
+	class JandyMessageGenerator : public Interfaces::IGenerator_RawDataToMessage<Interfaces::ISerialPort::DataType, Types::JandyExpectedMessageType>
 	{
 	public:
 		JandyMessageGenerator();
 
 	public:
-		virtual boost::asio::awaitable<Types::JandyExpectedMessageType> GenerateMessageFromRawData();
+		virtual boost::asio::awaitable<Types::JandyExpectedMessageType> GenerateMessageFromRawData() final;
 
 	private:
 		bool BufferValidation_ContainsMoreThanZeroBytes() const;

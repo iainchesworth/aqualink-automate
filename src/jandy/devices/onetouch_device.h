@@ -3,7 +3,10 @@
 #include <chrono>
 #include <list>
 
+#include <boost/asio/io_context.hpp>
+
 #include "interfaces/idevice.h"
+#include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
 #include "jandy/messages/pda/pda_message_clear.h"
@@ -28,8 +31,9 @@ namespace AqualinkAutomate::Devices
 		virtual ~OneTouchDevice();
 
 	private:
-		void Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg);
 		void Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg);
+		void Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg);
+		void Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg);
 		void Slot_OneTouch_Clear(const Messages::PDAMessage_Clear& msg);
 		void Slot_OneTouch_Highlight(const Messages::PDAMessage_Highlight& msg);
 		void Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg);

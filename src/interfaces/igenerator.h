@@ -32,11 +32,22 @@ namespace AqualinkAutomate::Interfaces
 			m_SerialData.insert(m_SerialData.end(), read_buffer.begin(), read_buffer.end());
 		}
 
-	public: 
-		virtual boost::asio::awaitable<EXPECTED_MESSAGE_TYPE> GenerateMessageFromRawData() = 0;
-
 	protected:
 		std::vector<SERIAL_DATA_TYPE> m_SerialData;
+	};
+
+	template<typename SERIAL_DATA_TYPE, typename EXPECTED_MESSAGE_TYPE>
+	class IGenerator_RawDataToMessage : public IGenerator<SERIAL_DATA_TYPE, EXPECTED_MESSAGE_TYPE>
+	{
+	public:
+		virtual boost::asio::awaitable<EXPECTED_MESSAGE_TYPE> GenerateMessageFromRawData() = 0;
+	};
+
+	template<typename SERIAL_DATA_TYPE, typename MESSAGE_TYPE>
+	class IGenerator_MessageToRawData
+	{
+	public:
+		virtual boost::asio::awaitable<void> GenerateRawDataFromMessage(const MESSAGE_TYPE& msg) = 0;
 	};
 
 }

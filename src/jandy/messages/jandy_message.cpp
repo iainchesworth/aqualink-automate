@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 		m_Destination(), 
 		m_RawId(0),
 		m_MessageLength(0),
-		m_PayloadLength(0),
 		m_Payload(),
 		m_ChecksumValue(0)
 	{
@@ -67,7 +66,6 @@ namespace AqualinkAutomate::Messages
 			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(message_bytes[Index_DestinationId])));
 			m_RawId = static_cast<uint8_t>(message_bytes[Index_MessageType]);
 			m_MessageLength = message_bytes.size_bytes();
-			m_PayloadLength = m_MessageLength - MINIMUM_PACKET_LENGTH;
 			m_ChecksumValue = static_cast<uint8_t>(message_bytes[m_MessageLength - PACKET_FOOTER_LENGTH]);
 
 			auto payload_bytes = message_bytes.subspan(PACKET_HEADER_LENGTH, message_bytes.size() - MINIMUM_PACKET_LENGTH);

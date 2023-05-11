@@ -50,7 +50,6 @@ namespace AqualinkAutomate::Messages
 		Devices::JandyDeviceType m_Destination;
 		uint8_t m_RawId;
 		uint8_t m_MessageLength;
-		uint8_t m_PayloadLength;
 		std::vector<uint8_t> m_Payload;
 		uint8_t m_ChecksumValue;
 	};

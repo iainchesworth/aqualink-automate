@@ -6,6 +6,7 @@
 
 #include "logging/logging.h"
 #include "jandy/devices/onetouch_device.h"
+#include "jandy/messages/jandy_message_ack.h"
 #include "jandy/utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -35,8 +36,9 @@ namespace AqualinkAutomate::Devices
 	{
 		m_DisplayedPageUpdater.initiate();
 
-		Messages::JandyMessage_Status::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_Status, this, boost::placeholders::_1));
 		Messages::JandyMessage_MessageLong::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_MessageLong, this, boost::placeholders::_1));
+		Messages::JandyMessage_Probe::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_Probe, this, boost::placeholders::_1));
+		Messages::JandyMessage_Status::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_Status, this, boost::placeholders::_1));
 		Messages::PDAMessage_Clear::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_Clear, this, boost::placeholders::_1));
 		Messages::PDAMessage_Highlight::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_Highlight, this, boost::placeholders::_1));
 		Messages::PDAMessage_HighlightChars::GetSignal()->connect(boost::bind(&OneTouchDevice::Slot_OneTouch_HighlightChars, this, boost::placeholders::_1));
@@ -45,14 +47,6 @@ namespace AqualinkAutomate::Devices
 
 	OneTouchDevice::~OneTouchDevice()
 	{
-	}
-
-	void OneTouchDevice::Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg)
-	{
-		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Status signal.");
-
-		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
 	}
 
 	void OneTouchDevice::Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg)
@@ -67,6 +61,22 @@ namespace AqualinkAutomate::Devices
 		{
 			m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
 		}
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
+	}
+
+	void OneTouchDevice::Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg)
+	{
+		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Probe signal.");
+
+		// Kick the watchdog to indicate that this device is alive.
+		IDevice::KickTimeoutWatchdog();
+	}
+
+	void OneTouchDevice::Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg)
+	{
+		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Status signal.");
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
