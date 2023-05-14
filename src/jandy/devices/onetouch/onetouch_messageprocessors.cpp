@@ -6,7 +6,6 @@
 #include "logging/logging.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/aquarite/aquarite_message_getid.h"
 
 using namespace AqualinkAutomate::Logging;
 

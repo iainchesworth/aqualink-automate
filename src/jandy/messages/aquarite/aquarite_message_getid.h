@@ -6,10 +6,8 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "interfaces/imessagesignal_send.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
-#include "jandy/publisher/jandy_message_publisher.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -21,7 +19,7 @@ namespace AqualinkAutomate::Messages
 		Unknown = 0xFF
 	};
 
-	class AquariteMessage_GetId : public AquariteMessage, public Interfaces::IMessageSignalRecv<AquariteMessage_GetId>, public Interfaces::IMessageSignalSend<AquariteMessage_GetId, Publishers::JandyMessagePublisher>
+	class AquariteMessage_GetId : public AquariteMessage, public Interfaces::IMessageSignalRecv<AquariteMessage_GetId>
 	{
 	public:
 		static const uint8_t Index_RequestedDataFlag = 4;

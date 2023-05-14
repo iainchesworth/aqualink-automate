@@ -24,7 +24,6 @@ namespace AqualinkAutomate::Messages
 	AquariteMessage_GetId::AquariteMessage_GetId(PanelDataTypes requested_panel_data) :
 		AquariteMessage(JandyMessageIds::AQUARITE_GetId),
 		Interfaces::IMessageSignalRecv<AquariteMessage_GetId>(),
-		Interfaces::IMessageSignalSend<AquariteMessage_GetId, Publishers::JandyMessagePublisher>(),
 		m_RequestedPanelData(requested_panel_data)
 	{
 	}
