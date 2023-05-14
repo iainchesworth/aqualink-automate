@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_StartUp::IAQMessage_StartUp() : 
 		IAQMessage(JandyMessageIds::IAQ_StartUp),
-		Interfaces::IMessageSignal<IAQMessage_StartUp>()
+		Interfaces::IMessageSignalRecv<IAQMessage_StartUp>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_StartUp::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_StartUp::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

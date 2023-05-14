@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
 		IAQMessage(JandyMessageIds::IAQ_MessageLong),
-		Interfaces::IMessageSignal<IAQMessage_MessageLong>()
+		Interfaces::IMessageSignalRecv<IAQMessage_MessageLong>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_MessageLong::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_MessageLong::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

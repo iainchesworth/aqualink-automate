@@ -3,8 +3,9 @@
 #include <cstddef>
 #include <string>
 #include <span>
+#include <vector>
 
-#include "interfaces/imessagesignal.h"
+#include "interfaces/imessagesignal_recv.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
 
@@ -83,7 +84,7 @@ namespace AqualinkAutomate::Messages
 	}
 	// namespace Payload
 
-	class JandyMessage_Status : public JandyMessage, public Interfaces::IMessageSignal<JandyMessage_Status>
+	class JandyMessage_Status : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Status>
 	{
 		static const uint8_t STATUS_PAYLOAD_LENGTH = 5;
 
@@ -109,7 +110,7 @@ namespace AqualinkAutomate::Messages
 		virtual std::string ToString() const override;
 
 	public:
-		virtual void Serialize(std::span<const std::byte>& message_bytes) const override;
+		virtual void Serialize(std::vector<uint8_t>& message_bytes) const override;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
 
 	private:

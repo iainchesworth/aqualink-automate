@@ -66,6 +66,21 @@ namespace AqualinkAutomate::Devices
 		return *this;
 	}
 
+	bool JandyDeviceType::operator==(const JandyDeviceType& other) const 
+	{
+		return m_RawId == other.m_RawId;
+	}
+
+	bool JandyDeviceType::operator!=(const JandyDeviceType& other) const
+	{
+		return !(*this == other);
+	}
+
+	uint8_t JandyDeviceType::operator()() const
+	{
+		return m_RawId;
+	}
+
 	DeviceClasses JandyDeviceType::Class() const
 	{
 		return m_DeviceClass;

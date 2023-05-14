@@ -13,7 +13,7 @@
 #include "http/crow_custom_logger.h"
 #include "http/webroute_jandyequipment.h"
 #include "jandy/jandy.h"
-#include "jandy/devices/emulated_onetouch_device.h"
+#include "jandy/devices/onetouch_device.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
@@ -111,9 +111,33 @@ int main(int argc, char *argv[])
         Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler);
         CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { jandy_equipment.Stop(); } });
 
-        auto onetouch_emulated = std::make_unique<Devices::OneTouchDevice_Emulated>(io_context, 0x41);
-        jandy_equipment.AddEmulatedDevice(std::move(onetouch_emulated));
+        if (!settings.emulated_device.disable_emulation)
+        {
+            LogInfo(
+                Channel::Main, 
+                std::format(
+                    "Enabling controller emulation; type: {}, id: 0x{:02x}", 
+                    magic_enum::enum_name(settings.emulated_device.device_type),
+                    settings.emulated_device.device_id.Raw()
+                )
+            );
 
+            std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
+            switch (settings.emulated_device.device_type)
+            {
+            case Devices::JandyEmulatedDeviceTypes::OneTouch:
+                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, Devices::JandyDeviceOperatingModes::Emulated);
+                jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
+                break;
+
+            case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
+            case Devices::JandyEmulatedDeviceTypes::IAQ:
+            case Devices::JandyEmulatedDeviceTypes::PDA:
+            case Devices::JandyEmulatedDeviceTypes::Unknown:
+            default:
+                LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
+            }
+        }
         //FIXME -> blocks coroutines!!!  boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
 
         //---------------------------------------------------------------------

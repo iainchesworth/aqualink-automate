@@ -1,4 +1,5 @@
 #include <format>
+#include <functional>
 
 #include "logging/logging.h"
 #include "jandy/devices/iaq_device.h"
@@ -8,8 +9,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	IAQDevice::IAQDevice(boost::asio::io_context& io_context, IDevice::DeviceId id) :
-		IDevice(io_context, id, IAQ_TIMEOUT_DURATION),
+	IAQDevice::IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
+		JandyDevice(io_context, device_id, IAQ_TIMEOUT_DURATION),
 		m_StatusPage(IAQ_STATUS_PAGE_LINES),
 		m_TableInfo(IAQ_MESSAGE_TABLE_LINES),
 		m_SM_PageUpdate(m_StatusPage),
@@ -18,16 +19,16 @@ namespace AqualinkAutomate::Devices
 		m_SM_PageUpdate.initiate();
 		m_SM_TableUpdate.initiate();
 
-		Messages::IAQMessage_ControlReady::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_ControlReady, this, boost::placeholders::_1));
-		Messages::IAQMessage_MessageLong::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_MessageLong, this, boost::placeholders::_1));
-		Messages::IAQMessage_PageButton::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_PageButton, this, boost::placeholders::_1));
-		Messages::IAQMessage_PageContinue::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_PageContinue, this, boost::placeholders::_1));
-		Messages::IAQMessage_PageEnd::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_PageEnd, this, boost::placeholders::_1));
-		Messages::IAQMessage_PageMessage::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_PageMessage, this, boost::placeholders::_1));
-		Messages::IAQMessage_PageStart::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_PageStart, this, boost::placeholders::_1));
-		Messages::IAQMessage_Poll::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_Poll, this, boost::placeholders::_1));
-		Messages::IAQMessage_StartUp::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_StartUp, this, boost::placeholders::_1));
-		Messages::IAQMessage_TableMessage::GetSignal()->connect(boost::bind(&IAQDevice::Slot_IAQ_TableMessage, this, boost::placeholders::_1));
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_ControlReady>(std::bind(&IAQDevice::Slot_IAQ_ControlReady, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_MessageLong>(std::bind(&IAQDevice::Slot_IAQ_MessageLong, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageButton>(std::bind(&IAQDevice::Slot_IAQ_PageButton, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageContinue>(std::bind(&IAQDevice::Slot_IAQ_PageContinue, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageEnd>(std::bind(&IAQDevice::Slot_IAQ_PageEnd, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageMessage>(std::bind(&IAQDevice::Slot_IAQ_PageMessage, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageStart>(std::bind(&IAQDevice::Slot_IAQ_PageStart, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_Poll>(std::bind(&IAQDevice::Slot_IAQ_Poll, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_StartUp>(std::bind(&IAQDevice::Slot_IAQ_StartUp, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TableMessage>(std::bind(&IAQDevice::Slot_IAQ_TableMessage, this, std::placeholders::_1), device_id());
 	}
 
 	IAQDevice::~IAQDevice()

@@ -11,6 +11,7 @@ namespace AqualinkAutomate::Utility
 {
 	enum class ScreenDataPageTypes
 	{
+		Page_Home,
 		Page_OneTouch,
 		Page_System,
 		Page_EquipmentStatus,

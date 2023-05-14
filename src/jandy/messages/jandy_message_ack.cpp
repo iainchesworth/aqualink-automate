@@ -4,7 +4,9 @@
 
 #include "logging/logging.h"
 #include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_constants.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "jandy/utility/jandy_checksum.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -15,13 +17,14 @@ namespace AqualinkAutomate::Messages
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Ack> JandyMessage_Ack::g_JandyMessage_Ack_Registration(JandyMessageIds::Ack);
 
 	JandyMessage_Ack::JandyMessage_Ack() :
-		JandyMessage_Ack(AckTypes::V2_Normal, 0x00)
+		JandyMessage_Ack(AckTypes::V1_Normal, 0x00)
 	{
 	}
 
 	JandyMessage_Ack::JandyMessage_Ack(AckTypes ack_type, uint8_t command) :
 		JandyMessage(JandyMessageIds::Ack),
-		Interfaces::IMessageSignal<JandyMessage_Ack>(),
+		Interfaces::IMessageSignalRecv<JandyMessage_Ack>(),
+		Interfaces::IMessageSignalSend<JandyMessage_Ack, Publishers::JandyMessagePublisher>(),
 		m_AckType(ack_type),
 		m_Command(command)
 	{
@@ -47,8 +50,23 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_Ack::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage_Ack::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
+		message_bytes =
+		{
+			Messages::HEADER_BYTE_DLE,
+			Messages::HEADER_BYTE_STX,
+			0x00,
+			magic_enum::enum_integer(JandyMessageIds::Ack),
+			magic_enum::enum_integer(m_AckType),
+			m_Command,
+			0x00,
+			Messages::HEADER_BYTE_DLE, 
+			Messages::HEADER_BYTE_ETX
+		};
+
+		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
+		message_bytes[6] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
 	}
 
 	void JandyMessage_Ack::Deserialize(const std::span<const std::byte>& message_bytes)

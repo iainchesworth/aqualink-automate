@@ -4,7 +4,8 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "interfaces/idevice.h"
+#include "jandy/devices/jandy_device.h"
+#include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/iaq/iaq_message_control_ready.h"
 #include "jandy/messages/iaq/iaq_message_message_long.h"
 #include "jandy/messages/iaq/iaq_message_page_button.h"
@@ -21,7 +22,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public Interfaces::IDevice
+	class IAQDevice : public JandyDevice
 	{
 		static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -29,7 +30,7 @@ namespace AqualinkAutomate::Devices
 		const std::chrono::seconds IAQ_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, IDevice::DeviceId id);
+		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
 		virtual ~IAQDevice();
 
 	private:

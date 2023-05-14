@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <cstdint>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -13,14 +12,10 @@ namespace AqualinkAutomate::Interfaces
     class IDevice
     {
     public:
-        using DeviceId = uint8_t;
-
-    public:
-        IDevice(boost::asio::io_context& io_context, const DeviceId id, std::chrono::seconds timeout_in_seconds);
+        IDevice(boost::asio::io_context& io_context, std::chrono::seconds timeout_in_seconds);
         virtual ~IDevice();
 
     public:
-        DeviceId Id() const;
         bool IsOperating() const;
 
     private:
@@ -31,7 +26,6 @@ namespace AqualinkAutomate::Interfaces
         void KickTimeoutWatchdog();
 
     private:
-        const DeviceId m_Id;
         bool m_IsOperating;
 
     private:

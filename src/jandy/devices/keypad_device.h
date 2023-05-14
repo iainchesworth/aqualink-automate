@@ -2,7 +2,8 @@
 
 #include <chrono>
 
-#include "interfaces/idevice.h"
+#include "jandy/devices/jandy_device.h"
+#include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -10,12 +11,12 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class KeypadDevice : public Interfaces::IDevice
+	class KeypadDevice : public JandyDevice
 	{
 		const std::chrono::seconds KEYPAD_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
-		KeypadDevice(boost::asio::io_context& io_context, IDevice::DeviceId id);
+		KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
 		virtual ~KeypadDevice();
 
 	private:

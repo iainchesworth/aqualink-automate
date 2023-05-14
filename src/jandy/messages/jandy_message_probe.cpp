@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	JandyMessage_Probe::JandyMessage_Probe() : 
 		JandyMessage(JandyMessageIds::Probe),
-		Interfaces::IMessageSignal<JandyMessage_Probe>()
+		Interfaces::IMessageSignalRecv<JandyMessage_Probe>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_Probe::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage_Probe::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

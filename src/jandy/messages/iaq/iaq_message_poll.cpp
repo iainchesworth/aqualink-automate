@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_Poll::IAQMessage_Poll() : 
 		IAQMessage(JandyMessageIds::IAQ_Poll),
-		Interfaces::IMessageSignal<IAQMessage_Poll>()
+		Interfaces::IMessageSignalRecv<IAQMessage_Poll>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_Poll::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_Poll::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

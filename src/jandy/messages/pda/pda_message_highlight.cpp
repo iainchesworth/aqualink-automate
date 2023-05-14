@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	PDAMessage_Highlight::PDAMessage_Highlight() :
 		PDAMessage(JandyMessageIds::PDA_Highlight),
-		Interfaces::IMessageSignal<PDAMessage_Highlight>()
+		Interfaces::IMessageSignalRecv<PDAMessage_Highlight>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_Highlight::Serialize(std::span<const std::byte>& message_bytes) const
+	void PDAMessage_Highlight::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

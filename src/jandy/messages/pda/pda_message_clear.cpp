@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	PDAMessage_Clear::PDAMessage_Clear() :
 		PDAMessage(JandyMessageIds::PDA_Clear),
-		Interfaces::IMessageSignal<PDAMessage_Clear>()
+		Interfaces::IMessageSignalRecv<PDAMessage_Clear>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_Clear::Serialize(std::span<const std::byte>& message_bytes) const
+	void PDAMessage_Clear::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

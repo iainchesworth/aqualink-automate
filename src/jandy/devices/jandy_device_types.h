@@ -54,9 +54,9 @@ namespace AqualinkAutomate::Devices
 			{DeviceClasses::AqualinkMaster, {0x00, 0x01, 0x02, 0x03}},
 			{DeviceClasses::RS_Keypad,		{0x08, 0x09, 0x0A, 0x0B}},
 			{DeviceClasses::SpaRemote,		{0x20, 0x21, 0x22, 0x23}},
-			{DeviceClasses::OneTouch,		{0x30, 0x31, 0x32, 0x33}},
+			{DeviceClasses::OneTouch,		{0x40, 0x41, 0x42, 0x43}},
 			{DeviceClasses::LX_Heater,		{0x38, 0x39, 0x3A, 0x3B}},
-			{DeviceClasses::IAQ,			{0x40, 0x41, 0x42, 0x43}},
+			{DeviceClasses::IAQ,			{0x30, 0x31, 0x32, 0x33}},
 			{DeviceClasses::SerialAdapter,	{0x48, 0x49}},
 			{DeviceClasses::SWG_Aquarite,	{0x50, 0x51, 0x52, 0x53}},
 			{DeviceClasses::PC_Dock,		{0x58, 0x59, 0x5A, 0x5B}},
@@ -75,6 +75,13 @@ namespace AqualinkAutomate::Devices
 		JandyDeviceType& operator=(const JandyDeviceType& other);
 		JandyDeviceType(JandyDeviceType&& other) noexcept;
 		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept;
+
+	public:
+		bool operator==(const JandyDeviceType& other) const;
+		bool operator!=(const JandyDeviceType& other) const;
+
+	public:
+		uint8_t operator()() const;
 
 	public:
 		DeviceClasses Class() const;

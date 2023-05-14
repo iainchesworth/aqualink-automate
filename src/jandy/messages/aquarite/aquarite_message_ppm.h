@@ -4,8 +4,9 @@
 #include <cstddef>
 #include <string>
 #include <span>
+#include <vector>
 
-#include "interfaces/imessagesignal.h"
+#include "interfaces/imessagesignal_recv.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/aquarite/aquarite_message.h"
 
@@ -28,7 +29,7 @@ namespace AqualinkAutomate::Messages
 		Unknown = 0xFE
 	};
 
-	class AquariteMessage_PPM : public AquariteMessage, public Interfaces::IMessageSignal<AquariteMessage_PPM>
+	class AquariteMessage_PPM : public AquariteMessage, public Interfaces::IMessageSignalRecv<AquariteMessage_PPM>
 	{
 	public:
 		static const uint8_t Index_PPM = 4;
@@ -46,7 +47,7 @@ namespace AqualinkAutomate::Messages
 		virtual std::string ToString() const;
 
 	public:
-		virtual void Serialize(std::span<const std::byte>& message_bytes) const;
+		virtual void Serialize(std::vector<uint8_t>& message_bytes) const;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes);
 
 	private:

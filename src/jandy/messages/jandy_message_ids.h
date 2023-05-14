@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Messages
 		Status = 0x02,
 		Message = 0x03,
 		MessageLong = 0x04,
-		MessageLoopStart = 0x05,
+		MessageLoopStart = 0x08,
 
 		// Serial Adapter commands
 		RSSA_DevStatus = 0x13,
@@ -42,6 +42,7 @@ namespace AqualinkAutomate::Messages
 		IAQ_MessageLong = 0x2C,
 
 		// Unknown ids
+		Unknown_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
 		Unknown_IAQ_2D = 0x2D,
 		Unknown_IAQ_70 = 0x70,

@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	PDAMessage_ShiftLines::PDAMessage_ShiftLines() :
 		PDAMessage(JandyMessageIds::PDA_ShiftLines),
-		Interfaces::IMessageSignal<PDAMessage_ShiftLines>(),
+		Interfaces::IMessageSignalRecv<PDAMessage_ShiftLines>(),
 		m_FirstLineId(0),
 		m_LastLineId(0),
 		m_LineShift(0)
@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_ShiftLines::Serialize(std::span<const std::byte>& message_bytes) const
+	void PDAMessage_ShiftLines::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

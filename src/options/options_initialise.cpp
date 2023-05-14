@@ -4,6 +4,7 @@
 #include "logging/logging.h"
 #include "options/options_app_options.h"
 #include "options/options_developer_options.h"
+#include "options/options_emulated_device_options.h" 
 #include "options/options_initialise.h"
 #include "options/options_serial_options.h"
 #include "options/options_web_options.h"
@@ -25,6 +26,7 @@ namespace AqualinkAutomate::Options
 			cmdline_options
 				.add(App::Options())
 				.add(Developer::Options())
+				.add(Emulated::Options())
 				.add(Serial::Options())
 				.add(Web::Options());
 
@@ -42,6 +44,7 @@ namespace AqualinkAutomate::Options
 			// Handle the various options and configure the application.
 			settings.app = App::HandleOptions(variables);
 			settings.developer = Developer::HandleOptions(variables);
+			settings.emulated_device = Emulated::HandleOptions(variables);
 			settings.serial = Serial::HandleOptions(variables);
 			settings.web = Web::HandleOptions(variables);
 		}

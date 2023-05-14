@@ -1,4 +1,4 @@
-#include "interfaces/imessagesignal.h"
+#include "interfaces/ipublisher.h"
 
 namespace AqualinkAutomate::Interfaces
 {

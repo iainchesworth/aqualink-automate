@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string>
 #include <span>
+#include <vector>
 
 #include "interfaces/imessage.h"
 #include "interfaces/iserializable.h"
@@ -37,10 +38,12 @@ namespace AqualinkAutomate::Messages
 		const uint8_t ChecksumValue() const;
 
 	public:
+		virtual uint8_t MaxPermittedPacketLength() const override;
+		virtual uint8_t MinPermittedPacketLength() const override;
 		virtual std::string ToString() const override;
 
 	public:
-		virtual void Serialize(std::span<const std::byte>& message_bytes) const override;
+		virtual void Serialize(std::vector<uint8_t>& message_bytes) const override;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
 
 	protected:

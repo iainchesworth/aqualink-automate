@@ -12,17 +12,17 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Interfaces
 {
-	class IMessageSignalBase
+	class IMessageSignalRecvBase
 	{
 	public:
-		virtual void Signal() = 0;
+		virtual void Signal_MessageWasReceived() = 0;
 	};
 
 	template<typename MESSAGE_TYPE>
-	class IMessageSignal : public IMessageSignalBase
+	class IMessageSignalRecv : public IMessageSignalRecvBase
 	{
 	public:
-		virtual ~IMessageSignal() = default;
+		virtual ~IMessageSignalRecv() = default;
 
 	public:
 		using SignalRef = const MESSAGE_TYPE&;
@@ -36,15 +36,15 @@ namespace AqualinkAutomate::Interfaces
 		}
 
 	public:
-		void Signal() final
+		void Signal_MessageWasReceived() final
 		{
 			if (auto signal_ptr = GetSignal(); nullptr == signal_ptr)
 			{
-				LogTrace(Channel::Messages, "Could not retrieve signal shared_ptr from IMessageSignal::GetSignal()");
+				LogTrace(Channel::Messages, "Could not retrieve signal shared_ptr from IMessageSignalRecv::GetSignal()");
 			}
 			else if (auto signal = signal_ptr.get(); nullptr == signal)
 			{
-				LogTrace(Channel::Messages, "Could not get underlying pointer (nullptr) from signal shared_ptr returned from IMessageSignal::GetSignal()");
+				LogTrace(Channel::Messages, "Could not get underlying pointer (nullptr) from signal shared_ptr returned from IMessageSignalRecv::GetSignal()");
 			}
 			else if (auto upcast_ptr = dynamic_cast<MESSAGE_TYPE *>(this); nullptr == upcast_ptr)
 			{

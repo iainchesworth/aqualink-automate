@@ -66,20 +66,26 @@ add_library(
 	src/interfaces/iequipment.cpp
 	src/interfaces/igenerator.cpp
 	src/interfaces/imessage.cpp
-	src/interfaces/imessagesignal.cpp
+	src/interfaces/imessagesignal_recv.cpp
+	src/interfaces/imessagesignal_send.cpp
 	src/interfaces/iprofiler.cpp
 	src/interfaces/iprofilingunit.cpp
+	src/interfaces/ipublisher.cpp 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/iwebroute.cpp 
-	src/jandy/devices/aquarite_device.cpp 
-	src/jandy/devices/emulated_onetouch_device.cpp 
+	src/jandy/devices/aquarite_device.cpp 	 
 	src/jandy/devices/iaq_device.cpp 
+	src/jandy/devices/jandy_device.cpp 
 	src/jandy/devices/jandy_device_types.cpp
+	src/jandy/devices/jandy_emulated_device_types.cpp 
 	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
+	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 	 
+	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
+	src/jandy/equipment/jandy_equipment_types.cpp
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
 	src/jandy/factories/jandy_message_factory.cpp
@@ -114,17 +120,23 @@ add_library(
 	src/jandy/messages/jandy_message_ids.cpp
 	src/jandy/messages/jandy_message_message.cpp
 	src/jandy/messages/jandy_message_message_long.cpp
+	src/jandy/messages/jandy_message_message_loop_start.cpp
 	src/jandy/messages/jandy_message_probe.cpp
 	src/jandy/messages/jandy_message_status.cpp	 
 	src/jandy/messages/jandy_message_unknown.cpp
+	src/jandy/publisher/jandy_message_publisher.cpp 
 	src/jandy/types/jandy_types.cpp
+	src/jandy/utility/filtered_slot.cpp 
+	src/jandy/utility/jandy_checksum.cpp 
 	src/jandy/utility/screen_data_page.cpp
 	src/jandy/utility/screen_data_page_processor.cpp 
 	src/jandy/utility/screen_data_page_updater.cpp
 	src/jandy/utility/screen_data_page_updater_context.cpp
 	src/jandy/utility/screen_data_page_updater_evshift.cpp
 	src/jandy/utility/screen_data_page_updater_evupdate.cpp
+	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
+	src/jandy/utility/temperature.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -136,6 +148,7 @@ add_library(
 	src/logging/logging_severity_levels.cpp
 	src/options/options_app_options.cpp
 	src/options/options_developer_options.cpp
+	src/options/options_emulated_device_options.cpp 
 	src/options/options_initialise.cpp
 	src/options/options_option_type.cpp
 	src/options/options_serial_options.cpp

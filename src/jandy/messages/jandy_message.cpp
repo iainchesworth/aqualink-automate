@@ -44,6 +44,16 @@ namespace AqualinkAutomate::Messages
 		return m_ChecksumValue;
 	}
 
+	uint8_t JandyMessage::MaxPermittedPacketLength() const
+	{
+		return MAXIMUM_PACKET_LENGTH;
+	}
+
+	uint8_t JandyMessage::MinPermittedPacketLength() const
+	{
+		return MINIMUM_PACKET_LENGTH;
+	}
+
 	std::string JandyMessage::ToString() const
 	{
 		return std::format(
@@ -55,7 +65,7 @@ namespace AqualinkAutomate::Messages
 		);
 	}
 
-	void JandyMessage::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

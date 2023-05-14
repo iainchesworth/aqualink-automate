@@ -16,7 +16,7 @@
 
 #include "interfaces/igenerator.h"
 #include "interfaces/imessage.h"
-#include "interfaces/imessagesignal.h"
+#include "interfaces/imessagesignal_recv.h"
 #include "interfaces/iserialport.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
@@ -72,19 +72,28 @@ namespace AqualinkAutomate::Protocol
 		}
 
 	public:
+		template<typename MESSAGE_TYPE>
+		bool HandlePublish(const MESSAGE_TYPE& message)
+		{
+			std::vector<uint8_t> buffer;			
+
+			message.Serialize(buffer);
+
+			m_BufferToSend.push_back(std::move(buffer));
+
+			return true;
+		}
+
+	public:
 		boost::asio::awaitable<bool> HandleProtocol()
 		{			
 			bool continue_processing = true;
 
 			do
 			{ 
-				if (false)
+				if ((0 < m_BufferToSend.size()) && (continue_processing = co_await HandleWrite()); !continue_processing)
 				{
 
-				}
-				else if (continue_processing = co_await HandleWrite(); !continue_processing)
-				{
-					///FIXME
 				}
 				else if (continue_processing = co_await HandleRead(); !continue_processing)
 				{
@@ -132,12 +141,12 @@ namespace AqualinkAutomate::Protocol
 					{
 						LogTrace(Channel::Protocol, "Message received; emitting signal to listening consumer slots.");
 
-						if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalBase>(message.value()); nullptr != signal_ptr)
+						if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalRecvBase>(message.value()); nullptr != signal_ptr)
 						{
 							static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Signalling Signals", std::source_location::current(), Profiling::UnitColours::Yellow));
 
 							// Process the message...as per protocol requirements
-							signal_ptr->Signal();
+							signal_ptr->Signal_MessageWasReceived();
 						}
 					}
 					else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
@@ -189,14 +198,15 @@ namespace AqualinkAutomate::Protocol
 		{
 			static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Writing Serial Data", std::source_location::current(), Profiling::UnitColours::Cyan));
 
-			std::array<Interfaces::ISerialPort::DataType, 16> write_buffer;
 			bool continue_processing = true;
 
-			auto buffer = boost::asio::buffer(write_buffer, write_buffer.size());
+			auto buffer = boost::asio::buffer(m_BufferToSend.front());
 			auto [ec, bytes_written] = co_await m_SerialPort.async_write_some(buffer, boost::asio::as_tuple(boost::asio::use_awaitable));
 			switch (ec.value())
 			{
 			case boost::system::errc::success:
+				LogDebug(Channel::Protocol, std::format("Successfully wrote data to the serial port; bytes transmitted: {}", bytes_written));
+				m_BufferToSend.erase(m_BufferToSend.begin());
 				break;
 
 			case boost::asio::error::eof:
@@ -223,6 +233,9 @@ namespace AqualinkAutomate::Protocol
 	private:
 		Profiling::DomainPtr m_ProfilingDomain;
 		Serial::SerialPort& m_SerialPort;
+		std::vector<std::vector<uint8_t>> m_BufferToSend;
+
+	private:
 		GENERATOR_MESSAGE_TYPE& m_GeneratorMessage;
 		GENERATOR_RAWDATA_TYPE& m_GeneratorRawData;
 	};

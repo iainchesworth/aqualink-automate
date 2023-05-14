@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_PageButton::IAQMessage_PageButton() : 
 		IAQMessage(JandyMessageIds::IAQ_PageButton),
-		Interfaces::IMessageSignal<IAQMessage_PageButton>(),
+		Interfaces::IMessageSignalRecv<IAQMessage_PageButton>(),
 		m_ButtonStatus(ButtonStatuses::Unknown),
 		m_ButtonType(ButtonTypes::Unknown),
 		m_ButtonName()
@@ -47,7 +47,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_PageButton::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_PageButton::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

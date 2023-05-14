@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Messages
 
 	AquariteMessage_PPM::AquariteMessage_PPM() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
-		Interfaces::IMessageSignal<AquariteMessage_PPM>(),
+		Interfaces::IMessageSignalRecv<AquariteMessage_PPM>(),
 		m_PPM(0),
 		m_Status(AquariteStatuses::Unknown)
 	{
@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: PPM: {}, Status: {}", AquariteMessage::ToString(), m_PPM, magic_enum::enum_name(m_Status));
 	}
 
-	void AquariteMessage_PPM::Serialize(std::span<const std::byte>& message_bytes) const
+	void AquariteMessage_PPM::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

@@ -4,7 +4,8 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "interfaces/idevice.h"
+#include "jandy/devices/jandy_device.h"
+#include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_status.h"
 #include "jandy/messages/jandy_message_message_long.h"
@@ -17,12 +18,12 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class PDADevice : public Interfaces::IDevice
+	class PDADevice : public JandyDevice
 	{
 		const std::chrono::seconds PDA_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
-		PDADevice(boost::asio::io_context& io_context, IDevice::DeviceId id);
+		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
 		virtual ~PDADevice();
 
 	private:

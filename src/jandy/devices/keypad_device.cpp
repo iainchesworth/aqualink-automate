@@ -1,4 +1,4 @@
-#include <boost/bind/bind.hpp>
+#include <functional>
 
 #include "logging/logging.h"
 #include "jandy/devices/keypad_device.h"
@@ -8,13 +8,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, IDevice::DeviceId id) :
-		IDevice(io_context, id, KEYPAD_TIMEOUT_DURATION)
+	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
+		JandyDevice(io_context, device_id, KEYPAD_TIMEOUT_DURATION)
 	{
-
-		Messages::JandyMessage_Message::GetSignal()->connect(boost::bind(&KeypadDevice::Slot_Keypad_Message, this, boost::placeholders::_1));
-		Messages::JandyMessage_MessageLong::GetSignal()->connect(boost::bind(&KeypadDevice::Slot_Keypad_MessageLong, this, boost::placeholders::_1));
-		Messages::JandyMessage_Status::GetSignal()->connect(boost::bind(&KeypadDevice::Slot_Keypad_Status, this, boost::placeholders::_1));
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Message>(std::bind(&KeypadDevice::Slot_Keypad_Message, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_MessageLong>(std::bind(&KeypadDevice::Slot_Keypad_MessageLong, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(std::bind(&KeypadDevice::Slot_Keypad_Status, this, std::placeholders::_1), device_id());
 	}
 
 	KeypadDevice::~KeypadDevice()

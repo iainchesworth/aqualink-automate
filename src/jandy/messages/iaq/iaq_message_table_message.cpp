@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_TableMessage::IAQMessage_TableMessage() : 
 		IAQMessage(JandyMessageIds::IAQ_TableMessage),
-		Interfaces::IMessageSignal<IAQMessage_TableMessage>(),
+		Interfaces::IMessageSignalRecv<IAQMessage_TableMessage>(),
 		m_LineId(0),
 		m_Line()
 	{
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_TableMessage::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_TableMessage::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

@@ -9,6 +9,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_05_Registration(JandyMessageIds::Unknown_05);
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_PDA_1B_Registration(JandyMessageIds::Unknown_PDA_1B);
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_IAQ_2D_Registration(JandyMessageIds::Unknown_IAQ_2D);
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Unknown> JandyMessage_Unknown::g_JandyMessage_Unknown_IAQ_70_Registration(JandyMessageIds::Unknown_IAQ_70);
@@ -17,7 +18,7 @@ namespace AqualinkAutomate::Messages
 
 	JandyMessage_Unknown::JandyMessage_Unknown() : 
 		JandyMessage(JandyMessageIds::Unknown),
-		Interfaces::IMessageSignal<JandyMessage_Unknown>()
+		Interfaces::IMessageSignalRecv<JandyMessage_Unknown>()
 	{
 	}
 
@@ -30,7 +31,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_Unknown::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage_Unknown::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

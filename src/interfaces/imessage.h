@@ -25,6 +25,8 @@ namespace AqualinkAutomate::Interfaces
 		}
 
 	public:
+		virtual uint8_t MaxPermittedPacketLength() const = 0;
+		virtual uint8_t MinPermittedPacketLength() const = 0;
 		virtual std::string ToString() const = 0;
 
 	public:

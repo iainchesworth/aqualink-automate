@@ -7,7 +7,8 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "interfaces/idevice.h"
+#include "jandy/devices/jandy_device.h"
+#include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
@@ -16,7 +17,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class AquariteDevice : public Interfaces::IDevice
+	class AquariteDevice : public JandyDevice
 	{
 		const std::chrono::seconds AQUARITE_TIMEOUT_DURATION = std::chrono::seconds(30);
 		const uint32_t AQUARITE_PERCENT_DEBOUNCE_THRESHOLD = 10;
@@ -38,8 +39,8 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		AquariteDevice(boost::asio::io_context& io_context, IDevice::DeviceId id);
-		AquariteDevice(boost::asio::io_context& io_context, IDevice::DeviceId id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
+		AquariteDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
+		AquariteDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice();
 
 	public:

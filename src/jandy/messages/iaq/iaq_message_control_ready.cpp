@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_ControlReady::IAQMessage_ControlReady() : 
 		IAQMessage(JandyMessageIds::IAQ_ControlReady),
-		Interfaces::IMessageSignal<IAQMessage_ControlReady>()
+		Interfaces::IMessageSignalRecv<IAQMessage_ControlReady>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_ControlReady::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_ControlReady::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

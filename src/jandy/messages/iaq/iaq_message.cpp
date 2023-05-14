@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Messages
 		return JandyMessage::ToString();
 	}
 
-	void IAQMessage::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

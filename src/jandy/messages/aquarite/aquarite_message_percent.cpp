@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	AquariteMessage_Percent::AquariteMessage_Percent() : 
 		AquariteMessage(JandyMessageIds::AQUARITE_Percent),
-		Interfaces::IMessageSignal<AquariteMessage_Percent>(),
+		Interfaces::IMessageSignalRecv<AquariteMessage_Percent>(),
 		m_Percent(0)
 	{
 	}
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: Percent: {}", AquariteMessage::ToString(), m_Percent);
 	}
 
-	void AquariteMessage_Percent::Serialize(std::span<const std::byte>& message_bytes) const
+	void AquariteMessage_Percent::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

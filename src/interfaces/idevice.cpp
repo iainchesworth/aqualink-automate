@@ -9,8 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Interfaces
 {
 
-    IDevice::IDevice(boost::asio::io_context& io_context, const DeviceId id, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
-        m_Id(id),
+    IDevice::IDevice(boost::asio::io_context& io_context, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
         m_IsOperating(false),
         m_TimeoutTimer(io_context),
         m_TimeoutDuration(timeout_in_seconds)
@@ -20,11 +19,6 @@ namespace AqualinkAutomate::Interfaces
 
     IDevice::~IDevice()
     {
-    }
-
-    IDevice::DeviceId IDevice::Id() const
-    {
-        return m_Id;
     }
 
     bool IDevice::IsOperating() const
@@ -58,11 +52,11 @@ namespace AqualinkAutomate::Interfaces
 		case boost::system::errc::operation_canceled:
 		case boost::asio::error::operation_aborted:
             // Timer was cancelled...let's not worry about it too much.
-            LogTrace(Channel::Devices, std::format("Device (id: {}) timed out while waiting for a message.", m_Id));
+            LogTrace(Channel::Devices, "Device timed out while waiting for a message");
             break;
 
         default:
-            LogDebug(Channel::Devices, std::format("Device (id: {}) timeout timer async_wait failed; error -> {}, message -> {}.", m_Id, ec.value(), ec.message()));
+            LogDebug(Channel::Devices, std::format("Device timeout; timer async_wait failed; error -> {}, message -> {}", ec.value(), ec.message()));
             break;
 		}
     }

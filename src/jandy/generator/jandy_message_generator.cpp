@@ -10,6 +10,7 @@
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/types/jandy_types.h"
+#include "jandy/utility/jandy_checksum.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
@@ -285,15 +286,7 @@ namespace AqualinkAutomate::Generators
 		const auto length_minus_checksum_and_footer = message_span.size() - 3;
 		const uint8_t original_checksum = static_cast<uint8_t>(message_span[length_minus_checksum_and_footer]);
 		const auto span_to_check = message_span.first(length_minus_checksum_and_footer);
-
-		uint32_t checksum = 0;
-
-		for (auto& elem : span_to_check)
-		{
-			checksum += static_cast<uint32_t>(elem);
-		}
-
-		const auto calculated_checksum = static_cast<uint8_t>(checksum & 0xFF);
+		const auto calculated_checksum = Utility::JandyPacket_CalculateChecksum(span_to_check);
 		const auto checksum_is_valid = (original_checksum == calculated_checksum);
 
 		LogTrace(Channel::Messages, std::format("Validating packet checksum: calculated=0x{:02x}, original=0x{:02x} -> {}!", calculated_checksum, original_checksum, checksum_is_valid ? "Success" : "Failure"));

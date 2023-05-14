@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	IAQMessage_PageContinue::IAQMessage_PageContinue() : 
 		IAQMessage(JandyMessageIds::IAQ_PageContinue),
-		Interfaces::IMessageSignal<IAQMessage_PageContinue>()
+		Interfaces::IMessageSignalRecv<IAQMessage_PageContinue>()
 	{
 	}
 
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_PageContinue::Serialize(std::span<const std::byte>& message_bytes) const
+	void IAQMessage_PageContinue::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

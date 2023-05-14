@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Messages
 
 	JandyMessage_MessageLong::JandyMessage_MessageLong() : 
 		JandyMessage(JandyMessageIds::MessageLong),
-		Interfaces::IMessageSignal<JandyMessage_MessageLong>(),
+		Interfaces::IMessageSignalRecv<JandyMessage_MessageLong>(),
 		m_Line()
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_MessageLong::Serialize(std::span<const std::byte>& message_bytes) const
+	void JandyMessage_MessageLong::Serialize(std::vector<uint8_t>& message_bytes) const
 	{
 	}
 

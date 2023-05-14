@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
+#include <vector>
 
 namespace AqualinkAutomate::Interfaces
 {
@@ -13,7 +15,7 @@ namespace AqualinkAutomate::Interfaces
         virtual ~ISerializable();
 
     public:
-        virtual void Serialize(std::span<const std::byte>& message_bytes) const = 0;
+        virtual void Serialize(std::vector<uint8_t>& message_bytes) const = 0;
         virtual void Deserialize(const std::span<const std::byte>& message_bytes) = 0;
     };
 

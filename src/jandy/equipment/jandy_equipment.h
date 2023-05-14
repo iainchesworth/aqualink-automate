@@ -8,10 +8,11 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "interfaces/idevice.h"
 #include "interfaces/iequipment.h"
+#include "jandy/devices/jandy_device.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_rawdata_generator.h"
+#include "jandy/messages/jandy_message.h"
 #include "protocol/protocol_handler.h"
 
 // Forward declarations
@@ -34,17 +35,22 @@ namespace AqualinkAutomate::Equipment
 		JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler);
 
 	private:
-		auto IsDeviceRegistered(Interfaces::IDevice::DeviceId device_id);
+		auto IsDeviceRegistered(const Devices::JandyDeviceType& device_id);
+		void IdentifyAndAddDevice(const Messages::JandyMessage& message);
+
+	private:
+		void DisplayUnknownMessages(const Messages::JandyMessage& message);
+		void PublishEquipmentMessage(const Messages::JandyMessage& message);
 
 	public:
-		bool AddEmulatedDevice(std::unique_ptr<Interfaces::IDevice> device);
+		bool AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device);
 
 	private:
 		void StopAndCleanUp() override;
 
 	private:
 		boost::asio::io_context& m_IOContext;
-		std::vector<std::unique_ptr<Interfaces::IDevice>> m_Devices;
+		std::vector<std::unique_ptr<Devices::JandyDevice>> m_Devices;
 		std::unordered_set<uint8_t> m_IdentifiedDeviceIds;
 		std::unordered_map<Messages::JandyMessageIds, uint32_t> m_MessageStats;
 	};
