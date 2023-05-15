@@ -22,6 +22,8 @@ project(
     HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
 	LANGUAGES C CXX)
 
+include(PlatformConfig)
+
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "Enable profiling" ON)
 
