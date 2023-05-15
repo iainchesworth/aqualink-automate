@@ -8,6 +8,7 @@
 #include "options/options_app_options.h"
 #include "options/options_option_type.h"
 #include "utility/get_terminal_column_width.h"
+#include "version/version.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -18,13 +19,15 @@ namespace AqualinkAutomate::Options::App
 	AppOptionPtr OPTION_HELP{ make_appoption("help", "h", "Displays the help information") };
 	AppOptionPtr OPTION_TRACE{ make_appoption("trace", "Enable trace logging") };
 	AppOptionPtr OPTION_VERSION{ make_appoption("version", "v", "Displays the version information") };
+	AppOptionPtr OPTION_VERSIONDETAILS{ make_appoption("version-detail", "Displays detailed version information (including git commit)") };
 
 	const std::vector AppOptionsCollection
 	{
 		OPTION_DEBUG,
 		OPTION_HELP,
 		OPTION_TRACE,
-		OPTION_VERSION
+		OPTION_VERSION,
+		OPTION_VERSIONDETAILS
 	};
 	
 	boost::program_options::options_description Options()
@@ -81,9 +84,47 @@ namespace AqualinkAutomate::Options::App
 
 	void HandleVersion(boost::program_options::variables_map vm)
 	{
-		if (OPTION_VERSION->IsPresent(vm))
+		if (OPTION_VERSIONDETAILS->IsPresent(vm))
 		{
+			auto version_info = std::format
+			(
+				"Name: {}\nVersion: v{}\nDescription: {}\nHomepage URL: {}",
+				Version::VersionInfo::ProjectName(),
+				Version::VersionInfo::ProjectVersion(),
+				Version::VersionInfo::ProjectDescription(),
+				Version::VersionInfo::ProjectHomepageURL()
+			);
+
+			auto git_information = std::string("No git metadata available.");
+			if (Version::GitMetadata::Populated())
+			{
+				git_information = std::format
+				(
+					"\nGit Details:\nCommit SHA1: {}\nCommit Date: {}\nUncommitted Changes: {}",
+					Version::GitMetadata::CommitSHA1(),
+					Version::GitMetadata::CommitDate(),
+					(Version::GitMetadata::AnyUncommittedChanges() ? "Yes" : "No")
+				);
+			}
+
 			// Display the version information to the user.
+			std::cout << version_info << std::endl << git_information << std::endl;
+
+			// Terminate the application...
+			throw Exceptions::OptionsHelpOrVersion();
+		} 
+		else if (OPTION_VERSION->IsPresent(vm))
+		{
+			const auto version_info = std::format
+			(
+				"{} v{}\n{}",
+				Version::VersionInfo::ProjectName(),
+				Version::VersionInfo::ProjectVersion(),
+				Version::VersionInfo::ProjectDescription()
+			);
+
+			// Display the version information to the user.
+			std::cout << version_info << std::endl;
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
