@@ -19,4 +19,4 @@ endif(USE_LIBCXX)
 #
 #------------------------------------------------------------------------------
 
-include(cmake/toolchains/chainload.vcpkg.toolchain.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/chainload.vcpkg.toolchain.cmake)
