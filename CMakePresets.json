@@ -9,7 +9,8 @@
             "installDir": "${sourceDir}/out/install/${presetName}",
           "cacheVariables": {
             "CMAKE_C_COMPILER": "cl.exe",
-            "CMAKE_CXX_COMPILER": "cl.exe"
+            "CMAKE_CXX_COMPILER": "cl.exe",
+            "IAIN_CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake"
           },
             "condition": {
                 "type": "equals",
@@ -63,9 +64,10 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
+          "cacheVariables": {
+            "CMAKE_BUILD_TYPE": "Debug",
+            "IAIN_CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.clang.toolchain.cmake"
+          },
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",

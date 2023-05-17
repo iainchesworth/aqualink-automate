@@ -24,6 +24,8 @@ namespace AqualinkAutomate::Options::Web
 		Certificates::Certificate_PemFormat cert_key_file;
 		Certificates::Certificate_PemFormat ca_chain_cert_file;
 		Certificates::Certificate_PemFormat ca_chain_cert_key_file;
+
+		std::string doc_root;
 	}
 	Settings;
 

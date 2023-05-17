@@ -5,13 +5,16 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <crow/app.h>
+#include <magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "http/crow_custom_logger.h"
+#include "http/webroute_index.h"
 #include "http/webroute_jandyequipment.h"
+#include "http/webroute_jandyequipment_stats.h"
 #include "jandy/jandy.h"
 #include "jandy/devices/onetouch_device.h"
 #include "logging/logging.h"
@@ -146,8 +149,9 @@ int main(int argc, char *argv[])
 
         HTTP::CrowCustomLogger crow_custom_logger;
         crow::logger::setHandler(&crow_custom_logger);
-
+        
         crow::SimpleApp http_server;
+        http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
         http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
 
         if (!settings.web.http_server_is_insecure)
@@ -167,7 +171,9 @@ int main(int argc, char *argv[])
             http_server.ssl(std::move(ctx));
         }
 
-        HTTP::WebRoute_JandyEquipment jandy_web_route(http_server, jandy_equipment);
+        HTTP::WebRoute_Index index_webroute(http_server, settings.web.doc_root);
+        HTTP::WebRoute_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
+        HTTP::WebRoute_JandyEquipment_Stats jandy_equipment_stats(http_server, jandy_equipment);
 
         CleanUp::Register({ "WebServer", [&http_server]()->void { http_server.stop(); } });
         auto httpsrv_async = http_server.run_async();

@@ -19,6 +19,7 @@
 namespace AqualinkAutomate::HTTP
 {
 	class WebRoute_JandyEquipment;
+	class WebRoute_JandyEquipment_Stats;
 }
 // namespace AqualinkAutomate::HTTP
 
@@ -30,6 +31,7 @@ namespace AqualinkAutomate::Equipment
 	class JandyEquipment : public Interfaces::IEquipment<Protocol::ProtocolHandler<Generators::JandyMessageGenerator, Generators::JandyRawDataGenerator>>
 	{
 		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment;
+		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment_Stats;
 
 	public:
 		JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler);

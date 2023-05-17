@@ -1,29 +1,17 @@
 #------------------------------------------------------------------------------
 #
-#
-#
-#
-#------------------------------------------------------------------------------
-
-if(WIN32)
-
-	if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-		include(cmake/platforms/linux.clang.cmake)
-	endif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-
-endif(WIN32)
-
-#------------------------------------------------------------------------------
-#
-#
-#
+# 
+# 
 #
 #------------------------------------------------------------------------------
 
-if(LINUX)
+# Toolchain settings go here (if required)
 
-	if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-		include(cmake/platforms/linux.clang.cmake)
-	endif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+#------------------------------------------------------------------------------
+#
+# Chainloading the vcpkg.cmake file.  Note that this needs to be included
+# as an include at the bottom of each of the "toolchain" cmake files.
+#
+#------------------------------------------------------------------------------
 
-endif(LINUX)
+include(cmake/toolchains/chainload.vcpkg.toolchain.cmake)

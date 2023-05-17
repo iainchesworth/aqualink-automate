@@ -18,7 +18,8 @@ namespace AqualinkAutomate::Interfaces
 		using RouteParams = crow::routing_params;
 
 	public:
-		explicit IWebRoute(crow::SimpleApp& app)
+		explicit IWebRoute(crow::SimpleApp& app, const std::string& doc_root) : 
+			m_DocRoot(doc_root)
 		{
 			app.route_dynamic(ROUTE_URL)
 			   .methods(crow::HTTPMethod::Get)
@@ -29,6 +30,9 @@ namespace AqualinkAutomate::Interfaces
 					}
 				);
 		}
+
+	protected:
+		const std::string& m_DocRoot;
 
 	private:
 		virtual void WebRequestHandler(const Request& req, Response& resp) = 0;

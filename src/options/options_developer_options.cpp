@@ -33,6 +33,7 @@ namespace AqualinkAutomate::Options::Developer
 	AppOptionPtr OPTION_LOGLEVEL_PROTCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) }; 
 	AppOptionPtr OPTION_LOGLEVEL_SERIAL{ make_appoption("loglevel-serial", "Set the logging level for Channel::Serial", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_SIGNALS{ make_appoption("loglevel-signals", "Set the logging level for Channel::Signals", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+	AppOptionPtr OPTION_LOGLEVEL_WEB{ make_appoption("loglevel-web", "Set the logging level for Channel::Web", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Types::ProfilerTypes>()->multitoken()) };
 
 	std::vector DeveloperOptionsCollection
@@ -50,6 +51,7 @@ namespace AqualinkAutomate::Options::Developer
 		OPTION_LOGLEVEL_PROTCOL,
 		OPTION_LOGLEVEL_SERIAL,
 		OPTION_LOGLEVEL_SIGNALS,
+		OPTION_LOGLEVEL_WEB,
 		OPTION_PROFILER
 	};
 
@@ -85,6 +87,7 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_LOGLEVEL_PROTCOL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROTCOL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SERIAL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Serial, OPTION_LOGLEVEL_SERIAL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SIGNALS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Signals, OPTION_LOGLEVEL_SIGNALS->As<Severity>(vm)); }
+		if (OPTION_LOGLEVEL_WEB->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Web, OPTION_LOGLEVEL_WEB->As<Severity>(vm)); }
 
 		if (OPTION_PROFILER->IsPresent(vm)) { Factory::ProfilerFactory::Instance().SetDesired(OPTION_PROFILER->As<Types::ProfilerTypes>(vm)); }
 

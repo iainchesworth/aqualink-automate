@@ -7,7 +7,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-set(CMAKE_VERBOSE_MAKEFILE ON)
+
+#set(Boost_DEBUG 1)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 
 if (POLICY CMP0141)
   # Enable Hot Reload for MSVC compilers if supported.
@@ -21,8 +23,6 @@ project(
 	DESCRIPTION "Control Jandy Aqualink RS pool equipment via common IoT integrations" 
     HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
 	LANGUAGES C CXX)
-
-include(PlatformConfig)
 
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "Enable profiling" ON)
@@ -91,7 +91,9 @@ add_library(
 	src/exceptions/exception_optionshelporversion.cpp 
 	src/exceptions/exception_webserver.cpp 
 	src/http/crow_custom_logger.cpp 
+	src/http/webroute_index.cpp 
 	src/http/webroute_jandyequipment.cpp 
+	src/http/webroute_jandyequipment_stats.cpp 	 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp
@@ -105,6 +107,7 @@ add_library(
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/iwebroute.cpp 
+	src/interfaces/iwebsocket.cpp 
 	src/jandy/devices/aquarite_device.cpp 	 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_device.cpp 
@@ -370,7 +373,7 @@ endif(ENABLE_TESTS)
 #------------------------------------------------------------------------------
 
 set(SOURCE_WEB_ASSETS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/assets/web)
-set(DESTINATION_DIR ${CMAKE_CURRENT_BINARY_DIR}/static_web)
+set(DESTINATION_DIR ${CMAKE_CURRENT_BINARY_DIR}/)
 
 add_custom_target(
 	copy_web_assets 
