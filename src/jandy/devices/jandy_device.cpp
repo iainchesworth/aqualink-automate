@@ -3,10 +3,9 @@
 namespace AqualinkAutomate::Devices
 {
 
-	JandyDevice::JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, JandyDeviceOperatingModes op_mode) :
+	JandyDevice::JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds) :
 		IDevice(io_context, timeout_in_seconds),
 		m_SlotManager(),
-		m_OpMode(op_mode),
 		m_DeviceId(device_id)
 	{
 	}

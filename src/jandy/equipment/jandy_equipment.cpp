@@ -44,12 +44,13 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, ProtocolHandler& protocol_handler) :
+	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config, ProtocolHandler& protocol_handler) :
 		IEquipment(io_context, protocol_handler),
 		m_IOContext(io_context),
 		m_Devices(),
 		m_IdentifiedDeviceIds(),
-		m_MessageStats()
+		m_MessageStats(),
+		m_Config(config)
 	{
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
@@ -113,22 +114,22 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Raw())));
+				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Raw())));
+				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Raw())));
+				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Raw())));
+				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:

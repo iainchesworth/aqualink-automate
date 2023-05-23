@@ -12,11 +12,18 @@
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "http/crow_custom_logger.h"
-#include "http/webroute_index.h"
-#include "http/webroute_jandyequipment.h"
+#include "http/webroute_jandyequipment_buttons.h"
 #include "http/webroute_jandyequipment_stats.h"
+#include "http/webroute_jandyequipment_version.h"
+#include "http/webroute_page_index.h"
+#include "http/webroute_page_jandyequipment.h"
+#include "http/webroute_page_version.h"
+#include "http/webroute_version.h"
 #include "jandy/jandy.h"
+#include "jandy/devices/iaq_device.h"
+#include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
+#include "jandy/devices/pda_device.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
@@ -111,7 +118,8 @@ int main(int argc, char *argv[])
         Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator, jandy_rawdata_generator);
         boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
 
-        Equipment::JandyEquipment jandy_equipment(io_context, protocol_handler);
+        Config::JandyConfig jandy_config;
+        Equipment::JandyEquipment jandy_equipment(io_context, jandy_config, protocol_handler);
         CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { jandy_equipment.Stop(); } });
 
         if (!settings.emulated_device.disable_emulation)
@@ -129,16 +137,29 @@ int main(int argc, char *argv[])
             switch (settings.emulated_device.device_type)
             {
             case Devices::JandyEmulatedDeviceTypes::OneTouch:
-                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, Devices::JandyDeviceOperatingModes::Emulated);
-                jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
+                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
                 break;
 
             case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
+                emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                break;
+
             case Devices::JandyEmulatedDeviceTypes::IAQ:
+                emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                break;
+
             case Devices::JandyEmulatedDeviceTypes::PDA:
+                emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                break;
+
             case Devices::JandyEmulatedDeviceTypes::Unknown:
             default:
                 LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
+            }
+
+            if (emulated_device)
+            {
+                jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
             }
         }
         //FIXME -> blocks coroutines!!!  boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
@@ -171,9 +192,14 @@ int main(int argc, char *argv[])
             http_server.ssl(std::move(ctx));
         }
 
-        HTTP::WebRoute_Index index_webroute(http_server, settings.web.doc_root);
-        HTTP::WebRoute_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
+        HTTP::WebRoute_Page_Index index_webroute(http_server, settings.web.doc_root);
+        HTTP::WebRoute_Page_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
+        HTTP::WebRoute_Page_Version verion_webroute(http_server, settings.web.doc_root);
+
+        // HTTP::WebRoute_JandyEquipment_Buttons jandy_equipment_buttons(http_server, jandy_equipment);
         HTTP::WebRoute_JandyEquipment_Stats jandy_equipment_stats(http_server, jandy_equipment);
+        HTTP::WebRoute_JandyEquipment_Version jandy_equipment_version(http_server, settings.web.doc_root, jandy_equipment);
+        HTTP::WebRoute_Version version(http_server, settings.web.doc_root);
 
         CleanUp::Register({ "WebServer", [&http_server]()->void { http_server.stop(); } });
         auto httpsrv_async = http_server.run_async();

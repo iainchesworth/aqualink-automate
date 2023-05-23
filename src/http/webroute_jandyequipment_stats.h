@@ -9,7 +9,7 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char EQUIPMENTSTATS_ROUTE_URL[] = "/equipment/stats";
+	constexpr const char EQUIPMENTSTATS_ROUTE_URL[] = "/api/equipment/stats";
 
 	class WebRoute_JandyEquipment_Stats: public Interfaces::IWebSocket<EQUIPMENTSTATS_ROUTE_URL>
 	{

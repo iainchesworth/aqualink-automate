@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <source_location>
+#include <utility>
 
 #include <boost/log/attributes/named_scope.hpp>
 #include <boost/log/sources/record_ostream.hpp>

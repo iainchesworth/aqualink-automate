@@ -12,11 +12,15 @@ namespace AqualinkAutomate::Utility
 	enum class ScreenDataPageTypes
 	{
 		Page_Home,
+		Page_Service,
+		Page_TimeOut,
 		Page_OneTouch,
 		Page_System,
 		Page_EquipmentStatus,
 		Page_SelectSpeed,
 		Page_MenuHelp,
+		Page_SetPoolHeat,
+		Page_SetSpaHeat,
 		Page_SetTemperature,
 		Page_SetTime,
 		Page_SystemSetup,
@@ -24,6 +28,9 @@ namespace AqualinkAutomate::Utility
 		Page_Boost,
 		Page_SetAquapure,
 		Page_Version,
+		Page_DiagnosticsSensors,
+		Page_DiagnosticsRemotes,
+		Page_DiagnosticsErrors,
 		Page_Unknown
 	};
 

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <span>
 #include <vector>
@@ -51,6 +52,13 @@ namespace AqualinkAutomate::Messages
 	public:
 		AckTypes AckType() const;
 		uint8_t Command() const;
+
+	public:
+		template<typename COMMAND_TYPE>
+		COMMAND_TYPE Command(std::function<COMMAND_TYPE(uint8_t)> command_decoder) const
+		{
+			return command_decoder(Command());
+		}
 
 	public:
 		virtual std::string ToString() const override;

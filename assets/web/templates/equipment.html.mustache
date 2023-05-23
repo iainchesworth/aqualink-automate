@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+    <h1>Pool Control Panel</h1>
+    <div id="app"></div>
+
     <h1>Equipment Message Stats</h1>
     <table id="stats-table">
         <tr>
@@ -16,8 +19,13 @@
         <!-- Rows will be added here by JavaScript -->
     </table>
 
+    <!-- Import the React libraries and our compiled component -->
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
     <script>
-        const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/equipment/stats";
+        const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/api/equipment/stats";
 
         // Create a connection to the WebSocket
         const socket = new WebSocket(wsUrl);
@@ -55,5 +63,7 @@
             });
         }
     </script>
+
+    <script src="/static/app.js"></script>
 </body>
 </html>

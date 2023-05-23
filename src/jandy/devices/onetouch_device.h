@@ -5,9 +5,10 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "jandy/devices/jandy_device.h"
+#include "jandy/config/jandy_config.h"
+#include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
-#include "jandy/equipment/jandy_equipment_types.h"
+#include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -19,12 +20,11 @@
 #include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_processor.h"
 #include "jandy/utility/screen_data_page_updater.h"
-#include "jandy/utility/temperature.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyDevice
+	class OneTouchDevice : public JandyController
 	{
 		static const uint8_t ONETOUCH_PAGE_LINES = 12;
 
@@ -36,17 +36,33 @@ namespace AqualinkAutomate::Devices
 			InitComplete,
 			NormalOperation,
 			ScreenUpdating,
+			ScreenUpdateComplete,
 			FaultHasOccurred
 		};
 
+		enum class KeyCommands
+		{
+			NoKeyCommand = 0x00,
+			PageDown_Or_Select1 = 0x01,
+			Back_Or_Select2 = 0x02,
+			PageUp_Or_Select3 = 0x03,
+			Select = 0x04,
+			LineDown = 0x05,
+			LineUp = 0x06,
+			Unknown = 0xFF
+		};
+
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyDeviceOperatingModes op_mode = JandyDeviceOperatingModes::MonitorOnly);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode, Config::JandyConfig& config);
 		virtual ~OneTouchDevice();
 
 	private:
 		void HandleAnyInternalProcessing();
 
 	private:
+		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);
 		void Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg);
 		void Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg);
 		void Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg);
@@ -61,6 +77,8 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		void PageProcessor_Home(const Utility::ScreenDataPage& page);
+		void PageProcessor_Service(const Utility::ScreenDataPage& page);
+		void PageProcessor_TimeOut(const Utility::ScreenDataPage& page);
 		void PageProcessor_OneTouch(const Utility::ScreenDataPage& page);
 		void PageProcessor_System(const Utility::ScreenDataPage& page);
 		void PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page);
@@ -73,6 +91,9 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_Boost(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetAquapure(const Utility::ScreenDataPage& page);
 		void PageProcessor_Version(const Utility::ScreenDataPage& page);
+		void PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page);
+		void PageProcessor_DiagnosticsRemotes(const Utility::ScreenDataPage& page);
+		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
 
 	private:
 		Utility::ScreenDataPage m_DisplayedPage;
@@ -80,12 +101,7 @@ namespace AqualinkAutomate::Devices
 		std::list<Utility::ScreenDataPage_Processor> m_DisplayedPageProcessors;
 
 	private:
-		Equipment::JandyEquipmentTypes m_PanelType{ Equipment::JandyEquipmentTypes::Unknown };
 		OperatingStates m_OpState{ OperatingStates::StartUp };
-		Utility::Temperature m_AirTemp;
-		Utility::Temperature m_PoolTemp;
-		Utility::Temperature m_SpaTemp;
-		Utility::Temperature m_FreezeProtectPoint;
 	};
 
 }

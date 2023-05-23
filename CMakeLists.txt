@@ -1,21 +1,10 @@
 ﻿cmake_minimum_required (VERSION 3.20 FATAL_ERROR)
 
-#set(VCPKG_ROOT "deps/vcpkg")
-#set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-
-#set(Boost_DEBUG 1)
-#set(CMAKE_VERBOSE_MAKEFILE ON)
-
-if (POLICY CMP0141)
-  # Enable Hot Reload for MSVC compilers if supported.
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
 
 project(
 	aqualink-automate 
@@ -25,13 +14,13 @@ project(
 	LANGUAGES C CXX)
 
 option(ENABLE_TESTS "Enable unit tests" ON)
-option(ENABLE_PROFILING "Enable profiling" ON)
+option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 
-find_package(Boost REQUIRED COMPONENTS coroutine iostreams log program_options system unit_test_framework)
-find_package(Crow CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS coroutine iostreams log log_setup program_options system unit_test_framework)
+find_package(Crow REQUIRED)
 find_package(magic_enum REQUIRED)
-find_package(mqtt_cpp_iface CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+find_package(mqtt_cpp_iface REQUIRED)
+find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 #------------------------------------------------------------------------------
@@ -91,9 +80,13 @@ add_library(
 	src/exceptions/exception_optionshelporversion.cpp 
 	src/exceptions/exception_webserver.cpp 
 	src/http/crow_custom_logger.cpp 
-	src/http/webroute_index.cpp 
-	src/http/webroute_jandyequipment.cpp 
-	src/http/webroute_jandyequipment_stats.cpp 	 
+	src/http/webroute_jandyequipment_buttons.cpp 
+	src/http/webroute_jandyequipment_stats.cpp 
+	src/http/webroute_jandyequipment_version.cpp 
+	src/http/webroute_page_index.cpp 
+	src/http/webroute_page_jandyequipment.cpp 
+	src/http/webroute_page_version.cpp 
+	src/http/webroute_version.cpp 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp
@@ -108,8 +101,10 @@ add_library(
 	src/interfaces/iserialport.cpp
 	src/interfaces/iwebroute.cpp 
 	src/interfaces/iwebsocket.cpp 
-	src/jandy/devices/aquarite_device.cpp 	 
+	src/jandy/config/jandy_config.cpp
+	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
+	src/jandy/devices/jandy_controller.cpp 
 	src/jandy/devices/jandy_device.cpp 
 	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/jandy_emulated_device_types.cpp 
@@ -118,8 +113,12 @@ add_library(
 	src/jandy/devices/pda_device.cpp 
 	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 	 
 	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
+	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
+	src/jandy/devices/pda/pda_pageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
-	src/jandy/equipment/jandy_equipment_types.cpp
+	src/jandy/equipment/jandy_equipment_modes.cpp 
+	src/jandy/equipment/jandy_equipment_types.cpp 
+	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
 	src/jandy/factories/jandy_message_factory.cpp
@@ -171,6 +170,7 @@ add_library(
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
 	src/jandy/utility/temperature.cpp 
+	src/jandy/utility/timeout_duration.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -286,6 +286,26 @@ target_include_directories(
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
 )
 
+target_link_libraries(
+	libaqualink-automate 
+	PUBLIC
+	Boost::boost 
+	Boost::coroutine 
+	Boost::iostreams 
+	Boost::log 
+	Boost::log_setup 
+	Boost::program_options 
+	Crow::Crow
+	magic_enum::magic_enum
+	mqtt_cpp_iface::mqtt_cpp_iface 
+	nlohmann_json::nlohmann_json
+	OpenSSL::SSL 
+	OpenSSL::Crypto
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
+	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
+)
+
 #------------------------------------------------------------------------------
 #
 #
@@ -302,21 +322,6 @@ target_link_libraries(
 	aqualink-automate 
 	PRIVATE 
 	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
-	Boost::boost 
-	Boost::coroutine 
-	Boost::iostreams 
-	Boost::log 
-	Boost::log_setup 
-	Boost::program_options 
-	Crow::Crow
-	magic_enum::magic_enum
-	mqtt_cpp_iface::mqtt_cpp_iface 
-	nlohmann_json::nlohmann_json
-	OpenSSL::SSL 
-	OpenSSL::Crypto
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
-	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
 )
 
 #------------------------------------------------------------------------------
@@ -342,22 +347,7 @@ if(ENABLE_TESTS)
 		testaqualink-automate 
 		PRIVATE 
 		"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
-		Boost::boost 
-		Boost::coroutine 
-		Boost::iostreams 
-		Boost::log 
-		Boost::log_setup 
-		Boost::program_options 
-		Boost::unit_test_framework 
-		Crow::Crow
-		magic_enum::magic_enum
-		mqtt_cpp_iface::mqtt_cpp_iface 
-		nlohmann_json::nlohmann_json
-		OpenSSL::SSL 
-		OpenSSL::Crypto
-		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
-		$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
-		$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
+		Boost::unit_test_framework
 	)
 
 	enable_testing()

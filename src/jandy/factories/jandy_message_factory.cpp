@@ -3,6 +3,8 @@
 #include <typeinfo>
 #include <utility>
 
+#include <magic_enum.hpp>
+
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "jandy/factories/jandy_message_factory.h"
@@ -49,7 +51,7 @@ namespace AqualinkAutomate::Factory
 			const auto message_type = static_cast<Messages::JandyMessageIds>(message_bytes[Messages::JandyMessage::Index_MessageType]);
 			if (auto it = m_Generators.find(message_type); m_Generators.end() != it)
 			{
-				LogTrace(Channel::Messages, "Generating: Jandy message");
+				LogTrace(Channel::Messages, std::format("Generating: Jandy message --> {} (0x{:02x})", magic_enum::enum_name(message_type), static_cast<uint8_t>(message_type)));
 				message = it->second();
 			}
 			else if (it = m_Generators.find(Messages::JandyMessageIds::Unknown); m_Generators.end() != it)
@@ -68,7 +70,7 @@ namespace AqualinkAutomate::Factory
 				LogTrace(Channel::Messages, "Attempting to deserialize serial bytes into generated message");
 				message->Deserialize(message_bytes);
 
-				LogTrace(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
+				LogDebug(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
 				return message;
 			}
 		}

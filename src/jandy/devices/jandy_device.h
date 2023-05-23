@@ -11,16 +11,10 @@
 namespace AqualinkAutomate::Devices
 {
 
-	enum JandyDeviceOperatingModes
-	{
-		MonitorOnly,
-		Emulated
-	};
-
 	class JandyDevice : public Interfaces::IDevice
 	{
 	public:
-		JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, JandyDeviceOperatingModes op_mode = JandyDeviceOperatingModes::MonitorOnly);
+		JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds);
 		virtual ~JandyDevice();
 
 	public:
@@ -28,7 +22,6 @@ namespace AqualinkAutomate::Devices
 
 	protected:
 		Utility::SlotConnectionManager m_SlotManager;
-		JandyDeviceOperatingModes m_OpMode;
 		const Devices::JandyDeviceType& m_DeviceId;
 	};
 
