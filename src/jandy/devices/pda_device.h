@@ -30,9 +30,7 @@ namespace AqualinkAutomate::Devices
 		const std::chrono::seconds PDA_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
-		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
-		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode);
-		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode, Config::JandyConfig& config);
+		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode);
 		virtual ~PDADevice();
 
 	private:

@@ -1,4 +1,4 @@
-#include "jandy/utility/screen_data_page_updater_evshift.h"
+#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_evshift.h"
 
 namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 {
@@ -11,22 +11,22 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 	{
 	}
 
-	ScreenDataPage::ShiftDirections ScreenDataPageUpdaterImpl::evShift::Direction() const
+	ScreenDataPage::ShiftDirections evShift::Direction() const
 	{
 		return m_Direction;
 	}
 
-	uint8_t ScreenDataPageUpdaterImpl::evShift::FirstLineId() const
+	uint8_t evShift::FirstLineId() const
 	{
 		return m_FirstLineId;
 	}
 
-	uint8_t ScreenDataPageUpdaterImpl::evShift::LastLineId() const
+	uint8_t evShift::LastLineId() const
 	{
 		return m_LastLineId;
 	}
 
-	uint8_t ScreenDataPageUpdaterImpl::evShift::NumberOfShifts() const
+	uint8_t evShift::NumberOfShifts() const
 	{
 		return m_NumberOfShifts;
 	}

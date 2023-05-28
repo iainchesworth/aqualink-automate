@@ -37,52 +37,52 @@ namespace AqualinkAutomate::Messages
 		return m_Payload_Byte1.FilterPump;
 	}
 
-	AuxStatus JandyMessage_Status::Aux1() const
+	Config::AuxillaryStates JandyMessage_Status::Aux1() const
 	{
 		return m_Payload_Byte1.Aux1;
 	}
 
-	AuxStatus JandyMessage_Status::Aux2() const
+	Config::AuxillaryStates JandyMessage_Status::Aux2() const
 	{
 		return m_Payload_Byte0.Aux2;
 	}
 
-	AuxStatus JandyMessage_Status::Aux3() const
+	Config::AuxillaryStates JandyMessage_Status::Aux3() const
 	{
 		return m_Payload_Byte0.Aux3;
 	}
 
-	AuxStatus JandyMessage_Status::Aux4() const
+	Config::AuxillaryStates JandyMessage_Status::Aux4() const
 	{
 		return m_Payload_Byte2.Aux4;
 	}
 
-	AuxStatus JandyMessage_Status::Aux5() const
+	Config::AuxillaryStates JandyMessage_Status::Aux5() const
 	{
 		return m_Payload_Byte1.Aux5;
 	}
 
-	AuxStatus JandyMessage_Status::Aux6() const
+	Config::AuxillaryStates JandyMessage_Status::Aux6() const
 	{
 		return m_Payload_Byte2.Aux6;
 	}
 
-	AuxStatus JandyMessage_Status::Aux7() const
+	Config::AuxillaryStates JandyMessage_Status::Aux7() const
 	{
 		return m_Payload_Byte0.Aux7;
 	}
 
-	HeaterStatus JandyMessage_Status::PoolHeater() const
+	Config::HeaterStatus JandyMessage_Status::PoolHeater() const
 	{
 		return m_Payload_Byte3.PoolHeater;
 	}
 
-	HeaterStatus JandyMessage_Status::SpaHeater() const
+	Config::HeaterStatus JandyMessage_Status::SpaHeater() const
 	{
 		return m_Payload_Byte4.SpaHeater;
 	}
 
-	HeaterStatus JandyMessage_Status::SolarHeater() const
+	Config::HeaterStatus JandyMessage_Status::SolarHeater() const
 	{
 		return m_Payload_Byte4.SolarHeater;
 	}

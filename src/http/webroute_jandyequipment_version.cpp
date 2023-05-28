@@ -18,7 +18,7 @@ namespace AqualinkAutomate::HTTP
 		nlohmann::json version_info;
 
 		version_info["panel_type"] = Equipment::JandyEquipmentTypes_ToString(versions.PanelType);
-		version_info["serial_number"] = versions.SerialNumber;
+		version_info["model_number"] = versions.ModelNumber;
 		version_info["fw_revision"] = versions.FirmwareRevision;
 
 		resp.set_header("Content-Type", "application/json");

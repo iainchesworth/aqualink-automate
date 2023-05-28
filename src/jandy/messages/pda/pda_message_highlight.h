@@ -15,8 +15,14 @@ namespace AqualinkAutomate::Messages
 	class PDAMessage_Highlight : public PDAMessage, public Interfaces::IMessageSignalRecv<PDAMessage_Highlight>
 	{
 	public:
+		static const uint8_t Index_LineId = 4;
+
+	public:
 		PDAMessage_Highlight();
 		virtual ~PDAMessage_Highlight();
+
+	public:
+		uint8_t LineId() const;
 
 	public:
 		virtual std::string ToString() const;
@@ -24,6 +30,9 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual void Serialize(std::vector<uint8_t>& message_bytes) const;
 		virtual void Deserialize(const std::span<const std::byte>& message_bytes);
+
+	private:
+		uint8_t m_LineId;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> g_PDAMessage_Highlight_Registration;

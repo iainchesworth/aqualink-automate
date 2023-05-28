@@ -51,7 +51,7 @@ namespace AqualinkAutomate::Utility
 	public:
 		bool CanProcess(const ScreenDataPage& page) const
 		{
-			auto& haystack = page[m_MenuMatcher.first];
+			auto& haystack = page[m_MenuMatcher.first].Text;
 			auto& needle = m_MenuMatcher.second;
 
 			auto it = std::search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](unsigned char ch1, unsigned char ch2) 

@@ -1,19 +1,23 @@
 #pragma once
 
-#include <cstdint>
+#include <expected>
+#include <optional>
 #include <string>
+#include <tuple>
+
+#include <boost/system/error_code.hpp>
+
+#include "jandy/errors/string_conversion_errors.h"
+
+using namespace AqualinkAutomate::ErrorCodes;
 
 namespace AqualinkAutomate::Utility
 {
 
 	class Temperature
 	{
-		static const uint8_t EXPECTED_STRING_LENGTH = 16;
-		static const uint8_t TEMPERATURE_AREA_INDEX_START = 0;
-		static const uint8_t TEMPERATURE_AREA_LENGTH = 9;
-		static const uint8_t TEMPERATURE_INDEX_START = 9;
-		static const uint8_t TEMPERATURE_LENGTH = 5;
-		static const uint8_t TEMPERATURE_UNITS_INDEX = 15;
+		static const uint8_t MAXIMUM_STRING_LENGTH = 16;
+		static const uint8_t MINIMUM_STRING_LENGTH = 7;
 
 	public:
 		enum class Units 
@@ -35,17 +39,21 @@ namespace AqualinkAutomate::Utility
 		Temperature& operator=(const std::string& temperature_string) noexcept;
 
 	public:
-		uint8_t operator()() const noexcept;
-		Units TemperatureUnits() const noexcept;
-		std::string TemperatureArea() const noexcept;
+		std::expected<int8_t, boost::system::error_code> operator()() const noexcept;
+		std::expected<Units, boost::system::error_code> TemperatureUnits() const noexcept;
+		std::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
 
 	private:
 		void ConvertStringToTemperature(const std::string& temperature_string) noexcept;
+		std::tuple<std::optional<std::string>, std::optional<std::string>, std::optional<std::string>> ValidateAndExtractData(const std::string& temperature_string) noexcept;
 
 	private:
-		uint8_t m_Temperature;
+		int8_t m_Temperature;
 		Units m_TemperatureUnits;
 		std::string m_TemperatureArea;
+
+	private:
+		std::optional<ErrorCodes::StringConversion_ErrorCodes> m_ErrorOccurred;
 	};
 
 }

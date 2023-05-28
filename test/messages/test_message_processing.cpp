@@ -11,7 +11,6 @@
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "logging/logging.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "jandy/formatters/jandy_message_formatters.h"
@@ -19,8 +18,9 @@
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_constants.h"
 #include "jandy/types/jandy_types.h"
+#include "logging/logging.h"
 
-#include "utilities/unit_test_ostream_support.h"
+#include "support/unit_test_ostream_support.h"
 
 using TestData = std::array<uint8_t, 16>;
 using TestVector = std::pair<TestData, uint8_t>;

@@ -18,8 +18,10 @@
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
 #include "jandy/utility/screen_data_page.h"
+#include "jandy/utility/screen_data_page_graph.h"
 #include "jandy/utility/screen_data_page_processor.h"
 #include "jandy/utility/screen_data_page_updater.h"
+#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -35,9 +37,14 @@ namespace AqualinkAutomate::Devices
 			StartUp,
 			InitComplete,
 			NormalOperation,
-			ScreenUpdating,
-			ScreenUpdateComplete,
 			FaultHasOccurred
+		};
+
+		enum class ScreenModes
+		{
+			Normal,
+			Updating,
+			UpdateComplete
 		};
 
 		enum class KeyCommands
@@ -53,13 +60,12 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id);
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode);
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode, Config::JandyConfig& config);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode);
 		virtual ~OneTouchDevice();
 
 	private:
 		void HandleAnyInternalProcessing();
+		void HandleAnyScreenProcessing();
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);
@@ -73,7 +79,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg);
 
 	private:
-		void Signal_OneTouch_AckMessage() const;
+		void Signal_OneTouch_AckMessage(KeyCommands key_command_to_send) const;
 
 	private:
 		void PageProcessor_Home(const Utility::ScreenDataPage& page);
@@ -101,7 +107,13 @@ namespace AqualinkAutomate::Devices
 		std::list<Utility::ScreenDataPage_Processor> m_DisplayedPageProcessors;
 
 	private:
+		Utility::ScreenDataPageGraph m_InitialisationGraph;
+		Utility::ScreenDataPageGraphImpl::ForwardIterator m_InitialisationGraphIterator;
+		bool m_InitialisationRequired{ true };
+
+	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
+		ScreenModes m_ScreenMode{ ScreenModes::Normal };
 	};
 
 }

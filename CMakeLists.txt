@@ -16,7 +16,7 @@ project(
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 
-find_package(Boost REQUIRED COMPONENTS coroutine iostreams log log_setup program_options system unit_test_framework)
+find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
 find_package(Crow REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
@@ -102,6 +102,8 @@ add_library(
 	src/interfaces/iwebroute.cpp 
 	src/interfaces/iwebsocket.cpp 
 	src/jandy/config/jandy_config.cpp
+	src/jandy/config/jandy_config_auxillary.cpp
+	src/jandy/config/jandy_config_remotepowercenter.cpp
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_controller.cpp 
@@ -111,8 +113,9 @@ add_library(
 	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
-	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 	 
+	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
+	src/jandy/devices/onetouch/onetouch_screenscraping.cpp 
 	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
 	src/jandy/devices/pda/pda_pageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
@@ -121,9 +124,11 @@ add_library(
 	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
+	src/jandy/errors/string_conversion_errors.cpp
 	src/jandy/factories/jandy_message_factory.cpp
 	src/jandy/factories/jandy_message_factory_registration.cpp
 	src/jandy/formatters/jandy_message_formatters.cpp
+	src/jandy/formatters/screen_data_page_formatter.cpp
 	src/jandy/generator/jandy_message_generator.cpp
 	src/jandy/generator/jandy_rawdata_generator.cpp 
 	src/jandy/jandy.cpp
@@ -162,11 +167,18 @@ add_library(
 	src/jandy/utility/filtered_slot.cpp 
 	src/jandy/utility/jandy_checksum.cpp 
 	src/jandy/utility/screen_data_page.cpp
+	src/jandy/utility/screen_data_page_graph.cpp 
+	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
+	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp 
+	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_validator.cpp
+	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_vertex.cpp 
 	src/jandy/utility/screen_data_page_processor.cpp 
 	src/jandy/utility/screen_data_page_updater.cpp
-	src/jandy/utility/screen_data_page_updater_context.cpp
-	src/jandy/utility/screen_data_page_updater_evshift.cpp
-	src/jandy/utility/screen_data_page_updater_evupdate.cpp
+	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_context.cpp
+	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlight.cpp 
+	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
+	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
+	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
 	src/jandy/utility/temperature.cpp 
@@ -335,9 +347,11 @@ if(ENABLE_TESTS)
 
 	add_executable(
 		testaqualink-automate
-		test/test_main.cpp
-		test/messages/test_message_processing.cpp
-		test/utilities/unit_test_ostream_support.cpp
+		test/test_main.cpp 
+		test/devices/test_devices_screenscraping.cpp 
+		test/messages/test_message_processing.cpp 
+		test/utility/test_utility_temperature.cpp 
+		test/support/unit_test_ostream_support.cpp 
 	)
 
 	target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)

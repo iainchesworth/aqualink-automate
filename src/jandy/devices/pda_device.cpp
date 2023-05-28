@@ -9,13 +9,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	PDADevice::PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
-		PDADevice::PDADevice(io_context, device_id, JandyControllerOperatingModes::MonitorOnly)
-	{
-	}
-
-	PDADevice::PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode) :
-		JandyController(io_context, device_id, PDA_TIMEOUT_DURATION, op_mode),
+	PDADevice::PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode) :
+		JandyController(io_context, device_id, PDA_TIMEOUT_DURATION, config, op_mode),
 		m_DisplayedPage(PDA_PAGE_LINES),
 		m_DisplayedPageUpdater(m_DisplayedPage),
 		m_DisplayedPageProcessors
@@ -44,12 +39,6 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(std::bind(&PDADevice::Slot_PDA_Status, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::PDAMessage_ShiftLines>(std::bind(&PDADevice::Slot_PDA_ShiftLines, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Unknown>(std::bind(&PDADevice::Slot_PDA_Unknown_PDA_1B, this, std::placeholders::_1), device_id());
-	}
-
-	PDADevice::PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode, Config::JandyConfig& config) :
-		PDADevice::PDADevice(io_context, device_id, op_mode)
-	{
-		InjectConfig(config);
 	}
 
 	PDADevice::~PDADevice()

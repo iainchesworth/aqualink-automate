@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Equipment
 
 	struct JandyEquipmentVersions
 	{
-		std::string SerialNumber;
+		std::string ModelNumber;
 		std::string FirmwareRevision;
 		JandyEquipmentTypes PanelType;
 	};

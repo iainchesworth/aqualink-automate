@@ -14,12 +14,18 @@ namespace AqualinkAutomate::Messages
 
 	PDAMessage_Highlight::PDAMessage_Highlight() :
 		PDAMessage(JandyMessageIds::PDA_Highlight),
-		Interfaces::IMessageSignalRecv<PDAMessage_Highlight>()
+		Interfaces::IMessageSignalRecv<PDAMessage_Highlight>(),
+		m_LineId(0)
 	{
 	}
 
 	PDAMessage_Highlight::~PDAMessage_Highlight()
 	{
+	}
+
+	uint8_t PDAMessage_Highlight::LineId() const
+	{
+		return m_LineId;
 	}
 
 	std::string PDAMessage_Highlight::ToString() const
@@ -36,6 +42,15 @@ namespace AqualinkAutomate::Messages
 		if (PacketIsValid(message_bytes))
 		{
 			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Highlight type", message_bytes.size()));
+
+			if (message_bytes.size() < Index_LineId)
+			{
+				LogDebug(Channel::Messages, "PDAMessage_Highlight is too short to deserialise LineId.");
+			}
+			else
+			{
+				m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
+			}
 
 			PDAMessage::Deserialize(message_bytes);
 

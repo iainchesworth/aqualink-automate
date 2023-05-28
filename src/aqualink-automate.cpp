@@ -137,19 +137,19 @@ int main(int argc, char *argv[])
             switch (settings.emulated_device.device_type)
             {
             case Devices::JandyEmulatedDeviceTypes::OneTouch:
-                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
                 break;
 
             case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-                emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
                 break;
 
             case Devices::JandyEmulatedDeviceTypes::IAQ:
-                emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
                 break;
 
             case Devices::JandyEmulatedDeviceTypes::PDA:
-                emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_id, Devices::JandyControllerOperatingModes::Emulated, jandy_config);
+                emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
                 break;
 
             case Devices::JandyEmulatedDeviceTypes::Unknown:

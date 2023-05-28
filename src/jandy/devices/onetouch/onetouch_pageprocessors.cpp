@@ -11,6 +11,8 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Home page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 = Paddock Pools
 			Info:   OneTouch Menu Line 01 =
@@ -26,16 +28,23 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =    Menu / Help
 		*/
 
-		if (JandyController::m_Config.has_value())
+		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
+		JandyController::m_Config.AirTemp = Utility::TrimWhitespace(page[6].Text);
+
+		// Signal that initialisation is complete (and permit screen scraping and other behaviour).
+		if (OperatingStates::InitComplete == m_OpState)
 		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.Mode = Equipment::JandyEquipmentModes::Normal;
-			config_refwrap.AirTemp = Utility::TrimWhitespace(page[6]);
+			// NOTE: This transfer normally happens on a warm start of the display/controller units.
+
+			LogInfo(Channel::Devices, "Emulated OneTouch device initialisation (WARM START) complete -> entering normal operation");
+			m_OpState = OperatingStates::NormalOperation;
 		}
 	}
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Service page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =
 			Info:   OneTouch Menu Line 01 =
@@ -51,15 +60,13 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (JandyController::m_Config.has_value())
-		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.Mode = Equipment::JandyEquipmentModes::Service;
-		}
+		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Service;
 	}
 
 	void OneTouchDevice::PageProcessor_TimeOut(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_TimeOut page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =
 			Info:   OneTouch Menu Line 01 =
@@ -75,24 +82,48 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (JandyController::m_Config.has_value())
-		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.Mode = Equipment::JandyEquipmentModes::TimeOut;
-			config_refwrap.TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10]));
-		}
+		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::TimeOut;
+		JandyController::m_Config.TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10].Text));
 	}
 
 	void OneTouchDevice::PageProcessor_OneTouch(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_OneTouch page.");
+
+		/*
+			Info:   OneTouch Menu Line 00 =
+			Info:   OneTouch Menu Line 01 = All Off
+			Info:   OneTouch Menu Line 02 =
+			Info:   OneTouch Menu Line 03 = 
+			Info:   OneTouch Menu Line 04 = Spa Mode     OFF
+			Info:   OneTouch Menu Line 05 = 
+			Info:   OneTouch Menu Line 06 = 
+			Info:   OneTouch Menu Line 07 = Clean Mode   OFF
+			Info:   OneTouch Menu Line 08 =
+			Info:   OneTouch Menu Line 09 =
+			Info:   OneTouch Menu Line 10 =  More OneTouch
+			Info:   OneTouch Menu Line 11 =      System
+		*/
+
+		// Signal that initialisation is complete (and permit screen scraping and other behaviour).
+		if (OperatingStates::InitComplete == m_OpState)
+		{
+			// NOTE: This transfer normally happens on a cold start of the display/controller units.
+
+			LogInfo(Channel::Devices, "Emulated OneTouch device initialisation (COLD START) complete -> entering normal operation");
+			m_OpState = OperatingStates::NormalOperation;
+		}
 	}
 
 	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_System page.");
 	}
 
 	void OneTouchDevice::PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_EquipmentStatus page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 = Equipment Status		Equipment Status	Equipment Status
 			Info:   OneTouch Menu Line 01 =
@@ -111,14 +142,18 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SelectSpeed page.");
 	}
 
 	void OneTouchDevice::PageProcessor_MenuHelp(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_MenuHelp page.");
 	}
 
 	void OneTouchDevice::PageProcessor_SetTemperature(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetTemperature page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =     Set Temp
 			Info:   OneTouch Menu Line 01 =
@@ -135,26 +170,26 @@ namespace AqualinkAutomate::Devices
 		*/
 
 
-		if (JandyController::m_Config.has_value())
-		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.PoolTemp = Utility::TrimWhitespace(page[2]);
-			config_refwrap.SpaTemp = Utility::TrimWhitespace(page[3]);
-			auto is_maintained = Utility::TrimWhitespace(page[5]);
-			auto maintenance_hours = Utility::TrimWhitespace(page[6]);
-		}
+		JandyController::m_Config.PoolTemp = Utility::TrimWhitespace(page[2].Text);
+		JandyController::m_Config.SpaTemp = Utility::TrimWhitespace(page[3].Text);
+		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
+		auto maintenance_hours = Utility::TrimWhitespace(page[6].Text);
 	}
 
 	void OneTouchDevice::PageProcessor_SetTime(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetTime page.");
 	}
 
 	void OneTouchDevice::PageProcessor_SystemSetup(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SystemSetup page.");
 	}
 
 	void OneTouchDevice::PageProcessor_FreezeProtect(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_FreezeProtect page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =  Freeze Protect
 			Info:   OneTouch Menu Line 01 =
@@ -170,23 +205,23 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (JandyController::m_Config.has_value())
-		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.FreezeProtectPoint = Utility::TrimWhitespace(page[3]);
-		}
+		JandyController::m_Config.FreezeProtectPoint = Utility::TrimWhitespace(page[3].Text);
 	}
 
 	void OneTouchDevice::PageProcessor_Boost(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Boost page.");
 	}
 
 	void OneTouchDevice::PageProcessor_SetAquapure(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetAquapure page.");
 	}
 
 	void OneTouchDevice::PageProcessor_Version(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Version page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =
 			Info:   OneTouch Menu Line 01 =
@@ -202,24 +237,29 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		const auto serial_number = Utility::TrimWhitespace(page[4]);
-		const auto panel_type = Utility::TrimWhitespace(page[5]);
+		const auto model_number = Utility::TrimWhitespace(page[4].Text);
+		const auto panel_type = Utility::TrimWhitespace(page[5].Text);
 		const auto panel_type_converted = Equipment::JandyEquipmentType_FromString(panel_type);
-		const auto fw_revision = Utility::TrimWhitespace(page[7]);
+		const auto fw_revision = Utility::TrimWhitespace(page[7].Text);
 
-		if (JandyController::m_Config.has_value())
+		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
+		JandyController::m_Config.EquipmentVersions.PanelType = panel_type_converted;
+		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
+		
+		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
+
+		// Signal that the start-up of the display (and the display unit connection) is complete.
+		if (OperatingStates::StartUp == m_OpState)
 		{
-			auto& config_refwrap = JandyController::m_Config.value().get();
-			config_refwrap.EquipmentVersions.SerialNumber = serial_number;
-			config_refwrap.EquipmentVersions.PanelType = panel_type_converted;
-			config_refwrap.EquipmentVersions.FirmwareRevision = fw_revision;
+			LogInfo(Channel::Devices, "Emulated OneTouch device start-up complete -> entering initialisation phase");
+			m_OpState = OperatingStates::InitComplete;
 		}
-
-		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Serial: {}, Type: {}, Rev: {}", serial_number, panel_type, fw_revision));
 	}
 
 	void OneTouchDevice::PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsSensors page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 = Model   B0029221
 			Info:   OneTouch Menu Line 01 = Type  RS-8 Combo
@@ -238,6 +278,8 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsRemotes(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsRemotes page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =     Remotes
 			Info:   OneTouch Menu Line 01 = 
@@ -256,6 +298,8 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page)
 	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsErrors page.");
+
 		/*
 			Info:   OneTouch Menu Line 00 =      Errors              Errors
 			Info:   OneTouch Menu Line 01 = 

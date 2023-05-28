@@ -9,13 +9,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	IAQDevice::IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
-		IAQDevice(io_context, device_id, JandyControllerOperatingModes::MonitorOnly)
-	{
-	}
-
-	IAQDevice::IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode) :
-		JandyController(io_context, device_id, IAQ_TIMEOUT_DURATION, op_mode),
+	IAQDevice::IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode) :
+		JandyController(io_context, device_id, IAQ_TIMEOUT_DURATION, config, op_mode),
 		m_StatusPage(IAQ_STATUS_PAGE_LINES),
 		m_TableInfo(IAQ_MESSAGE_TABLE_LINES),
 		m_SM_PageUpdate(m_StatusPage),
@@ -34,12 +29,6 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_Poll>(std::bind(&IAQDevice::Slot_IAQ_Poll, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_StartUp>(std::bind(&IAQDevice::Slot_IAQ_StartUp, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TableMessage>(std::bind(&IAQDevice::Slot_IAQ_TableMessage, this, std::placeholders::_1), device_id());
-	}
-
-	IAQDevice::IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, JandyControllerOperatingModes op_mode, Config::JandyConfig& config) :
-		IAQDevice(io_context, device_id, op_mode)
-	{
-		InjectConfig(config);
 	}
 
 	IAQDevice::~IAQDevice()
@@ -120,7 +109,7 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			m_TableInfo[msg.LineId()] = msg.Line();
+			m_TableInfo[msg.LineId()].Text = msg.Line();
 		}
 	}
 

@@ -114,22 +114,22 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Raw(), Devices::JandyControllerOperatingModes::MonitorOnly, m_Config)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
