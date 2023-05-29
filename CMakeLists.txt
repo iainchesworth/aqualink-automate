@@ -110,6 +110,7 @@ add_library(
 	src/jandy/devices/jandy_device.cpp 
 	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/jandy_emulated_device_types.cpp 
+	src/jandy/devices/jandy_screen.cpp 
 	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
@@ -181,8 +182,9 @@ add_library(
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
-	src/jandy/utility/temperature.cpp 
-	src/jandy/utility/timeout_duration.cpp 
+	src/jandy/utility/string_conversion/equipment_status.cpp 
+	src/jandy/utility/string_conversion/temperature.cpp 
+	src/jandy/utility/string_conversion/timeout_duration.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -350,6 +352,8 @@ if(ENABLE_TESTS)
 		test/test_main.cpp 
 		test/devices/test_devices_screenscraping.cpp 
 		test/messages/test_message_processing.cpp 
+		test/utility/test_utility_equipmentstatus.cpp 
+		test/utility/test_utility_jandychecksum.cpp 
 		test/utility/test_utility_temperature.cpp 
 		test/support/unit_test_ostream_support.cpp 
 	)

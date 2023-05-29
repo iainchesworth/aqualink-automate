@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/utility/temperature.h"
+#include "jandy/utility/string_conversion/temperature.h"
 
 #include "support/unit_test_ostream_support.h"
 

@@ -7,7 +7,8 @@
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
-#include "jandy/utility/temperature.h"
+#include "jandy/utility/string_conversion/equipment_status.h"
+#include "jandy/utility/string_conversion/temperature.h"
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -41,6 +42,7 @@ namespace AqualinkAutomate::Messages::Jandy::Messages
 namespace AqualinkAutomate::Utility
 {
     std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, EquipmentStatus::Statuses const& right);
 }
 // namespace AqualinkAutomate::Utility
 

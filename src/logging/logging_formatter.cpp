@@ -56,37 +56,6 @@ namespace AqualinkAutomate::Logging
 			strm << all_other_levels_formatter(rec, strm);
 			break;
 		}
-
-		/*
-		strm <<
-			std::format(
-				"{:08}: <{}>\t({})\t[{}:{}] {}",
-				rec[line_id].get<uint32_t>(),
-				boost::describe::enum_to_string(rec[severity].get<Severity>(), "UNKNOWN"),
-				boost::describe::enum_to_string(rec[channel].get<Channel>(), "UNKNOWN"),
-				rec[source_file].get<std::string>(),
-				rec[source_line].get<uint32_t>(),
-				rec[boost::log::expressions::smessage].get<std::string>());
-
-		
-			<< std::hex << std::setw(8) << std::setfill('0') << line_id
-			<< std::dec << std::setfill(' ') << ": <" << severity << ">\t"
-			<< "(" << channel << ") "
-			<< " [" << source_file << ":" << source_line << "] "
-			<< boost::log::expressions::if_(boost::log::expressions::has_attr(scope))
-			[
-				boost::log::expressions::stream << "(" << scope << ") "
-			]
-			<< boost::log::expressions::if_(boost::log::expressions::has_attr(tag_attr))
-			[
-				boost::log::expressions::stream << "[" << tag_attr << "] "
-			]
-			<< boost::log::expressions::if_(boost::log::expressions::has_attr(timeline))
-			[
-				boost::log::expressions::stream << "[" << timeline << "] "
-			]
-			<< boost::log::expressions::smessage;
-		*/
 	}
 
 }

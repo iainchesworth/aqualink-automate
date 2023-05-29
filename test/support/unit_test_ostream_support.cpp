@@ -33,6 +33,12 @@ namespace AqualinkAutomate::Utility
         os << magic_enum::enum_name(right);
         return os;
     }
+
+    std::ostream& boost_test_print_type(std::ostream& os, EquipmentStatus::Statuses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
 }
 // namespace AqualinkAutomate::Utility
 

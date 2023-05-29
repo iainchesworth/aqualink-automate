@@ -10,8 +10,8 @@
 #include "jandy/config/jandy_config_remotepowercenter.h"
 #include "jandy/equipment/jandy_equipment_modes.h"
 #include "jandy/equipment/jandy_equipment_versions.h"
-#include "jandy/utility/temperature.h"
-#include "jandy/utility/timeout_duration.h"
+#include "jandy/utility/string_conversion/temperature.h"
+#include "jandy/utility/string_conversion/timeout_duration.h"
 
 namespace AqualinkAutomate::Config
 {

@@ -16,9 +16,6 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "jandy/utility/screen_data_page.h"
-#include "jandy/utility/screen_data_page_processor.h"
-#include "jandy/utility/screen_data_page_updater.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -59,11 +56,6 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page);
 		void PageProcessor_Boost(const Utility::ScreenDataPage& page);
 		void PageProcessor_FirmwareVersion(const Utility::ScreenDataPage& page);
-
-	private:
-		Utility::ScreenDataPage m_DisplayedPage;
-		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage> m_DisplayedPageUpdater;
-		std::list<Utility::ScreenDataPage_Processor> m_DisplayedPageProcessors;
 	};
 
 }

@@ -39,11 +39,11 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			m_ScreenMode = ScreenModes::Updating;
-			m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
+			JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
+			JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
+			JandyController::m_Screen.ProcessScreenUpdates();
 
 			Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-			HandleAnyScreenProcessing();
 			HandleAnyInternalProcessing();
 		}
 
@@ -66,15 +66,15 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Status signal.");
 
-		if (ScreenModes::Updating == m_ScreenMode)
+		if (JandyScreenModes::Updating == JandyController::m_Screen.ScreenMode())
 		{
-			LogInfo(Channel::Devices, std::format("\n{}", m_DisplayedPage));
+			LogInfo(Channel::Devices, std::format("\n{}", JandyController::m_Screen.DisplayedPage()));
 
 			// The series of JandyMessage_MessageLong messages has finished.
-			m_ScreenMode = ScreenModes::UpdateComplete;
+			JandyController::m_Screen.ScreenMode(JandyScreenModes::UpdateComplete);
 		}
 
-		if ((OperatingStates::NormalOperation == m_OpState) && (ScreenModes::Normal == m_ScreenMode) && (m_InitialisationRequired))
+		if ((OperatingStates::NormalOperation == m_OpState) && (JandyScreenModes::Normal == JandyController::m_Screen.ScreenMode()) && (m_InitialisationRequired))
 		{
 			++m_InitialisationGraphIterator;
 
@@ -107,7 +107,7 @@ namespace AqualinkAutomate::Devices
 			Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
 		}
 
-		HandleAnyScreenProcessing();
+		JandyController::m_Screen.ProcessScreenUpdates();
 		HandleAnyInternalProcessing();
 
 		// Kick the watchdog to indicate that this device is alive.
@@ -118,7 +118,7 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Clear signal.");
 
-		m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evClear());
+		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
 		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
 		HandleAnyInternalProcessing();
 
@@ -130,8 +130,8 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Highlight signal.");
 
-		m_ScreenMode = ScreenModes::Updating;
-		m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evHighlight(msg.LineId()));
+		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
+		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlight(msg.LineId()));
 
 		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
 		HandleAnyInternalProcessing();
@@ -144,8 +144,8 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_HighlightChars signal.");
 
-		m_ScreenMode = ScreenModes::Updating;
-		m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evHighlightChars(msg.LineId(), msg.StartIndex(), msg.StopIndex()));
+		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
+		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlightChars(msg.LineId(), msg.StartIndex(), msg.StopIndex()));
 
 		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
 		HandleAnyInternalProcessing();
@@ -161,11 +161,11 @@ namespace AqualinkAutomate::Devices
 		auto direction = (0 > msg.LineShift()) ? Utility::ScreenDataPage::ShiftDirections::Up : Utility::ScreenDataPage::ShiftDirections::Down;
 		auto lines_to_shift = std::abs(msg.LineShift());
 
-		m_ScreenMode = ScreenModes::Updating;
-		m_DisplayedPageUpdater.process_event(Utility::ScreenDataPageUpdaterImpl::evShift(direction, msg.FirstLineId(), msg.LastLineId(), lines_to_shift));
+		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
+		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evShift(direction, msg.FirstLineId(), msg.LastLineId(), lines_to_shift));
+		JandyController::m_Screen.ProcessScreenUpdates();
 		
 		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyScreenProcessing();
 		HandleAnyInternalProcessing();
 
 		// Kick the watchdog to indicate that this device is alive.

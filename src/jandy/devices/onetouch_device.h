@@ -17,10 +17,7 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_graph.h"
-#include "jandy/utility/screen_data_page_processor.h"
-#include "jandy/utility/screen_data_page_updater.h"
 #include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
 
 namespace AqualinkAutomate::Devices
@@ -38,13 +35,6 @@ namespace AqualinkAutomate::Devices
 			InitComplete,
 			NormalOperation,
 			FaultHasOccurred
-		};
-
-		enum class ScreenModes
-		{
-			Normal,
-			Updating,
-			UpdateComplete
 		};
 
 		enum class KeyCommands
@@ -65,7 +55,6 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		void HandleAnyInternalProcessing();
-		void HandleAnyScreenProcessing();
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);
@@ -102,18 +91,12 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
 
 	private:
-		Utility::ScreenDataPage m_DisplayedPage;
-		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage> m_DisplayedPageUpdater;
-		std::list<Utility::ScreenDataPage_Processor> m_DisplayedPageProcessors;
-
-	private:
 		Utility::ScreenDataPageGraph m_InitialisationGraph;
 		Utility::ScreenDataPageGraphImpl::ForwardIterator m_InitialisationGraphIterator;
 		bool m_InitialisationRequired{ true };
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
-		ScreenModes m_ScreenMode{ ScreenModes::Normal };
 	};
 
 }

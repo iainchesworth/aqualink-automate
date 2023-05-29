@@ -3,7 +3,7 @@
 
 #include <magic_enum.hpp>
 
-#include "jandy/utility/timeout_duration.h"
+#include "jandy/utility/string_conversion/timeout_duration.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

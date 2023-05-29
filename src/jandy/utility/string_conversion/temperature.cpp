@@ -6,7 +6,7 @@
 #include <magic_enum.hpp>
 
 #include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/temperature.h"
+#include "jandy/utility/string_conversion/temperature.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
