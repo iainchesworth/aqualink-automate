@@ -7,31 +7,21 @@
 #include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_device.h"
 #include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/jandy_screen.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	enum JandyControllerOperatingModes
-	{
-		MonitorOnly,
-		Emulated
-	};
-
 	class JandyController : public JandyDevice
 	{
 	public:
-		JandyController(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, uint8_t screen_lines, Config::JandyConfig& config, JandyControllerOperatingModes op_mode);
+		JandyController(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, Config::JandyConfig& config);
 		virtual ~JandyController();
 
 	protected:
-		JandyControllerOperatingModes m_OpMode;
+		virtual void ProcessControllerUpdates() = 0;
 
 	protected:
 		Config::JandyConfig& m_Config;
-
-	protected:
-		JandyScreen m_Screen;
 	};
 
 }

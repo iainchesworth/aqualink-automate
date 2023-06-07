@@ -2,13 +2,18 @@
 
 #include <chrono>
 #include <list>
+#include <vector>
 
 #include <boost/asio/io_context.hpp>
 
 #include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/scrapeable.h"
+#include "jandy/devices/capabilities/screen.h"
 #include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -17,22 +22,25 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "jandy/utility/screen_data_page_graph.h"
-#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
+#include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController
+	class OneTouchDevice : public JandyController, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
 	{
 		static const uint8_t ONETOUCH_PAGE_LINES = 12;
+
+		static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER = 1;
+		static const Scrapeable::ScrapeId ONETOUCH_EXAMPLE_TWO_SCRAPER = 2;
 
 		const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 		enum class OperatingStates
 		{
 			StartUp,
-			InitComplete,
+			ColdStart,
+			WarmStart,
 			NormalOperation,
 			FaultHasOccurred
 		};
@@ -50,11 +58,11 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);
 		virtual ~OneTouchDevice();
 
 	private:
-		void HandleAnyInternalProcessing();
+		virtual void ProcessControllerUpdates() override;
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);
@@ -66,9 +74,6 @@ namespace AqualinkAutomate::Devices
 		void Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg);
 		void Slot_OneTouch_ShiftLines(const Messages::PDAMessage_ShiftLines& msg);
 		void Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg);
-
-	private:
-		void Signal_OneTouch_AckMessage(KeyCommands key_command_to_send) const;
 
 	private:
 		void PageProcessor_Home(const Utility::ScreenDataPage& page);
@@ -91,12 +96,14 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
 
 	private:
-		Utility::ScreenDataPageGraph m_InitialisationGraph;
-		Utility::ScreenDataPageGraphImpl::ForwardIterator m_InitialisationGraphIterator;
-		bool m_InitialisationRequired{ true };
+		OperatingStates m_OpState{ OperatingStates::StartUp };
 
 	private:
-		OperatingStates m_OpState{ OperatingStates::StartUp };
+		Messages::AckTypes m_AckType_ToSend{ Messages::AckTypes::V1_Normal };
+		KeyCommands m_KeyCommand_ToSend{ KeyCommands::NoKeyCommand };
+
+	private:
+		Types::ProfilingUnitTypePtr m_ProfilingDomain;
 	};
 
 }

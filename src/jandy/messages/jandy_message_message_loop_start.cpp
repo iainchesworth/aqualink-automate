@@ -1,16 +1,15 @@
 #include <format>
 
-#include "logging/logging.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_message_loop_start.h"
+#include "logging/logging.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLoopStart> JandyMessage_MessageLoopStart::g_JandyMessage_MessageLoopStart_Registration(JandyMessageIds::Message);
+	const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLoopStart> JandyMessage_MessageLoopStart::g_JandyMessage_MessageLoopStart_Registration(JandyMessageIds::MessageLoopStart);
 
 	JandyMessage_MessageLoopStart::JandyMessage_MessageLoopStart() :
 		JandyMessage(JandyMessageIds::MessageLoopStart),

@@ -14,10 +14,6 @@
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
-#include "logging/logging.h"
-
-using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Formatters
 {

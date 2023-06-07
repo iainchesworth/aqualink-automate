@@ -9,7 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-
+	// NOTHING HERE
 
 }
 // namespace AqualinkAutomate::Devices

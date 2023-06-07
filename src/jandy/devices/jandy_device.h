@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Devices
 
 	protected:
 		Utility::SlotConnectionManager m_SlotManager;
-		const Devices::JandyDeviceType& m_DeviceId;
+		const Devices::JandyDeviceType m_DeviceId;
 	};
 
 }

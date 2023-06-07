@@ -9,7 +9,8 @@
 option(USE_LIBCXX "Use libc++ instead of libstdc++" ON)
 
 if(USE_LIBCXX)
-	set(LINUX_FLAGS_CXX "${LINUX_FLAGS_CXX} -stdlib=libc++") # for both compiler & linker
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++") # for both compiler & linker
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc++abi")
 endif(USE_LIBCXX)
 
 #------------------------------------------------------------------------------

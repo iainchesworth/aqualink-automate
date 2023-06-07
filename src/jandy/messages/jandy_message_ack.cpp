@@ -2,13 +2,13 @@
 
 #include <magic_enum.hpp>
 
-#include "logging/logging.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_constants.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/utility/jandy_checksum.h"
+#include "logging/logging.h"
+#include "utility/array_standard_formatter.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
@@ -24,7 +24,7 @@ namespace AqualinkAutomate::Messages
 	JandyMessage_Ack::JandyMessage_Ack(AckTypes ack_type, uint8_t command) :
 		JandyMessage(JandyMessageIds::Ack),
 		Interfaces::IMessageSignalRecv<JandyMessage_Ack>(),
-		Interfaces::IMessageSignalSend<JandyMessage_Ack, Publishers::JandyMessagePublisher>(),
+		Interfaces::IMessageSignalSend<JandyMessage_Ack>(),
 		m_AckType(ack_type),
 		m_Command(command)
 	{
@@ -67,6 +67,8 @@ namespace AqualinkAutomate::Messages
 
 		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
 		message_bytes[6] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+
+		LogTrace(Channel::Messages, std::format("Ack Message (Raw): {:.{}}", message_bytes, message_bytes.size()));
 	}
 
 	void JandyMessage_Ack::Deserialize(const std::span<const std::byte>& message_bytes)
@@ -88,7 +90,7 @@ namespace AqualinkAutomate::Messages
 				m_AckType = magic_enum::enum_cast<AckTypes>(static_cast<uint8_t>(message_bytes[Index_AckType])).value_or(AckTypes::Unknown);
 				m_Command = static_cast<uint8_t>(message_bytes[Index_Command]);
 
-				LogDebug(Channel::Messages, std::format("Deserialised JandyMessage_Ack: Ack Type -> {}, Command -> 0x{:02x}", magic_enum::enum_name(m_AckType), m_Command));
+				LogDebug(Channel::Messages, std::format("Deserialised JandyMessage_Ack: Ack Type -> {} (0x{:02x}), Command -> 0x{:02x}", magic_enum::enum_name(m_AckType), static_cast<uint8_t>(message_bytes[Index_AckType]), m_Command));
 			}
 
 			JandyMessage::Deserialize(message_bytes);

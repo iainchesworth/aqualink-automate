@@ -16,12 +16,12 @@ namespace AqualinkAutomate::Profiling
 		virtual ~Domain() = default;
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 	};
 
-	using DomainPtr = std::shared_ptr<Profiling::Domain>;
+	using DomainPtr = std::unique_ptr<Profiling::Domain>;
 
 }
 // namespace AqualinkAutomate::Profiling

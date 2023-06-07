@@ -1,10 +1,9 @@
 #include <format>
 
-#include "logging/logging.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/pda/pda_message_clear.h"
+#include "logging/logging.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages

@@ -13,6 +13,7 @@
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/pda_device.h"
 #include "jandy/equipment/jandy_equipment.h"
+#include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
@@ -36,7 +37,6 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "jandy/publisher/jandy_message_publisher.h"
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
@@ -44,8 +44,8 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config, ProtocolHandler& protocol_handler) :
-		IEquipment(io_context, protocol_handler),
+	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config) :
+		IEquipment(io_context),
 		m_IOContext(io_context),
 		m_Devices(),
 		m_IdentifiedDeviceIds(),
@@ -83,8 +83,21 @@ namespace AqualinkAutomate::Equipment
 		Messages::PDAMessage_ShiftLines::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
 
 		Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::DisplayUnknownMessages, this, std::placeholders::_1));
+	}
 
-		Publishers::JandyMessagePublisher::GetSignal()->connect(std::bind(&JandyEquipment::PublishEquipmentMessage, this, std::placeholders::_1));
+	JandyEquipment::~JandyEquipment()
+	{
+		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
+			{
+				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_MessageStats[id], magic_enum::enum_name(id)));
+			}
+		);
+
+		LogInfo(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
+			{
+				return previous + elem.second;
+			})
+		));
 	}
 
 	auto JandyEquipment::IsDeviceRegistered(const Devices::JandyDeviceType& device_id)
@@ -104,7 +117,7 @@ namespace AqualinkAutomate::Equipment
 		{
 			// A probe message is just the Aqualink master looking for a (potentially non-existant) device...do nothing.
 		}
-		else if (m_IdentifiedDeviceIds.contains(message.Destination().Raw()))
+		else if (m_IdentifiedDeviceIds.contains(message.Destination().Id()))
 		{
 			// Already have this device in the devices list...do nothing.
 		}
@@ -113,37 +126,37 @@ namespace AqualinkAutomate::Equipment
 			switch (message.Destination().Class())
 			{
 			case Devices::DeviceClasses::IAQ:
-				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
+				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
-				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
+				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
-				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
+				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
-				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Raw(), m_Config, Devices::JandyControllerOperatingModes::MonitorOnly)));
+				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
-				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: 0x{:02x}", message.Destination().Raw()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, message.Destination().Raw())));
+				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, message.Destination().Id())));
 				break;
 
 			default:
-				LogDebug(Channel::Equipment, std::format("Device class ({}, 0x{:02x}) not supported.", magic_enum::enum_name(message.Destination().Class()), message.Destination().Raw()));
+				LogDebug(Channel::Equipment, std::format("Device class ({}, {}) not supported.", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()));
 				break;
 			}
 
 			// So we've handled this device...no need to keep repeating ourselves...
-			m_IdentifiedDeviceIds.insert(message.Destination().Raw());
+			m_IdentifiedDeviceIds.insert(message.Destination().Id());
 		}
 
 		// Capture statistics, given we are processing every message.
@@ -157,9 +170,9 @@ namespace AqualinkAutomate::Equipment
 		LogWarning(
 			Channel::Equipment,
 			std::format(
-				"Unknown message received -> cannot process: destination {} (0x{:02x}), message id {} (0x{:02x}), length {} bytes, checksum 0x{:02x}",
+				"Unknown message received -> cannot process: destination {} ({}), message id {} (0x{:02x}), length {} bytes, checksum 0x{:02x}",
 				magic_enum::enum_name(message.Destination().Class()),
-				message.Destination().Raw(),
+				message.Destination().Id(),
 				magic_enum::enum_name(message.Id()),
 				message.RawId(),
 				message.MessageLength(),
@@ -168,51 +181,24 @@ namespace AqualinkAutomate::Equipment
 		);
 	}
 
-	void JandyEquipment::PublishEquipmentMessage(const Messages::JandyMessage& message)
-	{
-		LogInfo(Channel::Equipment, "Publishing message from equipment");
-
-		if (!m_ProtocolHandler.HandlePublish(message))
-		{
-			LogWarning(Channel::Equipment, "Failed to publish message");
-		}
-		else
-		{
-			///FIXME stats
-		}
-	}
-
 	bool JandyEquipment::AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device)
 	{
 		bool added_device = false;
 
 		if (m_Devices.end() != IsDeviceRegistered(device->DeviceId()))
 		{
-			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id (0x{:02x}) already registered", device->DeviceId().Raw()));
+			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id ({}) already registered", device->DeviceId().Id()));
 		}
 		else
 		{
-			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: 0x{:02x}", device->DeviceId().Raw()));
+			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: {}", device->DeviceId().Id()));
 
-			m_IdentifiedDeviceIds.insert(device->DeviceId().Raw());
+			m_IdentifiedDeviceIds.insert(device->DeviceId().Id());
 			m_Devices.push_back(std::move(device));
 		}
 
 		return added_device;
 	}
 
-	void JandyEquipment::StopAndCleanUp()
-	{
-		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
-			{
-				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_MessageStats[id], magic_enum::enum_name(id)));
-				LogInfo(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
-					{
-						return previous + elem.second;
-					})
-				));
-			}
-		);
-	}
 }
 // namespace AqualinkAutomate::Equipment

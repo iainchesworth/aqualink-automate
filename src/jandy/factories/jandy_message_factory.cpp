@@ -14,7 +14,6 @@
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Factory

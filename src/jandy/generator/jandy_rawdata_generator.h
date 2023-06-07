@@ -1,20 +1,14 @@
 #pragma once
 
-#include "interfaces/igenerator.h"
-#include "interfaces/iserialport.h"
+#include <cstdint>
+#include <vector>
+
 #include "jandy/types/jandy_types.h"
 
 namespace AqualinkAutomate::Generators
 {
 
-	class JandyRawDataGenerator : public Interfaces::IGenerator_MessageToRawData<Interfaces::ISerialPort::DataType, Types::JandyMessageTypePtr>
-	{
-	public:
-		JandyRawDataGenerator();
-
-	public:
-		virtual boost::asio::awaitable<void> GenerateRawDataFromMessage(const Types::JandyMessageTypePtr& msg) final;
-	};
+	void GenerateRawDataFromMessage(const Types::JandyMessageTypePtr& msg, std::vector<uint8_t>& serial_data);
 
 }
 // namespace AqualinkAutomate::Generators

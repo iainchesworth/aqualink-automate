@@ -4,7 +4,7 @@ set(Boost_NO_WARN_NEW_VERSIONS 1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
 
 project(
 	aqualink-automate 
@@ -15,9 +15,11 @@ project(
 
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
+option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
+cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
-find_package(Crow REQUIRED)
+find_package(Crow CONFIG REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -34,10 +36,41 @@ if(ENABLE_PROFILING)
 
 find_package(Tracy CONFIG REQUIRED)
 
-include(cmake/tools/profiling_uprof.cmake)
-include(cmake/tools/profiling_vtune.cmake)
+find_package(UProf)
+find_package(VTune)
 
 endif(ENABLE_PROFILING)
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_SANITIZERS)
+
+option(SANITIZE_ADDRESS "DevTools: Sanitizers -> Use AddressSanitizer" OFF)
+option(SANITIZE_MEMORY "DevTools: Sanitizers -> Use MemorySanitizer" OFF)
+option(SANITIZE_THREAD "DevTools: Sanitizers -> Use ThreadSanitizer" OFF)
+option(SANITIZE_UNDEFINED "DevTools: Sanitizers -> Use UndefinedBehaviourSanitizer" OFF)
+
+find_package(Sanitizers)
+
+endif(ENABLE_SANITIZERS)
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_CLANG_TIDY)
+
+find_package(ClangTidy)
+
+endif(ENABLE_CLANG_TIDY)
 
 #------------------------------------------------------------------------------
 #
@@ -78,6 +111,8 @@ add_library(
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp 
+	src/exceptions/exception_options_conflictingoptions.cpp 
+	src/exceptions/exception_options_missingdependency.cpp 
 	src/exceptions/exception_webserver.cpp 
 	src/http/crow_custom_logger.cpp 
 	src/http/webroute_jandyequipment_buttons.cpp 
@@ -89,14 +124,12 @@ add_library(
 	src/http/webroute_version.cpp 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
-	src/interfaces/iequipment.cpp
-	src/interfaces/igenerator.cpp
+	src/interfaces/iequipment.cpp	
 	src/interfaces/imessage.cpp
 	src/interfaces/imessagesignal_recv.cpp
 	src/interfaces/imessagesignal_send.cpp
 	src/interfaces/iprofiler.cpp
-	src/interfaces/iprofilingunit.cpp
-	src/interfaces/ipublisher.cpp 
+	src/interfaces/iprofilingunit.cpp	 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/iwebroute.cpp 
@@ -108,12 +141,17 @@ add_library(
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_controller.cpp 
 	src/jandy/devices/jandy_device.cpp 
+	src/jandy/devices/jandy_device_id.cpp 
 	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/jandy_emulated_device_types.cpp 
-	src/jandy/devices/jandy_screen.cpp 
+	src/jandy/devices/capabilities/emulated.cpp 
+	src/jandy/devices/capabilities/scrapeable.cpp 
+	src/jandy/devices/capabilities/screen.cpp 
 	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
+	src/jandy/devices/keypad/keypad_messageprocessors.cpp 
+	src/jandy/devices/keypad/keypad_pageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_screenscraping.cpp 
@@ -128,9 +166,15 @@ add_library(
 	src/jandy/errors/string_conversion_errors.cpp
 	src/jandy/factories/jandy_message_factory.cpp
 	src/jandy/factories/jandy_message_factory_registration.cpp
-	src/jandy/formatters/jandy_message_formatters.cpp
+	src/jandy/formatters/jandy_device_formatters.cpp 
+	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
 	src/jandy/generator/jandy_message_generator.cpp
+	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
+	src/jandy/generator/jandy_message_generator_buffervalidation.cpp
+	src/jandy/generator/jandy_message_generator_packetprocessing.cpp
+	src/jandy/generator/jandy_message_generator_packetvalidation.cpp
+	src/jandy/generator/jandy_message_generator_startendsequence.cpp
 	src/jandy/generator/jandy_rawdata_generator.cpp 
 	src/jandy/jandy.cpp
 	src/jandy/messages/aquarite/aquarite_message.cpp
@@ -163,7 +207,6 @@ add_library(
 	src/jandy/messages/jandy_message_probe.cpp
 	src/jandy/messages/jandy_message_status.cpp	 
 	src/jandy/messages/jandy_message_unknown.cpp
-	src/jandy/publisher/jandy_message_publisher.cpp 
 	src/jandy/types/jandy_types.cpp
 	src/jandy/utility/filtered_slot.cpp 
 	src/jandy/utility/jandy_checksum.cpp 
@@ -182,7 +225,7 @@ add_library(
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
-	src/jandy/utility/string_conversion/equipment_status.cpp 
+	src/jandy/utility/string_conversion/auxillary_state.cpp 
 	src/jandy/utility/string_conversion/temperature.cpp 
 	src/jandy/utility/string_conversion/timeout_duration.cpp 
 	src/logging/formatters/logging_formatters.cpp
@@ -202,6 +245,10 @@ add_library(
 	src/options/options_serial_options.cpp
 	src/options/options_settings.cpp
 	src/options/options_web_options.cpp
+	src/options/helpers/conflicting_options_helper.cpp 
+	src/options/helpers/option_dependency_helper.cpp 
+	src/options/validators/jandy_device_id_validator.cpp 
+	src/options/validators/jandy_emulated_device_type_validator.cpp
 	src/options/validators/profiler_type_validator.cpp
 	src/options/validators/severity_level_validator.cpp
 	src/profiling/noop_profiler.cpp
@@ -218,13 +265,17 @@ add_library(
 	src/profiling/profiling_units/frame.cpp 
 	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_frame.cpp>	
 	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_zone.cpp>	
+	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_zone_datamap.cpp>	
 	src/profiling/profiling_units/timed_zone.cpp 
 	src/profiling/profiling_units/zone.cpp 
 	src/profiling/types/profiling_types.cpp
-	src/protocol/protocol_handler.cpp
+	src/protocol/protocol_handler.cpp 
+	src/protocol/protocol_handler_read.cpp 
+	src/protocol/protocol_handler_write.cpp 
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
+	src/serial/serial_types.cpp
 	src/signals/async_signal.cpp
 	src/signals/async_slot.cpp
 	src/signals/signal_awaitable.cpp
@@ -275,11 +326,12 @@ target_sources(
 )
 endif(LINUX)
 
-target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
+target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
 
 target_compile_definitions(
 	libaqualink-automate 
 	PUBLIC 
+	CROW_ENABLE_COMPRESSION 
 	CROW_ENABLE_SSL 
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
@@ -350,9 +402,21 @@ if(ENABLE_TESTS)
 	add_executable(
 		testaqualink-automate
 		test/test_main.cpp 
+		test/devices/test_devices_id.cpp 
 		test/devices/test_devices_screenscraping.cpp 
+		test/devices/test_devices_types.cpp 
+		test/generators/test_jandy_message_generator.cpp 
+		test/generators/test_jandy_rawdata_generator.cpp 
+		test/logging/test_logging_validator_jandyemulateddevicetype.cpp 
+		test/logging/test_logging_validator_jandydeviceid.cpp 
+		test/logging/test_logging_validator_profiler.cpp 
+		test/logging/test_logging_validator_severity.cpp 
 		test/messages/test_message_processing.cpp 
-		test/utility/test_utility_equipmentstatus.cpp 
+		test/mocks/mock_generator_messagetorawdata.cpp 
+		test/mocks/mock_generator_rawdatatomessage.cpp 
+		test/mocks/mock_serialport.cpp 
+		test/protocol/test_protocol_handler.cpp 
+		test/utility/test_utility_auxillarystate.cpp 
 		test/utility/test_utility_jandychecksum.cpp 
 		test/utility/test_utility_temperature.cpp 
 		test/support/unit_test_ostream_support.cpp 
@@ -372,6 +436,21 @@ if(ENABLE_TESTS)
 	add_test(AqualinkAutomateTests testaqualink-automate)
 
 endif(ENABLE_TESTS)
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_SANITIZERS)
+
+add_sanitizers(libaqualink-automate)
+add_sanitizers(aqualink-automate)
+add_sanitizers(testaqualink-automate)
+
+endif(ENABLE_SANITIZERS)
 
 #------------------------------------------------------------------------------
 #

@@ -1,7 +1,6 @@
 #include "exceptions/exception_webserver.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Exceptions

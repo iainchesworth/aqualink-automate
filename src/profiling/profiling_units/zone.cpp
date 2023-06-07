@@ -8,15 +8,15 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	void Zone::Start()
+	inline void Zone::Start() const
 	{
 	}
 
-	void Zone::Mark()
+	inline void Zone::Mark() const
 	{
 	}
 
-	void Zone::End()
+	inline void Zone::End() const
 	{
 	}
 

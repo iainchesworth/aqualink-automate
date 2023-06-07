@@ -1,4 +1,7 @@
-﻿#include <cstdlib>
+﻿#include <condition_variable>
+#include <cstdlib>
+#include <mutex>
+#include <thread>
 
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
@@ -19,11 +22,13 @@
 #include "http/webroute_page_jandyequipment.h"
 #include "http/webroute_page_version.h"
 #include "http/webroute_version.h"
-#include "jandy/jandy.h"
+#include "jandy/config/jandy_config.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/pda_device.h"
+#include "jandy/equipment/jandy_equipment.h"
+#include "jandy/messages/jandy_message_ack.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
@@ -46,202 +51,278 @@ using namespace AqualinkAutomate::Protocol;
 using namespace AqualinkAutomate::Serial;
 using namespace AqualinkAutomate::Signals;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    try
-    {
-        boost::asio::io_context io_context;
+	try
+	{
+		boost::asio::io_context io_context;
 
-        //---------------------------------------------------------------------
-        // LOGGING
-        //---------------------------------------------------------------------
+		//---------------------------------------------------------------------
+		// LOGGING
+		//---------------------------------------------------------------------
 
-        Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Info);
-        Logging::Initialise();
+		Logging::SeverityFiltering::SetGlobalFilterLevel(Severity::Info);
+		Logging::Initialise();
 
-        //---------------------------------------------------------------------
-        // PROFILING
-        //---------------------------------------------------------------------
+		//---------------------------------------------------------------------
+		// PROFILING
+		//---------------------------------------------------------------------
 
-        if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
-        {
-            profiler->StartProfiling();
-        }
+		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+		{
+			profiler->StartProfiling();
+		}
 
-        //---------------------------------------------------------------------
-        // OPTIONS
-        //---------------------------------------------------------------------
+		//---------------------------------------------------------------------
+		// OPTIONS
+		//---------------------------------------------------------------------
 
-        Options::Settings settings;
-        Options::Initialise(settings, argc, argv);
+		Options::Settings settings;
+		Options::Initialise(settings, argc, argv);
 
-        LogInfo(Channel::Main, "Starting AqualinkAutomate...");
+		//---------------------------------------------------------------------
+		// SERIAL PORT
+		//---------------------------------------------------------------------
 
-        //---------------------------------------------------------------------
-        // SERIAL PORT
-        //---------------------------------------------------------------------
+		std::shared_ptr<Serial::SerialPort> serial_port;
 
-        std::shared_ptr<Serial::SerialPort> serial_port;
+		if (settings.developer.dev_mode_enabled)
+		{
+			LogInfo(Channel::Main, "Enabling developer mode");
 
-        if (settings.developer.dev_mode_enabled)
-        {
-            LogInfo(Channel::Main, "Enabling developer mode");
+			if (!settings.developer.replay_file.empty())
+			{
+				serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
+				serial_port->open(settings.developer.replay_file);
+			}
+			else
+			{
+				// Normal mode as no developer mode options are enabled.
+				serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
+				Serial::Initialise(settings, serial_port);
+			}
+		}
+		else
+		{
+			// Normal mode as no developer mode options are enabled.
+			serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
+			Serial::Initialise(settings, serial_port);
+		}
 
-            if (!settings.developer.replay_file.empty())
-            {
-                serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
-                serial_port->open(settings.developer.replay_file);
-            }
-            else
-            {
-                // Normal mode as no developer mode options are enabled.
-                serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
-                Serial::Initialise(settings, serial_port);
-            }
-        }
-        else
-        {
-            // Normal mode as no developer mode options are enabled.
-            serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
-            Serial::Initialise(settings, serial_port);
-        }
+		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
-        CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
+		//---------------------------------------------------------------------
+		// JANDY EQUIPMENT
+		//---------------------------------------------------------------------
 
-        //---------------------------------------------------------------------
-        // JANDY EQUIPMENT
-        //---------------------------------------------------------------------
+		Config::JandyConfig jandy_config;
+		Equipment::JandyEquipment jandy_equipment(io_context, jandy_config);
 
-        Generators::JandyMessageGenerator jandy_message_generator;
-        Generators::JandyRawDataGenerator jandy_rawdata_generator;
+		if (!settings.emulated_device.disable_emulation)
+		{
+			LogInfo(
+				Channel::Main,
+				std::format(
+					"Enabling controller emulation; type: {}, id: {}",
+					magic_enum::enum_name(settings.emulated_device.controller_type),
+					settings.emulated_device.device_type.Id()
+				)
+			);
 
-        Protocol::ProtocolHandler protocol_handler(io_context, *serial_port, jandy_message_generator, jandy_rawdata_generator);
-        boost::asio::co_spawn(io_context, protocol_handler.Run(), boost::asio::detached);
+			std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
+			switch (settings.emulated_device.controller_type)
+			{
+			case Devices::JandyEmulatedDeviceTypes::OneTouch:
+				emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				break;
 
-        Config::JandyConfig jandy_config;
-        Equipment::JandyEquipment jandy_equipment(io_context, jandy_config, protocol_handler);
-        CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { jandy_equipment.Stop(); } });
+			case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
+				emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				break;
 
-        if (!settings.emulated_device.disable_emulation)
-        {
-            LogInfo(
-                Channel::Main, 
-                std::format(
-                    "Enabling controller emulation; type: {}, id: 0x{:02x}", 
-                    magic_enum::enum_name(settings.emulated_device.device_type),
-                    settings.emulated_device.device_id.Raw()
-                )
-            );
+			case Devices::JandyEmulatedDeviceTypes::IAQ:
+				emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				break;
 
-            std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
-            switch (settings.emulated_device.device_type)
-            {
-            case Devices::JandyEmulatedDeviceTypes::OneTouch:
-                emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
-                break;
+			case Devices::JandyEmulatedDeviceTypes::PDA:
+				emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				break;
 
-            case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-                emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
-                break;
+			case Devices::JandyEmulatedDeviceTypes::Unknown:
+			default:
+				LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
+			}
 
-            case Devices::JandyEmulatedDeviceTypes::IAQ:
-                emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
-                break;
+			if (emulated_device)
+			{
+				jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
+			}
+		}
 
-            case Devices::JandyEmulatedDeviceTypes::PDA:
-                emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_id, jandy_config, Devices::JandyControllerOperatingModes::Emulated);
-                break;
+		CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { /* DO NOTHING */ } });
 
-            case Devices::JandyEmulatedDeviceTypes::Unknown:
-            default:
-                LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
-            }
+		//---------------------------------------------------------------------
+		// WEB SERVER
+		//---------------------------------------------------------------------
 
-            if (emulated_device)
-            {
-                jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
-            }
-        }
-        //FIXME -> blocks coroutines!!!  boost::asio::co_spawn(io_context, jandy_equipment.Run(), boost::asio::detached);
+		HTTP::CrowCustomLogger crow_custom_logger;
+		crow::logger::setHandler(&crow_custom_logger);
 
-        //---------------------------------------------------------------------
-        // WEB SERVER
-        //---------------------------------------------------------------------
+		crow::SimpleApp http_server;
+		http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
+		http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
 
-        HTTP::CrowCustomLogger crow_custom_logger;
-        crow::logger::setHandler(&crow_custom_logger);
-        
-        crow::SimpleApp http_server;
-        http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
-        http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
+		if (!settings.web.http_server_is_insecure)
+		{
+			boost::asio::ssl::context ctx(boost::asio::ssl::context::tls);
+			ctx.set_options(
+				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
+				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
+				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
+				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
+				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
+				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
+				SSL_OP_CIPHER_SERVER_PREFERENCE
+			);
 
-        if (!settings.web.http_server_is_insecure)
-        {
-            boost::asio::ssl::context ctx(boost::asio::ssl::context::tls);
-            ctx.set_options(
-                boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-                boost::asio::ssl::context::no_sslv2 |				// Considered insecure
-                boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-                boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
-                boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
-                boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
-                SSL_OP_CIPHER_SERVER_PREFERENCE
-            );
+			Certificates::LoadWebCertificates(settings.web, ctx);
+			http_server.ssl(std::move(ctx));
+		}
 
-            Certificates::LoadWebCertificates(settings.web, ctx);
-            http_server.ssl(std::move(ctx));
-        }
+		if (!settings.web.http_content_is_disabled)
+		{
+			HTTP::WebRoute_Page_Index index_webroute(http_server, settings.web.doc_root);
+			HTTP::WebRoute_Page_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
+			HTTP::WebRoute_Page_Version verion_webroute(http_server, settings.web.doc_root);
+		}
 
-        HTTP::WebRoute_Page_Index index_webroute(http_server, settings.web.doc_root);
-        HTTP::WebRoute_Page_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
-        HTTP::WebRoute_Page_Version verion_webroute(http_server, settings.web.doc_root);
+		// HTTP::WebRoute_JandyEquipment_Buttons jandy_equipment_buttons(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Stats jandy_equipment_stats(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Version jandy_equipment_version(http_server, settings.web.doc_root, jandy_equipment);
+		HTTP::WebRoute_Version version(http_server, settings.web.doc_root);
 
-        // HTTP::WebRoute_JandyEquipment_Buttons jandy_equipment_buttons(http_server, jandy_equipment);
-        HTTP::WebRoute_JandyEquipment_Stats jandy_equipment_stats(http_server, jandy_equipment);
-        HTTP::WebRoute_JandyEquipment_Version jandy_equipment_version(http_server, settings.web.doc_root, jandy_equipment);
-        HTTP::WebRoute_Version version(http_server, settings.web.doc_root);
+		CleanUp::Register({ "WebServer", [&http_server]() -> void { http_server.stop(); } });
 
-        CleanUp::Register({ "WebServer", [&http_server]()->void { http_server.stop(); } });
-        auto httpsrv_async = http_server.run_async();
+		//---------------------------------------------------------------------
+		// THREADING
+		//---------------------------------------------------------------------
 
-        //---------------------------------------------------------------------
-        // SIGNALS
-        //---------------------------------------------------------------------
+		std::condition_variable cv;
+		std::mutex mtx;
 
-        boost::asio::signal_set ss(io_context);
-        Signal_Awaitable(ss);
+		bool start_threads = false;
 
-        io_context.run();
+		std::jthread equipment_thread
+		{
+			[&jandy_equipment, &cv, &mtx, &start_threads](std::stop_token stoken)
+			{
+				{
+					// Block and wait for the signal to start running the application.
+					std::unique_lock<std::mutex> lock(mtx);
+					cv.wait(lock, [&start_threads] { return start_threads; });
+				}
 
-        if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
-        {
-            profiler->StopProfiling();
-        }
+				LogInfo(Channel::Main, "Starting AqualinkAutomate::Equipment thread...");
 
-        LogInfo(Channel::Main, "Stopping AqualinkAutomate...");
+				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
+				// jandy_equipment.Run();
+			}
+		};
 
-        return EXIT_SUCCESS;
-    }
-    catch (const Exceptions::OptionsHelpOrVersion& ex_ohov)
-    {
-        // Nothing happens since the user has been informed of the help/version information.
-        // Just terminate as if nothing had happened.
-        return EXIT_SUCCESS;
-    }
-    catch (const Exceptions::OptionParsingFailed& ex_opf)
-    {
-        // Nothing happens since the user has been informed of the option parsing error.
-        // Just terminate as if nothing had happened.
-        return EXIT_SUCCESS;
-    }
-    catch (const boost::system::system_error& err)
-    {
-        LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-        return EXIT_FAILURE;
-    }
-    catch (const std::exception& err)
-    {
-        LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-        return EXIT_FAILURE;
-    }
+		std::jthread protocol_handler_thread
+		{
+			[&io_context, &serial_port, &cv, &mtx, &start_threads](std::stop_token stoken)
+			{
+				{
+					// Block and wait for the signal to start running the application.
+					std::unique_lock<std::mutex> lock(mtx);
+					cv.wait(lock, [&start_threads] { return start_threads; });
+				}
+
+				LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler thread...");
+
+				Protocol::ProtocolHandler protocol_handler(io_context, *serial_port);
+				protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
+
+				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
+				protocol_handler.Run();
+			}
+		};
+
+		std::jthread web_server_thread
+		{
+			[&http_server, &cv, &mtx, &start_threads](std::stop_token stoken)
+			{
+				{
+					// Block and wait for the signal to start running the application.
+					std::unique_lock<std::mutex> lock(mtx);
+					cv.wait(lock, [&start_threads] { return start_threads; });
+				}
+
+				LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer thread...");
+
+				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
+				http_server.run();
+			}
+		};
+
+		CleanUp::Register({ "Main Thread", [&io_context, &protocol_handler_thread]() -> void { /* DO NOTHING */ } });
+
+		//---------------------------------------------------------------------
+		// SIGNALS
+		//---------------------------------------------------------------------
+
+		boost::asio::signal_set ss(io_context);
+		Signal_Awaitable(ss);
+
+		//---------------------------------------------------------------------
+		// START APPLICATION
+		//---------------------------------------------------------------------
+
+		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
+
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			start_threads = true;
+		}
+
+		cv.notify_all();
+
+		io_context.run();
+
+		//---------------------------------------------------------------------
+		// STOP APPLICATION
+		//---------------------------------------------------------------------
+
+		LogInfo(Channel::Main, "Stopping AqualinkAutomate...");
+
+		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+		{
+			profiler->StopProfiling();
+		}
+
+		return EXIT_SUCCESS;
+	}
+	catch (const Exceptions::OptionsHelpOrVersion& ex_ohov)
+	{
+		// Nothing happens since the user has been informed of the help/version information.
+		// Just terminate as if nothing had happened.
+		return EXIT_SUCCESS;
+	}
+	catch (const Exceptions::OptionParsingFailed& ex_opf)
+	{
+		// Nothing happens since the user has been informed of the option parsing error.
+		// Just terminate as if nothing had happened.
+		return EXIT_SUCCESS;
+	}
+	catch (const boost::system::system_error& err)
+	{
+		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
+		return EXIT_FAILURE;
+	}
+	catch (const std::exception& err)
+	{
+		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
+		return EXIT_FAILURE;
+	}
 }

@@ -6,6 +6,7 @@
 #include "jandy/errors/jandy_errors_protocol.h"
 #include "jandy/factories/jandy_message_factory.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
+#include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/jandy_message_formatters.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_rawdata_generator.h"

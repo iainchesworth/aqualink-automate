@@ -1,3 +1,6 @@
 [submodule "deps/vcpkg"]
 	path = deps/vcpkg
 	url = https://github.com/microsoft/vcpkg
+[submodule "deps/sanitizers-cmake"]
+	path = deps/sanitizers-cmake
+	url = https://github.com/arsenm/sanitizers-cmake.git

@@ -23,18 +23,18 @@ namespace AqualinkAutomate::Profiling
 		virtual ~TimedZone() = default;
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 
 	public:
 		auto Duration() const;
 		TimedZoneStates State() const;
 
 	private:
-		std::chrono::high_resolution_clock::time_point m_StartTime;
-		std::chrono::high_resolution_clock::time_point m_EndTime;
-		TimedZoneStates m_Started;
+		mutable std::chrono::high_resolution_clock::time_point m_StartTime;
+		mutable std::chrono::high_resolution_clock::time_point m_EndTime;
+		mutable TimedZoneStates m_Started;
 	};
 
 }

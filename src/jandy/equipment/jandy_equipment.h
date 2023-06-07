@@ -11,6 +11,7 @@
 #include "interfaces/iequipment.h"
 #include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_device.h"
+#include "jandy/devices/jandy_device_id.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_rawdata_generator.h"
 #include "jandy/messages/jandy_message.h"
@@ -26,12 +27,10 @@ namespace AqualinkAutomate::HTTP
 }
 // namespace AqualinkAutomate::HTTP
 
-using namespace AqualinkAutomate;
-
 namespace AqualinkAutomate::Equipment
 {
 
-	class JandyEquipment : public Interfaces::IEquipment<Protocol::ProtocolHandler<Generators::JandyMessageGenerator, Generators::JandyRawDataGenerator>>
+	class JandyEquipment : public Interfaces::IEquipment
 	{
 		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment;
 		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment_Buttons;
@@ -39,7 +38,8 @@ namespace AqualinkAutomate::Equipment
 		friend class AqualinkAutomate::HTTP::WebRoute_JandyEquipment_Version;
 
 	public:
-		JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config, ProtocolHandler& protocol_handler);
+		JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config);
+		virtual ~JandyEquipment();
 
 	private:
 		auto IsDeviceRegistered(const Devices::JandyDeviceType& device_id);
@@ -47,18 +47,14 @@ namespace AqualinkAutomate::Equipment
 
 	private:
 		void DisplayUnknownMessages(const Messages::JandyMessage& message);
-		void PublishEquipmentMessage(const Messages::JandyMessage& message);
 
 	public:
 		bool AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device);
 
 	private:
-		void StopAndCleanUp() override;
-
-	private:
 		boost::asio::io_context& m_IOContext;
 		std::vector<std::unique_ptr<Devices::JandyDevice>> m_Devices;
-		std::unordered_set<uint8_t> m_IdentifiedDeviceIds;
+		std::unordered_set<Devices::JandyDeviceId> m_IdentifiedDeviceIds;
 		std::unordered_map<Messages::JandyMessageIds, uint32_t> m_MessageStats;
 		Config::JandyConfig& m_Config;
 	};

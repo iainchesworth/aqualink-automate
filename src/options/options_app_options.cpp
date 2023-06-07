@@ -7,6 +7,8 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options_app_options.h"
 #include "options/options_option_type.h"
+#include "options/helpers/conflicting_options_helper.h"
+#include "options/helpers/option_dependency_helper.h"
 #include "utility/get_terminal_column_width.h"
 #include "version/version.h"
 
@@ -44,7 +46,7 @@ namespace AqualinkAutomate::Options::App
 		return options;
 	}
 
-	void HandleHelp(boost::program_options::variables_map vm, boost::program_options::options_description& options)
+	void HandleHelp(boost::program_options::variables_map& vm, boost::program_options::options_description& options)
 	{
 		if (OPTION_HELP->IsPresent(vm))
 		{
@@ -60,7 +62,7 @@ namespace AqualinkAutomate::Options::App
 		}
 	}
 
-	Settings HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map& vm)
 	{
 		Settings settings;
 
@@ -82,7 +84,12 @@ namespace AqualinkAutomate::Options::App
 		return settings;
 	}
 
-	void HandleVersion(boost::program_options::variables_map vm)
+	void ValidateOptions(boost::program_options::variables_map& vm)
+	{
+		Helper_CheckForConflictingOptions(vm, OPTION_DEBUG, OPTION_TRACE);
+	}
+
+	void HandleVersion(boost::program_options::variables_map& vm)
 	{
 		if (OPTION_VERSIONDETAILS->IsPresent(vm))
 		{

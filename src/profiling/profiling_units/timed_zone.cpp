@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Profiling
 		}
 	}
 
-	void TimedZone::Start()
+	inline void TimedZone::Start() const
 	{
 		if (TimedZoneStates::Paused == m_Started)
 		{
@@ -24,11 +24,11 @@ namespace AqualinkAutomate::Profiling
 		}
 	}
 
-	void TimedZone::Mark()
+	inline void TimedZone::Mark() const
 	{
 	}
 
-	void TimedZone::End()
+	inline void TimedZone::End() const
 	{
 		if (TimedZoneStates::Running == m_Started)
 		{

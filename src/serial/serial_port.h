@@ -117,6 +117,25 @@ namespace AqualinkAutomate::Serial
 			}
 		}
 
+		template<typename MutableBufferSequence>
+		std::size_t read_some(const MutableBufferSequence& buffers, boost::system::error_code& ec)
+		{
+			switch (m_OperatingMode)
+			{
+			case OperatingModes::Mock:
+				throw;
+				break;
+
+			case OperatingModes::Real:
+				return m_RealSerialPort->read_some(buffers, ec);
+				break;
+
+			default:
+				///FIXME
+				throw;
+			}
+		}
+
 		template<typename ConstBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> WriteToken>
 		auto async_write_some(const ConstBufferSequence& buffer, WriteToken&& token)
 		{
@@ -128,6 +147,24 @@ namespace AqualinkAutomate::Serial
 
 			case OperatingModes::Real:
 				return m_RealSerialPort->async_write_some(buffer, std::forward<WriteToken>(token));
+				break;
+
+			default:
+				///FIXME
+				throw;
+			}
+		}
+
+		template<typename ConstBufferSequence> std::size_t write_some(const ConstBufferSequence& buffers, boost::system::error_code& ec)
+		{
+			switch (m_OperatingMode)
+			{
+			case OperatingModes::Mock:
+				throw;
+				break;
+
+			case OperatingModes::Real:
+				return m_RealSerialPort->write_some(buffers, ec);
 				break;
 
 			default:

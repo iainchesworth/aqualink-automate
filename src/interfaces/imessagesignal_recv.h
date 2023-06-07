@@ -12,6 +12,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Interfaces
 {
+
 	class IMessageSignalRecvBase
 	{
 	public:

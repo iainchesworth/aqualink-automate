@@ -27,17 +27,17 @@ namespace AqualinkAutomate::Profiling
 		}
 	}
 
-	void TracyFrame::Start()
+	inline void TracyFrame::Start() const
 	{
 		FrameMarkStart(m_NamePtr);
 	}
 
-	void TracyFrame::Mark()
+	inline void TracyFrame::Mark() const
 	{
 		FrameMark;
 	}
 
-	void TracyFrame::End()
+	inline void TracyFrame::End() const
 	{
 		FrameMarkEnd(m_NamePtr);
 	}

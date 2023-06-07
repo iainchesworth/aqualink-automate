@@ -5,6 +5,8 @@
 
 #include <boost/signals2.hpp>
 
+#include "jandy/devices/jandy_device_id.h"
+
 namespace AqualinkAutomate::Utility
 {
 
@@ -19,13 +21,13 @@ namespace AqualinkAutomate::Utility
 		using HandlerType = std::function<void(const MESSAGE_TYPE&)>;
 
 	public:
-		FilteredSlot_ByDeviceId(HandlerType handler, uint8_t device_id) :
+		FilteredSlot_ByDeviceId(HandlerType handler, Devices::JandyDeviceId device_id) :
 			m_Handler(handler),
 			m_DeviceId(device_id)
 		{
 			auto filtered_slot_handler = [this](const MESSAGE_TYPE& msg) -> void
 			{
-				if (m_DeviceId != msg.Destination().Raw())
+				if (m_DeviceId != msg.Destination().Id())
 				{
 					// Message was not for this destination.
 				}
@@ -45,7 +47,7 @@ namespace AqualinkAutomate::Utility
 
 	private:
 		HandlerType m_Handler;
-		uint8_t m_DeviceId;
+		Devices::JandyDeviceId m_DeviceId;
 		boost::signals2::connection m_Connection;
 	};
 

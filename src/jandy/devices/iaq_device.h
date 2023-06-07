@@ -7,6 +7,9 @@
 #include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/scrapeable.h"
+#include "jandy/devices/capabilities/screen.h"
 #include "jandy/messages/iaq/iaq_message_control_ready.h"
 #include "jandy/messages/iaq/iaq_message_message_long.h"
 #include "jandy/messages/iaq/iaq_message_page_button.h"
@@ -23,7 +26,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController
+	class IAQDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
 	{
 		static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -31,8 +34,11 @@ namespace AqualinkAutomate::Devices
 		const std::chrono::seconds IAQ_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, JandyControllerOperatingModes op_mode);
+		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);
 		virtual ~IAQDevice();
+
+	private:
+		virtual void ProcessControllerUpdates() override;
 
 	private:
 		void Slot_IAQ_ControlReady(const Messages::IAQMessage_ControlReady& msg);

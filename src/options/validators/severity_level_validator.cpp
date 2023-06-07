@@ -8,6 +8,8 @@
 #include "logging/logging.h"
 #include "options/validators/severity_level_validator.h"
 
+using namespace AqualinkAutomate::Logging;
+
 namespace AqualinkAutomate::Options::Validators
 {
 

@@ -5,7 +5,7 @@ namespace AqualinkAutomate::Interfaces
 
 	std::expected<Profiling::DomainPtr, bool> IProfiler::CreateDomain(const std::string& name) const
 	{
-		auto domain = std::make_shared<Profiling::Domain>(name);
+		auto domain = std::make_unique<Profiling::Domain>(name);
 
 		if (nullptr == domain)
 		{
@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Interfaces
 		}
 		else
 		{
-			m_Domains.emplace(domain->UUID(), domain);
+			// m_Domains.emplace(domain->UUID(), std::move(domain));
 		}
 
 		return domain;
@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Interfaces
 
 	std::expected<Profiling::FramePtr, bool> IProfiler::CreateFrame(Profiling::DomainPtr domain, const std::string& name) const
 	{
-		auto frame = std::make_shared<Profiling::Frame>(name);
+		auto frame = std::make_unique<Profiling::Frame>(name);
 
 		if (nullptr == frame)
 		{
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Interfaces
 
 	std::expected<Profiling::ZonePtr, bool> IProfiler::CreateZone(Profiling::FramePtr frame, const std::string& name) const
 	{
-		auto zone = std::make_shared<Profiling::Zone>(name);
+		auto zone = std::make_unique<Profiling::Zone>(name);
 
 		if (nullptr == zone)
 		{

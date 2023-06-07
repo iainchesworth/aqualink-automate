@@ -16,12 +16,13 @@ namespace AqualinkAutomate::Options::Emulated
 	typedef struct
 	{
 		bool disable_emulation;
-		Devices::JandyEmulatedDeviceTypes device_type;
-		Devices::JandyDeviceType device_id;
+		Devices::JandyEmulatedDeviceTypes controller_type;
+		Devices::JandyDeviceType device_type;
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 
 }
 // namespace AqualinkAutomate::Options::Developer

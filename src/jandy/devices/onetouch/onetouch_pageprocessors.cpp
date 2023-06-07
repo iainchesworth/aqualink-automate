@@ -30,15 +30,6 @@ namespace AqualinkAutomate::Devices
 
 		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
 		JandyController::m_Config.AirTemp = Utility::TrimWhitespace(page[6].Text);
-
-		// Signal that initialisation is complete (and permit screen scraping and other behaviour).
-		if (OperatingStates::InitComplete == m_OpState)
-		{
-			// NOTE: This transfer normally happens on a warm start of the display/controller units.
-
-			LogInfo(Channel::Devices, "Emulated OneTouch device initialisation (WARM START) complete -> entering normal operation");
-			m_OpState = OperatingStates::NormalOperation;
-		}
 	}
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
@@ -104,15 +95,6 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 10 =  More OneTouch
 			Info:   OneTouch Menu Line 11 =      System
 		*/
-
-		// Signal that initialisation is complete (and permit screen scraping and other behaviour).
-		if (OperatingStates::InitComplete == m_OpState)
-		{
-			// NOTE: This transfer normally happens on a cold start of the display/controller units.
-
-			LogInfo(Channel::Devices, "Emulated OneTouch device initialisation (COLD START) complete -> entering normal operation");
-			m_OpState = OperatingStates::NormalOperation;
-		}
 	}
 
 	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
@@ -247,13 +229,6 @@ namespace AqualinkAutomate::Devices
 		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
 		
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
-
-		// Signal that the start-up of the display (and the display unit connection) is complete.
-		if (OperatingStates::StartUp == m_OpState)
-		{
-			LogInfo(Channel::Devices, "Emulated OneTouch device start-up complete -> entering initialisation phase");
-			m_OpState = OperatingStates::InitComplete;
-		}
 	}
 
 	void OneTouchDevice::PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page)

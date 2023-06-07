@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Ack", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Ack signal.");
 
 		KeyCommands key_press = msg.Command<KeyCommands>([](uint8_t command_id)
@@ -31,6 +32,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_MessageLong", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_MessageLong signal.");
 
 		if (ONETOUCH_PAGE_LINES <= msg.LineId())
@@ -39,12 +41,11 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
-			JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
-			JandyController::m_Screen.ProcessScreenUpdates();
+			ScreenMode(Capabilities::ScreenModes::Updating);
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
+			ProcessScreenUpdates();
 
-			Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-			HandleAnyInternalProcessing();
+			ProcessControllerUpdates();
 		}
 
 		// Kick the watchdog to indicate that this device is alive.
@@ -53,10 +54,10 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Probe", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Probe signal.");
 
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -64,51 +65,30 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Status", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Status signal.");
 
-		if (JandyScreenModes::Updating == JandyController::m_Screen.ScreenMode())
+		if (Capabilities::ScreenModes::Updating == ScreenMode())
 		{
-			LogInfo(Channel::Devices, std::format("\n{}", JandyController::m_Screen.DisplayedPage()));
+			//LogInfo(Channel::Devices, std::format("\n{}", DisplayedPage()));
+			LogInfo(Channel::Devices, std::format("!!! PAGE 1/2 GOES HERE !!!"));
 
 			// The series of JandyMessage_MessageLong messages has finished.
-			JandyController::m_Screen.ScreenMode(JandyScreenModes::UpdateComplete);
+			ScreenMode(Capabilities::ScreenModes::UpdateComplete);
+
+			LogInfo(Channel::Devices, std::format("!!! PAGE 2/2 GOES HERE !!!"));
 		}
 
-		if ((OperatingStates::NormalOperation == m_OpState) && (JandyScreenModes::Normal == JandyController::m_Screen.ScreenMode()) && (m_InitialisationRequired))
+		ProcessScreenUpdates();
+		ProcessControllerUpdates();
+
+		// All start-up messages upto (and including) the first status message have a 
+		// different ACKnowledgement type so now the first status message has been
+		// ACKed, switch to the next type.
+		if (Messages::AckTypes::V1_Normal == m_AckType_ToSend)
 		{
-			++m_InitialisationGraphIterator;
-
-			if (Utility::ScreenDataPageGraphImpl::ForwardIterator::end(m_InitialisationGraph) == m_InitialisationGraphIterator)
-			{
-				m_InitialisationRequired = false;
-			}
-			else
-			{
-				auto [new_vertex_id, edge_traversed] = *m_InitialisationGraphIterator;
-				if (edge_traversed.key_command.has_value())
-				{
-					try
-					{
-						auto key_command_to_send = std::any_cast<KeyCommands>(edge_traversed.key_command);
-
-						// Send an ACK message with a keypress command; this is because we're traversing the menu.
-						Signal_OneTouch_AckMessage(key_command_to_send);
-					}
-					catch (const std::bad_any_cast& eAC)
-					{
-						///FIXME LOGGING.
-					}
-				}
-			}
+			m_AckType_ToSend = Messages::AckTypes::V2_Normal;
 		}
-		else
-		{
-			// Just send a normal ACK message; don't issue a command.
-			Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		}
-
-		JandyController::m_Screen.ProcessScreenUpdates();
-		HandleAnyInternalProcessing();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -116,11 +96,11 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Clear(const Messages::PDAMessage_Clear& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Clear", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Clear signal.");
 
-		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -128,13 +108,13 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Highlight(const Messages::PDAMessage_Highlight& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Highlight", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Highlight signal.");
 
-		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
-		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlight(msg.LineId()));
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlight(msg.LineId()));
 
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -142,13 +122,13 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_HighlightChars", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_HighlightChars signal.");
 
-		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
-		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlightChars(msg.LineId(), msg.StartIndex(), msg.StopIndex()));
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evHighlightChars(msg.LineId(), msg.StartIndex(), msg.StopIndex()));
 
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -156,17 +136,17 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_ShiftLines(const Messages::PDAMessage_ShiftLines& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_ShiftLines", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_ShiftLines signal.");
 
 		auto direction = (0 > msg.LineShift()) ? Utility::ScreenDataPage::ShiftDirections::Up : Utility::ScreenDataPage::ShiftDirections::Down;
 		auto lines_to_shift = std::abs(msg.LineShift());
 
-		JandyController::m_Screen.ScreenMode(JandyScreenModes::Updating);
-		JandyController::m_Screen.ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evShift(direction, msg.FirstLineId(), msg.LastLineId(), lines_to_shift));
-		JandyController::m_Screen.ProcessScreenUpdates();
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evShift(direction, msg.FirstLineId(), msg.LastLineId(), lines_to_shift));
+		ProcessScreenUpdates();
 		
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
@@ -174,24 +154,13 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Unknown", std::source_location::current(), Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, std::format("OneTouch device received a JandyMessage_Unknown signal: type -> 0x{:02x}", static_cast<uint8_t>(msg.Id())));
 
-		Signal_OneTouch_AckMessage(KeyCommands::NoKeyCommand);
-		HandleAnyInternalProcessing();
+		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		IDevice::KickTimeoutWatchdog();
-	}
-
-	void OneTouchDevice::Signal_OneTouch_AckMessage(KeyCommands key_command_to_send) const
-	{
-		if (JandyControllerOperatingModes::Emulated == m_OpMode)
-		{
-			LogDebug(Channel::Devices, std::format("Emulated OneTouch device sending ACKnowledgement message (with command: {})", magic_enum::enum_name(key_command_to_send)));
-
-			auto ack_message = std::make_shared<Messages::JandyMessage_Ack>(Messages::AckTypes::V2_Normal, static_cast<uint8_t>(magic_enum::enum_integer(key_command_to_send)));
-			ack_message->Signal_MessageToSend();
-		}
 	}
 
 }

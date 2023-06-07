@@ -16,12 +16,12 @@ namespace AqualinkAutomate::Profiling
 		virtual ~Frame() = default;
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 	};
 
-	using FramePtr = std::shared_ptr<Profiling::Frame>;
+	using FramePtr = std::unique_ptr<Profiling::Frame>;
 
 }
 // namespace AqualinkAutomate::Profiling

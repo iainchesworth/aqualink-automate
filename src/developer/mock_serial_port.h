@@ -32,7 +32,6 @@
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
 
@@ -82,7 +81,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(ReadToken, void(boost::system::error_code, std::size_t)) async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
 		{
-			static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_read_some", std::source_location::current()));
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_read_some", std::source_location::current());
 
 			auto init = [&](boost::asio::completion_handler_for<void(boost::system::error_code, std::size_t)> auto handler, const MutableBufferSequence& buffer_)
 			{
@@ -118,7 +117,7 @@ namespace AqualinkAutomate::Developer
 		template <typename ConstBufferSequence, boost::asio::completion_token_for<void(const boost::system::error_code&, std::size_t)> WriteToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(WriteToken,void(const boost::system::error_code&, std::size_t)) async_write_some(const ConstBufferSequence& buffer, WriteToken&& token)
 		{
-			static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_write_some", std::source_location::current()));
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_write_some", std::source_location::current());
 
 			auto init = [&](boost::asio::completion_handler_for<void(const boost::system::error_code&, std::size_t)> auto handler, const ConstBufferSequence& buffer_)
 			{
@@ -155,7 +154,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence>
 		std::size_t HandleMockRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
 		{
-			static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleMockRead", std::source_location::current()));
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleMockRead", std::source_location::current());
 
 			const auto length_to_copy = std::min<std::size_t>(boost::asio::buffer_size(buffer), 16);
 
@@ -227,7 +226,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence>
 		std::size_t HandleFileRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
 		{
-			static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleFileRead", std::source_location::current()));
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleFileRead", std::source_location::current());
 
 			enum FileReadErrors : std::size_t
 			{
@@ -239,7 +238,7 @@ namespace AqualinkAutomate::Developer
 
 			auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
 			{
-				static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_single_value_from_file", std::source_location::current()));
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_single_value_from_file", std::source_location::current());
 
 				FileReadErrors return_value = NoDataWasRead;
 
@@ -291,7 +290,7 @@ namespace AqualinkAutomate::Developer
 
 			auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
 			{
-				static_cast<void>(Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_from_file", std::source_location::current()));
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_from_file", std::source_location::current());
 
 				std::size_t elems_read = 0;
 				bool keep_reading = true;
@@ -349,6 +348,9 @@ namespace AqualinkAutomate::Developer
 
 	private:
 		boost::iostreams::stream<boost::iostreams::file_source> m_File;
+
+	private:
+		Profiling::DomainPtr m_ProfilingDomain;
 	};
 
 }

@@ -8,6 +8,7 @@
 
 #include <boost/signals2.hpp>
 
+#include "jandy/devices/jandy_device_id.h"
 #include "jandy/utility/filtered_slot.h"
 
 namespace AqualinkAutomate::Utility
@@ -33,7 +34,7 @@ namespace AqualinkAutomate::Utility
 
 	public:
 		template<typename MESSAGE_TYPE>
-		bool RegisterSlot_FilterByDeviceId(std::function<void(const MESSAGE_TYPE& msg)> handler, uint8_t device_id)
+		bool RegisterSlot_FilterByDeviceId(std::function<void(const MESSAGE_TYPE& msg)> handler, Devices::JandyDeviceId device_id)
 		{			
 			ConnectionVariant connection = std::make_unique<FilteredSlot_ByDeviceId<MESSAGE_TYPE>>(handler, device_id);
 			auto it = m_Connections.insert(m_Connections.cend(), std::move(connection));

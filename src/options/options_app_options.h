@@ -10,14 +10,15 @@ namespace AqualinkAutomate::Options::App
 
 	boost::program_options::options_description Options();
 
-	void HandleHelp(boost::program_options::variables_map vm, boost::program_options::options_description& options);
-	void HandleVersion(boost::program_options::variables_map vm);
+	void HandleHelp(boost::program_options::variables_map& vm, boost::program_options::options_description& options);
+	void HandleVersion(boost::program_options::variables_map& vm);
 
 	typedef struct
 	{
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 }
 // namespace AqualinkAutomate::Options::App

@@ -8,6 +8,8 @@
 #include "logging/formatters/logging_formatters.h"
 #include "options/options_developer_options.h"
 #include "options/options_option_type.h"
+#include "options/helpers/conflicting_options_helper.h"
+#include "options/helpers/option_dependency_helper.h"
 #include "options/validators/profiler_type_validator.h"
 #include "options/validators/severity_level_validator.h"
 #include "profiling/factories/profiler_factory.h"
@@ -69,7 +71,7 @@ namespace AqualinkAutomate::Options::Developer
 		return options;
 	}
 
-	Settings HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map& vm)
 	{
 		Settings settings;
 		
@@ -92,6 +94,24 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_PROFILER->IsPresent(vm)) { Factory::ProfilerFactory::Instance().SetDesired(OPTION_PROFILER->As<Types::ProfilerTypes>(vm)); }
 
 		return settings;
+	}
+
+	void ValidateOptions(boost::program_options::variables_map& vm)
+	{
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_DEVMODE);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MAIN);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_DEVICES);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EQUIPMENT);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EXCEPTIONS);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MESSAGES);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_OPTIONS);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PLATFORM);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PROFILING);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PROTCOL);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_SERIAL);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_SIGNALS);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_WEB);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_PROFILER);
 	}
 
 }

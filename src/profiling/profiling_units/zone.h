@@ -18,12 +18,12 @@ namespace AqualinkAutomate::Profiling
 		virtual ~Zone() = default;
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 	};
 
-	using ZonePtr = std::shared_ptr<Profiling::Zone>;
+	using ZonePtr = std::unique_ptr<Profiling::Zone>;
 
 }
 // namespace AqualinkAutomate::Profiling

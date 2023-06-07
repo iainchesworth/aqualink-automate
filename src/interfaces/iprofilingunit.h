@@ -14,9 +14,9 @@ namespace AqualinkAutomate::Interfaces
 		virtual ~IProfilingUnit() = default;
 
 	public:
-		virtual void Start() = 0;
-		virtual void Mark() = 0;
-		virtual void End() = 0;
+		virtual void Start() const = 0;
+		virtual void Mark() const = 0;
+		virtual void End() const = 0;
 
 	public:
 		boost::uuids::uuid UUID() const;

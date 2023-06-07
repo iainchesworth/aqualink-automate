@@ -1,9 +1,7 @@
 #include <magic_enum.hpp>
 
+#include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/jandy_message_formatters.h"
-
-using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Formatters
 {
@@ -20,9 +18,9 @@ namespace std
 	{
 		auto output = std::format
 		(
-			"Destination: {} (0x{:02x}), Message Type: {} (0x{:02x})", 
+			"Destination: {} ({}), Message Type: {} (0x{:02x})", 
 			magic_enum::enum_name(obj.Destination().Class()), 
-			obj.Destination().Raw(), 
+			obj.Destination().Id(), 
 			magic_enum::enum_name(obj.Id()),
 			obj.RawId()
 		);

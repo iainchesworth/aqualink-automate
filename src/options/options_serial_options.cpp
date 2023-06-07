@@ -6,6 +6,8 @@
 #include "logging/logging.h"
 #include "options/options_option_type.h"
 #include "options/options_serial_options.h"
+#include "options/helpers/conflicting_options_helper.h"
+#include "options/helpers/option_dependency_helper.h"
 #include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate;
@@ -36,13 +38,18 @@ namespace AqualinkAutomate::Options::Serial
 		return options;
 	}
 
-	Settings HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map& vm)
 	{
 		Settings settings;
 
 		if (OPTION_SERIALPORT->IsPresent(vm)) { settings.serial_port = OPTION_SERIALPORT->As<std::string>(vm); }
 
 		return settings;
+	}
+
+	void ValidateOptions(boost::program_options::variables_map& vm)
+	{
+
 	}
 
 }

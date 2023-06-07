@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include "jandy/devices/jandy_device_id.h"
+
 namespace AqualinkAutomate::Devices
 {
 
@@ -43,11 +45,12 @@ namespace AqualinkAutomate::Devices
 
 	class JandyDeviceType
 	{
-		using DeviceClassAndIds = std::pair<DeviceClasses, std::vector<uint8_t>>;
+		using DeviceId = JandyDeviceId;
+		using DeviceClassAndIds = std::pair<DeviceClasses, std::vector<DeviceId>>;
 		using DeviceClassAndIdsList = std::list<DeviceClassAndIds>;
 
-		static const DeviceClasses UNKNOWN_DEVICE_CLASS{ DeviceClasses::Unknown };
-		static const uint8_t UNKNOWN_DEVICE_RAWID{ 0xFF };
+		inline static const DeviceClasses UNKNOWN_DEVICE_CLASS{ DeviceClasses::Unknown };
+		inline static const DeviceId UNKNOWN_DEVICE_RAWID{ 0xFF };
 
 		const DeviceClassAndIdsList m_KnownDeviceIdsList =
 		{
@@ -68,7 +71,7 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		JandyDeviceType();
-		JandyDeviceType(uint8_t device_id);
+		JandyDeviceType(DeviceId device_id);
 
 	public:
 		JandyDeviceType(const JandyDeviceType& other);
@@ -81,15 +84,15 @@ namespace AqualinkAutomate::Devices
 		bool operator!=(const JandyDeviceType& other) const;
 
 	public:
-		uint8_t operator()() const;
+		DeviceId operator()() const;
 
 	public:
 		DeviceClasses Class() const;
-		uint8_t Raw() const;
+		DeviceId Id() const;
 
 	private:
 		DeviceClasses m_DeviceClass;
-		uint8_t m_RawId;
+		DeviceId m_DeviceId;
 	};
 
 }

@@ -16,7 +16,8 @@ namespace AqualinkAutomate::Options::Serial
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 
 }
 // namespace AqualinkAutomate::Options::Serial

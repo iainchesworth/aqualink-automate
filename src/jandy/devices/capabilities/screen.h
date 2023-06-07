@@ -7,26 +7,28 @@
 #include "jandy/utility/screen_data_page_processor.h"
 #include "jandy/utility/screen_data_page_updater.h"
 
-namespace AqualinkAutomate::Devices
+namespace AqualinkAutomate::Devices::Capabilities
 {
 
-	enum class JandyScreenModes
+	enum class ScreenModes
 	{
 		Normal,
 		Updating,
 		UpdateComplete
 	};
 
-	class JandyScreen
+	class Screen
 	{
 	public:
-		JandyScreen(uint8_t screen_lines);
+		Screen(uint8_t screen_lines);
 
 	public:
 		Utility::ScreenDataPage const& DisplayedPage() const;
+		Utility::ScreenDataPageTypes DisplayedPageType() const;
 
 	private:
 		Utility::ScreenDataPage m_DisplayedPage;
+		Utility::ScreenDataPageTypes m_DisplayedPageType;
 
 	public:
 		template<typename EVENT_TYPE>
@@ -39,11 +41,11 @@ namespace AqualinkAutomate::Devices
 		void ProcessScreenUpdates();
 
 	public:
-		JandyScreenModes ScreenMode() const;
-		void ScreenMode(JandyScreenModes screen_mode);
+		ScreenModes ScreenMode() const;
+		void ScreenMode(ScreenModes screen_mode);
 
 	private:
-		JandyScreenModes m_ScreenMode{ JandyScreenModes::Normal };
+		ScreenModes m_ScreenMode{ ScreenModes::Normal };
 
 	public:
 		std::list<Utility::ScreenDataPage_Processor> const& PageProcessors() const;
@@ -55,4 +57,4 @@ namespace AqualinkAutomate::Devices
 	};
 
 }
-// namespace AqualinkAutomate::Devices
+// namespace AqualinkAutomate::Devices::Capabilities

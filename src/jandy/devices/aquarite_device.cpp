@@ -6,7 +6,7 @@
 #include "jandy/devices/aquarite_device.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {

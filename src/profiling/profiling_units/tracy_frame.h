@@ -16,9 +16,9 @@ namespace AqualinkAutomate::Profiling
 		virtual ~TracyFrame();
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 
 	private:
 		char* m_NamePtr{ nullptr };

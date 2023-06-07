@@ -1,10 +1,7 @@
 #pragma once
 
 #include <source_location>
-#include <unordered_map>
 
-#include <boost/functional/hash.hpp>
-#include <boost/uuid/uuid.hpp>
 #include <tracy/Tracy.hpp>
 
 #include "profiling/profiling_units/unit_colours.h"
@@ -20,17 +17,12 @@ namespace AqualinkAutomate::Profiling
 		virtual ~TracyZone();
 
 	public:
-		virtual void Start() override;
-		virtual void Mark() override;
-		virtual void End() override;
+		virtual void Start() const override;
+		virtual void Mark() const override;
+		virtual void End() const override;
 
 	private:
-		using TracyDataTuple = std::tuple<std::string, char*, std::source_location, tracy::SourceLocationData>;
-		using TracyDataMap = std::unordered_map<std::string, TracyDataTuple, boost::hash<std::string>>;
-		static TracyDataMap m_TracyDataMap;
-
-	private:
-		tracy::ScopedZone* m_TSZ{ nullptr };
+		volatile tracy::ScopedZone* m_TSZ{ nullptr };
 	};
 
 }

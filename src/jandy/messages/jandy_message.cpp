@@ -4,6 +4,7 @@
 
 #include <magic_enum.hpp>
 
+#include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -57,9 +58,9 @@ namespace AqualinkAutomate::Messages
 	std::string JandyMessage::ToString() const
 	{
 		return std::format(
-			"Destination: {} (0x{:02x}), Message Type: {} (0x{:02x})", 
+			"Destination: {} ({}), Message Type: {} (0x{:02x})", 
 			magic_enum::enum_name(Destination().Class()), 
-			Destination().Raw(), 
+			Destination().Id(), 
 			magic_enum::enum_name(Id()),
 			RawId()
 		);

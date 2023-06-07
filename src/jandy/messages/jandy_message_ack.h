@@ -11,7 +11,6 @@
 #include "interfaces/imessagesignal_send.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
-#include "jandy/publisher/jandy_message_publisher.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -37,7 +36,7 @@ namespace AqualinkAutomate::Messages
 		Unknown = 0xFF
 	};
 
-	class JandyMessage_Ack : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Ack>, public Interfaces::IMessageSignalSend<JandyMessage_Ack, Publishers::JandyMessagePublisher>
+	class JandyMessage_Ack : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Ack>, public Interfaces::IMessageSignalSend<JandyMessage_Ack>
 	{
 		static const uint8_t AQUALINK_MASTER_ID = 0x00;
 

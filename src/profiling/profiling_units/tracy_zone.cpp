@@ -1,22 +1,21 @@
 #include <algorithm>
 
 #include "profiling/profiling_units/tracy_zone.h"
+#include "profiling/profiling_units/tracy_zone_datamap.h"
 
 namespace AqualinkAutomate::Profiling
 {
 
-	TracyZone::TracyDataMap TracyZone::m_TracyDataMap{};
-
 	TracyZone::TracyZone(const std::string name, const std::source_location& src_loc, UnitColours colour) :
 		Zone(name)
 	{
-		if (auto iter = m_TracyDataMap.find(name); m_TracyDataMap.end() != iter)
+		if (auto iter = TracyZone_DataMap::Instance().find(name); TracyZone_DataMap::Instance().end() != iter)
 		{
 			m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(iter->second)));
 		}
 		else
 		{
-			TracyDataTuple tracy_data;
+			TracyZone_DataMap::DataTuple tracy_data;
 
 			std::get<std::string>(tracy_data) = name;
 
@@ -35,7 +34,7 @@ namespace AqualinkAutomate::Profiling
 				static_cast<uint32_t>(colour)
 			};
 
-			if (auto [it, was_inserted] = m_TracyDataMap.emplace(name, tracy_data); was_inserted)
+			if (auto [it, was_inserted] = TracyZone_DataMap::Instance().emplace(name, tracy_data); was_inserted)
 			{
 				m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(it->second)));
 			}
@@ -55,15 +54,15 @@ namespace AqualinkAutomate::Profiling
 		}
 	}
 
-	void TracyZone::Start()
+	inline void TracyZone::Start() const
 	{
 	}
 
-	void TracyZone::Mark()
+	inline void TracyZone::Mark() const
 	{
 	}
 
-	void TracyZone::End()
+	inline void TracyZone::End() const
 	{
 	}
 

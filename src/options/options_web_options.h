@@ -18,6 +18,7 @@ namespace AqualinkAutomate::Options::Web
 		std::string bind_address;
 		uint16_t bind_port;
 		
+		bool http_content_is_disabled;
 		bool http_server_is_insecure;
 
 		Certificates::Certificate_PemFormat cert_file;
@@ -29,7 +30,8 @@ namespace AqualinkAutomate::Options::Web
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 
 }
 // namespace AqualinkAutomate::Options::Web
