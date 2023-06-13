@@ -32,29 +32,26 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_Highlight::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool PDAMessage_Highlight::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void PDAMessage_Highlight::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool PDAMessage_Highlight::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Highlight type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_LineId)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Highlight type", message_bytes.size()));
-
-			if (message_bytes.size() < Index_LineId)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_Highlight is too short to deserialise LineId.");
-			}
-			else
-			{
-				m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
-			}
-
-			PDAMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			LogDebug(Channel::Messages, "PDAMessage_Highlight is too short to deserialise LineId.");
 		}
+		else
+		{
+			m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
+			return true;
+		}
+
+		return false;
 	}
 
 }

@@ -40,23 +40,32 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: PPM: {}, Status: {}", AquariteMessage::ToString(), m_PPM, magic_enum::enum_name(m_Status));
 	}
 
-	void AquariteMessage_PPM::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool AquariteMessage_PPM::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void AquariteMessage_PPM::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool AquariteMessage_PPM::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
-		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
 
+		if (message_bytes.size() < Index_PPM)
+		{
+			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise PPM.");
+		}
+		else if (message_bytes.size() < Index_Status)
+		{
+			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise Status.");
+		}
+		else
+		{
 			m_PPM = static_cast<uint16_t>(message_bytes[Index_PPM]) * 100;
 			m_Status = magic_enum::enum_cast<AquariteStatuses>(static_cast<uint8_t>(message_bytes[Index_Status])).value_or(AquariteStatuses::Unknown);
 
-			AquariteMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7 - 2));
+			return true;
 		}
+
+		return false;
 	}
 
 }

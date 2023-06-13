@@ -20,8 +20,8 @@ namespace AqualinkAutomate::Messages
 		virtual std::string ToString() const override;
 
 	public:
-		virtual void Serialize(std::vector<uint8_t>& message_bytes) const override;
-		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
+		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const = 0;
+		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) = 0;
 	};
 
 }

@@ -64,13 +64,25 @@ namespace AqualinkAutomate::Factory
 				return_value = make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator);
 			}
 
-			if (nullptr != message)
+			if (nullptr == message)
+			{
+				LogDebug(Channel::Messages, "Generating: Failed to create Jandy message; nullptr returned");
+				return_value = make_error_code(ErrorCodes::Message_ErrorCodes::Error_GeneratorFailed);
+			}
+			else
 			{
 				LogTrace(Channel::Messages, "Attempting to deserialize serial bytes into generated message");
-				message->Deserialize(message_bytes);
 
-				LogDebug(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
-				return message;
+				if (!message->Deserialize(message_bytes))
+				{
+					LogDebug(Channel::Messages, "Failed to deserialise serial bytes into generated message");
+					return_value = make_error_code(ErrorCodes::Message_ErrorCodes::Error_FailedToDeserialize);
+				}
+				else
+				{
+					LogDebug(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
+					return message;
+				}
 			}
 		}
 

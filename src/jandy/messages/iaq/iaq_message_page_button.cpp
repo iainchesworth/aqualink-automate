@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <format>
 
 #include <magic_enum.hpp>
@@ -46,45 +47,51 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_PageButton::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool IAQMessage_PageButton::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void IAQMessage_PageButton::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool IAQMessage_PageButton::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageButton type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_ButtonState)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageButton type", message_bytes.size()));
-
-			if (message_bytes.size() < Index_ButtonState)
-			{
-				LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonState.");
-			}
-			else if (message_bytes.size() < Index_ButtonType)
-			{
-				LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonType.");
-			}
-			else if (message_bytes.size() < Index_ButtonNameText)
-			{
-				LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise context of ButtonName.");
-			}
-			else
-			{
-				m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonStatuses::Unknown);
-				m_ButtonType = magic_enum::enum_cast<ButtonTypes>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonTypes::Unknown);
-
-				const auto length_to_copy = message_bytes.size() - Index_ButtonNameText - 3;
-				for (auto& elem : message_bytes.subspan(Index_ButtonNameText, length_to_copy))
-				{
-					// Convert to char and push into the string.
-					m_ButtonName.push_back(static_cast<char>(elem));
-				}
-			}
-
-			IAQMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonState.");
 		}
+		else if (message_bytes.size() < Index_ButtonType)
+		{
+			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonType.");
+		}
+		else if (message_bytes.size() < Index_ButtonNameText)
+		{
+			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise context of ButtonName.");
+		}
+		else if ((JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1 + 1) > message_bytes.size())
+		{
+			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise content of LineText");
+		}
+		else
+		{
+			m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonStatuses::Unknown);
+			m_ButtonType = magic_enum::enum_cast<ButtonTypes>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonTypes::Unknown);
+
+			const auto length_to_copy = message_bytes.size() - Index_ButtonNameText - 3;
+			const auto start_index = message_bytes.begin() + Index_ButtonNameText;
+			const auto end_index = start_index + length_to_copy;
+
+			std::transform(start_index, end_index, std::back_inserter(m_ButtonName),
+				[](const auto& elem)
+				{
+					return static_cast<char>(elem);
+				}
+			);
+
+			return true;
+		}
+
+		return false;
 	}
 
 }

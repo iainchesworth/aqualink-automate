@@ -44,39 +44,37 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_HighlightChars::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool PDAMessage_HighlightChars::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void PDAMessage_HighlightChars::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool PDAMessage_HighlightChars::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_HighlightChars type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_LineId)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_HighlightChars type", message_bytes.size()));
-
-			if (message_bytes.size() < Index_LineId)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise LineId.");
-			}
-			else if (message_bytes.size() < Index_StartIndex)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StartIndex.");
-			}
-			else if (message_bytes.size() < Index_StopIndex)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StopIndex.");
-			}
-			else
-			{
-				m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
-				m_StartIndex = static_cast<uint8_t>(message_bytes[Index_StartIndex]);
-				m_StopIndex = static_cast<uint8_t>(message_bytes[Index_StopIndex]);
-			}
-
-			PDAMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise LineId.");
 		}
+		else if (message_bytes.size() < Index_StartIndex)
+		{
+			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StartIndex.");
+		}
+		else if (message_bytes.size() < Index_StopIndex)
+		{
+			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StopIndex.");
+		}
+		else
+		{
+			m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
+			m_StartIndex = static_cast<uint8_t>(message_bytes[Index_StartIndex]);
+			m_StopIndex = static_cast<uint8_t>(message_bytes[Index_StopIndex]);
+
+			return true;
+		}
+
+		return false;
 	}
 
 }

@@ -44,39 +44,37 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", PDAMessage::ToString(), 0);
 	}
 
-	void PDAMessage_ShiftLines::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool PDAMessage_ShiftLines::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void PDAMessage_ShiftLines::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool PDAMessage_ShiftLines::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_FirstLineId)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
-
-			if (message_bytes.size() < Index_FirstLineId)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise FirstLineId.");
-			}
-			else if (message_bytes.size() < Index_LastLineId)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LastLineId.");
-			}
-			else if (message_bytes.size() < Index_LineShift)
-			{
-				LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LineShift.");
-			}
-			else
-			{
-				m_FirstLineId = static_cast<uint8_t>(message_bytes[Index_FirstLineId]);
-				m_LastLineId = static_cast<uint8_t>(message_bytes[Index_LastLineId]);
-				m_LineShift = static_cast<int8_t>(message_bytes[Index_LineShift]);
-			}
-
-			PDAMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise FirstLineId.");
 		}
+		else if (message_bytes.size() < Index_LastLineId)
+		{
+			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LastLineId.");
+		}
+		else if (message_bytes.size() < Index_LineShift)
+		{
+			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LineShift.");
+		}
+		else
+		{
+			m_FirstLineId = static_cast<uint8_t>(message_bytes[Index_FirstLineId]);
+			m_LastLineId = static_cast<uint8_t>(message_bytes[Index_LastLineId]);
+			m_LineShift = static_cast<int8_t>(message_bytes[Index_LineShift]);
+
+			return true;
+		}
+
+		return false;
 	}
 
 }

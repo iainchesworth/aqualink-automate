@@ -14,16 +14,27 @@ namespace AqualinkAutomate::Messages
 
 	class JandyMessage_Message : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Message>
 	{
+		static const uint8_t MAXIMUM_MESSAGE_LENGTH = 16 + 1; // 16 characters and a NUL terminator character.
+
+		static const uint8_t Index_LineText = 4;
+
 	public:
 		JandyMessage_Message();
+		JandyMessage_Message(const std::string& line);
 		virtual ~JandyMessage_Message();
+
+	public:
+		std::string Line() const;
 
 	public:
 		virtual std::string ToString() const override;
 
 	public:
-		virtual void Serialize(std::vector<uint8_t>& message_bytes) const override;
-		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
+		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+
+	private:
+		std::string m_Line;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> g_JandyMessage_Message_Registration;

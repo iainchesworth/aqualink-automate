@@ -88,23 +88,37 @@ namespace AqualinkAutomate::Protocol
 					signal_ptr->Signal_MessageWasReceived();
 				}
 			}
-			else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
-			{
-				// Continue processing data looking for messages in the buffer...
-			}
-			else if (message.error() == make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData))
-			{
-				process_packets = false;
-			}
-			else if (message.error() == make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator))
-			{
-				// This means there was a packet that could not be deserialised while processing....
-			}
 			else
 			{
 				LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages.");
-				continue_processing = false;
-				process_packets = false;
+
+				switch (boost::system::error_code(message.error()).value())
+				{
+				case ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess:
+					// Continue processing data looking for messages in the buffer...
+					break;
+
+				case ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData:
+					process_packets = false;
+					break;
+
+				case ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator:
+					// This means there was a packet that could not be deserialised while processing....
+					break;
+
+				case ErrorCodes::Message_ErrorCodes::Error_GeneratorFailed:
+					// This means there was a packet that could not be deserialised while processing....
+					break;
+
+				case ErrorCodes::Message_ErrorCodes::Error_FailedToDeserialize:
+					// This means there was a packet that could not be deserialised while processing....
+					break;
+
+				default:
+					continue_processing = false;
+					process_packets = false;
+					break;
+				}
 			}
 
 		} while (process_packets);

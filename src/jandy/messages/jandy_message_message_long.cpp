@@ -14,6 +14,7 @@ namespace AqualinkAutomate::Messages
 	JandyMessage_MessageLong::JandyMessage_MessageLong() : 
 		JandyMessage(JandyMessageIds::MessageLong),
 		Interfaces::IMessageSignalRecv<JandyMessage_MessageLong>(),
+		m_LineId(0),
 		m_Line()
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
@@ -38,46 +39,48 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_MessageLong::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool JandyMessage_MessageLong::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void JandyMessage_MessageLong::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool JandyMessage_MessageLong::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_MessageLong type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_LineId)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_MessageLong type", message_bytes.size()));
-
-			if (message_bytes.size() < Index_LineId)
-			{
-				LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise LineId.");
-			}
-			else if (message_bytes.size() < Index_LineText)
-			{
-				LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise LineText.");
-			}
-			else if (0 >= (message_bytes.size() - 8))
-			{
-				LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise context of LineText.");
-			}
-			else
-			{
-				m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
-
-				const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
-				for (auto& elem : message_bytes.subspan(Index_LineText, length_to_copy))
-				{
-					// Convert to char and push into the string.
-					m_Line.push_back(static_cast<char>(elem));
-				}
-
-				LogDebug(Channel::Messages, std::format("Deserialised JandyMessage_MessageLong: LineId -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Line, m_Line.length()));
-			}
-
-			JandyMessage::Deserialize(message_bytes);
-
-			LogDebug(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise LineId");
 		}
+		else if (message_bytes.size() < Index_LineText)
+		{
+			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise LineText");
+		}
+		else if ((JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
+		{
+			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise content of LineText");
+		}
+		else
+		{
+			m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
+
+			const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
+			const auto start_index = message_bytes.begin() + Index_LineText;
+			const auto end_index = start_index + length_to_copy;;
+
+			std::transform(start_index, end_index, std::back_inserter(m_Line),
+				[](const auto& elem)
+				{
+					return static_cast<char>(elem);
+				}
+			);
+
+			LogDebug(Channel::Messages, std::format("Deserialised JandyMessage_MessageLong: LineId -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Line, m_Line.length()));
+
+			return true;
+		}
+
+		return false;
 	}
 
 }

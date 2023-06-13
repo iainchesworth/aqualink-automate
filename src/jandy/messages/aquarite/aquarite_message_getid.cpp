@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", AquariteMessage::ToString(), 0);
 	}
 
-	void AquariteMessage_GetId::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool AquariteMessage_GetId::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
 		message_bytes =
 		{
@@ -57,20 +57,26 @@ namespace AqualinkAutomate::Messages
 
 		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 5));
 		message_bytes[5] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+
+		return true;
 	}
 
-	void AquariteMessage_GetId::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool AquariteMessage_GetId::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
-		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_GetId type", message_bytes.size()));
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_GetId type", message_bytes.size()));
 
+		if (message_bytes.size() < Index_RequestedDataFlag)
+		{
+			LogDebug(Channel::Messages, "AquariteMessage_Percent is too short to deserialise RequestedPanelData.");
+		}
+		else
+		{
 			m_RequestedPanelData = magic_enum::enum_cast<PanelDataTypes>(static_cast<uint8_t>(Index_RequestedDataFlag)).value_or(PanelDataTypes::Unknown);
 
-			AquariteMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
+			return true;
 		}
+
+		return false;
 	}
 
 }

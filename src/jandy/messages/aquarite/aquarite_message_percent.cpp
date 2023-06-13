@@ -32,22 +32,26 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: Percent: {}", AquariteMessage::ToString(), m_Percent);
 	}
 
-	void AquariteMessage_Percent::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool AquariteMessage_Percent::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void AquariteMessage_Percent::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool AquariteMessage_Percent::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_Percent type", message_bytes.size()));
+
+		if (message_bytes.size() < Index_Percent)
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_Percent type", message_bytes.size()));
-
-			m_Percent = static_cast<uint8_t>(message_bytes[Index_Percent]);
-
-			AquariteMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7 - 1));
+			LogDebug(Channel::Messages, "AquariteMessage_Percent is too short to deserialise Percent.");
 		}
+		else
+		{
+			m_Percent = static_cast<uint8_t>(message_bytes[Index_Percent]);
+			return true;
+		}
+
+		return false;
 	}
 
 }

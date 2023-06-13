@@ -43,8 +43,10 @@ namespace AqualinkAutomate::Messages
 		virtual std::string ToString() const override;
 
 	public:
-		virtual void Serialize(std::vector<uint8_t>& message_bytes) const override;
-		virtual void Deserialize(const std::span<const std::byte>& message_bytes) override;
+		virtual bool Serialize(std::vector<uint8_t>& message_bytes) const final;
+		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const = 0;
+		virtual bool Deserialize(const std::span<const std::byte>& message_bytes) final;
+		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) = 0;
 
 	protected:
 		bool PacketIsValid(const std::span<const std::byte>& message_bytes) const;
@@ -53,7 +55,6 @@ namespace AqualinkAutomate::Messages
 		Devices::JandyDeviceType m_Destination;
 		uint8_t m_RawId;
 		uint8_t m_MessageLength;
-		std::vector<uint8_t> m_Payload;
 		uint8_t m_ChecksumValue;
 	};
 

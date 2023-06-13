@@ -1,7 +1,5 @@
-#include "logging/logging.h"
 #include "protocol/protocol_handler.h"
 
-using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Protocol

@@ -15,8 +15,8 @@ namespace AqualinkAutomate::Interfaces
         virtual ~ISerializable();
 
     public:
-        virtual void Serialize(std::vector<uint8_t>& message_bytes) const = 0;
-        virtual void Deserialize(const std::span<const std::byte>& message_bytes) = 0;
+        virtual bool Serialize(std::vector<uint8_t>& message_bytes) const = 0;
+        virtual bool Deserialize(const std::span<const std::byte>& message_bytes) = 0;
     };
 
 } 

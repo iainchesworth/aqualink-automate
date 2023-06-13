@@ -26,18 +26,16 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_Probe::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool JandyMessage_Probe::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void JandyMessage_Probe::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool JandyMessage_Probe::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
-		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Probe type", message_bytes.size()));
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Probe type", message_bytes.size()));
 
-			JandyMessage::Deserialize(message_bytes);
-		}
+		return true;
 	}
 
 }

@@ -13,17 +13,20 @@ project(
     HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
 	LANGUAGES C CXX)
 
+option(ENABLE_BENCHMARKS "Enable performance tests" ON)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
+find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
-find_package(Crow CONFIG REQUIRED)
+find_package(Crow REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 
 #------------------------------------------------------------------------------
 #
@@ -210,6 +213,7 @@ add_library(
 	src/jandy/types/jandy_types.cpp
 	src/jandy/utility/filtered_slot.cpp 
 	src/jandy/utility/jandy_checksum.cpp 
+	src/jandy/utility/jandy_null_handler.cpp 
 	src/jandy/utility/screen_data_page.cpp
 	src/jandy/utility/screen_data_page_graph.cpp 
 	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
@@ -367,6 +371,7 @@ target_link_libraries(
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto
+	ZLIB::ZLIB
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
 	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
@@ -399,41 +404,7 @@ target_link_libraries(
 
 if(ENABLE_TESTS)
 
-	add_executable(
-		testaqualink-automate
-		test/test_main.cpp 
-		test/devices/test_devices_id.cpp 
-		test/devices/test_devices_screenscraping.cpp 
-		test/devices/test_devices_types.cpp 
-		test/generators/test_jandy_message_generator.cpp 
-		test/generators/test_jandy_rawdata_generator.cpp 
-		test/logging/test_logging_validator_jandyemulateddevicetype.cpp 
-		test/logging/test_logging_validator_jandydeviceid.cpp 
-		test/logging/test_logging_validator_profiler.cpp 
-		test/logging/test_logging_validator_severity.cpp 
-		test/messages/test_message_processing.cpp 
-		test/mocks/mock_generator_messagetorawdata.cpp 
-		test/mocks/mock_generator_rawdatatomessage.cpp 
-		test/mocks/mock_serialport.cpp 
-		test/protocol/test_protocol_handler.cpp 
-		test/utility/test_utility_auxillarystate.cpp 
-		test/utility/test_utility_jandychecksum.cpp 
-		test/utility/test_utility_temperature.cpp 
-		test/support/unit_test_ostream_support.cpp 
-	)
-
-	target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)
-	target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test")
-
-	target_link_libraries(
-		testaqualink-automate 
-		PRIVATE 
-		"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
-		Boost::unit_test_framework
-	)
-
-	enable_testing()
-	add_test(AqualinkAutomateTests testaqualink-automate)
+add_subdirectory(test)
 
 endif(ENABLE_TESTS)
 
@@ -448,7 +419,6 @@ if(ENABLE_SANITIZERS)
 
 add_sanitizers(libaqualink-automate)
 add_sanitizers(aqualink-automate)
-add_sanitizers(testaqualink-automate)
 
 endif(ENABLE_SANITIZERS)
 

@@ -1,0 +1,87 @@
+enable_testing()
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+add_executable(
+	testaqualink-automate
+	unit/test_main.cpp 
+	unit/devices/test_devices_id.cpp 
+	unit/devices/test_devices_screenscraping.cpp 
+	unit/devices/test_devices_types.cpp 
+	unit/generators/test_jandy_message_generator.cpp 
+	unit/generators/test_jandy_rawdata_generator.cpp 
+	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
+	unit/logging/test_logging_validator_jandydeviceid.cpp 
+	unit/logging/test_logging_validator_profiler.cpp 
+	unit/logging/test_logging_validator_severity.cpp 
+	unit/messages/test_message.cpp 
+	unit/messages/test_message_ack.cpp 
+	unit/messages/test_message_message.cpp 
+	unit/messages/test_message_message_long.cpp 
+	unit/messages/test_message_message_loop_start.cpp 
+	unit/messages/test_message_probe.cpp 
+	unit/messages/test_message_status.cpp 
+	unit/messages/test_message_unknown.cpp 
+	unit/mocks/mock_generator_messagetorawdata.cpp 
+	unit/mocks/mock_generator_rawdatatomessage.cpp 
+	unit/mocks/mock_serialport.cpp 
+	unit/protocol/test_protocol_handler.cpp 
+	unit/utility/test_utility_auxillarystate.cpp 
+	unit/utility/test_utility_jandychecksum.cpp 
+	unit/utility/test_utility_temperature.cpp 
+	unit/support/unit_test_ostream_support.cpp 
+)
+
+target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)
+target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/unit")
+
+target_link_libraries(
+	testaqualink-automate 
+	PRIVATE 
+	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
+	Boost::unit_test_framework
+)
+
+add_test(AqualinkAutomateUnitTests testaqualink-automate)
+
+if(ENABLE_SANITIZERS)
+add_sanitizers(testaqualink-automate)
+endif(ENABLE_SANITIZERS)
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_BENCHMARKS)
+
+add_executable(
+	perfaqualink-automate
+	performance/test_main.cpp 
+	performance/test_serialization.cpp 
+)
+
+target_include_directories(perfaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/performance")
+
+target_link_libraries(
+	perfaqualink-automate 
+	PRIVATE 
+	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
+	benchmark::benchmark 
+	benchmark::benchmark_main
+)
+
+add_test(AqualinkAutomatePerfTests perfaqualink-automate)
+
+if(ENABLE_SANITIZERS)
+add_sanitizers(perfaqualink-automate)
+endif(ENABLE_SANITIZERS)
+
+endif(ENABLE_BENCHMARKS)

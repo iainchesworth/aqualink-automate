@@ -3,6 +3,7 @@
   "name": "aqualink-automate",
   "version": "0.0.1",
   "dependencies": [
+    "benchmark",
     "boost-asio",
     "boost-circular-buffer",
     "boost-graph",
@@ -20,6 +21,7 @@
     "mqtt-cpp",
     "nlohmann-json",
     "openssl",
-    "tracy"
+    "tracy",
+    "zlib"
   ]
 }

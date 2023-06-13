@@ -10,7 +10,10 @@ namespace AqualinkAutomate::ErrorCodes
 	{
 		Error_InvalidMessageData = 1000,
 		Error_CannotFindGenerator,
-		Error_UnknownMessageType
+		Error_UnknownMessageType,
+		Error_GeneratorFailed,
+		Error_FailedToSerialize,
+		Error_FailedToDeserialize
 	};
 
 	class Message_ErrorCategory : public boost::system::error_category

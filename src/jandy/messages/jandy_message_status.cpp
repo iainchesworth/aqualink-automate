@@ -91,49 +91,55 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
 	}
 
-	void JandyMessage_Status::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool JandyMessage_Status::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		LogTrace(Channel::Messages, std::format("Serialising JandyMessage_Status type into {} bytes", message_bytes.size()));
+
+		return true;
 	}
 
-	void JandyMessage_Status::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool JandyMessage_Status::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (!PacketIsValid(message_bytes))
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes into JandyMessage_Status type", message_bytes.size()));
+
+		if ((JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH) != message_bytes.size())
 		{
-			LogWarning(Channel::Messages, "Failed during JandyMessage_Status deserialising; packet was not validly formatted");
-		}
-		else if (JandyMessage::Deserialize(message_bytes); STATUS_PAYLOAD_LENGTH != m_Payload.size())
-		{
-			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, m_Payload.size()));
+			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, message_bytes.size()));
 		}
 		else
 		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", m_Payload.size()));
+			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", message_bytes.size()));
 
-			m_Payload_Byte0 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte0*>(&(m_Payload[0])));
-			m_Payload_Byte1 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte1*>(&(m_Payload[1])));
-			m_Payload_Byte2 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte2*>(&(m_Payload[2])));
-			m_Payload_Byte3 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte3*>(&(m_Payload[3])));
-			m_Payload_Byte4 = *(reinterpret_cast<Payload::JandyMessage_Status_Payload_Byte4*>(&(m_Payload[4])));
+			///FIXME 
+			/*m_Payload_Byte0 = Payload::JandyMessage_Status_Payload_Byte0(message_bytes[5]);
+			m_Payload_Byte1 = Payload::JandyMessage_Status_Payload_Byte1(message_bytes[6]);
+			m_Payload_Byte2 = Payload::JandyMessage_Status_Payload_Byte2(message_bytes[7]);
+			m_Payload_Byte3 = Payload::JandyMessage_Status_Payload_Byte3(message_bytes[8]);
+			m_Payload_Byte4 = Payload::JandyMessage_Status_Payload_Byte4(message_bytes[9]);*/
 
 			LogTrace(
 				Channel::Messages, 
 				std::format(
 					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 
-					m_Payload.size(),
-					message_bytes.size_bytes(), 
-					m_Payload[0], 
-					m_Payload[0],
-					m_Payload[1], 
-					m_Payload[1],
-					m_Payload[2], 
-					m_Payload[2],
-					m_Payload[3], 
-					m_Payload[3],
-					m_Payload[4], 
-					m_Payload[4]
+					message_bytes.size(),
+					message_bytes.size(), 
+					message_bytes[5],
+					message_bytes[5],
+					message_bytes[6],
+					message_bytes[6],
+					message_bytes[7],
+					message_bytes[7],
+					message_bytes[8],
+					message_bytes[8],
+					message_bytes[9],
+					message_bytes[9]
 				)
 			);
+
+			return true;
 		}
+
+		return false;
 	}
 
 }

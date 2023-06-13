@@ -26,20 +26,16 @@ namespace AqualinkAutomate::Messages
 		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
 	}
 
-	void IAQMessage_PageContinue::Serialize(std::vector<uint8_t>& message_bytes) const
+	bool IAQMessage_PageContinue::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
+		return false;
 	}
 
-	void IAQMessage_PageContinue::Deserialize(const std::span<const std::byte>& message_bytes)
+	bool IAQMessage_PageContinue::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
-		if (PacketIsValid(message_bytes))
-		{
-			LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageContinue type", message_bytes.size()));
+		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageContinue type", message_bytes.size()));
 
-			IAQMessage::Deserialize(message_bytes);
-
-			LogTrace(Channel::Messages, std::format("Ignoring {} bytes of data", message_bytes.size() - 7));
-		}
+		return true;
 	}
 
 }
