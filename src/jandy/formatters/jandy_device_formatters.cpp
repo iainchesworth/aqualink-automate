@@ -13,13 +13,13 @@ namespace std
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Devices::JandyDeviceId& obj)
 	{
-		os << obj();
+		os << std::format("{}", obj);
 		return os;
 	}
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Devices::JandyDeviceType& obj)
 	{
-		os << obj.Id();
+		os << std::format("{}", obj);
 		return os;
 	}
 

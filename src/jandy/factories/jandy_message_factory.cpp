@@ -47,7 +47,9 @@ namespace AqualinkAutomate::Factory
 		}
 		else
 		{
-			const auto message_type = static_cast<Messages::JandyMessageIds>(message_bytes[Messages::JandyMessage::Index_MessageType]);
+			const uint8_t raw_message_type = static_cast<uint8_t>(message_bytes[Messages::JandyMessage::Index_MessageType]);
+			const Messages::JandyMessageIds message_type(magic_enum::enum_cast<Messages::JandyMessageIds>(raw_message_type).value_or(Messages::JandyMessageIds::Unknown));
+
 			if (auto it = m_Generators.find(message_type); m_Generators.end() != it)
 			{
 				LogTrace(Channel::Messages, std::format("Generating: Jandy message --> {} (0x{:02x})", magic_enum::enum_name(message_type), static_cast<uint8_t>(message_type)));

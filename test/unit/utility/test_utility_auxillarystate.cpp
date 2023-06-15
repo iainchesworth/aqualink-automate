@@ -14,10 +14,10 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("Pump  ON");
-    auto result = status();
-    BOOST_CHECK(result);
-    BOOST_CHECK_EQUAL(result.value().Label, "Pump");
-    BOOST_CHECK_EQUAL(result.value().State, AuxillaryStates::On);
+    BOOST_REQUIRE(status.Label().has_value());
+    BOOST_REQUIRE(status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().value(), "Pump");
+    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStates::On);
 }
 
 BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
@@ -27,10 +27,10 @@ BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
 
     AuxillaryState status;
     status = "Pump  OFF";
-    auto result = status();
-    BOOST_CHECK(result);
-    BOOST_CHECK_EQUAL(result.value().Label, "Pump");
-    BOOST_CHECK_EQUAL(result.value().State, AuxillaryStates::Off);
+    BOOST_REQUIRE(status.Label().has_value());
+    BOOST_REQUIRE(status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().value(), "Pump");
+    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStates::Off);
 }
 
 BOOST_AUTO_TEST_CASE(InvalidStringTest)
@@ -39,9 +39,10 @@ BOOST_AUTO_TEST_CASE(InvalidStringTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("Invalid string");
-    auto result = status();
-    BOOST_CHECK(!result);
-    BOOST_CHECK_EQUAL(result.error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_REQUIRE(!status.Label().has_value());
+    BOOST_REQUIRE(!status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
 BOOST_AUTO_TEST_CASE(IncorrectlyFormattedStringTest)
@@ -50,9 +51,10 @@ BOOST_AUTO_TEST_CASE(IncorrectlyFormattedStringTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("PumpON");
-    auto result = status();
-    BOOST_CHECK(!result);
-    BOOST_CHECK_EQUAL(result.error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_REQUIRE(!status.Label().has_value());
+    BOOST_REQUIRE(!status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
 BOOST_AUTO_TEST_CASE(WrongLengthStringTest)
@@ -61,9 +63,10 @@ BOOST_AUTO_TEST_CASE(WrongLengthStringTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("This string is too long");
-    auto result = status();
-    BOOST_CHECK(!result);
-    BOOST_CHECK_EQUAL(result.error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_REQUIRE(!status.Label().has_value());
+    BOOST_REQUIRE(!status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
 BOOST_AUTO_TEST_CASE(EmptyStringTest)
@@ -72,9 +75,10 @@ BOOST_AUTO_TEST_CASE(EmptyStringTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("");
-    auto result = status();
-    BOOST_CHECK(!result);
-    BOOST_CHECK_EQUAL(result.error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_REQUIRE(!status.Label().has_value());
+    BOOST_REQUIRE(!status.State().has_value());
+    BOOST_CHECK_EQUAL(status.Label().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
+    BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
 BOOST_AUTO_TEST_CASE(StatusTypesTest)
@@ -86,24 +90,20 @@ BOOST_AUTO_TEST_CASE(StatusTypesTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status1("Pump  ON");
-    auto result1 = status1.State();
-    BOOST_CHECK(result1);
-    BOOST_CHECK_EQUAL(result1.value(), AuxillaryStates::On);
+    BOOST_REQUIRE(status1.State().has_value());
+    BOOST_CHECK_EQUAL(status1.State().value(), AuxillaryStates::On);
 
     AuxillaryState status2("Pump  OFF");
-    auto result2 = status2.State();
-    BOOST_CHECK(result2);
-    BOOST_CHECK_EQUAL(result2.value(), AuxillaryStates::Off);
+    BOOST_REQUIRE(status2.State().has_value());
+    BOOST_CHECK_EQUAL(status2.State().value(), AuxillaryStates::Off);
 
     AuxillaryState status3("Pump  ENA");
-    auto result3 = status3.State();
-    BOOST_CHECK(result3);
-    BOOST_CHECK_EQUAL(result3.value(), AuxillaryStates::Enabled);
+    BOOST_REQUIRE(status3.State().has_value());
+    BOOST_CHECK_EQUAL(status3.State().value(), AuxillaryStates::Enabled);
 
     AuxillaryState status4("Pump  ***");
-    auto result4 = status4.State();
-    BOOST_CHECK(result4);
-    BOOST_CHECK_EQUAL(result4.value(), AuxillaryStates::Pending);
+    BOOST_REQUIRE(status4.State().has_value());
+    BOOST_CHECK_EQUAL(status4.State().value(), AuxillaryStates::Pending);
 }
 
 BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
@@ -112,9 +112,8 @@ BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("A_MaximumName ON");
-    auto result = status.Label();
-    BOOST_CHECK(result);
-    BOOST_CHECK_EQUAL(result.value(), "A_MaximumName");
+    BOOST_REQUIRE(status.Label().has_value());
+    BOOST_CHECK_EQUAL(status.Label().value(), "A_MaximumName");
 }
 
 BOOST_AUTO_TEST_CASE(MinimumLengthNameTest)
@@ -122,9 +121,8 @@ BOOST_AUTO_TEST_CASE(MinimumLengthNameTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("A ON");
-    auto result = status.Label();
-    BOOST_CHECK(result);
-    BOOST_CHECK_EQUAL(result.value(), "A");
+    BOOST_REQUIRE(status.Label().has_value());
+    BOOST_CHECK_EQUAL(status.Label().value(), "A");
 }
 
 BOOST_AUTO_TEST_CASE(NameWithSpacesTest)
@@ -132,9 +130,8 @@ BOOST_AUTO_TEST_CASE(NameWithSpacesTest)
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("A MaximumName ON");
-    auto result = status.Label();
-    BOOST_CHECK(result);
-    BOOST_CHECK_EQUAL(result.value(), "A MaximumName");
+    BOOST_REQUIRE(status.Label().has_value());
+    BOOST_CHECK_EQUAL(status.Label().value(), "A MaximumName");
 }
 
 BOOST_AUTO_TEST_SUITE_END();

@@ -1,8 +1,12 @@
 #include <format>
+#include <memory>
 
 #include "logging/logging.h"
 #include "jandy/devices/onetouch_device.h"
+#include "jandy/factories/jandy_auxillary_factory.h"
+#include "jandy/utility/jandy_pool_configuration_decoder.h"
 #include "jandy/utility/string_manipulation.h"
+#include "jandy/utility/string_conversion/auxillary_state.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -101,16 +105,43 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_System page.");
 	}
+	
+	void OneTouchDevice::PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page)
+	{
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_EquipmentOnOff page.");
+
+		/*
+			Info:   OneTouch Menu Line 00 = Filter Pump  ***
+			Info:   OneTouch Menu Line 01 = Spa           ON
+			Info:   OneTouch Menu Line 02 = Pool Heat    ENA
+			Info:   OneTouch Menu Line 03 = Spa Heat     OFF
+			Info:   OneTouch Menu Line 04 = Solar Heat   OFF
+			Info:   OneTouch Menu Line 05 = Aux1         OFF
+			Info:   OneTouch Menu Line 06 = Aux2         OFF
+			Info:   OneTouch Menu Line 07 = Aux3         OFF
+			Info:   OneTouch Menu Line 08 = Aux4         OFF
+			Info:   OneTouch Menu Line 09 = Aux5         OFF
+			Info:   OneTouch Menu Line 10 = Aux6         OFF
+			Info:   OneTouch Menu Line 11 =    ^^ More vv
+		*/
+
+		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
+		{
+			auto new_aux_state = Utility::AuxillaryState(Utility::TrimWhitespace(page[row_index].Text));
+			auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().CreateDevice(new_aux_state);
+			JandyController::m_Config.AddDevice(aux_ptr);
+		}
+	}
 
 	void OneTouchDevice::PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page)
 	{
 		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_EquipmentStatus page.");
 
 		/*
-			Info:   OneTouch Menu Line 00 = Equipment Status		Equipment Status	Equipment Status
+			Info:   OneTouch Menu Line 00 = Equipment Status    Equipment Status	Equipment Status
 			Info:   OneTouch Menu Line 01 =
 			Info:   OneTouch Menu Line 02 = Intelliflo VS 3		Intelliflo VS 3		Intelliflo VF 2
-			Info:   OneTouch Menu Line 03 =  *** Priming ***		     RPM: 2750		     RPM: 2250
+			Info:   OneTouch Menu Line 03 =  *** Priming ***		   RPM: 2750		  RPM: 2250
 			Info:   OneTouch Menu Line 04 =     Watts: 100             RPM: 600		    Watts: 55
 			Info:   OneTouch Menu Line 05 =                          Watts: 55		      GPM: 80
 			Info:   OneTouch Menu Line 06 =
@@ -218,14 +249,16 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 10 =
 			Info:   OneTouch Menu Line 11 =
 		*/
-
+		
 		const auto model_number = Utility::TrimWhitespace(page[4].Text);
 		const auto panel_type = Utility::TrimWhitespace(page[5].Text);
-		const auto panel_type_converted = Equipment::JandyEquipmentType_FromString(panel_type);
 		const auto fw_revision = Utility::TrimWhitespace(page[7].Text);
 
+		Utility::PoolConfigurationDecoder pool_config_decoder(panel_type);
+
+		JandyController::m_Config.PoolConfiguration = pool_config_decoder.Configuration();
+		JandyController::m_Config.SystemBoard = pool_config_decoder.SystemBoard();
 		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_Config.EquipmentVersions.PanelType = panel_type_converted;
 		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
 		
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));

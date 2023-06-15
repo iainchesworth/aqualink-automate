@@ -1,7 +1,5 @@
 #pragma once
 
-#include "jandy/equipment/jandy_equipment_types.h"
-
 namespace AqualinkAutomate::Equipment
 {
 

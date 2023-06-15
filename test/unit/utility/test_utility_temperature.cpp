@@ -12,131 +12,131 @@ BOOST_AUTO_TEST_CASE(ValidTemperatureStrings)
 
     {
         Temperature temp("pool 22`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius  == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(22 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("air 72`F");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Farenheit == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(72 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("air" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Pool 22`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(22 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Air 18`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(18 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Air" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Air -18`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(-18 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Air" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Pool 0`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(0 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("pool        22`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(22 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("pool        72`F");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Farenheit == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(72 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("someth 18`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(18 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("someth" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Pool        22`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(22 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Pool" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Air         18`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(18 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Air" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Air        -18`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(-18 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Air" == *(temp.TemperatureArea()));
     }
 
     {
         Temperature temp("Pool         0`C");
-        BOOST_TEST_REQUIRE(temp.TemperatureUnits().has_value());
+        BOOST_REQUIRE(temp.TemperatureUnits().has_value());
         BOOST_TEST(Temperature::Units::Celsius == *(temp.TemperatureUnits()));
-        BOOST_TEST_REQUIRE(temp().has_value());
+        BOOST_REQUIRE(temp().has_value());
         BOOST_TEST(0 == *(temp()));
-        BOOST_TEST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_TEST("Pool" == *(temp.TemperatureArea()));
     }
 }

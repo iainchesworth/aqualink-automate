@@ -23,6 +23,31 @@ namespace AqualinkAutomate::Config
         os << magic_enum::enum_name(right);
         return os;
     }
+
+    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, PumpStatus const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, PoolConfigurations const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, SystemBoards const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
 }
 // namespace AqualinkAutomate::Config
 
@@ -31,12 +56,6 @@ namespace AqualinkAutomate::Devices
     std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right)
     {
         os << magic_enum::enum_name(right);
-        return os;
-    }
-
-    std::ostream& boost_test_print_type(std::ostream& os, JandyDeviceId const& right)
-    {
-        os << std::setfill('0') << std::setw(2) << std::hex << right();
         return os;
     }
 
@@ -63,16 +82,37 @@ namespace AqualinkAutomate::Logging
 }
 // namespace AqualinkAutomate::Logging
 
-namespace AqualinkAutomate::Messages::Jandy::Messages
+namespace AqualinkAutomate::Messages
 {
-    std::ostream& boost_test_print_type(std::ostream& os, JandyMessage const& right) { return os; };
-    std::ostream& boost_test_print_type(std::ostream& os, JandyMessage_Ack const& right) { return os; };
+    std::ostream& boost_test_print_type(std::ostream& os, AckTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, ComboModes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
 }
-// namespace AqualinkAutomate::Messages::Jandy::Messages
+// namespace AqualinkAutomate::Messages
 
 namespace AqualinkAutomate::Utility
 {
-    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right) 
+    std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPage::HighlightStates const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPageTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right)
     {
         os << magic_enum::enum_name(right);
         return os;

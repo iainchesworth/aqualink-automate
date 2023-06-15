@@ -16,7 +16,6 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Probe>(std::bind(&KeypadDevice::Slot_Keypad_Probe, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Message>(std::bind(&KeypadDevice::Slot_Keypad_Message, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_MessageLong>(std::bind(&KeypadDevice::Slot_Keypad_MessageLong, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_MessageLoopStart>(std::bind(&KeypadDevice::Slot_Keypad_MessageLoopStart, this, std::placeholders::_1), device_id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(std::bind(&KeypadDevice::Slot_Keypad_Status, this, std::placeholders::_1), device_id());
 
 		if (!IsEmulated())

@@ -1,4 +1,4 @@
-#include "jandy/config/jandy_config_remotepowercenter.h"
+#include "jandy/config/jandy_config_auxillary_states.h"
 
 namespace AqualinkAutomate::Config
 {

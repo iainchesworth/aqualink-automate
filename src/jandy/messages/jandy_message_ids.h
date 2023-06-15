@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 		Status = 0x02,
 		Message = 0x03,
 		MessageLong = 0x04,
-		MessageLoopStart = 0x08,
 
 		// Serial Adapter commands
 		RSSA_DevStatus = 0x13,

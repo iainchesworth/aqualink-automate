@@ -12,6 +12,7 @@ namespace AqualinkAutomate::Utility
 
 	class ScreenDataPage
 	{
+	public:
 		enum class HighlightStates
 		{
 			Normal,
@@ -33,6 +34,7 @@ namespace AqualinkAutomate::Utility
 			std::optional<HighlightRangeType> HighlightRange;
 		};
 
+	private:
 		using RowCollection = std::vector<RowType>;
 
 		inline static const RowType DEFAULT_ROW_DATA = { std::string(), HighlightStates::Normal, std::nullopt };

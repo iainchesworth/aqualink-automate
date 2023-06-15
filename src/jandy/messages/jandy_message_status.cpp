@@ -1,5 +1,7 @@
 #include <format>
 
+#include <magic_enum.hpp>
+
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_status.h"
 #include "logging/logging.h"
@@ -13,12 +15,19 @@ namespace AqualinkAutomate::Messages
 
 	JandyMessage_Status::JandyMessage_Status() :
 		JandyMessage(JandyMessageIds::Status),
-		Interfaces::IMessageSignalRecv<JandyMessage_Status>(),
-		m_Payload_Byte0(),
-		m_Payload_Byte1(),
-		m_Payload_Byte2(),
-		m_Payload_Byte3(),
-		m_Payload_Byte4()
+		Interfaces::IMessageSignalRecv<JandyMessage_Status>(), 
+		m_Mode(ComboModes::Unknown),
+		m_FilterPump(Config::PumpStatus::Unknown),
+		m_Aux1(Config::AuxillaryStates::Unknown),
+		m_Aux2(Config::AuxillaryStates::Unknown),
+		m_Aux3(Config::AuxillaryStates::Unknown),
+		m_Aux4(Config::AuxillaryStates::Unknown),
+		m_Aux5(Config::AuxillaryStates::Unknown),
+		m_Aux6(Config::AuxillaryStates::Unknown),
+		m_Aux7(Config::AuxillaryStates::Unknown),
+		m_PoolHeater(Config::HeaterStatus::Unknown),
+		m_SolarHeater(Config::HeaterStatus::Unknown),
+		m_SpaHeater(Config::HeaterStatus::Unknown)
 	{
 	}
 
@@ -28,62 +37,62 @@ namespace AqualinkAutomate::Messages
 
 	ComboModes JandyMessage_Status::Mode() const
 	{
-		return m_Payload_Byte1.SpaMode;
+		return m_Mode;
 	}
 
-	EquipmentModes JandyMessage_Status::FilterPump() const
+	Config::PumpStatus JandyMessage_Status::FilterPump() const
 	{
-		return m_Payload_Byte1.FilterPump;
+		return m_FilterPump;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux1() const
 	{
-		return m_Payload_Byte1.Aux1;
+		return m_Aux1;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux2() const
 	{
-		return m_Payload_Byte0.Aux2;
+		return m_Aux2;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux3() const
 	{
-		return m_Payload_Byte0.Aux3;
+		return m_Aux3;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux4() const
 	{
-		return m_Payload_Byte2.Aux4;
+		return m_Aux4;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux5() const
 	{
-		return m_Payload_Byte1.Aux5;
+		return m_Aux5;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux6() const
 	{
-		return m_Payload_Byte2.Aux6;
+		return m_Aux6;
 	}
 
 	Config::AuxillaryStates JandyMessage_Status::Aux7() const
 	{
-		return m_Payload_Byte0.Aux7;
+		return m_Aux7;
 	}
 
 	Config::HeaterStatus JandyMessage_Status::PoolHeater() const
 	{
-		return m_Payload_Byte3.PoolHeater;
+		return m_PoolHeater;
 	}
 
 	Config::HeaterStatus JandyMessage_Status::SpaHeater() const
 	{
-		return m_Payload_Byte4.SpaHeater;
+		return m_SpaHeater;
 	}
 
 	Config::HeaterStatus JandyMessage_Status::SolarHeater() const
 	{
-		return m_Payload_Byte4.SolarHeater;
+		return m_SolarHeater;
 	}
 
 	std::string JandyMessage_Status::ToString() const
@@ -110,14 +119,27 @@ namespace AqualinkAutomate::Messages
 		{
 			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", message_bytes.size()));
 
-			///FIXME 
-			/*m_Payload_Byte0 = Payload::JandyMessage_Status_Payload_Byte0(message_bytes[5]);
-			m_Payload_Byte1 = Payload::JandyMessage_Status_Payload_Byte1(message_bytes[6]);
-			m_Payload_Byte2 = Payload::JandyMessage_Status_Payload_Byte2(message_bytes[7]);
-			m_Payload_Byte3 = Payload::JandyMessage_Status_Payload_Byte3(message_bytes[8]);
-			m_Payload_Byte4 = Payload::JandyMessage_Status_Payload_Byte4(message_bytes[9]);*/
+			m_Aux5 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[5] & 0x80) >> 7).value_or(Config::AuxillaryStates::Unknown);
+			m_Aux2 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[5] & 0x40) >> 6).value_or(Config::AuxillaryStates::Unknown);
+			m_Aux3 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[5] & 0x10) >> 4).value_or(Config::AuxillaryStates::Unknown);
+			m_Aux7 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[5] & 0x01) >> 0).value_or(Config::AuxillaryStates::Unknown);
 
-			LogTrace(
+			m_FilterPump = magic_enum::enum_cast<Config::PumpStatus>((message_bytes[6] & 0x10) >> 4).value_or(Config::PumpStatus::Unknown);
+			m_Mode = magic_enum::enum_cast<ComboModes>((message_bytes[6] & 0x04) >> 2).value_or(ComboModes::Unknown);
+			m_Aux1 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[6] & 0x01) >> 0).value_or(Config::AuxillaryStates::Unknown);
+
+			uint8_t tempx = ((message_bytes[7] & 0x40) >> 6); // ENA?
+			uint8_t tempy = ((message_bytes[8] & 0x04) >> 2); // ENA?
+
+			m_Aux6 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[7] & 0x40) >> 6).value_or(Config::AuxillaryStates::Unknown);
+			m_Aux4 = magic_enum::enum_cast<Config::AuxillaryStates>((message_bytes[7] & 0x01) >> 0).value_or(Config::AuxillaryStates::Unknown);
+			
+			m_PoolHeater = magic_enum::enum_cast<Config::HeaterStatus>((message_bytes[8] & 0x70) >> 4).value_or(Config::HeaterStatus::Unknown);
+
+			m_SolarHeater = magic_enum::enum_cast<Config::HeaterStatus>((message_bytes[9] & 0x70) >> 4).value_or(Config::HeaterStatus::Unknown);
+			m_SpaHeater = magic_enum::enum_cast<Config::HeaterStatus>((message_bytes[9] & 0x07) >> 0).value_or(Config::HeaterStatus::Unknown);
+
+			LogInfo(
 				Channel::Messages, 
 				std::format(
 					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 

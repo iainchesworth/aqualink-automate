@@ -22,6 +22,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		JandyMessage_MessageLong();
+		JandyMessage_MessageLong(const uint8_t line_id, const std::string line);
 		virtual ~JandyMessage_MessageLong();
 
 	public:

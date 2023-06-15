@@ -11,6 +11,9 @@ add_executable(
 	testaqualink-automate
 	unit/test_main.cpp 
 	unit/devices/test_devices_id.cpp 
+	unit/devices/test_devices_onetouch_pageprocessors.cpp 
+	unit/devices/test_devices_screendatapage.cpp 
+	unit/devices/test_devices_screendatapage_processor.cpp 
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
 	unit/generators/test_jandy_message_generator.cpp 
@@ -22,8 +25,8 @@ add_executable(
 	unit/messages/test_message.cpp 
 	unit/messages/test_message_ack.cpp 
 	unit/messages/test_message_message.cpp 
-	unit/messages/test_message_message_long.cpp 
-	unit/messages/test_message_message_loop_start.cpp 
+	unit/messages/test_message_message_long.cpp 	 
+	unit/messages/test_message_pda_highlight.cpp 
 	unit/messages/test_message_probe.cpp 
 	unit/messages/test_message_status.cpp 
 	unit/messages/test_message_unknown.cpp 

@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Utility
 	{
 		if (CLEAR_HIGHLIGHTS == line_id)
 		{
-			LogDebug(Channel::Devices, "Clearing all previously set highlighted lines");
+			LogTrace(Channel::Devices, "ScreenDataPage: Clearing all previously set highlighted lines");
 
 			for (auto& row : m_Rows)
 			{
@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Utility
 		}
 		else if (m_Rows.size() < line_id)
 		{
-			LogDebug(Channel::Devices, std::format("Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
 		}
 		else
 		{
@@ -62,7 +62,7 @@ namespace AqualinkAutomate::Utility
 	{
 		if (m_Rows.size() < line_id)
 		{
-			LogDebug(Channel::Devices, std::format("Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
 		}
 		else
 		{
@@ -73,24 +73,46 @@ namespace AqualinkAutomate::Utility
 
 	void ScreenDataPage::ShiftLines(ShiftDirections direction, uint8_t start_id, uint8_t end_id, uint8_t lines_to_shift)
 	{
-		// Get iterators to the start and end of the range
-		auto start = m_Rows.begin() + start_id;
-		auto end = m_Rows.begin() + end_id + 1;
-
-		// Calculate the offset for the rotation
-		const int offset = (direction == ShiftDirections::Up) ? lines_to_shift : (end - start) - lines_to_shift;
-
-		// Rotate the range left or right by the specified number of elements
-		std::rotate(start, start + offset, end);
-
-		// Erase the elements that were rotated to the end of the range
-		if (direction == ShiftDirections::Up)
+		if (start_id > (m_Rows.size() - 2))
 		{
-			std::for_each(end - lines_to_shift, end, [](auto& elem) { elem = DEFAULT_ROW_DATA; });
+			// Out of range - no suitable lines or not enough to rotate
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index out of range; start index -> {} (0-based); total lines -> {}", start_id, m_Rows.size()));
 		}
-		else if (direction == ShiftDirections::Down)
+		else if (end_id > (m_Rows.size() - 1))
 		{
-			std::for_each(start, start + lines_to_shift, [](auto& elem) { elem = DEFAULT_ROW_DATA; });
+			// Out of range - no suitable lines or not enough to rotate
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, end index out of range; end index -> {} (0-based); total lines -> {}", end_id, m_Rows.size()));
+		}
+		else if (start_id >= end_id)
+		{
+			// Span is not the correct range; cannot rotate.
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index must preceed end index by at least 1; start index -> {}, end index -> {}", start_id, end_id));
+		}
+		else 
+		{
+			// Get iterators to the start and end of the range
+			auto start = m_Rows.begin() + start_id;
+			auto end = m_Rows.begin() + end_id + 1;
+
+			// Calculate the offset for the rotation
+			const int offset = (direction == ShiftDirections::Up) ? lines_to_shift : (end - start) - lines_to_shift;
+
+			// Rotate the range left or right by the specified number of elements
+			std::rotate(start, start + offset, end);
+
+			// Erase the elements that were rotated to the end of the range
+			if (direction == ShiftDirections::Up)
+			{
+				std::for_each(end - lines_to_shift, end, [](auto& elem) { elem = DEFAULT_ROW_DATA; });
+			}
+			else if (direction == ShiftDirections::Down)
+			{
+				std::for_each(start, start + lines_to_shift, [](auto& elem) { elem = DEFAULT_ROW_DATA; });
+			}
+			else
+			{
+				LogDebug(Channel::Devices, "ScreenDataPage: Got a weird shift direction (not up or down)...doing nothing");
+			}
 		}
 	}
 

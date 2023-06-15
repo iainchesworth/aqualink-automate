@@ -13,7 +13,6 @@
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_message_loop_start.h"
 #include "jandy/messages/jandy_message_status.h"
 
 namespace AqualinkAutomate::Devices
@@ -42,7 +41,6 @@ namespace AqualinkAutomate::Devices
 		void Slot_Keypad_Probe(const Messages::JandyMessage_Probe& msg);
 		void Slot_Keypad_Message(const Messages::JandyMessage_Message& msg);
 		void Slot_Keypad_MessageLong(const Messages::JandyMessage_MessageLong& msg);
-		void Slot_Keypad_MessageLoopStart(const Messages::JandyMessage_MessageLoopStart& msg);
 		void Slot_Keypad_Status(const Messages::JandyMessage_Status& msg);
 	};
 

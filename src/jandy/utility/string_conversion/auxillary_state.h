@@ -8,7 +8,7 @@
 
 #include <boost/system/error_code.hpp>
 
-#include "jandy/config/jandy_config_auxillary.h"
+#include "jandy/config/jandy_config_auxillary_states.h"
 #include "jandy/errors/string_conversion_errors.h"
 
 using namespace AqualinkAutomate::Config;
@@ -33,10 +33,8 @@ namespace AqualinkAutomate::Utility
 		AuxillaryState& operator=(const std::string& auxillary_status_string) noexcept;
 
 	public:
-		std::expected<Config::Auxillary, boost::system::error_code> operator()() const noexcept;
 		std::expected<std::string, boost::system::error_code> Label() const noexcept;
 		std::expected<Config::AuxillaryStates, boost::system::error_code> State() const noexcept;
-
 
 	private:
 		void ConvertStringToStatus(const std::string& auxillary_status_string) noexcept;

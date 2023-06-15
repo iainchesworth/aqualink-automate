@@ -51,17 +51,6 @@ namespace AqualinkAutomate::Devices
 		IDevice::KickTimeoutWatchdog();
 	}
 
-	void KeypadDevice::Slot_Keypad_MessageLoopStart(const Messages::JandyMessage_MessageLoopStart& msg)
-	{
-		LogDebug(Channel::Devices, "RS Keypad device received a JandyMessage_MessageLoopStart signal.");
-
-		Signal_AckMessage(Messages::AckTypes::V2_Normal, KeyCommands::NoKeyCommand);
-		ProcessControllerUpdates();
-
-		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
-	}
-
 	void KeypadDevice::Slot_Keypad_Status(const Messages::JandyMessage_Status& msg)
 	{
 		LogDebug(Channel::Devices, "RS Keypad device received a JandyMessage_Status signal.");

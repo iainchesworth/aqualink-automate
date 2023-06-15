@@ -25,9 +25,9 @@ namespace AqualinkAutomate::Devices
 						{
 							{ 1, Utility::ScreenDataPageTypes::Page_OneTouch },				// ONETOUCH -> (line down) -> ONETOUCH
 							{ 2, Utility::ScreenDataPageTypes::Page_OneTouch },				// ONETOUCH -> (select) -> HOME
-							{ 3, Utility::ScreenDataPageTypes::Page_EquipmentStatus },		// HOME -> (select) -> EQUIPMENT STATUS
-							{ 4, Utility::ScreenDataPageTypes::Page_EquipmentStatus },		// EQUIPMENT STATUS -> (page down) -> EQUIPMENT STATUS
-							{ 5, Utility::ScreenDataPageTypes::Page_EquipmentStatus },		// EQUIPMENT STATUS -> (page down) -> EQUIPMENT STATUS
+							{ 3, Utility::ScreenDataPageTypes::Page_EquipmentOnOff },		// HOME -> (select) -> EQUIPMENT STATUS
+							{ 4, Utility::ScreenDataPageTypes::Page_EquipmentOnOff },		// EQUIPMENT STATUS -> (page down) -> EQUIPMENT STATUS
+							{ 5, Utility::ScreenDataPageTypes::Page_EquipmentOnOff },		// EQUIPMENT STATUS -> (page down) -> EQUIPMENT STATUS
 							{ 6, Utility::ScreenDataPageTypes::Page_Home },					// EQUIPMENT STATUS -> (back) -> HOME
 							{ 7, Utility::ScreenDataPageTypes::Page_Home },					// HOME -> (line down) -> HOME
 							{ 8, Utility::ScreenDataPageTypes::Page_Home },					// HOME -> (line down) -> HOME
@@ -80,6 +80,7 @@ namespace AqualinkAutomate::Devices
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_TimeOut, { 3, "Timeout Mode" }, std::bind(&OneTouchDevice::PageProcessor_TimeOut, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_OneTouch, { 11, "SYSTEM" }, std::bind(&OneTouchDevice::PageProcessor_OneTouch, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_System, { 4, "Jandy AquaLinkRS" }, std::bind(&OneTouchDevice::PageProcessor_System, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 11, "More" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentStatus, { 0, "EQUIPMENT STATUS" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentStatus, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SelectSpeed, { 0, "Select Speed" }, std::bind(&OneTouchDevice::PageProcessor_SelectSpeed, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_MenuHelp, { 0, "Menu" }, std::bind(&OneTouchDevice::PageProcessor_MenuHelp, this, std::placeholders::_1)),
@@ -133,16 +134,17 @@ namespace AqualinkAutomate::Devices
 			case Utility::ScreenDataPageTypes::Page_OneTouch:
 				LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from OneTouch page)");
 				m_OpState = OperatingStates::ColdStart;
-				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER);
+				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, 0);
 				break;
 
 			case Utility::ScreenDataPageTypes::Page_Home:
 				LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from Home page)");
 				m_OpState = OperatingStates::WarmStart;
-				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER);
+				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, 2);
 				break;
 
 			default:
+				// DO NOTHING HERE
 				break;
 			}
 			break;

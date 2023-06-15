@@ -12,9 +12,14 @@ namespace AqualinkAutomate::Messages
 	const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> PDAMessage_Highlight::g_PDAMessage_Highlight_Registration(JandyMessageIds::PDA_Highlight);
 
 	PDAMessage_Highlight::PDAMessage_Highlight() :
+		PDAMessage_Highlight(0)
+	{
+	}
+
+	PDAMessage_Highlight::PDAMessage_Highlight(const uint8_t line_id) :
 		PDAMessage(JandyMessageIds::PDA_Highlight),
 		Interfaces::IMessageSignalRecv<PDAMessage_Highlight>(),
-		m_LineId(0)
+		m_LineId(line_id)
 	{
 	}
 
@@ -34,7 +39,13 @@ namespace AqualinkAutomate::Messages
 
 	bool PDAMessage_Highlight::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		message_bytes.reserve(message_bytes.size() + 3);
+
+		message_bytes.emplace_back(static_cast<uint8_t>(m_LineId));
+		message_bytes.emplace_back(0x00); // REQUIRED NUL BYTE
+		message_bytes.emplace_back(0x00); // REQUIRED NUL BYTE
+
+		return true;
 	}
 
 	bool PDAMessage_Highlight::DeserializeContents(const std::vector<uint8_t>& message_bytes)

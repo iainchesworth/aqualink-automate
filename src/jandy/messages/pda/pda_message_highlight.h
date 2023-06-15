@@ -19,6 +19,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		PDAMessage_Highlight();
+		PDAMessage_Highlight(const uint8_t line_id);
 		virtual ~PDAMessage_Highlight();
 
 	public:

@@ -81,6 +81,7 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_TimeOut(const Utility::ScreenDataPage& page);
 		void PageProcessor_OneTouch(const Utility::ScreenDataPage& page);
 		void PageProcessor_System(const Utility::ScreenDataPage& page);
+		void PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page);
 		void PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page);
 		void PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page);
 		void PageProcessor_MenuHelp(const Utility::ScreenDataPage& page);

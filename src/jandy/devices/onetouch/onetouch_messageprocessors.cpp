@@ -70,13 +70,10 @@ namespace AqualinkAutomate::Devices
 
 		if (Capabilities::ScreenModes::Updating == ScreenMode())
 		{
-			//LogInfo(Channel::Devices, std::format("\n{}", DisplayedPage()));
-			LogInfo(Channel::Devices, std::format("!!! PAGE 1/2 GOES HERE !!!"));
+			LogDebug(Channel::Devices, std::format("\n{}", DisplayedPage()));
 
 			// The series of JandyMessage_MessageLong messages has finished.
 			ScreenMode(Capabilities::ScreenModes::UpdateComplete);
-
-			LogInfo(Channel::Devices, std::format("!!! PAGE 2/2 GOES HERE !!!"));
 		}
 
 		ProcessScreenUpdates();

@@ -1,11 +1,16 @@
 #pragma once
 
+#include <concepts>
 #include <format>
 #include <iostream>
 #include <string>
+#include <type_traits>
+
+#include <magic_enum.hpp>
 
 #include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_probe.h"
@@ -25,6 +30,7 @@ namespace AqualinkAutomate::Formatters
 
 namespace std 
 {
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageIds& obj);
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage& obj);
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Ack& obj);
@@ -37,12 +43,22 @@ namespace std
 }
 // namespace std
 
-template<std::derived_from<AqualinkAutomate::Messages::JandyMessage> Derived, typename CharT>
-struct std::formatter<Derived, CharT> : std::formatter<std::string>
+template<>
+struct std::formatter<AqualinkAutomate::Messages::JandyMessageIds> : std::formatter<std::string>
 {
-	template<typename Context>
-	auto format(Derived& msg, Context& context) const
+	template<typename FormatContext>
+	auto format(const AqualinkAutomate::Messages::JandyMessageIds& msg_id, FormatContext& ctx) const
 	{
-		return std::formatter<std::string>::format(msg.ToString(), context);
+		return std::vformat_to(ctx.out(), "{}", std::make_format_args(magic_enum::enum_name(msg_id)));
+	}
+};
+
+template<>
+struct std::formatter<AqualinkAutomate::Messages::JandyMessage> : std::formatter<std::string>
+{
+	template<typename FormatContext>
+	auto format(const AqualinkAutomate::Messages::JandyMessage& msg, FormatContext& ctx) const
+	{
+		return std::vformat_to(ctx.out(), "{}", std::make_format_args(msg.ToString()));
 	}
 };

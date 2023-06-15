@@ -139,7 +139,14 @@ add_library(
 	src/interfaces/iwebsocket.cpp 
 	src/jandy/config/jandy_config.cpp
 	src/jandy/config/jandy_config_auxillary.cpp
-	src/jandy/config/jandy_config_remotepowercenter.cpp
+	src/jandy/config/jandy_config_auxillary_base.cpp
+	src/jandy/config/jandy_config_auxillary_states.cpp
+	src/jandy/config/jandy_config_circulation.cpp
+	src/jandy/config/jandy_config_heater.cpp
+	src/jandy/config/jandy_config_pool_configurations.cpp
+	src/jandy/config/jandy_config_powercenter.cpp
+	src/jandy/config/jandy_config_pump.cpp
+	src/jandy/config/jandy_config_system_boards.cpp
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_controller.cpp 
@@ -161,12 +168,11 @@ add_library(
 	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
 	src/jandy/devices/pda/pda_pageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
-	src/jandy/equipment/jandy_equipment_modes.cpp 
-	src/jandy/equipment/jandy_equipment_types.cpp 
 	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
 	src/jandy/errors/string_conversion_errors.cpp
+	src/jandy/factories/jandy_auxillary_factory.cpp 
 	src/jandy/factories/jandy_message_factory.cpp
 	src/jandy/factories/jandy_message_factory_registration.cpp
 	src/jandy/formatters/jandy_device_formatters.cpp 
@@ -205,8 +211,7 @@ add_library(
 	src/jandy/messages/jandy_message_constants.cpp
 	src/jandy/messages/jandy_message_ids.cpp
 	src/jandy/messages/jandy_message_message.cpp
-	src/jandy/messages/jandy_message_message_long.cpp
-	src/jandy/messages/jandy_message_message_loop_start.cpp
+	src/jandy/messages/jandy_message_message_long.cpp	
 	src/jandy/messages/jandy_message_probe.cpp
 	src/jandy/messages/jandy_message_status.cpp	 
 	src/jandy/messages/jandy_message_unknown.cpp
@@ -214,6 +219,7 @@ add_library(
 	src/jandy/utility/filtered_slot.cpp 
 	src/jandy/utility/jandy_checksum.cpp 
 	src/jandy/utility/jandy_null_handler.cpp 
+	src/jandy/utility/jandy_pool_configuration_decoder.cpp
 	src/jandy/utility/screen_data_page.cpp
 	src/jandy/utility/screen_data_page_graph.cpp 
 	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
@@ -319,6 +325,8 @@ target_compile_definitions(
 	-DNOGDI
 	-DNOGDICAPMASKS
 	-DNOMINMAX
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
 )
 endif(WIN32)
 

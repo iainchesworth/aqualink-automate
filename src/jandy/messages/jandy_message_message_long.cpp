@@ -12,10 +12,16 @@ namespace AqualinkAutomate::Messages
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> JandyMessage_MessageLong::g_JandyMessage_MessageLong_Registration(JandyMessageIds::MessageLong);
 
 	JandyMessage_MessageLong::JandyMessage_MessageLong() : 
+		JandyMessage_MessageLong(0, std::string())
+	{
+		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
+	}
+
+	JandyMessage_MessageLong::JandyMessage_MessageLong(const uint8_t line_id, const std::string line) :
 		JandyMessage(JandyMessageIds::MessageLong),
 		Interfaces::IMessageSignalRecv<JandyMessage_MessageLong>(),
-		m_LineId(0),
-		m_Line()
+		m_LineId(line_id),
+		m_Line(line)
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
 	}
@@ -41,7 +47,16 @@ namespace AqualinkAutomate::Messages
 
 	bool JandyMessage_MessageLong::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		message_bytes.reserve(message_bytes.size() + m_Line.size() + 1);
+
+		message_bytes.emplace_back(static_cast<uint8_t>(m_LineId));
+
+		for (auto& elem : m_Line)
+		{
+			message_bytes.emplace_back(static_cast<uint8_t>(elem));
+		}
+
+		return true;
 	}
 
 	bool JandyMessage_MessageLong::DeserializeContents(const std::vector<uint8_t>& message_bytes)

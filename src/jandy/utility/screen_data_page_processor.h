@@ -16,6 +16,7 @@ namespace AqualinkAutomate::Utility
 		Page_TimeOut,
 		Page_OneTouch,
 		Page_System,
+		Page_EquipmentOnOff,
 		Page_EquipmentStatus,
 		Page_SelectSpeed,
 		Page_MenuHelp,

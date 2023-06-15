@@ -8,6 +8,7 @@
 #include "interfaces/imessagesignal_recv.h"
 #include "jandy/config/jandy_config_auxillary.h"
 #include "jandy/config/jandy_config_heater.h"
+#include "jandy/config/jandy_config_pump.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
 
@@ -17,62 +18,9 @@ namespace AqualinkAutomate::Messages
 	enum class ComboModes : uint8_t
 	{
 		Pool = 0x00,
-		Spa = 0x01
+		Spa = 0x01,
+		Unknown
 	};
-
-	enum class EquipmentModes : uint8_t
-	{
-		Off = 0x00,
-		Running = 0x01
-	};
-
-	namespace Payload
-	{
-		struct JandyMessage_Status_Payload_Byte0
-		{
-			bool : 1;
-			Config::AuxillaryStates Aux2 : 1;
-			bool : 1;
-			Config::AuxillaryStates Aux3 : 1;
-			bool : 3;
-			Config::AuxillaryStates Aux7 : 1;
-		};
-
-		struct JandyMessage_Status_Payload_Byte1
-		{
-			Config::AuxillaryStates Aux5 : 1;
-			bool : 2;
-			EquipmentModes FilterPump : 1;
-			bool : 1;
-			ComboModes SpaMode : 1;
-			bool : 1;
-			Config::AuxillaryStates Aux1 : 1;
-		};
-
-		struct JandyMessage_Status_Payload_Byte2
-		{
-			bool : 1;
-			Config::AuxillaryStates Aux6 : 1;
-			bool : 5;
-			Config::AuxillaryStates Aux4 : 1;
-		};
-
-		struct JandyMessage_Status_Payload_Byte3
-		{
-			bool : 1;
-			Config::HeaterStatus PoolHeater : 3;
-			bool : 4;
-		};
-
-		struct JandyMessage_Status_Payload_Byte4
-		{
-			bool : 1;
-			Config::HeaterStatus SolarHeater : 3;
-			bool : 1;
-			Config::HeaterStatus SpaHeater : 3;
-		};
-	}
-	// namespace Payload
 
 	class JandyMessage_Status : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Status>
 	{
@@ -84,7 +32,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		ComboModes Mode() const;
-		EquipmentModes FilterPump() const;
+		Config::PumpStatus FilterPump() const;
 		Config::AuxillaryStates Aux1() const;
 		Config::AuxillaryStates Aux2() const;
 		Config::AuxillaryStates Aux3() const;
@@ -104,11 +52,18 @@ namespace AqualinkAutomate::Messages
 		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
 
 	private:
-		Payload::JandyMessage_Status_Payload_Byte0 m_Payload_Byte0;
-		Payload::JandyMessage_Status_Payload_Byte1 m_Payload_Byte1;
-		Payload::JandyMessage_Status_Payload_Byte2 m_Payload_Byte2;
-		Payload::JandyMessage_Status_Payload_Byte3 m_Payload_Byte3;
-		Payload::JandyMessage_Status_Payload_Byte4 m_Payload_Byte4;
+		ComboModes m_Mode;
+		Config::PumpStatus m_FilterPump;
+		Config::AuxillaryStates m_Aux1;
+		Config::AuxillaryStates m_Aux2;
+		Config::AuxillaryStates m_Aux3;
+		Config::AuxillaryStates m_Aux4;
+		Config::AuxillaryStates m_Aux5;
+		Config::AuxillaryStates m_Aux6;
+		Config::AuxillaryStates m_Aux7;
+		Config::HeaterStatus m_PoolHeater;
+		Config::HeaterStatus m_SolarHeater;
+		Config::HeaterStatus m_SpaHeater;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;

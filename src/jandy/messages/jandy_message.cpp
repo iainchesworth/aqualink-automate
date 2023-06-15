@@ -64,11 +64,11 @@ namespace AqualinkAutomate::Messages
 	std::string JandyMessage::ToString() const
 	{
 		return std::format(
-			"Destination: {} ({}), Message Type: {} (0x{:02x})", 
+			"Destination: {} ({}), Message Type: {} (0x{:02x})",
 			magic_enum::enum_name(Destination().Class()), 
 			Destination().Id(), 
 			magic_enum::enum_name(Id()),
-			RawId()
+			magic_enum::enum_integer(IMessage::Id())
 		);
 	}
 

@@ -6,6 +6,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/devices/jandy_device_id.h"
+#include "jandy/formatters/jandy_device_formatters.h"
 #include "options/validators/jandy_device_id_validator.h"
 
 #include "support/unit_test_ostream_support.h"
