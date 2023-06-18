@@ -200,5 +200,15 @@ namespace AqualinkAutomate::Equipment
 		return added_device;
 	}
 
+	const JandyEquipment::ConfigType& JandyEquipment::Config() const
+	{
+		return m_Config;
+	}
+
+	const JandyEquipment::StatsType& JandyEquipment::MessageStats() const
+	{
+		return m_MessageStats;
+	}
+
 }
 // namespace AqualinkAutomate::Equipment

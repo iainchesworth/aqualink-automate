@@ -134,13 +134,13 @@ namespace AqualinkAutomate::Devices
 			case Utility::ScreenDataPageTypes::Page_OneTouch:
 				LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from OneTouch page)");
 				m_OpState = OperatingStates::ColdStart;
-				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, 0);
+				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, ONETOUCH_COLD_START_SCRAPER_START_INDEX);
 				break;
 
 			case Utility::ScreenDataPageTypes::Page_Home:
 				LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from Home page)");
 				m_OpState = OperatingStates::WarmStart;
-				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, 2);
+				ScrapingStart(ONETOUCH_CONFIG_INIT_SCRAPER, ONETOUCH_WARM_START_SCRAPER_START_INDEX);
 				break;
 
 			default:

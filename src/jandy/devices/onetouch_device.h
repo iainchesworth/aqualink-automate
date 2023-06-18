@@ -34,6 +34,9 @@ namespace AqualinkAutomate::Devices
 		static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER = 1;
 		static const Scrapeable::ScrapeId ONETOUCH_EXAMPLE_TWO_SCRAPER = 2;
 
+		static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX = 1;
+		static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX = 2;
+
 		const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION = std::chrono::seconds(30);
 
 		enum class OperatingStates

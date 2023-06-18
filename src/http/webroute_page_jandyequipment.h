@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include <crow/app.h>
 
 #include "interfaces/iwebroute.h"
@@ -14,7 +12,7 @@ namespace AqualinkAutomate::HTTP
 	class WebRoute_Page_JandyEquipment : public Interfaces::IWebRoute<PAGE_EQUIPMENT_ROUTE_URL>
 	{
 	public:
-		WebRoute_Page_JandyEquipment(crow::SimpleApp& app, const std::string& doc_root, const Equipment::JandyEquipment& jandy_equipment);
+		WebRoute_Page_JandyEquipment(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment);
 
 	public:
 		void WebRequestHandler(const Request& req, Response& resp);

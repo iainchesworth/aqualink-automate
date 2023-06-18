@@ -118,13 +118,19 @@ add_library(
 	src/exceptions/exception_options_missingdependency.cpp 
 	src/exceptions/exception_webserver.cpp 
 	src/http/crow_custom_logger.cpp 
+	src/http/webroute_jandyequipment.cpp 
 	src/http/webroute_jandyequipment_buttons.cpp 
+	src/http/webroute_jandyequipment_devices.cpp 
 	src/http/webroute_jandyequipment_stats.cpp 
 	src/http/webroute_jandyequipment_version.cpp 
 	src/http/webroute_page_index.cpp 
 	src/http/webroute_page_jandyequipment.cpp 
 	src/http/webroute_page_version.cpp 
 	src/http/webroute_version.cpp 
+	src/http/json/json_jandy_config.cpp 
+	src/http/json/json_jandy_equipment.cpp 
+	src/http/support/support_generate_page_footer.cpp 
+	src/http/support/support_generate_page_header.cpp 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp	
@@ -437,16 +443,7 @@ endif(ENABLE_SANITIZERS)
 #
 #------------------------------------------------------------------------------
 
-set(SOURCE_WEB_ASSETS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/assets/web)
-set(DESTINATION_DIR ${CMAKE_CURRENT_BINARY_DIR}/)
-
-add_custom_target(
-	copy_web_assets 
-	ALL
-	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_WEB_ASSETS_DIR} ${DESTINATION_DIR}
-	COMMENT "Copying web assets to the static_web directory in the build folder"
-)
+add_subdirectory(web)
 
 #------------------------------------------------------------------------------
 #

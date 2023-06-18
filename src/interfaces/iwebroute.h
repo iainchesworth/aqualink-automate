@@ -4,6 +4,7 @@
 #include <string>
 
 #include <crow/app.h>
+#include <crow/mustache.h>
 #include <crow/routing.h>
 
 namespace AqualinkAutomate::Interfaces
@@ -18,21 +19,19 @@ namespace AqualinkAutomate::Interfaces
 		using RouteParams = crow::routing_params;
 
 	public:
-		explicit IWebRoute(crow::SimpleApp& app, const std::string& doc_root) : 
-			m_DocRoot(doc_root)
+		explicit IWebRoute(crow::SimpleApp& app)
 		{
 			app.route_dynamic(ROUTE_URL)
 			   .methods(crow::HTTPMethod::Get)
 				(
 					[this](const Request& req, Response& resp) -> void
 					{
+						crow::mustache::set_base(crow::mustache::detail::get_global_template_base_directory_ref());
+
 						WebRequestHandler(req, resp);
 					}
 				);
 		}
-
-	protected:
-		const std::string& m_DocRoot;
 
 	private:
 		virtual void WebRequestHandler(const Request& req, Response& resp) = 0;

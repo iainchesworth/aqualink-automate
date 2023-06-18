@@ -7,12 +7,12 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char EQUIPMENTVERSION_ROUTE_URL[] = "/api/equipment/version";
+	constexpr const char EQUIPMENT_ROUTE_URL[] = "/api/equipment";
 
-	class WebRoute_JandyEquipment_Version : public Interfaces::IWebRoute<EQUIPMENTVERSION_ROUTE_URL>
+	class WebRoute_JandyEquipment : public Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>
 	{
 	public:
-		WebRoute_JandyEquipment_Version(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment);
+		WebRoute_JandyEquipment(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment);
 
 	public:
 		void WebRequestHandler(const Request& req, Response& resp);

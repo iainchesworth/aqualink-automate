@@ -93,29 +93,8 @@ namespace AqualinkAutomate::Options::App
 	{
 		if (OPTION_VERSIONDETAILS->IsPresent(vm))
 		{
-			auto version_info = std::format
-			(
-				"Name: {}\nVersion: v{}\nDescription: {}\nHomepage URL: {}",
-				Version::VersionInfo::ProjectName(),
-				Version::VersionInfo::ProjectVersion(),
-				Version::VersionInfo::ProjectDescription(),
-				Version::VersionInfo::ProjectHomepageURL()
-			);
-
-			auto git_information = std::string("No git metadata available.");
-			if (Version::GitMetadata::Populated())
-			{
-				git_information = std::format
-				(
-					"\nGit Details:\nCommit SHA1: {}\nCommit Date: {}\nUncommitted Changes: {}",
-					Version::GitMetadata::CommitSHA1(),
-					Version::GitMetadata::CommitDate(),
-					(Version::GitMetadata::AnyUncommittedChanges() ? "Yes" : "No")
-				);
-			}
-
 			// Display the version information to the user.
-			std::cout << version_info << std::endl << git_information << std::endl;
+			std::cout << Version::VersionDetails() << std::endl << Version::GitCommitDetails() << std::endl;
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();

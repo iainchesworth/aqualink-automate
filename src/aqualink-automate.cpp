@@ -1,6 +1,8 @@
 ﻿#include <condition_variable>
 #include <cstdlib>
 #include <mutex>
+#include <stacktrace>
+#include <string>
 #include <thread>
 
 #include <boost/asio/co_spawn.hpp>
@@ -15,7 +17,9 @@
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "http/crow_custom_logger.h"
+#include "http/webroute_jandyequipment.h"
 #include "http/webroute_jandyequipment_buttons.h"
+#include "http/webroute_jandyequipment_devices.h"
 #include "http/webroute_jandyequipment_stats.h"
 #include "http/webroute_jandyequipment_version.h"
 #include "http/webroute_page_index.h"
@@ -168,6 +172,8 @@ int main(int argc, char* argv[])
 		HTTP::CrowCustomLogger crow_custom_logger;
 		crow::logger::setHandler(&crow_custom_logger);
 
+		crow::mustache::set_global_base(settings.web.doc_root);
+
 		crow::SimpleApp http_server;
 		http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
 		http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
@@ -191,15 +197,17 @@ int main(int argc, char* argv[])
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			HTTP::WebRoute_Page_Index index_webroute(http_server, settings.web.doc_root);
-			HTTP::WebRoute_Page_JandyEquipment jandy_web_route(http_server, settings.web.doc_root, jandy_equipment);
-			HTTP::WebRoute_Page_Version verion_webroute(http_server, settings.web.doc_root);
+			HTTP::WebRoute_Page_Index page_index(http_server);
+			HTTP::WebRoute_Page_JandyEquipment page_je(http_server, jandy_equipment);
+			HTTP::WebRoute_Page_Version page_version(http_server);
 		}
 
-		// HTTP::WebRoute_JandyEquipment_Buttons jandy_equipment_buttons(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Stats jandy_equipment_stats(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Version jandy_equipment_version(http_server, settings.web.doc_root, jandy_equipment);
-		HTTP::WebRoute_Version version(http_server, settings.web.doc_root);
+		HTTP::WebRoute_JandyEquipment route_je(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Buttons route_je_buttons(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Devices route_je_devices(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Stats route_je_stats(http_server, jandy_equipment);
+		HTTP::WebRoute_JandyEquipment_Version route_je_version(http_server, jandy_equipment);
+		HTTP::WebRoute_Version route_version(http_server);
 
 		CleanUp::Register({ "WebServer", [&http_server]() -> void { http_server.stop(); } });
 
@@ -314,6 +322,17 @@ int main(int argc, char* argv[])
 		// Nothing happens since the user has been informed of the option parsing error.
 		// Just terminate as if nothing had happened.
 		return EXIT_SUCCESS;
+	}
+	catch (const Exceptions::GenericAqualinkException& ex_gae)
+	{
+		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", ex_gae.what()));
+
+		for (const std::stacktrace_entry& entry : ex_gae.StackTrace())
+		{
+			LogDebug(Channel::Main, std::format("{}, {}({})", entry.description(), entry.source_file().empty() ? "Unknown File" : entry.source_file(), entry.source_line()));
+		}
+
+		return EXIT_FAILURE;
 	}
 	catch (const boost::system::system_error& err)
 	{

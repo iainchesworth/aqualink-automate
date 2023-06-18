@@ -6,8 +6,8 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Version::WebRoute_Version(crow::SimpleApp& app, const std::string& doc_root) :
-		Interfaces::IWebRoute<VERSION_ROUTE_URL>(app, doc_root)
+	WebRoute_Version::WebRoute_Version(crow::SimpleApp& app) :
+		Interfaces::IWebRoute<VERSION_ROUTE_URL>(app)
 	{
 	}
 

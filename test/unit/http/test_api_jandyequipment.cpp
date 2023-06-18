@@ -1,0 +1,107 @@
+#include <boost/test/unit_test.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <crow/app.h>
+#include <nlohmann/json.hpp>
+
+#include "http/webroute_jandyequipment.h"
+
+#include "support/unit_test_onetouchdevice.h"
+
+using namespace AqualinkAutomate;
+
+BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiJandyEquipment, Test::OneTouchDevice)
+
+BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
+{
+	crow::SimpleApp http_server;
+
+	HTTP::WebRoute_JandyEquipment route_je(http_server, Equipment());
+
+	http_server.validate();
+
+	{
+		HTTP::WebRoute_JandyEquipment::Request req;
+		HTTP::WebRoute_JandyEquipment::Response res;
+
+		req.url = "/api/equipment";
+
+		http_server.handle(req, res);
+
+		BOOST_CHECK_EQUAL(200, res.code);
+
+		nlohmann::json json_response = nlohmann::json::parse(res.body);
+
+		BOOST_REQUIRE(json_response.contains("buttons"));
+		BOOST_REQUIRE(json_response.contains("devices"));
+		BOOST_REQUIRE(json_response.contains("stats"));
+		BOOST_REQUIRE(json_response.contains("version"));
+
+		BOOST_CHECK(json_response["buttons"].is_null());
+
+		BOOST_REQUIRE(json_response["devices"].contains("auxillaries"));
+		BOOST_REQUIRE(json_response["devices"].contains("heaters"));
+		BOOST_REQUIRE(json_response["devices"].contains("pumps"));
+
+		BOOST_CHECK(json_response["devices"]["auxillaries"].is_null());
+		BOOST_CHECK(json_response["devices"]["heaters"].is_null());
+		BOOST_CHECK(json_response["devices"]["pumps"].is_null());
+
+		BOOST_REQUIRE(json_response["version"].contains("fw_revision"));
+		BOOST_REQUIRE(json_response["version"].contains("model_number"));
+
+		BOOST_CHECK_EQUAL("", json_response["version"]["fw_revision"]);
+		BOOST_CHECK_EQUAL("", json_response["version"]["model_number"]);
+	}
+
+}
+
+BOOST_AUTO_TEST_CASE(InitialisedJandyConfig)
+{
+	crow::SimpleApp http_server;
+
+	HTTP::WebRoute_JandyEquipment route_je(http_server, Equipment());
+
+	http_server.validate();
+
+	InitialiseOneTouchDevice();
+	EquipmentOnOff_Page1();
+	EquipmentOnOff_Page2();
+	EquipmentOnOff_Page3();
+
+	{
+		HTTP::WebRoute_JandyEquipment::Request req;
+		HTTP::WebRoute_JandyEquipment::Response res;
+
+		req.url = "/api/equipment";
+
+		http_server.handle(req, res);
+
+		BOOST_CHECK_EQUAL(200, res.code);
+
+		nlohmann::json json_response = nlohmann::json::parse(res.body);
+
+		BOOST_REQUIRE(json_response.contains("buttons"));
+		BOOST_REQUIRE(json_response.contains("devices"));
+		BOOST_REQUIRE(json_response.contains("stats"));
+		BOOST_REQUIRE(json_response.contains("version"));
+
+		BOOST_CHECK(json_response["buttons"].is_null());
+
+		BOOST_REQUIRE(json_response["devices"].contains("auxillaries"));
+		BOOST_REQUIRE(json_response["devices"].contains("heaters"));
+		BOOST_REQUIRE(json_response["devices"].contains("pumps"));
+
+		BOOST_CHECK_EQUAL(15, json_response["devices"]["auxillaries"].size());
+		BOOST_CHECK_EQUAL(2, json_response["devices"]["heaters"].size());
+		BOOST_CHECK_EQUAL(2, json_response["devices"]["pumps"].size());
+
+		BOOST_REQUIRE(json_response["version"].contains("fw_revision"));
+		BOOST_REQUIRE(json_response["version"].contains("model_number"));
+
+		BOOST_CHECK_EQUAL("REV T.0.1", json_response["version"]["fw_revision"]);
+		BOOST_CHECK_EQUAL("B0029221", json_response["version"]["model_number"]);
+	}
+}
+
+BOOST_AUTO_TEST_SUITE_END()

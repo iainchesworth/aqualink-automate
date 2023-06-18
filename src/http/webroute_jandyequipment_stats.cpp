@@ -1,7 +1,5 @@
-#include <magic_enum.hpp>
-#include <nlohmann/json.hpp>
-
 #include "http/webroute_jandyequipment_stats.h"
+#include "http/json/json_jandy_equipment.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -15,7 +13,7 @@ namespace AqualinkAutomate::HTTP
 	void WebRoute_JandyEquipment_Stats::OnOpen(Connection& conn)
 	{
 		// Convert JSON to string and send it over the WebSocket connection
-		conn.send_text(GenerateStats());
+		conn.send_text(JSON::GenerateJson_JandyEquipment_Stats(m_JandyEquipment).dump());
 	}
 
 	void WebRoute_JandyEquipment_Stats::OnMessage(Connection& conn, const std::string& data, bool is_binary)
@@ -28,21 +26,6 @@ namespace AqualinkAutomate::HTTP
 
 	void WebRoute_JandyEquipment_Stats::OnError(Connection& conn)
 	{
-	}
-
-	std::string WebRoute_JandyEquipment_Stats::GenerateStats() const
-	{
-		nlohmann::json message_stats;
-
-		for (auto [id, count] : m_JandyEquipment.m_MessageStats)
-		{
-			nlohmann::json stat;
-			stat["id"] = magic_enum::enum_name(id);
-			stat["count"] = count;
-			message_stats.push_back(stat);
-		}
-
-		return message_stats.dump();
 	}
 
 }

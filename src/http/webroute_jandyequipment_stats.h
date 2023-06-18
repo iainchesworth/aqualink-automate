@@ -23,9 +23,6 @@ namespace AqualinkAutomate::HTTP
 		void OnError(Connection& conn);
 
 	private:
-		std::string GenerateStats() const;
-
-	private:
 		const Equipment::JandyEquipment& m_JandyEquipment;
 	};
 
