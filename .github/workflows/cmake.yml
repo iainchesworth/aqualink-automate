@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         # os: [macos-latest, windows-latest, ubuntu-latest]
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest]
         include:
-        - os: ubuntu-latest
-          BUILD_PRESET: linux-x64-release-gcc
+        #- os: ubuntu-latest
+        #  BUILD_PRESET: linux-x64-release-gcc
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-msvc
 
@@ -36,12 +36,6 @@ jobs:
           ${{ runner.os }}-
 
     - uses: ashutoshvarma/setup-ninja@master
-  
-    - if: matrix.os == 'ubuntu-latest'
-      uses: egor-tensin/setup-gcc@v1
-      with:
-        version: latest
-        platform: x64
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory.
