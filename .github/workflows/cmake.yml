@@ -26,7 +26,9 @@ jobs:
 
     - uses: actions/cache@v3
       with :
-        path: ${{github.workspace}}/deps/vcpkg
+        path: |
+            ${{github.workspace}}/deps/vcpkg/downloads
+            ${{github.workspace}}/deps/vcpkg/packages
         key: ${{ runner.os }}-build-${{ env.BUILD_PRESET }}-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-build-${{ env.BUILD_PRESET }}-
@@ -34,6 +36,12 @@ jobs:
           ${{ runner.os }}-
 
     - uses: ashutoshvarma/setup-ninja@master
+  
+    - if: matrix.os == 'ubuntu-latest'
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: latest
+        platform: x64
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory.
