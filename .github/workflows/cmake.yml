@@ -36,6 +36,12 @@ jobs:
           ${{ runner.os }}-
 
     - uses: ashutoshvarma/setup-ninja@master
+  
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+        toolset: 17.XX
+        vsversion: 2022
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory.

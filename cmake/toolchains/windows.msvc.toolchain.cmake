@@ -7,6 +7,14 @@
 
 # Toolchain settings go here (if required)
 
+if(NOT DEFINED CMAKE_C_COMPILER)
+set(CMAKE_C_COMPILER "cl.exe")
+endif(NOT DEFINED CMAKE_C_COMPILER)
+
+if(NOT DEFINED CMAKE_CXX_COMPILER)
+set(CMAKE_CXX_COMPILER "cl.exe")
+endif(NOT DEFINED CMAKE_CXX_COMPILER)
+
 if (POLICY CMP0141)
   # Enable Hot Reload for MSVC compilers if supported.
   cmake_policy(SET CMP0141 NEW)
