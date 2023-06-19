@@ -24,6 +24,17 @@ jobs:
       with:
         submodules: 'true'
 
+    - uses: actions/cache@v3
+      with :
+        path: ${{github.workspace}}/deps/vcpkg
+        key: ${{ runner.os }}-build-${{ env.BUILD_PRESET }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.BUILD_PRESET }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - uses: ashutoshvarma/setup-ninja@master
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory.
       run: cmake -B ${{github.workspace}}/build --preset ${{matrix.BUILD_PRESET}}
