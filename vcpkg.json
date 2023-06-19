@@ -1,18 +1,27 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "aqualink-automate",
   "version": "0.0.1",
   "dependencies": [
+    "benchmark",
     "boost-asio",
     "boost-circular-buffer",
-    "boost-describe",
+    "boost-graph",
     "boost-iostreams",
     "boost-log",
-    "boost-phoenix",
     "boost-program-options",
+    "boost-regex",
     "boost-signals2",
     "boost-statechart",
     "boost-system",
-    "boost-test"
+    "boost-test",
+    "boost-uuid",
+    "crow",
+    "magic-enum",
+    "mqtt-cpp",
+    "nlohmann-json",
+    "openssl",
+    "tracy",
+    "zlib"
   ]
 }

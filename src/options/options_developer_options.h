@@ -15,12 +15,12 @@ namespace AqualinkAutomate::Options::Developer
 		bool debug_logging_enabled;
 		bool trace_logging_enabled;
 		bool dev_mode_enabled;
-		//std::string dev_serial_port;
 		std::string replay_file;
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 
 }
 // namespace AqualinkAutomate::Options::Developer

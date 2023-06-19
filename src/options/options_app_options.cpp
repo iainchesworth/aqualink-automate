@@ -7,7 +7,10 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options_app_options.h"
 #include "options/options_option_type.h"
+#include "options/helpers/conflicting_options_helper.h"
+#include "options/helpers/option_dependency_helper.h"
 #include "utility/get_terminal_column_width.h"
+#include "version/version.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -18,13 +21,15 @@ namespace AqualinkAutomate::Options::App
 	AppOptionPtr OPTION_HELP{ make_appoption("help", "h", "Displays the help information") };
 	AppOptionPtr OPTION_TRACE{ make_appoption("trace", "Enable trace logging") };
 	AppOptionPtr OPTION_VERSION{ make_appoption("version", "v", "Displays the version information") };
+	AppOptionPtr OPTION_VERSIONDETAILS{ make_appoption("version-detail", "Displays detailed version information (including git commit)") };
 
 	const std::vector AppOptionsCollection
 	{
 		OPTION_DEBUG,
 		OPTION_HELP,
 		OPTION_TRACE,
-		OPTION_VERSION
+		OPTION_VERSION,
+		OPTION_VERSIONDETAILS
 	};
 	
 	boost::program_options::options_description Options()
@@ -41,7 +46,7 @@ namespace AqualinkAutomate::Options::App
 		return options;
 	}
 
-	void HandleHelp(boost::program_options::variables_map vm, boost::program_options::options_description& options)
+	void HandleHelp(boost::program_options::variables_map& vm, boost::program_options::options_description& options)
 	{
 		if (OPTION_HELP->IsPresent(vm))
 		{
@@ -57,7 +62,7 @@ namespace AqualinkAutomate::Options::App
 		}
 	}
 
-	Settings HandleOptions(boost::program_options::variables_map vm)
+	Settings HandleOptions(boost::program_options::variables_map& vm)
 	{
 		Settings settings;
 
@@ -79,11 +84,33 @@ namespace AqualinkAutomate::Options::App
 		return settings;
 	}
 
-	void HandleVersion(boost::program_options::variables_map vm)
+	void ValidateOptions(boost::program_options::variables_map& vm)
 	{
-		if (OPTION_VERSION->IsPresent(vm))
+		Helper_CheckForConflictingOptions(vm, OPTION_DEBUG, OPTION_TRACE);
+	}
+
+	void HandleVersion(boost::program_options::variables_map& vm)
+	{
+		if (OPTION_VERSIONDETAILS->IsPresent(vm))
 		{
 			// Display the version information to the user.
+			std::cout << Version::VersionDetails() << std::endl << Version::GitCommitDetails() << std::endl;
+
+			// Terminate the application...
+			throw Exceptions::OptionsHelpOrVersion();
+		} 
+		else if (OPTION_VERSION->IsPresent(vm))
+		{
+			const auto version_info = std::format
+			(
+				"{} v{}\n{}",
+				Version::VersionInfo::ProjectName(),
+				Version::VersionInfo::ProjectVersion(),
+				Version::VersionInfo::ProjectDescription()
+			);
+
+			// Display the version information to the user.
+			std::cout << version_info << std::endl;
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();

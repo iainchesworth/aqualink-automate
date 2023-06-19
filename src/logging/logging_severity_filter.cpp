@@ -1,9 +1,10 @@
 #include <map>
 #include <stdexcept>
 
+#include <magic_enum.hpp>
+
 #include "logging/logging_attributes.h"
 #include "logging/logging_severity_filter.h"
-#include "utility/describe_enumerators_as_array.h"
 
 namespace AqualinkAutomate::Logging
 {
@@ -11,21 +12,28 @@ namespace AqualinkAutomate::Logging
 	{
 		std::map<Channel, Severity> MinimumSeverityLevelPerChannel =
 		{
+			{Channel::Certificates, DEFAULT_SEVERITY},
+			{Channel::Devices, DEFAULT_SEVERITY},
+			{Channel::Equipment, DEFAULT_SEVERITY},
 			{Channel::Exceptions, DEFAULT_SEVERITY},
 			{Channel::Main, DEFAULT_SEVERITY},
 			{Channel::Messages, DEFAULT_SEVERITY},
 			{Channel::Options, DEFAULT_SEVERITY},
 			{Channel::Platform, DEFAULT_SEVERITY},
+			{Channel::Profiling, DEFAULT_SEVERITY},
+			{Channel::Protocol, DEFAULT_SEVERITY},
 			{Channel::Serial, DEFAULT_SEVERITY},
-			{Channel::Signals, DEFAULT_SEVERITY}
+			{Channel::Signals, DEFAULT_SEVERITY},
+			{Channel::Web, DEFAULT_SEVERITY}
 		};
 
 		void SetGlobalFilterLevel(Severity severity)
 		{
-			for (auto const& channel : AqualinkAutomate::Utility::describe_enumerators_as_array<Channel>())
-			{
-				SetChannelFilterLevel(channel.value, severity);
-			}
+			magic_enum::enum_for_each<Channel>([severity](auto const& channel) 
+				{
+					SetChannelFilterLevel(channel.value, severity); 
+				}
+			);
 		}
 
 		void SetChannelFilterLevel(Channel channel, Severity severity)

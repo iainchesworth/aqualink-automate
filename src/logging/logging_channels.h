@@ -1,9 +1,22 @@
 #pragma once
 
-#include <boost/describe.hpp>
-
 namespace AqualinkAutomate::Logging
 {
-	BOOST_DEFINE_ENUM_CLASS(Channel, Exceptions, Main, Messages, Options, Platform, Serial, Signals);
+	enum class Channel
+	{
+		Certificates,
+		Devices,
+		Equipment,
+		Exceptions,
+		Main,
+		Messages,
+		Options,
+		Platform,
+		Profiling,
+		Protocol,
+		Serial,
+		Signals,
+		Web
+	};
 }
 // namespace AqualinkAutomate::Logging

@@ -30,9 +30,10 @@
 #include <boost/system/system_error.hpp>
 
 #include "logging/logging.h"
+#include "profiling/profiling.h"
 
-using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
+using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Developer
 {
@@ -80,6 +81,8 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(ReadToken, void(boost::system::error_code, std::size_t)) async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_read_some", std::source_location::current());
+
 			auto init = [&](boost::asio::completion_handler_for<void(boost::system::error_code, std::size_t)> auto handler, const MutableBufferSequence& buffer_)
 			{
 				auto work = boost::asio::make_work_guard(handler);
@@ -111,65 +114,48 @@ namespace AqualinkAutomate::Developer
 			return boost::asio::async_initiate<ReadToken, void(boost::system::error_code, std::size_t)>(init, token, buffer);
 		}
 
-		template <typename ConstBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> WriteToken>
-		BOOST_ASIO_INITFN_RESULT_TYPE(WriteToken,void(boost::system::error_code, std::size_t)) async_write_some(const ConstBufferSequence& buffer, WriteToken&& handler)
+		template <typename ConstBufferSequence, boost::asio::completion_token_for<void(const boost::system::error_code&, std::size_t)> WriteToken>
+		BOOST_ASIO_INITFN_RESULT_TYPE(WriteToken,void(const boost::system::error_code&, std::size_t)) async_write_some(const ConstBufferSequence& buffer, WriteToken&& token)
 		{
-			auto ec = boost::system::error_code{};
-			auto bytes_transferred = 0;
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_write_some", std::source_location::current());
 
-			if (!m_IsOpen)
+			auto init = [&](boost::asio::completion_handler_for<void(const boost::system::error_code&, std::size_t)> auto handler, const ConstBufferSequence& buffer_)
 			{
-				ec = boost::asio::error::bad_descriptor;
-			}
-			else
-			{
-				auto convert_stop_bits_to_number = [](boost::asio::serial_port::stop_bits stop_bits)
+				auto work = boost::asio::make_work_guard(handler);
+				auto ec = boost::system::error_code{};
+				auto bytes_transferred = 0;
+
+				if (!m_IsOpen)
 				{
-					switch (stop_bits)
-					{
-					case boost::asio::serial_port::stop_bits::one: return 1.0;
-					case boost::asio::serial_port::stop_bits::onepointfive: return 1.5;
-					case boost::asio::serial_port::stop_bits::two: return 2.0;
-					}
-				};
-
-				auto convert_parity_bits_to_number = [](boost::asio::serial_port::parity the_parity)
+					ec = boost::asio::error::bad_descriptor;
+				}
+				else if (!m_MockData)
 				{
-					switch (the_parity)
+					bytes_transferred = HandleFileWrite(buffer_, ec);
+				}
+				else
+				{
+					bytes_transferred = HandleMockWrite(buffer_, ec);
+				}
+
+				auto alloc = boost::asio::get_associated_allocator(handler, boost::asio::recycling_allocator<void>());
+
+				boost::asio::post(work.get_executor(), boost::asio::bind_allocator(alloc, [=, handler_ = std::move(handler), ec_ = boost::system::error_code(ec), bytes_transferred_ = std::size_t(bytes_transferred)]() mutable
 					{
-					case boost::asio::serial_port::parity::none:
-						return 0;
-
-					case boost::asio::serial_port::parity::odd:
-						[[fallthrough]]
-					case boost::asio::serial_port::parity::even:
-						return 1;
-					}
-				};
-
-				// The total bits transmitted per character is: start_bit + data_bits + optional_parity_bit + stop_bits
-				const auto bits_per_sent_byte = 1 + m_Options.character_size.value() + convert_parity_bits_to_number(m_Options.parity) + convert_stop_bits_to_number(m_Options.stop_bits);
-				const auto number_of_bits_to_send = bits_per_sent_byte * buffer.size();
-				const auto baud_rate_in_us = m_Options.baud_rate.value() / std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::seconds(1)).count();
-				const auto send_duration = std::chrono::duration_cast<std::chrono::microseconds>(number_of_bits_to_send / baud_rate_in_us);
-
-				m_WriteDelayTimer.expires_after(send_duration);
-				m_WriteDelayTimer.async_wait([](const boost::system::error_code& error)
-					{
-						// Nothing happens here because we're merely writing the data onto the pretend wire.
-						bytes_transferred = buffer.size();
-					}
+						std::move(handler_)(ec_, bytes_transferred_);
+					})
 				);
 			};
 
-			// Call the handler...
-			handler(ec, bytes_transferred);
+			return boost::asio::async_initiate<WriteToken, void(const boost::system::error_code&, std::size_t)>(init, token, buffer);
 		}
 
 	private:
 		template <typename MutableBufferSequence>
 		std::size_t HandleMockRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleMockRead", std::source_location::current());
+
 			const auto length_to_copy = std::min<std::size_t>(boost::asio::buffer_size(buffer), 16);
 
 			auto buffer_begin = boost::asio::buffers_begin(buffer);
@@ -185,10 +171,63 @@ namespace AqualinkAutomate::Developer
 			return length_to_copy;
 		}
 
+		template<typename ConstBufferSequence>
+		std::size_t HandleMockWrite(const ConstBufferSequence& buffer, boost::system::error_code& ec)
+		{
+			auto bytes_transferred = 0;
+			
+			auto convert_stop_bits_to_number = [](boost::asio::serial_port::stop_bits stop_bits)
+			{
+				switch (stop_bits.value())
+				{
+				case boost::asio::serial_port::stop_bits::one: return 1.0;
+				case boost::asio::serial_port::stop_bits::onepointfive: return 1.5;
+				case boost::asio::serial_port::stop_bits::two: return 2.0;
+				default: LogWarning(Channel::Serial, "Attempted to convert an invalid stop bit value; assuming one (1)"); return 1.0;
+				}
+			};
+
+			auto convert_parity_bits_to_number = [](boost::asio::serial_port::parity the_parity)
+			{
+				switch (the_parity.value())
+				{
+				case boost::asio::serial_port::parity::none:
+					return 0;
+
+				case boost::asio::serial_port::parity::odd:
+					[[fallthrough]];
+				case boost::asio::serial_port::parity::even:
+					return 1;
+
+				default:
+					LogWarning(Channel::Serial, "Attempted to convert an invalid parity value; assuming none (0)");
+					return 0;;
+				}
+			};
+
+			// The total bits transmitted per character is: start_bit + data_bits + optional_parity_bit + stop_bits
+			const auto bits_per_sent_byte = 1 + m_Options.character_size.value() + convert_parity_bits_to_number(m_Options.parity) + convert_stop_bits_to_number(m_Options.stop_bits);
+			const auto number_of_bits_to_send = bits_per_sent_byte * buffer.size();
+			const auto bits_per_msec = std::div(m_Options.baud_rate.value(), std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(1)).count()).quot;
+			const auto send_duration = std::chrono::milliseconds(std::div(number_of_bits_to_send, bits_per_msec).quot);
+
+			m_WriteDelayTimer.expires_after(send_duration);
+			m_WriteDelayTimer.async_wait([&](const boost::system::error_code& ec)
+				{
+					// Nothing happens here because we're merely writing the data onto the pretend wire.
+					bytes_transferred = buffer.size();
+				}
+			);
+
+			return bytes_transferred;
+		}
+
 	private:
 		template <typename MutableBufferSequence>
 		std::size_t HandleFileRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
-		{	
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleFileRead", std::source_location::current());
+
 			enum FileReadErrors : std::size_t
 			{
 				ErrorFileReachedEOF,
@@ -199,6 +238,8 @@ namespace AqualinkAutomate::Developer
 
 			auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_single_value_from_file", std::source_location::current());
+
 				FileReadErrors return_value = NoDataWasRead;
 
 				if (source_stream.eof())
@@ -249,6 +290,8 @@ namespace AqualinkAutomate::Developer
 
 			auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_from_file", std::source_location::current());
+
 				std::size_t elems_read = 0;
 				bool keep_reading = true;
 
@@ -284,6 +327,13 @@ namespace AqualinkAutomate::Developer
 			return length_read;
 		}
 
+
+		template<typename ConstBufferSequence>
+		std::size_t HandleFileWrite(const ConstBufferSequence& buffer, boost::system::error_code& ec)
+		{
+			return 0;
+		}
+
 	private:
 		mock_serial_port_options m_Options;
 		
@@ -298,6 +348,9 @@ namespace AqualinkAutomate::Developer
 
 	private:
 		boost::iostreams::stream<boost::iostreams::file_source> m_File;
+
+	private:
+		Profiling::DomainPtr m_ProfilingDomain;
 	};
 
 }

@@ -1,7 +1,12 @@
 #pragma once
 
-#include <boost/asio/ip/address.hpp>
+#include <cstdint>
+#include <string>
+
 #include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
+
+#include "certificates/certificate_pemformat.h"
 
 namespace AqualinkAutomate::Options::Web
 {
@@ -10,12 +15,23 @@ namespace AqualinkAutomate::Options::Web
 
 	typedef struct
 	{
-		boost::asio::ip::address address;
-		uint16_t port;
+		std::string bind_address;
+		uint16_t bind_port;
+		
+		bool http_content_is_disabled;
+		bool http_server_is_insecure;
+
+		Certificates::Certificate_PemFormat cert_file;
+		Certificates::Certificate_PemFormat cert_key_file;
+		Certificates::Certificate_PemFormat ca_chain_cert_file;
+		Certificates::Certificate_PemFormat ca_chain_cert_key_file;
+
+		std::string doc_root;
 	}
 	Settings;
 
-	Settings HandleOptions(boost::program_options::variables_map vm);
+	Settings HandleOptions(boost::program_options::variables_map& vm);
+	void ValidateOptions(boost::program_options::variables_map& vm);
 
 }
 // namespace AqualinkAutomate::Options::Web

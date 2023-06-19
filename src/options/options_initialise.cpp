@@ -1,9 +1,13 @@
+#include <format>
+
 #include <boost/program_options.hpp>
+#include <magic_enum.hpp>
 
 #include "exceptions/exception_optionparsingfailed.h"
 #include "logging/logging.h"
 #include "options/options_app_options.h"
 #include "options/options_developer_options.h"
+#include "options/options_emulated_device_options.h" 
 #include "options/options_initialise.h"
 #include "options/options_serial_options.h"
 #include "options/options_web_options.h"
@@ -25,6 +29,7 @@ namespace AqualinkAutomate::Options
 			cmdline_options
 				.add(App::Options())
 				.add(Developer::Options())
+				.add(Emulated::Options())
 				.add(Serial::Options())
 				.add(Web::Options());
 
@@ -39,15 +44,31 @@ namespace AqualinkAutomate::Options
 			App::HandleHelp(variables, cmdline_options);
 			App::HandleVersion(variables);
 
+			// Validate that there are no conflicts or missing option dependencies
+			App::ValidateOptions(variables);
+			Developer::ValidateOptions(variables);
+			Emulated::ValidateOptions(variables);
+			Serial::ValidateOptions(variables);
+			Web::ValidateOptions(variables);
+
 			// Handle the various options and configure the application.
 			settings.app = App::HandleOptions(variables);
 			settings.developer = Developer::HandleOptions(variables);
+			settings.emulated_device = Emulated::HandleOptions(variables);
 			settings.serial = Serial::HandleOptions(variables);
 			settings.web = Web::HandleOptions(variables);
 		}
+		catch (const boost::program_options::invalid_syntax& po_is)
+		{
+			LogFatal(Channel::Options, std::format("User incorrectly specified options on the command line; type was -> {}, error was -> {}.", magic_enum::enum_name(po_is.kind()), po_is.what()));
+			///FIXME Show the help.
+			throw Exceptions::OptionParsingFailed();
+
+		}
 		catch (const boost::program_options::error& po_err)
 		{
-			LogDebug(Channel::Options, "Triggering parsing failure exception");
+			LogFatal(Channel::Options, std::format("Triggering parsing failure exception (unknown error); error was -> {}", po_err.what()));
+			///FIXME Show the help.
 			throw Exceptions::OptionParsingFailed();
 		}
 	}

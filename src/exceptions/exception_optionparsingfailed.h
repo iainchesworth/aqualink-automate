@@ -13,6 +13,9 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		OptionParsingFailed();
+
+	protected:
+		OptionParsingFailed(const std::string_view& message);
 	};
 
 }

@@ -1,8 +1,4 @@
 #include "developer/mock_serial_port.h"
-#include "logging/logging.h"
-
-using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Developer
 {
@@ -10,7 +6,8 @@ namespace AqualinkAutomate::Developer
 		m_IOContext(io_context),
 		m_WriteDelayTimer(m_IOContext),
 		m_RandomDevice{},
-		m_Distribution(32, 127)
+		m_Distribution(32, 127),
+		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port").value()))
 	{
 	}
 
@@ -97,7 +94,8 @@ namespace AqualinkAutomate::Developer
 		m_DeviceName.clear();
 		m_IsOpen = false;
 		m_MockData = true;
-		m_File.close();
+
+		if (m_File && m_File.is_open()) m_File.close();
 	}
 
 	void mock_serial_port::cancel()

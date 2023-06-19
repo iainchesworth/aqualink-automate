@@ -2,12 +2,13 @@
 #include <format>
 #include <ranges>
 
-#include <boost/describe/enum_from_string.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
+#include <magic_enum.hpp>
 
 #include "logging/logging.h"
 #include "options/validators/severity_level_validator.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Validators
 {
@@ -30,7 +31,6 @@ namespace AqualinkAutomate::Logging
 		};
 
 		std::string sev_string;
-		Severity sev_enum;
 		
 		boost::program_options::validators::check_first_occurrence(v);
 		sev_string = boost::program_options::validators::get_single_string(values);
@@ -38,13 +38,15 @@ namespace AqualinkAutomate::Logging
 		// To accomodate the enum_from_string needing to have the string match the enum exactly, including case,
 		// the provided level needs to be capitalised e.g. trace -> Trace or DEBUG -> Debug
 
-		if (!boost::describe::enum_from_string(capitalize(sev_string).c_str(), sev_enum))
+		if (auto enum_value = magic_enum::enum_cast<AqualinkAutomate::Logging::Severity>(capitalize(sev_string)); enum_value.has_value())
+		{
+			v = boost::any(enum_value.value());
+		}
+		else
 		{
 			LogDebug(Channel::Main, std::format("Invalid conversion of severity level -> provided string was: {}", sev_string));
 			throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
 		}
-		
-		v = boost::any(sev_enum);
 	}
 
 }

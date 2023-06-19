@@ -15,7 +15,6 @@
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
 #include "logging/logging_severity_levels.h"
-#include "utility/describe_enumerators_as_array.h"
 
 namespace AqualinkAutomate::Logging
 {

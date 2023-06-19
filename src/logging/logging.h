@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <source_location>
+#include <utility>
 
 #include <boost/log/attributes/named_scope.hpp>
 #include <boost/log/sources/record_ostream.hpp>
@@ -21,6 +22,15 @@ namespace AqualinkAutomate::Logging
 		{
 			switch (channel)
 			{
+			case Channel::Certificates:
+				return GlobalLogger_Certificates::get();
+
+			case Channel::Devices:
+				return GlobalLogger_Devices::get();
+
+			case Channel::Equipment:
+				return GlobalLogger_Equipment::get();
+
 			case Channel::Exceptions:
 				return GlobalLogger_Exceptions::get();
 
@@ -36,11 +46,20 @@ namespace AqualinkAutomate::Logging
 			case Channel::Platform:
 				return GlobalLogger_Platform::get();
 
+			case Channel::Profiling:
+				return GlobalLogger_Profiling::get();
+
+			case Channel::Protocol:
+				return GlobalLogger_Protocol::get();
+
 			case Channel::Serial: 
 				return GlobalLogger_Serial::get();
 
 			case Channel::Signals:
 				return GlobalLogger_Signals::get();
+
+			case Channel::Web:
+				return GlobalLogger_Web::get();
 
 			default:
 				std::unreachable();

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+
+    <!-- Import the React libraries and our compiled component -->
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <title>Version Information</title>
+</head>
+<body>
+    <!-- Title banner -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Pool Controller {{controller_type}} (Firmware {{controller_firmware}})</span>
+            <span class="navbar-text ml-auto">Date Time: {{controller_date}} {{controller_time}}</span>
+        </div>
+    </nav>
+
+    <div class="mt-3"></div>
+
+    <div class="container-fluid">
+
+        <p class="lead">Here are the details about the software version, project description, and Git information for Aqualink Automate</p>
+
+        <div id="version-info">
+            <!-- Version information will be added here by JavaScript -->
+        </div>
+    </div>
+
+    <div class="mt-3"></div>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container">
+            <div class="row">
+                <!-- Left side - Version -->
+                <div class="col text-muted text-start">
+                    Version {{aqualink_automate_version}} ({{aqualink_automate_gitinfo}})
+                </div>
+
+                <!-- Right side - Links -->
+                <div class="col text-muted text-end">
+                    <a href="{{aqualink_automate_github}}/LICENSE.txt">Copyright License</a> |
+                    <a href="{{aqualink_automate_github}}">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const fetchVersionInfo = () => {
+            fetch('/api/version')
+                .then(response => response.json())
+                .then(data => {
+                    const versionInfoDiv = document.getElementById('version-info');
+
+                    const softwareVersion = data.software_version;
+
+                    let html = `
+                        <div class="mt-4">
+                            <p class="h3">Software Version</p>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th>Project Name</th>
+                                        <td>${softwareVersion.name}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Project Version</th>
+                                        <td>${softwareVersion.version}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Project Description</th>
+                                        <td>${softwareVersion.description}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Project Homepage</th>
+                                        <td><a href="${softwareVersion.homepage}" target="_blank">${softwareVersion.homepage}</a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    if (data.git_info) {
+                        const gitInfo = data.git_info;
+                        html += `
+                            <div class="mt-4">
+                                <p class="h3">Git Information</p>
+                                <table class="table">
+                                    <tbody>
+                                        <tr>
+                                            <th>Commit SHA1</th>
+                                            <td>${gitInfo.commit_sha1}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Commit Date</th>
+                                            <td>${gitInfo.commit_date}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Uncommitted Changes</th>
+                                            <td>${gitInfo.uncommitted_changes ? 'Yes' : 'No'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="mt-4">
+                                <h2 class="h4">Git Information</h2>
+                                <p>Git metadata is not available.</p>
+                            </div>
+                        `;
+                    }
+
+                    versionInfoDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to fetch version information');
+                });
+        };
+
+        // Fetch version information on page load
+        fetchVersionInfo();
+    </script>
+</body>
+</html>

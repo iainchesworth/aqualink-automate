@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+
+    <!-- Your custom CSS -->
+    <style>
+        .rotate-text {
+            transform: rotate(-90deg);
+            font-size: small;
+        }
+
+        .small-text {
+            font-size: small;
+        }
+    </style>
+
+    <title>Aqualink Automate</title>
+</head>
+<body>
+    <!-- Title banner -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Pool Controller {{controller_type}} (Firmware {{controller_firmware}})</span>
+            <span class="navbar-text ml-auto">Date Time: {{controller_date}} {{controller_time}}</span>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+
+        <div class="mt-3"></div>
+
+        <!-- First row - 4 panels -->
+        <div class="row d-flex justify-content-around">
+            <button class="col-lg-2 col-md-5 spaHeatBtn btn btn-outline-secondary" onclick="toggleSpaHeat()" style="padding: 20px 0;">
+                <h2>Spa Heat</h2>
+                <p id="spaHeatStatus">Off</p>
+            </button>
+            <button class="col-lg-2 col-md-5 poolHeatBtn btn btn-outline-secondary" onclick="togglePoolHeat()" style="padding: 20px 0;">
+                <h2>Pool Heat</h2>
+                <p id="poolHeatStatus">Off</p>
+            </button>
+            <button class="col-lg-2 col-md-5 userBtn btn btn-outline-secondary" onclick="toggleUser()" style="padding: 20px 0;">
+                <h2>User</h2>
+                <p id="userStatus">Off</p>
+            </button>
+            <button class="col-lg-2 col-md-5 cleanBtn btn btn-outline-secondary" onclick="toggleClean()" style="padding: 20px 0;">
+                <h2>Clean</h2>
+                <p id="cleanStatus">Off</p>
+            </button>
+        </div>
+
+        <div class="mt-3"></div>
+
+        <!-- Second Row - 3 panels -->
+        <div class="row mt-3">
+
+            <!-- Temperature Panel -->
+            <div class="col-lg-4 col-md-12">
+                <div class="card h-100">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-2 d-flex justify-content-center">
+                            <div class="rotate-text">Temperature</div>
+                        </div>
+                        <div class="col-10">
+                            <div class="card-body text-center">
+                                <div class="row align-items-center">
+                                    <div class="col">
+                                        <h2 id="poolTemp">{{pool_temperature}}</h2>
+                                        <p class="small-text">Pool</p>
+                                    </div>
+                                    <div class="col">
+                                        <h2 id="spaTemp">{{spa_temperature}}</h2>
+                                        <p class="small-text">Spa</p>
+                                    </div>
+                                    <div class="col">
+                                        <h2 id="airTemp">{{air_temperature}}</h2>
+                                        <p class="small-text">Air</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chemistry Panel -->
+            <div class="col-lg-4 col-md-12">
+                <div class="card h-100">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-2 d-flex justify-content-center">
+                            <div class="rotate-text">Chemistry</div>
+                        </div>
+                        <div class="col-10">
+                            <div class="card-body text-center">
+                                <div class="row align-items-center">
+                                    <div class="col">
+                                        <h2 id="orpLevel">{{water_orp}}</h2>
+                                        <p class="small-text">ORP</p>
+                                    </div>
+                                    <div class="col">
+                                        <h2 id="phLevel">{{water_ph}}</h2>
+                                        <p class="small-text">pH</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Panel -->
+            <div class="col-lg-4 col-md-12">
+                <div class="card h-100">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-2 d-flex justify-content-center">
+                            <div class="rotate-text">User</div>
+                        </div>
+                        <div class="col-10">
+                            <div class="card-body">
+                                <!-- Add User information here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Continue with other rows here as necessary... -->
+    </div>
+
+    <div class="mt-3"></div>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container">
+            <div class="row">
+                <!-- Left side - Version -->
+                <div class="col text-muted text-start">
+                    Version {{aqualink_automate_version}} ({{aqualink_automate_gitinfo}})
+                </div>
+
+                <!-- Right side - Links -->
+                <div class="col text-muted text-end">
+                    <a href="{{aqualink_automate_github}}/LICENSE.txt">Copyright License</a> |
+                    <a href="{{aqualink_automate_github}}">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function fetchState() {
+            fetch('/api/equipment')
+                .then(response => response.json())
+                .then(data => {
+                    // assuming that the response will be a JSON object with the following format
+                    // { spaHeatStatus: 0, poolHeatStatus: 0, userStatus: 0, cleanStatus: 0 }
+                    document.getElementById('spaHeatStatus').innerText = ['Off', 'Enabled', 'On'][data.spaHeatStatus];
+                    document.getElementById('poolHeatStatus').innerText = ['Off', 'Enabled', 'On'][data.poolHeatStatus];
+                    document.getElementById('userStatus').innerText = ['Off', 'On'][data.userStatus];
+                    document.getElementById('cleanStatus').innerText = ['Off', 'On'][data.cleanStatus];
+                });
+        }
+
+        function updateState(equipment, status) {
+            fetch('/api/equipment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ equipment, status })
+            });
+        }
+
+        function toggleSpaHeat() {
+            var spaHeatBtn = document.getElementById('spaHeatBtn');
+            var spaHeatStatus = ['Off', 'Enabled', 'On'].indexOf(spaHeatBtn.innerText);
+            var nextStatus = (spaHeatStatus + 1) % 3;
+            spaHeatBtn.innerText = ['Off', 'Enabled', 'On'][nextStatus];
+            updateState('spaHeat', nextStatus);
+        }
+
+        function togglePoolHeat() {
+            var poolHeatBtn = document.getElementById('poolHeatBtn');
+            var poolHeatStatus = ['Off', 'Enabled', 'On'].indexOf(poolHeatBtn.innerText);
+            var nextStatus = (poolHeatStatus + 1) % 3;
+            poolHeatBtn.innerText = ['Off', 'Enabled', 'On'][nextStatus];
+            updateState('poolHeat', nextStatus);
+        }
+
+        function toggleUser() {
+            var userBtn = document.getElementById('userBtn');
+            var userStatus = ['Off', 'On'].indexOf(userBtn.innerText);
+            var nextStatus = (userStatus + 1) % 2;
+            userBtn.innerText = ['Off', 'On'][nextStatus];
+            updateState('user', nextStatus);
+        }
+
+        function toggleClean() {
+            var cleanBtn = document.getElementById('cleanBtn');
+            var cleanStatus = ['Off', 'On'].indexOf(cleanBtn.innerText);
+            var nextStatus = (cleanStatus + 1) % 2;
+            cleanBtn.innerText = ['Off', 'On'][nextStatus];
+            updateState('clean', nextStatus);
+        }
+
+        window.onload = fetchState;
+    </script>
+</body>
+</html>
