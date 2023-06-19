@@ -73,7 +73,7 @@ namespace AqualinkAutomate::Test
 		const TestPage test_equiponoff_page2 =
 		{
 			{ 0x0, "Aux5         OFF" },
-			{ 0x1, "Aux6         Off" },
+			{ 0x1, "Aux6         OFF" },
 			{ 0x2, "Aux B1       OFF" },
 			{ 0x3, "Aux B2       OFF" },
 			{ 0x4, "Aux B3       OFF" },
