@@ -18,11 +18,11 @@ endif()
 # Toolchain settings go here (if required)
 
 if(NOT DEFINED CMAKE_C_COMPILER)
-set(CMAKE_C_COMPILER "clang.exe")
+set(CMAKE_C_COMPILER "clang-17")
 endif(NOT DEFINED CMAKE_C_COMPILER)
 
 if(NOT DEFINED CMAKE_CXX_COMPILER)
-set(CMAKE_CXX_COMPILER "clang++.exe")
+set(CMAKE_CXX_COMPILER "clang++-17")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
 option(USE_LIBCXX "Use libc++ instead of libstdc++" ON)
