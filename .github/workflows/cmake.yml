@@ -16,6 +16,8 @@ jobs:
         include:
         - os: ubuntu-latest
           BUILD_PRESET: linux-x64-release-clang
+          CMAKE_C_COMPILER: /usr/lib/llvm-16/bin/clang
+          CMAKE_CXX_COMPILER: /usr/lib/llvm-16/bin/clang++
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-msvc
 
