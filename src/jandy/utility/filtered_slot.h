@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Utility
 				}
 			};
 
-			m_Connection = typename MESSAGE_TYPE::GetSignal()->connect(filtered_slot_handler);
+			m_Connection = MESSAGE_TYPE::GetSignal()->connect(filtered_slot_handler);
 		}
 
 		~FilteredSlot_ByDeviceId()

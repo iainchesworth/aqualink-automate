@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Generators
 
 	void BufferCleanUp_ClearBytesFromBeginToPos(std::vector<uint8_t>& serial_data, const std::vector<uint8_t>::iterator& position)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Clearing Bytes", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Clearing Bytes", BOOST_CURRENT_LOCATION);
 
 		// Erase all bytes to the end of this packet.
 		auto packet_one_end_index = std::distance(serial_data.begin(), position);
@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Generators
 
 	void BufferCleanUp_HasEndOfPacketWithinMaxDistance(std::vector<uint8_t>& serial_data, const std::vector<uint8_t>::iterator& p1s, const std::vector<uint8_t>::iterator& p1e, const std::vector<uint8_t>::iterator& p2s)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Has End Of Packet", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Has End Of Packet", BOOST_CURRENT_LOCATION);
 
 		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= serial_data.size())
 		{

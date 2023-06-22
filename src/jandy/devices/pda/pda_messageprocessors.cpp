@@ -71,6 +71,9 @@ namespace AqualinkAutomate::Devices
 	void PDADevice::Slot_PDA_MessageLong(const Messages::JandyMessage_MessageLong& msg)
 	{
 		LogDebug(Channel::Devices, "PDA device received a JandyMessage_MessageLong signal.");
+
+		static const uint8_t PDA_MESSAGE_LONG_AIRWATER{ 0x82 };
+		static const uint8_t PDA_MESSAGE_LONG_TEMPERATURE{ 0x40 };
 		
 		if (PDA_PAGE_LINES <= msg.LineId())
 		{

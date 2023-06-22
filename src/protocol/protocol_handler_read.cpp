@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolHandler::HandleRead()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Reading Serial Data", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Reading Serial Data", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 
 		std::lock_guard<std::mutex> lock(m_SerialData_IncomingMutex);
 
@@ -43,8 +43,9 @@ namespace AqualinkAutomate::Protocol
 			LogDebug(Channel::Protocol, "Serial port's connection was closed by the peer...cannot continue.");
 			break;
 
-		case boost::system::errc::operation_canceled:
 		case boost::asio::error::operation_aborted:
+			[[fallthrough]];
+		case boost::system::errc::operation_canceled:
 			LogDebug(Channel::Protocol, "Serial port's async_read_some() was cancelled or an error occurred.");
 			break;
 
@@ -59,7 +60,7 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolHandler::HandleRead_Success(auto& read_buffer, auto bytes_read)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Read Success; Processing Serial Data", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Read Success; Processing Serial Data", BOOST_CURRENT_LOCATION);
 		
 		auto read_buffer_span = std::span(read_buffer.begin(), bytes_read);
 		
@@ -73,7 +74,7 @@ namespace AqualinkAutomate::Protocol
 
 		do
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Generating Messages", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Generating Messages", BOOST_CURRENT_LOCATION);
 
 			auto message = Generators::GenerateMessageFromRawData(m_SerialData_Incoming);
 			if (message.has_value())
@@ -82,7 +83,7 @@ namespace AqualinkAutomate::Protocol
 
 				if (auto signal_ptr = std::dynamic_pointer_cast<Interfaces::IMessageSignalRecvBase>(message.value()); nullptr != signal_ptr)
 				{
-					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Signalling Signals", std::source_location::current());
+					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Signalling Signals", BOOST_CURRENT_LOCATION);
 
 					// Process the message...as per protocol requirements
 					signal_ptr->Signal_MessageWasReceived();

@@ -2,8 +2,9 @@
 
 #include <chrono>
 #include <memory>
-#include <source_location>
 #include <string>
+
+#include <boost/assert/source_location.hpp>
 
 #include "interfaces/iprofilingunit.h"
 #include "profiling/profiling_units/unit_colours.h"
@@ -14,7 +15,7 @@ namespace AqualinkAutomate::Profiling
 	class Zone : public Interfaces::IProfilingUnit
 	{
 	public:
-		Zone(const std::string& name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
+		Zone(const std::string& name, const boost::source_location& src_loc = BOOST_CURRENT_LOCATION, UnitColours colour = UnitColours::NotSpecified);
 		virtual ~Zone() = default;
 
 	public:

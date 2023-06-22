@@ -119,7 +119,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::ProcessControllerUpdates()
 	{	
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", BOOST_CURRENT_LOCATION);
 
 		m_KeyCommand_ToSend = KeyCommands::NoKeyCommand;
 
@@ -127,7 +127,7 @@ namespace AqualinkAutomate::Devices
 		{
 		case OperatingStates::StartUp:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Start Up)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Start Up)", BOOST_CURRENT_LOCATION);
 
 			switch (DisplayedPageType())
 			{
@@ -154,7 +154,7 @@ namespace AqualinkAutomate::Devices
 			[[fallthrough]];
 		case OperatingStates::WarmStart:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Cold/Warm Start)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Cold/Warm Start)", BOOST_CURRENT_LOCATION);
 
 			auto scrape_step_outcome = ScrapingNext();
 			if (!scrape_step_outcome.has_value())
@@ -201,13 +201,13 @@ namespace AqualinkAutomate::Devices
 
 		case OperatingStates::NormalOperation:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Normal Operation)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Normal Operation)", BOOST_CURRENT_LOCATION);
 			break;
 		}
 
 		case OperatingStates::FaultHasOccurred:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Fault Occurred)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Fault Occurred)", BOOST_CURRENT_LOCATION);
 			break;
 		}
 		}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <charconv>
 #include <chrono>
 #include <coroutine>
 #include <iostream>
@@ -27,6 +28,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/stream.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/system/system_error.hpp>
 
 #include "logging/logging.h"
@@ -54,10 +56,10 @@ namespace AqualinkAutomate::Developer
 		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name, boost::system::error_code& ec);
 		~mock_serial_port();
 
-		mock_serial_port(const mock_serial_port&) = default;
-		mock_serial_port(mock_serial_port&&) noexcept = default;
-		mock_serial_port& operator=(const mock_serial_port&) = default;
-		mock_serial_port& operator=(mock_serial_port&&) noexcept = default;
+		mock_serial_port(const mock_serial_port&) = delete;
+		mock_serial_port(mock_serial_port&&) noexcept = delete;
+		mock_serial_port& operator=(const mock_serial_port&) = delete;
+		mock_serial_port& operator=(mock_serial_port&&) noexcept = delete;
 
 		void open(const std::string& device_name);
 		void open(const std::string& device_name, boost::system::error_code& ec);
@@ -81,7 +83,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(ReadToken, void(boost::system::error_code, std::size_t)) async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_read_some", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_read_some", BOOST_CURRENT_LOCATION);
 
 			auto init = [&](boost::asio::completion_handler_for<void(boost::system::error_code, std::size_t)> auto handler, const MutableBufferSequence& buffer_)
 			{
@@ -117,7 +119,7 @@ namespace AqualinkAutomate::Developer
 		template <typename ConstBufferSequence, boost::asio::completion_token_for<void(const boost::system::error_code&, std::size_t)> WriteToken>
 		BOOST_ASIO_INITFN_RESULT_TYPE(WriteToken,void(const boost::system::error_code&, std::size_t)) async_write_some(const ConstBufferSequence& buffer, WriteToken&& token)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_write_some", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> async_write_some", BOOST_CURRENT_LOCATION);
 
 			auto init = [&](boost::asio::completion_handler_for<void(const boost::system::error_code&, std::size_t)> auto handler, const ConstBufferSequence& buffer_)
 			{
@@ -154,7 +156,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence>
 		std::size_t HandleMockRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleMockRead", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleMockRead", BOOST_CURRENT_LOCATION);
 
 			const auto length_to_copy = std::min<std::size_t>(boost::asio::buffer_size(buffer), 16);
 
@@ -226,7 +228,7 @@ namespace AqualinkAutomate::Developer
 		template <typename MutableBufferSequence>
 		std::size_t HandleFileRead(const MutableBufferSequence& buffer, boost::system::error_code& ec)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleFileRead", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> HandleFileRead", BOOST_CURRENT_LOCATION);
 
 			enum FileReadErrors : std::size_t
 			{
@@ -238,7 +240,7 @@ namespace AqualinkAutomate::Developer
 
 			auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_single_value_from_file", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_single_value_from_file", BOOST_CURRENT_LOCATION);
 
 				FileReadErrors return_value = NoDataWasRead;
 
@@ -290,7 +292,7 @@ namespace AqualinkAutomate::Developer
 
 			auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_from_file", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("mock_serial_port -> read_from_file", BOOST_CURRENT_LOCATION);
 
 				std::size_t elems_read = 0;
 				bool keep_reading = true;

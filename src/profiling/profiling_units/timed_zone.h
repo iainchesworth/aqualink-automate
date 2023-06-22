@@ -2,8 +2,9 @@
 
 #include <chrono>
 #include <memory>
-#include <source_location>
 #include <string>
+
+#include <boost/assert/source_location.hpp>
 
 #include "interfaces/iprofilingunit.h"
 

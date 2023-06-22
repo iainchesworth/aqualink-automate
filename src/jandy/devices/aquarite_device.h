@@ -19,8 +19,8 @@ namespace AqualinkAutomate::Devices
 
 	class AquariteDevice : public JandyDevice
 	{
-		const std::chrono::seconds AQUARITE_TIMEOUT_DURATION = std::chrono::seconds(30);
-		const uint32_t AQUARITE_PERCENT_DEBOUNCE_THRESHOLD = 10;
+		inline static const std::chrono::seconds AQUARITE_TIMEOUT_DURATION{ std::chrono::seconds(30) };
+		inline static const uint32_t AQUARITE_PERCENT_DEBOUNCE_THRESHOLD{ 10 };
 
 	public:
 		using Percentage = uint8_t;

@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Generators
 
 	Types::JandyExpectedMessageType GenerateMessageFromRawData(std::vector<uint8_t>& serial_data)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Generating Message", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Generating Message", BOOST_CURRENT_LOCATION);
 
 		// Step 2 -> Read the bytes looking for a message header.
 

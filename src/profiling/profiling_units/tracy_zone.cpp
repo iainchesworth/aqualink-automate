@@ -6,7 +6,7 @@
 namespace AqualinkAutomate::Profiling
 {
 
-	TracyZone::TracyZone(const std::string name, const std::source_location& src_loc, UnitColours colour) :
+	TracyZone::TracyZone(const std::string name, const boost::source_location& src_loc, UnitColours colour) :
 		Zone(name)
 	{
 		if (auto iter = TracyZone_DataMap::Instance().find(name); TracyZone_DataMap::Instance().end() != iter)
@@ -24,13 +24,13 @@ namespace AqualinkAutomate::Profiling
 			std::fill(&name_ptr[0], &name_ptr[name.size()+1], 0);
 			std::copy(name.cbegin(), name.cend(), name_ptr);
 
-			std::get<std::source_location>(tracy_data) = src_loc;
+			std::get<boost::source_location>(tracy_data) = src_loc;
 			std::get<tracy::SourceLocationData>(tracy_data) =
 			{
 				std::get<char*>(tracy_data),
-				std::get<std::source_location>(tracy_data).function_name(),
-				std::get<std::source_location>(tracy_data).file_name(),
-				std::get<std::source_location>(tracy_data).line(),
+				std::get<boost::source_location>(tracy_data).function_name(),
+				std::get<boost::source_location>(tracy_data).file_name(),
+				std::get<boost::source_location>(tracy_data).line(),
 				static_cast<uint32_t>(colour)
 			};
 

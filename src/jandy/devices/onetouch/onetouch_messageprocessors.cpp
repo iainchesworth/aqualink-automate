@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Ack", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Ack", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Ack signal.");
 
 		KeyCommands key_press = msg.Command<KeyCommands>([](uint8_t command_id)
@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_MessageLong", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_MessageLong", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_MessageLong signal.");
 
 		if (ONETOUCH_PAGE_LINES <= msg.LineId())
@@ -54,7 +54,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Probe", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Probe", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Probe signal.");
 
 		ProcessControllerUpdates();
@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Status", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Status", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a JandyMessage_Status signal.");
 
 		if (Capabilities::ScreenModes::Updating == ScreenMode())
@@ -93,7 +93,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Clear(const Messages::PDAMessage_Clear& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Clear", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Clear", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Clear signal.");
 
 		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
@@ -105,7 +105,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Highlight(const Messages::PDAMessage_Highlight& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Highlight", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Highlight", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_Highlight signal.");
 
 		ScreenMode(Capabilities::ScreenModes::Updating);
@@ -119,7 +119,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_HighlightChars", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_HighlightChars", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_HighlightChars signal.");
 
 		ScreenMode(Capabilities::ScreenModes::Updating);
@@ -133,7 +133,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_ShiftLines(const Messages::PDAMessage_ShiftLines& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_ShiftLines", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_ShiftLines", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, "OneTouch device received a PDAMessage_ShiftLines signal.");
 
 		auto direction = (0 > msg.LineShift()) ? Utility::ScreenDataPage::ShiftDirections::Up : Utility::ScreenDataPage::ShiftDirections::Down;
@@ -151,7 +151,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Unknown", std::source_location::current(), Profiling::UnitColours::Red);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouch MessageProcessors -> Slot_OneTouch_Unknown", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Red);
 		LogDebug(Channel::Devices, std::format("OneTouch device received a JandyMessage_Unknown signal: type -> 0x{:02x}", static_cast<uint8_t>(msg.Id())));
 
 		ProcessControllerUpdates();

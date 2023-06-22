@@ -24,27 +24,27 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Screen::ProcessScreenUpdates()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates", BOOST_CURRENT_LOCATION);
 
 		switch (m_ScreenMode)
 		{
 		case ScreenModes::Normal:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Normal Mode)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Normal Mode)", BOOST_CURRENT_LOCATION);
 			LogTrace(Channel::Devices, "Device screen mode -> normal");
 			break;
 		}
 
 		case ScreenModes::Updating:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Updating Mode)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Updating Mode)", BOOST_CURRENT_LOCATION);
 			LogTrace(Channel::Devices, "Device screen mode -> updating");
 			break;
 		}
 
 		case ScreenModes::UpdateComplete:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Update Complete Mode)", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates (Update Complete Mode)", BOOST_CURRENT_LOCATION);
 			LogTrace(Channel::Devices, "Device screen mode -> update complete");
 
 			// Set the current page to "unknown"; if there's a page processor, we'll set the page to that later...
@@ -54,7 +54,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			auto actionable_processors = m_DisplayedPageProcessors | std::views::filter([this](const decltype(m_DisplayedPageProcessors)::value_type& processor) { return processor.CanProcess(m_DisplayedPage); });
 			for (auto& processor : actionable_processors)
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates -> Processing Page", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Screen -> Processing Screen Updates -> Processing Page", BOOST_CURRENT_LOCATION);
 				LogTrace(Channel::Devices, std::format("Device screen mode -> processing page {}", magic_enum::enum_name(processor.PageType())));
 
 				// As there's a specific processor, set the page type to the processor's page type.

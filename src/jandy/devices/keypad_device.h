@@ -20,9 +20,8 @@ namespace AqualinkAutomate::Devices
 
 	class KeypadDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
 	{
-		static const uint8_t KEYPAD_PAGE_LINES = 3;
-
-		const std::chrono::seconds KEYPAD_TIMEOUT_DURATION = std::chrono::seconds(30);
+		inline static const uint8_t KEYPAD_PAGE_LINES{ 3 };
+		inline static const std::chrono::seconds KEYPAD_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 		enum class KeyCommands
 		{

@@ -28,10 +28,9 @@ namespace AqualinkAutomate::Devices
 
 	class IAQDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
 	{
-		static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
-		static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
-
-		const std::chrono::seconds IAQ_TIMEOUT_DURATION = std::chrono::seconds(30);
+		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
+		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
+		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 	public:
 		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);

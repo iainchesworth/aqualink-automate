@@ -14,7 +14,6 @@ namespace AqualinkAutomate::Interfaces
         m_TimeoutTimer(io_context),
         m_TimeoutDuration(timeout_in_seconds)
     {
-        StartWaitForTimeout();
     }
 
     IDevice::~IDevice()
@@ -48,11 +47,12 @@ namespace AqualinkAutomate::Interfaces
             // There's not been a message with the <timeout duration> so mark this device as not operating...
             m_IsOperating = false;
             break;
-
+        
+        case boost::asio::error::operation_aborted:
+            [[fallthrough]];
 		case boost::system::errc::operation_canceled:
-		case boost::asio::error::operation_aborted:
-            // Timer was cancelled...let's not worry about it too much.
-            LogTrace(Channel::Devices, "Device timed out while waiting for a message");
+            // IGNORE THIS RESPONSE...  When expires_after() sets the expiry time, any pending asynchronous wait operations will be cancelled and the 
+            // handler for each cancelled operation will be invoked with the boost::asio::error::operation_aborted error code.
             break;
 
         default:

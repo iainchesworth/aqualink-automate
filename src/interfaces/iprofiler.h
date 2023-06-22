@@ -2,6 +2,7 @@
 
 #include <expected>
 #include <string>
+#include <unordered_map>
 
 #include <boost/functional/hash.hpp>
 #include <boost/uuid/uuid.hpp>

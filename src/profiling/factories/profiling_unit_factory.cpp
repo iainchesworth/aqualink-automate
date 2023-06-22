@@ -34,21 +34,21 @@ namespace AqualinkAutomate::Factory
 		m_DesiredProfiler = type;
 	}
 
-	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateDomain(const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour)
+	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateDomain(const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour)
 	{
 		auto& generators = Get();
 		auto domain_generator = std::get<0>(generators);
 		return domain_generator(name, src_loc, colour);
 	}
 
-	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateFrame(const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour)
+	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateFrame(const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour)
 	{
 		auto& generators = Get();
 		auto frame_generator = std::get<1>(generators);
 		return frame_generator(name, src_loc, colour);
 	}
 
-	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateZone(const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour)
+	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateZone(const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour)
 	{
 		auto& generators = Get();
 		auto zone_generator = std::get<2>(generators);
@@ -72,9 +72,9 @@ namespace AqualinkAutomate::Factory
 
 		static ProfilingUnitGenerators noop_generators = std::make_tuple
 		(
-			[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Domain>(name, src_loc, colour); },
-			[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Frame>(name, src_loc, colour); },
-			[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Zone>(name, src_loc, colour); }
+			[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Domain>(name, src_loc, colour); },
+			[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Frame>(name, src_loc, colour); },
+			[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<Profiling::Zone>(name, src_loc, colour); }
 		);
 
 		return noop_generators;

@@ -10,7 +10,6 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	
 	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
 		AquariteDevice(io_context, device_id, 0, 0, 0)
 	{

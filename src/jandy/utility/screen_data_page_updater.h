@@ -63,53 +63,53 @@ namespace AqualinkAutomate::Utility
 
 			boost::statechart::result react(const evSequenceStart& ev)
 			{
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evSequenceEnd& ev)
 			{
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evClear& ev)
 			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
 				ctx().Clear();
 
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evHighlight& ev)
 			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
 				ctx().Highlight(ev.LineId());
 
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evHighlightChars& ev)
 			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
 				ctx().HighlightChars(ev.LineId(), ev.StartIndex(), ev.StopIndex());
 
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evShift& ev)
 			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
 				ctx().ShiftLines(ev.Direction(), ev.FirstLineId(), ev.LastLineId(), ev.NumberOfShifts());
 
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 			boost::statechart::result react(const evUpdate& ev)
 			{
-				auto& ctx = this->context<StateMachine<PAGE_TYPE>>();
+				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
 				///FIXME Validate the line id is within the size permitted.
 				if (ev.Id() >= ctx().Size())
@@ -121,7 +121,7 @@ namespace AqualinkAutomate::Utility
 					ctx()[ev.Id()].Text = ev.Text();
 				}
 
-				return this->transit<Tracking<PAGE_TYPE>>();
+				return this->template transit<Tracking<PAGE_TYPE>>();
 			}
 
 		};

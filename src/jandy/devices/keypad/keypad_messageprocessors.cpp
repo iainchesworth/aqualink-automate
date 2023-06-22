@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <magic_enum.hpp>
 
 #include "logging/logging.h"

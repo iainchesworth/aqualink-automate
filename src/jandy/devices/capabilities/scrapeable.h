@@ -58,7 +58,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		{
 			auto slot_waitingformessage = [&](const auto& msg) -> void
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", BOOST_CURRENT_LOCATION);
 
 				if (m_ParentDeviceId != msg.Destination().Id())
 				{

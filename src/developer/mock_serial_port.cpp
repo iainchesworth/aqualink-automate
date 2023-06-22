@@ -4,7 +4,7 @@ namespace AqualinkAutomate::Developer
 {
 	mock_serial_port::mock_serial_port(boost::asio::io_context& io_context) :
 		m_IOContext(io_context),
-		m_WriteDelayTimer(m_IOContext),
+		m_WriteDelayTimer(io_context),
 		m_RandomDevice{},
 		m_Distribution(32, 127),
 		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port").value()))
