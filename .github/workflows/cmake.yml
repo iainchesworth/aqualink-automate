@@ -11,15 +11,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # os: [macos-latest, windows-latest, ubuntu-latest]
-        os: [ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         include:
         - os: ubuntu-latest
           BUILD_PRESET: linux-x64-release-clang
           CMAKE_C_COMPILER: /usr/lib/llvm-16/bin/clang
           CMAKE_CXX_COMPILER: /usr/lib/llvm-16/bin/clang++
+        - os: ubuntu-latest
+          BUILD_PRESET: linux-x64-release-gcc
+          CMAKE_C_COMPILER: /usr/bin/gcc
+          CMAKE_CXX_COMPILER: /usr/bin/g++
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-msvc
+        - os: windows-latest
+          BUILD_PRESET: windows-x64-release-clang
+          CMAKE_C_COMPILER: clang-cl.exe 
+          CMAKE_CXX_COMPILER: clang-cl.exe           
+        - os: macos-latest
+          BUILD_PRESET: macos-release
 
     steps:
     - uses: actions/checkout@v3
@@ -45,9 +54,6 @@ jobs:
         sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev ninja-build pkg-config wget unzip zip
         sudo apt install -y cmake 
         sudo apt install -y clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 clang-format-16 python3-clang-16 clangd-16 clang-tidy-16 lld-16 libc++-16-dev libc++abi-16-dev clang-tidy-16
-        sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-16 50
-        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-16 50
-        sudo update-alternatives --install /usr/bin/ld ld /usr/bin/lld-16 50
 
     - uses: ashutoshvarma/setup-ninja@master
     - uses: ilammy/msvc-dev-cmd@v1
