@@ -5,11 +5,6 @@
 #
 #------------------------------------------------------------------------------
 
-# Detect compiler
-if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    message(FATAL_ERROR "Clang is not the specifed compiler...expected a Clang compiler")
-endif()
-
 # Toolchain settings go here (if required)
 
 #------------------------------------------------------------------------------

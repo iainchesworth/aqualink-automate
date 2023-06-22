@@ -11,7 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        #os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         include:
         - os: ubuntu-latest
           BUILD_PRESET: linux-x64-release-clang
@@ -26,9 +27,7 @@ jobs:
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-clang
           CMAKE_C_COMPILER: clang-cl.exe 
-          CMAKE_CXX_COMPILER: clang-cl.exe           
-        - os: macos-latest
-          BUILD_PRESET: macos-release
+          CMAKE_CXX_COMPILER: clang-cl.exe
 
     steps:
     - uses: actions/checkout@v3

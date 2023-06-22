@@ -10,7 +10,7 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake"
+          "value": "${sourceDir}/cmake/toolchains/windows.toolchain.cmake"
         }
       },
       "condition": {
@@ -29,7 +29,10 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_CLANG_TIDY": "OFF"
+        "ENABLE_CLANG_TIDY": "OFF",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER":  "cl.exe"
+
       }
     },
     {
@@ -60,10 +63,8 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": {
-          "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/windows.clang.toolchain.cmake"
-        }
+        "CMAKE_C_COMPILER": "clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "clang-cl.exe"
       }
     },
     {
@@ -103,7 +104,7 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake"
+          "value": "${sourceDir}/cmake/toolchains/linux.toolchain.cmake"
         }
       },
       "condition": {
@@ -127,7 +128,9 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_CLANG_TIDY": "OFF"
+        "ENABLE_CLANG_TIDY": "OFF",
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++"
       }
     },
     {
@@ -148,10 +151,8 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": {
-          "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/linux.clang.toolchain.cmake"
-        }
+        "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++"
       }
     },
     {
