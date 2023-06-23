@@ -62,7 +62,9 @@ namespace AqualinkAutomate::Logging
 				return GlobalLogger_Web::get();
 
 			default:
-				std::unreachable();
+				// This is a problem...there's a channel type that has not been 
+				// added to the above list...default to the Main channel.
+				return GlobalLogger_Main::get();
 			}
 		};
 

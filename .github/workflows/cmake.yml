@@ -11,23 +11,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        #os: [macos-latest, ubuntu-latest, windows-latest]
-        os: [ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         include:
+        - os: macos-latest
+          BUILD_PRESET: macos-release
         - os: ubuntu-latest
           BUILD_PRESET: linux-x64-release-clang
-          CMAKE_C_COMPILER: /usr/lib/llvm-16/bin/clang
-          CMAKE_CXX_COMPILER: /usr/lib/llvm-16/bin/clang++
-        - os: ubuntu-latest
-          BUILD_PRESET: linux-x64-release-gcc
-          CMAKE_C_COMPILER: /usr/bin/gcc
-          CMAKE_CXX_COMPILER: /usr/bin/g++
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-msvc
-        - os: windows-latest
-          BUILD_PRESET: windows-x64-release-clang
-          CMAKE_C_COMPILER: clang-cl.exe 
-          CMAKE_CXX_COMPILER: clang-cl.exe
 
     steps:
     - uses: actions/checkout@v3
@@ -44,26 +35,24 @@ jobs:
 
     - if: matrix.os == 'ubuntu-latest'
       run: |
-        # Install the LLVM (clang-16) toolchain as well as the latest cmake.
-        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-        echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
         sudo add-apt-repository -y 'deb http://apt.llvm.org/jammy/  llvm-toolchain-jammy-16 main'
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt update
-        sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev ninja-build pkg-config wget unzip zip
-        sudo apt install -y cmake 
+        sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev pkg-config wget unzip zip
         sudo apt install -y clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 clang-format-16 python3-clang-16 clangd-16 clang-tidy-16 lld-16 libc++-16-dev libc++abi-16-dev clang-tidy-16
-
-    - uses: ashutoshvarma/setup-ninja@master
+        sudo apt install -y gcc-13
+    
+    - uses: lukka/get-cmake@latest
     - uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Configure CMake
+    - name: Configure
       # Configure CMake in a 'build' subdirectory.
-      run: cmake -G Ninja -B ${{github.workspace}}/build --preset ${{matrix.BUILD_PRESET}}
+      run: cmake -G Ninja --preset ${{matrix.BUILD_PRESET}}
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build
+      run: cmake --build ${{github.workspace}}/build/${{matrix.BUILD_PRESET}}
 
     - name: Test
       working-directory: ${{github.workspace}}/build

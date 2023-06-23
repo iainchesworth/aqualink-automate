@@ -7,11 +7,7 @@
 
 # Toolchain settings go here (if required)
 
-#------------------------------------------------------------------------------
-#
-# Chainloading the vcpkg.cmake file.  Note that this needs to be included
-# as an include at the bottom of each of the "toolchain" cmake files.
-#
-#------------------------------------------------------------------------------
-
-include(${CMAKE_CURRENT_LIST_DIR}/chainload.vcpkg.toolchain.cmake)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
+endif()
