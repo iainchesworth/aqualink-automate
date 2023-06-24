@@ -20,7 +20,7 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	std::expected<ZonePtr, bool> Tracy_Profiler::CreateZone(FramePtr frame, const std::string& name) const
+	tl::expected<ZonePtr, bool> Tracy_Profiler::CreateZone(FramePtr frame, const std::string& name) const
 	{
 		return std::make_unique<TracyZone>(name);
 	}

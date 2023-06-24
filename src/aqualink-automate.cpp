@@ -203,9 +203,9 @@ int main(int argc, char* argv[])
 				asio::ssl::context::no_sslv2 |				// Considered insecure
 				asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
 				asio::ssl::context::no_tlsv1 |				// Considered insecure
-				asio::ssl::context::no_tlsv1_1 |				// Considered insecure
+				asio::ssl::context::no_tlsv1_1 |			// Considered insecure
 				asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
-				SSL_OP_CIPHER_SERVER_PREFERENCE
+				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
 			);
 
 			Certificates::LoadWebCertificates(settings.web, ctx);

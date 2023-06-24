@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Generators
 		if (!BufferValidation_ContainsMoreThanZeroBytes(serial_data))
 		{
 			LogTrace(Channel::Messages, "The internal serial data buffer is empty; ignoring message generation.");
-			return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+			return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 		}
 		else if (!BufferValidation_HasStartOfPacket(serial_data))
 		{
@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Generators
 			serial_data.clear();
 
 			LogTrace(Channel::Messages, "The internal serial data buffer does not contain a packet start sequence; ignoring message generation");
-			return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+			return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 		}
 		else
 		{
@@ -60,7 +60,7 @@ namespace AqualinkAutomate::Generators
 				serial_data.clear();
 
 				LogTrace(Channel::Messages, "Cannot find start of packet in serial data; clearing serial buffer.");
-				return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+				return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 			}
 			else
 			{
@@ -80,7 +80,7 @@ namespace AqualinkAutomate::Generators
 
 					// Clear all stored serial bytes up to the start of the new packet.
 					serial_data.erase(serial_data.begin(), serial_data.begin() + packet_two_start_index);
-					return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
+					return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
 				}
 				else if ((!packet_one_end_found) && (packet_two_start_found))
 				{
@@ -90,13 +90,13 @@ namespace AqualinkAutomate::Generators
 
 					// Clear all stored serial bytes up to the start of the new packet.
 					serial_data.erase(serial_data.begin(), serial_data.begin() + packet_two_start_index);
-					return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
+					return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
 				}
 				else if (!packet_one_end_found)
 				{
 					// The packet is not complete....do nothing at this point.
 					LogTrace(Channel::Messages, "End of current packet not yet received; awaiting more serial data.");
-					return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+					return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 				}
 				else
 				{
@@ -120,11 +120,11 @@ namespace AqualinkAutomate::Generators
 						
 						if (packet_two_start_found)
 						{
-							return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
+							return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess));
 						}
 						else
 						{
-							return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+							return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 						}
 					}
 					else
@@ -144,7 +144,7 @@ namespace AqualinkAutomate::Generators
 		serial_data.clear();
 
 		LogDebug(Channel::Messages, "Unexpected failure while processing the internal serial data buffer; clearing serial data.");
-		return std::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+		return tl::unexpected<boost::system::error_code>(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 	}
 
 }

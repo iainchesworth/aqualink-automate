@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <expected>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include <boost/system/error_code.hpp>
+#include <tl/expected.hpp>
 
 #include "jandy/errors/string_conversion_errors.h"
 
@@ -40,9 +40,9 @@ namespace AqualinkAutomate::Utility
 		Temperature& operator=(const std::string& temperature_string) noexcept;
 
 	public:
-		std::expected<int8_t, boost::system::error_code> operator()() const noexcept;
-		std::expected<Units, boost::system::error_code> TemperatureUnits() const noexcept;
-		std::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
+		tl::expected<int8_t, boost::system::error_code> operator()() const noexcept;
+		tl::expected<Units, boost::system::error_code> TemperatureUnits() const noexcept;
+		tl::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
 
 	private:
 		void ConvertStringToTemperature(const std::string& temperature_string) noexcept;

@@ -161,21 +161,21 @@ namespace AqualinkAutomate::Devices
 			{
 				switch (scrape_step_outcome.error())
 				{
-				case Scrapeable::ScrapingErrors::WaitingForPage:
+				case ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage:
 					LogTrace(Channel::Devices, "Emulated OneTouch device: scrape in-progress -> waiting on page");
 					break;
 
-				case Scrapeable::ScrapingErrors::WaitingForMessage:
+				case ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage:
 					LogTrace(Channel::Devices, "Emulated OneTouch device: scrape in-progress -> waiting for message");
 					break;
 
-				case Scrapeable::ScrapingErrors::NoStepPossible:
+				case ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible:
 					// NOTE: Flow was VERSION -> ONETOUCH/HOME -> [scraping] -> HOME
 					LogInfo(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) complete -> entering normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
 					m_OpState = OperatingStates::NormalOperation;
 					break;
 
-				case ScrapingErrors::NoGraphBeingScraped:
+				case ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped:
 					[[fallthrough]];
 				default:
 					// No scrape is active (or waiting) but it's a cold start...this is weird so force a transition to normal operation.

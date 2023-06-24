@@ -5,4 +5,6 @@
 #
 #------------------------------------------------------------------------------
 
+message(STATUS "Configuring macOS Toolchain")
+
 # Toolchain settings go here (if required)

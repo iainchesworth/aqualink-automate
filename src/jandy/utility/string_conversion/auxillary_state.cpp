@@ -70,21 +70,21 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	std::expected<std::string, boost::system::error_code> AuxillaryState::Label() const noexcept
+	tl::expected<std::string, boost::system::error_code> AuxillaryState::Label() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_Label;
 	}
 
-	std::expected<Config::AuxillaryStates, boost::system::error_code> AuxillaryState::State() const noexcept
+	tl::expected<Config::AuxillaryStates, boost::system::error_code> AuxillaryState::State() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_State;

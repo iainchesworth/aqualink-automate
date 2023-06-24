@@ -35,7 +35,7 @@ namespace AqualinkAutomate::Factory
 		return m_Generators.insert(std::make_pair(id, generator)).second;
 	}
 
-	std::expected<Types::JandyMessageTypePtr, Types::JandyErrorCode> JandyMessageFactory::CreateFromSerialData(const std::span<const std::byte>& message_bytes)
+	tl::expected<Types::JandyMessageTypePtr, Types::JandyErrorCode> JandyMessageFactory::CreateFromSerialData(const std::span<const std::byte>& message_bytes)
 	{
 		std::shared_ptr<Messages::JandyMessage> message{ nullptr };
 		boost::system::error_code return_value;
@@ -88,7 +88,7 @@ namespace AqualinkAutomate::Factory
 			}
 		}
 
-		return std::unexpected<boost::system::error_code>(return_value);
+		return tl::unexpected<boost::system::error_code>(return_value);
 	}
 
 }

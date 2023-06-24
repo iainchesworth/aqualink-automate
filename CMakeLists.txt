@@ -36,6 +36,7 @@ find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
 
 #------------------------------------------------------------------------------
@@ -188,6 +189,7 @@ add_library(
 	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
+	src/jandy/errors/jandy_errors_scrapeable.cpp 
 	src/jandy/errors/string_conversion_errors.cpp
 	src/jandy/factories/jandy_auxillary_factory.cpp 
 	src/jandy/factories/jandy_message_factory.cpp
@@ -382,6 +384,7 @@ target_include_directories(
 	${magic_enum_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
+	${tl_expected_INCLUDE_DIRS}
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>

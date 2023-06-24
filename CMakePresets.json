@@ -9,6 +9,7 @@
       "installDir": "${sourceDir}/install/${presetName}",
       "toolchainFile": "${sourceDir}/deps/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": "ON",
         "ENABLE_CLANG_TIDY": "OFF",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "OFF",
@@ -69,7 +70,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe"
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang"
       }
     },
     {
@@ -80,6 +83,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang",
         "ENABLE_SANITIZERS": "ON",
         "SANITIZE_ADDRESS": "ON"
       }
@@ -92,6 +97,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang",
         "ENABLE_SANITIZERS": "ON",
         "SANITIZE_THREAD": "ON"
       }
@@ -103,7 +110,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe"
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang"
       }
     },
     {
@@ -147,7 +156,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++"
+        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang"
       }
     },
     {
@@ -157,7 +168,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++"
+        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
+        "CMAKE_C_COMPILER_ID": "Clang",
+        "CMAKE_CXX_COMPILER_ID": "Clang"
       }
     },
     {

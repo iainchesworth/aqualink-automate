@@ -7,7 +7,7 @@ namespace AqualinkAutomate::Developer
 		m_WriteDelayTimer(io_context),
 		m_RandomDevice{},
 		m_Distribution(32, 127),
-		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port").value()))
+		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port")))
 	{
 	}
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <expected>
 #include <string>
+#include <optional>
 #include <unordered_map>
 
 #include <boost/functional/hash.hpp>
@@ -25,9 +25,9 @@ namespace AqualinkAutomate::Interfaces
 		virtual void StopProfiling() = 0;
 
 	public:
-		virtual std::expected<Profiling::DomainPtr, bool> CreateDomain(const std::string& name) const;
-		virtual std::expected<Profiling::FramePtr, bool> CreateFrame(Profiling::DomainPtr domain, const std::string& name) const;
-		virtual std::expected<Profiling::ZonePtr, bool> CreateZone(Profiling::FramePtr frame, const std::string& name) const;
+		virtual Profiling::DomainPtr CreateDomain(const std::string& name) const;
+		virtual Profiling::FramePtr CreateFrame(Profiling::DomainPtr domain, const std::string& name) const;
+		virtual Profiling::ZonePtr CreateZone(Profiling::FramePtr frame, const std::string& name) const;
 
 	private:
 		mutable std::unordered_map<boost::uuids::uuid, Profiling::DomainPtr, boost::hash<boost::uuids::uuid>> m_Domains;

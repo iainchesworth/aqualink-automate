@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Profiling
 		virtual void StopProfiling() override;
 
 	public:
-		virtual std::expected<ZonePtr, bool> CreateZone(FramePtr frame, const std::string& name) const override;
+		virtual tl::expected<ZonePtr, bool> CreateZone(FramePtr frame, const std::string& name) const override;
 
 	private:
 		static const Factory::ProfilerRegistration<Tracy_Profiler> g_TracyProfilerRegistration;

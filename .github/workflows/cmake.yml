@@ -16,7 +16,7 @@ jobs:
         - os: macos-latest
           BUILD_PRESET: macos-release
         - os: ubuntu-latest
-          BUILD_PRESET: linux-x64-release-clang
+          BUILD_PRESET: linux-x64-release-gcc
         - os: windows-latest
           BUILD_PRESET: windows-x64-release-msvc
 
@@ -58,4 +58,4 @@ jobs:
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --test-dir ${{github.workspace}}/build/test --output-on-failure
+      run: ctest --test-dir ${{github.workspace}}/build/${{matrix.BUILD_PRESET}}/test --output-on-failure
