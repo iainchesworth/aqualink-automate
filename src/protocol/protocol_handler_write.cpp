@@ -51,8 +51,6 @@ namespace AqualinkAutomate::Protocol
 			break;
 
 		case boost::asio::error::operation_aborted:
-			[[fallthrough]];
-		case boost::system::errc::operation_canceled:
 			LogDebug(Channel::Protocol, "Serial port's async_write_some() was cancelled or an error occurred.");
 			continue_processing = false;
 			break;
