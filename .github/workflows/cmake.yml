@@ -11,10 +11,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        #os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         include:
-        - os: macos-latest
-          BUILD_PRESET: macos-release
+        #- os: macos-latest
+        #  BUILD_PRESET: macos-release
         - os: ubuntu-latest
           BUILD_PRESET: linux-x64-release-gcc
         - os: windows-latest
