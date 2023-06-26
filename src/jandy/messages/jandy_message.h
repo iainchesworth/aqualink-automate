@@ -17,15 +17,15 @@ namespace AqualinkAutomate::Messages
 	class JandyMessage : public Interfaces::IMessage<JandyMessageIds>, public Interfaces::ISerializable
 	{
 	public:
-		static const uint8_t Index_DestinationId = 2;
-		static const uint8_t Index_MessageType = 3;
-		static const uint8_t Index_DataStart = 4;
+		static const uint8_t Index_DestinationId;
+		static const uint8_t Index_MessageType;
+		static const uint8_t Index_DataStart;
 
 	public:
-		static const uint8_t PACKET_HEADER_LENGTH = 4;
-		static const uint8_t PACKET_FOOTER_LENGTH = 3;
-		static const uint8_t MAXIMUM_PACKET_LENGTH = 128;
-		static const uint8_t MINIMUM_PACKET_LENGTH = PACKET_HEADER_LENGTH + PACKET_FOOTER_LENGTH;
+		static const uint8_t PACKET_HEADER_LENGTH;
+		static const uint8_t PACKET_FOOTER_LENGTH;
+		static const uint8_t MAXIMUM_PACKET_LENGTH;
+		static const uint8_t MINIMUM_PACKET_LENGTH;
 
 	public:
 		JandyMessage(const JandyMessageIds& msg_id);

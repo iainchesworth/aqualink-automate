@@ -42,7 +42,15 @@ add_executable(
 	unit/support/unit_test_ostream_support.cpp 
 )
 
-target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK)
+if(WIN32)
+target_sources(testaqualink-automate PRIVATE unit/platform/test_main_win32.cpp)
+target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK) # Boost Unit Test is dynamically linked under Windows.
+endif(WIN32)
+
+if(LINUX)
+target_sources(testaqualink-automate PRIVATE unit/platform/test_main_linux.cpp)
+endif(LINUX)
+
 target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/unit")
 
 target_link_libraries(

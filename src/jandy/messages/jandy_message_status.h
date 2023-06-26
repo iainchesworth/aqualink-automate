@@ -24,7 +24,7 @@ namespace AqualinkAutomate::Messages
 
 	class JandyMessage_Status : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Status>
 	{
-		static const uint8_t STATUS_PAYLOAD_LENGTH = 5;
+		static const uint8_t STATUS_PAYLOAD_LENGTH;
 
 	public:
 		JandyMessage_Status();

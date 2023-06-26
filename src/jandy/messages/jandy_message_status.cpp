@@ -10,6 +10,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
+	const uint8_t JandyMessage_Status::STATUS_PAYLOAD_LENGTH{ 5 };
 
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
 
