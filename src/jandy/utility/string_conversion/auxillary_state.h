@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <expected>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include <boost/system/error_code.hpp>
+#include <tl/expected.hpp>
 
 #include "jandy/config/jandy_config_auxillary_states.h"
 #include "jandy/errors/string_conversion_errors.h"
@@ -33,8 +33,8 @@ namespace AqualinkAutomate::Utility
 		AuxillaryState& operator=(const std::string& auxillary_status_string) noexcept;
 
 	public:
-		std::expected<std::string, boost::system::error_code> Label() const noexcept;
-		std::expected<Config::AuxillaryStates, boost::system::error_code> State() const noexcept;
+		tl::expected<std::string, boost::system::error_code> Label() const noexcept;
+		tl::expected<Config::AuxillaryStates, boost::system::error_code> State() const noexcept;
 
 	private:
 		void ConvertStringToStatus(const std::string& auxillary_status_string) noexcept;

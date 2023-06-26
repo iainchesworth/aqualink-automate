@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(TestToString)
 
     const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: Unknown (0xff) || Payload: 0";
 
-    BOOST_CHECK_EQUAL(message.ToString(), expected);
+    BOOST_CHECK_EQUAL(expected, message.ToString());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

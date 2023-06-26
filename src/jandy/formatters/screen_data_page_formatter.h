@@ -2,6 +2,7 @@
 
 #include <format>
 #include <string>
+#include <string_view>
 
 #include "jandy/utility/screen_data_page.h"
 
@@ -14,20 +15,12 @@ namespace AqualinkAutomate::Formatters
 // AqualinkAutomate::Formatters
 
 template<>
-struct std::formatter<AqualinkAutomate::Utility::ScreenDataPage>
+struct std::formatter<AqualinkAutomate::Utility::ScreenDataPage> : std::formatter<std::string>
 {
-	template <typename FormatParseContext>
-	auto parse(FormatParseContext& ctx)
-	{
-		using AqualinkAutomate::Utility::ScreenDataPage;
-
-		return ctx.end();
-	}
-
 	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Utility::ScreenDataPage& s, FormatContext& ctx)
+	auto format(const AqualinkAutomate::Utility::ScreenDataPage& page, FormatContext& ctx) const
 	{
-		using AqualinkAutomate::Utility::ScreenDataPage;
+		using AqualinkAutomate::Utility::ScreenDataPage::HighlightStates::Highlighted;
 
 		// +------------------+
 		// | Equipment Status |
@@ -44,20 +37,21 @@ struct std::formatter<AqualinkAutomate::Utility::ScreenDataPage>
 		// |                  |
 		// +------------------+
 
-		ctx.out() = std::format_to(ctx.out(), "+------------------+\n");
+		static const std::string_view HEADER_FOOTER{ "+------------------+\n" };
+		static const std::string_view PAGE_ROW{ "| {:^16} | {}\n" };
+		
+		auto ctx_it = ctx.out();
 
-		for (const auto& row : s.m_Rows)
+		std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), ctx_it);
+
+		for (const auto& row : page.m_Rows)
 		{
-			ctx.out() = std::format_to(
-				ctx.out(), 
-				"| {:^16} | {}\n", 
-				row.Text, 
-				(ScreenDataPage::HighlightStates::Highlighted == row.HighlightState) ? "<--" : ""
-			);
+			const auto highlight_arrow = (Highlighted == row.HighlightState) ? "<--" : "";
+			std::vformat_to(ctx_it, PAGE_ROW, std::make_format_args(row.Text, highlight_arrow));
 		}
 
-		ctx.out() = std::format_to(ctx.out(), "+------------------+\n");
+		std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), ctx_it);
 
-		return ctx.out();
+		return ctx_it;
 	}
 };

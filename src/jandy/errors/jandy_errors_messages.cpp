@@ -2,6 +2,10 @@
 
 namespace AqualinkAutomate::ErrorCodes
 {
+	const Message_ErrorCategory& Message_ErrorCategory::Instance() {
+		static Message_ErrorCategory category;
+		return category;
+	}
 
 	const char* Message_ErrorCategory::name() const noexcept
 	{
@@ -27,6 +31,10 @@ namespace AqualinkAutomate::ErrorCodes
 
 boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::Message_ErrorCodes e)
 {
-	static AqualinkAutomate::ErrorCodes::Message_ErrorCategory category;
-	return boost::system::error_code(static_cast<int>(e), category);
+	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Message_ErrorCategory::Instance());
+}
+
+boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Message_ErrorCodes e)
+{
+	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Message_ErrorCategory::Instance());
 }

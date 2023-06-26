@@ -7,14 +7,14 @@ namespace AqualinkAutomate::Generators
 
 	bool BufferValidation_ContainsMoreThanZeroBytes(const std::vector<uint8_t>& serial_data)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has More Than Zero Bytes", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has More Than Zero Bytes", BOOST_CURRENT_LOCATION);
 
 		return (0 != serial_data.size());
 	}
 
 	bool BufferValidation_HasStartOfPacket(const std::vector<uint8_t>& serial_data)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has Start Of Packet", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer Validation -> Has Start Of Packet", BOOST_CURRENT_LOCATION);
 
 		return (serial_data.end() != std::search(serial_data.begin(), serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end()));
 	}

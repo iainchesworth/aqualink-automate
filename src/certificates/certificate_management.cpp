@@ -1,5 +1,7 @@
 #include <format>
 
+#include <asio/error_code.hpp>
+
 #include "certificates/certificate_management.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
@@ -10,11 +12,11 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Certificates
 {
 
-    void LoadWebCertificates(const AqualinkAutomate::Options::Web::Settings& cfg, boost::asio::ssl::context& ctx)
+    void LoadWebCertificates(const AqualinkAutomate::Options::Web::Settings& cfg, asio::ssl::context& ctx)
     {
         LogTrace(Channel::Certificates, "Certificates::LoadCertificates");
 
-        boost::system::error_code ec;
+        asio::error_code ec;
 
         if (!cfg.http_server_is_insecure)
         {
@@ -28,11 +30,11 @@ namespace AqualinkAutomate::Certificates
         {
             LogDebug(Channel::Certificates, "Certificates::LoadCertificates - invalid server certificate key path provided; ignoring all certificates");
         }
-        else if (ctx.use_certificate(cfg.cert_file.Data(), boost::asio::ssl::context::pem, ec); ec)
+        else if (ctx.use_certificate(cfg.cert_file.Data(), asio::ssl::context::pem, ec); ec)
         {
             LogWarning(Channel::Certificates, std::format("Certificates::LoadCertificates Failure: Cannot Load Certificate File - Error: {}", ec.message()));
         }
-        else if (ctx.use_private_key(cfg.cert_key_file.Data(), boost::asio::ssl::context::pem); ec)
+        else if (ctx.use_private_key(cfg.cert_key_file.Data(), asio::ssl::context::pem); ec)
         {
             LogWarning(Channel::Certificates, std::format("Certificates::LoadCertificates Failure: Cannot Load Certificate Key File - Error: {}", ec.message()));
         }

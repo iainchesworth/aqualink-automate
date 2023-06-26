@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <magic_enum.hpp>
+
 namespace AqualinkAutomate::Messages
 {
 
@@ -51,3 +53,11 @@ namespace AqualinkAutomate::Messages
 
 }
 // namespace AqualinkAutomate::Messages
+
+template <>
+struct magic_enum::customize::enum_range<AqualinkAutomate::Messages::JandyMessageIds>
+{
+	static constexpr int min = 0x00;
+	static constexpr int max = 0xFF;
+	// (max - min) must be less than UINT16_MAX.
+};

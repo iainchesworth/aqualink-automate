@@ -15,9 +15,9 @@ namespace AqualinkAutomate::Factory
 		ProfilingUnitRegistration(const Types::ProfilerTypes type)
 		{
 			Factory::ProfilingUnitFactory::Instance().Register(type, std::make_tuple(
-				[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<DOMAIN_TYPE>(name, src_loc, colour); },
-				[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<FRAME_TYPE>(name, src_loc, colour); },
-				[](const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<ZONE_TYPE>(name, src_loc, colour); }
+				[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<DOMAIN_TYPE>(name, src_loc, colour); },
+				[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<FRAME_TYPE>(name, src_loc, colour); },
+				[](const std::string& name, const boost::source_location& src_loc, Profiling::UnitColours colour) -> Types::ProfilingUnitTypePtr { return std::make_unique<ZONE_TYPE>(name, src_loc, colour); }
 			));
 		}
 	};

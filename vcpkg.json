@@ -3,8 +3,10 @@
   "name": "aqualink-automate",
   "version": "0.0.1",
   "dependencies": [
+    "asio",
     "benchmark",
     "boost-asio",
+    "boost-assert",
     "boost-circular-buffer",
     "boost-graph",
     "boost-iostreams",
@@ -12,16 +14,17 @@
     "boost-program-options",
     "boost-regex",
     "boost-signals2",
+    "boost-stacktrace",
     "boost-statechart",
     "boost-system",
     "boost-test",
     "boost-uuid",
-    "crow",
     "magic-enum",
     "mqtt-cpp",
     "nlohmann-json",
     "openssl",
     "tracy",
+    "tl-expected",
     "zlib"
   ]
 }

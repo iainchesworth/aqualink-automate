@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
 
 		req.url = "/api/equipment";
 
-		http_server.handle(req, res);
+		http_server.handle_full(req, res);
 
 		BOOST_CHECK_EQUAL(200, res.code);
 
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(InitialisedJandyConfig)
 
 		req.url = "/api/equipment";
 
-		http_server.handle(req, res);
+		http_server.handle_full(req, res);
 
 		BOOST_CHECK_EQUAL(200, res.code);
 

@@ -22,22 +22,22 @@ namespace AqualinkAutomate::Logging
 		{
 			return std::format(
 				"{:08}: <{}>\t({}) [{}:{}] {}",
-				rec[line_id].get<uint32_t>(),
-				magic_enum::enum_name(rec[severity].get<Severity>()),
-				magic_enum::enum_name(rec[channel].get<Channel>()),
-				rec[source_file].get<std::string>(),
-				rec[source_line].get<uint32_t>(),
-				rec[boost::log::expressions::smessage].get<std::string>());
+				rec[line_id].template get<uint32_t>(),
+				magic_enum::enum_name(rec[severity].template get<Severity>()),
+				magic_enum::enum_name(rec[channel].template get<Channel>()),
+				rec[source_file].template get<std::string>(),
+				rec[source_line].template get<uint32_t>(),
+				rec[boost::log::expressions::smessage].template get<std::string>());
 		};
 		
 		auto all_other_levels_formatter = [](auto& rec, auto& strm) -> std::string
 		{
 			return std::format(
 				"{:08}: <{}>\t({}) {}",
-				rec[line_id].get<uint32_t>(),
-				magic_enum::enum_name(rec[severity].get<Severity>()),
-				magic_enum::enum_name(rec[channel].get<Channel>()),
-				rec[boost::log::expressions::smessage].get<std::string>());
+				rec[line_id].template get<uint32_t>(),
+				magic_enum::enum_name(rec[severity].template get<Severity>()),
+				magic_enum::enum_name(rec[channel].template get<Channel>()),
+				rec[boost::log::expressions::smessage].template get<std::string>());
 		};
 
 		switch (current_severity_level)

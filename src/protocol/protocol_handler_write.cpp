@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolHandler::HandleWrite()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Writing Serial Data", std::source_location::current(), Profiling::UnitColours::Green);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Writing Serial Data", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Green);
 
 		std::lock_guard<std::mutex> lock(m_SerialData_OutgoingMutex);
 
@@ -50,7 +50,6 @@ namespace AqualinkAutomate::Protocol
 			continue_processing = false;
 			break;
 
-		case boost::system::errc::operation_canceled:
 		case boost::asio::error::operation_aborted:
 			LogDebug(Channel::Protocol, "Serial port's async_write_some() was cancelled or an error occurred.");
 			continue_processing = false;
@@ -68,7 +67,7 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolHandler::HandleWrite_Success(auto& write_buffer, auto bytes_written)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Success; Clearing Internal Buffers", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Success; Clearing Internal Buffers", BOOST_CURRENT_LOCATION);
 		LogTrace(Channel::Protocol, "Completed all serial data writing; clearing internal write buffer");
 		m_SerialData_Outgoing.clear();
 
@@ -77,7 +76,7 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolHandler::HandleWrite_Partial(auto& write_buffer, auto bytes_written)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Partial; Handling Additional Transmission", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Partial; Handling Additional Transmission", BOOST_CURRENT_LOCATION);
 		LogTrace(Channel::Protocol, std::format("Only partially completed serial data writing; {} bytes of {} bytes were transmitted", bytes_written, m_SerialData_Outgoing.size()));
 
 		return true;

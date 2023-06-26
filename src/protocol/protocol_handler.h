@@ -48,16 +48,13 @@ namespace AqualinkAutomate::Protocol
 			m_PublishableMessages.push_back(MESSAGE_PUBLISHER::GetPublisher()->connect(publish_message));
 		}
 
-		bool PublishRawData(std::vector<uint8_t>&& raw_data)
-		{
-			std::lock_guard<std::mutex> lock(m_SerialData_OutgoingMutex);
-			std::move(raw_data.begin(), raw_data.end(), std::back_inserter(m_SerialData_Outgoing));
-
-			return true;
-		}
+		bool PublishRawData(std::vector<uint8_t>&& raw_data);
 
 	public:
 		void Run();
+
+	private:
+		void Step();
 
 	private:
 		bool HandleRead();
@@ -65,6 +62,9 @@ namespace AqualinkAutomate::Protocol
 		bool HandleWrite();
 		bool HandleWrite_Success(auto& write_buffer, auto bytes_written);
 		bool HandleWrite_Partial(auto& write_buffer, auto bytes_written);
+
+	private:
+		boost::asio::io_context& m_IOContext;
 
 	private:
 		Serial::SerialPort& m_SerialPort;

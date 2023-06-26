@@ -29,15 +29,12 @@ namespace AqualinkAutomate::Devices
 
 	class OneTouchDevice : public JandyController, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
 	{
-		static const uint8_t ONETOUCH_PAGE_LINES = 12;
-
-		static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER = 1;
-		static const Scrapeable::ScrapeId ONETOUCH_EXAMPLE_TWO_SCRAPER = 2;
-
-		static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX = 1;
-		static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX = 2;
-
-		const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION = std::chrono::seconds(30);
+		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
+		inline static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER{ 1 };
+		inline static const Scrapeable::ScrapeId ONETOUCH_EXAMPLE_TWO_SCRAPER{ 2 };
+		inline static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX{ 1 };
+		inline static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX{ 2 };
+		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 		enum class OperatingStates
 		{

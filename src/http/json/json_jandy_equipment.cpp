@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <magic_enum.hpp>
 
 #include "http/json/json_jandy_config.h"

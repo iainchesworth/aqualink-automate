@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Utility
 		else
 		{
 			LogTrace(Channel::Platform, std::format("LINUX: Retrieve current terminal column width ({} columns)", w.ws_col));
-			column_width = w.ws_col
+			column_width = w.ws_col;
 		}
 
 		return column_width;

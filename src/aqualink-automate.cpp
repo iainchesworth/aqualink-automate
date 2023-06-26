@@ -1,14 +1,13 @@
 ﻿#include <condition_variable>
 #include <cstdlib>
 #include <mutex>
-#include <stacktrace>
 #include <string>
-#include <thread>
 
+#include <asio/ssl/context.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ssl/context.hpp>
+#include <boost/stacktrace.hpp>
 #include <crow/app.h>
 #include <magic_enum.hpp>
 
@@ -119,6 +118,8 @@ int main(int argc, char* argv[])
 		// JANDY EQUIPMENT
 		//---------------------------------------------------------------------
 
+		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
+
 		Config::JandyConfig jandy_config;
 		Equipment::JandyEquipment jandy_equipment(io_context, jandy_config);
 
@@ -166,8 +167,24 @@ int main(int argc, char* argv[])
 		CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { /* DO NOTHING */ } });
 
 		//---------------------------------------------------------------------
+		// PROTOCOL HANDLER
+		//---------------------------------------------------------------------
+
+		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
+
+		Protocol::ProtocolHandler protocol_handler(io_context, *serial_port);
+		protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
+
+		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
+		protocol_handler.Run();
+
+		CleanUp::Register({ "Protocol Handler Thread", [&io_context]() -> void { /* DO NOTHING */ } });
+
+		//---------------------------------------------------------------------
 		// WEB SERVER
 		//---------------------------------------------------------------------
+
+		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
 		HTTP::CrowCustomLogger crow_custom_logger;
 		crow::logger::setHandler(&crow_custom_logger);
@@ -180,15 +197,15 @@ int main(int argc, char* argv[])
 
 		if (!settings.web.http_server_is_insecure)
 		{
-			boost::asio::ssl::context ctx(boost::asio::ssl::context::tls);
+			asio::ssl::context ctx(asio::ssl::context::tls);
 			ctx.set_options(
-				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
-				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
-				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
-				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
-				SSL_OP_CIPHER_SERVER_PREFERENCE
+				asio::ssl::context::default_workarounds |	// Implement various bug workarounds
+				asio::ssl::context::no_sslv2 |				// Considered insecure
+				asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
+				asio::ssl::context::no_tlsv1 |				// Considered insecure
+				asio::ssl::context::no_tlsv1_1 |			// Considered insecure
+				asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
+				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
 			);
 
 			Certificates::LoadWebCertificates(settings.web, ctx);
@@ -209,72 +226,10 @@ int main(int argc, char* argv[])
 		HTTP::WebRoute_JandyEquipment_Version route_je_version(http_server, jandy_equipment);
 		HTTP::WebRoute_Version route_version(http_server);
 
-		CleanUp::Register({ "WebServer", [&http_server]() -> void { http_server.stop(); } });
+		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
+		auto http_server_instance = http_server.run_async();
 
-		//---------------------------------------------------------------------
-		// THREADING
-		//---------------------------------------------------------------------
-
-		std::condition_variable cv;
-		std::mutex mtx;
-
-		bool start_threads = false;
-
-		std::jthread equipment_thread
-		{
-			[&jandy_equipment, &cv, &mtx, &start_threads](std::stop_token stoken)
-			{
-				{
-					// Block and wait for the signal to start running the application.
-					std::unique_lock<std::mutex> lock(mtx);
-					cv.wait(lock, [&start_threads] { return start_threads; });
-				}
-
-				LogInfo(Channel::Main, "Starting AqualinkAutomate::Equipment thread...");
-
-				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
-				// jandy_equipment.Run();
-			}
-		};
-
-		std::jthread protocol_handler_thread
-		{
-			[&io_context, &serial_port, &cv, &mtx, &start_threads](std::stop_token stoken)
-			{
-				{
-					// Block and wait for the signal to start running the application.
-					std::unique_lock<std::mutex> lock(mtx);
-					cv.wait(lock, [&start_threads] { return start_threads; });
-				}
-
-				LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler thread...");
-
-				Protocol::ProtocolHandler protocol_handler(io_context, *serial_port);
-				protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
-
-				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
-				protocol_handler.Run();
-			}
-		};
-
-		std::jthread web_server_thread
-		{
-			[&http_server, &cv, &mtx, &start_threads](std::stop_token stoken)
-			{
-				{
-					// Block and wait for the signal to start running the application.
-					std::unique_lock<std::mutex> lock(mtx);
-					cv.wait(lock, [&start_threads] { return start_threads; });
-				}
-
-				LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer thread...");
-
-				// This is a blocking call; note that the clean-up will trigger a "stop" which terminates the call.
-				http_server.run();
-			}
-		};
-
-		CleanUp::Register({ "Main Thread", [&io_context, &protocol_handler_thread]() -> void { /* DO NOTHING */ } });
+		CleanUp::Register({ "Web Server Thread", [&http_server]() -> void { http_server.stop(); } });
 
 		//---------------------------------------------------------------------
 		// SIGNALS
@@ -289,13 +244,6 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
 
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			start_threads = true;
-		}
-
-		cv.notify_all();
-
 		io_context.run();
 
 		//---------------------------------------------------------------------
@@ -308,7 +256,7 @@ int main(int argc, char* argv[])
 		{
 			profiler->StopProfiling();
 		}
-
+		
 		return EXIT_SUCCESS;
 	}
 	catch (const Exceptions::OptionsHelpOrVersion& ex_ohov)
@@ -327,10 +275,13 @@ int main(int argc, char* argv[])
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", ex_gae.what()));
 
-		for (const std::stacktrace_entry& entry : ex_gae.StackTrace())
+		if (const boost::stacktrace::stacktrace* st = boost::get_error_info<Exceptions::Traced>(ex_gae); nullptr != st)
 		{
-			LogDebug(Channel::Main, std::format("{}, {}({})", entry.description(), entry.source_file().empty() ? "Unknown File" : entry.source_file(), entry.source_line()));
-		}
+			for (const boost::stacktrace::frame& frame : *st)
+			{
+				LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+			}
+		}		
 
 		return EXIT_FAILURE;
 	}

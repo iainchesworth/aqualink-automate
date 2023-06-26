@@ -16,6 +16,13 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
+	const uint8_t JandyMessage::Index_DestinationId{ 2 };
+	const uint8_t JandyMessage::Index_MessageType{ 3 };
+	const uint8_t JandyMessage::Index_DataStart{ 4 };
+	const uint8_t JandyMessage::PACKET_HEADER_LENGTH{ 4 };
+	const uint8_t JandyMessage::PACKET_FOOTER_LENGTH{ 3 };
+	const uint8_t JandyMessage::MAXIMUM_PACKET_LENGTH{ 128 };
+	const uint8_t JandyMessage::MINIMUM_PACKET_LENGTH{ JandyMessage::PACKET_HEADER_LENGTH + JandyMessage::PACKET_FOOTER_LENGTH };
 
 	JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 		Interfaces::IMessage<JandyMessageIds>(msg_id),
@@ -67,7 +74,7 @@ namespace AqualinkAutomate::Messages
 			"Destination: {} ({}), Message Type: {} (0x{:02x})",
 			magic_enum::enum_name(Destination().Class()), 
 			Destination().Id(), 
-			magic_enum::enum_name(Id()),
+			magic_enum::enum_name(IMessage::Id()),
 			magic_enum::enum_integer(IMessage::Id())
 		);
 	}

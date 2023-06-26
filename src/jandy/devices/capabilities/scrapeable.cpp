@@ -5,7 +5,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Scrapeable::ScrapingStart(ScrapeId scrape_graph_id, const uint32_t starting_index)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingStart", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingStart", BOOST_CURRENT_LOCATION);
 
 		if (auto graph_map_it = m_ScraperGraphs.find(scrape_graph_id); m_ScraperGraphs.end() == graph_map_it)
 		{
@@ -18,24 +18,24 @@ namespace AqualinkAutomate::Devices::Capabilities
 		}
 	}
 
-	std::expected<std::any, Scrapeable::ScrapingErrors> Scrapeable::ScrapingNext()
+	tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingNext", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingNext", BOOST_CURRENT_LOCATION);
 
 		if (!m_Stack_WaitingForPage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for screen page");
-			return std::unexpected(ScrapingErrors::WaitingForPage);
+			return ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage;
 		}
 		if (!m_Stack_WaitingForMessage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for message");
-			return std::unexpected(ScrapingErrors::WaitingForMessage);
+			return ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage;
 		}
 		else if (!m_ActiveScrape.has_value())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is not active; cannot step forward");
-			return std::unexpected(ScrapingErrors::NoGraphBeingScraped);
+			return ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped;
 		}
 		else
 		{
@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 				{
 					LogTrace(Channel::Devices, "Scrape -> is complete");
 					m_ActiveScrape = std::nullopt;
-					return std::unexpected(ScrapingErrors::NoStepPossible);
+					return ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible;
 				}
 				else
 				{
@@ -64,7 +64,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			catch (const std::bad_optional_access& eBOA)
 			{
 				LogTrace(Channel::Devices, std::format("Scrape -> was active but could not access graph (exception was -> {})", eBOA.what()));
-				return std::unexpected(ScrapingErrors::NoGraphBeingScraped);
+				return ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped;
 			}
 		}
 	}

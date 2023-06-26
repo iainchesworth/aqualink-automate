@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Generators
 	
 	void PacketProcessing_GetPacketLocations(std::vector<uint8_t>& serial_data, std::vector<uint8_t>::iterator& p1s, std::vector<uint8_t>::iterator& p1e, std::vector<uint8_t>::iterator& p2s)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", BOOST_CURRENT_LOCATION);
 
 		p1e = serial_data.end();
 		p2s = serial_data.end();
@@ -30,7 +30,7 @@ namespace AqualinkAutomate::Generators
 
 	void PacketProcessing_OutputSerialDataToConsole(const std::vector<uint8_t>& serial_data, const std::vector<uint8_t>::iterator& p1s, const std::vector<uint8_t>::iterator& p1e, const std::vector<uint8_t>::iterator& p2s)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", BOOST_CURRENT_LOCATION);
 
 		std::string output_message;
 		std::size_t elem_position = 0;

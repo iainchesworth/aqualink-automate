@@ -1,10 +1,11 @@
 ﻿cmake_minimum_required (VERSION 3.20 FATAL_ERROR)
 
 set(Boost_NO_WARN_NEW_VERSIONS 1)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
 
 project(
 	aqualink-automate 
@@ -19,13 +20,24 @@ option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+add_subdirectory(deps)
+
+find_package(asio REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
-find_package(Crow REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
 
 #------------------------------------------------------------------------------
@@ -110,6 +122,7 @@ add_library(
 	src/certificates/certificate_staticdata.cpp 
 	src/certificates/certificate_management.cpp 
 	src/certificates/certificate_verification.cpp 
+	src/concepts/is_c_array.cpp
 	src/developer/mock_serial_port.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
@@ -177,6 +190,7 @@ add_library(
 	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
+	src/jandy/errors/jandy_errors_scrapeable.cpp 
 	src/jandy/errors/string_conversion_errors.cpp
 	src/jandy/factories/jandy_auxillary_factory.cpp 
 	src/jandy/factories/jandy_message_factory.cpp
@@ -354,32 +368,42 @@ target_compile_definitions(
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
 
-target_include_directories(libaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/src" "${CMAKE_CURRENT_BINARY_DIR}/src")
+target_include_directories(
+	libaqualink-automate 
+	PUBLIC 
+	"${PROJECT_SOURCE_DIR}/src" 
+	"${CMAKE_CURRENT_BINARY_DIR}/src"
+)
 
 target_include_directories(
 	libaqualink-automate 
 	SYSTEM 
 	PUBLIC 
+	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
 	${Crow_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
+	${tl_expected_INCLUDE_DIRS}
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
 )
 
+add_dependencies(libaqualink-automate Crow)
+
 target_link_libraries(
 	libaqualink-automate 
 	PUBLIC
+	asio::asio
 	Boost::boost 
 	Boost::coroutine 
 	Boost::iostreams 
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
-	Crow::Crow
+	Crow
 	magic_enum::magic_enum
 	mqtt_cpp_iface::mqtt_cpp_iface 
 	nlohmann_json::nlohmann_json

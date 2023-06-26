@@ -2,15 +2,16 @@
 
 #include <any>
 #include <cstdint>
-#include <expected>
 #include <format>
 #include <stack>
 #include <tuple>
 #include <unordered_map>
 
 #include <magic_enum.hpp>
+#include <tl/expected.hpp>
 
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/errors/jandy_errors_scrapeable.h"
 #include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/utility/screen_data_page_graph.h"
@@ -28,15 +29,6 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	class Scrapeable
 	{
-	public:
-		enum class ScrapingErrors
-		{
-			WaitingForPage,
-			WaitingForMessage,
-			NoStepPossible,
-			NoGraphBeingScraped
-		};
-
 	public:
 		using ScrapeId = uint32_t;
 		using ScraperGraph = Utility::ScreenDataPageGraph;
@@ -58,7 +50,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		{
 			auto slot_waitingformessage = [&](const auto& msg) -> void
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", BOOST_CURRENT_LOCATION);
 
 				if (m_ParentDeviceId != msg.Destination().Id())
 				{
@@ -99,7 +91,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		void ScrapingStart(ScrapeId scrape_graph_id, const uint32_t starting_index = 1);
 
 	public:
-		std::expected<std::any, ScrapingErrors> ScrapingNext();
+		tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> ScrapingNext();
 
 	private:
 		GraphDataMap m_ScraperGraphs;

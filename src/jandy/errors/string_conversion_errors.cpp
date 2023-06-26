@@ -2,6 +2,10 @@
 
 namespace AqualinkAutomate::ErrorCodes
 {
+	const StringConversion_ErrorCategory& StringConversion_ErrorCategory::Instance() {
+		static StringConversion_ErrorCategory category;
+		return category;
+	}
 
 	const char* StringConversion_ErrorCategory::name() const noexcept
 	{
@@ -26,8 +30,12 @@ namespace AqualinkAutomate::ErrorCodes
 }
 // namespace AqualinkAutomate::ErrorCodes
 
-boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
+boost::system::error_code make_error_code(const AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
 {
-	static AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory category;
-	return boost::system::error_code(static_cast<int>(e), category);
+	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::Instance());
+}
+
+boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
+{
+	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::Instance());
 }

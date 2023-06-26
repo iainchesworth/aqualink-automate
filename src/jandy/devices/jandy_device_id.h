@@ -32,11 +32,11 @@ namespace std
 {
 
 	template<>
-	struct std::hash<AqualinkAutomate::Devices::JandyDeviceId>
+	struct hash<AqualinkAutomate::Devices::JandyDeviceId>
 	{
-		std::size_t operator()(AqualinkAutomate::Devices::JandyDeviceId const& device_id) const noexcept
+		size_t operator()(AqualinkAutomate::Devices::JandyDeviceId const& device_id) const noexcept
 		{
-			return std::hash<uint8_t>{}(device_id());
+			return hash<uint8_t>{}(device_id());
 		}
 	};
 

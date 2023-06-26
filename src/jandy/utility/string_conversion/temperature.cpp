@@ -79,31 +79,31 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	std::expected<int8_t, boost::system::error_code> Temperature::operator()() const noexcept
+	tl::expected<int8_t, boost::system::error_code> Temperature::operator()() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_Temperature;
 	}
 
-	std::expected<Temperature::Units, boost::system::error_code> Temperature::TemperatureUnits() const noexcept
+	tl::expected<Temperature::Units, boost::system::error_code> Temperature::TemperatureUnits() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_TemperatureUnits;
 	}
 
-	std::expected<std::string, boost::system::error_code> Temperature::TemperatureArea() const noexcept
+	tl::expected<std::string, boost::system::error_code> Temperature::TemperatureArea() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_TemperatureArea;

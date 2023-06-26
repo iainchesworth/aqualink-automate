@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <boost/asio/buffer.hpp>
+#include <asio/buffer.hpp>
 
 namespace AqualinkAutomate::Interfaces
 {
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Interfaces
 
 	public:
 		std::string Path() const;
-		boost::asio::const_buffer Data() const;
+		asio::const_buffer Data() const;
 
 	protected:
 		std::string m_Path;

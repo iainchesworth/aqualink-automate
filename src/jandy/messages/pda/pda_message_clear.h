@@ -19,7 +19,7 @@ namespace AqualinkAutomate::Messages
 		virtual ~PDAMessage_Clear();
 
 	public:
-		virtual std::string ToString() const;
+		virtual std::string ToString() const override;
 
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;

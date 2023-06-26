@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Generators
 
 	bool PacketValidation_ChecksumIsValid(const std::span<const std::byte>& message_span)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Validation -> Validate Checksum", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Validation -> Validate Checksum", BOOST_CURRENT_LOCATION);
 
 		const auto length_minus_checksum_and_footer = message_span.size() - 3;
 		const uint8_t original_checksum = static_cast<uint8_t>(message_span[length_minus_checksum_and_footer]);

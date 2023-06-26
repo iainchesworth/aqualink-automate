@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Profiling
 {
 
-	Domain::Domain(const std::string& name, const std::source_location& src_loc, UnitColours colour) :
+	Domain::Domain(const std::string& name, const boost::source_location& src_loc, UnitColours colour) :
 		Interfaces::IProfilingUnit(name)
 	{
 	}

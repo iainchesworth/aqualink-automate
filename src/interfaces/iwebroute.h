@@ -7,10 +7,13 @@
 #include <crow/mustache.h>
 #include <crow/routing.h>
 
+#include "concepts/is_c_array.h"
+
 namespace AqualinkAutomate::Interfaces
 {
 
-	template<const char* ROUTE_URL>
+	template<const auto& ROUTE_URL>
+	requires (Concepts::CArrayRef<decltype(ROUTE_URL)>)
 	class IWebRoute
 	{
 	public:
@@ -21,7 +24,8 @@ namespace AqualinkAutomate::Interfaces
 	public:
 		explicit IWebRoute(crow::SimpleApp& app)
 		{
-			app.route_dynamic(ROUTE_URL)
+			// CROW_ROUTE(app, ROUTE_URL)
+			app.template route<crow::black_magic::get_parameter_tag(ROUTE_URL)>(ROUTE_URL)
 			   .methods(crow::HTTPMethod::Get)
 				(
 					[this](const Request& req, Response& resp) -> void

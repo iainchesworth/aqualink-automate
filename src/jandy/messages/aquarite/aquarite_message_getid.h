@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Messages
 		PanelDataTypes RequestedPanelData() const;
 
 	public:
-		virtual std::string ToString() const;
+		virtual std::string ToString() const override;
 
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;

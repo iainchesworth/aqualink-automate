@@ -10,6 +10,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
+	const uint8_t JandyMessage_Status::STATUS_PAYLOAD_LENGTH{ 5 };
 
 	const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
 
@@ -103,6 +104,15 @@ namespace AqualinkAutomate::Messages
 	bool JandyMessage_Status::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
 		LogTrace(Channel::Messages, std::format("Serialising JandyMessage_Status type into {} bytes", message_bytes.size()));
+
+		// Insert 5 NUL bytes to ensure that the payload is the correct length.
+		// Note that there is no actual computation of the correct content here.
+
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
 
 		return true;
 	}
