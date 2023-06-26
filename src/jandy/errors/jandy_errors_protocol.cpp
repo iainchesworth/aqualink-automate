@@ -2,7 +2,11 @@
 
 namespace AqualinkAutomate::ErrorCodes
 {
-	
+	const Protocol_ErrorCategory& Protocol_ErrorCategory::Instance() {
+		static Protocol_ErrorCategory category;
+		return category;
+	}
+
 	const char* Protocol_ErrorCategory::name() const noexcept
 	{
 		return "AqualinkAutomate::Protocol Error Category";
@@ -34,6 +38,10 @@ namespace AqualinkAutomate::ErrorCodes
 
 boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes e)
 {
-	static AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory category;
-	return boost::system::error_code(static_cast<int>(e), category);
+	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::Instance());
+}
+
+boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes e)
+{
+	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::Instance());
 }

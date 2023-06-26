@@ -3,6 +3,7 @@
 #include <string>
 
 #include <boost/system/error_code.hpp>
+#include <magic_enum.hpp>
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -36,3 +37,11 @@ namespace boost::system
 
 boost::system::error_code make_error_code(const AqualinkAutomate::ErrorCodes::Scrapeable_ErrorCodes e);
 boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Scrapeable_ErrorCodes e);
+
+template <>
+struct magic_enum::customize::enum_range<AqualinkAutomate::ErrorCodes::Scrapeable_ErrorCodes>
+{
+	static constexpr int min = 4000;
+	static constexpr int max = 4999;
+	// (max - min) must be less than UINT16_MAX.
+};

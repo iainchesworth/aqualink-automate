@@ -74,7 +74,7 @@ namespace AqualinkAutomate::Messages
 			"Destination: {} ({}), Message Type: {} (0x{:02x})",
 			magic_enum::enum_name(Destination().Class()), 
 			Destination().Id(), 
-			magic_enum::enum_name(Id()),
+			magic_enum::enum_name(IMessage::Id()),
 			magic_enum::enum_integer(IMessage::Id())
 		);
 	}

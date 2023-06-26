@@ -105,6 +105,15 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Serialising JandyMessage_Status type into {} bytes", message_bytes.size()));
 
+		// Insert 5 NUL bytes to ensure that the payload is the correct length.
+		// Note that there is no actual computation of the correct content here.
+
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+		message_bytes.push_back(0x00);
+
 		return true;
 	}
 
