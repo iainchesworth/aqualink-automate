@@ -1,4 +1,5 @@
 set(CPACK_OUTPUT_CONFIG_FILE "${PROJECT_BINARY_DIR}/CPackConfig-${PROJECT_NAME}.cmake")
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/packages")
 set(CPACK_STRIP_FILES ON)
 set(CPACK_THREADS 0)
 
@@ -20,6 +21,8 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
         COMPONENT Runtime
     )
 
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION bin COMPONENT WebAssets)
+
     # Windows installer
     set(CPACK_GENERATOR "ZIP" CACHE STRING "Package targets")
 
@@ -28,6 +31,7 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
     include(GNUInstallDirs)
 
     install(TARGETS aqualink-automate)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
 
     # System installation packages for unix systems
     set(CPACK_GENERATOR "TGZ;DEB;RPM" CACHE STRING "Package targets")
@@ -35,6 +39,7 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
  else()
 
     install(TARGETS aqualink-automate)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
 
     # Default (portable package for any platform)
     set(CPACK_GENERATOR "ZIP;TGZ" CACHE STRING "Package targets")
@@ -49,7 +54,7 @@ endif()
 #------------------------------------------------------------------------------
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_CONTACT "")
+set(CPACK_PACKAGE_CONTACT "Iain Chesworth")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${CMAKE_PROJECT_DESCRIPTION})
 set(CPACK_PACKAGE_VENDOR "")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")

@@ -20,7 +20,6 @@ option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
-
 #------------------------------------------------------------------------------
 #
 #
@@ -118,6 +117,7 @@ set_source_files_properties(${VERSION_CMAKE_DEST_FILE} PROPERTIES GENERATED 1)
 
 add_library(
 	libaqualink-automate
+	src/application/application_defaults.cpp 
 	src/certificates/certificate_pemformat.cpp 
 	src/certificates/certificate_staticdata.cpp 
 	src/certificates/certificate_management.cpp 
@@ -330,6 +330,7 @@ if(WIN32)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
+	src/platform/application/application_defaults_win32.cpp
 	src/platform/utility/get_terminal_column_width_win32.cpp
 )
 
@@ -354,6 +355,7 @@ if(LINUX)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
+	src/platform/application/application_defaults_linux.cpp
 	src/platform/utility/get_terminal_column_width_linux.cpp
 )
 endif(LINUX)
@@ -467,7 +469,13 @@ endif(ENABLE_SANITIZERS)
 #
 #------------------------------------------------------------------------------
 
-add_subdirectory(web)
+add_custom_command(
+	TARGET aqualink-automate 
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/web/assets/static" "${CMAKE_BINARY_DIR}/static"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/web/assets/templates" "${CMAKE_BINARY_DIR}/templates"
+)
 
 #------------------------------------------------------------------------------
 #

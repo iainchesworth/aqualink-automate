@@ -20,7 +20,7 @@ sudo apt update
 # Install any/all packages required to build under Linux
 #
 
-sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev ninja-build pkg-config wget unzip zip
+sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev ninja-build pkg-config rpm wget unzip zip
 sudo apt install -y cmake 
 sudo apt install -y clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 clang-format-16 python3-clang-16 clangd-16 clang-tidy-16 lld-16 libc++-16-dev libc++abi-16-dev clang-tidy-16
 sudo apt install -y gcc-13 g++-13
