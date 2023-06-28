@@ -8,12 +8,12 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Page_JandyEquipment::WebRoute_Page_JandyEquipment(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment) :
-		Interfaces::IWebRoute<PAGE_EQUIPMENT_ROUTE_URL>(app),
+		Interfaces::IWebRoute<PAGE_EQUIPMENT_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Page_JandyEquipment::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
 		m_JandyEquipment(jandy_equipment)
 	{
 	}
 
-	void WebRoute_Page_JandyEquipment::WebRequestHandler(const Request& req, Response& resp)
+	void WebRoute_Page_JandyEquipment::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
 	{
 		crow::mustache::context ctx;
 

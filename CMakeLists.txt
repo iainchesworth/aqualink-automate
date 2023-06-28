@@ -139,6 +139,7 @@ add_library(
 	src/http/webroute_page_index.cpp 
 	src/http/webroute_page_jandyequipment.cpp 
 	src/http/webroute_page_version.cpp 
+	src/http/webroute_types.cpp 
 	src/http/webroute_version.cpp 
 	src/http/json/json_jandy_config.cpp 
 	src/http/json/json_jandy_equipment.cpp 
@@ -198,6 +199,7 @@ add_library(
 	src/jandy/formatters/jandy_device_formatters.cpp 
 	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
+	src/jandy/formatters/temperature_formatter.cpp 
 	src/jandy/generator/jandy_message_generator.cpp
 	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
 	src/jandy/generator/jandy_message_generator_buffervalidation.cpp
@@ -473,8 +475,8 @@ add_custom_command(
 	TARGET aqualink-automate 
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/web/assets/static" "${CMAKE_BINARY_DIR}/static"
-	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/web/assets/templates" "${CMAKE_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/static" "${CMAKE_BINARY_DIR}/static"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/templates" "${CMAKE_BINARY_DIR}/templates"
 )
 
 #------------------------------------------------------------------------------

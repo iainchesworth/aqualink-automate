@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			HTTP::WebRoute_Page_Index page_index(http_server);
+			HTTP::WebRoute_Page_Index page_index(http_server, jandy_equipment);
 			HTTP::WebRoute_Page_JandyEquipment page_je(http_server, jandy_equipment);
 			HTTP::WebRoute_Page_Version page_version(http_server);
 		}

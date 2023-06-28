@@ -7,11 +7,11 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Version::WebRoute_Version(crow::SimpleApp& app) :
-		Interfaces::IWebRoute<VERSION_ROUTE_URL>(app)
+		Interfaces::IWebRoute<VERSION_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
 	{
 	}
 
-	void WebRoute_Version::WebRequestHandler(const Request& req, Response& resp)
+	void WebRoute_Version::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
 	{	
 		nlohmann::json version_info;
 

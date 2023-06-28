@@ -2,6 +2,7 @@
 
 #include <crow/app.h>
 
+#include "http/webroute_types.h"
 #include "interfaces/iwebroute.h"
 
 namespace AqualinkAutomate::HTTP
@@ -14,7 +15,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Version(crow::SimpleApp& app);
 
 	public:
-		void WebRequestHandler(const Request& req, Response& resp);
+		void WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp);
 	};
 
 }

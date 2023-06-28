@@ -8,14 +8,13 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Page_Version::WebRoute_Page_Version(crow::SimpleApp& app) :
-		Interfaces::IWebRoute<PAGE_VERSION_ROUTE_URL>(app)
+		Interfaces::IWebRoute<PAGE_VERSION_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Page_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
 	{
 	}
 
-	void WebRoute_Page_Version::WebRequestHandler(const Request& req, Response& resp)
+	void WebRoute_Page_Version::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
 	{
 		crow::mustache::context ctx;
-		//crow::mustache::set_base(m_DocRoot);
 
 		auto page = crow::mustache::load("version.html.mustache");
 

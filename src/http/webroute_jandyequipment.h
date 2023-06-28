@@ -2,6 +2,7 @@
 
 #include <crow/app.h>
 
+#include "http/webroute_types.h"
 #include "interfaces/iwebroute.h"
 #include "jandy/equipment/jandy_equipment.h"
 
@@ -15,7 +16,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_JandyEquipment(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment);
 
 	public:
-		void WebRequestHandler(const Request& req, Response& resp);
+		void WebGetRequestHandler(const HTTP::Request& req, HTTP::Response& resp);
 
 	private:
 		const Equipment::JandyEquipment& m_JandyEquipment;

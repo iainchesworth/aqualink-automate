@@ -36,19 +36,19 @@
 
         <!-- First row - 4 panels -->
         <div class="row d-flex justify-content-around">
-            <button class="col-lg-2 col-md-5 spaHeatBtn btn btn-outline-secondary" onclick="toggleSpaHeat()" style="padding: 20px 0;">
+            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="spaHeatBtn" onclick="toggleSpaHeat()" style="padding: 20px 0;">
                 <h2>Spa Heat</h2>
                 <p id="spaHeatStatus">Off</p>
             </button>
-            <button class="col-lg-2 col-md-5 poolHeatBtn btn btn-outline-secondary" onclick="togglePoolHeat()" style="padding: 20px 0;">
+            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="poolHeatBtn" onclick="togglePoolHeat()" style="padding: 20px 0;">
                 <h2>Pool Heat</h2>
                 <p id="poolHeatStatus">Off</p>
             </button>
-            <button class="col-lg-2 col-md-5 userBtn btn btn-outline-secondary" onclick="toggleUser()" style="padding: 20px 0;">
+            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="userBtn" onclick="toggleUser()" style="padding: 20px 0;">
                 <h2>User</h2>
                 <p id="userStatus">Off</p>
             </button>
-            <button class="col-lg-2 col-md-5 cleanBtn btn btn-outline-secondary" onclick="toggleClean()" style="padding: 20px 0;">
+            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="cleanBtn" onclick="toggleClean()" style="padding: 20px 0;">
                 <h2>Clean</h2>
                 <p id="cleanStatus">Off</p>
             </button>
@@ -153,7 +153,7 @@
     </footer>
 
     <script>
-        function fetchState() {
+        function fetchTriggerableButtonState() {
             fetch('/api/equipment')
                 .then(response => response.json())
                 .then(data => {
@@ -166,49 +166,53 @@
                 });
         }
 
-        function updateState(equipment, status) {
-            fetch('/api/equipment', {
+        function updateTriggerableButtonState(equipment, status) {
+            const updatedStatusPromise = fetch('/api/equipment/buttons/' + equipment, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ equipment, status })
             });
+
+            updatedStatusPromise
+                .then(response => response.json())
+                .then(data => { });
         }
 
         function toggleSpaHeat() {
-            var spaHeatBtn = document.getElementById('spaHeatBtn');
-            var spaHeatStatus = ['Off', 'Enabled', 'On'].indexOf(spaHeatBtn.innerText);
+            var spaHeatBtnLabel = document.getElementById('spaHeatStatus');
+            var spaHeatStatus = ['Off', 'Enabled', 'On'].indexOf(spaHeatBtnLabel.innerText);
             var nextStatus = (spaHeatStatus + 1) % 3;
-            spaHeatBtn.innerText = ['Off', 'Enabled', 'On'][nextStatus];
-            updateState('spaHeat', nextStatus);
+            spaHeatBtnLabel.innerText = ['Off', 'Enabled', 'On'][nextStatus];
+            updateTriggerableButtonState('spaHeat', nextStatus);
         }
 
         function togglePoolHeat() {
-            var poolHeatBtn = document.getElementById('poolHeatBtn');
-            var poolHeatStatus = ['Off', 'Enabled', 'On'].indexOf(poolHeatBtn.innerText);
+            var poolHeatBtnLabel = document.getElementById('poolHeatStatus');
+            var poolHeatStatus = ['Off', 'Enabled', 'On'].indexOf(poolHeatBtnLabel.innerText);
             var nextStatus = (poolHeatStatus + 1) % 3;
-            poolHeatBtn.innerText = ['Off', 'Enabled', 'On'][nextStatus];
-            updateState('poolHeat', nextStatus);
+            poolHeaBtnLabel.innerText = ['Off', 'Enabled', 'On'][nextStatus];
+            updateTriggerableButtonState('poolHeat', nextStatus);
         }
 
         function toggleUser() {
-            var userBtn = document.getElementById('userBtn');
-            var userStatus = ['Off', 'On'].indexOf(userBtn.innerText);
+            var userBtnLabel = document.getElementById('userStatus');
+            var userStatus = ['Off', 'On'].indexOf(userBtnLabel.innerText);
             var nextStatus = (userStatus + 1) % 2;
-            userBtn.innerText = ['Off', 'On'][nextStatus];
-            updateState('user', nextStatus);
+            userBtnLabel.innerText = ['Off', 'On'][nextStatus];
+            updateTriggerableButtonState('user', nextStatus);
         }
 
         function toggleClean() {
-            var cleanBtn = document.getElementById('cleanBtn');
-            var cleanStatus = ['Off', 'On'].indexOf(cleanBtn.innerText);
+            var cleanBtnLabel = document.getElementById('cleanStatus');
+            var cleanStatus = ['Off', 'On'].indexOf(cleanBtnLabel.innerText);
             var nextStatus = (cleanStatus + 1) % 2;
-            cleanBtn.innerText = ['Off', 'On'][nextStatus];
-            updateState('clean', nextStatus);
+            cleanBtnLabel.innerText = ['Off', 'On'][nextStatus];
+            updateTriggerableButtonState('clean', nextStatus);
         }
 
-        window.onload = fetchState;
+        window.onload = fetchTriggerableButtonState;
     </script>
 </body>
 </html>

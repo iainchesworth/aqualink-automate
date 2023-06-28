@@ -3,22 +3,29 @@
 #include "http/webroute_page_index.h"
 #include "http/support/support_generate_page_footer.h"
 #include "http/support/support_generate_page_header.h"
+#include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Index::WebRoute_Page_Index(crow::SimpleApp& app) :
-		Interfaces::IWebRoute<PAGE_INDEX_ROUTE_URL>(app)
+	WebRoute_Page_Index::WebRoute_Page_Index(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment) :
+		Interfaces::IWebRoute<PAGE_INDEX_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Page_Index::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
+		m_JandyEquipment(jandy_equipment)
 	{
 	}
 
-	void WebRoute_Page_Index::WebRequestHandler(const Request& req, Response& resp)
+	void WebRoute_Page_Index::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
 	{
 		crow::mustache::context ctx;
 
 		auto page = crow::mustache::load("index.html.mustache");
 
 		Support::GeneratePageHeader_Context(ctx);
+
+		ctx["pool_temperature"] = std::format("{}", m_JandyEquipment.Config().PoolTemp);
+		ctx["spa_temperature"] = std::format("{}", m_JandyEquipment.Config().SpaTemp);
+		ctx["air_temperature"] = std::format("{}", m_JandyEquipment.Config().AirTemp);
+
 		Support::GeneratePageFooter_Context(ctx);
 
 		resp.set_header("Content-Type", "text/html");

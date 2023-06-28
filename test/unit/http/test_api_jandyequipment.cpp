@@ -21,8 +21,8 @@ BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
 	http_server.validate();
 
 	{
-		HTTP::WebRoute_JandyEquipment::Request req;
-		HTTP::WebRoute_JandyEquipment::Response res;
+		HTTP::Request req;
+		HTTP::Response res;
 
 		req.url = "/api/equipment";
 
@@ -102,8 +102,8 @@ BOOST_AUTO_TEST_CASE(InitialisedJandyConfig)
 	};
 
 	{
-		HTTP::WebRoute_JandyEquipment::Request req;
-		HTTP::WebRoute_JandyEquipment::Response res;
+		HTTP::Request req;
+		HTTP::Response res;
 
 		req.url = "/api/equipment";
 
