@@ -15,6 +15,7 @@
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_rawdata_generator.h"
 #include "jandy/messages/jandy_message.h"
+#include "jandy/utility/signalling_stats_counter.h"
 #include "protocol/protocol_handler.h"
 
 namespace AqualinkAutomate::Equipment
@@ -38,7 +39,7 @@ namespace AqualinkAutomate::Equipment
 
 	public:
 		using ConfigType = Config::JandyConfig;
-		using StatsType = std::unordered_map<Messages::JandyMessageIds, uint32_t>;
+		using StatsType = Utility::SignallingStatsCounter<Messages::JandyMessageIds>;
 
 		const ConfigType& Config() const;
 		const StatsType& MessageStats() const;

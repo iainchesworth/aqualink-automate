@@ -199,6 +199,7 @@ add_library(
 	src/jandy/formatters/jandy_device_formatters.cpp 
 	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
+	src/jandy/formatters/stats_counter_formatter.cpp
 	src/jandy/formatters/temperature_formatter.cpp 
 	src/jandy/generator/jandy_message_generator.cpp
 	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
@@ -255,6 +256,7 @@ add_library(
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
+	src/jandy/utility/signalling_stats_counter.cpp 
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
 	src/jandy/utility/string_conversion/auxillary_state.cpp 

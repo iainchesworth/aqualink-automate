@@ -59,12 +59,19 @@ namespace AqualinkAutomate::HTTP::JSON
 
 		nlohmann::json je_stats;
 
-		for (auto [id, count] : message_stats)
+		for (auto [msg_id, msg_count] : message_stats)
 		{
-			nlohmann::json stat;
-			stat["id"] = magic_enum::enum_name(id);
-			stat["count"] = count;
-			je_stats.push_back(stat);
+			try
+			{
+				nlohmann::json stat;
+				stat["id"] = magic_enum::enum_name(std::get<Messages::JandyMessageIds>(msg_id));
+				stat["count"] = msg_count.Count();
+				je_stats.push_back(stat);
+			}
+			catch (std::bad_variant_access const& ex)
+			{
+				///FIXME
+			}
 		}
 
 		return je_stats;

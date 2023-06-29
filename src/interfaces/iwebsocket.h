@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 #include <string>
 
 #include <crow/app.h>
@@ -19,24 +20,29 @@ namespace AqualinkAutomate::Interfaces
 		using Connection = crow::websocket::connection;
 
 	public:
-		explicit IWebSocket(crow::SimpleApp& app)
+		explicit IWebSocket(crow::SimpleApp& app) :
+			m_OnActionMutex()
 		{
 			//CROW_WEBSOCKET_ROUTE(app, ROUTE_URL)
 			app.route<crow::black_magic::get_parameter_tag(ROUTE_URL)>(ROUTE_URL).template websocket<std::remove_reference<decltype(app)>::type>(&app)
 				.onopen([&](crow::websocket::connection& conn) 
 					{ 
+						const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
 						OnOpen(conn); 
 					})
 				.onmessage([&](crow::websocket::connection& conn, const std::string& data, bool is_binary)
 					{
+						const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
 						OnMessage(conn, data, is_binary);
 					})
 				.onclose([&](crow::websocket::connection& conn, const std::string& reason) 
-					{ 
+					{
+						const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
 						OnClose(conn, reason); 
 					})
 				.onerror([&](crow::websocket::connection& conn, const std::string& reason)
 					{
+						const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
 						OnError(conn);
 					});
 		}
@@ -46,6 +52,9 @@ namespace AqualinkAutomate::Interfaces
 		virtual void OnMessage(Connection& conn, const std::string& data, bool is_binary) = 0;
 		virtual void OnClose(Connection& conn, const std::string& reason) = 0;
 		virtual void OnError(Connection& conn) = 0;
+
+	private:
+		std::mutex m_OnActionMutex;
 	};
 }
 // namespace AqualinkAutomate::Interfaces

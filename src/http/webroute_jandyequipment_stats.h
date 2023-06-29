@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <boost/signals2.hpp>
 #include <crow/app.h>
 
 #include "interfaces/iwebsocket.h"
@@ -24,6 +25,7 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		const Equipment::JandyEquipment& m_JandyEquipment;
+		boost::signals2::connection m_StatsSlot;
 	};
 
 

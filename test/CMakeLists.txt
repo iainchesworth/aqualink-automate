@@ -37,6 +37,7 @@ add_executable(
 	unit/protocol/test_protocol_handler.cpp 
 	unit/utility/test_utility_auxillarystate.cpp 
 	unit/utility/test_utility_jandychecksum.cpp 
+	unit/utility/test_utility_signallingstatscounter.cpp 
 	unit/utility/test_utility_temperature.cpp 
 	unit/support/unit_test_onetouchdevice.cpp 
 	unit/support/unit_test_ostream_support.cpp 

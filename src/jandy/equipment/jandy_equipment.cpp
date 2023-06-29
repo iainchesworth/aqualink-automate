@@ -14,6 +14,7 @@
 #include "jandy/devices/pda_device.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "jandy/formatters/jandy_device_formatters.h"
+#include "jandy/formatters/stats_counter_formatter.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
@@ -93,11 +94,15 @@ namespace AqualinkAutomate::Equipment
 			}
 		);
 
-		LogInfo(Channel::Equipment, std::format("Stats: {} total messages received", std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_MessageStats)::value_type& elem)
-			{
-				return previous + elem.second;
-			})
-		));
+		LogInfo(
+			Channel::Equipment, 
+			std::format("Stats: {} total messages received", 
+				std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const StatsType::value_type& elem)
+				{
+					return previous + elem.second.Count();
+				})
+			)
+		);
 	}
 
 	auto JandyEquipment::IsDeviceRegistered(const Devices::JandyDeviceType& device_id)
