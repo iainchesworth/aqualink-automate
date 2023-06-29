@@ -19,12 +19,13 @@
 #include "http/webroute_jandyequipment.h"
 #include "http/webroute_jandyequipment_buttons.h"
 #include "http/webroute_jandyequipment_devices.h"
-#include "http/webroute_jandyequipment_stats.h"
 #include "http/webroute_jandyequipment_version.h"
 #include "http/webroute_page_index.h"
 #include "http/webroute_page_jandyequipment.h"
 #include "http/webroute_page_version.h"
 #include "http/webroute_version.h"
+#include "http/websocket_jandyequipment.h"
+#include "http/websocket_jandyequipment_stats.h"
 #include "jandy/config/jandy_config.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/keypad_device.h"
@@ -219,12 +220,31 @@ int main(int argc, char* argv[])
 			HTTP::WebRoute_Page_Version page_version(http_server);
 		}
 
+		// Routes are configured as follows
+		//
+		//     /api
+		//     /api/equipment
+		//     /api/equipment/buttons
+		//     /api/equipment/devices
+		//     /api/equipment/stats		<-- NOT IMPLEMENTED YET (but returned as part of "equipment" payload)
+		//     /api/equipment/version
+		//     
+		//     /ws
+		//     /ws/equipment
+		//     /ws/equipment/stats
+		//
+
 		HTTP::WebRoute_JandyEquipment route_je(http_server, jandy_equipment);
 		HTTP::WebRoute_JandyEquipment_Buttons route_je_buttons(http_server, jandy_equipment);
 		HTTP::WebRoute_JandyEquipment_Devices route_je_devices(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Stats route_je_stats(http_server, jandy_equipment);
 		HTTP::WebRoute_JandyEquipment_Version route_je_version(http_server, jandy_equipment);
 		HTTP::WebRoute_Version route_version(http_server);
+
+		HTTP::WebSocket_JandyEquipment websocket_je(http_server, jandy_equipment);
+		HTTP::WebSocket_JandyEquipment_Stats websocket_je_stats(http_server, jandy_equipment);
+
+		// Check that the routes are configured correctly.
+		http_server.validate();
 
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
 		auto http_server_instance = http_server.run_async();

@@ -134,13 +134,14 @@ add_library(
 	src/http/webroute_jandyequipment.cpp 
 	src/http/webroute_jandyequipment_buttons.cpp 
 	src/http/webroute_jandyequipment_devices.cpp 
-	src/http/webroute_jandyequipment_stats.cpp 
 	src/http/webroute_jandyequipment_version.cpp 
 	src/http/webroute_page_index.cpp 
 	src/http/webroute_page_jandyequipment.cpp 
 	src/http/webroute_page_version.cpp 
 	src/http/webroute_types.cpp 
 	src/http/webroute_version.cpp 
+	src/http/websocket_jandyequipment.cpp 
+	src/http/websocket_jandyequipment_stats.cpp 
 	src/http/json/json_jandy_config.cpp 
 	src/http/json/json_jandy_equipment.cpp 
 	src/http/support/support_generate_page_footer.cpp 
@@ -371,6 +372,7 @@ target_compile_definitions(
 	PUBLIC 
 	CROW_ENABLE_COMPRESSION 
 	CROW_ENABLE_SSL 
+	CROW_ENFORCE_WS_SPEC 
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
 

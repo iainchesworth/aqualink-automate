@@ -47,7 +47,7 @@ namespace AqualinkAutomate::Interfaces
 					});
 		}
 
-	private:
+	protected:
 		virtual void OnOpen(Connection& conn) = 0;
 		virtual void OnMessage(Connection& conn, const std::string& data, bool is_binary) = 0;
 		virtual void OnClose(Connection& conn, const std::string& reason) = 0;

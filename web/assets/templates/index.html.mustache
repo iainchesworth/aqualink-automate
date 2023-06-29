@@ -153,6 +153,52 @@
     </footer>
 
     <script>
+        function configurePageOnLoad() {
+            fetchTriggerableButtonState();
+            configureWebSocketMessageHandlers();
+        }
+
+        function configureWebSocketMessageHandlers() {
+            const eventHandlers = {};
+
+            function addEventHandler(eventName, handlerFunction) {
+                if (!eventHandlers[eventName]) {
+                    eventHandlers[eventName] = [];
+                }
+                eventHandlers[eventName].push(handlerFunction);
+            }
+
+            const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment";
+            const socket = new WebSocket(wsUrl);
+
+            socket.addEventListener('open', function (event) {
+                console.log('WebSocket connection opened');
+            });
+
+            socket.addEventListener('event-type', function (event) {
+                const data = JSON.parse(event.data);
+                if (data && data.event_type && eventHandlers[data.event_type]) {
+                    eventHandlers[data.event_type].forEach((handler) => handler(data.payload));
+                }
+            });
+
+            socket.addEventListener('close', function (event) {
+                console.log('WebSocket connection closed');
+            });
+
+            socket.addEventListener('error', function (event) {
+                console.log('WebSocket error: ', event);
+            });
+
+            addEventHandler('chemistry', (payload) => {
+                console.log('Handler for chemistry', payload);
+            });
+
+            addEventHandler('temperature', (payload) => {
+                console.log('Handler for temperature', payload);
+            });
+        }
+
         function fetchTriggerableButtonState() {
             fetch('/api/equipment')
                 .then(response => response.json())
@@ -212,7 +258,7 @@
             updateTriggerableButtonState('clean', nextStatus);
         }
 
-        window.onload = fetchTriggerableButtonState;
+        window.onload = configurePageOnLoad;
     </script>
 </body>
 </html>
