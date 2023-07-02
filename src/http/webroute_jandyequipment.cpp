@@ -22,9 +22,9 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["userStatus"] = "Off";
 		jandy_equipment_json["cleanStatus"] = "On";
 
-		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_JandyEquipment.Config().PoolTemp);
-		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_JandyEquipment.Config().SpaTemp);
-		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_JandyEquipment.Config().AirTemp);
+		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_JandyEquipment.Config().PoolTemp());
+		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_JandyEquipment.Config().SpaTemp());
+		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_JandyEquipment.Config().AirTemp());
 
 		jandy_equipment_json["chemistry"]["ph"] = "";
 		jandy_equipment_json["chemisty"]["orp"] = "";

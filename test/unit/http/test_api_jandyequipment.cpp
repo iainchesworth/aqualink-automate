@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
 
 	HTTP::WebRoute_JandyEquipment route_je(http_server, Equipment());
 
-	http_server.validate();
+	BOOST_REQUIRE_NO_THROW(http_server.validate());
 
 	{
 		HTTP::Request req;

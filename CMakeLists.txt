@@ -140,6 +140,8 @@ add_library(
 	src/http/webroute_page_version.cpp 
 	src/http/webroute_types.cpp 
 	src/http/webroute_version.cpp 
+	src/http/websocket_event.cpp 
+	src/http/websocket_event_types.cpp 
 	src/http/websocket_jandyequipment.cpp 
 	src/http/websocket_jandyequipment_stats.cpp 
 	src/http/json/json_jandy_config.cpp 
@@ -163,6 +165,8 @@ add_library(
 	src/jandy/config/jandy_config_auxillary_base.cpp
 	src/jandy/config/jandy_config_auxillary_states.cpp
 	src/jandy/config/jandy_config_circulation.cpp
+	src/jandy/config/jandy_config_event.cpp 
+	src/jandy/config/jandy_config_event_temperature.cpp 
 	src/jandy/config/jandy_config_heater.cpp
 	src/jandy/config/jandy_config_pool_configurations.cpp
 	src/jandy/config/jandy_config_powercenter.cpp
@@ -197,6 +201,7 @@ add_library(
 	src/jandy/factories/jandy_auxillary_factory.cpp 
 	src/jandy/factories/jandy_message_factory.cpp
 	src/jandy/factories/jandy_message_factory_registration.cpp
+	src/jandy/formatters/chemistry_formatter.cpp 
 	src/jandy/formatters/jandy_device_formatters.cpp 
 	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
@@ -261,6 +266,7 @@ add_library(
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
 	src/jandy/utility/string_conversion/auxillary_state.cpp 
+	src/jandy/utility/string_conversion/chemistry.cpp 
 	src/jandy/utility/string_conversion/temperature.cpp 
 	src/jandy/utility/string_conversion/timeout_duration.cpp 
 	src/logging/formatters/logging_formatters.cpp
@@ -450,6 +456,7 @@ target_link_libraries(
 
 if(ENABLE_TESTS)
 
+enable_testing()
 add_subdirectory(test)
 
 endif(ENABLE_TESTS)

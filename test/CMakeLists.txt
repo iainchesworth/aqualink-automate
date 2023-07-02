@@ -1,5 +1,3 @@
-enable_testing()
-
 #------------------------------------------------------------------------------
 #
 #
@@ -18,6 +16,7 @@ add_executable(
 	unit/devices/test_devices_types.cpp 
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
+	unit/http/test_ws_jandyequipment.cpp 
 	unit/http/test_api_jandyequipment.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
@@ -36,12 +35,17 @@ add_executable(
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
 	unit/utility/test_utility_auxillarystate.cpp 
+	unit/utility/test_utility_chemistry.cpp 
 	unit/utility/test_utility_jandychecksum.cpp 
 	unit/utility/test_utility_signallingstatscounter.cpp 
 	unit/utility/test_utility_temperature.cpp 
 	unit/support/unit_test_onetouchdevice.cpp 
 	unit/support/unit_test_ostream_support.cpp 
 )
+
+if(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
+	target_compile_options (testaqualink-automate PRIVATE "/bigobj")
+endif(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
 
 if(WIN32)
 target_sources(testaqualink-automate PRIVATE unit/platform/test_main_win32.cpp)

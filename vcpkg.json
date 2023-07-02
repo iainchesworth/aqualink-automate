@@ -7,6 +7,7 @@
     "benchmark",
     "boost-asio",
     "boost-assert",
+    "boost-beast",
     "boost-circular-buffer",
     "boost-graph",
     "boost-iostreams",

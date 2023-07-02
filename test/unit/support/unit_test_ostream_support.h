@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "http/websocket_event_types.h"
 #include "interfaces/imessage.h"
 #include "jandy/config/jandy_config_auxillary.h"
 #include "jandy/config/jandy_config_heater.h"
@@ -48,6 +49,12 @@ namespace AqualinkAutomate::Devices
     std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right);
 }
 // namespace AqualinkAutomate::Devices
+
+namespace AqualinkAutomate::HTTP
+{
+    std::ostream& boost_test_print_type(std::ostream& os, WebSocket_EventTypes const& right);
+}
+// namespace AqualinkAutomate::HTTP
 
 namespace AqualinkAutomate::Interfaces
 {

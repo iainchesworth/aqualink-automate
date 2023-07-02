@@ -9,10 +9,13 @@
 #include <boost/functional/hash.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
+#include <boost/signals2.hpp>
 
 #include "jandy/config/jandy_config_auxillary.h"
 #include "jandy/config/jandy_config_circulation.h"
 #include "jandy/config/jandy_config_heater.h"
+#include "jandy/config/jandy_config_event.h"
+#include "jandy/config/jandy_config_event_temperature.h"
 #include "jandy/config/jandy_config_pool_configurations.h"
 #include "jandy/config/jandy_config_powercenter.h"
 #include "jandy/config/jandy_config_pump.h"
@@ -37,15 +40,41 @@ namespace AqualinkAutomate::Config
 	public:
 		JandyConfig();
 
+	//---------------------------------------------------------------------
+	// UPDATES / NOTIFICATIONS / EVENTS
+	//---------------------------------------------------------------------
+
+	public:
+		mutable boost::signals2::signal<void(std::shared_ptr<Config::JandyConfig_Event>)> ConfigUpdateSignal;
+
+	//---------------------------------------------------------------------
+	// EQUIPMENT CONFIGURATION
+	//---------------------------------------------------------------------
+
 	public:
 		Config::PoolConfigurations PoolConfiguration{ Config::PoolConfigurations::Unknown };
 		Config::SystemBoards SystemBoard{ Config::SystemBoards::Unknown };
+
+	//---------------------------------------------------------------------
+	// EQUIPMENT STATUS
+	//---------------------------------------------------------------------
 
 	public:
 		Equipment::JandyEquipmentModes Mode{ Equipment::JandyEquipmentModes::Normal };
 		Utility::TimeoutDuration TimeoutRemaining;
 		std::chrono::year_month_day Date{ std::chrono::year{2000}, std::chrono::month{1}, std::chrono::day{1} };
 		std::chrono::hh_mm_ss<std::chrono::milliseconds> Time{ std::chrono::milliseconds(0) };
+
+	//---------------------------------------------------------------------
+	// EQUIPMENT VERSIONS
+	//---------------------------------------------------------------------
+
+	public:
+		Equipment::JandyEquipmentVersions EquipmentVersions;
+
+	//---------------------------------------------------------------------
+	// CIRCULATION MODES
+	//---------------------------------------------------------------------
 
 	public:
 		CirculationModes CirculationMode{ CirculationModes::Pool };
@@ -57,14 +86,44 @@ namespace AqualinkAutomate::Config
 
 		bool InCleanMode{ false };
 
-	public:
-		Utility::Temperature AirTemp;
-		Utility::Temperature PoolTemp;
-		Utility::Temperature SpaTemp;
-		Utility::Temperature FreezeProtectPoint;
+	//---------------------------------------------------------------------
+	// TEMPERATURES
+	//---------------------------------------------------------------------
 
 	public:
-		Equipment::JandyEquipmentVersions EquipmentVersions;
+		Utility::Temperature AirTemp() const;
+		Utility::Temperature PoolTemp() const;
+		Utility::Temperature SpaTemp() const;
+		Utility::Temperature FreezeProtectPoint() const;
+
+	public:
+		void AirTemp(const Utility::Temperature& air_temp);
+		void PoolTemp(const Utility::Temperature& pool_temp);
+		void SpaTemp(const Utility::Temperature& spa_temp);
+		void FreezeProtectPoint(const Utility::Temperature& freeze_protect_point);
+
+	private:
+		Utility::Temperature m_AirTemp;
+		Utility::Temperature m_PoolTemp;
+		Utility::Temperature m_SpaTemp;
+		Utility::Temperature m_FreezeProtectPoint;
+
+	//---------------------------------------------------------------------
+	// CHEMISTRY
+	//---------------------------------------------------------------------
+		 
+	public:
+
+
+	public:
+
+
+	private:
+
+
+	//---------------------------------------------------------------------
+	// DEVICES GRAPH
+	//---------------------------------------------------------------------
 
 	public:
 		void AddDevice(std::shared_ptr<AuxillaryBase> device);

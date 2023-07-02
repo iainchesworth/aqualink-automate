@@ -175,10 +175,10 @@
                 console.log('WebSocket connection opened');
             });
 
-            socket.addEventListener('event-type', function (event) {
+            socket.addEventListener('message', function (event) {
                 const data = JSON.parse(event.data);
-                if (data && data.event_type && eventHandlers[data.event_type]) {
-                    eventHandlers[data.event_type].forEach((handler) => handler(data.payload));
+                if (data && data.type && eventHandlers[data.type]) {
+                    eventHandlers[data.type].forEach((handler) => handler(data.payload));
                 }
             });
 
@@ -190,12 +190,25 @@
                 console.log('WebSocket error: ', event);
             });
 
-            addEventHandler('chemistry', (payload) => {
-                console.log('Handler for chemistry', payload);
+            addEventHandler('ChemistryUpdate', (payload) => {
+                if (payload && payload.orp_level) {
+                    document.getElementById('orpLevel').innerText = payload.orp_level;
+                }
+                if (payload && payload.ph_level) {
+                    document.getElementById('phLevel').innerText = payload.ph_level;
+                }
             });
 
-            addEventHandler('temperature', (payload) => {
-                console.log('Handler for temperature', payload);
+            addEventHandler('TemperatureUpdate', (payload) => {
+                if (payload && payload.pool_temp) {
+                    document.getElementById('poolTemp').innerText = payload.pool_temp;
+                }
+                if (payload && payload.spa_temp) {
+                    document.getElementById('spaTemp').innerText = payload.spa_temp;
+                }
+                if (payload && payload.air_temp) {
+                    document.getElementById('airTemp').innerText = payload.air_temp;
+                }                
             });
         }
 

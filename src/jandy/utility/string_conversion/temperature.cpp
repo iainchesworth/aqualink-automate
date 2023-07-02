@@ -116,7 +116,7 @@ namespace AqualinkAutomate::Utility
 		{
 			int32_t converted_temperature;
 
-			auto [p, ec] = std::from_chars((*temperature).data(), (*temperature).data() + (*temperature).size(), converted_temperature);
+			auto [_, ec] = std::from_chars((*temperature).data(), (*temperature).data() + (*temperature).size(), converted_temperature);
 			if (std::errc() != ec)
 			{
 				LogDebug(Channel::Devices, std::format("Failed to convert temperature; could not convert to number: error -> {}", magic_enum::enum_name(ec)));

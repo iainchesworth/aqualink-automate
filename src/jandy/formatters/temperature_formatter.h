@@ -72,7 +72,7 @@ struct std::formatter<AqualinkAutomate::Utility::Temperature> : std::formatter<s
 		}
 		catch (const tl::bad_expected_access<boost::system::error_code>& ex_bea)
 		{
-			static const std::string_view UNKNOWN_TEMP{ "??" };
+			static const std::string_view UNKNOWN_TEMP{ "TEMP=??" };
 
 			auto ctx_it = ctx.out();
 

@@ -22,9 +22,24 @@ namespace AqualinkAutomate::HTTP
 
 		Support::GeneratePageHeader_Context(ctx);
 
-		ctx["pool_temperature"] = std::format("{}", m_JandyEquipment.Config().PoolTemp);
-		ctx["spa_temperature"] = std::format("{}", m_JandyEquipment.Config().SpaTemp);
-		ctx["air_temperature"] = std::format("{}", m_JandyEquipment.Config().AirTemp);
+		if (Config::PoolConfigurations::Unknown == m_JandyEquipment.Config().PoolConfiguration)
+		{
+			ctx["pool_temperature"] = "-";
+			ctx["spa_temperature"] = "-";
+			ctx["air_temperature"] = "-";
+
+			ctx["water_orp"] = "-";
+			ctx["water_ph"] = "-";
+		}
+		else
+		{
+			ctx["pool_temperature"] = std::format("{}", m_JandyEquipment.Config().PoolTemp());
+			ctx["spa_temperature"] = std::format("{}", m_JandyEquipment.Config().SpaTemp());
+			ctx["air_temperature"] = std::format("{}", m_JandyEquipment.Config().AirTemp());
+
+			ctx["water_orp"] = "-";
+			ctx["water_ph"] = "-";
+		}		
 
 		Support::GeneratePageFooter_Context(ctx);
 

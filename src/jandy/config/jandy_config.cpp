@@ -10,6 +10,61 @@ namespace AqualinkAutomate::Config
 		m_PumpsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
 	}
 
+	Utility::Temperature JandyConfig::AirTemp() const
+	{
+		return m_AirTemp;
+	}
+
+	Utility::Temperature JandyConfig::PoolTemp() const
+	{
+		return m_PoolTemp;
+	}
+
+	Utility::Temperature JandyConfig::SpaTemp() const
+	{
+		return m_SpaTemp;
+	}
+
+	Utility::Temperature JandyConfig::FreezeProtectPoint() const
+	{
+		return m_FreezeProtectPoint;
+	}
+
+	void JandyConfig::AirTemp(const Utility::Temperature& air_temp)
+	{
+		m_AirTemp = air_temp;
+
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<JandyConfig_Event_Temperature>();
+		update_event->AirTemp(m_AirTemp);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void JandyConfig::PoolTemp(const Utility::Temperature& pool_temp)
+	{
+		m_PoolTemp = pool_temp;
+
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<JandyConfig_Event_Temperature>();
+		update_event->PoolTemp(m_PoolTemp);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void JandyConfig::SpaTemp(const Utility::Temperature& spa_temp)
+	{
+		m_SpaTemp = spa_temp;
+
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<JandyConfig_Event_Temperature>();
+		update_event->SpaTemp(m_SpaTemp);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void JandyConfig::FreezeProtectPoint(const Utility::Temperature& freeze_protect_point)
+	{
+		m_FreezeProtectPoint = freeze_protect_point;
+	}
+
 	void JandyConfig::AddDevice(std::shared_ptr<AuxillaryBase> device)
 	{
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void

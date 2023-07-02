@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		*/
 
 		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
-		JandyController::m_Config.AirTemp = Utility::TrimWhitespace(page[6].Text);
+		JandyController::m_Config.AirTemp(Utility::Temperature(Utility::TrimWhitespace(page[6].Text)));
 	}
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
@@ -183,8 +183,8 @@ namespace AqualinkAutomate::Devices
 		*/
 
 
-		JandyController::m_Config.PoolTemp = Utility::TrimWhitespace(page[2].Text);
-		JandyController::m_Config.SpaTemp = Utility::TrimWhitespace(page[3].Text);
+		JandyController::m_Config.PoolTemp(Utility::Temperature(Utility::TrimWhitespace(page[2].Text)));
+		JandyController::m_Config.SpaTemp(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
 		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
 		auto maintenance_hours = Utility::TrimWhitespace(page[6].Text);
 	}
@@ -218,7 +218,7 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.FreezeProtectPoint = Utility::TrimWhitespace(page[3].Text);
+		JandyController::m_Config.FreezeProtectPoint(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
 	}
 
 	void OneTouchDevice::PageProcessor_Boost(const Utility::ScreenDataPage& page)
