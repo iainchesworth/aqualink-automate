@@ -10,7 +10,7 @@
 
 using namespace AqualinkAutomate;
 
-BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiJandyEquipment, Test::OneTouchDevice)
+BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiEquipment, Test::OneTouchDevice)
 
 BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 {

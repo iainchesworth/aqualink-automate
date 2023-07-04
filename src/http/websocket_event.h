@@ -6,8 +6,9 @@
 #include <nlohmann/json.hpp>
 
 #include "http/websocket_event_types.h"
-#include "kernel/event.h"
-#include "kernel/event_temperature.h"
+#include "kernel/data_hub_event.h"
+#include "kernel/data_hub_event_chemistry.h"
+#include "kernel/data_hub_event_temperature.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -19,9 +20,11 @@ namespace AqualinkAutomate::HTTP
 
 	public:
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
 
 	public:
+		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event);
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
 
 	public:

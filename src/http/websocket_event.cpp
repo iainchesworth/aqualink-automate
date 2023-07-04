@@ -17,6 +17,10 @@ namespace AqualinkAutomate::HTTP
 		{
 			switch (config_event->Type())
 			{
+			case Kernel::DataHub_EventTypes::Chemistry:
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_Event_Chemistry>(config_event));
+				break;
+
 			case Kernel::DataHub_EventTypes::Temperature:
 				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_Event_Temperature>(config_event));
 				break;
@@ -24,10 +28,32 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event) :
+		m_EventType(WebSocket_EventTypes::Unknown)
+	{
+		this->operator=(chem_config_event);
+	}
+
 	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(temp_config_event);
+	}
+
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event)
+	{
+		if (nullptr == chem_config_event)
+		{
+			///FIXME
+		}
+		else
+		{
+			m_EventType = WebSocket_EventTypes::ChemistryUpdate;
+			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = *chem_config_event;
+		}
+
+		return *this;
 	}
 
 	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event)

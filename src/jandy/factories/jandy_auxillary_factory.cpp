@@ -1,3 +1,5 @@
+#include <boost/algorithm/string.hpp>
+
 #include "kernel/auxillary.h"
 #include "kernel/heater.h"
 #include "kernel/pump.h"
@@ -97,12 +99,12 @@ namespace AqualinkAutomate::Factory
 
 	bool JandyAuxillaryFactory::IsHeaterDevice(const std::string& label) const
 	{
-		return label.contains("Heat");
+		return boost::algorithm::contains(label, "Heat");
 	}
 
 	bool JandyAuxillaryFactory::IsPumpDevice(const std::string& label) const
 	{
-		return label.contains("Pump");
+		return boost::algorithm::contains(label, "Pump");
 	}
 
 	bool JandyAuxillaryFactory::IsSpilloverDevice(const std::string& label) const

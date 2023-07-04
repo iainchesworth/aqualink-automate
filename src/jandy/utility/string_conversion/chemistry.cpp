@@ -2,6 +2,7 @@
 #include <format>
 #include <limits>
 
+#include <boost/cstdfloat.hpp>
 #include <magic_enum.hpp>
 #include <re2/re2.h>
 
@@ -73,7 +74,7 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	tl::expected<uint16_t, boost::system::error_code> Chemistry::ORP() const noexcept
+	tl::expected<Kernel::ORP, boost::system::error_code> Chemistry::ORP() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -83,7 +84,7 @@ namespace AqualinkAutomate::Utility
 		return m_ORP;
 	}
 
-	tl::expected<float_t, boost::system::error_code> Chemistry::PH() const noexcept
+	tl::expected<Kernel::pH, boost::system::error_code> Chemistry::PH() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -98,8 +99,8 @@ namespace AqualinkAutomate::Utility
 		const auto [orp, ph] = ValidateAndExtractData(chemistry_string);
 		if (orp && ph)
 		{
-			uint16_t converted_orp;
-			float_t converted_ph;
+			boost::float64_t converted_orp;
+			boost::float32_t converted_ph;
 
 			if (auto [_, ec] = std::from_chars((*orp).data(), (*orp).data() + (*orp).size(), converted_orp); std::errc() != ec)
 			{
@@ -113,8 +114,8 @@ namespace AqualinkAutomate::Utility
 			}
 			else
 			{
-				m_ORP = static_cast<decltype(m_ORP)>(converted_orp);
-				m_PH = static_cast<decltype(m_PH)>(converted_ph);
+				m_ORP = converted_orp;
+				m_PH = converted_ph;
 			}
 		}
 		else

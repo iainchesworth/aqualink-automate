@@ -19,6 +19,7 @@
     "boost-statechart",
     "boost-system",
     "boost-test",
+    "boost-units",
     "boost-uuid",
     "magic-enum",
     "mqtt-cpp",

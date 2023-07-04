@@ -9,7 +9,7 @@
 
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
-#include "kernel/event_temperature.h"
+#include "kernel/data_hub_event_temperature.h"
 
 namespace AqualinkAutomate::HTTP
 {

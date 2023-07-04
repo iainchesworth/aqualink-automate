@@ -7,6 +7,7 @@ namespace AqualinkAutomate::Kernel
 
 	enum class DataHub_EventTypes
 	{
+		Chemistry,
 		Temperature
 	};
 

@@ -131,6 +131,9 @@ add_library(
 	src/exceptions/exception_options_conflictingoptions.cpp 
 	src/exceptions/exception_options_missingdependency.cpp 
 	src/exceptions/exception_webserver.cpp 
+	src/formatters/orp_formatter.cpp 
+	src/formatters/ph_formatter.cpp 
+	src/formatters/units_electric_potential_formatter.cpp 
 	src/http/crow_custom_logger.cpp 
 	src/http/webroute_equipment.cpp 
 	src/http/webroute_equipment_buttons.cpp 
@@ -262,9 +265,12 @@ add_library(
 	src/kernel/auxillary_states.cpp
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
-	src/kernel/event.cpp
-	src/kernel/event_temperature.cpp
+	src/kernel/data_hub_event.cpp
+	src/kernel/data_hub_event_chemistry.cpp
+	src/kernel/data_hub_event_temperature.cpp
 	src/kernel/heater.cpp
+	src/kernel/orp.cpp 
+	src/kernel/ph.cpp
 	src/kernel/pool_configurations.cpp
 	src/kernel/powercenter.cpp
 	src/kernel/pump.cpp
@@ -318,6 +324,7 @@ add_library(
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
 	src/serial/serial_types.cpp
+	src/types/units_electric_potential.cpp 
 	src/signals/async_signal.cpp
 	src/signals/async_slot.cpp
 	src/signals/signal_awaitable.cpp
@@ -369,7 +376,7 @@ target_sources(
 )
 endif(LINUX)
 
-target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 
 target_compile_definitions(
 	libaqualink-automate 

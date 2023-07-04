@@ -16,8 +16,8 @@ add_executable(
 	unit/devices/test_devices_types.cpp 
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
-	unit/http/test_ws_jandyequipment.cpp 
-	unit/http/test_api_jandyequipment.cpp 
+	unit/http/test_api_equipment.cpp 
+	unit/http/test_ws_equipment.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
@@ -34,6 +34,8 @@ add_executable(
 	unit/mocks/mock_generator_rawdatatomessage.cpp 
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
+	unit/units/test_units_orp.cpp 
+	unit/units/test_units_ph.cpp 
 	unit/utility/test_utility_auxillarystate.cpp 
 	unit/utility/test_utility_chemistry.cpp 
 	unit/utility/test_utility_jandychecksum.cpp 

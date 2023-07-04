@@ -1,6 +1,6 @@
 #include "http/websocket_event.h"
 #include "http/websocket_equipment.h"
-#include "kernel/event_temperature.h"
+#include "kernel/data_hub_event_temperature.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

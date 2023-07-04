@@ -13,9 +13,10 @@
 
 #include "kernel/auxillary.h"
 #include "kernel/circulation.h"
+#include "kernel/data_hub_event.h"
 #include "kernel/heater.h"
-#include "kernel/event.h"
-#include "kernel/event_temperature.h"
+#include "kernel/orp.h"
+#include "kernel/ph.h"
 #include "kernel/pool_configurations.h"
 #include "kernel/powercenter.h"
 #include "kernel/pump.h"
@@ -33,10 +34,6 @@ namespace AqualinkAutomate::Kernel
 
 	class DataHub
 	{
-		using DevicesGraphType = boost::adjacency_list<boost::listS, boost::vecS, boost::directedS, std::shared_ptr<AuxillaryBase>>;
-		using DeviceVertexType = boost::graph_traits<DevicesGraphType>::vertex_descriptor;
-		using DeviceMap = std::unordered_map<uint32_t, std::shared_ptr<AuxillaryBase>>;
-
 	public:
 		DataHub();
 
@@ -113,17 +110,25 @@ namespace AqualinkAutomate::Kernel
 	//---------------------------------------------------------------------
 		 
 	public:
-
+		Kernel::ORP ORP() const;
+		Kernel::pH pH() const;
 
 	public:
-
+		void ORP(const Kernel::ORP& orp);
+		void pH(const Kernel::pH& pH);
 
 	private:
-
+		Kernel::ORP m_ORP{ 0.0f };
+		Kernel::pH m_pH{ 0.0f };
 
 	//---------------------------------------------------------------------
 	// DEVICES GRAPH
 	//---------------------------------------------------------------------
+
+	private:
+		using DevicesGraphType = boost::adjacency_list<boost::listS, boost::vecS, boost::directedS, std::shared_ptr<AuxillaryBase>>;
+		using DeviceVertexType = boost::graph_traits<DevicesGraphType>::vertex_descriptor;
+		using DeviceMap = std::unordered_map<uint32_t, std::shared_ptr<AuxillaryBase>>;
 
 	public:
 		void AddDevice(std::shared_ptr<AuxillaryBase> device);

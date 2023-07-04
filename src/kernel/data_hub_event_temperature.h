@@ -5,7 +5,7 @@
 #include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
-#include "kernel/event.h"
+#include "kernel/data_hub_event.h"
 #include "jandy/utility/string_conversion/temperature.h"
 
 namespace AqualinkAutomate::Kernel

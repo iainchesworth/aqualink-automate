@@ -1,4 +1,6 @@
 #include "kernel/data_hub.h"
+#include "kernel/data_hub_event_chemistry.h"
+#include "kernel/data_hub_event_temperature.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -63,6 +65,36 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::FreezeProtectPoint(const Utility::Temperature& freeze_protect_point)
 	{
 		m_FreezeProtectPoint = freeze_protect_point;
+	}
+
+	Kernel::ORP DataHub::ORP() const
+	{
+		return m_ORP;
+	}
+
+	Kernel::pH DataHub::pH() const
+	{
+		return m_pH;
+	}
+
+	void DataHub::ORP(const Kernel::ORP& orp)
+	{
+		m_ORP = orp;
+
+		// Signal that a chemistry update has occurred.
+		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		update_event->ORP(m_ORP);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::pH(const Kernel::pH& pH)
+	{
+		m_pH = pH;
+
+		// Signal that a chemistry update has occurred.
+		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		update_event->pH(m_pH);
+		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::AddDevice(std::shared_ptr<AuxillaryBase> device)

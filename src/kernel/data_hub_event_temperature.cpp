@@ -3,7 +3,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <magic_enum.hpp>
 
-#include "kernel/event_temperature.h"
+#include "kernel/data_hub_event_temperature.h"
 #include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::Kernel
