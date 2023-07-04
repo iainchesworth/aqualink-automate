@@ -3,7 +3,6 @@
 #include <chrono>
 #include <cstdint>
 
-#include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -14,6 +13,7 @@
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
+#include "kernel/data_hub.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);
+		KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~KeypadDevice();
 
 	private:

@@ -4,7 +4,7 @@
 #include <crow/app.h>
 #include <nlohmann/json.hpp>
 
-#include "http/webroute_jandyequipment.h"
+#include "http/webroute_equipment.h"
 
 #include "support/unit_test_onetouchdevice.h"
 
@@ -12,11 +12,11 @@ using namespace AqualinkAutomate;
 
 BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiJandyEquipment, Test::OneTouchDevice)
 
-BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
+BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 {
 	crow::SimpleApp http_server;
 
-	HTTP::WebRoute_JandyEquipment route_je(http_server, Equipment());
+	HTTP::WebRoute_Equipment route_je(http_server, DataHub(), StatisticsHub());
 
 	BOOST_REQUIRE_NO_THROW(http_server.validate());
 
@@ -56,11 +56,11 @@ BOOST_AUTO_TEST_CASE(UninitialisedJandyConfig)
 
 }
 
-BOOST_AUTO_TEST_CASE(InitialisedJandyConfig)
+BOOST_AUTO_TEST_CASE(InitialisedDataHub)
 {
 	crow::SimpleApp http_server;
 
-	HTTP::WebRoute_JandyEquipment route_je(http_server, Equipment());
+	HTTP::WebRoute_Equipment route_je(http_server, DataHub(), StatisticsHub());
 
 	http_server.validate();
 

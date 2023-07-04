@@ -6,8 +6,8 @@
 #include <nlohmann/json.hpp>
 
 #include "http/websocket_event_types.h"
-#include "jandy/config/jandy_config_event.h"
-#include "jandy/config/jandy_config_event_temperature.h"
+#include "kernel/event.h"
+#include "kernel/event_temperature.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -18,11 +18,11 @@ namespace AqualinkAutomate::HTTP
 		static const std::string_view WS_JSON_PAYLOAD_FIELD;
 
 	public:
-		WebSocket_Event(std::shared_ptr<Config::JandyConfig_Event> config_event);
-		WebSocket_Event(std::shared_ptr<Config::JandyConfig_Event_Temperature> temp_config_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
 
 	public:
-		WebSocket_Event& operator=(std::shared_ptr<Config::JandyConfig_Event_Temperature> temp_config_event);
+		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
 
 	public:
 		WebSocket_EventTypes Type() const;

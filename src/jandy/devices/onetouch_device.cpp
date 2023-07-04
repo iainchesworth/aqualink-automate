@@ -12,7 +12,7 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	OneTouchDevice::OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated) :
+	OneTouchDevice::OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated) :
 		JandyController(io_context, device_id, ONETOUCH_TIMEOUT_DURATION, config),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),
 		Capabilities::Scrapeable

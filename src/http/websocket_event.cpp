@@ -6,7 +6,7 @@ namespace AqualinkAutomate::HTTP
 	const std::string_view WebSocket_Event::WS_JSON_TYPE_FIELD{ "type" };
 	const std::string_view WebSocket_Event::WS_JSON_PAYLOAD_FIELD{ "payload" };
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Config::JandyConfig_Event> config_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		if (nullptr == config_event)
@@ -17,20 +17,20 @@ namespace AqualinkAutomate::HTTP
 		{
 			switch (config_event->Type())
 			{
-			case Config::JandyConfig_EventTypes::Temperature:
-				this->operator=(std::dynamic_pointer_cast<Config::JandyConfig_Event_Temperature>(config_event));
+			case Kernel::DataHub_EventTypes::Temperature:
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_Event_Temperature>(config_event));
 				break;
 			}
 		}
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Config::JandyConfig_Event_Temperature> temp_config_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(temp_config_event);
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Config::JandyConfig_Event_Temperature> temp_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event)
 	{
 		if (nullptr == temp_config_event)
 		{

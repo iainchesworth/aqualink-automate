@@ -2,8 +2,8 @@
 #include <format>
 #include <limits>
 
-#include <boost/regex.hpp>
 #include <magic_enum.hpp>
+#include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
 #include "jandy/utility/string_conversion/chemistry.h"
@@ -131,10 +131,10 @@ namespace AqualinkAutomate::Utility
 			return { std::nullopt, std::nullopt };
 		}
 
-		boost::regex re("(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))");
-		boost::smatch match;
+		re2::RE2 re("(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))");
+		std::string match1, match2, match3, match4;
 
-		if (boost::regex_match(chemistry_string, match, re))
+		if (re2::RE2::FullMatch(chemistry_string, re, &match1, &match2, &match3, &match4))
 		{
 			// NOTE: This regex will capture the following groups:
 			//
@@ -144,7 +144,7 @@ namespace AqualinkAutomate::Utility
 			//    Group 4 -> #.#
 			//
 
-			return { match[2].str(), match[4].str() };
+			return { match2, match4 };
 		}
 		else
 		{

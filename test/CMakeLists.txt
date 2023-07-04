@@ -43,10 +43,6 @@ add_executable(
 	unit/support/unit_test_ostream_support.cpp 
 )
 
-if(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
-	target_compile_options (testaqualink-automate PRIVATE "/bigobj")
-endif(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
-
 if(WIN32)
 target_sources(testaqualink-automate PRIVATE unit/platform/test_main_win32.cpp)
 target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK) # Boost Unit Test is dynamically linked under Windows.

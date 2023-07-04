@@ -45,17 +45,17 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config) :
+	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub) :
 		IEquipment(io_context),
 		m_IOContext(io_context),
 		m_Devices(),
 		m_IdentifiedDeviceIds(),
-		m_MessageStats(),
-		m_Config(config)
+		m_DataHub(data_hub),
+		m_StatsHub(statistics_hub)
 	{
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
-				m_MessageStats[id] = 0;
+				m_StatsHub.Messages[id] = 0;
 			}
 		);
 
@@ -90,14 +90,14 @@ namespace AqualinkAutomate::Equipment
 	{
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
 			{
-				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_MessageStats[id], magic_enum::enum_name(id)));
+				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub.Messages[id], magic_enum::enum_name(id)));
 			}
 		);
 
 		LogInfo(
 			Channel::Equipment, 
 			std::format("Stats: {} total messages received", 
-				std::accumulate(m_MessageStats.cbegin(), m_MessageStats.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const StatsType::value_type& elem)
+				std::accumulate(m_StatsHub.Messages.cbegin(), m_StatsHub.Messages.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub.Messages)::value_type& elem)
 				{
 					return previous + elem.second.Count();
 				})
@@ -132,22 +132,22 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Id(), m_Config, false)));
+				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
@@ -165,9 +165,9 @@ namespace AqualinkAutomate::Equipment
 		}
 
 		// Capture statistics, given we are processing every message.
-		m_MessageStats[message.Id()]++;
+		m_StatsHub.Messages[message.Id()]++;
 
-		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_MessageStats[message.Id()], magic_enum::enum_name(message.Id())));
+		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub.Messages[message.Id()], magic_enum::enum_name(message.Id())));
 	}
 	
 	void JandyEquipment::DisplayUnknownMessages(const Messages::JandyMessage& message)
@@ -203,16 +203,6 @@ namespace AqualinkAutomate::Equipment
 		}
 
 		return added_device;
-	}
-
-	const JandyEquipment::ConfigType& JandyEquipment::Config() const
-	{
-		return m_Config;
-	}
-
-	const JandyEquipment::StatsType& JandyEquipment::MessageStats() const
-	{
-		return m_MessageStats;
 	}
 
 }

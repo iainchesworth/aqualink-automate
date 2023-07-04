@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/config/jandy_config_auxillary.h"
-#include "jandy/config/jandy_config_heater.h"
-#include "jandy/config/jandy_config_pump.h"
+#include "kernel/auxillary.h"
+#include "kernel/heater.h"
+#include "kernel/pump.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
 
@@ -32,17 +32,17 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		ComboModes Mode() const;
-		Config::PumpStatus FilterPump() const;
-		Config::AuxillaryStates Aux1() const;
-		Config::AuxillaryStates Aux2() const;
-		Config::AuxillaryStates Aux3() const;
-		Config::AuxillaryStates Aux4() const;
-		Config::AuxillaryStates Aux5() const;
-		Config::AuxillaryStates Aux6() const;
-		Config::AuxillaryStates Aux7() const;
-		Config::HeaterStatus PoolHeater() const;
-		Config::HeaterStatus SpaHeater() const;
-		Config::HeaterStatus SolarHeater() const;
+		Kernel::PumpStatus FilterPump() const;
+		Kernel::AuxillaryStates Aux1() const;
+		Kernel::AuxillaryStates Aux2() const;
+		Kernel::AuxillaryStates Aux3() const;
+		Kernel::AuxillaryStates Aux4() const;
+		Kernel::AuxillaryStates Aux5() const;
+		Kernel::AuxillaryStates Aux6() const;
+		Kernel::AuxillaryStates Aux7() const;
+		Kernel::HeaterStatus PoolHeater() const;
+		Kernel::HeaterStatus SpaHeater() const;
+		Kernel::HeaterStatus SolarHeater() const;
 
 	public:
 		virtual std::string ToString() const override;
@@ -53,17 +53,17 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		ComboModes m_Mode;
-		Config::PumpStatus m_FilterPump;
-		Config::AuxillaryStates m_Aux1;
-		Config::AuxillaryStates m_Aux2;
-		Config::AuxillaryStates m_Aux3;
-		Config::AuxillaryStates m_Aux4;
-		Config::AuxillaryStates m_Aux5;
-		Config::AuxillaryStates m_Aux6;
-		Config::AuxillaryStates m_Aux7;
-		Config::HeaterStatus m_PoolHeater;
-		Config::HeaterStatus m_SolarHeater;
-		Config::HeaterStatus m_SpaHeater;
+		Kernel::PumpStatus m_FilterPump;
+		Kernel::AuxillaryStates m_Aux1;
+		Kernel::AuxillaryStates m_Aux2;
+		Kernel::AuxillaryStates m_Aux3;
+		Kernel::AuxillaryStates m_Aux4;
+		Kernel::AuxillaryStates m_Aux5;
+		Kernel::AuxillaryStates m_Aux6;
+		Kernel::AuxillaryStates m_Aux7;
+		Kernel::HeaterStatus m_PoolHeater;
+		Kernel::HeaterStatus m_SolarHeater;
+		Kernel::HeaterStatus m_SpaHeater;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;

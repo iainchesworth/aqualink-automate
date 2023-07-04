@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/utility/signalling_stats_counter.h"
+#include "utility/signalling_stats_counter.h"
 
 BOOST_AUTO_TEST_SUITE(SignallingStatsCounter);
 

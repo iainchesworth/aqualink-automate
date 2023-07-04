@@ -4,7 +4,7 @@
 
 #include "http/webroute_types.h"
 #include "interfaces/iwebroute.h"
-#include "jandy/equipment/jandy_equipment.h"
+#include "kernel/data_hub.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -13,13 +13,13 @@ namespace AqualinkAutomate::HTTP
 	class WebRoute_Page_Index : public Interfaces::IWebRoute<PAGE_INDEX_ROUTE_URL>
 	{
 	public:
-		WebRoute_Page_Index(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment);
+		WebRoute_Page_Index(crow::SimpleApp& app, const Kernel::DataHub& data_hub);
 
 	public:
 		void WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp);
 
 	private:
-		const Equipment::JandyEquipment& m_JandyEquipment;
+		const Kernel::DataHub& m_DataHub;
 	};
 
 }

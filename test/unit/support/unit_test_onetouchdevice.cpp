@@ -9,16 +9,22 @@ namespace AqualinkAutomate::Test
 	OneTouchDevice::OneTouchDevice() :
 		m_IOContext(),
 		m_DeviceId(0x00), // Make the device think it's 0x00 so that signals are not filtered out.
-		m_Config(),
-		m_JandyEquipment(m_IOContext, m_Config),
+		m_DataHub(),
+		m_StatisticsHub(),
+		m_JandyEquipment(m_IOContext, m_DataHub, m_StatisticsHub),
 		m_IsEmulated(false),
-		m_OneTouch(m_IOContext, m_DeviceId, m_Config, m_IsEmulated)
+		m_OneTouch(m_IOContext, m_DeviceId, m_DataHub, m_IsEmulated)
 	{
 	}
 
-	Config::JandyConfig& OneTouchDevice::Config()
+	Kernel::DataHub& OneTouchDevice::DataHub()
 	{
-		return m_Config;
+		return m_DataHub;
+	}
+
+	Kernel::StatisticsHub& OneTouchDevice::StatisticsHub()
+	{
+		return m_StatisticsHub;
 	}
 
 	Equipment::JandyEquipment& OneTouchDevice::Equipment()

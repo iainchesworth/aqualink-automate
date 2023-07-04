@@ -4,10 +4,10 @@
 
 #include "http/websocket_event_types.h"
 #include "interfaces/imessage.h"
-#include "jandy/config/jandy_config_auxillary.h"
-#include "jandy/config/jandy_config_heater.h"
-#include "jandy/config/jandy_config_pool_configurations.h"
-#include "jandy/config/jandy_config_system_boards.h"
+#include "kernel/auxillary.h"
+#include "kernel/heater.h"
+#include "kernel/pool_configurations.h"
+#include "kernel/system_boards.h"
 #include "jandy/devices/jandy_emulated_device_types.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 }
 // AqualinkAutomate::ErrorCodes::Protocol
 
-namespace AqualinkAutomate::Config
+namespace AqualinkAutomate::Kernel
 {
     std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right);
     std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right);
@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Config
     std::ostream& boost_test_print_type(std::ostream& os, PoolConfigurations const& right);
     std::ostream& boost_test_print_type(std::ostream& os, SystemBoards const& right);
 }
-// namespace AqualinkAutomate::Config
+// namespace AqualinkAutomate::Kernel
 
 namespace AqualinkAutomate::Devices
 {

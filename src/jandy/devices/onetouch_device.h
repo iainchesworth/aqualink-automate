@@ -6,7 +6,6 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -22,6 +21,7 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "kernel/data_hub.h"
 #include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
@@ -58,7 +58,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);
+		OneTouchDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~OneTouchDevice();
 
 	private:

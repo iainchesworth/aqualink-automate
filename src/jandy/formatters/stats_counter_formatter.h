@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include "jandy/utility/signalling_stats_counter.h"
+#include "utility/signalling_stats_counter.h"
 
 namespace AqualinkAutomate::Formatters
 {

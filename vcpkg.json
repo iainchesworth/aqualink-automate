@@ -24,6 +24,7 @@
     "mqtt-cpp",
     "nlohmann-json",
     "openssl",
+    "re2",
     "tracy",
     "tl-expected",
     "zlib"

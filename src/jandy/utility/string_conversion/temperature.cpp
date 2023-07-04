@@ -2,8 +2,8 @@
 #include <format>
 #include <limits>
 
-#include <boost/regex.hpp>
 #include <magic_enum.hpp>
+#include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
 #include "jandy/utility/string_conversion/temperature.h"
@@ -165,12 +165,12 @@ namespace AqualinkAutomate::Utility
 			return { std::nullopt, std::nullopt, std::nullopt };
 		}
 
-		boost::regex re("^([A-Za-z]{1,10})\\s{1,10}(-?\\d{1,2})`([CF])$");
-		boost::smatch match;
+		re2::RE2 re("^([A-Za-z]{1,10})\\s{1,10}(-?\\d{1,2})`([CF])$");
+		std::string match1, match2, match3;
 
-		if (boost::regex_match(temperature_string, match, re))
+		if (re2::RE2::FullMatch(temperature_string, re, &match1, &match2, &match3))
 		{
-			return { match[1].str(), match[2].str(), match[3].str() };
+			return { match1, match2, match3 };
 		}
 		else 
 		{

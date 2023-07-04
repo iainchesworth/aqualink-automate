@@ -8,9 +8,9 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Index::WebRoute_Page_Index(crow::SimpleApp& app, const Equipment::JandyEquipment& jandy_equipment) :
+	WebRoute_Page_Index::WebRoute_Page_Index(crow::SimpleApp& app, const Kernel::DataHub& data_hub) :
 		Interfaces::IWebRoute<PAGE_INDEX_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Page_Index::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
-		m_JandyEquipment(jandy_equipment)
+		m_DataHub(data_hub)
 	{
 	}
 
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 
 		Support::GeneratePageHeader_Context(ctx);
 
-		if (Config::PoolConfigurations::Unknown == m_JandyEquipment.Config().PoolConfiguration)
+		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
 			ctx["pool_temperature"] = "-";
 			ctx["spa_temperature"] = "-";
@@ -33,9 +33,9 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			ctx["pool_temperature"] = std::format("{}", m_JandyEquipment.Config().PoolTemp());
-			ctx["spa_temperature"] = std::format("{}", m_JandyEquipment.Config().SpaTemp());
-			ctx["air_temperature"] = std::format("{}", m_JandyEquipment.Config().AirTemp());
+			ctx["pool_temperature"] = std::format("{}", m_DataHub.PoolTemp());
+			ctx["spa_temperature"] = std::format("{}", m_DataHub.SpaTemp());
+			ctx["air_temperature"] = std::format("{}", m_DataHub.AirTemp());
 
 			ctx["water_orp"] = "-";
 			ctx["water_ph"] = "-";

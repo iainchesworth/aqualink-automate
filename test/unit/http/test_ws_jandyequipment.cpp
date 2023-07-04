@@ -10,9 +10,9 @@
 #include <nlohmann/json.hpp>
 
 #include "http/websocket_event.h"
-#include "http/websocket_jandyequipment.h"
-#include "jandy/config/jandy_config_event.h"
-#include "jandy/config/jandy_config_event_temperature.h"
+#include "http/websocket_equipment.h"
+#include "kernel/event.h"
+#include "kernel/event_temperature.h"
 
 #include "support/unit_test_onetouchdevice.h"
 #include "support/unit_test_ostream_support.h"
@@ -24,8 +24,8 @@ BOOST_FIXTURE_TEST_SUITE(WebsocketRoutes_WsJandyEquipment, Test::OneTouchDevice)
 BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 {
 	{
-		auto config_event_null = std::make_shared<Config::JandyConfig_Event_Temperature>();
-		auto config_event_base = std::dynamic_pointer_cast<Config::JandyConfig_Event>(config_event_null);
+		auto config_event_null = std::make_shared<Kernel::DataHub_Event_Temperature>();
+		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_Event>(config_event_null);
 		BOOST_REQUIRE(nullptr != config_event_base);
 		HTTP::WebSocket_Event wse1(config_event_base);
 
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	}
 
 	{
-		auto config_event_temp = std::make_shared<Config::JandyConfig_Event_Temperature>();
+		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
 		config_event_temp->PoolTemp(Utility::Temperature("Pool        90`F")); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse2(config_event_temp);
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	}
 
 	{
-		auto config_event_temp = std::make_shared<Config::JandyConfig_Event_Temperature>();
+		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
 		config_event_temp->PoolTemp(Utility::Temperature("Pool        21`C")); // Make sure to use the right separator character --> `
 		config_event_temp->SpaTemp(Utility::Temperature("Spa         39`C")); // Make sure to use the right separator character --> `
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
 {
 	crow::SimpleApp http_server;
 	http_server.loglevel(crow::LogLevel::Critical);
-	HTTP::WebSocket_JandyEquipment websocket_je(http_server, Equipment());
+	HTTP::WebSocket_Equipment websocket_je(http_server, DataHub());
 	BOOST_REQUIRE_NO_THROW(http_server.validate());
 	auto http_server_tracker = http_server.run_async();
 
@@ -103,14 +103,14 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
 		ws.set_option(boost::beast::websocket::stream_base::decorator(
 			[](boost::beast::websocket::request_type& req)
 			{
-				req.set(boost::beast::http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+				req.set(boost::beast::http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " aqualink-automate-websocket-client");
 			}));
 		
 		ws.handshake(host, "/ws/equipment");
 
 		// Send the message here....
 		auto pool_temp = Utility::Temperature("Pool        38`C");
-		const_cast<Config::JandyConfig&>(Equipment().Config()).PoolTemp(pool_temp);
+		DataHub().PoolTemp(pool_temp);
 
 		boost::beast::flat_buffer buffer;
 		ws.read(buffer);
