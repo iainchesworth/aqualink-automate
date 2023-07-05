@@ -23,7 +23,7 @@ using namespace AqualinkAutomate;
 class Test_OneTouchDevicePlusHttpServer : public Test::OneTouchDevice
 {
 	const std::string LISTEN_ADDR{ "127.0.0.1" };
-	const uint16_t LISTEN_PORT{ 80 };
+	const uint16_t LISTEN_PORT{ 49152 };
 
 public:
 	Test_OneTouchDevicePlusHttpServer() : 
