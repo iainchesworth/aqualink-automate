@@ -77,6 +77,11 @@ namespace AqualinkAutomate::Kernel
 		return m_pH;
 	}
 
+	ppm_quantity DataHub::SaltLevel() const
+	{
+		return m_SaltLevel;
+	}
+
 	void DataHub::ORP(const Kernel::ORP& orp)
 	{
 		m_ORP = orp;
@@ -94,6 +99,16 @@ namespace AqualinkAutomate::Kernel
 		// Signal that a chemistry update has occurred.
 		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
 		update_event->pH(m_pH);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::SaltLevel(const ppm_quantity& salt_level_in_ppm)
+	{
+		m_SaltLevel = salt_level_in_ppm;
+
+		// Signal that a chemistry update has occurred.
+		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		update_event->SaltLevel(m_SaltLevel);
 		ConfigUpdateSignal(update_event);
 	}
 

@@ -209,7 +209,8 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 	{
 		// Send the message here....
 		DataHub().ORP(650);
-		DataHub().pH(7.5f);
+		DataHub().pH(7.5);
+		DataHub().SaltLevel(4000 * ppm);
 
 		ReadFromWebSocket_Blocking(buffer);
 		{
@@ -235,6 +236,20 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 			BOOST_REQUIRE(wse_json.contains("payload"));
 			BOOST_REQUIRE(wse_json["payload"].contains("ph"));
 			BOOST_CHECK_EQUAL(7.5, wse_json["payload"]["ph"]);
+
+			buffer.clear();
+		}
+
+		ReadFromWebSocket_Blocking(buffer);
+		{
+			auto req = buffer.data();
+			auto wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req));
+
+			BOOST_REQUIRE(wse_json.contains("type"));
+			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+			BOOST_REQUIRE(wse_json.contains("payload"));
+			BOOST_REQUIRE(wse_json["payload"].contains("salt_level"));
+			BOOST_CHECK_EQUAL(4000, wse_json["payload"]["salt_level"]);
 
 			buffer.clear();
 		}

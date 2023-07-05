@@ -99,11 +99,11 @@
                             <div class="card-body text-center">
                                 <div class="row align-items-center">
                                     <div class="col">
-                                        <h2 id="orpLevel">{{water_orp}}</h2>
+                                        <h2 id="orp">{{water_orp}}</h2>
                                         <p class="small-text">ORP</p>
                                     </div>
                                     <div class="col">
-                                        <h2 id="phLevel">{{water_ph}}</h2>
+                                        <h2 id="ph">{{water_ph}}</h2>
                                         <p class="small-text">pH</p>
                                     </div>
                                 </div>
@@ -192,10 +192,10 @@
 
             addEventHandler('ChemistryUpdate', (payload) => {
                 if (payload && payload.orp_level) {
-                    document.getElementById('orpLevel').innerText = payload.orp_level;
+                    document.getElementById('orp').innerText = payload.orp;
                 }
                 if (payload && payload.ph_level) {
-                    document.getElementById('phLevel').innerText = payload.ph_level;
+                    document.getElementById('ph').innerText = payload.ph;
                 }
             });
 

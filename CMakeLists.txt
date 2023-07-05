@@ -133,6 +133,7 @@ add_library(
 	src/exceptions/exception_webserver.cpp 
 	src/formatters/orp_formatter.cpp 
 	src/formatters/ph_formatter.cpp 
+	src/formatters/units_dimensionless_formatter.cpp 
 	src/formatters/units_electric_potential_formatter.cpp 
 	src/http/crow_custom_logger.cpp 
 	src/http/webroute_equipment.cpp 
@@ -330,6 +331,8 @@ add_library(
 	src/signals/signal_awaitable.cpp
 	src/signals/signal_cleanup.cpp
 	src/signals/signal_handler.cpp
+	src/types/units_dimensionless.cpp 
+	src/types/units_electric_potential.cpp
 	src/utility/array_standard_formatter.cpp
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	

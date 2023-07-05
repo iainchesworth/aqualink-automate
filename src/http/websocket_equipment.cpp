@@ -20,7 +20,7 @@ namespace AqualinkAutomate::HTTP
 	{
 		m_Connection = conn;
 
-		m_TemperatureSlot = m_DataHub.ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_TemperatureUpdate, this, std::placeholders::_1));
+		m_TemperatureSlot = m_DataHub.ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubUpdate, this, std::placeholders::_1));
 	}
 
 	void WebSocket_Equipment::OnMessage(Connection& conn, const std::string& data, bool is_binary)
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::HTTP
 		m_Connection = std::nullopt;
 	}
 
-	void WebSocket_Equipment::HandleEvent_TemperatureUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event)
+	void WebSocket_Equipment::HandleEvent_DataHubUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event)
 	{
 		if (nullptr == config_update_event)
 		{

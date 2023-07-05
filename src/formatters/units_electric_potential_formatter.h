@@ -28,6 +28,6 @@ struct std::formatter<AqualinkAutomate::Units::millivolt_quantity> : std::format
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Units::millivolt_quantity& value_in_mV, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(value_in_mV.value()));
+		return std::vformat_to(ctx.out(), "{} mV", std::make_format_args(value_in_mV.value()));
 	}
 };

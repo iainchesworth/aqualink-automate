@@ -14,7 +14,8 @@ namespace AqualinkAutomate::Kernel
 	DataHub_Event_Chemistry::DataHub_Event_Chemistry() :
 		DataHub_Event(DataHub_EventTypes::Chemistry),
 		m_ORP(std::nullopt),
-		m_pH(std::nullopt)
+		m_pH(std::nullopt),
+		m_SaltLevel(std::nullopt)
 	{
 	}
 
@@ -28,14 +29,24 @@ namespace AqualinkAutomate::Kernel
 		return m_pH;
 	}
 
-	void DataHub_Event_Chemistry::ORP(Kernel::ORP orp)
+	std::optional<Units::ppm_quantity> DataHub_Event_Chemistry::SaltLevel() const
+	{
+		return m_SaltLevel;
+	}
+
+	void DataHub_Event_Chemistry::ORP(const Kernel::ORP& orp)
 	{
 		m_ORP = orp;
 	}
 
-	void DataHub_Event_Chemistry::pH(Kernel::pH pH)
+	void DataHub_Event_Chemistry::pH(const Kernel::pH& pH)
 	{
 		m_pH = pH;
+	}
+
+	void DataHub_Event_Chemistry::SaltLevel(const Units::ppm_quantity& salt_level_in_ppm)
+	{
+		m_SaltLevel = salt_level_in_ppm;
 	}
 
 	boost::uuids::uuid DataHub_Event_Chemistry::Id() const
@@ -56,6 +67,12 @@ namespace AqualinkAutomate::Kernel
 		{
 			auto ph = event.pH().value();
 			j["ph"] = static_cast<double>(ph());
+		}
+
+		if (event.SaltLevel().has_value())
+		{
+			auto salt_level = event.SaltLevel().value();
+			j["salt_level"] = static_cast<uint16_t>(salt_level.value());
 		}
 	}
 

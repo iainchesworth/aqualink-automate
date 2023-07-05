@@ -26,6 +26,7 @@
 #include "jandy/utility/string_conversion/temperature.h"
 #include "jandy/utility/string_conversion/timeout_duration.h"
 #include "logging/logging.h"
+#include "types/units_dimensionless.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -112,14 +113,17 @@ namespace AqualinkAutomate::Kernel
 	public:
 		Kernel::ORP ORP() const;
 		Kernel::pH pH() const;
+		ppm_quantity SaltLevel() const;
 
 	public:
 		void ORP(const Kernel::ORP& orp);
 		void pH(const Kernel::pH& pH);
+		void SaltLevel(const ppm_quantity& salt_level_in_ppm);
 
 	private:
 		Kernel::ORP m_ORP{ 0.0f };
 		Kernel::pH m_pH{ 0.0f };
+		ppm_quantity m_SaltLevel{ 0 };
 
 	//---------------------------------------------------------------------
 	// DEVICES GRAPH

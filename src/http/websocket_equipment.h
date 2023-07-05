@@ -27,7 +27,7 @@ namespace AqualinkAutomate::HTTP
 		virtual void OnError(Connection& conn) override;
 
 	private:
-		void HandleEvent_TemperatureUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
+		void HandleEvent_DataHubUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
 
 	private:
 		const Kernel::DataHub& m_DataHub;
