@@ -59,9 +59,9 @@ namespace AqualinkAutomate::Utility
 		using StatsTypesMap = std::unordered_map<StatsTypes, StatsCounter>;
 
 	public:
-		using key_type = StatsTypesMap::key_type;
-		using mapped_type = StatsTypesMap::mapped_type;
-		using value_type = StatsTypesMap::value_type;
+		using key_type = typename StatsTypesMap::key_type;
+		using mapped_type = typename StatsTypesMap::mapped_type;
+		using value_type = typename StatsTypesMap::value_type;
 
 	public:
 		SignallingStatsCounter() :

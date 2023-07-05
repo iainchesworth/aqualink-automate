@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Logging
 {
 
 	template<typename MESSAGE>
-	constexpr auto Log(MESSAGE log_message, Channel channel, Severity severity, const boost::source_location location)
+	void Log(MESSAGE log_message, Channel channel, Severity severity, const boost::source_location location)
 	{
 		auto GetGlobalLogger = [](auto channel) -> Logger&
 		{
@@ -78,44 +78,44 @@ namespace AqualinkAutomate::Logging
 }
 // namespace AqualinkAutomate::Logging
 
-template<typename MESSAGE >
-constexpr void LogTrace(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+template<typename MESSAGE>
+void LogTrace(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Trace, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogDebug(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogDebug(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Debug, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogInfo(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogInfo(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Info, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogNotify(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogNotify(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Notify, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogWarning(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogWarning(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Warning, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogError(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogError(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Error, location);
 }
 
 template<typename MESSAGE>
-constexpr void LogFatal(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
+void LogFatal(AqualinkAutomate::Logging::Channel channel, MESSAGE log_message, const boost::source_location location = BOOST_CURRENT_LOCATION)
 {
 	AqualinkAutomate::Logging::Log(log_message, channel, AqualinkAutomate::Logging::Severity::Fatal, location);
 }

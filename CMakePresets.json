@@ -70,9 +70,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
+        "CMAKE_CXX_COMPILER": "clang-cl.exe"
       }
     },
     {
@@ -83,24 +81,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang",
         "ENABLE_SANITIZERS": "ON",
         "SANITIZE_ADDRESS": "ON"
-      }
-    },
-    {
-      "name": "windows-x64-debug-clang-tsan",
-      "displayName": "Windows x64 (clang, debug, tsan)",
-      "inherits": "windows-x64-debug-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang",
-        "ENABLE_SANITIZERS": "ON",
-        "SANITIZE_THREAD": "ON"
       }
     },
     {
@@ -110,9 +92,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
+        "CMAKE_CXX_COMPILER": "clang-cl.exe"
       }
     },
     {
@@ -156,9 +136,25 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
+        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++"
+      }
+    },
+    {
+      "name": "linux-x64-debug-clang-asan",
+      "displayName": "Linux x64 (clang, debug, asan)",
+      "inherits": "linux-x64-debug-clang",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "ON",
+        "SANITIZE_ADDRESS": "ON"
+      }
+    },
+    {
+      "name": "linux-x64-debug-clang-tsan",
+      "displayName": "Linux x64 (clang, debug, tsan)",
+      "inherits": "linux-x64-debug-clang",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "ON",
+        "SANITIZE_THREAD": "ON"
       }
     },
     {
@@ -166,11 +162,7 @@
       "displayName": "Linux x64 (clang, release)",
       "inherits": "linux-x64-debug-clang",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     },
     {
