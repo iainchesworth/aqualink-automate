@@ -7,3 +7,9 @@
 [submodule "deps/crow"]
 	path = deps/crow
 	url = https://github.com/iainchesworth/Crow.git
+[submodule "deps/cinatra"]
+	path = deps/cinatra
+	url = https://github.com/qicosmos/cinatra.git
+[submodule "deps/bustache"]
+	path = deps/bustache
+	url = https://github.com/jamboree/bustache.git
