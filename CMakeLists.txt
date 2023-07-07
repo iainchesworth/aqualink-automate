@@ -29,7 +29,6 @@ cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON
 
 add_subdirectory(deps)
 
-find_package(asio REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
 find_package(magic_enum REQUIRED)
@@ -135,7 +134,6 @@ add_library(
 	src/formatters/ph_formatter.cpp 
 	src/formatters/units_dimensionless_formatter.cpp 
 	src/formatters/units_electric_potential_formatter.cpp 
-	src/http/crow_custom_logger.cpp 
 	src/http/webroute_equipment.cpp 
 	src/http/webroute_equipment_buttons.cpp 
 	src/http/webroute_equipment_devices.cpp 
@@ -384,9 +382,6 @@ target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 target_compile_definitions(
 	libaqualink-automate 
 	PUBLIC 
-	CROW_ENABLE_COMPRESSION 
-	CROW_ENABLE_SSL 
-	CROW_ENFORCE_WS_SPEC 
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
 
@@ -403,7 +398,8 @@ target_include_directories(
 	PUBLIC 
 	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
-	${Crow_INCLUDE_DIRS} 
+	"${bustache_SOURCE_DIR}/include"
+	${Cinatra_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
@@ -414,19 +410,19 @@ target_include_directories(
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
 )
 
-add_dependencies(libaqualink-automate Crow)
+add_dependencies(libaqualink-automate Cinatra)
 
 target_link_libraries(
 	libaqualink-automate 
 	PUBLIC
-	asio::asio
 	Boost::boost 
 	Boost::coroutine 
 	Boost::iostreams 
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
-	Crow
+	bustache::bustache
+	Cinatra
 	magic_enum::magic_enum
 	mqtt_cpp_iface::mqtt_cpp_iface 
 	nlohmann_json::nlohmann_json

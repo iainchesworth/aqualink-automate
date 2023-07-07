@@ -3,7 +3,6 @@
   "name": "aqualink-automate",
   "version": "0.0.1",
   "dependencies": [
-    "asio",
     "benchmark",
     "boost-asio",
     "boost-assert",

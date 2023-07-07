@@ -7,7 +7,7 @@
 namespace AqualinkAutomate::HTTP::Support
 {
 
-	void GeneratePageFooter_Context(crow::mustache::context& ctx)
+	void GeneratePageFooter_Context(std::unordered_map<std::string, std::string>& template_value_map)
 	{
 		auto generate_git_string = []() -> std::string
 		{
@@ -26,9 +26,9 @@ namespace AqualinkAutomate::HTTP::Support
 			return git_details;
 		};
 
-		ctx["aqualink_automate_version"] = Version::VersionInfo::ProjectVersion();
-		ctx["aqualink_automate_gitinfo"] = generate_git_string();
-		ctx["aqualink_automate_github"] = Version::VersionInfo::ProjectHomepageURL();
+		template_value_map.emplace("aqualink_automate_version", Version::VersionInfo::ProjectVersion());
+		template_value_map.emplace("aqualink_automate_gitinfo", generate_git_string());
+		template_value_map.emplace("aqualink_automate_github", Version::VersionInfo::ProjectHomepageURL());
 	}
 
 }

@@ -8,17 +8,17 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment_Buttons::WebRoute_Equipment_Buttons(crow::SimpleApp& app, const Kernel::DataHub& data_hub) :
-		Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>(app,
+	WebRoute_Equipment_Buttons::WebRoute_Equipment_Buttons(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
+		Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>(http_server,
 			{
-				{ crow::HTTPMethod::Get, std::bind(&WebRoute_Equipment_Buttons::ButtonCollection_GetHandler, this, std::placeholders::_1, std::placeholders::_2) },
-				{ crow::HTTPMethod::Post, std::bind(&WebRoute_Equipment_Buttons::ButtonCollection_PostHandler, this, std::placeholders::_1, std::placeholders::_2) }
+				{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment_Buttons::ButtonCollection_GetHandler, this, std::placeholders::_1, std::placeholders::_2) },
+				{ HTTP::Methods::POST, std::bind(&WebRoute_Equipment_Buttons::ButtonCollection_PostHandler, this, std::placeholders::_1, std::placeholders::_2) }
 			}
 		),
-		Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL, Buttons::ButtonRouteHandler>(app,
+		Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>(http_server,
 			{ 
-				{ crow::HTTPMethod::Get, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_GetHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
-				{ crow::HTTPMethod::Post, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
+				{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_GetHandler, this, std::placeholders::_1, std::placeholders::_2) },
+				{ HTTP::Methods::POST, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler, this, std::placeholders::_1, std::placeholders::_2) }
 			}
 		),
 		m_Buttons 
@@ -48,7 +48,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	}
 
-	void WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(const HTTP::Request& req, HTTP::Response& resp)
+	void WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
 		nlohmann::json all_buttons;
 
@@ -56,18 +56,23 @@ namespace AqualinkAutomate::HTTP
 		{
 			all_buttons[elem.device_id] = elem.device_status();
 		}
-		
-		resp.set_header("Content-Type", "application/json");		
-		resp.body = all_buttons.dump();
-		resp.end();
+
+		resp.set_status_and_content(
+			cinatra::status_type::ok,
+			all_buttons.dump(),
+			cinatra::req_content_type::json,
+			cinatra::content_encoding::none
+		);
 	}
 
-	void WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(const HTTP::Request& req, HTTP::Response& resp)
+	void WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
 	}
 
-	void WebRoute_Equipment_Buttons::ButtonIndividual_GetHandler(const HTTP::Request& req, HTTP::Response& resp, const std::string& button_id)
+	void WebRoute_Equipment_Buttons::ButtonIndividual_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
+		const std::string button_id(req.get_query_value("button_id"));
+
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
 			Report_SystemIsInactive(resp);
@@ -81,17 +86,20 @@ namespace AqualinkAutomate::HTTP
 			}
 			else
 			{
-				resp.set_header("Content-Type", "application/json");
-				resp.code = 200;
-				resp.body = it->device_status().dump();
+				resp.set_status_and_content(
+					cinatra::status_type::ok,
+					it->device_status().dump(),
+					cinatra::req_content_type::json,
+					cinatra::content_encoding::none
+				);
 			}
 		}
-
-		resp.end();
 	}
 
-	void WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler(const HTTP::Request& req, HTTP::Response& resp, const std::string& button_id)
+	void WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
+		const std::string button_id(req.get_query_value("button_id"));
+
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
 			Report_SystemIsInactive(resp);
@@ -106,16 +114,17 @@ namespace AqualinkAutomate::HTTP
 			else
 			{
 				// Attempt to trigger the sequencing of the button's "command".
-				it->device_trigger(nlohmann::json(req.body));
+				it->device_trigger(nlohmann::json(req.body()));
 
 				// Return the button's (new) state i.a.w. RESTful principles.
-				resp.set_header("Content-Type", "application/json");
-				resp.code = 200;
-				resp.body = it->device_status().dump();
+				resp.set_status_and_content(
+					cinatra::status_type::ok,
+					it->device_status().dump(),
+					cinatra::req_content_type::json,
+					cinatra::content_encoding::none
+				);
 			}
 		}
-
-		resp.end();
 	}
 
 	nlohmann::json WebRoute_Equipment_Buttons::Button_PoolHeatStatus()
@@ -166,9 +175,12 @@ namespace AqualinkAutomate::HTTP
 	{
 		LogInfo(Channel::Web, std::format("Received an invalid button id ('{}'); rejecting button request", button_id));
 
-		resp.set_header("Content-Type", "text/plain");
-		resp.code = 404;
-		resp.body = std::format("'{}' is an invalid button id", button_id);
+		resp.set_status_and_content(
+			cinatra::status_type::not_found,
+			std::format("'{}' is an invalid button id", button_id),
+			cinatra::req_content_type::text,
+			cinatra::content_encoding::none
+		);
 	}
 
 	void WebRoute_Equipment_Buttons::Report_ButtonIsInactive(HTTP::Response& resp, const std::string& button_id)
@@ -179,10 +191,15 @@ namespace AqualinkAutomate::HTTP
 	{
 		LogInfo(Channel::Web, "Aqualink Automate has not yet initialised (PoolConfiguration == Unknown); rejecting button action request");
 
-		resp.set_header("Content-Type", "text/plain");
-		resp.set_header("Retry-After", "30");
-		resp.code = 503;
-		resp.body = "Service is not initialised; cannot action button";
+		resp.set_status_and_content(
+			cinatra::status_type::service_unavailable,
+			"Service is not initialised; cannot action button",
+			cinatra::req_content_type::text,
+			cinatra::content_encoding::none
+		);
+
+		resp.add_header("Content-Type", "text/plain");
+		resp.add_header("Retry-After", "30");
 	}
 
 }

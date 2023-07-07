@@ -1,4 +1,19 @@
-include(ExternalProject)
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+include(FetchContent)
+
+FetchContent_Declare(
+  bustache
+  GIT_REPOSITORY https://github.com/jamboree/bustache.git
+  GIT_TAG        master
+)
+
+FetchContent_MakeAvailable(bustache)
 
 #------------------------------------------------------------------------------
 #
@@ -7,27 +22,18 @@ include(ExternalProject)
 #
 #------------------------------------------------------------------------------
 
-find_package(asio REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 
-add_library(Crow INTERFACE)
-target_include_directories(Crow INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/crow/include")
-target_link_libraries(Crow INTERFACE asio::asio OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB)
+add_library(Cinatra INTERFACE)
+target_include_directories(Cinatra INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/cinatra/include")
+target_compile_definitions(Cinatra INTERFACE CINATRA_ENABLE_GZIP CINATRA_ENABLE_SSL)
+target_link_libraries(Cinatra INTERFACE Threads::Threads OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB)
 
-#ExternalProject_Add(crowcpp
-#	DOWNLOAD_COMMAND ""
-#	SOURCE_DIR ${CMAKE_SOURCE_DIR}/deps/crowcpp
-#	BINARY_DIR ${CMAKE_BINARY_DIR}/deps/crowcpp
-#	INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/crowcpp
-#	CMAKE_ARGS
-#		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/deps/vcpkg/scripts/buildsystems/vcpkg.cmake
-#		-DCROW_BUILD_EXAMPLES=OFF
-#		-DCROW_BUILD_TESTS=OFF
-#		-DCROW_FEATURES=compression,ssl
-#		-DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/crowcpp
-#)
-
-#find_package(Crow REQUIRED CONFIG PATHS "${CMAKE_BINARY_DIR}/deps/crowcpp")
-
-#set(Crow_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/deps/crowcpp/include" PARENT_SCOPE)
+target_compile_options(
+	Cinatra 
+	INTERFACE 
+	$<$<CXX_COMPILER_ID:GNU>:"-fcoroutines">
+	$<$<AND:$<CXX_COMPILER_ID:GNU>,$<NOT:$<CONFIG:Debug>>>:"-fno-tree-slp-vectorize">
+)

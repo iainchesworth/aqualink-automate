@@ -1,12 +1,5 @@
 #include <boost/test/unit_test.hpp>
 
-#include <boost/asio/buffers_iterator.hpp>
-#include <boost/asio/connect.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
-#include <crow/app.h>
 #include <nlohmann/json.hpp>
 
 #include "http/websocket_event.h"
@@ -15,90 +8,12 @@
 #include "kernel/data_hub_event_chemistry.h"
 #include "kernel/data_hub_event_temperature.h"
 
-#include "support/unit_test_onetouchdevice.h"
+#include "support/unit_test_onetouchdevice_httpserver.h"
 #include "support/unit_test_ostream_support.h"
 
 using namespace AqualinkAutomate;
 
-class Test_OneTouchDevicePlusHttpServer : public Test::OneTouchDevice
-{
-	const std::string LISTEN_ADDR{ "127.0.0.1" };
-	const uint16_t LISTEN_PORT{ 49152 };
-
-public:
-	Test_OneTouchDevicePlusHttpServer() : 
-		Test::OneTouchDevice(),
-		m_HTTPServer(),
-		m_WS_Equipment(m_HTTPServer, DataHub()),
-		m_HTTPServerThread()
-	{
-		m_HTTPServer
-			.bindaddr(LISTEN_ADDR)
-			.port(LISTEN_PORT)
-			.loglevel(crow::LogLevel::Critical);
-	}
-
-	~Test_OneTouchDevicePlusHttpServer()
-	{
-		if(ws.is_open())
-		{
-			ws.close(boost::beast::websocket::close_code::normal);
-		}
-
-		m_HTTPServer.stop();
-
-		if (m_HTTPServerThread.joinable())
-		{
-			m_HTTPServerThread.join();
-		}		
-	}
-
-public:
-	void ConfigureWebSocketServer()
-	{
-		BOOST_REQUIRE_NO_THROW(m_HTTPServer.validate());
-
-		m_HTTPServerThread = std::thread([&]() -> void
-			{
-				m_HTTPServer.run();
-			}
-		);
-
-		m_HTTPServer.wait_for_server_start();
-	}
-
-	void ConfigureWebSocketClient(const std::string& ws_route)
-	{
-		auto const results = resolver.resolve(LISTEN_ADDR, std::to_string(LISTEN_PORT));
-		boost::asio::connect(ws.next_layer(), results.begin(), results.end());
-
-		ws.set_option(boost::beast::websocket::stream_base::decorator(
-			[](boost::beast::websocket::request_type& req)
-			{
-				req.set(boost::beast::http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " aqualink-automate-websocket-client");
-			}));
-
-		ws.handshake(LISTEN_ADDR, "/ws/equipment");
-	}
-
-public:
-	void ReadFromWebSocket_Blocking(boost::beast::flat_buffer& buffer)
-	{
-		ws.read(buffer);
-	}
-
-private:
-	crow::SimpleApp m_HTTPServer;
-	HTTP::WebSocket_Equipment m_WS_Equipment;
-	std::thread m_HTTPServerThread;
-
-private:
-	boost::asio::io_context ioc;
-	boost::asio::ip::tcp::resolver resolver{ioc};
-	boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws{ioc};
-};
-
-BOOST_FIXTURE_TEST_SUITE(WebsocketRoutes_WsEquipment, Test_OneTouchDevicePlusHttpServer)
+BOOST_FIXTURE_TEST_SUITE(WebsocketRoutes_WsEquipment, Test::Test_OneTouchDevicePlusHttpServer)
 
 BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
 {
@@ -203,8 +118,8 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 {
 	boost::beast::flat_buffer buffer;
 
-	ConfigureWebSocketServer();
-	ConfigureWebSocketClient("/ws/equipment");
+	StartHttpServer();
+	StartWebSocketClient("/ws/equipment");
 
 	{
 		// Send the message here....
@@ -260,8 +175,8 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
 {
 	boost::beast::flat_buffer buffer;
 
-	ConfigureWebSocketServer();
-	ConfigureWebSocketClient("/ws/equipment");
+	StartHttpServer();
+	StartWebSocketClient("/ws/equipment");
 
 	{
 		// Send the message here....

@@ -4,7 +4,6 @@
 #include <string_view>
 #include <vector>
 
-#include <crow/app.h>
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_types.h"
@@ -14,26 +13,20 @@
 namespace AqualinkAutomate::HTTP
 {
 	constexpr const char EQUIPMENTBUTTONS_ROUTE_URL[] = "/api/equipment/buttons";
-	constexpr const char EQUIPMENTBUTTONS_BUTTON_ROUTE_URL[] = "/api/equipment/buttons/<string>";
+	constexpr const char EQUIPMENTBUTTONS_BUTTON_ROUTE_URL[] = "/api/equipment/buttons/{:button_id}";
 
-	namespace Buttons
-	{
-		using ButtonRouteHandler = std::function<void(const HTTP::Request&, HTTP::Response&, const std::string&)>;
-	}
-	// namespace Buttons
-
-	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL, Buttons::ButtonRouteHandler>
+	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>
 	{
 	public:
-		WebRoute_Equipment_Buttons(crow::SimpleApp& app, const Kernel::DataHub& data_hub);
+		WebRoute_Equipment_Buttons(HTTP::Server& http_server, const Kernel::DataHub& data_hub);
 
 	public:
-		void ButtonCollection_GetHandler(const HTTP::Request& req, HTTP::Response& resp);
-		void ButtonCollection_PostHandler(const HTTP::Request& req, HTTP::Response& resp);
+		void ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp);
+		void ButtonCollection_PostHandler(HTTP::Request& req, HTTP::Response& resp);
 
 	public:
-		void ButtonIndividual_GetHandler(const HTTP::Request& req, HTTP::Response& resp, const std::string& button_id);
-		void ButtonIndividual_PostHandler(const HTTP::Request& req, HTTP::Response& resp, const std::string& button_id);
+		void ButtonIndividual_GetHandler(HTTP::Request& req, HTTP::Response& resp);
+		void ButtonIndividual_PostHandler(HTTP::Request& req, HTTP::Response& resp);
 
 	private:
 		struct TriggerableButton

@@ -6,8 +6,8 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Version::WebRoute_Version(crow::SimpleApp& app) :
-		Interfaces::IWebRoute<VERSION_ROUTE_URL>(app, { { crow::HTTPMethod::Get, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
+	WebRoute_Version::WebRoute_Version(HTTP::Server& http_server) :
+		Interfaces::IWebRoute<VERSION_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
 	{
 	}
 
@@ -27,9 +27,12 @@ namespace AqualinkAutomate::HTTP
 			version_info["git_info"]["uncommitted_changes"] = Version::GitMetadata::AnyUncommittedChanges();
 		}
 
-		resp.set_header("Content-Type", "application/json");
-		resp.body = version_info.dump();
-		resp.end();
+		resp.set_status_and_content(
+			cinatra::status_type::ok,
+			version_info.dump(),
+			cinatra::req_content_type::json,
+			cinatra::content_encoding::none
+		);
 	}
 
 }

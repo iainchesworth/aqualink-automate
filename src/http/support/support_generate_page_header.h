@@ -1,11 +1,12 @@
 #pragma once
 
-#include <crow/mustache.h>
+#include <string>
+#include <unordered_map>
 
 namespace AqualinkAutomate::HTTP::Support
 {
 
-	void GeneratePageHeader_Context(crow::mustache::context& ctx);
+	void GeneratePageHeader_Context(std::unordered_map<std::string, std::string>& template_value_map);
 
 }
 // namespace AqualinkAutomate::HTTP::Support

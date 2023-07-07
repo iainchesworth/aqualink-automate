@@ -1,11 +1,11 @@
 #pragma once
 
+#include <any>
 #include <functional>
 #include <optional>
 #include <string>
 
 #include <boost/signals2.hpp>
-#include <crow/app.h>
 
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
@@ -18,13 +18,13 @@ namespace AqualinkAutomate::HTTP
 	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>
 	{
 	public:
-		WebSocket_Equipment(crow::SimpleApp& app, const Kernel::DataHub& data_hub);
+		WebSocket_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub);
 
 	private:
-		virtual void OnOpen(Connection& conn) override;
-		virtual void OnMessage(Connection& conn, const std::string& data, bool is_binary) override;
-		virtual void OnClose(Connection& conn, const std::string& reason) override;
-		virtual void OnError(Connection& conn) override;
+		virtual void OnOpen(HTTP::Request& req) override;
+		virtual void OnMessage(HTTP::Request& req) override;
+		virtual void OnClose(HTTP::Request& req) override;
+		virtual void OnError(HTTP::Request& req) override;
 
 	private:
 		void HandleEvent_DataHubUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
@@ -32,7 +32,6 @@ namespace AqualinkAutomate::HTTP
 	private:
 		const Kernel::DataHub& m_DataHub;
 		boost::signals2::connection m_TemperatureSlot;
-		std::optional<std::reference_wrapper<Connection>> m_Connection;
 	};
 
 

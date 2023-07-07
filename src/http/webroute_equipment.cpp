@@ -7,8 +7,8 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment::WebRoute_Equipment(crow::SimpleApp& app, const Kernel::DataHub& data_hub, const Kernel::StatisticsHub& statistics_hub) :
-		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>(app, {{ crow::HTTPMethod::Get, std::bind(&WebRoute_Equipment::WebGetRequestHandler, this, std::placeholders::_1, std::placeholders::_2) }}),
+	WebRoute_Equipment::WebRoute_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub, const Kernel::StatisticsHub& statistics_hub) :
+		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>(http_server, {{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment::WebGetRequestHandler, this, std::placeholders::_1, std::placeholders::_2) }}),
 		m_DataHub(data_hub),
 		m_StatisticsHub(statistics_hub)
 	{
@@ -36,9 +36,12 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["stats"] = JSON::GenerateJson_Equipment_Stats(m_StatisticsHub);
 		jandy_equipment_json["version"] = JSON::GenerateJson_Equipment_Version(m_DataHub);
 
-		resp.set_header("Content-Type", "application/json");
-		resp.body = jandy_equipment_json.dump();
-		resp.end();
+		resp.set_status_and_content(
+			cinatra::status_type::ok, 
+			jandy_equipment_json.dump(),
+			cinatra::req_content_type::json, 
+			cinatra::content_encoding::none
+		);
 	}
 
 }

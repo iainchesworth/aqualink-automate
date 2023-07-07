@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/signals2.hpp>
 
 #include "interfaces/iequipment.h"
 #include "jandy/devices/jandy_device.h"
@@ -41,6 +42,9 @@ namespace AqualinkAutomate::Equipment
 		boost::asio::io_context& m_IOContext;
 		std::vector<std::unique_ptr<Devices::JandyDevice>> m_Devices;
 		std::unordered_set<Devices::JandyDeviceId> m_IdentifiedDeviceIds;
+
+	private:
+		std::vector<boost::signals2::connection> m_MessageConnections;
 
 	private:
 		Kernel::DataHub& m_DataHub;

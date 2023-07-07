@@ -1,13 +1,10 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <initializer_list>
 #include <string>
 #include <tuple>
-
-#include <crow/app.h>
-#include <crow/mustache.h>
-#include <crow/routing.h>
 
 #include "concepts/is_c_array.h"
 #include "http/webroute_types.h"
@@ -20,7 +17,7 @@ namespace AqualinkAutomate::Interfaces
 	class IWebRoute
 	{
 	public:
-		explicit IWebRoute(crow::SimpleApp& app, std::initializer_list<std::tuple<crow::HTTPMethod, ROUTE_HANDLER>> routes) :
+		explicit IWebRoute(HTTP::Server& http_server, std::initializer_list<std::tuple<HTTP::Methods, ROUTE_HANDLER>> routes) :
 			m_Routes(routes)
 		{
 			for (auto& route_tuple : m_Routes)
@@ -32,27 +29,47 @@ namespace AqualinkAutomate::Interfaces
 				//
 				// Note that clang is *actually* correct here although it "works" in MSVC and gcc.
 
-				// CROW_ROUTE(app, ROUTE_URL)
-				app.template route<crow::black_magic::get_parameter_tag(ROUTE_URL)>(ROUTE_URL)
-					.methods(std::get<crow::HTTPMethod>(route_tuple))
-					(
-						[this, route_tuple](const HTTP::Request& req, HTTP::Response& resp, auto... args) -> void
+				switch (std::get<HTTP::Methods>(route_tuple))
+				{
+				case HTTP::Methods::GET:
+					http_server.set_http_handler<HTTP::Methods::GET>(
+						ROUTE_URL, 
+						[this, route_tuple](HTTP::Request& req, HTTP::Response& resp) -> void
 						{
-							crow::mustache::set_base(crow::mustache::detail::get_global_template_base_directory_ref());
-
-							std::get<ROUTE_HANDLER>(route_tuple)(req, resp, args...);
+							std::get<ROUTE_HANDLER>(route_tuple)(req, resp);
 						}
 					);
+					break;
+				case HTTP::Methods::POST:
+					http_server.set_http_handler<HTTP::Methods::POST>(
+						ROUTE_URL,
+						[this, route_tuple](HTTP::Request& req, HTTP::Response& resp) -> void
+						{
+							std::get<ROUTE_HANDLER>(route_tuple)(req, resp);
+						}
+					);
+					break;
+				}
 			}
 		}
 
-	public:
-		void Handler(const HTTP::Request& req, HTTP::Response& resp, auto... args)
+	protected:
+		std::string ReadTemplateContents(const char* path)
 		{
-		}
+			std::string ret;
+			if (auto const fd = std::fopen(path, "rb"))
+			{
+				auto const bytes = std::filesystem::file_size(path);
+				ret.resize(bytes);
+				std::fread(ret.data(), 1, bytes, fd);
+				std::fclose(fd);
+			}
+			return ret;
+		};
 
 	private:
-		std::vector<std::tuple<crow::HTTPMethod, ROUTE_HANDLER>> m_Routes;
+		std::vector<std::tuple<HTTP::Methods, ROUTE_HANDLER>> m_Routes;
 	};
+
 }
 // namespace AqualinkAutomate::Interfaces

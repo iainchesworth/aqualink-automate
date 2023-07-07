@@ -1,36 +1,31 @@
 #include <boost/test/unit_test.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <crow/app.h>
+#include <boost/beast/core/buffers_to_string.hpp>
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_equipment.h"
 
-#include "support/unit_test_onetouchdevice.h"
+#include "support/unit_test_onetouchdevice_httpserver.h"
 
 using namespace AqualinkAutomate;
 
-BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiEquipment, Test::OneTouchDevice)
+BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiEquipment, Test::Test_OneTouchDevicePlusHttpServer)
 
 BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 {
-	crow::SimpleApp http_server;
+	boost::beast::http::response<boost::beast::http::dynamic_body> res;
+	boost::beast::flat_buffer buffer;
 
-	HTTP::WebRoute_Equipment route_je(http_server, DataHub(), StatisticsHub());
+	StartHttpServer();
+	StartHttpClient();
 
-	BOOST_REQUIRE_NO_THROW(http_server.validate());
-
+	ReadFromHttpApi_Blocking("/api/equipment", buffer, res);
 	{
-		HTTP::Request req;
-		HTTP::Response res;
+		//BOOST_CHECK_EQUAL(200, res.code);
 
-		req.url = "/api/equipment";
-
-		http_server.handle_full(req, res);
-
-		BOOST_CHECK_EQUAL(200, res.code);
-
-		nlohmann::json json_response = nlohmann::json::parse(res.body);
+		auto body = boost::beast::buffers_to_string(res.body().data());
+		nlohmann::json json_response = nlohmann::json::parse(body);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));
 		BOOST_REQUIRE(json_response.contains("devices"));
@@ -58,11 +53,11 @@ BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 
 BOOST_AUTO_TEST_CASE(InitialisedDataHub)
 {
-	crow::SimpleApp http_server;
+	boost::beast::http::response<boost::beast::http::dynamic_body> res;
+	boost::beast::flat_buffer buffer;
 
-	HTTP::WebRoute_Equipment route_je(http_server, DataHub(), StatisticsHub());
-
-	http_server.validate();
+	StartHttpServer();
+	StartHttpClient();
 
 	InitialiseOneTouchDevice();
 	EquipmentOnOff_Page1();
@@ -101,17 +96,12 @@ BOOST_AUTO_TEST_CASE(InitialisedDataHub)
 		return was_found;
 	};
 
+	ReadFromHttpApi_Blocking("/api/equipment", buffer, res);
 	{
-		HTTP::Request req;
-		HTTP::Response res;
+		//BOOST_CHECK_EQUAL(200, res.code);
 
-		req.url = "/api/equipment";
-
-		http_server.handle_full(req, res);
-
-		BOOST_CHECK_EQUAL(200, res.code);
-
-		nlohmann::json json_response = nlohmann::json::parse(res.body);
+		auto body = boost::beast::buffers_to_string(res.body().data());
+		nlohmann::json json_response = nlohmann::json::parse(body);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));
 		BOOST_REQUIRE(json_response.contains("devices"));

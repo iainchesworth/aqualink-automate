@@ -7,41 +7,41 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebSocket_Equipment_Stats::WebSocket_Equipment_Stats(crow::SimpleApp& app, const Kernel::StatisticsHub& statistics_hub) :
-		Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>(app),
+	WebSocket_Equipment_Stats::WebSocket_Equipment_Stats(HTTP::Server& http_server, const Kernel::StatisticsHub& statistics_hub) :
+		Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>(http_server),
 		m_StatisticsHub(statistics_hub),
 		m_StatsSlot()
 	{
 	}
 
-	void WebSocket_Equipment_Stats::OnOpen(Connection& conn)
+	void WebSocket_Equipment_Stats::OnOpen(HTTP::Request& req)
 	{
 		m_StatsSlot = m_StatisticsHub.Messages.Signal().connect(
-			[this, &conn]() -> void
+			[this]() -> void
 			{
 				LogTrace(Channel::Web, "Publishing updated message count statistics to connected web socket.");
 
 				// Convert JSON to string and send it over the WebSocket connection
-				conn.send_text(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
+				PublishMessage_AsText(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
 			}
 		);
 
 		LogTrace(Channel::Web, "Publishing initial message count statistics to connected web socket.");
 
 		// Convert JSON to string and send it over the WebSocket connection
-		conn.send_text(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
+		PublishMessage_AsText(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
 	}
 
-	void WebSocket_Equipment_Stats::OnMessage(Connection& conn, const std::string& data, bool is_binary)
+	void WebSocket_Equipment_Stats::OnMessage(HTTP::Request& reqy)
 	{
 	}
 
-	void WebSocket_Equipment_Stats::OnClose(Connection& conn, const std::string& reason)
+	void WebSocket_Equipment_Stats::OnClose(HTTP::Request& req)
 	{
 		m_StatsSlot.disconnect();
 	}
 
-	void WebSocket_Equipment_Stats::OnError(Connection& conn)
+	void WebSocket_Equipment_Stats::OnError(HTTP::Request& req)
 	{
 		m_StatsSlot.disconnect();
 	}

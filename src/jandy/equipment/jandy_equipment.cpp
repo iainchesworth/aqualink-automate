@@ -50,6 +50,7 @@ namespace AqualinkAutomate::Equipment
 		m_IOContext(io_context),
 		m_Devices(),
 		m_IdentifiedDeviceIds(),
+		m_MessageConnections(),
 		m_DataHub(data_hub),
 		m_StatsHub(statistics_hub)
 	{
@@ -59,35 +60,40 @@ namespace AqualinkAutomate::Equipment
 			}
 		);
 
-		Messages::JandyMessage_Ack::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::JandyMessage_Message::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::JandyMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::JandyMessage_Probe::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::JandyMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::AquariteMessage_GetId::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::AquariteMessage_Percent::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::AquariteMessage_PPM::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_ControlReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_PageButton::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_PageContinue::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_PageEnd::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_PageMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_PageStart::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_Poll::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_StartUp::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::IAQMessage_TableMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::PDAMessage_Clear::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::PDAMessage_Highlight::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::PDAMessage_HighlightChars::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
-		Messages::PDAMessage_ShiftLines::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1));
+		m_MessageConnections.push_back(Messages::JandyMessage_Ack::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::JandyMessage_Message::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::JandyMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::JandyMessage_Probe::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::JandyMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::AquariteMessage_GetId::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::AquariteMessage_Percent::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::AquariteMessage_PPM::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_ControlReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_PageButton::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_PageContinue::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_PageEnd::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_PageMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_PageStart::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_Poll::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_StartUp::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_TableMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::PDAMessage_Clear::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::PDAMessage_Highlight::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::PDAMessage_HighlightChars::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::PDAMessage_ShiftLines::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 
-		Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::DisplayUnknownMessages, this, std::placeholders::_1));
+		m_MessageConnections.push_back(Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::DisplayUnknownMessages, this, std::placeholders::_1)));
 	}
 
 	JandyEquipment::~JandyEquipment()
 	{
+		for (auto& connection : m_MessageConnections)
+		{
+			connection.disconnect();
+		}
+		
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
 			{
 				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub.Messages[id], magic_enum::enum_name(id)));

@@ -3,19 +3,17 @@
 #include <mutex>
 #include <string>
 
-#include <asio/ssl/context.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/stacktrace.hpp>
-#include <crow/app.h>
 #include <magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
-#include "http/crow_custom_logger.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_devices.h"
@@ -23,6 +21,7 @@
 #include "http/webroute_page_index.h"
 #include "http/webroute_page_equipment.h"
 #include "http/webroute_page_version.h"
+#include "http/webroute_types.h"
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
@@ -194,30 +193,29 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		HTTP::CrowCustomLogger crow_custom_logger;
-		crow::logger::setHandler(&crow_custom_logger);
+		HTTP::Server http_server(1);
 
-		crow::mustache::set_global_base(settings.web.doc_root);
+		http_server.listen(settings.web.bind_address, std::to_string(settings.web.bind_port));
 
-		crow::SimpleApp http_server;
-		http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
-		http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
+		http_server.set_static_dir(settings.web.doc_root);
 
 		if (!settings.web.http_server_is_insecure)
 		{
-			asio::ssl::context ctx(asio::ssl::context::tls);
+			http_server.set_ssl_conf({ settings.web.cert_file.Path(), settings.web.cert_key_file.Path(), "nopassword" });
+
+			/*boost::asio::ssl::context ctx(asio::ssl::context::tls);
 			ctx.set_options(
-				asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-				asio::ssl::context::no_sslv2 |				// Considered insecure
-				asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-				asio::ssl::context::no_tlsv1 |				// Considered insecure
-				asio::ssl::context::no_tlsv1_1 |			// Considered insecure
-				asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
+				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
+				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
+				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
+				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
+				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
+				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
 				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
 			);
 
 			Certificates::LoadWebCertificates(settings.web, ctx);
-			http_server.ssl(std::move(ctx));
+			http_server.ssl(std::move(ctx));*/
 		}
 
 		if (!settings.web.http_content_is_disabled)
@@ -250,11 +248,8 @@ int main(int argc, char* argv[])
 		HTTP::WebSocket_Equipment websocket_equipment(http_server, data_hub);
 		HTTP::WebSocket_Equipment_Stats websocket_equipment_stats(http_server, statistics_hub);
 
-		// Check that the routes are configured correctly.
-		http_server.validate();
-
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
-		auto http_server_instance = http_server.run_async();
+		http_server.run();
 
 		CleanUp::Register({ "Web Server Thread", [&http_server]() -> void { http_server.stop(); } });
 

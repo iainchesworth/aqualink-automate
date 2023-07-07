@@ -8,35 +8,30 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebSocket_Equipment::WebSocket_Equipment(crow::SimpleApp& app, const Kernel::DataHub& data_hub) :
-		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(app),
+	WebSocket_Equipment::WebSocket_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
+		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(http_server),
 		m_DataHub(data_hub),
-		m_TemperatureSlot(),
-		m_Connection(std::nullopt)
+		m_TemperatureSlot()
 	{
 	}
 
-	void WebSocket_Equipment::OnOpen(Connection& conn)
+	void WebSocket_Equipment::OnOpen(HTTP::Request& req)
 	{
-		m_Connection = conn;
-
 		m_TemperatureSlot = m_DataHub.ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubUpdate, this, std::placeholders::_1));
 	}
 
-	void WebSocket_Equipment::OnMessage(Connection& conn, const std::string& data, bool is_binary)
+	void WebSocket_Equipment::OnMessage(HTTP::Request& req)
 	{
 	}
 
-	void WebSocket_Equipment::OnClose(Connection& conn, const std::string& reason)
+	void WebSocket_Equipment::OnClose(HTTP::Request& req)
 	{
 		m_TemperatureSlot.disconnect();
-		m_Connection = std::nullopt;
 	}
 
-	void WebSocket_Equipment::OnError(Connection& conn)
+	void WebSocket_Equipment::OnError(HTTP::Request& req)
 	{
 		m_TemperatureSlot.disconnect();
-		m_Connection = std::nullopt;
 	}
 
 	void WebSocket_Equipment::HandleEvent_DataHubUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event)
@@ -45,13 +40,9 @@ namespace AqualinkAutomate::HTTP
 		{
 			///FIXME
 		}
-		else if (!m_Connection.has_value())
-		{
-			///FIXME
-		}
 		else
 		{
-			m_Connection.value().get().send_text(HTTP::WebSocket_Event(config_update_event).Payload());
+			PublishMessage_AsText(HTTP::WebSocket_Event(config_update_event).Payload());
 		}
 	}
 

@@ -23,6 +23,7 @@ namespace AqualinkAutomate::Test
 
 	public:
 		OneTouchDevice();
+		~OneTouchDevice();
 
 	public:
 		Kernel::DataHub& DataHub();

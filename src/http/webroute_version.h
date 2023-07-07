@@ -1,7 +1,5 @@
 #pragma once
 
-#include <crow/app.h>
-
 #include "http/webroute_types.h"
 #include "interfaces/iwebroute.h"
 
@@ -12,7 +10,7 @@ namespace AqualinkAutomate::HTTP
 	class WebRoute_Version : public Interfaces::IWebRoute<VERSION_ROUTE_URL>
 	{
 	public:
-		WebRoute_Version(crow::SimpleApp& app);
+		WebRoute_Version(HTTP::Server& http_server);
 
 	public:
 		void WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp);
