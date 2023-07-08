@@ -9,17 +9,17 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Page_Index::WebRoute_Page_Index(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
-		Interfaces::IWebRoute<PAGE_INDEX_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Page_Index::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
+		Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>(http_server),
 		m_DataHub(data_hub)
 	{
 	}
 
-	void WebRoute_Page_Index::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
+	void WebRoute_Page_Index::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		auto templated_page = ReadTemplateContents("index.html.mustache");
-		auto parsed_template = bustache::format(templated_page);
+		auto template_page = LoadTemplateFromFile(PAGE_INDEX_TEMPLATE);
+		auto parsed_template = bustache::format(template_page);
 
-		std::unordered_map<std::string, std::string> template_values;
+		BustacheTemplateValues template_values;
 
 		Support::GeneratePageHeader_Context(template_values);
 

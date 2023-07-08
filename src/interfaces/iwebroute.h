@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <functional>
 #include <initializer_list>
 #include <string>
@@ -52,20 +51,6 @@ namespace AqualinkAutomate::Interfaces
 				}
 			}
 		}
-
-	protected:
-		std::string ReadTemplateContents(const char* path)
-		{
-			std::string ret;
-			if (auto const fd = std::fopen(path, "rb"))
-			{
-				auto const bytes = std::filesystem::file_size(path);
-				ret.resize(bytes);
-				std::fread(ret.data(), 1, bytes, fd);
-				std::fclose(fd);
-			}
-			return ret;
-		};
 
 	private:
 		std::vector<std::tuple<HTTP::Methods, ROUTE_HANDLER>> m_Routes;

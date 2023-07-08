@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
 		HTTP::WebSocket_Equipment_Stats websocket_equipment_stats(http_server, statistics_hub);
 
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
-		http_server.run();
+		auto _ = std::async(std::launch::async, [&http_server]() -> void { http_server.run(); });
 
 		CleanUp::Register({ "Web Server Thread", [&http_server]() -> void { http_server.stop(); } });
 

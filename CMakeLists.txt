@@ -161,7 +161,8 @@ add_library(
 	src/interfaces/iprofilingunit.cpp	 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
-	src/interfaces/iwebroute.cpp 
+	src/interfaces/iwebpageroute.cpp
+	src/interfaces/iwebroute.cpp  
 	src/interfaces/iwebsocket.cpp 
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 

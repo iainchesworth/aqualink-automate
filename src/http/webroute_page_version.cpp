@@ -9,17 +9,16 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Page_Version::WebRoute_Page_Version(HTTP::Server& http_server) :
-		Interfaces::IWebRoute<PAGE_VERSION_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Page_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
+		Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>(http_server)
 	{
 	}
 
-	void WebRoute_Page_Version::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
+	void WebRoute_Page_Version::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		auto templated_page = ReadTemplateContents("version.html.mustache");		
-		auto parsed_template = bustache::format(templated_page);
+		auto template_page = LoadTemplateFromFile(PAGE_VERSION_TEMPLATE);
+		auto parsed_template = bustache::format(template_page);
 
-		std::unordered_map<std::string, std::string> template_values;
-
+		BustacheTemplateValues template_values;
 		Support::GeneratePageHeader_Context(template_values);
 		Support::GeneratePageFooter_Context(template_values);
 
