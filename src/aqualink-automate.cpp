@@ -193,12 +193,15 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		HTTP::Server http_server(1);
-
+		HTTP::Server http_server(std::thread::hardware_concurrency());
+		
+		http_server.enable_timeout(true);
+		http_server.enable_response_time(true);
+		http_server.enable_http_cache(false);
 		http_server.listen(settings.web.bind_address, std::to_string(settings.web.bind_port));
-
+		http_server.set_keep_alive_timeout(30);
 		http_server.set_static_dir(settings.web.doc_root);
-
+		
 		if (!settings.web.http_server_is_insecure)
 		{
 			http_server.set_ssl_conf({ settings.web.cert_file.Path(), settings.web.cert_key_file.Path(), "nopassword" });
