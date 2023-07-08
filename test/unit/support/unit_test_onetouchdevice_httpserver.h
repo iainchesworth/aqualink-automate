@@ -10,6 +10,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/core/tcp_stream.hpp>
 #include <boost/beast/http/dynamic_body.hpp>
@@ -47,13 +48,17 @@ namespace AqualinkAutomate::Test
 		HTTP::Server m_HTTPServer;
 		HTTP::WebRoute_Equipment m_API_Equipment;
 		HTTP::WebSocket_Equipment m_WS_Equipment;
-		std::thread m_HTTPServerThread;
 
 	private:
 		boost::asio::io_context ioc;
 		boost::asio::ip::tcp::resolver resolver{ioc};
 		boost::beast::tcp_stream http_stream{ioc};
 		boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws_stream{ioc};
+		std::thread ws_thread;
+
+	private:
+		boost::asio::chrono::seconds m_ReadTimeout{ 5 };
+		boost::asio::steady_timer m_ReadTimer{ ioc, m_ReadTimeout };
 	};
 
 }
