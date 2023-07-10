@@ -6,8 +6,8 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char PAGE_EQUIPMENT_ROUTE_URL[] = "/equipment";
-	constexpr const char PAGE_EQUIPMENT_TEMPLATE[] = "templates/equipment.html.mustache";
+	inline constexpr char PAGE_EQUIPMENT_ROUTE_URL[] = "/equipment";
+	inline constexpr char PAGE_EQUIPMENT_TEMPLATE[] = "templates/equipment.html.mustache";
 
 	class WebRoute_Page_Equipment : public Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>
 	{

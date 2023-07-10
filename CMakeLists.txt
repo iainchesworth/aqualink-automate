@@ -31,6 +31,7 @@ add_subdirectory(deps)
 
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
+find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -265,6 +266,7 @@ add_library(
 	src/kernel/auxillary_states.cpp
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
+	src/kernel/data_hub_command.cpp
 	src/kernel/data_hub_event.cpp
 	src/kernel/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_event_temperature.cpp
@@ -399,9 +401,9 @@ target_include_directories(
 	PUBLIC 
 	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
-	"${bustache_SOURCE_DIR}/include"
 	${Cinatra_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
+	${mstch_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
 	${re2_INCLUDE_DIRS}
@@ -422,10 +424,11 @@ target_link_libraries(
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
-	bustache::bustache
+	mstch::mstch
 	Cinatra
 	magic_enum::magic_enum
 	mqtt_cpp_iface::mqtt_cpp_iface 
+	mstch::mstch
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto

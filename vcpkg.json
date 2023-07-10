@@ -22,6 +22,7 @@
     "boost-uuid",
     "magic-enum",
     "mqtt-cpp",
+    "mstch",
     "nlohmann-json",
     "openssl",
     "re2",

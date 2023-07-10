@@ -133,7 +133,16 @@
         <!-- Continue with other rows here as necessary... -->
     </div>
 
-    <div class="mt-3"></div>
+    <div class="mt-1">
+        <row>
+            {{#triggerable_buttons}}
+            <button class="col-lg-1 col-6">
+                <h2 id="{{triggerable_button_text_id}}">{{triggerable_button_text}}</h2>
+                <p id="{{triggerable_button_status_id}}">{{triggerable_button_status}}</p>
+            </button>
+            {{/triggerable_buttons}}
+        </row>
+    </div>
 
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container">

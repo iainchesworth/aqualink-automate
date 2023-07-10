@@ -1,4 +1,4 @@
-#include <bustache/render/string.hpp>
+#include <mstch/mstch.hpp>
 
 #include "http/webroute_page_index.h"
 #include "http/support/support_generate_page_footer.h"
@@ -17,34 +17,35 @@ namespace AqualinkAutomate::HTTP
 	void WebRoute_Page_Index::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
 		auto template_page = LoadTemplateFromFile(PAGE_INDEX_TEMPLATE);
-		auto parsed_template = bustache::format(template_page);
 
-		BustacheTemplateValues template_values;
+		mstch::map template_map
+		{
+		};
 
-		Support::GeneratePageHeader_Context(template_values);
+		Support::GeneratePageHeader_Context(template_map);
 
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
-			template_values.emplace("pool_temperature", "-");
-			template_values.emplace("spa_temperature", "-");
-			template_values.emplace("air_temperature", "-");
+			template_map.emplace("pool_temperature", std::string{"-"});
+			template_map.emplace("spa_temperature", std::string{"-"});
+			template_map.emplace("air_temperature", std::string{"-"});
 
-			template_values.emplace("water_orp", "-");
-			template_values.emplace("water_ph", "-");
+			template_map.emplace("water_orp", std::string{"-"});
+			template_map.emplace("water_ph", std::string{"-"});
 		}
 		else
 		{
-			template_values.emplace("pool_temperature", std::format("{}", m_DataHub.PoolTemp()));
-			template_values.emplace("spa_temperature", std::format("{}", m_DataHub.SpaTemp()));
-			template_values.emplace("air_temperature", std::format("{}", m_DataHub.AirTemp()));
+			template_map.emplace("pool_temperature", std::format("{}", m_DataHub.PoolTemp()));
+			template_map.emplace("spa_temperature", std::format("{}", m_DataHub.SpaTemp()));
+			template_map.emplace("air_temperature", std::format("{}", m_DataHub.AirTemp()));
 
-			template_values.emplace("water_orp", "-");
-			template_values.emplace("water_ph", "-");
-		}		
+			template_map.emplace("water_orp", std::string{"-"});
+			template_map.emplace("water_ph", std::string{"-"});
+		}
 
-		Support::GeneratePageFooter_Context(template_values);
+		Support::GeneratePageFooter_Context(template_map);
 
-		std::string generated_page = bustache::to_string(parsed_template(template_values).context(bustache::no_context_t{}).escape(bustache::escape_html));
+		std::string generated_page = mstch::render(template_page, template_map);
 
 		resp.set_status_and_content(
 			cinatra::status_type::ok,

@@ -33,9 +33,6 @@ namespace AqualinkAutomate::Interfaces
 		virtual void WebRequestHandler(HTTP::Request& req, HTTP::Response& resp) = 0;
 
 	protected:
-		using BustacheTemplateValues = std::unordered_map<std::string, std::string>;
-
-	protected:
 		static std::string LoadTemplateFromFile(const char * path)
 		{
 			std::string ret;

@@ -13,7 +13,7 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char EQUIPMENT_WEBSOCKET_URL[] = "/ws/equipment";
+	inline constexpr char EQUIPMENT_WEBSOCKET_URL[] = "/ws/equipment";
 
 	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>
 	{

@@ -6,8 +6,8 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char PAGE_INDEX_ROUTE_URL[] = "/";
-	constexpr const char PAGE_INDEX_TEMPLATE[] = "templates/index.html.mustache";
+	inline constexpr char PAGE_INDEX_ROUTE_URL[] = "/";
+	inline constexpr char PAGE_INDEX_TEMPLATE[] = "templates/index.html.mustache";
 
 	class WebRoute_Page_Index : public Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>
 	{

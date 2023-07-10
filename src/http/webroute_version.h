@@ -5,7 +5,7 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char VERSION_ROUTE_URL[] = "/api/version";
+	inline constexpr char VERSION_ROUTE_URL[] = "/api/version";
 
 	class WebRoute_Version : public Interfaces::IWebRoute<VERSION_ROUTE_URL>
 	{

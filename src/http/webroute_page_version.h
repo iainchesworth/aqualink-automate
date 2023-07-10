@@ -5,8 +5,8 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char PAGE_VERSION_ROUTE_URL[] = "/version";
-	constexpr const char PAGE_VERSION_TEMPLATE[] = "templates/version.html.mustache";
+	inline constexpr char PAGE_VERSION_ROUTE_URL[] = "/version";
+	inline constexpr char PAGE_VERSION_TEMPLATE[] = "templates/version.html.mustache";
 
 	class WebRoute_Page_Version : public Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>
 	{

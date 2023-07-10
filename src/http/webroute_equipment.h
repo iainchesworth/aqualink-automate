@@ -7,7 +7,7 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char EQUIPMENT_ROUTE_URL[] = "/api/equipment";
+	inline constexpr char EQUIPMENT_ROUTE_URL[] = "/api/equipment";
 
 	class WebRoute_Equipment : public Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>
 	{
