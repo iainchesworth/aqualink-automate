@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -17,6 +18,9 @@ namespace AqualinkAutomate::HTTP
 	{
 		static const std::string_view WS_JSON_TYPE_FIELD;
 		static const std::string_view WS_JSON_PAYLOAD_FIELD;
+
+	public:
+		WebSocket_Event(const WebSocket_EventTypes& event_type, const nlohmann::json& payload);
 
 	public:
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event);
@@ -37,6 +41,10 @@ namespace AqualinkAutomate::HTTP
 	private:
 		WebSocket_EventTypes m_EventType;
 		nlohmann::json m_EventPayload;
+
+	public:
+		static std::optional<WebSocket_Event> ConvertFromString(const std::string& event_payload);
+		static std::optional<WebSocket_Event> ConvertFromStringView(const std::string_view& event_payload);
 	};
 
 }

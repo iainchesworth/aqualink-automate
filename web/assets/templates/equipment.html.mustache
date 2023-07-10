@@ -59,21 +59,57 @@
     </footer>
 
     <script>
-        const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment/stats";
-        const socket = new WebSocket(wsUrl);
+        function configurePageOnLoad() {
+            configureWebSocketMessageHandlers();
+        }
 
-        socket.addEventListener('open', event => console.log('WebSocket is connected.'));
+        function configureWebSocketMessageHandlers() {
+            const eventHandlers = {};
 
-        socket.addEventListener('message', event => {
-            const stats = JSON.parse(event.data);
-            updateTable(stats);
-        });
+            function addEventHandler(eventName, handlerFunction) {
+                console.debug('Adding event handler for event: ', eventName);
+                if (!eventHandlers[eventName]) {
+                    eventHandlers[eventName] = [];
+                }
+                eventHandlers[eventName].push(handlerFunction);
+            }
 
-        socket.addEventListener('close', event => console.log('WebSocket is closed.'));
+            const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment/stats";
+            const socket = new WebSocket(wsUrl);
 
-        socket.addEventListener('error', event => console.error('WebSocket error: ', event));
+            socket.addEventListener('open', function (event) { });
+            socket.addEventListener('close', function (event) { });
+            socket.addEventListener('error', event => console.error('WebSocket error: ', event));
 
-        const updateTable = stats => {
+            socket.addEventListener('message', function (event) {
+                const data = JSON.parse(event.data);
+                if (data && data.type && eventHandlers[data.type]) {
+                    eventHandlers[data.type].forEach((handler) => handler(data.payload));
+                }
+                else {
+                    console.error('No event handler registered for event: ', data.type);
+                }
+            });
+
+            addEventHandler('StatisticsUpdate', (payload) => {
+                console.debug('StatisticsUpdate: ', payload);
+                if (payload) {
+                    updateStatisticsTable(payload);
+                }
+            });
+
+            addEventHandler('Pong_KeepAlive', (payload) => {
+                console.debug('Pong_KeepAlive: ', payload);
+            });
+
+            setInterval(() => {
+                if (WebSocket.OPEN === socket.readyState) {
+                    socket.send(JSON.stringify({ type: 'Ping_KeepAlive', payload: null }));
+                }
+            }, 5000);
+        }
+
+        function updateStatisticsTable(stats) {
             const table = document.getElementById('stats-table');
             while (table.rows.length > 1) {
                 table.deleteRow(1);
@@ -90,6 +126,8 @@
                 cell2.textContent = stat.count;
             });
         }
+
+        window.onload = configurePageOnLoad;
     </script>
 </body>
 </html>

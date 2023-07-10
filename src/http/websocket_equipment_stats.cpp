@@ -22,14 +22,16 @@ namespace AqualinkAutomate::HTTP
 				LogTrace(Channel::Web, "Publishing updated message count statistics to connected web socket.");
 
 				// Convert JSON to string and send it over the WebSocket connection
-				PublishMessage_AsText(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
+				HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
+				PublishMessage_AsText(ws_statistics_update.Payload());
 			}
 		);
 
 		LogTrace(Channel::Web, "Publishing initial message count statistics to connected web socket.");
 
 		// Convert JSON to string and send it over the WebSocket connection
-		PublishMessage_AsText(JSON::GenerateJson_Equipment_Stats(m_StatisticsHub).dump());
+		HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
+		PublishMessage_AsText(ws_statistics_update.Payload());
 	}
 
 	void WebSocket_Equipment_Stats::OnMessage(HTTP::Request& reqy)

@@ -162,6 +162,7 @@
             const eventHandlers = {};
 
             function addEventHandler(eventName, handlerFunction) {
+                console.debug('Adding event handler for event: ', eventName);
                 if (!eventHandlers[eventName]) {
                     eventHandlers[eventName] = [];
                 }
@@ -171,26 +172,22 @@
             const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment";
             const socket = new WebSocket(wsUrl);
 
-            socket.addEventListener('open', function (event) {
-                console.log('WebSocket connection opened');
-            });
+            socket.addEventListener('open', function (event) {});
+            socket.addEventListener('close', function (event) {});
+            socket.addEventListener('error', event => console.error('WebSocket error: ', event));
 
             socket.addEventListener('message', function (event) {
                 const data = JSON.parse(event.data);
                 if (data && data.type && eventHandlers[data.type]) {
                     eventHandlers[data.type].forEach((handler) => handler(data.payload));
                 }
-            });
-
-            socket.addEventListener('close', function (event) {
-                console.log('WebSocket connection closed');
-            });
-
-            socket.addEventListener('error', function (event) {
-                console.log('WebSocket error: ', event);
+                else {
+                    console.error('No event handler registered for event: ', data.type);
+                }
             });
 
             addEventHandler('ChemistryUpdate', (payload) => {
+                console.debug('ChemistryUpdate: ', payload);
                 if (payload && payload.orp_level) {
                     document.getElementById('orp').innerText = payload.orp;
                 }
@@ -200,6 +197,7 @@
             });
 
             addEventHandler('TemperatureUpdate', (payload) => {
+                console.debug('TemperatureUpdate: ', payload);
                 if (payload && payload.pool_temp) {
                     document.getElementById('poolTemp').innerText = payload.pool_temp;
                 }
@@ -210,6 +208,17 @@
                     document.getElementById('airTemp').innerText = payload.air_temp;
                 }                
             });
+
+            addEventHandler('Pong_KeepAlive', (payload) => {
+                console.debug('Pong_KeepAlive: ', payload);
+            });
+
+            setInterval(() => {
+                if (WebSocket.OPEN === socket.readyState)
+                {
+                    socket.send(JSON.stringify({ type: 'Ping_KeepAlive', payload: null }));
+                }
+            }, 5000);
         }
 
         function fetchTriggerableButtonState() {

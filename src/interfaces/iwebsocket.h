@@ -7,6 +7,10 @@
 
 #include "concepts/is_c_array.h"
 #include "http/webroute_types.h"
+#include "http/websocket_event.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Interfaces
 {
@@ -34,7 +38,7 @@ namespace AqualinkAutomate::Interfaces
 		{
 			if (req.get_content_type() != cinatra::content_type::websocket)
 			{
-				///FIXME
+				LogDebug(Channel::Web, "Received invalid content type; expected content_type == websocket -> ignoring");
 			}
 			else
 			{
@@ -59,7 +63,20 @@ namespace AqualinkAutomate::Interfaces
 		void HandleWebSocket_OnMessage(HTTP::Request& req)
 		{
 			const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
-			OnMessage(req);
+
+			if (auto websocket_event = HTTP::WebSocket_Event::ConvertFromStringView(req.get_part_data()); !websocket_event.has_value())
+			{
+				// Not a valid/recognised websocket event type.
+			}
+			else if (HTTP::WebSocket_EventTypes::Ping_KeepAlive == websocket_event.value().Type())
+			{
+				static const HTTP::WebSocket_Event KeepAlive_PongEvent(HTTP::WebSocket_EventTypes::Pong_KeepAlive, nlohmann::json{nullptr});
+				PublishMessage_AsText(KeepAlive_PongEvent());
+			}
+			else
+			{
+				OnMessage(req);
+			}
 		}
 
 		void HandleWebSocket_OnClose(HTTP::Request& req)
