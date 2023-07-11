@@ -10,6 +10,7 @@ namespace AqualinkAutomate::HTTP
 
 	WebSocket_Equipment::WebSocket_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
 		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(http_server),
+		Interfaces::IShareableRoute(),
 		m_DataHub(data_hub),
 		m_TemperatureSlot()
 	{

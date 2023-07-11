@@ -4,9 +4,12 @@
 #include <string_view>
 #include <vector>
 
+#include <mstch/mstch.hpp>
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_types.h"
+#include "http/support/triggerable_buttons.h"
+#include "interfaces/ishareableroute.h"
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
 
@@ -15,7 +18,7 @@ namespace AqualinkAutomate::HTTP
 	inline constexpr char EQUIPMENTBUTTONS_ROUTE_URL[] = "/api/equipment/buttons";
 	inline constexpr char EQUIPMENTBUTTONS_BUTTON_ROUTE_URL[] = "/api/equipment/buttons/{:button_id}";
 
-	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>
+	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>, public Interfaces::IShareableRoute
 	{
 	public:
 		WebRoute_Equipment_Buttons(HTTP::Server& http_server, const Kernel::DataHub& data_hub);
@@ -28,16 +31,11 @@ namespace AqualinkAutomate::HTTP
 		void ButtonIndividual_GetHandler(HTTP::Request& req, HTTP::Response& resp);
 		void ButtonIndividual_PostHandler(HTTP::Request& req, HTTP::Response& resp);
 
-	private:
-		struct TriggerableButton
-		{
-			const std::string device_id;
-			std::function<nlohmann::json()> device_status;
-			std::function<nlohmann::json(const nlohmann::json payload)> device_trigger;
-		};
+	public:
+		TriggerableButtons& Buttons();
 
 	private:
-		std::vector<TriggerableButton> m_Buttons;
+		TriggerableButtons m_Buttons;
 
 	private:
 		nlohmann::json Button_PoolHeatStatus();

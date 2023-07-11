@@ -7,6 +7,7 @@
 
 #include <boost/signals2.hpp>
 
+#include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
 #include "kernel/data_hub_event_temperature.h"
@@ -15,7 +16,7 @@ namespace AqualinkAutomate::HTTP
 {
 	inline constexpr char EQUIPMENT_WEBSOCKET_URL[] = "/ws/equipment";
 
-	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>
+	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>, public Interfaces::IShareableRoute
 	{
 	public:
 		WebSocket_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub);

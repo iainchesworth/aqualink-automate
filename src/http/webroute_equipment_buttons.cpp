@@ -21,28 +21,29 @@ namespace AqualinkAutomate::HTTP
 				{ HTTP::Methods::POST, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler, this, std::placeholders::_1, std::placeholders::_2) }
 			}
 		),
-		m_Buttons 
+		Interfaces::IShareableRoute(),
+		m_Buttons
 		{
-			TriggerableButton{
+			/*std::make_shared<TriggerableButton>(
 				"poolHeat",
 				std::bind(&WebRoute_Equipment_Buttons::Button_PoolHeatStatus, this),
 				std::bind(&WebRoute_Equipment_Buttons::Button_PoolHeatTrigger, this, std::placeholders::_1) 
-			},
-			TriggerableButton{
+			),
+			std::make_shared<TriggerableButton>(
 				"spaHeat",
 				std::bind(&WebRoute_Equipment_Buttons::Button_SpaHeatStatus, this),
 				std::bind(&WebRoute_Equipment_Buttons::Button_SpaHeatTrigger, this, std::placeholders::_1)
-			},
-			TriggerableButton{
+			),
+				std::make_shared<TriggerableButton>(
 				"user",
 				std::bind(&WebRoute_Equipment_Buttons::Button_UserStatus, this),
 				std::bind(&WebRoute_Equipment_Buttons::Button_UserTrigger, this, std::placeholders::_1)
-			},
-			TriggerableButton{
+			),
+			std::make_shared<TriggerableButton>(
 				"clean",
 				std::bind(&WebRoute_Equipment_Buttons::Button_CleanStatus, this),
 				std::bind(&WebRoute_Equipment_Buttons::Button_CleanTrigger, this, std::placeholders::_1)
-			}
+			)*/
 		},
 		m_DataHub(data_hub)
 	{
@@ -52,9 +53,9 @@ namespace AqualinkAutomate::HTTP
 	{
 		nlohmann::json all_buttons;
 
-		for (auto& elem : m_Buttons)
+		for (auto& elem : m_Buttons())
 		{
-			all_buttons[elem.device_id] = elem.device_status();
+			all_buttons[elem->Id()] = elem->Status();
 		}
 
 		resp.set_status_and_content(
@@ -79,8 +80,8 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			auto it = std::find_if(m_Buttons.begin(), m_Buttons.end(), [&button_id](auto& button) -> bool { return (button_id == button.device_id); });
-			if (it == m_Buttons.end())
+			auto it = std::find_if(m_Buttons().cbegin(), m_Buttons().cend(), [&button_id](auto& button) -> bool { return (button_id == button->Id()); });
+			if (it == m_Buttons().cend())
 			{
 				Report_ButtonDoesntExist(resp, button_id);
 			}
@@ -88,7 +89,7 @@ namespace AqualinkAutomate::HTTP
 			{
 				resp.set_status_and_content(
 					cinatra::status_type::ok,
-					it->device_status().dump(),
+					(*it)->Status(),
 					cinatra::req_content_type::json,
 					cinatra::content_encoding::none
 				);
@@ -106,25 +107,30 @@ namespace AqualinkAutomate::HTTP
 		}
 		else 
 		{
-			auto it = std::find_if(m_Buttons.begin(), m_Buttons.end(), [&button_id](auto& button) -> bool { return (button_id == button.device_id); });
-			if (it == m_Buttons.end())
+			auto it = std::find_if(m_Buttons().cbegin(), m_Buttons().cend(), [&button_id](auto& button) -> bool { return (button_id == button->Id()); });
+			if (it == m_Buttons().cend())
 			{
 				Report_ButtonDoesntExist(resp, button_id);
 			}
 			else
 			{
 				// Attempt to trigger the sequencing of the button's "command".
-				it->device_trigger(nlohmann::json(req.body()));
+				(*it)->Trigger(nlohmann::json(req.body()));
 
 				// Return the button's (new) state i.a.w. RESTful principles.
 				resp.set_status_and_content(
 					cinatra::status_type::ok,
-					it->device_status().dump(),
+					(*it)->Status(),
 					cinatra::req_content_type::json,
 					cinatra::content_encoding::none
 				);
 			}
 		}
+	}
+
+	HTTP::TriggerableButtons& WebRoute_Equipment_Buttons::Buttons()
+	{
+		return m_Buttons;
 	}
 
 	nlohmann::json WebRoute_Equipment_Buttons::Button_PoolHeatStatus()

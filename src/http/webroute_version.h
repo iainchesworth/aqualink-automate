@@ -1,13 +1,14 @@
 #pragma once
 
 #include "http/webroute_types.h"
+#include "interfaces/ishareableroute.h"
 #include "interfaces/iwebroute.h"
 
 namespace AqualinkAutomate::HTTP
 {
 	inline constexpr char VERSION_ROUTE_URL[] = "/api/version";
 
-	class WebRoute_Version : public Interfaces::IWebRoute<VERSION_ROUTE_URL>
+	class WebRoute_Version : public Interfaces::IWebRoute<VERSION_ROUTE_URL>, public Interfaces::IShareableRoute
 	{
 	public:
 		WebRoute_Version(HTTP::Server& http_server);

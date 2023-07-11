@@ -2,8 +2,11 @@
 
 #include <filesystem>
 #include <format>
+#include <memory>
 #include <string>
 #include <unordered_map>
+
+#include <mstch/mstch.hpp>
 
 #include "concepts/is_c_array.h"
 #include "http/webroute_types.h"
@@ -19,9 +22,10 @@ namespace AqualinkAutomate::Interfaces
 	class IWebPageRoute
 	{
 	public:
-		explicit IWebPageRoute(HTTP::Server& http_server)
+		explicit IWebPageRoute(HTTP::Server& http_server) : 
+			m_TemplateContent(LoadTemplateFromFile(TEMPLATE_FILENAME))
 		{
-			http_server.set_http_handler<HTTP::Methods::GET>(ROUTE_URL, 
+			http_server.set_http_handler<HTTP::Methods::GET>(ROUTE_URL,
 				[this](HTTP::Request& req, HTTP::Response& resp) -> void
 				{
 					WebRequestHandler(req, resp);
@@ -55,6 +59,10 @@ namespace AqualinkAutomate::Interfaces
 
 			return ret;
 		};
+
+	protected:
+		std::string m_TemplateContent{};
+		mstch::map m_TemplateContext{};
 	};
 
 }

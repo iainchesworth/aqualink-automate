@@ -9,26 +9,19 @@ namespace AqualinkAutomate::HTTP
 
 	WebRoute_Page_Equipment::WebRoute_Page_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
 		Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>(http_server),
+		Interfaces::IShareableRoute(),
 		m_DataHub(data_hub)
 	{
 	}
 
 	void WebRoute_Page_Equipment::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		auto template_page = LoadTemplateFromFile(PAGE_EQUIPMENT_TEMPLATE);
-
-		mstch::map template_map
-		{
-		};
-
-		Support::GeneratePageHeader_Context(template_map);
-		Support::GeneratePageFooter_Context(template_map);
-
-		std::string generated_page = mstch::render(template_page, template_map);
+		Support::GeneratePageHeader_Context(m_TemplateContext);
+		Support::GeneratePageFooter_Context(m_TemplateContext);
 
 		resp.set_status_and_content(
 			cinatra::status_type::ok,
-			std::move(generated_page),
+			mstch::render(m_TemplateContent, m_TemplateContext),
 			cinatra::req_content_type::html,
 			cinatra::content_encoding::none
 		);

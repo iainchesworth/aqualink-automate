@@ -152,6 +152,8 @@ add_library(
 	src/http/json/json_equipment.cpp 
 	src/http/support/support_generate_page_footer.cpp 
 	src/http/support/support_generate_page_header.cpp 
+	src/http/support/triggerable_button.cpp 
+	src/http/support/triggerable_buttons.cpp 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp	
@@ -159,9 +161,10 @@ add_library(
 	src/interfaces/imessagesignal_recv.cpp
 	src/interfaces/imessagesignal_send.cpp
 	src/interfaces/iprofiler.cpp
-	src/interfaces/iprofilingunit.cpp	 
+	src/interfaces/iprofilingunit.cpp 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
+	src/interfaces/ishareableroute.cpp 
 	src/interfaces/iwebpageroute.cpp
 	src/interfaces/iwebroute.cpp  
 	src/interfaces/iwebsocket.cpp 

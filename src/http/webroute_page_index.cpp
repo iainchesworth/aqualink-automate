@@ -3,53 +3,55 @@
 #include "http/webroute_page_index.h"
 #include "http/support/support_generate_page_footer.h"
 #include "http/support/support_generate_page_header.h"
+#include "http/support/triggerable_button.h"
 #include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::HTTP
 {
-
 	WebRoute_Page_Index::WebRoute_Page_Index(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
 		Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>(http_server),
+		Interfaces::IShareableRoute(),
 		m_DataHub(data_hub)
 	{
 	}
 
 	void WebRoute_Page_Index::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		auto template_page = LoadTemplateFromFile(PAGE_INDEX_TEMPLATE);
-
-		mstch::map template_map
-		{
-		};
-
-		Support::GeneratePageHeader_Context(template_map);
+		Support::GeneratePageHeader_Context(m_TemplateContext);
 
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
-			template_map.emplace("pool_temperature", std::string{"-"});
-			template_map.emplace("spa_temperature", std::string{"-"});
-			template_map.emplace("air_temperature", std::string{"-"});
+			m_TemplateContext.emplace("pool_temperature", std::string{"-"});
+			m_TemplateContext.emplace("spa_temperature", std::string{"-"});
+			m_TemplateContext.emplace("air_temperature", std::string{"-"});
 
-			template_map.emplace("water_orp", std::string{"-"});
-			template_map.emplace("water_ph", std::string{"-"});
+			m_TemplateContext.emplace("water_orp", std::string{"-"});
+			m_TemplateContext.emplace("water_ph", std::string{"-"});
 		}
 		else
 		{
-			template_map.emplace("pool_temperature", std::format("{}", m_DataHub.PoolTemp()));
-			template_map.emplace("spa_temperature", std::format("{}", m_DataHub.SpaTemp()));
-			template_map.emplace("air_temperature", std::format("{}", m_DataHub.AirTemp()));
+			m_TemplateContext.emplace("pool_temperature", std::format("{}", m_DataHub.PoolTemp()));
+			m_TemplateContext.emplace("spa_temperature", std::format("{}", m_DataHub.SpaTemp()));
+			m_TemplateContext.emplace("air_temperature", std::format("{}", m_DataHub.AirTemp()));
 
-			template_map.emplace("water_orp", std::string{"-"});
-			template_map.emplace("water_ph", std::string{"-"});
+			m_TemplateContext.emplace("water_orp", std::string{"-"});
+			m_TemplateContext.emplace("water_ph", std::string{"-"});
 		}
 
-		Support::GeneratePageFooter_Context(template_map);
+		m_TemplateContext.emplace
+		(
+			"triggerable_buttons",
+			mstch::array {
+				{					
+				}
+			}
+		);
 
-		std::string generated_page = mstch::render(template_page, template_map);
+		Support::GeneratePageFooter_Context(m_TemplateContext);
 
 		resp.set_status_and_content(
 			cinatra::status_type::ok,
-			std::move(generated_page),
+			mstch::render(m_TemplateContent, m_TemplateContext),
 			cinatra::req_content_type::html,
 			cinatra::content_encoding::none
 		);

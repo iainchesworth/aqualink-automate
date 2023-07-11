@@ -194,6 +194,7 @@ int main(int argc, char* argv[])
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
 		HTTP::Server http_server(std::thread::hardware_concurrency());
+		std::vector<std::shared_ptr<Interfaces::IShareableRoute>> http_routes;
 		
 		http_server.enable_timeout(true);
 		http_server.enable_response_time(true);
@@ -223,9 +224,9 @@ int main(int argc, char* argv[])
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			HTTP::WebRoute_Page_Index page_index(http_server, data_hub);
-			HTTP::WebRoute_Page_Equipment page_je(http_server, data_hub);
-			HTTP::WebRoute_Page_Version page_version(http_server);
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Index>(http_server, data_hub));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Equipment>(http_server, data_hub));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Version>(http_server));
 		}
 
 		// Routes are configured as follows
@@ -242,14 +243,14 @@ int main(int argc, char* argv[])
 		//     /ws/equipment/stats
 		//
 
-		HTTP::WebRoute_Equipment route_equipment(http_server, data_hub, statistics_hub);
-		HTTP::WebRoute_Equipment_Buttons route_equipment_buttons(http_server, data_hub);
-		HTTP::WebRoute_Equipment_Devices route_equipment_devices(http_server, data_hub);
-		HTTP::WebRoute_Equipment_Version route_equipment_version(http_server, data_hub);
-		HTTP::WebRoute_Version route_version(http_server);
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment>(http_server, data_hub, statistics_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Buttons>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Devices>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Version>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Version>(http_server));
 
-		HTTP::WebSocket_Equipment websocket_equipment(http_server, data_hub);
-		HTTP::WebSocket_Equipment_Stats websocket_equipment_stats(http_server, statistics_hub);
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment_Stats>(http_server, statistics_hub));
 
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
 		auto _ = std::async(std::launch::async, [&http_server]() -> void { http_server.run(); });

@@ -9,6 +9,7 @@ namespace AqualinkAutomate::HTTP
 
 	WebSocket_Equipment_Stats::WebSocket_Equipment_Stats(HTTP::Server& http_server, const Kernel::StatisticsHub& statistics_hub) :
 		Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>(http_server),
+		Interfaces::IShareableRoute(),
 		m_StatisticsHub(statistics_hub),
 		m_StatsSlot()
 	{

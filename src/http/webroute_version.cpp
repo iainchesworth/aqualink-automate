@@ -7,7 +7,8 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebRoute_Version::WebRoute_Version(HTTP::Server& http_server) :
-		Interfaces::IWebRoute<VERSION_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } })
+		Interfaces::IWebRoute<VERSION_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
+		Interfaces::IShareableRoute()
 	{
 	}
 
