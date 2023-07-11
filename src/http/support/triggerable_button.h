@@ -10,19 +10,18 @@ namespace AqualinkAutomate::HTTP
 
 	class TriggerableButton : public mstch::object
 	{
-	public:
 		using ButtonId = std::string;
-		using StatusFunc = std::function<std::string()>;
+		using StatusFunc = std::function<nlohmann::json()>;
 		using TriggerFunc = std::function<nlohmann::json(const nlohmann::json payload)>;
 
 	public:
-		TriggerableButton(ButtonId id, StatusFunc status, TriggerFunc trigger) :
+		TriggerableButton(ButtonId id, StatusFunc status_func, TriggerFunc trigger_func) :
 			mstch::object()
 		{
 			register_methods(this,
 				{
-					{ "triggerable_button_name_id", &TriggerableButton::triggerable_button_text_id },
-					{ "triggerable_button_name", &TriggerableButton::triggerable_button_text },
+					{ "triggerable_button_id", &TriggerableButton::triggerable_button_id },
+					{ "triggerable_button_label", &TriggerableButton::triggerable_button_label },
 					{ "triggerable_button_status_id", &TriggerableButton::triggerable_button_status_id },
 					{ "triggerable_button_status", &TriggerableButton::triggerable_button_status }
 				}
@@ -30,12 +29,12 @@ namespace AqualinkAutomate::HTTP
 		}
 
 	public:
-		mstch::node triggerable_button_text_id()
+		mstch::node triggerable_button_id()
 		{
 			return std::string{ Id() };
 		}
 
-		mstch::node triggerable_button_text()
+		mstch::node triggerable_button_label()
 		{
 			return std::string{ Id() };
 		}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mstch/mstch.hpp>
+
 #include "http/webroute_types.h"
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebpageroute.h"
@@ -19,7 +21,15 @@ namespace AqualinkAutomate::HTTP
 		virtual void WebRequestHandler(HTTP::Request& req, HTTP::Response& resp) override;
 
 	private:
+		void PopulateMainActionButtons();
+		void PopulateTriggerableButtons();
+
+	private:
 		const Kernel::DataHub& m_DataHub;
+
+	private:
+		mstch::array m_MainActionButtons;
+		mstch::array m_TriggerableButtons;
 	};
 
 }

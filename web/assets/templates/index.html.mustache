@@ -36,22 +36,12 @@
 
         <!-- First row - 4 panels -->
         <div class="row d-flex justify-content-around">
-            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="spaHeatBtn" onclick="toggleSpaHeat()" style="padding: 20px 0;">
-                <h2>Spa Heat</h2>
-                <p id="spaHeatStatus">Off</p>
+            {{#main_action_buttons}}
+            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="{{main_action_button_id}}" onclick="handleButtonPress(this)" style="padding: 20px 0;">
+                <h2 id="button_label">{{main_action_button_label}}</h2>
+                <p id="status_id">{{main_action_button_status}}</p>
             </button>
-            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="poolHeatBtn" onclick="togglePoolHeat()" style="padding: 20px 0;">
-                <h2>Pool Heat</h2>
-                <p id="poolHeatStatus">Off</p>
-            </button>
-            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="userBtn" onclick="toggleUser()" style="padding: 20px 0;">
-                <h2>User</h2>
-                <p id="userStatus">Off</p>
-            </button>
-            <button class="col-lg-2 col-md-5 btn btn-outline-secondary" id="cleanBtn" onclick="toggleClean()" style="padding: 20px 0;">
-                <h2>Clean</h2>
-                <p id="cleanStatus">Off</p>
-            </button>
+            {{/main_action_buttons}}
         </div>
 
         <div class="mt-3"></div>
@@ -163,8 +153,12 @@
 
     <script>
         function configurePageOnLoad() {
-            fetchTriggerableButtonState();
+            configureTriggerableActionButtons();
             configureWebSocketMessageHandlers();
+        }
+
+        function configureTriggerableActionButtons() {
+
         }
 
         function configureWebSocketMessageHandlers() {
@@ -230,63 +224,44 @@
             }, 5000);
         }
 
-        function fetchTriggerableButtonState() {
-            fetch('/api/equipment')
+        function fetchAndUpdateButtonState(el){
+            const elementId = el.id;
+            const fetchPromise = fetch('/api/equipment' + elementId);
+
+            fetchPromise
+                .then(handleErrorsDuringFetch)
                 .then(response => response.json())
-                .then(data => {
-                    // assuming that the response will be a JSON object with the following format
-                    // { spaHeatStatus: 0, poolHeatStatus: 0, userStatus: 0, cleanStatus: 0 }
-                    document.getElementById('spaHeatStatus').innerText = ['Off', 'Enabled', 'On'][data.spaHeatStatus];
-                    document.getElementById('poolHeatStatus').innerText = ['Off', 'Enabled', 'On'][data.poolHeatStatus];
-                    document.getElementById('userStatus').innerText = ['Off', 'On'][data.userStatus];
-                    document.getElementById('cleanStatus').innerText = ['Off', 'On'][data.cleanStatus];
-                });
+                .then(response => updateButtonState(elementId, response))
+                .catch(error => console.error(error));
         }
 
-        function updateTriggerableButtonState(equipment, status) {
-            const updatedStatusPromise = fetch('/api/equipment/buttons/' + equipment, {
+        function handleButtonPress(el) {
+            const elementId = el.id;
+            const updatedStatusPromise = fetch('/api/equipment/buttons/' + elementId, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ equipment, status })
+                body: JSON.stringify({ elementId })
             });
 
             updatedStatusPromise
+                .then(handleErrorsDuringFetch)
                 .then(response => response.json())
-                .then(data => { });
+                .then(response => updateButtonState(elementId, response))
+                .catch(error => console.error(error));
         }
 
-        function toggleSpaHeat() {
-            var spaHeatBtnLabel = document.getElementById('spaHeatStatus');
-            var spaHeatStatus = ['Off', 'Enabled', 'On'].indexOf(spaHeatBtnLabel.innerText);
-            var nextStatus = (spaHeatStatus + 1) % 3;
-            spaHeatBtnLabel.innerText = ['Off', 'Enabled', 'On'][nextStatus];
-            updateTriggerableButtonState('spaHeat', nextStatus);
+        function handleErrorsDuringFetch(response) {
+            if (!response.ok) {
+                throw Error(response.statusText);
+            }
+            return response;
         }
 
-        function togglePoolHeat() {
-            var poolHeatBtnLabel = document.getElementById('poolHeatStatus');
-            var poolHeatStatus = ['Off', 'Enabled', 'On'].indexOf(poolHeatBtnLabel.innerText);
-            var nextStatus = (poolHeatStatus + 1) % 3;
-            poolHeaBtnLabel.innerText = ['Off', 'Enabled', 'On'][nextStatus];
-            updateTriggerableButtonState('poolHeat', nextStatus);
-        }
-
-        function toggleUser() {
-            var userBtnLabel = document.getElementById('userStatus');
-            var userStatus = ['Off', 'On'].indexOf(userBtnLabel.innerText);
-            var nextStatus = (userStatus + 1) % 2;
-            userBtnLabel.innerText = ['Off', 'On'][nextStatus];
-            updateTriggerableButtonState('user', nextStatus);
-        }
-
-        function toggleClean() {
-            var cleanBtnLabel = document.getElementById('cleanStatus');
-            var cleanStatus = ['Off', 'On'].indexOf(cleanBtnLabel.innerText);
-            var nextStatus = (cleanStatus + 1) % 2;
-            cleanBtnLabel.innerText = ['Off', 'On'][nextStatus];
-            updateTriggerableButtonState('clean', nextStatus);
+        function updateButtonState(el, response) {
+            el.getElementById("button_label").innerHTML = "Hello";
+            el.getElementById("status_id").innerHTML = "There";
         }
 
         window.onload = configurePageOnLoad;
