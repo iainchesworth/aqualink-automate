@@ -1,7 +1,5 @@
 #pragma once
 
-#include <mstch/mstch.hpp>
-
 #include "http/webroute_types.h"
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebpageroute.h"
@@ -26,10 +24,6 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		const Kernel::DataHub& m_DataHub;
-
-	private:
-		mstch::array m_MainActionButtons;
-		mstch::array m_TriggerableButtons;
 	};
 
 }
