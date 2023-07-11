@@ -151,9 +151,7 @@ add_library(
 	src/http/json/json_data_hub.cpp 
 	src/http/json/json_equipment.cpp 
 	src/http/support/support_generate_page_footer.cpp 
-	src/http/support/support_generate_page_header.cpp 
-	src/http/support/triggerable_button.cpp 
-	src/http/support/triggerable_buttons.cpp 
+	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp	

@@ -1,5 +1,8 @@
 #include <format>
 
+#include <boost/uuid/uuid_io.hpp>
+#include <magic_enum.hpp>
+
 #include "http/webroute_equipment_buttons.h"
 #include "logging/logging.h"
 
@@ -22,41 +25,30 @@ namespace AqualinkAutomate::HTTP
 			}
 		),
 		Interfaces::IShareableRoute(),
-		m_Buttons
-		{
-			/*std::make_shared<TriggerableButton>(
-				"poolHeat",
-				std::bind(&WebRoute_Equipment_Buttons::Button_PoolHeatStatus, this),
-				std::bind(&WebRoute_Equipment_Buttons::Button_PoolHeatTrigger, this, std::placeholders::_1) 
-			),
-			std::make_shared<TriggerableButton>(
-				"spaHeat",
-				std::bind(&WebRoute_Equipment_Buttons::Button_SpaHeatStatus, this),
-				std::bind(&WebRoute_Equipment_Buttons::Button_SpaHeatTrigger, this, std::placeholders::_1)
-			),
-				std::make_shared<TriggerableButton>(
-				"user",
-				std::bind(&WebRoute_Equipment_Buttons::Button_UserStatus, this),
-				std::bind(&WebRoute_Equipment_Buttons::Button_UserTrigger, this, std::placeholders::_1)
-			),
-			std::make_shared<TriggerableButton>(
-				"clean",
-				std::bind(&WebRoute_Equipment_Buttons::Button_CleanStatus, this),
-				std::bind(&WebRoute_Equipment_Buttons::Button_CleanTrigger, this, std::placeholders::_1)
-			)*/
-		},
 		m_DataHub(data_hub)
 	{
 	}
 
 	void WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		nlohmann::json all_buttons;
-
-		for (auto& elem : m_Buttons())
+		auto generate_button_json = [](auto button_ptr) -> nlohmann::json
 		{
-			all_buttons[elem->Id()] = elem->Status();
+			nlohmann::json button;
+			button["id"] = boost::uuids::to_string(button_ptr->Id());
+			button["label"] = button_ptr->Label();
+			button["status"] = magic_enum::enum_name(button_ptr->State());
+			return button;
+		};
+
+		nlohmann::json buttons;
+
+		for (auto& elem : m_DataHub.Auxillaries())
+		{
+			buttons.push_back(generate_button_json(elem));
 		}
+
+		nlohmann::json all_buttons;
+		all_buttons["buttons"] = buttons;
 
 		resp.set_status_and_content(
 			cinatra::status_type::ok,
@@ -68,11 +60,18 @@ namespace AqualinkAutomate::HTTP
 
 	void WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
+		resp.set_status_and_content(
+			cinatra::status_type::not_implemented,
+			std::string{},
+			cinatra::req_content_type::text,
+			cinatra::content_encoding::none
+		);
 	}
 
 	void WebRoute_Equipment_Buttons::ButtonIndividual_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		const std::string button_id(req.get_query_value("button_id"));
+		const auto button_id_sv{req.get_matches()[1]};
+		const std::string button_id{button_id_sv.str()};
 
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
@@ -80,26 +79,73 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			auto it = std::find_if(m_Buttons().cbegin(), m_Buttons().cend(), [&button_id](auto& button) -> bool { return (button_id == button->Id()); });
-			if (it == m_Buttons().cend())
+			auto check_for_device_and_return_status = [&resp](auto collection, auto& button_id) -> bool
 			{
-				Report_ButtonDoesntExist(resp, button_id);
+				auto match_via_shared_ptr = [&button_id](const auto& button_ptr) -> bool
+				{
+					if (nullptr == button_ptr)
+					{
+						return false;
+					}
+					else if (auto ptr = std::dynamic_pointer_cast<Kernel::AuxillaryBase>(button_ptr); nullptr == ptr)
+					{
+						return false;
+					}
+					else
+					{
+						return ((*ptr) == button_id);
+					}
+				};
+
+				if (auto it = std::find_if(collection.cbegin(), collection.cend(), match_via_shared_ptr); collection.cend() == it)
+				{
+					return false;
+				}
+				else
+				{
+					nlohmann::json button;
+					button["label"] = (*it)->Label();
+					button["status"] = magic_enum::enum_name((*it)->State());
+
+					resp.set_status_and_content
+					(
+						cinatra::status_type::ok, 
+						button.dump(),
+						cinatra::req_content_type::json, 
+						cinatra::content_encoding::none
+					);
+
+					return true;
+				}
+			};
+
+			if (button_id.empty())
+			{
+				Report_ButtonDoesntExist(resp, "");
+			}
+			else if (check_for_device_and_return_status(m_DataHub.Auxillaries(), button_id))
+			{
+				// Found the device --> it's an auxillary
+			}
+			else if (check_for_device_and_return_status(m_DataHub.Heaters(), button_id))
+			{
+				// Found the device --> it's an heater
+			}
+			else if (check_for_device_and_return_status(m_DataHub.Pumps(), button_id))
+			{
+				// Found the device --> it's an pump
 			}
 			else
 			{
-				resp.set_status_and_content(
-					cinatra::status_type::ok,
-					(*it)->Status(),
-					cinatra::req_content_type::json,
-					cinatra::content_encoding::none
-				);
+				Report_ButtonDoesntExist(resp, button_id);
 			}
 		}
 	}
 
 	void WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		const std::string button_id(req.get_query_value("button_id"));
+		const auto button_id_sv{ req.get_matches()[1] };
+		const std::string button_id{button_id_sv.str()};
 
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 		{
@@ -107,74 +153,38 @@ namespace AqualinkAutomate::HTTP
 		}
 		else 
 		{
-			auto it = std::find_if(m_Buttons().cbegin(), m_Buttons().cend(), [&button_id](auto& button) -> bool { return (button_id == button->Id()); });
-			if (it == m_Buttons().cend())
+			auto check_for_device_then_trigger_it_and_return_status = [this, &req, &resp](auto collection, auto& button_id) -> bool
 			{
-				Report_ButtonDoesntExist(resp, button_id);
+				{
+					///FIXME -> Trigger the device...
+				}
+
+				ButtonIndividual_GetHandler(req, resp);
+
+				return true;
+			};
+
+			if (button_id.empty())
+			{
+				Report_ButtonDoesntExist(resp, "");
+			}
+			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Auxillaries(), button_id))
+			{
+				// Found the device --> it's an auxillary
+			}
+			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Heaters(), button_id))
+			{
+				// Found the device --> it's an heater
+			}
+			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Pumps(), button_id))
+			{
+				// Found the device --> it's an pump
 			}
 			else
 			{
-				// Attempt to trigger the sequencing of the button's "command".
-				(*it)->Trigger(nlohmann::json(req.body()));
-
-				// Return the button's (new) state i.a.w. RESTful principles.
-				resp.set_status_and_content(
-					cinatra::status_type::ok,
-					(*it)->Status(),
-					cinatra::req_content_type::json,
-					cinatra::content_encoding::none
-				);
+				Report_ButtonDoesntExist(resp, button_id);
 			}
 		}
-	}
-
-	HTTP::TriggerableButtons& WebRoute_Equipment_Buttons::Buttons()
-	{
-		return m_Buttons;
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_PoolHeatStatus()
-	{
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_PoolHeatTrigger(const nlohmann::json payload)
-	{
-		LogDebug(Channel::Web, "'poolHeat' action request received");
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_SpaHeatStatus()
-	{
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_SpaHeatTrigger(const nlohmann::json payload)
-	{
-		LogDebug(Channel::Web, "'spaHeat' action request received");
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_UserStatus()
-	{
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_UserTrigger(const nlohmann::json payload)
-	{
-		LogDebug(Channel::Web, "'user' action request received");
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_CleanStatus()
-	{
-		return nlohmann::json();
-	}
-
-	nlohmann::json WebRoute_Equipment_Buttons::Button_CleanTrigger(const nlohmann::json payload)
-	{
-		LogDebug(Channel::Web, "'clean' action request received");
-		return nlohmann::json();
 	}
 
 	void WebRoute_Equipment_Buttons::Report_ButtonDoesntExist(HTTP::Response& resp, const std::string& button_id)

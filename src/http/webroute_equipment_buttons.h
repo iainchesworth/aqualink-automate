@@ -8,7 +8,6 @@
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_types.h"
-#include "http/support/triggerable_buttons.h"
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
@@ -30,22 +29,6 @@ namespace AqualinkAutomate::HTTP
 	public:
 		void ButtonIndividual_GetHandler(HTTP::Request& req, HTTP::Response& resp);
 		void ButtonIndividual_PostHandler(HTTP::Request& req, HTTP::Response& resp);
-
-	public:
-		TriggerableButtons& Buttons();
-
-	private:
-		TriggerableButtons m_Buttons;
-
-	private:
-		nlohmann::json Button_PoolHeatStatus();
-		nlohmann::json Button_PoolHeatTrigger(const nlohmann::json payload);
-		nlohmann::json Button_SpaHeatStatus();
-		nlohmann::json Button_SpaHeatTrigger(const nlohmann::json payload);
-		nlohmann::json Button_UserStatus();
-		nlohmann::json Button_UserTrigger(const nlohmann::json payload);
-		nlohmann::json Button_CleanStatus();
-		nlohmann::json Button_CleanTrigger(const nlohmann::json payload);
 
 	private:
 		void Report_ButtonDoesntExist(HTTP::Response& resp, const std::string& button_id);

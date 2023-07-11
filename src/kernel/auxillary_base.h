@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include <boost/uuid/uuid.hpp>
 
@@ -10,6 +11,11 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		virtual boost::uuids::uuid Id() const = 0;
+
+	public:
+		bool operator==(const AuxillaryBase& other) const;
+		bool operator==(const boost::uuids::uuid id) const;
+		bool operator==(const std::string& id) const;
 	};
 
 	template<typename AUX_STATES>

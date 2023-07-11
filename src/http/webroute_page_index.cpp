@@ -4,7 +4,6 @@
 #include "http/webroute_page_index.h"
 #include "http/support/support_generate_page_footer.h"
 #include "http/support/support_generate_page_header.h"
-#include "http/support/triggerable_button.h"
 #include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::HTTP
