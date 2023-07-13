@@ -197,5 +197,75 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-x64-debug-msvc",
+      "configurePreset": "windows-x64-debug-msvc"
+    },
+    {
+      "name": "windows-x64-debug-msvc-asan",
+      "configurePreset": "windows-x64-debug-msvc-asan"
+    },
+    {
+      "name": "windows-x64-release-msvc",
+      "configurePreset": "windows-x64-release-msvc"
+    },
+    {
+      "name": "windows-x64-debug-clang",
+      "configurePreset": "windows-x64-debug-clang"
+    },
+    {
+      "name": "windows-x64-debug-clang-asan",
+      "configurePreset": "windows-x64-debug-clang-asan"
+    },
+    {
+      "name": "windows-x64-clang-msvc",
+      "configurePreset": "windows-x64-clang-msvc"
+    },
+    {
+      "name": "linux-x64-debug-gcc",
+      "configurePreset": "linux-x64-debug-gcc"
+    },
+    {
+      "name": "linux-x64-release-gcc",
+      "configurePreset": "linux-x64-release-gcc"
+    },
+    {
+      "name": "linux-x64-debug-clang",
+      "configurePreset": "linux-x64-debug-clang"
+    },
+    {
+      "name": "linux-x64-debug-clang-asan",
+      "configurePreset": "linux-x64-debug-clang-asan"
+    },
+    {
+      "name": "linux-x64-debug-clang-tsan",
+      "configurePreset": "linux-x64-debug-clang-tsan"
+    },
+    {
+      "name": "linux-x64-release-clang",
+      "configurePreset": "linux-x64-release-clang"
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "all-tests",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
   ]
 }

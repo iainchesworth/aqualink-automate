@@ -58,8 +58,7 @@ jobs:
       with:
         configurePreset: '${{matrix.BUILD_PRESET}}'
         buildPreset: '${{matrix.BUILD_PRESET}}'
-        testPreset: '${{matrix.BUILD_PRESET}}'
-        testPresetAdditionalArgs: "['--output-on-failure']"
+        testPreset: 'all-tests'
 
     - name: Package
       working-directory: ${{github.workspace}}/build
