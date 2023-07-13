@@ -8,6 +8,7 @@
 add_executable(
 	testaqualink-automate
 	unit/test_main.cpp 
+	unit/concepts/test_concept_is_c_array.cpp 
 	unit/devices/test_devices_id.cpp 
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
 	unit/devices/test_devices_screendatapage.cpp 

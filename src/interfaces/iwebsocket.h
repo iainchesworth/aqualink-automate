@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Interfaces
 {
 
 	template<const auto& ROUTE_URL>
-	requires (Concepts::CArrayRef<decltype(ROUTE_URL)>)
+	requires (Concepts::CArray<decltype(ROUTE_URL)>)
 	class IWebSocket
 	{
 	public:

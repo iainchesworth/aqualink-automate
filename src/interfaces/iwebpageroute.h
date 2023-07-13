@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Interfaces
 {
 
 	template<const auto& ROUTE_URL, const auto& TEMPLATE_FILENAME>
-	requires (Concepts::CArrayRef<decltype(ROUTE_URL)> && Concepts::CArrayRef<decltype(TEMPLATE_FILENAME)>)
+	requires (Concepts::CArray<decltype(ROUTE_URL)> && Concepts::CArrayRef<decltype(TEMPLATE_FILENAME)>)
 	class IWebPageRoute
 	{
 	public:
