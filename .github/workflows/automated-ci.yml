@@ -15,24 +15,16 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         include:
         #- os: macos-latest
-        #  BUILD_PRESET: macos-release
+        #  CMAKE_PRESET: ci-clang-macos-x86_64
         - os: ubuntu-latest
-          BUILD_PRESET: linux-x64-release-gcc
+          CMAKE_PRESET: ci-gcc-linux-x86_64
         - os: windows-latest
-          BUILD_PRESET: windows-x64-release-msvc
+          CMAKE_PRESET: ci-msvc-windows-x86_64
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
-
-    - uses: actions/cache@v3
-      with :
-        path: |
-            ${{github.workspace}}/deps/vcpkg/buildtrees
-            ${{github.workspace}}/deps/vcpkg/downloads
-            ${{github.workspace}}/deps/vcpkg/packages
-        key: ${{ runner.os }}-build-${{ matrix.BUILD_PRESET }}-${{ hashFiles('vcpkg.json') }}
 
     - if: matrix.os == 'ubuntu-latest'
       run: |
@@ -40,8 +32,7 @@ jobs:
         sudo add-apt-repository -y 'deb http://apt.llvm.org/jammy/  llvm-toolchain-jammy-16 main'
         sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         sudo apt update
-        sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev pkg-config rpm wget unzip zip
-        sudo apt install -y clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 clang-format-16 python3-clang-16 clangd-16 clang-tidy-16 lld-16 libc++-16-dev libc++abi-16-dev clang-tidy-16
+        sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev ninja-build pkg-config rpm wget unzip zip
         sudo apt install -y gcc-13 g++-13
     
     - uses: ilammy/msvc-dev-cmd@v1
@@ -56,11 +47,11 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: '${{matrix.BUILD_PRESET}}'
-        buildPreset: '${{matrix.BUILD_PRESET}}'
-        testPreset: 'all-tests'
+        configurePreset: '${{matrix.CMAKE_PRESET}}'
+        buildPreset: '${{matrix.CMAKE_PRESET}}'
+        testPreset: '${{matrix.CMAKE_PRESET}}'
 
     - name: Package
       working-directory: ${{github.workspace}}/build
       # Execute packaging defined by the CMake configuration
-      run: cmake --build ${{github.workspace}}/build/${{matrix.BUILD_PRESET}} --target pack-aqualink-automate 
+      run: cmake --build ${{github.workspace}}/build/${{matrix.CMAKE_PRESET}} --target pack-aqualink-automate 
