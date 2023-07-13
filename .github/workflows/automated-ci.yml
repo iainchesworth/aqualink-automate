@@ -44,26 +44,24 @@ jobs:
         sudo apt install -y clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 clang-format-16 python3-clang-16 clangd-16 clang-tidy-16 lld-16 libc++-16-dev libc++abi-16-dev clang-tidy-16
         sudo apt install -y gcc-13 g++-13
     
-    - uses: lukka/get-cmake@latest
-    - uses: ilammy/msvc-dev-cmd@v1
+    - uses: ilammy/msvc-dev-cmd@latest
       with:
         toolset: 14.36
-    - uses: lukka/run-vcpkg@v11
+
+    - uses: lukka/get-cmake@latest
+
+    - uses: lukka/run-vcpkg@latest
       with: 
-        vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
-    - uses: lukka/run-cmake@v10
+        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+
+    - uses: lukka/run-cmake@latest
       with:
         configurePreset: '${{matrix.BUILD_PRESET}}'
         buildPreset: '${{matrix.BUILD_PRESET}}'
-
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --test-dir ${{github.workspace}}/build/${{matrix.BUILD_PRESET}}/test --output-on-failure
+        testPreset: '${{matrix.BUILD_PRESET}}'
+        testPresetAdditionalArgs: "['--output-on-failure']"
 
     - name: Package
       working-directory: ${{github.workspace}}/build
       # Execute packaging defined by the CMake configuration
       run: cmake --build ${{github.workspace}}/build/${{matrix.BUILD_PRESET}} --target pack-aqualink-automate 
-
