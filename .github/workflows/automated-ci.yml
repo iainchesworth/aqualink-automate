@@ -50,11 +50,11 @@ jobs:
 
     - uses: lukka/get-cmake@latest
 
-    - uses: lukka/run-vcpkg@latest
+    - uses: lukka/run-vcpkg@v11
       with: 
         vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
 
-    - uses: lukka/run-cmake@latest
+    - uses: lukka/run-cmake@v10
       with:
         configurePreset: '${{matrix.BUILD_PRESET}}'
         buildPreset: '${{matrix.BUILD_PRESET}}'
