@@ -1,8 +1,8 @@
-name: CMake
+name: Automated CI
 
 on:
   push:
-    branches: [ "develop", "main" ]
+    branches: [ "develop", "main", "feature/**", "bug/**" ]
   pull_request:
     branches: [ "develop", "main" ]
 
@@ -46,14 +46,15 @@ jobs:
     
     - uses: lukka/get-cmake@latest
     - uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Configure
-      # Configure CMake in a 'build' subdirectory.
-      run: cmake -G Ninja --preset ${{matrix.BUILD_PRESET}}
-
-    - name: Build
-      # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build/${{matrix.BUILD_PRESET}}
+      with:
+        toolset: 14.36
+    - uses: lukka/run-vcpkg@v11
+      with: 
+        vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
+    - uses: lukka/run-cmake@v10
+      with:
+        configurePreset: '${{matrix.BUILD_PRESET}}'
+        buildPreset: '${{matrix.BUILD_PRESET}}'
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -65,3 +66,4 @@ jobs:
       working-directory: ${{github.workspace}}/build
       # Execute packaging defined by the CMake configuration
       run: cmake --build ${{github.workspace}}/build/${{matrix.BUILD_PRESET}} --target pack-aqualink-automate 
+
