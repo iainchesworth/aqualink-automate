@@ -39,6 +39,7 @@ namespace AqualinkAutomate::Interfaces
 	protected:
 		static std::string LoadTemplateFromFile(const char * path)
 		{
+			std::error_code ec;
 			std::string ret;
 
 			if (!std::filesystem::exists(path))
@@ -49,12 +50,30 @@ namespace AqualinkAutomate::Interfaces
 			{
 				LogWarning(Channel::Web, std::format("Failed to open specified template: {}", path));
 			}
+			else if (auto const bytes = std::filesystem::file_size(path, ec); ec)
+			{
+				LogWarning(Channel::Web, std::format("Failed to get the file size for specified template: {}", path));
+				std::fclose(fd);
+			}
 			else
 			{
-				auto const bytes = std::filesystem::file_size(path);
-				ret.resize(bytes);
-				std::fread(ret.data(), 1, bytes, fd);
-				std::fclose(fd);
+				try 
+				{
+					ret.resize(bytes);
+
+					if (auto bytes_read = std::fread(ret.data(), 1, bytes, fd); bytes != bytes_read)
+					{
+						LogWarning(Channel::Web, std::format("Failed to read the specified template content: expected {} bytes; actual {} bytes", bytes, bytes_read));
+						ret.clear();
+					}
+
+					std::fclose(fd);
+				}
+				catch (const std::bad_alloc& ex_ba)
+				{
+					LogWarning(Channel::Web, std::format("Failed to allocate memory for specified template: {}", path));
+					std::fclose(fd);
+				}				
 			}
 
 			return ret;

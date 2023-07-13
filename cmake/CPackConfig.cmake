@@ -15,7 +15,7 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
             fixup_bundle(
                 \"${BUNDLE_APPS}\" 
                 \"\" 
-                \"\"
+                \"${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/bin\"
             )
         "
         COMPONENT Runtime
@@ -91,7 +91,7 @@ include(CPack)
 # Add a custom target to enable CPack to be run under Visual Studio
 add_custom_target(
 	pack-${PROJECT_NAME} 
-	COMMAND ${CMAKE_CPACK_COMMAND} -C $<CONFIGURATION> --debug --verbose --config ${CPACK_OUTPUT_CONFIG_FILE} 
+	COMMAND ${CMAKE_CPACK_COMMAND} -C $<CONFIGURATION> --config ${CPACK_OUTPUT_CONFIG_FILE} 
 	COMMENT "Running CPack. Please wait..."
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
