@@ -3,6 +3,7 @@
 
 #include <boost/program_options/value_semantic.hpp>
 
+#include "application/application_defaults.h"
 #include "logging/logging.h"
 #include "options/options_option_type.h"
 #include "options/options_serial_options.h"
@@ -15,7 +16,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Serial
 {
-	AppOptionPtr OPTION_SERIALPORT{ make_appoption("serial-port", "s", "Serial port to use for Aqualink connectivity", boost::program_options::value<std::string>()->default_value("COM1")) };
+	AppOptionPtr OPTION_SERIALPORT{ make_appoption("serial-port", "s", "Serial port to use for Aqualink connectivity", boost::program_options::value<std::string>()->default_value(Application::SERIAL_PORT)) };
 	AppOptionPtr OPTION_BAUDRATE{ make_appoption("baudrate", "Desired serial port baud rate setting", boost::program_options::value<uint32_t>()->default_value(9600)) };
 
 	std::vector SerialOptionsCollection

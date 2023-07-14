@@ -1,4 +1,4 @@
-#include <crow/mustache.h>
+#include <mstch/mstch.hpp>
 
 #include "http/webroute_page_version.h"
 #include "http/support/support_generate_page_footer.h"
@@ -7,24 +7,23 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Version::WebRoute_Page_Version(crow::SimpleApp& app) :
-		Interfaces::IWebRoute<PAGE_VERSION_ROUTE_URL>(app)
+	WebRoute_Page_Version::WebRoute_Page_Version(HTTP::Server& http_server) :
+		Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>(http_server),
+		Interfaces::IShareableRoute()
 	{
 	}
 
-	void WebRoute_Page_Version::WebRequestHandler(const Request& req, Response& resp)
+	void WebRoute_Page_Version::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		crow::mustache::context ctx;
-		//crow::mustache::set_base(m_DocRoot);
+		Support::GeneratePageHeader_Context(m_TemplateContext);
+		Support::GeneratePageFooter_Context(m_TemplateContext);
 
-		auto page = crow::mustache::load("version.html.mustache");
-
-		Support::GeneratePageHeader_Context(ctx);
-		Support::GeneratePageFooter_Context(ctx);
-
-		resp.set_header("Content-Type", "text/html");
-		resp.body = page.render_string(ctx);
-		resp.end();
+		resp.set_status_and_content(
+			cinatra::status_type::ok,
+			mstch::render(m_TemplateContent, m_TemplateContext),
+			cinatra::req_content_type::html,
+			cinatra::content_encoding::none
+		);
 	}
 
 }

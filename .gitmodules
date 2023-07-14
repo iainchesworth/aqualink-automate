@@ -4,6 +4,6 @@
 [submodule "deps/sanitizers-cmake"]
 	path = deps/sanitizers-cmake
 	url = https://github.com/arsenm/sanitizers-cmake.git
-[submodule "deps/crow"]
-	path = deps/crow
-	url = https://github.com/iainchesworth/Crow.git
+[submodule "deps/cinatra"]
+	path = deps/cinatra
+	url = https://github.com/qicosmos/cinatra.git

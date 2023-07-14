@@ -5,10 +5,11 @@
 #include <tuple>
 #include <vector>
 
-#include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/equipment/jandy_equipment.h"
+#include "kernel/data_hub.h"
+#include "kernel/statistics_hub.h"
 
 using namespace AqualinkAutomate;
 
@@ -22,9 +23,11 @@ namespace AqualinkAutomate::Test
 
 	public:
 		OneTouchDevice();
+		~OneTouchDevice();
 
 	public:
-		Config::JandyConfig& Config();
+		Kernel::DataHub& DataHub();
+		Kernel::StatisticsHub& StatisticsHub();
 		Equipment::JandyEquipment& Equipment();
 
 	public:
@@ -39,7 +42,8 @@ namespace AqualinkAutomate::Test
 	private:
 		boost::asio::io_context m_IOContext;
 		Devices::JandyDeviceType m_DeviceId;
-		Config::JandyConfig m_Config;
+		Kernel::DataHub m_DataHub;
+		Kernel::StatisticsHub m_StatisticsHub;
 		Equipment::JandyEquipment m_JandyEquipment;
 		bool m_IsEmulated;
 

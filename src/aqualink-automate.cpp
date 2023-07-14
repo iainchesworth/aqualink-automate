@@ -3,29 +3,30 @@
 #include <mutex>
 #include <string>
 
-#include <asio/ssl/context.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/stacktrace.hpp>
-#include <crow/app.h>
 #include <magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
-#include "http/crow_custom_logger.h"
-#include "http/webroute_jandyequipment.h"
-#include "http/webroute_jandyequipment_buttons.h"
-#include "http/webroute_jandyequipment_devices.h"
-#include "http/webroute_jandyequipment_stats.h"
-#include "http/webroute_jandyequipment_version.h"
+#include "http/webroute_equipment.h"
+#include "http/webroute_equipment_buttons.h"
+#include "http/webroute_equipment_devices.h"
+#include "http/webroute_equipment_version.h"
 #include "http/webroute_page_index.h"
-#include "http/webroute_page_jandyequipment.h"
+#include "http/webroute_page_equipment.h"
 #include "http/webroute_page_version.h"
+#include "http/webroute_types.h"
 #include "http/webroute_version.h"
-#include "jandy/config/jandy_config.h"
+#include "http/websocket_equipment.h"
+#include "http/websocket_equipment_stats.h"
+#include "kernel/data_hub.h"
+#include "kernel/statistics_hub.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
@@ -115,13 +116,19 @@ int main(int argc, char* argv[])
 		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
 		//---------------------------------------------------------------------
+		// DATA HUB 
+		//---------------------------------------------------------------------
+
+		Kernel::DataHub data_hub;
+		Kernel::StatisticsHub statistics_hub;
+
+		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		Config::JandyConfig jandy_config;
-		Equipment::JandyEquipment jandy_equipment(io_context, jandy_config);
+		Equipment::JandyEquipment jandy_equipment(io_context, data_hub, statistics_hub);
 
 		if (!settings.emulated_device.disable_emulation)
 		{
@@ -138,19 +145,19 @@ int main(int argc, char* argv[])
 			switch (settings.emulated_device.controller_type)
 			{
 			case Devices::JandyEmulatedDeviceTypes::OneTouch:
-				emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
 				break;
 
 			case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-				emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
 				break;
 
 			case Devices::JandyEmulatedDeviceTypes::IAQ:
-				emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
 				break;
 
 			case Devices::JandyEmulatedDeviceTypes::PDA:
-				emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_type, jandy_config, true);
+				emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_type, data_hub, true);
 				break;
 
 			case Devices::JandyEmulatedDeviceTypes::Unknown:
@@ -186,48 +193,67 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		HTTP::CrowCustomLogger crow_custom_logger;
-		crow::logger::setHandler(&crow_custom_logger);
-
-		crow::mustache::set_global_base(settings.web.doc_root);
-
-		crow::SimpleApp http_server;
-		http_server.loglevel(crow::LogLevel::Debug); // Filtering is handled by the aqualink-automate logger.
-		http_server.bindaddr(settings.web.bind_address).port(settings.web.bind_port);
-
+		HTTP::Server http_server(std::thread::hardware_concurrency());
+		std::vector<std::shared_ptr<Interfaces::IShareableRoute>> http_routes;
+		
+		http_server.enable_timeout(true);
+		http_server.enable_response_time(true);
+		http_server.enable_http_cache(false);
+		http_server.listen(settings.web.bind_address, std::to_string(settings.web.bind_port));
+		http_server.set_keep_alive_timeout(30);
+		http_server.set_static_dir(settings.web.doc_root);
+		
 		if (!settings.web.http_server_is_insecure)
 		{
-			asio::ssl::context ctx(asio::ssl::context::tls);
+			http_server.set_ssl_conf({ settings.web.cert_file.Path(), settings.web.cert_key_file.Path(), "nopassword" });
+
+			/*boost::asio::ssl::context ctx(asio::ssl::context::tls);
 			ctx.set_options(
-				asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-				asio::ssl::context::no_sslv2 |				// Considered insecure
-				asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-				asio::ssl::context::no_tlsv1 |				// Considered insecure
-				asio::ssl::context::no_tlsv1_1 |			// Considered insecure
-				asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
+				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
+				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
+				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
+				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
+				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
+				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
 				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
 			);
 
 			Certificates::LoadWebCertificates(settings.web, ctx);
-			http_server.ssl(std::move(ctx));
+			http_server.ssl(std::move(ctx));*/
 		}
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			HTTP::WebRoute_Page_Index page_index(http_server);
-			HTTP::WebRoute_Page_JandyEquipment page_je(http_server, jandy_equipment);
-			HTTP::WebRoute_Page_Version page_version(http_server);
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Index>(http_server, data_hub));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Equipment>(http_server, data_hub));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Version>(http_server));
 		}
 
-		HTTP::WebRoute_JandyEquipment route_je(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Buttons route_je_buttons(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Devices route_je_devices(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Stats route_je_stats(http_server, jandy_equipment);
-		HTTP::WebRoute_JandyEquipment_Version route_je_version(http_server, jandy_equipment);
-		HTTP::WebRoute_Version route_version(http_server);
+		// Routes are configured as follows
+		//
+		//     /api
+		//     /api/equipment
+		//     /api/equipment/buttons
+		//     /api/equipment/devices
+		//     /api/equipment/stats		<-- NOT IMPLEMENTED YET (but returned as part of "equipment" payload)
+		//     /api/equipment/version
+		//     
+		//     /ws
+		//     /ws/equipment
+		//     /ws/equipment/stats
+		//
+
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment>(http_server, data_hub, statistics_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Buttons>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Devices>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Version>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Version>(http_server));
+
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment_Stats>(http_server, statistics_hub));
 
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
-		auto http_server_instance = http_server.run_async();
+		auto _ = std::async(std::launch::async, [&http_server]() -> void { http_server.run(); });
 
 		CleanUp::Register({ "Web Server Thread", [&http_server]() -> void { http_server.stop(); } });
 

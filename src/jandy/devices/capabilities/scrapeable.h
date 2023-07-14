@@ -3,6 +3,7 @@
 #include <any>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <stack>
 #include <tuple>
 #include <unordered_map>

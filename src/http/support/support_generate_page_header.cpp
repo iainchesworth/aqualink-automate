@@ -3,12 +3,12 @@
 namespace AqualinkAutomate::HTTP::Support
 {
 
-	void GeneratePageHeader_Context(crow::mustache::context& ctx)
+	void GeneratePageHeader_Context(mstch::map& template_value_map)
 	{
-		ctx["controller_type"] = "ABCD";
-		ctx["controller_firmware"] = "1.2.3.4";
-		ctx["controller_date"] = "1/1/2000";
-		ctx["controller_time"] = "12:00:00 AM";
+		template_value_map.emplace("controller_type", std::string{"ABCD"});
+		template_value_map.emplace("controller_firmware", std::string{"1.2.3.4"});
+		template_value_map.emplace("controller_date", std::string{"1/1/2000"});
+		template_value_map.emplace("controller_time", std::string{"12:00:00 AM"});
 	}
 
 }

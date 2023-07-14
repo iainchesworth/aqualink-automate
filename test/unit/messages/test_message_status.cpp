@@ -3,9 +3,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/config/jandy_config_auxillary.h"
-#include "jandy/config/jandy_config_heater.h"
-#include "jandy/config/jandy_config_pump.h"
+#include "kernel/auxillary.h"
+#include "kernel/heater.h"
+#include "kernel/pump.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/formatters/jandy_device_formatters.h"
@@ -15,7 +15,7 @@
 
 #include "support/unit_test_ostream_support.h"
 
-using namespace AqualinkAutomate::Config;
+using namespace AqualinkAutomate::Kernel;
 using namespace AqualinkAutomate::Devices;
 using namespace AqualinkAutomate::Messages;
 
@@ -86,17 +86,17 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
 
     // Check payload values.
     BOOST_CHECK_EQUAL(AqualinkAutomate::Messages::ComboModes::Pool, message2.Mode());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::PumpStatus::Off, message2.FilterPump());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux1());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux2());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux3());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux4());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux5());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux6());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::AuxillaryStates::On, message2.Aux7());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::HeaterStatus::Off, message2.PoolHeater());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::HeaterStatus::Enabled, message2.SpaHeater());
-    BOOST_CHECK_EQUAL(AqualinkAutomate::Config::HeaterStatus::Heating, message2.SolarHeater());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::PumpStatus::Off, message2.FilterPump());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux1());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux2());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux3());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux4());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux5());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux6());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::AuxillaryStates::On, message2.Aux7());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::HeaterStatus::Off, message2.PoolHeater());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::HeaterStatus::Enabled, message2.SpaHeater());
+    BOOST_CHECK_EQUAL(AqualinkAutomate::Kernel::HeaterStatus::Heating, message2.SolarHeater());
 }
 
 BOOST_AUTO_TEST_CASE(TestToString)

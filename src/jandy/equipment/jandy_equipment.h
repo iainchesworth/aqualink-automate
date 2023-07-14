@@ -7,14 +7,16 @@
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/signals2.hpp>
 
 #include "interfaces/iequipment.h"
-#include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_rawdata_generator.h"
 #include "jandy/messages/jandy_message.h"
+#include "kernel/data_hub.h"
+#include "kernel/statistics_hub.h"
 #include "protocol/protocol_handler.h"
 
 namespace AqualinkAutomate::Equipment
@@ -23,7 +25,7 @@ namespace AqualinkAutomate::Equipment
 	class JandyEquipment : public Interfaces::IEquipment
 	{
 	public:
-		JandyEquipment(boost::asio::io_context& io_context, Config::JandyConfig& config);
+		JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub);
 		virtual ~JandyEquipment();
 
 	private:
@@ -36,19 +38,17 @@ namespace AqualinkAutomate::Equipment
 	public:
 		bool AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device);
 
-	public:
-		using ConfigType = Config::JandyConfig;
-		using StatsType = std::unordered_map<Messages::JandyMessageIds, uint32_t>;
-
-		const ConfigType& Config() const;
-		const StatsType& MessageStats() const;
-
 	private:
 		boost::asio::io_context& m_IOContext;
 		std::vector<std::unique_ptr<Devices::JandyDevice>> m_Devices;
 		std::unordered_set<Devices::JandyDeviceId> m_IdentifiedDeviceIds;
-		StatsType m_MessageStats;
-		ConfigType& m_Config;
+
+	private:
+		std::vector<boost::signals2::connection> m_MessageConnections;
+
+	private:
+		Kernel::DataHub& m_DataHub;
+		Kernel::StatisticsHub& m_StatsHub;
 	};
 
 }

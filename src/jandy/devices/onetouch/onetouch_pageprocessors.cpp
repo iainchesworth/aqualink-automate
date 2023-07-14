@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		*/
 
 		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
-		JandyController::m_Config.AirTemp = Utility::TrimWhitespace(page[6].Text);
+		JandyController::m_Config.AirTemp(Utility::Temperature(Utility::TrimWhitespace(page[6].Text)));
 	}
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
@@ -142,8 +142,8 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 01 =
 			Info:   OneTouch Menu Line 02 = Intelliflo VS 3		Intelliflo VS 3		Intelliflo VF 2
 			Info:   OneTouch Menu Line 03 =  *** Priming ***		   RPM: 2750		  RPM: 2250
-			Info:   OneTouch Menu Line 04 =     Watts: 100             RPM: 600		    Watts: 55
-			Info:   OneTouch Menu Line 05 =                          Watts: 55		      GPM: 80
+			Info:   OneTouch Menu Line 04 =     Watts: 100           Watts: 600		    Watts: 55
+			Info:   OneTouch Menu Line 05 =                            GPM: 55		      GPM: 80
 			Info:   OneTouch Menu Line 06 =
 			Info:   OneTouch Menu Line 07 =
 			Info:   OneTouch Menu Line 08 =
@@ -151,6 +151,8 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 10 =
 			Info:   OneTouch Menu Line 11 =
 		*/
+
+		///FIXME How best to process the equipment status lines?
 	}
 
 	void OneTouchDevice::PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page)
@@ -183,8 +185,8 @@ namespace AqualinkAutomate::Devices
 		*/
 
 
-		JandyController::m_Config.PoolTemp = Utility::TrimWhitespace(page[2].Text);
-		JandyController::m_Config.SpaTemp = Utility::TrimWhitespace(page[3].Text);
+		JandyController::m_Config.PoolTemp(Utility::Temperature(Utility::TrimWhitespace(page[2].Text)));
+		JandyController::m_Config.SpaTemp(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
 		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
 		auto maintenance_hours = Utility::TrimWhitespace(page[6].Text);
 	}
@@ -218,7 +220,7 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.FreezeProtectPoint = Utility::TrimWhitespace(page[3].Text);
+		JandyController::m_Config.FreezeProtectPoint(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
 	}
 
 	void OneTouchDevice::PageProcessor_Boost(const Utility::ScreenDataPage& page)

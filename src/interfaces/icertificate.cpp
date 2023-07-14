@@ -31,9 +31,9 @@ namespace AqualinkAutomate::Interfaces
 		return m_Path;
 	}
 
-	asio::const_buffer ICertificate::Data() const
+	boost::asio::const_buffer ICertificate::Data() const
 	{
-		return asio::const_buffer(m_Data.data(), m_Data.size());
+		return boost::asio::const_buffer(m_Data.data(), m_Data.size());
 	}
 
 }

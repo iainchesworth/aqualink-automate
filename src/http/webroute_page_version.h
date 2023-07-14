@@ -1,20 +1,21 @@
 #pragma once
 
-#include <crow/app.h>
-
-#include "interfaces/iwebroute.h"
+#include "http/webroute_types.h"
+#include "interfaces/ishareableroute.h"
+#include "interfaces/iwebpageroute.h"
 
 namespace AqualinkAutomate::HTTP
 {
-	constexpr const char PAGE_VERSION_ROUTE_URL[] = "/version";
+	inline constexpr char PAGE_VERSION_ROUTE_URL[] = "/version";
+	inline constexpr char PAGE_VERSION_TEMPLATE[] = "templates/version.html.mustache";
 
-	class WebRoute_Page_Version : public Interfaces::IWebRoute<PAGE_VERSION_ROUTE_URL>
+	class WebRoute_Page_Version : public Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>, public Interfaces::IShareableRoute
 	{
 	public:
-		WebRoute_Page_Version(crow::SimpleApp& app);
+		WebRoute_Page_Version(HTTP::Server& http_server);
 
 	public:
-		void WebRequestHandler(const Request& req, Response& resp);
+		virtual void WebRequestHandler(HTTP::Request& req, HTTP::Response& resp) override;
 	};
 
 }

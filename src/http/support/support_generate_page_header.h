@@ -1,11 +1,11 @@
 #pragma once
 
-#include <crow/mustache.h>
+#include <mstch/mstch.hpp>
 
 namespace AqualinkAutomate::HTTP::Support
 {
 
-	void GeneratePageHeader_Context(crow::mustache::context& ctx);
+	void GeneratePageHeader_Context(mstch::map& template_value_map);
 
 }
 // namespace AqualinkAutomate::HTTP::Support

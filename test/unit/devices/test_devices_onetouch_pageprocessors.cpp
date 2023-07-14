@@ -37,126 +37,126 @@ BOOST_AUTO_TEST_CASE(TestAuxillariesHeatersPumpsAreRegistered)
 		return was_found;
 	};
 
-	auto& config = Config();
+	auto& data_hub = DataHub();
 
-	BOOST_REQUIRE_EQUAL(config.PoolConfiguration, Config::PoolConfigurations::Unknown);
-	BOOST_REQUIRE_EQUAL(config.SystemBoard, Config::SystemBoards::Unknown);
+	BOOST_REQUIRE_EQUAL(data_hub.PoolConfiguration, Kernel::PoolConfigurations::Unknown);
+	BOOST_REQUIRE_EQUAL(data_hub.SystemBoard, Kernel::SystemBoards::Unknown);
 
 	InitialiseOneTouchDevice();
 
-	BOOST_REQUIRE_NE(config.PoolConfiguration, Config::PoolConfigurations::Unknown);
-	BOOST_REQUIRE_NE(config.SystemBoard, Config::SystemBoards::Unknown);
+	BOOST_REQUIRE_NE(data_hub.PoolConfiguration, Kernel::PoolConfigurations::Unknown);
+	BOOST_REQUIRE_NE(data_hub.SystemBoard, Kernel::SystemBoards::Unknown);
 
 	EquipmentOnOff_Page1();
 
-	BOOST_CHECK_EQUAL(7, config.Auxillaries().size());
-	BOOST_CHECK_EQUAL(2, config.Heaters().size());
-	BOOST_CHECK_EQUAL(2, config.Pumps().size());
+	BOOST_CHECK_EQUAL(7, data_hub.Auxillaries().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Heaters().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Pumps().size());
 
-	BOOST_CHECK(check_for_device("Aux1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux2", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux3", Config::AuxillaryStates::On, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux4", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux5", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux6", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux7", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux8", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B2", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B3", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B4", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B5", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B6", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B7", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux B8", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Extra Aux", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Pool Heat", Config::HeaterStatus::Enabled, config.Heaters()));
-	BOOST_CHECK(check_for_device("Spa Heat", Config::HeaterStatus::Off, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Solar Heat", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(check_for_device("Pool Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(check_for_device("Spa Pump", Config::PumpStatus::Running, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Filter Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::PumpStatus::Unknown, config.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
+	BOOST_CHECK(check_for_device("Aux1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux2", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux3", Kernel::AuxillaryStates::On, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux4", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux5", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux6", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux7", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux8", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B2", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B3", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B4", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B5", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B6", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B7", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux B8", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Extra Aux", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Pool Heat", Kernel::HeaterStatus::Enabled, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Spa Heat", Kernel::HeaterStatus::Off, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Solar Heat", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Pool Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(check_for_device("Spa Pump", Kernel::PumpStatus::Running, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Filter Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
 
 	// Check for mis-parsing of the all off command.
-	BOOST_CHECK(!check_for_device("All Off", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("All Off", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("All Off", Config::PumpStatus::Unknown, config.Pumps()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
 
 	EquipmentOnOff_Page2();
 
-	BOOST_CHECK_EQUAL(15, config.Auxillaries().size());
-	BOOST_CHECK_EQUAL(2, config.Heaters().size());
-	BOOST_CHECK_EQUAL(2, config.Pumps().size());
+	BOOST_CHECK_EQUAL(15, data_hub.Auxillaries().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Heaters().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Pumps().size());
 
-	BOOST_CHECK(check_for_device("Aux1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux2", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux3", Config::AuxillaryStates::On, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux4", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux5", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux6", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux7", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux8", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B2", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B3", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B4", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B5", Config::AuxillaryStates::On, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B6", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B7", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B8", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Extra Aux", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Pool Heat", Config::HeaterStatus::Enabled, config.Heaters()));
-	BOOST_CHECK(check_for_device("Spa Heat", Config::HeaterStatus::Off, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Solar Heat", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(check_for_device("Pool Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(check_for_device("Spa Pump", Config::PumpStatus::Running, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Filter Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::PumpStatus::Unknown, config.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
+	BOOST_CHECK(check_for_device("Aux1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux2", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux3", Kernel::AuxillaryStates::On, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux4", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux5", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux6", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux7", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux8", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B2", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B3", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B4", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B5", Kernel::AuxillaryStates::On, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B6", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B7", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B8", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Extra Aux", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Pool Heat", Kernel::HeaterStatus::Enabled, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Spa Heat", Kernel::HeaterStatus::Off, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Solar Heat", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Pool Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(check_for_device("Spa Pump", Kernel::PumpStatus::Running, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Filter Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
 
 	// Check for mis-parsing of the all off command.
-	BOOST_CHECK(!check_for_device("All Off", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("All Off", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("All Off", Config::PumpStatus::Unknown, config.Pumps()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
 
 	EquipmentOnOff_Page3();
 
-	BOOST_CHECK_EQUAL(15, config.Auxillaries().size());
-	BOOST_CHECK_EQUAL(2, config.Heaters().size());
-	BOOST_CHECK_EQUAL(2, config.Pumps().size());
+	BOOST_CHECK_EQUAL(15, data_hub.Auxillaries().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Heaters().size());
+	BOOST_CHECK_EQUAL(2, data_hub.Pumps().size());
 
-	BOOST_CHECK(check_for_device("Aux1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux2", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux3", Config::AuxillaryStates::On, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux4", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux5", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux6", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux7", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("Aux8", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B1", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B2", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B3", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B4", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B5", Config::AuxillaryStates::On, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B6", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B7", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Aux B8", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Extra Aux", Config::AuxillaryStates::Off, config.Auxillaries()));
-	BOOST_CHECK(check_for_device("Pool Heat", Config::HeaterStatus::Enabled, config.Heaters()));
-	BOOST_CHECK(check_for_device("Spa Heat", Config::HeaterStatus::Off, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Solar Heat", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(check_for_device("Pool Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(check_for_device("Spa Pump", Config::PumpStatus::Running, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Filter Pump", Config::PumpStatus::Unknown, config.Pumps()));
-	BOOST_CHECK(!check_for_device("Heat Pump", Config::PumpStatus::Unknown, config.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
+	BOOST_CHECK(check_for_device("Aux1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux2", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux3", Kernel::AuxillaryStates::On, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux4", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux5", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux6", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux7", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("Aux8", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B1", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B2", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B3", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B4", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B5", Kernel::AuxillaryStates::On, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B6", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B7", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Aux B8", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Extra Aux", Kernel::AuxillaryStates::Off, data_hub.Auxillaries()));
+	BOOST_CHECK(check_for_device("Pool Heat", Kernel::HeaterStatus::Enabled, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Spa Heat", Kernel::HeaterStatus::Off, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Solar Heat", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(check_for_device("Pool Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(check_for_device("Spa Pump", Kernel::PumpStatus::Running, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Filter Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
+	BOOST_CHECK(!check_for_device("Heat Pump", Kernel::PumpStatus::Unknown, data_hub.Pumps())); // Ensure that the "pump" didn't go to the wrong place!
 
 	// Check for mis-parsing of the all off command.
-	BOOST_CHECK(!check_for_device("All Off", Config::AuxillaryStates::Unknown, config.Auxillaries()));
-	BOOST_CHECK(!check_for_device("All Off", Config::HeaterStatus::Unknown, config.Heaters()));
-	BOOST_CHECK(!check_for_device("All Off", Config::PumpStatus::Unknown, config.Pumps()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::AuxillaryStates::Unknown, data_hub.Auxillaries()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::HeaterStatus::Unknown, data_hub.Heaters()));
+	BOOST_CHECK(!check_for_device("All Off", Kernel::PumpStatus::Unknown, data_hub.Pumps()));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -16,7 +16,7 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 }
 // AqualinkAutomate::ErrorCodes::Protocol
 
-namespace AqualinkAutomate::Config
+namespace AqualinkAutomate::Kernel
 {
     std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right)
     {
@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Config
     }
 
 }
-// namespace AqualinkAutomate::Config
+// namespace AqualinkAutomate::Kernel
 
 namespace AqualinkAutomate::Devices
 {
@@ -66,6 +66,16 @@ namespace AqualinkAutomate::Devices
     }
 }
 // namespace AqualinkAutomate::Devices
+
+namespace AqualinkAutomate::HTTP
+{
+    std::ostream& boost_test_print_type(std::ostream& os, WebSocket_EventTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+}
+// namespace AqualinkAutomate::HTTP
 
 namespace AqualinkAutomate::Interfaces
 {

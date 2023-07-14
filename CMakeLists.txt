@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.20 FATAL_ERROR)
+﻿cmake_minimum_required (VERSION 3.26 FATAL_ERROR)
 
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 set(CMAKE_CXX_STANDARD 20)
@@ -20,7 +20,6 @@ option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
-
 #------------------------------------------------------------------------------
 #
 #
@@ -30,13 +29,14 @@ cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON
 
 add_subdirectory(deps)
 
-find_package(asio REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
+find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(re2 REQUIRED)
 find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -118,6 +118,7 @@ set_source_files_properties(${VERSION_CMAKE_DEST_FILE} PROPERTIES GENERATED 1)
 
 add_library(
 	libaqualink-automate
+	src/application/application_defaults.cpp 
 	src/certificates/certificate_pemformat.cpp 
 	src/certificates/certificate_staticdata.cpp 
 	src/certificates/certificate_management.cpp 
@@ -130,20 +131,27 @@ add_library(
 	src/exceptions/exception_options_conflictingoptions.cpp 
 	src/exceptions/exception_options_missingdependency.cpp 
 	src/exceptions/exception_webserver.cpp 
-	src/http/crow_custom_logger.cpp 
-	src/http/webroute_jandyequipment.cpp 
-	src/http/webroute_jandyequipment_buttons.cpp 
-	src/http/webroute_jandyequipment_devices.cpp 
-	src/http/webroute_jandyequipment_stats.cpp 
-	src/http/webroute_jandyequipment_version.cpp 
+	src/formatters/orp_formatter.cpp 
+	src/formatters/ph_formatter.cpp 
+	src/formatters/units_dimensionless_formatter.cpp 
+	src/formatters/units_electric_potential_formatter.cpp 
+	src/http/webroute_equipment.cpp 
+	src/http/webroute_equipment_buttons.cpp 
+	src/http/webroute_equipment_devices.cpp 
+	src/http/webroute_equipment_version.cpp 
 	src/http/webroute_page_index.cpp 
-	src/http/webroute_page_jandyequipment.cpp 
+	src/http/webroute_page_equipment.cpp 
 	src/http/webroute_page_version.cpp 
+	src/http/webroute_types.cpp 
 	src/http/webroute_version.cpp 
-	src/http/json/json_jandy_config.cpp 
-	src/http/json/json_jandy_equipment.cpp 
+	src/http/websocket_event.cpp 
+	src/http/websocket_event_types.cpp 
+	src/http/websocket_equipment.cpp 
+	src/http/websocket_equipment_stats.cpp 
+	src/http/json/json_data_hub.cpp 
+	src/http/json/json_equipment.cpp 
 	src/http/support/support_generate_page_footer.cpp 
-	src/http/support/support_generate_page_header.cpp 
+	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/iequipment.cpp	
@@ -151,21 +159,13 @@ add_library(
 	src/interfaces/imessagesignal_recv.cpp
 	src/interfaces/imessagesignal_send.cpp
 	src/interfaces/iprofiler.cpp
-	src/interfaces/iprofilingunit.cpp	 
+	src/interfaces/iprofilingunit.cpp 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
-	src/interfaces/iwebroute.cpp 
+	src/interfaces/ishareableroute.cpp 
+	src/interfaces/iwebpageroute.cpp
+	src/interfaces/iwebroute.cpp  
 	src/interfaces/iwebsocket.cpp 
-	src/jandy/config/jandy_config.cpp
-	src/jandy/config/jandy_config_auxillary.cpp
-	src/jandy/config/jandy_config_auxillary_base.cpp
-	src/jandy/config/jandy_config_auxillary_states.cpp
-	src/jandy/config/jandy_config_circulation.cpp
-	src/jandy/config/jandy_config_heater.cpp
-	src/jandy/config/jandy_config_pool_configurations.cpp
-	src/jandy/config/jandy_config_powercenter.cpp
-	src/jandy/config/jandy_config_pump.cpp
-	src/jandy/config/jandy_config_system_boards.cpp
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_controller.cpp 
@@ -195,9 +195,12 @@ add_library(
 	src/jandy/factories/jandy_auxillary_factory.cpp 
 	src/jandy/factories/jandy_message_factory.cpp
 	src/jandy/factories/jandy_message_factory_registration.cpp
+	src/jandy/formatters/chemistry_formatter.cpp 
 	src/jandy/formatters/jandy_device_formatters.cpp 
 	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
+	src/jandy/formatters/stats_counter_formatter.cpp
+	src/jandy/formatters/temperature_formatter.cpp 
 	src/jandy/generator/jandy_message_generator.cpp
 	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
 	src/jandy/generator/jandy_message_generator_buffervalidation.cpp
@@ -256,8 +259,26 @@ add_library(
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
 	src/jandy/utility/string_conversion/auxillary_state.cpp 
+	src/jandy/utility/string_conversion/chemistry.cpp 
 	src/jandy/utility/string_conversion/temperature.cpp 
 	src/jandy/utility/string_conversion/timeout_duration.cpp 
+	src/kernel/auxillary.cpp
+	src/kernel/auxillary_base.cpp
+	src/kernel/auxillary_states.cpp
+	src/kernel/circulation.cpp
+	src/kernel/data_hub.cpp
+	src/kernel/data_hub_command.cpp
+	src/kernel/data_hub_event.cpp
+	src/kernel/data_hub_event_chemistry.cpp
+	src/kernel/data_hub_event_temperature.cpp
+	src/kernel/heater.cpp
+	src/kernel/orp.cpp 
+	src/kernel/ph.cpp
+	src/kernel/pool_configurations.cpp
+	src/kernel/powercenter.cpp
+	src/kernel/pump.cpp
+	src/kernel/statistics_hub.cpp
+	src/kernel/system_boards.cpp
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -306,14 +327,18 @@ add_library(
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
 	src/serial/serial_types.cpp
+	src/types/units_electric_potential.cpp 
 	src/signals/async_signal.cpp
 	src/signals/async_slot.cpp
 	src/signals/signal_awaitable.cpp
 	src/signals/signal_cleanup.cpp
 	src/signals/signal_handler.cpp
+	src/types/units_dimensionless.cpp 
+	src/types/units_electric_potential.cpp
 	src/utility/array_standard_formatter.cpp
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	
+	src/utility/signalling_stats_counter.cpp 
 	src/utility/value_debouncer.cpp 
 	src/version/version.cpp 
 	src/version/version_cmake.cpp 
@@ -322,14 +347,11 @@ add_library(
 	${CMAKE_CURRENT_BINARY_DIR}/src/version/version_git.constants.cpp   # Generated by the GitWatcher.cmake in the versioning section
 )
 
-if(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
-	target_compile_options (libaqualink-automate PRIVATE "/bigobj")
-endif(MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
-
 if(WIN32)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
+	src/platform/application/application_defaults_win32.cpp
 	src/platform/utility/get_terminal_column_width_win32.cpp
 )
 
@@ -354,17 +376,16 @@ if(LINUX)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
+	src/platform/application/application_defaults_linux.cpp
 	src/platform/utility/get_terminal_column_width_linux.cpp
 )
 endif(LINUX)
 
-target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 
 target_compile_definitions(
 	libaqualink-automate 
 	PUBLIC 
-	CROW_ENABLE_COMPRESSION 
-	CROW_ENABLE_SSL 
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 )
 
@@ -381,34 +402,38 @@ target_include_directories(
 	PUBLIC 
 	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
-	${Crow_INCLUDE_DIRS} 
+	${Cinatra_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
+	${mstch_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
+	${re2_INCLUDE_DIRS}
 	${tl_expected_INCLUDE_DIRS}
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
 )
 
-add_dependencies(libaqualink-automate Crow)
+add_dependencies(libaqualink-automate Cinatra)
 
 target_link_libraries(
 	libaqualink-automate 
 	PUBLIC
-	asio::asio
 	Boost::boost 
 	Boost::coroutine 
 	Boost::iostreams 
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
-	Crow
+	mstch::mstch
+	Cinatra
 	magic_enum::magic_enum
 	mqtt_cpp_iface::mqtt_cpp_iface 
+	mstch::mstch
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto
+	re2::re2
 	ZLIB::ZLIB
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
@@ -442,6 +467,7 @@ target_link_libraries(
 
 if(ENABLE_TESTS)
 
+enable_testing()
 add_subdirectory(test)
 
 endif(ENABLE_TESTS)
@@ -467,7 +493,13 @@ endif(ENABLE_SANITIZERS)
 #
 #------------------------------------------------------------------------------
 
-add_subdirectory(web)
+add_custom_command(
+	TARGET aqualink-automate 
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/static" "${CMAKE_BINARY_DIR}/static"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/templates" "${CMAKE_BINARY_DIR}/templates"
+)
 
 #------------------------------------------------------------------------------
 #

@@ -1,6 +1,6 @@
 #include <format>
 
-#include <boost/regex.hpp>
+#include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
@@ -13,14 +13,14 @@ namespace AqualinkAutomate::Utility
 
 	AuxillaryState::AuxillaryState() noexcept :
 		m_Label(),
-		m_State(Config::AuxillaryStates::Unknown),
+		m_State(Kernel::AuxillaryStates::Unknown),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
 	AuxillaryState::AuxillaryState(const std::string& auxillary_status_string) noexcept :
 		m_Label(),
-		m_State(Config::AuxillaryStates::Unknown),
+		m_State(Kernel::AuxillaryStates::Unknown),
 		m_ErrorOccurred(std::nullopt)
 	{
 		ConvertStringToStatus(auxillary_status_string);
@@ -80,7 +80,7 @@ namespace AqualinkAutomate::Utility
 		return m_Label;
 	}
 
-	tl::expected<Config::AuxillaryStates, boost::system::error_code> AuxillaryState::State() const noexcept
+	tl::expected<Kernel::AuxillaryStates, boost::system::error_code> AuxillaryState::State() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -99,19 +99,19 @@ namespace AqualinkAutomate::Utility
 
 			if ("ON" == status.value())
 			{
-				m_State = Config::AuxillaryStates::On;
+				m_State = Kernel::AuxillaryStates::On;
 			}
 			else if ("OFF" == status.value())
 			{
-				m_State = Config::AuxillaryStates::Off;
+				m_State = Kernel::AuxillaryStates::Off;
 			}
 			else if ("ENA" == status.value())
 			{
-				m_State = Config::AuxillaryStates::Enabled;
+				m_State = Kernel::AuxillaryStates::Enabled;
 			}
 			else if ("***" == status.value())
 			{
-				m_State = Config::AuxillaryStates::Pending;
+				m_State = Kernel::AuxillaryStates::Pending;
 			}
 			else
 			{
@@ -133,12 +133,12 @@ namespace AqualinkAutomate::Utility
 			return { std::nullopt, std::nullopt };
 		}
 
-		boost::regex re(R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))");
-		boost::smatch match;
+		re2::RE2 re(R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))");
+		std::string match1, match2;
 
-		if (boost::regex_match(auxillary_status_string, match, re))
+		if (re2::RE2::FullMatch(auxillary_status_string, re, &match1, &match2))
 		{
-			return { match[1].str(), match[2].str() };
+			return { match1, match2 };
 		}
 		else
 		{

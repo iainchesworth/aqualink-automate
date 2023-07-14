@@ -1,5 +1,3 @@
-enable_testing()
-
 #------------------------------------------------------------------------------
 #
 #
@@ -10,6 +8,7 @@ enable_testing()
 add_executable(
 	testaqualink-automate
 	unit/test_main.cpp 
+	unit/concepts/test_concept_is_c_array.cpp 
 	unit/devices/test_devices_id.cpp 
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
 	unit/devices/test_devices_screendatapage.cpp 
@@ -18,7 +17,8 @@ add_executable(
 	unit/devices/test_devices_types.cpp 
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
-	unit/http/test_api_jandyequipment.cpp 
+	unit/http/test_api_equipment.cpp 
+	unit/http/test_ws_equipment.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
@@ -35,10 +35,15 @@ add_executable(
 	unit/mocks/mock_generator_rawdatatomessage.cpp 
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
+	unit/units/test_units_orp.cpp 
+	unit/units/test_units_ph.cpp 
 	unit/utility/test_utility_auxillarystate.cpp 
+	unit/utility/test_utility_chemistry.cpp 
 	unit/utility/test_utility_jandychecksum.cpp 
+	unit/utility/test_utility_signallingstatscounter.cpp 
 	unit/utility/test_utility_temperature.cpp 
 	unit/support/unit_test_onetouchdevice.cpp 
+	unit/support/unit_test_onetouchdevice_httpserver.cpp 
 	unit/support/unit_test_ostream_support.cpp 
 )
 

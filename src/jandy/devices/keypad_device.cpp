@@ -8,7 +8,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated) :
+	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated) :
 		JandyController(io_context, device_id, KEYPAD_TIMEOUT_DURATION, config),
 		Capabilities::Screen(KEYPAD_PAGE_LINES),
 		Capabilities::Emulated(is_emulated)

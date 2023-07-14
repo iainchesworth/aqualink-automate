@@ -1,5 +1,10 @@
 ﻿{
-  "version": 3,
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 26,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "core",
@@ -10,6 +15,7 @@
       "toolchainFile": "${sourceDir}/deps/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_WITH_INSTALL_RPATH": "ON",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "ENABLE_CLANG_TIDY": "OFF",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "OFF",
@@ -20,104 +26,7 @@
       }
     },
     {
-      "name": "windows-base",
-      "inherits": "core",
-      "hidden": true,
-      "cacheVariables": {
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
-          "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/windows.toolchain.cmake"
-        },
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "windows-x64-debug-msvc",
-      "displayName": "Windows x64 (MSVC, debug)",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "windows-x64-debug-msvc-asan",
-      "displayName": "Windows x64 (MSVC, debug, asan)",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_SANITIZERS": "ON",
-        "SANITIZE_ADDRESS": "ON"
-      }
-    },
-    {
-      "name": "windows-x64-release-msvc",
-      "displayName": "Windows x64 (MSVC, release)",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "windows-x64-debug-clang",
-      "displayName": "Windows x64 (clang, debug)",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
-      }
-    },
-    {
-      "name": "windows-x64-debug-clang-asan",
-      "displayName": "Windows x64 (clang, debug, asan)",
-      "inherits": "windows-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang",
-        "ENABLE_SANITIZERS": "ON",
-        "SANITIZE_ADDRESS": "ON"
-      }
-    },
-    {
-      "name": "windows-x64-debug-clang-tsan",
-      "displayName": "Windows x64 (clang, debug, tsan)",
-      "inherits": "windows-x64-debug-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang",
-        "ENABLE_SANITIZERS": "ON",
-        "SANITIZE_THREAD": "ON"
-      }
-    },
-    {
-      "name": "windows-x64-release-clang",
-      "displayName": "Windows x64 (clang, release)",
-      "inherits": "windows-x64-debug-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_COMPILER": "clang-cl.exe",
-        "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
-      }
-    },
-    {
-      "name": "linux-base",
-      "inherits": "core",
+      "name": "toolchain-linux",
       "hidden": true,
       "cacheVariables": {
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
@@ -126,6 +35,108 @@
         },
         "CMAKE_C_COMPILER": "gcc-13",
         "CMAKE_CXX_COMPILER": "g++-13"
+      }
+    },
+    {
+      "name": "toolchain-macos",
+      "hidden": true,
+      "cacheVariables": {
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/cmake/toolchains/macos.toolchain.cmake"
+        },
+        "CMAKE_C_COMPILER": "clang.exe",
+        "CMAKE_CXX_COMPILER": "clang++.exe"
+      }
+    },
+    {
+      "name": "toolchain-windows",
+      "hidden": true,
+      "cacheVariables": {
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/cmake/toolchains/windows.toolchain.cmake"
+        },
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      }
+    },
+    {
+      "name": "ci-gcc-linux-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-linux"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "ci-clang-macos-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-macos"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "ci-msvc-windows-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-windows"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-gcc-linux-x86_64",
+      "configurePreset": "ci-gcc-linux-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "ci-clang-macos-x86_64",
+      "configurePreset": "ci-clang-macos-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "ci-msvc-windows-x86_64",
+      "configurePreset": "ci-msvc-windows-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-gcc-linux-x86_64",
+      "configurePreset": "ci-gcc-linux-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
       },
       "condition": {
         "type": "equals",
@@ -134,54 +145,14 @@
       }
     },
     {
-      "name": "linux-x64-debug-gcc",
-      "displayName": "Linux x64 (gcc, debug)",
-      "inherits": "linux-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "linux-x64-release-gcc",
-      "displayName": "Linux x64 (gcc, release)",
-      "inherits": "linux-x64-debug-gcc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    },
-    {
-      "name": "linux-x64-debug-clang",
-      "displayName": "Linux x64 (clang, debug)",
-      "inherits": "linux-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
-      }
-    },
-    {
-      "name": "linux-x64-release-clang",
-      "displayName": "Linux x64 (clang, release)",
-      "inherits": "linux-x64-debug-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_C_COMPILER": "/usr/lib/llvm-16/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/lib/llvm-16/bin/clang++",
-        "CMAKE_C_COMPILER_ID": "Clang",
-        "CMAKE_CXX_COMPILER_ID": "Clang"
-      }
-    },
-    {
-      "name": "macos-base",
-      "inherits": "core",
-      "hidden": true,
-      "cacheVariables": {
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
-          "type": "FILEPATH",
-          "value": "${sourceDir}/cmake/toolchains/macos.toolchain.cmake"
-        }
+      "name": "ci-clang-macos-x86_64",
+      "configurePreset": "ci-clang-macos-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
       },
       "condition": {
         "type": "equals",
@@ -190,19 +161,19 @@
       }
     },
     {
-      "name": "macos-debug",
-      "inherits": "macos-base",
-      "displayName": "macOS Debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "macos-release",
-      "displayName": "macOS Release",
-      "inherits": "macos-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      "name": "ci-msvc-windows-x86_64",
+      "configurePreset": "ci-msvc-windows-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     }
   ]

@@ -1,0 +1,56 @@
+name: Automated CI
+
+on:
+  push:
+    branches: [ "develop", "main", "feature/**", "bug/**" ]
+  pull_request:
+    branches: [ "develop", "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        #os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
+        include:
+        #- os: macos-latest
+        #  CMAKE_PRESET: ci-clang-macos-x86_64
+        - os: ubuntu-latest
+          CMAKE_PRESET: ci-gcc-linux-x86_64
+        - os: windows-latest
+          CMAKE_PRESET: ci-msvc-windows-x86_64
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - name: Install Linux Dependencies i.e. Build Tools
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt update
+        sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev pkg-config rpm wget unzip zip
+        sudo apt install -y gcc-13 g++-13
+    
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        toolset: 14.36
+
+    - uses: lukka/get-cmake@latest
+
+    - uses: lukka/run-vcpkg@v11
+      with: 
+        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+
+    - uses: lukka/run-cmake@v10
+      with:
+        configurePreset: '${{matrix.CMAKE_PRESET}}'
+        buildPreset: '${{matrix.CMAKE_PRESET}}'
+        testPreset: '${{matrix.CMAKE_PRESET}}'
+
+    - name: Package
+      working-directory: ${{github.workspace}}/build
+      # Execute packaging defined by the CMake configuration
+      run: cmake --build ${{github.workspace}}/build/${{matrix.CMAKE_PRESET}} --target pack-aqualink-automate 

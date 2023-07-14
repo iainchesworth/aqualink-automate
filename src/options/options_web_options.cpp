@@ -2,6 +2,7 @@
 #include <format>
 #include <string>
 
+#include "application/application_defaults.h"
 #include "logging/logging.h"
 #include "options/options_option_type.h"
 #include "options/options_web_options.h"
@@ -22,7 +23,7 @@ namespace AqualinkAutomate::Options::Web
 	AppOptionPtr OPTION_TLSCERTKEY{ make_appoption("cert-key", "Specify the certificate's key (PEM format) to use", boost::program_options::value<std::string>()) };
 	AppOptionPtr OPTION_TLSCACERT{ make_appoption("cachain-cert", "Specify the CA chain certificate (PEM format) to use", boost::program_options::value<std::string>()) };
 	AppOptionPtr OPTION_TLSCACERTKEY{ make_appoption("cachain-cert-key", "Specify the CA chain certificate's key (PEM format) to use", boost::program_options::value<std::string>()) };
-	AppOptionPtr OPTION_DOCROOT{ make_appoption("doc-root", "The location from which HTML files are served", boost::program_options::value<std::string>()->default_value("web/templates/")) };
+	AppOptionPtr OPTION_DOCROOT{ make_appoption("doc-root", "The location from which HTML files are served", boost::program_options::value<std::string>()->default_value(Application::DOC_ROOT)) };
 
 	std::vector WebOptionsCollection
 	{

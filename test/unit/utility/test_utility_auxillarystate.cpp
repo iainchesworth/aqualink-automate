@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/config/jandy_config_auxillary.h"
+#include "kernel/auxillary.h"
 #include "jandy/errors/string_conversion_errors.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 
@@ -10,7 +10,7 @@ BOOST_AUTO_TEST_SUITE(AuxillaryState);
 
 BOOST_AUTO_TEST_CASE(ConstructorTest)
 {
-    using AqualinkAutomate::Config::AuxillaryStates::On;
+    using AqualinkAutomate::Kernel::AuxillaryStates::On;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("Pump  ON");
@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
 
 BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
 {
-    using AqualinkAutomate::Config::AuxillaryStates::Off;
+    using AqualinkAutomate::Kernel::AuxillaryStates::Off;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status;
@@ -83,10 +83,10 @@ BOOST_AUTO_TEST_CASE(EmptyStringTest)
 
 BOOST_AUTO_TEST_CASE(StatusTypesTest)
 {
-    using AqualinkAutomate::Config::AuxillaryStates::On;
-    using AqualinkAutomate::Config::AuxillaryStates::Off;
-    using AqualinkAutomate::Config::AuxillaryStates::Enabled;
-    using AqualinkAutomate::Config::AuxillaryStates::Pending;
+    using AqualinkAutomate::Kernel::AuxillaryStates::On;
+    using AqualinkAutomate::Kernel::AuxillaryStates::Off;
+    using AqualinkAutomate::Kernel::AuxillaryStates::Enabled;
+    using AqualinkAutomate::Kernel::AuxillaryStates::Pending;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status1("Pump  ON");
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(StatusTypesTest)
 
 BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
 {
-    using AqualinkAutomate::Config::AuxillaryStates;
+    using AqualinkAutomate::Kernel::AuxillaryStates;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("A_MaximumName ON");

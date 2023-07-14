@@ -1,7 +1,7 @@
 #include <memory>
 #include <string>
 
-#include "jandy/config/jandy_config_auxillary_base.h"
+#include "kernel/auxillary_base.h"
 
 namespace AqualinkAutomate::Factory
 {
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Factory
 		static JandyAuxillaryFactory& Instance();
 
 	public:
-		std::shared_ptr<Config::AuxillaryBase> CreateDevice(const Utility::AuxillaryState& aux_state);
+		std::shared_ptr<Kernel::AuxillaryBase> CreateDevice(const Utility::AuxillaryState& aux_state);
 
 	private:
 		bool IsAuxillaryDevice(const std::string& label) const;

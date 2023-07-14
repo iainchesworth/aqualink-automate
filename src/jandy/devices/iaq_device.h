@@ -4,7 +4,6 @@
 
 #include <boost/asio/io_context.hpp>
 
-#include "jandy/config/jandy_config.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -22,6 +21,7 @@
 #include "jandy/messages/iaq/iaq_message_table_message.h"
 #include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_updater.h"
+#include "kernel/data_hub.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Config::JandyConfig& config, bool is_emulated);
+		IAQDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~IAQDevice();
 
 	private:
