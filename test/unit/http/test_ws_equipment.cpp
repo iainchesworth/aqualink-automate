@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	{
 		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
-		config_event_temp->PoolTemp(Utility::Temperature("Pool        90`F")); // Make sure to use the right separator character --> `
+		config_event_temp->PoolTemp(Utility::Temperature("Pool        90`F")().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse2(config_event_temp);
 	
 		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::TemperatureUpdate, wse2.Type());
@@ -91,9 +91,9 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	{
 		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
-		config_event_temp->PoolTemp(Utility::Temperature("Pool        21`C")); // Make sure to use the right separator character --> `
-		config_event_temp->SpaTemp(Utility::Temperature("Spa         39`C")); // Make sure to use the right separator character --> `
-		config_event_temp->AirTemp(Utility::Temperature("Air         16`C")); // Make sure to use the right separator character --> `
+		config_event_temp->PoolTemp(Utility::Temperature("Pool        21`C")().value()); // Make sure to use the right separator character --> `
+		config_event_temp->SpaTemp(Utility::Temperature("Spa         39`C")().value()); // Make sure to use the right separator character --> `
+		config_event_temp->AirTemp(Utility::Temperature("Air         16`C")().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse3(config_event_temp);
 
 		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::TemperatureUpdate, wse3.Type());
@@ -180,8 +180,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
 
 	{
 		// Send the message here....
-		auto pool_temp = Utility::Temperature("Pool        38`C");
-		DataHub().PoolTemp(pool_temp);
+		DataHub().PoolTemp(Utility::Temperature("Pool        38`C")().value());
 
 		ReadFromWebSocket_Blocking(buffer);
 		{

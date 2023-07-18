@@ -28,6 +28,9 @@ namespace AqualinkAutomate::ErrorCodes
 		case Scrapeable_ErrorCodes::NoGraphBeingScraped:
 			return "Scrapeable_ErrorCodes::NoGraphBeingScraped";
 
+		case Scrapeable_ErrorCodes::UnknownScrapeError:
+			return "Scrapeable_ErrorCodes::UnknownScrapeError";
+
 		default:
 			return "Scrapeable_ErrorCodes - Unknown Error Code";
 		}

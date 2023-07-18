@@ -1,8 +1,8 @@
 #include <nlohmann/json.hpp>
 
+#include "formatters/temperature_formatter.h"
 #include "http/json/json_equipment.h"
 #include "http/webroute_equipment.h"
-#include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::HTTP
 {

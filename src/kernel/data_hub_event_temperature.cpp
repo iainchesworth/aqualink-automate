@@ -3,8 +3,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <magic_enum.hpp>
 
+#include "formatters/temperature_formatter.h"
 #include "kernel/data_hub_event_temperature.h"
-#include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -17,32 +17,32 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	std::optional<Utility::Temperature> DataHub_Event_Temperature::PoolTemp() const
+	std::optional<Kernel::Temperature> DataHub_Event_Temperature::PoolTemp() const
 	{
 		return m_PoolTemp;
 	}
 
-	std::optional<Utility::Temperature> DataHub_Event_Temperature::SpaTemp() const
+	std::optional<Kernel::Temperature> DataHub_Event_Temperature::SpaTemp() const
 	{
 		return m_SpaTemp;
 	}
 
-	std::optional<Utility::Temperature> DataHub_Event_Temperature::AirTemp() const
+	std::optional<Kernel::Temperature> DataHub_Event_Temperature::AirTemp() const
 	{
 		return m_AirTemp;
 	}
 
-	void DataHub_Event_Temperature::PoolTemp(Utility::Temperature pool)
+	void DataHub_Event_Temperature::PoolTemp(Kernel::Temperature pool)
 	{
 		m_PoolTemp = pool;
 	}
 
-	void DataHub_Event_Temperature::SpaTemp(Utility::Temperature spa)
+	void DataHub_Event_Temperature::SpaTemp(Kernel::Temperature spa)
 	{
 		m_SpaTemp = spa;
 	}
 
-	void DataHub_Event_Temperature::AirTemp(Utility::Temperature air)
+	void DataHub_Event_Temperature::AirTemp(Kernel::Temperature air)
 	{
 		m_AirTemp = air;
 	}

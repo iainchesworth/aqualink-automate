@@ -15,62 +15,18 @@ namespace AqualinkAutomate::Utility
 {
 
 	Temperature::Temperature() noexcept :
-		m_Temperature(0),
-		m_TemperatureUnits(Units::Unknown),
+		m_Temperature(Kernel::Temperature::ConvertToTemperatureInCelsius(0)),
 		m_TemperatureArea(),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
 	Temperature::Temperature(const std::string& temperature_string) noexcept :
-		m_Temperature(0),
-		m_TemperatureUnits(Units::Unknown),
+		m_Temperature(Kernel::Temperature::ConvertToTemperatureInCelsius(0)),
 		m_TemperatureArea(),
 		m_ErrorOccurred(std::nullopt)
 	{
 		ConvertStringToTemperature(TrimWhitespace(temperature_string));
-	}
-
-	Temperature::Temperature(const Temperature& other) noexcept :
-		m_Temperature(other.m_Temperature), 
-		m_TemperatureUnits(other.m_TemperatureUnits), 
-		m_TemperatureArea(other.m_TemperatureArea),
-		m_ErrorOccurred(other.m_ErrorOccurred)
-	{
-	}
-
-	Temperature::Temperature(Temperature&& other) noexcept :
-		m_Temperature(std::move(other.m_Temperature)),
-		m_TemperatureUnits(std::move(other.m_TemperatureUnits)),
-		m_TemperatureArea(std::move(other.m_TemperatureArea)),
-		m_ErrorOccurred(std::move(other.m_ErrorOccurred))
-	{
-	}
-
-	Temperature& Temperature::operator=(const Temperature& other) noexcept
-	{
-		if (this != &other) 
-		{
-			m_Temperature = other.m_Temperature;
-			m_TemperatureUnits = other.m_TemperatureUnits;
-			m_TemperatureArea = other.m_TemperatureArea;
-			m_ErrorOccurred = other.m_ErrorOccurred;
-		}
-
-		return *this;
-	}
-
-	Temperature& Temperature::operator=(Temperature&& other) noexcept
-	{
-		if (this != &other) 
-		{
-			m_Temperature = std::move(other.m_Temperature);
-			m_TemperatureUnits = std::move(other.m_TemperatureUnits);
-			m_TemperatureArea = std::move(other.m_TemperatureArea);
-			m_ErrorOccurred = std::move(other.m_ErrorOccurred);
-		}
-
-		return *this;
 	}
 
 	Temperature& Temperature::operator=(const std::string& temperature_string) noexcept
@@ -79,7 +35,7 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	tl::expected<int8_t, boost::system::error_code> Temperature::operator()() const noexcept
+	tl::expected<Kernel::Temperature, boost::system::error_code> Temperature::operator()() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -87,16 +43,6 @@ namespace AqualinkAutomate::Utility
 		}
 
 		return m_Temperature;
-	}
-
-	tl::expected<Temperature::Units, boost::system::error_code> Temperature::TemperatureUnits() const noexcept
-	{
-		if (m_ErrorOccurred.has_value())
-		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
-		}
-
-		return m_TemperatureUnits;
 	}
 
 	tl::expected<std::string, boost::system::error_code> Temperature::TemperatureArea() const noexcept
@@ -114,7 +60,7 @@ namespace AqualinkAutomate::Utility
 		const auto [temperature_area, temperature, temperature_units] = ValidateAndExtractData(temperature_string);
 		if (temperature_area && temperature && temperature_units)
 		{
-			int32_t converted_temperature;
+			double converted_temperature;
 
 			auto [_, ec] = std::from_chars((*temperature).data(), (*temperature).data() + (*temperature).size(), converted_temperature);
 			if (std::errc() != ec)
@@ -122,33 +68,22 @@ namespace AqualinkAutomate::Utility
 				LogDebug(Channel::Devices, std::format("Failed to convert temperature; could not convert to number: error -> {}", magic_enum::enum_name(ec)));
 				m_ErrorOccurred = ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
 			}
-			else if (converted_temperature > std::numeric_limits<decltype(m_Temperature)>::max())
-			{
-				LogDebug(Channel::Devices, std::format("Failed to convert temperature; value exceeded maximum permitted: value -> {}", converted_temperature));
-				m_ErrorOccurred = ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
-			}
-			else if (converted_temperature < std::numeric_limits<decltype(m_Temperature)>::min())
-			{
-				LogDebug(Channel::Devices, std::format("Failed to convert temperature; value exceeded minimum permitted: value -> {}", converted_temperature));
-				m_ErrorOccurred = ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
-			}
 			else
 			{
-				m_Temperature = static_cast<decltype(m_Temperature)>(converted_temperature);
-				m_TemperatureArea = TrimWhitespace(*temperature_area);
-
 				switch ((*temperature_units)[0])
 				{
 				case 'C':
-					m_TemperatureUnits = Units::Celsius;
+					m_Temperature = Kernel::Temperature::ConvertToTemperatureInCelsius(converted_temperature);
 					break;
 				case 'F':
-					m_TemperatureUnits = Units::Farenheit;
+					m_Temperature = Kernel::Temperature::ConvertToTemperatureInFahrenheit(converted_temperature);
 					break;
 				default:
-					m_TemperatureUnits = Units::Unknown;
+					m_ErrorOccurred = ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
 					break;
 				}
+
+				m_TemperatureArea = TrimWhitespace(*temperature_area);
 			}
 		}
 		else 

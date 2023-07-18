@@ -36,7 +36,7 @@ namespace AqualinkAutomate::HTTP
 			nlohmann::json button;
 			button["id"] = boost::uuids::to_string(button_ptr->Id());
 			button["label"] = button_ptr->Label();
-			button["status"] = magic_enum::enum_name(button_ptr->State());
+			button["status"] = magic_enum::enum_name(button_ptr->Status());
 			return button;
 		};
 
@@ -105,7 +105,7 @@ namespace AqualinkAutomate::HTTP
 				{
 					nlohmann::json button;
 					button["label"] = (*it)->Label();
-					button["status"] = magic_enum::enum_name((*it)->State());
+					button["status"] = magic_enum::enum_name((*it)->Status());
 
 					resp.set_status_and_content
 					(

@@ -35,7 +35,7 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 
 namespace AqualinkAutomate::Kernel
 {
-    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStatuses const& right);
     std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right);
     std::ostream& boost_test_print_type(std::ostream& os, PumpStatus const& right);
     std::ostream& boost_test_print_type(std::ostream& os, PoolConfigurations const& right);
@@ -83,7 +83,6 @@ namespace AqualinkAutomate::Utility
 {
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPage::HighlightStates const& right);
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPageTypes const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right);
 }
 // namespace AqualinkAutomate::Utility
 

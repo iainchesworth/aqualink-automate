@@ -12,6 +12,7 @@
 #include <boost/signals2.hpp>
 
 #include "kernel/auxillary.h"
+#include "kernel/chlorinator.h"
 #include "kernel/circulation.h"
 #include "kernel/data_hub_event.h"
 #include "kernel/heater.h"
@@ -20,10 +21,10 @@
 #include "kernel/pool_configurations.h"
 #include "kernel/powercenter.h"
 #include "kernel/pump.h"
+#include "kernel/temperature.h"
 #include "kernel/system_boards.h"
 #include "jandy/equipment/jandy_equipment_modes.h"
 #include "jandy/equipment/jandy_equipment_versions.h"
-#include "jandy/utility/string_conversion/temperature.h"
 #include "jandy/utility/string_conversion/timeout_duration.h"
 #include "logging/logging.h"
 #include "types/units_dimensionless.h"
@@ -89,22 +90,22 @@ namespace AqualinkAutomate::Kernel
 	//---------------------------------------------------------------------
 
 	public:
-		Utility::Temperature AirTemp() const;
-		Utility::Temperature PoolTemp() const;
-		Utility::Temperature SpaTemp() const;
-		Utility::Temperature FreezeProtectPoint() const;
+		Kernel::Temperature AirTemp() const;
+		Kernel::Temperature PoolTemp() const;
+		Kernel::Temperature SpaTemp() const;
+		Kernel::Temperature FreezeProtectPoint() const;
 
 	public:
-		void AirTemp(const Utility::Temperature& air_temp);
-		void PoolTemp(const Utility::Temperature& pool_temp);
-		void SpaTemp(const Utility::Temperature& spa_temp);
-		void FreezeProtectPoint(const Utility::Temperature& freeze_protect_point);
+		void AirTemp(const Kernel::Temperature& air_temp);
+		void PoolTemp(const Kernel::Temperature& pool_temp);
+		void SpaTemp(const Kernel::Temperature& spa_temp);
+		void FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point);
 
 	private:
-		Utility::Temperature m_AirTemp;
-		Utility::Temperature m_PoolTemp;
-		Utility::Temperature m_SpaTemp;
-		Utility::Temperature m_FreezeProtectPoint;
+		Kernel::Temperature m_AirTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		Kernel::Temperature m_PoolTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		Kernel::Temperature m_SpaTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		Kernel::Temperature m_FreezeProtectPoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
 
 	//---------------------------------------------------------------------
 	// CHEMISTRY
@@ -174,8 +175,12 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		std::vector<std::shared_ptr<Auxillary>> Auxillaries() const;
+		std::vector<std::shared_ptr<Chlorinator>> Chlorinators() const;
 		std::vector<std::shared_ptr<Heater>> Heaters() const;
 		std::vector<std::shared_ptr<Pump>> Pumps() const;
+
+	public:
+		std::optional<std::shared_ptr<Pump>> FilterPump() const;
 
 	private:
 		template<typename DEVICE_TYPE>
@@ -206,6 +211,7 @@ namespace AqualinkAutomate::Kernel
 	private:
 		DevicesGraphType m_DevicesGraph;
 		DeviceVertexType m_AuxilleriesVertexId;
+		DeviceVertexType m_ChlorinatorsVertexId;
 		DeviceVertexType m_HeatersVertexId;
 		DeviceVertexType m_PumpsVertexId;
 		DeviceMap m_DevicesMap;

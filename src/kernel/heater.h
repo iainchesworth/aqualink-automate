@@ -20,20 +20,28 @@ namespace AqualinkAutomate::Kernel
 		Unknown
 	};
 
-	class Heater : public AuxillaryBaseWithState<HeaterStatus>
+	class Heater : public AuxillaryBaseWithStatus<HeaterStatus>
 	{
 	public:
 		Heater(const std::string& label);
-		Heater(const std::string& label, const HeaterStatus state);
+		Heater(const std::string& label, const HeaterStatus status);
 
 	public:
 		virtual boost::uuids::uuid Id() const final;
 
 	public:
-		Heater& operator=(const Utility::AuxillaryState& aux_state);
+
 
 	public:
-		static HeaterStatus ConvertToHeaterStatus(AuxillaryStates aux_states);
+		using AuxillaryBaseWithStatus<HeaterStatus>::Status;
+		virtual void Status(const HeaterStatus heater_status) override;
+
+	public:
+		Heater& operator=(const Utility::AuxillaryState& aux_state);
+		Heater& operator=(const HeaterStatus heater_status);
+
+	public:
+		static HeaterStatus ConvertToHeaterStatus(AuxillaryStatuses aux_status);
 	};
 	
 

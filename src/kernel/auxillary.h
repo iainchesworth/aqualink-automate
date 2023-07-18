@@ -11,14 +11,18 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	class Auxillary : public AuxillaryBaseWithState<AuxillaryStates>
+	class Auxillary : public AuxillaryBaseWithStatus<AuxillaryStatuses>
 	{
 	public:
 		Auxillary(const std::string& label);
-		Auxillary(const std::string& label, const AuxillaryStates state);
+		Auxillary(const std::string& label, const AuxillaryStatuses status);
 
 	public:
 		virtual boost::uuids::uuid Id() const final;
+
+	public:
+		using AuxillaryBaseWithStatus<AuxillaryStatuses>::Status;
+		virtual void Status(const AuxillaryStatuses aux_status) override;
 
 	public:
 		Auxillary& operator=(const Utility::AuxillaryState& other);

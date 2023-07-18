@@ -4,6 +4,7 @@
 
 #include "http/websocket_event.h"
 #include "logging/logging.h"
+#include "utility/case_insensitive_comparision.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -127,9 +128,7 @@ namespace AqualinkAutomate::HTTP
 		{
 			const std::string ws_event_type_as_string = parsed_event[WS_JSON_TYPE_FIELD];
 
-			auto case_insensitive_comp = [](char lhs, char rhs) { return std::tolower(lhs) == std::tolower(rhs); };
-
-			auto ws_event_type = magic_enum::enum_cast<WebSocket_EventTypes>(ws_event_type_as_string, case_insensitive_comp).value_or(WebSocket_EventTypes::Unknown);
+			auto ws_event_type = magic_enum::enum_cast<WebSocket_EventTypes>(ws_event_type_as_string, Utility::case_insensitive_comparision).value_or(WebSocket_EventTypes::Unknown);
 			auto ws_event_payload = parsed_event[WS_JSON_PAYLOAD_FIELD];
 
 			return WebSocket_Event(ws_event_type, ws_event_payload);

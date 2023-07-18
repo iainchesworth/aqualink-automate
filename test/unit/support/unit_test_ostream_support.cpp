@@ -18,7 +18,7 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 
 namespace AqualinkAutomate::Kernel
 {
-    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right)
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStatuses const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
@@ -117,12 +117,6 @@ namespace AqualinkAutomate::Utility
     }
 
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPageTypes const& right)
-    {
-        os << magic_enum::enum_name(right);
-        return os;
-    }
-
-    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right)
     {
         os << magic_enum::enum_name(right);
         return os;

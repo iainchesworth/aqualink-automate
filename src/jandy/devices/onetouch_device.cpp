@@ -177,6 +177,8 @@ namespace AqualinkAutomate::Devices
 
 				case ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped:
 					[[fallthrough]];
+				case ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError:
+					[[fallthrough]];
 				default:
 					// No scrape is active (or waiting) but it's a cold start...this is weird so force a transition to normal operation.
 					LogDebug(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) in an abnormal state -> forcing entry to normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));

@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Utility
 
 	public:
 		tl::expected<std::string, boost::system::error_code> Label() const noexcept;
-		tl::expected<Kernel::AuxillaryStates, boost::system::error_code> State() const noexcept;
+		tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> State() const noexcept;
 
 	private:
 		void ConvertStringToStatus(const std::string& auxillary_status_string) noexcept;
@@ -42,7 +42,7 @@ namespace AqualinkAutomate::Utility
 
 	private:
 		std::string m_Label;
-		Kernel::AuxillaryStates m_State;
+		Kernel::AuxillaryStatuses m_State;
 
 	private:
 		std::optional<ErrorCodes::StringConversion_ErrorCodes> m_ErrorOccurred;

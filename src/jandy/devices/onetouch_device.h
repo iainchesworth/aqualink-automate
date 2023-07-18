@@ -97,6 +97,15 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
 
 	private:
+		void StatusProcessor_FilterPump(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_PoolHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_SpaHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_SolarHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_AquaPurePercentage(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_SaltLevelPPM(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_CheckAquaPure(const Utility::ScreenDataPage& page, const uint8_t line_id);
+
+	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
 
 	private:

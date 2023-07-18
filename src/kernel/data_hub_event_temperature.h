@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "kernel/data_hub_event.h"
-#include "jandy/utility/string_conversion/temperature.h"
+#include "kernel/temperature.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -17,22 +17,22 @@ namespace AqualinkAutomate::Kernel
 		DataHub_Event_Temperature();
 
 	public:
-		std::optional<Utility::Temperature> PoolTemp() const;
-		std::optional<Utility::Temperature> SpaTemp() const;
-		std::optional<Utility::Temperature> AirTemp() const;
+		std::optional<Kernel::Temperature> PoolTemp() const;
+		std::optional<Kernel::Temperature> SpaTemp() const;
+		std::optional<Kernel::Temperature> AirTemp() const;
 
 	public:
-		void PoolTemp(Utility::Temperature pool);
-		void SpaTemp(Utility::Temperature spa);
-		void AirTemp(Utility::Temperature air);
+		void PoolTemp(Kernel::Temperature pool);
+		void SpaTemp(Kernel::Temperature spa);
+		void AirTemp(Kernel::Temperature air);
 
 	public:
 		virtual boost::uuids::uuid Id() const override;
 
 	private:
-		std::optional<Utility::Temperature> m_PoolTemp;
-		std::optional<Utility::Temperature> m_SpaTemp;
-		std::optional<Utility::Temperature> m_AirTemp;
+		std::optional<Kernel::Temperature> m_PoolTemp;
+		std::optional<Kernel::Temperature> m_SpaTemp;
+		std::optional<Kernel::Temperature> m_AirTemp;
 	};
 
 	// Support the translation of the various WS event object types to JSON

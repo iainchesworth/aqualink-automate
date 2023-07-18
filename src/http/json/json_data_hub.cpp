@@ -19,7 +19,7 @@ namespace AqualinkAutomate::Kernel
 		j = nlohmann::json{ 
 			{"id", boost::uuids::to_string(device.Id())},
 			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.State())} 
+			{"state", magic_enum::enum_name(device.Status())} 
 		};
 	}
 
@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Kernel
 		j = nlohmann::json{ 
 			{"id", boost::uuids::to_string(device.Id())},
 			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.State())}
+			{"state", magic_enum::enum_name(device.Status())}
 		};
 	}
 
@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Kernel
 		j = nlohmann::json{ 
 			{"id", boost::uuids::to_string(device.Id())},
 			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.State())}
+			{"state", magic_enum::enum_name(device.Status())}
 		};
 	}
 

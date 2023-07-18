@@ -1,9 +1,15 @@
 #pragma once
 
+#include <set>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <variant>
 
+#include <boost/system/error_code.hpp>
 #include <boost/uuid/uuid.hpp>
+
+#include "kernel/auxillary_traits.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -16,25 +22,29 @@ namespace AqualinkAutomate::Kernel
 		bool operator==(const AuxillaryBase& other) const;
 		bool operator==(const boost::uuids::uuid id) const;
 		bool operator==(const std::string& id) const;
+
+	protected:
+		std::set<boost::system::error_code> m_ErrorCodes{};
+		Traits m_Traits{};
 	};
 
-	template<typename AUX_STATES>
-	class AuxillaryBaseWithState : public AuxillaryBase
+	template<typename AUX_STATUSES>
+	class AuxillaryBaseWithStatus : public AuxillaryBase
 	{
 	public:
-		AuxillaryBaseWithState(const std::string& label, const AUX_STATES aux_state) :
+		AuxillaryBaseWithStatus(const std::string& label, const AUX_STATUSES aux_statuses) :
 			m_Label(label),
-			m_State(aux_state)
+			m_Status(aux_statuses)
 		{
 		}
 
 	public:
-		bool operator==(const AuxillaryBaseWithState<AUX_STATES>& other) const
+		bool operator==(const AuxillaryBaseWithStatus<AUX_STATUSES>& other) const
 		{
 			return (m_Label == other.m_Label);
 		}
 
-		bool operator!=(const AuxillaryBaseWithState<AUX_STATES>& other) const
+		bool operator!=(const AuxillaryBaseWithStatus<AUX_STATUSES>& other) const
 		{
 			return !operator==(other);
 		}
@@ -45,14 +55,17 @@ namespace AqualinkAutomate::Kernel
 			return m_Label;
 		}
 
-		AUX_STATES State() const
+		AUX_STATUSES Status() const
 		{
-			return m_State;
+			return m_Status;
 		}
+
+	public:
+		virtual void Status(const AUX_STATUSES aux_status) = 0;
 
 	protected:
 		const std::string m_Label;
-		AUX_STATES m_State;
+		AUX_STATUSES m_Status;
 	};
 
 }

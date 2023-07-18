@@ -37,6 +37,23 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    },
+    {
+      "name": "ci-msvc-windows-x86_64-debug",
+      "inherits": [
+        "core",
+        "toolchain-windows"
+      ],
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "buildPresets": [
@@ -52,6 +69,15 @@
     {
       "name": "ci-clang-windows-x86_64",
       "configurePreset": "ci-clang-windows-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-msvc-windows-x86_64-debug",
+      "configurePreset": "ci-msvc-windows-x86_64-debug",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -79,6 +105,22 @@
     {
       "name": "ci-clang-windows-x86_64",
       "configurePreset": "ci-clang-windows-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-msvc-windows-x86_64-debug",
+      "configurePreset": "ci-msvc-windows-x86_64-debug",
       "output": {
         "outputOnFailure": true
       },

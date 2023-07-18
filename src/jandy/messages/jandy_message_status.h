@@ -33,13 +33,13 @@ namespace AqualinkAutomate::Messages
 	public:
 		ComboModes Mode() const;
 		Kernel::PumpStatus FilterPump() const;
-		Kernel::AuxillaryStates Aux1() const;
-		Kernel::AuxillaryStates Aux2() const;
-		Kernel::AuxillaryStates Aux3() const;
-		Kernel::AuxillaryStates Aux4() const;
-		Kernel::AuxillaryStates Aux5() const;
-		Kernel::AuxillaryStates Aux6() const;
-		Kernel::AuxillaryStates Aux7() const;
+		Kernel::AuxillaryStatuses Aux1() const;
+		Kernel::AuxillaryStatuses Aux2() const;
+		Kernel::AuxillaryStatuses Aux3() const;
+		Kernel::AuxillaryStatuses Aux4() const;
+		Kernel::AuxillaryStatuses Aux5() const;
+		Kernel::AuxillaryStatuses Aux6() const;
+		Kernel::AuxillaryStatuses Aux7() const;
 		Kernel::HeaterStatus PoolHeater() const;
 		Kernel::HeaterStatus SpaHeater() const;
 		Kernel::HeaterStatus SolarHeater() const;
@@ -54,13 +54,13 @@ namespace AqualinkAutomate::Messages
 	private:
 		ComboModes m_Mode;
 		Kernel::PumpStatus m_FilterPump;
-		Kernel::AuxillaryStates m_Aux1;
-		Kernel::AuxillaryStates m_Aux2;
-		Kernel::AuxillaryStates m_Aux3;
-		Kernel::AuxillaryStates m_Aux4;
-		Kernel::AuxillaryStates m_Aux5;
-		Kernel::AuxillaryStates m_Aux6;
-		Kernel::AuxillaryStates m_Aux7;
+		Kernel::AuxillaryStatuses m_Aux1;
+		Kernel::AuxillaryStatuses m_Aux2;
+		Kernel::AuxillaryStatuses m_Aux3;
+		Kernel::AuxillaryStatuses m_Aux4;
+		Kernel::AuxillaryStatuses m_Aux5;
+		Kernel::AuxillaryStatuses m_Aux6;
+		Kernel::AuxillaryStatuses m_Aux7;
 		Kernel::HeaterStatus m_PoolHeater;
 		Kernel::HeaterStatus m_SolarHeater;
 		Kernel::HeaterStatus m_SpaHeater;

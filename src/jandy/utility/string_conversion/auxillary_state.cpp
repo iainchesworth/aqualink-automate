@@ -13,14 +13,14 @@ namespace AqualinkAutomate::Utility
 
 	AuxillaryState::AuxillaryState() noexcept :
 		m_Label(),
-		m_State(Kernel::AuxillaryStates::Unknown),
+		m_State(Kernel::AuxillaryStatuses::Unknown),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
 	AuxillaryState::AuxillaryState(const std::string& auxillary_status_string) noexcept :
 		m_Label(),
-		m_State(Kernel::AuxillaryStates::Unknown),
+		m_State(Kernel::AuxillaryStatuses::Unknown),
 		m_ErrorOccurred(std::nullopt)
 	{
 		ConvertStringToStatus(auxillary_status_string);
@@ -80,7 +80,7 @@ namespace AqualinkAutomate::Utility
 		return m_Label;
 	}
 
-	tl::expected<Kernel::AuxillaryStates, boost::system::error_code> AuxillaryState::State() const noexcept
+	tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> AuxillaryState::State() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -99,19 +99,19 @@ namespace AqualinkAutomate::Utility
 
 			if ("ON" == status.value())
 			{
-				m_State = Kernel::AuxillaryStates::On;
+				m_State = Kernel::AuxillaryStatuses::On;
 			}
 			else if ("OFF" == status.value())
 			{
-				m_State = Kernel::AuxillaryStates::Off;
+				m_State = Kernel::AuxillaryStatuses::Off;
 			}
 			else if ("ENA" == status.value())
 			{
-				m_State = Kernel::AuxillaryStates::Enabled;
+				m_State = Kernel::AuxillaryStatuses::Enabled;
 			}
 			else if ("***" == status.value())
 			{
-				m_State = Kernel::AuxillaryStates::Pending;
+				m_State = Kernel::AuxillaryStatuses::Pending;
 			}
 			else
 			{

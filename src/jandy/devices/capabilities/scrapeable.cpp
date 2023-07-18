@@ -1,5 +1,7 @@
 #include "jandy/devices/capabilities/scrapeable.h"
 
+#include <magic_enum.hpp>
+
 namespace AqualinkAutomate::Devices::Capabilities
 {
 
@@ -25,17 +27,17 @@ namespace AqualinkAutomate::Devices::Capabilities
 		if (!m_Stack_WaitingForPage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for screen page");
-			return ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage;
+			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage);
 		}
 		if (!m_Stack_WaitingForMessage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for message");
-			return ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage;
+			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
 		}
 		else if (!m_ActiveScrape.has_value())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is not active; cannot step forward");
-			return ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped;
+			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 		}
 		else
 		{
@@ -49,22 +51,33 @@ namespace AqualinkAutomate::Devices::Capabilities
 				{
 					LogTrace(Channel::Devices, "Scrape -> is complete");
 					m_ActiveScrape = std::nullopt;
-					return ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible;
+					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+				}
+				else if (++it; ScraperIter::end(m_ScraperGraphs.at(id)) == it)
+				{
+					LogTrace(Channel::Devices, "Scrape -> is complete");
+					m_ActiveScrape = std::nullopt;
+					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+				}
+				else if (auto key_command = std::get<Utility::ScreenDataPageGraphImpl::Edge>(*it).key_command; !key_command.has_value())
+				{
+					LogDebug(Channel::Devices, "Attempted to retrieve the next key command; key command had no value");
+					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
 				}
 				else
 				{
 					LogTrace(Channel::Devices, "Scrape -> is active; making next step");
-
+					
 					m_Stack_WaitingForMessage.push(Messages::JandyMessageIds::Status);
 					m_Stack_WaitingForMessage.push(Messages::JandyMessageIds::Status);
 
-					return std::get<Utility::ScreenDataPageGraphImpl::Edge>(*(++it)).key_command;
+					return key_command;
 				}
 			}
 			catch (const std::bad_optional_access& eBOA)
 			{
 				LogTrace(Channel::Devices, std::format("Scrape -> was active but could not access graph (exception was -> {})", eBOA.what()));
-				return ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped;
+				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 			}
 		}
 	}

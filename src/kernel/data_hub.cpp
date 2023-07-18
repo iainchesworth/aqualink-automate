@@ -1,6 +1,10 @@
+#include <algorithm>
+#include <execution>
+
 #include "kernel/data_hub.h"
 #include "kernel/data_hub_event_chemistry.h"
 #include "kernel/data_hub_event_temperature.h"
+#include "utility/case_insensitive_comparision.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -8,31 +12,32 @@ namespace AqualinkAutomate::Kernel
 	DataHub::DataHub()
 	{
 		m_AuxilleriesVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
+		m_ChlorinatorsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
 		m_HeatersVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
 		m_PumpsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
 	}
 
-	Utility::Temperature DataHub::AirTemp() const
+	Kernel::Temperature DataHub::AirTemp() const
 	{
 		return m_AirTemp;
 	}
 
-	Utility::Temperature DataHub::PoolTemp() const
+	Kernel::Temperature DataHub::PoolTemp() const
 	{
 		return m_PoolTemp;
 	}
 
-	Utility::Temperature DataHub::SpaTemp() const
+	Kernel::Temperature DataHub::SpaTemp() const
 	{
 		return m_SpaTemp;
 	}
 
-	Utility::Temperature DataHub::FreezeProtectPoint() const
+	Kernel::Temperature DataHub::FreezeProtectPoint() const
 	{
 		return m_FreezeProtectPoint;
 	}
 
-	void DataHub::AirTemp(const Utility::Temperature& air_temp)
+	void DataHub::AirTemp(const Kernel::Temperature& air_temp)
 	{
 		m_AirTemp = air_temp;
 
@@ -42,7 +47,7 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	void DataHub::PoolTemp(const Utility::Temperature& pool_temp)
+	void DataHub::PoolTemp(const Kernel::Temperature& pool_temp)
 	{
 		m_PoolTemp = pool_temp;
 
@@ -52,7 +57,7 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	void DataHub::SpaTemp(const Utility::Temperature& spa_temp)
+	void DataHub::SpaTemp(const Kernel::Temperature& spa_temp)
 	{
 		m_SpaTemp = spa_temp;
 
@@ -62,7 +67,7 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	void DataHub::FreezeProtectPoint(const Utility::Temperature& freeze_protect_point)
+	void DataHub::FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point)
 	{
 		m_FreezeProtectPoint = freeze_protect_point;
 	}
@@ -152,6 +157,11 @@ namespace AqualinkAutomate::Kernel
 		return GetDevicesFromGraph<Auxillary>(m_AuxilleriesVertexId);
 	}
 
+	std::vector<std::shared_ptr<Chlorinator>> DataHub::Chlorinators() const
+	{
+		return GetDevicesFromGraph<Chlorinator>(m_ChlorinatorsVertexId);
+	}
+
 	std::vector<std::shared_ptr<Heater>> DataHub::Heaters() const
 	{
 		return GetDevicesFromGraph<Heater>(m_HeatersVertexId);
@@ -160,6 +170,50 @@ namespace AqualinkAutomate::Kernel
 	std::vector<std::shared_ptr<Pump>> DataHub::Pumps() const
 	{
 		return GetDevicesFromGraph<Pump>(m_PumpsVertexId);
+	}
+
+	std::optional<std::shared_ptr<Pump>> DataHub::FilterPump() const
+	{
+		static std::shared_ptr<Pump> filter_pump(nullptr);
+
+		auto match_filter_pump = [](const auto& pump_ptr) -> bool
+		{
+			if (nullptr == pump_ptr)
+			{
+				// The pump object doesn't exist...ignore this device.
+				return false;
+			}
+			else
+			{
+				const auto& pump_label = pump_ptr->Label();
+				const std::string filter_pump{ "filter pump" };
+
+				return std::equal(pump_label.cbegin(), pump_label.cend(), filter_pump.cbegin(), Utility::case_insensitive_comparision);
+			}
+		};
+
+		if (nullptr != filter_pump)
+		{
+			// Already know which device is the filter pump so use the cache.
+			return filter_pump;
+		}
+		else
+		{
+			const auto pumps_collection = Pumps();
+
+			if (auto pump_it = std::find_if(std::execution::par, pumps_collection.cbegin(), pumps_collection.cend(), match_filter_pump); pumps_collection.end() == pump_it)
+			{
+				// Did not find the filter pump, do nothing.
+			}
+			else
+			{
+				// Found the filter pump, cache it and return it.
+				filter_pump = (*pump_it);
+				return filter_pump;
+			}
+		}
+
+		return std::nullopt;
 	}
 
 }

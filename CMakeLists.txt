@@ -133,6 +133,7 @@ add_library(
 	src/exceptions/exception_webserver.cpp 
 	src/formatters/orp_formatter.cpp 
 	src/formatters/ph_formatter.cpp 
+	src/formatters/temperature_formatter.cpp 
 	src/formatters/units_dimensionless_formatter.cpp 
 	src/formatters/units_electric_potential_formatter.cpp 
 	src/http/webroute_equipment.cpp 
@@ -184,6 +185,7 @@ add_library(
 	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_screenscraping.cpp 
+	src/jandy/devices/onetouch/onetouch_statusprocessors.cpp 
 	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
 	src/jandy/devices/pda/pda_pageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
@@ -199,8 +201,7 @@ add_library(
 	src/jandy/formatters/jandy_device_formatters.cpp 
 	src/jandy/formatters/jandy_message_formatters.cpp 
 	src/jandy/formatters/screen_data_page_formatter.cpp
-	src/jandy/formatters/stats_counter_formatter.cpp
-	src/jandy/formatters/temperature_formatter.cpp 
+	src/jandy/formatters/stats_counter_formatter.cpp	 
 	src/jandy/generator/jandy_message_generator.cpp
 	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
 	src/jandy/generator/jandy_message_generator_buffervalidation.cpp
@@ -265,12 +266,16 @@ add_library(
 	src/kernel/auxillary.cpp
 	src/kernel/auxillary_base.cpp
 	src/kernel/auxillary_states.cpp
+	src/kernel/auxillary_traits.cpp 
+	src/kernel/auxillary_traits_types.cpp 
+	src/kernel/chlorinator.cpp 
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
 	src/kernel/data_hub_event.cpp
 	src/kernel/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_event_temperature.cpp
+	src/kernel/flow_rate.cpp 
 	src/kernel/heater.cpp
 	src/kernel/orp.cpp 
 	src/kernel/ph.cpp
@@ -279,6 +284,7 @@ add_library(
 	src/kernel/pump.cpp
 	src/kernel/statistics_hub.cpp
 	src/kernel/system_boards.cpp
+	src/kernel/temperature.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
@@ -335,7 +341,9 @@ add_library(
 	src/signals/signal_handler.cpp
 	src/types/units_dimensionless.cpp 
 	src/types/units_electric_potential.cpp
+	src/types/units_flow_rate.cpp 
 	src/utility/array_standard_formatter.cpp
+	src/utility/case_insensitive_comparision.cpp 
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	
 	src/utility/signalling_stats_counter.cpp 

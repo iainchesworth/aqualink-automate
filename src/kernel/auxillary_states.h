@@ -5,7 +5,7 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	enum class AuxillaryStates : uint8_t
+	enum class AuxillaryStatuses : uint8_t
 	{
 		On = 0x00,
 		Off = 0x01,

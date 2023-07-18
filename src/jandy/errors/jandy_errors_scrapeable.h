@@ -13,7 +13,8 @@ namespace AqualinkAutomate::ErrorCodes
 		WaitingForPage = 4000,
 		WaitingForMessage,
 		NoStepPossible,
-		NoGraphBeingScraped
+		NoGraphBeingScraped,
+		UnknownScrapeError
 	};
 
 	class Scrapeable_ErrorCategory : public boost::system::error_category

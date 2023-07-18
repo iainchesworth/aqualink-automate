@@ -10,19 +10,19 @@ BOOST_AUTO_TEST_SUITE(AuxillaryState);
 
 BOOST_AUTO_TEST_CASE(ConstructorTest)
 {
-    using AqualinkAutomate::Kernel::AuxillaryStates::On;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::On;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("Pump  ON");
     BOOST_REQUIRE(status.Label().has_value());
     BOOST_REQUIRE(status.State().has_value());
     BOOST_CHECK_EQUAL(status.Label().value(), "Pump");
-    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStates::On);
+    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStatuses::On);
 }
 
 BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
 {
-    using AqualinkAutomate::Kernel::AuxillaryStates::Off;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::Off;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status;
@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
     BOOST_REQUIRE(status.Label().has_value());
     BOOST_REQUIRE(status.State().has_value());
     BOOST_CHECK_EQUAL(status.Label().value(), "Pump");
-    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStates::Off);
+    BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStatuses::Off);
 }
 
 BOOST_AUTO_TEST_CASE(InvalidStringTest)
@@ -83,32 +83,32 @@ BOOST_AUTO_TEST_CASE(EmptyStringTest)
 
 BOOST_AUTO_TEST_CASE(StatusTypesTest)
 {
-    using AqualinkAutomate::Kernel::AuxillaryStates::On;
-    using AqualinkAutomate::Kernel::AuxillaryStates::Off;
-    using AqualinkAutomate::Kernel::AuxillaryStates::Enabled;
-    using AqualinkAutomate::Kernel::AuxillaryStates::Pending;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::On;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::Off;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::Enabled;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses::Pending;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status1("Pump  ON");
     BOOST_REQUIRE(status1.State().has_value());
-    BOOST_CHECK_EQUAL(status1.State().value(), AuxillaryStates::On);
+    BOOST_CHECK_EQUAL(status1.State().value(), AuxillaryStatuses::On);
 
     AuxillaryState status2("Pump  OFF");
     BOOST_REQUIRE(status2.State().has_value());
-    BOOST_CHECK_EQUAL(status2.State().value(), AuxillaryStates::Off);
+    BOOST_CHECK_EQUAL(status2.State().value(), AuxillaryStatuses::Off);
 
     AuxillaryState status3("Pump  ENA");
     BOOST_REQUIRE(status3.State().has_value());
-    BOOST_CHECK_EQUAL(status3.State().value(), AuxillaryStates::Enabled);
+    BOOST_CHECK_EQUAL(status3.State().value(), AuxillaryStatuses::Enabled);
 
     AuxillaryState status4("Pump  ***");
     BOOST_REQUIRE(status4.State().has_value());
-    BOOST_CHECK_EQUAL(status4.State().value(), AuxillaryStates::Pending);
+    BOOST_CHECK_EQUAL(status4.State().value(), AuxillaryStatuses::Pending);
 }
 
 BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
 {
-    using AqualinkAutomate::Kernel::AuxillaryStates;
+    using AqualinkAutomate::Kernel::AuxillaryStatuses;
     using AqualinkAutomate::Utility::AuxillaryState;
 
     AuxillaryState status("A_MaximumName ON");

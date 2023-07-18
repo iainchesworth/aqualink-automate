@@ -19,22 +19,26 @@ namespace AqualinkAutomate::Kernel
 		Unknown
 	};
 
-	class Pump : public AuxillaryBaseWithState<PumpStatus>
+	class Pump : public AuxillaryBaseWithStatus<PumpStatus>
 	{
 	public:
 		Pump(const std::string& label);
-		Pump(const std::string& label, const PumpStatus state);
+		Pump(const std::string& label, const PumpStatus status);
 
 	public:
 		virtual boost::uuids::uuid Id() const final;
 
 	public:
-		Pump& operator=(const Utility::AuxillaryState& aux_state);
+		using AuxillaryBaseWithStatus<PumpStatus>::Status;
+		virtual void Status(const PumpStatus pump_status) override;
 
 	public:
-		static PumpStatus ConvertToPumpStatus(AuxillaryStates aux_states);
-	};
+		Pump& operator=(const Utility::AuxillaryState& aux_state);
+		Pump& operator=(const PumpStatus pump_status);
 
+	public:
+		static PumpStatus ConvertToPumpStatus(AuxillaryStatuses aux_states);
+	};
 
 }
 // namespace AqualinkAutomate::Kernel

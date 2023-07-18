@@ -9,6 +9,7 @@
 #include <tl/expected.hpp>
 
 #include "jandy/errors/string_conversion_errors.h"
+#include "kernel/temperature.h"
 
 using namespace AqualinkAutomate::ErrorCodes;
 
@@ -20,7 +21,7 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t MAXIMUM_STRING_LENGTH = 16;
 		static const uint8_t MINIMUM_STRING_LENGTH = 7;
 
-	public:
+	private:
 		enum class Units 
 		{
 			Celsius,
@@ -31,17 +32,12 @@ namespace AqualinkAutomate::Utility
 	public:
 		Temperature() noexcept;
 		Temperature(const std::string& temperature_string) noexcept;
-		Temperature(const Temperature& other) noexcept;
-		Temperature(Temperature&& other) noexcept;
 
 	public:
-		Temperature& operator=(const Temperature& other) noexcept;
-		Temperature& operator=(Temperature&& other) noexcept;
 		Temperature& operator=(const std::string& temperature_string) noexcept;
 
 	public:
-		tl::expected<int8_t, boost::system::error_code> operator()() const noexcept;
-		tl::expected<Units, boost::system::error_code> TemperatureUnits() const noexcept;
+		tl::expected<Kernel::Temperature, boost::system::error_code> operator()() const noexcept;
 		tl::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
 
 	private:
@@ -49,8 +45,7 @@ namespace AqualinkAutomate::Utility
 		std::tuple<std::optional<std::string>, std::optional<std::string>, std::optional<std::string>> ValidateAndExtractData(const std::string& temperature_string) noexcept;
 
 	private:
-		int8_t m_Temperature;
-		Units m_TemperatureUnits;
+		Kernel::Temperature m_Temperature;
 		std::string m_TemperatureArea;
 
 	private:
