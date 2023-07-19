@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Kernel
 	Pump::Pump(const std::string& label, const PumpStatus status) :
 		AuxillaryBaseWithStatus<PumpStatus>(label, status)
 	{
-		m_Traits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Pump);
+		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Pump);
 	}
 
 	boost::uuids::uuid Pump::Id() const

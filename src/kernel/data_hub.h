@@ -14,6 +14,7 @@
 #include "kernel/auxillary.h"
 #include "kernel/chlorinator.h"
 #include "kernel/circulation.h"
+#include "kernel/data_hub_device_graph.h"
 #include "kernel/data_hub_event.h"
 #include "kernel/heater.h"
 #include "kernel/orp.h"
@@ -130,48 +131,8 @@ namespace AqualinkAutomate::Kernel
 	// DEVICES GRAPH
 	//---------------------------------------------------------------------
 
-	private:
-		using DevicesGraphType = boost::adjacency_list<boost::listS, boost::vecS, boost::directedS, std::shared_ptr<AuxillaryBase>>;
-		using DeviceVertexType = boost::graph_traits<DevicesGraphType>::vertex_descriptor;
-		using DeviceMap = std::unordered_map<uint32_t, std::shared_ptr<AuxillaryBase>>;
-
 	public:
-		void AddDevice(std::shared_ptr<AuxillaryBase> device);
-
-	private:
-		template<typename DEVICE_TYPE>
-		bool SearchGraphForExistingDevice(std::shared_ptr<DEVICE_TYPE> device, const DeviceVertexType& source_vertex)
-		{
-			auto vertices_range = boost::adjacent_vertices(source_vertex, m_DevicesGraph);
-
-			auto it = std::ranges::find_if(vertices_range.first, vertices_range.second, [&](const auto& possible_match_vertex) -> bool
-				{
-					if (nullptr == device)
-					{
-						LogDebug(Channel::Equipment, "DataHub: Failed to match device to vertex; expected valid device but it was empty");
-					}
-					else if (auto possible_match_baseptr = m_DevicesGraph[possible_match_vertex]; nullptr == possible_match_baseptr)
-					{
-						LogDebug(Channel::Equipment, "DataHub: Failed to match device to vertex; expected valid possible_match_baseptr but it was empty");
-					}
-					else if (auto ptr = std::dynamic_pointer_cast<DEVICE_TYPE>(m_DevicesGraph[possible_match_vertex]); nullptr == ptr)
-					{
-						LogDebug(Channel::Equipment, "DataHub: Failed to convert possible_match_baseptr to target type");
-					}
-					else
-					{
-						auto& lhs = *device;
-						auto& rhs = *ptr;
-
-						return (lhs == rhs);
-					}
-
-					return false;
-				}
-			);
-
-			return (vertices_range.second != it);
-		}
+		DevicesGraph Devices{};
 
 	public:
 		std::vector<std::shared_ptr<Auxillary>> Auxillaries() const;
@@ -180,41 +141,7 @@ namespace AqualinkAutomate::Kernel
 		std::vector<std::shared_ptr<Pump>> Pumps() const;
 
 	public:
-		std::optional<std::shared_ptr<Pump>> FilterPump() const;
-
-	private:
-		template<typename DEVICE_TYPE>
-		std::vector<std::shared_ptr<DEVICE_TYPE>> GetDevicesFromGraph(const DeviceVertexType& source_vertex) const
-		{
-			auto vertices_range = boost::adjacent_vertices(source_vertex, m_DevicesGraph);
-			std::vector<std::shared_ptr<DEVICE_TYPE>> vertices;
-
-			for (const auto& vertex : std::ranges::subrange(vertices_range.first, vertices_range.second))
-			{
-				if (auto baseptr = m_DevicesGraph[vertex]; nullptr == baseptr)
-				{
-					LogDebug(Channel::Equipment, "DataHub: Failed to retrieve baseptr from devices graph: baseptr was empty");
-				}
-				else if (auto aux_ptr = std::dynamic_pointer_cast<DEVICE_TYPE>(baseptr); nullptr == aux_ptr)
-				{
-					LogDebug(Channel::Equipment, "DataHub: Failed to convert baseptr to target type");
-				}
-				else
-				{
-					vertices.push_back(aux_ptr);
-				}
-			}
-
-			return vertices;
-		}
-
-	private:
-		DevicesGraphType m_DevicesGraph;
-		DeviceVertexType m_AuxilleriesVertexId;
-		DeviceVertexType m_ChlorinatorsVertexId;
-		DeviceVertexType m_HeatersVertexId;
-		DeviceVertexType m_PumpsVertexId;
-		DeviceMap m_DevicesMap;
+		std::optional<std::shared_ptr<Pump>> FilterPump();
 	};
 
 }

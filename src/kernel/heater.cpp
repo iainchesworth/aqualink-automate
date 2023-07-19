@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Kernel
 	Heater::Heater(const std::string& label, const HeaterStatus status) :
 		AuxillaryBaseWithStatus<HeaterStatus>(label, status)
 	{
-		m_Traits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Heater);
+		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Heater);
 	}
 
 	boost::uuids::uuid Heater::Id() const

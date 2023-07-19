@@ -272,6 +272,7 @@ add_library(
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
+	"src/kernel/data_hub_device_graph.cpp" 
 	src/kernel/data_hub_event.cpp
 	src/kernel/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_event_temperature.cpp

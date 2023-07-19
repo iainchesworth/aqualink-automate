@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Kernel
 	Chlorinator::Chlorinator(const std::string& label, const ChlorinatorStatus status) :
 		AuxillaryBaseWithStatus<ChlorinatorStatus>(label, status)
 	{
-		m_Traits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Chlorinator);
+		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Chlorinator);
 	}
 
 	boost::uuids::uuid Chlorinator::Id() const

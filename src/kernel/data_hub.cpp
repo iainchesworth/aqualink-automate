@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <execution>
 
+#include "kernel/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/data_hub_event_chemistry.h"
 #include "kernel/data_hub_event_temperature.h"
@@ -11,10 +12,6 @@ namespace AqualinkAutomate::Kernel
 	
 	DataHub::DataHub()
 	{
-		m_AuxilleriesVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_ChlorinatorsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_HeatersVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_PumpsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
 	}
 
 	Kernel::Temperature DataHub::AirTemp() const
@@ -117,62 +114,31 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	void DataHub::AddDevice(std::shared_ptr<AuxillaryBase> device)
-	{
-		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
-		{
-			auto target_vertex = boost::add_vertex(ptr, m_DevicesGraph);
-			auto edge = boost::add_edge(source_vertex, target_vertex, m_DevicesGraph);
-
-			if (auto [_, was_inserted] = m_DevicesMap.try_emplace(target_vertex, ptr); !was_inserted)
-			{
-				LogDebug(Channel::Equipment, "DataHub: Failed to add device to device unordered_map");
-			}
-		};
-
-		if (nullptr == device)
-		{
-			LogDebug(Channel::Equipment, "DataHub: Failed to add device to device graph; invalid device provided for insertion");
-		}
-		else if (auto ptr = std::dynamic_pointer_cast<Auxillary>(device); (nullptr != ptr) && !SearchGraphForExistingDevice<Auxillary>(ptr, m_AuxilleriesVertexId))
-		{
-			insert_device_in_graph(m_DevicesGraph, m_AuxilleriesVertexId, ptr);
-		}
-		else if (auto ptr = std::dynamic_pointer_cast<Heater>(device); (nullptr != ptr) && !SearchGraphForExistingDevice<Heater>(ptr, m_HeatersVertexId))
-		{
-			insert_device_in_graph(m_DevicesGraph, m_HeatersVertexId, ptr);
-		}
-		else if (auto ptr = std::dynamic_pointer_cast<Pump>(device); (nullptr != ptr) && !SearchGraphForExistingDevice<Pump>(ptr, m_PumpsVertexId))
-		{
-			insert_device_in_graph(m_DevicesGraph, m_PumpsVertexId, ptr);
-		}
-		else
-		{
-			LogDebug(Channel::Equipment, "DataHub: Failed to add device to device graph");
-		}
-	}
-
 	std::vector<std::shared_ptr<Auxillary>> DataHub::Auxillaries() const
 	{
-		return GetDevicesFromGraph<Auxillary>(m_AuxilleriesVertexId);
+		using DeviceType = decltype(Auxillaries())::value_type::element_type;
+		return Devices.FindByTrait<DeviceType>(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Auxillary);
 	}
 
 	std::vector<std::shared_ptr<Chlorinator>> DataHub::Chlorinators() const
 	{
-		return GetDevicesFromGraph<Chlorinator>(m_ChlorinatorsVertexId);
+		using DeviceType = decltype(Chlorinators())::value_type::element_type;
+		return Devices.FindByTrait<DeviceType>(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Chlorinator);
 	}
 
 	std::vector<std::shared_ptr<Heater>> DataHub::Heaters() const
 	{
-		return GetDevicesFromGraph<Heater>(m_HeatersVertexId);
+		using DeviceType = decltype(Heaters())::value_type::element_type;
+		return Devices.FindByTrait<DeviceType>(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Heater);
 	}
 
 	std::vector<std::shared_ptr<Pump>> DataHub::Pumps() const
 	{
-		return GetDevicesFromGraph<Pump>(m_PumpsVertexId);
+		using DeviceType = decltype(Pumps())::value_type::element_type;
+		return Devices.FindByTrait<DeviceType>(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Pump);
 	}
 
-	std::optional<std::shared_ptr<Pump>> DataHub::FilterPump() const
+	std::optional<std::shared_ptr<Pump>> DataHub::FilterPump()
 	{
 		static std::shared_ptr<Pump> filter_pump(nullptr);
 

@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Kernel
 	Auxillary::Auxillary(const std::string& label, const AuxillaryStatuses status) :
 		AuxillaryBaseWithStatus(label, status)
 	{
-		m_Traits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Auxillary);
+		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Auxillary);
 	}
 
 	boost::uuids::uuid Auxillary::Id() const

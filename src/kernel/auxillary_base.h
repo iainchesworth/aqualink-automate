@@ -23,9 +23,9 @@ namespace AqualinkAutomate::Kernel
 		bool operator==(const boost::uuids::uuid id) const;
 		bool operator==(const std::string& id) const;
 
-	protected:
-		std::set<boost::system::error_code> m_ErrorCodes{};
-		Traits m_Traits{};
+	public:
+		Traits AuxillaryTraits{};
+		std::set<boost::system::error_code> ErrorCodes{};
 	};
 
 	template<typename AUX_STATUSES>

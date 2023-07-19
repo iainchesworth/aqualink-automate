@@ -153,7 +153,7 @@ namespace AqualinkAutomate::Devices
 		{
 			auto new_aux_state = Utility::AuxillaryState(Utility::TrimWhitespace(page[row_index].Text));
 			auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().CreateDevice(new_aux_state);
-			JandyController::m_Config.AddDevice(aux_ptr);
+			JandyController::m_Config.Devices.Add(aux_ptr);
 		}
 	}
 
