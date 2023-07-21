@@ -8,12 +8,13 @@
 namespace AqualinkAutomate::Exceptions
 {
 
-	class WebServerException : public GenericAqualinkException
+	class Traits_NotMutable : public GenericAqualinkException
 	{
-		static constexpr std::string_view OPTIONS_WEBSERVER_EXCEPTION_MESSAGE{ "" };
+		static constexpr std::string_view TRAIT_NOT_MUTABLE_MESSAGE{ "" };
 
 	public:
-		WebServerException(const std::string& message);
+		Traits_NotMutable();
+		Traits_NotMutable(const std::string& message);
 	};
 
 }

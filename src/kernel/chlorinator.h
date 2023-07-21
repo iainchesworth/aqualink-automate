@@ -37,6 +37,9 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		static ChlorinatorStatus ConvertToChlorinatorStatus(AuxillaryStatuses aux_states);
+
+	private:
+		const boost::uuids::uuid m_Id;
 	};
 
 }

@@ -1,10 +1,15 @@
 #pragma once
 
-#include "kernel/auxillary_traits.h"
+#include <set>
+#include <string>
+
+#include <boost/system/error_code.hpp>
+
+#include "kernel/auxillary_traits/auxillary_traits_base.h"
 #include "kernel/flow_rate.h"
 #include "kernel/temperature.h"
 
-namespace AqualinkAutomate::Kernel::AuxillaryTraits
+namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
 
 	//---------------------------------------------------------------------
@@ -19,7 +24,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraits
 		Pump
 	};
 
-	class AuxillaryTypeTrait : public ImmutableTraitType<AuxillaryTypes>
+	class AuxillaryTypeTrait : public ImmutableTraitType<const AuxillaryTypes>
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"AuxillaryTypesTrait"}; }
@@ -29,6 +34,18 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraits
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"DutyCycleTrait"}; }
+	};
+
+	class ErrorCodesTrait : public ImmutableTraitType<std::set<boost::system::error_code>>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"LabelTrait"}; }
+	};
+
+	class LabelTrait : public ImmutableTraitType<const std::string>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"LabelTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -41,8 +58,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraits
 	// CHLORINATOR TRAITS
 	//---------------------------------------------------------------------
 
-
-	
+		
 
 	//---------------------------------------------------------------------
 	// HEATER TRAITS
@@ -52,6 +68,22 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraits
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"TargetTemperatureTrait"}; }
+	};
+
+	//---------------------------------------------------------------------
+	// LIGHT TRAITS
+	//---------------------------------------------------------------------
+
+	class BrightnessLevelTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"BrightnessLevelTrait"}; }
+	};
+
+	class ColourTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"ColourTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -71,4 +103,4 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraits
 
 
 }
-// namespace AqualinkAutomate::Kernel::AuxillaryTraits
+// namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes

@@ -1,18 +1,25 @@
 #pragma once
 
-#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <variant>
 
-#include <boost/system/error_code.hpp>
 #include <boost/uuid/uuid.hpp>
 
-#include "kernel/auxillary_traits.h"
+#include "kernel/auxillary_traits/auxillary_traits.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 
 namespace AqualinkAutomate::Kernel
 {
+
+	enum class AuxillaryHealthStates
+	{
+		Healthy,
+		Unhealthy,
+		Unknown
+	};
+	
 	class AuxillaryBase
 	{
 	public:
@@ -24,8 +31,13 @@ namespace AqualinkAutomate::Kernel
 		bool operator==(const std::string& id) const;
 
 	public:
+		bool operator!=(const AuxillaryBase& other) const;
+
+	public:
 		Traits AuxillaryTraits{};
-		std::set<boost::system::error_code> ErrorCodes{};
+
+	public:
+		AuxillaryHealthStates Health() const;
 	};
 
 	template<typename AUX_STATUSES>
@@ -33,26 +45,16 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		AuxillaryBaseWithStatus(const std::string& label, const AUX_STATUSES aux_statuses) :
-			m_Label(label),
 			m_Status(aux_statuses)
 		{
+			AuxillaryTraits.Set(AuxillaryTraitsTypes::LabelTrait{}, label);
 		}
 
 	public:
-		bool operator==(const AuxillaryBaseWithStatus<AUX_STATUSES>& other) const
+		const std::string Label() const
 		{
-			return (m_Label == other.m_Label);
-		}
-
-		bool operator!=(const AuxillaryBaseWithStatus<AUX_STATUSES>& other) const
-		{
-			return !operator==(other);
-		}
-
-	public:
-		const std::string& Label() const
-		{
-			return m_Label;
+			// Assume that there's a label as it's only ever set above in the constructor.
+			return AuxillaryTraits.TryGet(AuxillaryTraitsTypes::LabelTrait{}).value();
 		}
 
 		AUX_STATUSES Status() const

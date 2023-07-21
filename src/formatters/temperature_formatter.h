@@ -38,7 +38,7 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature> : std::formatter<st
 	TemperatureUnits units = TemperatureUnits::Celsius;
 	uint8_t precision = 0;
 
-	auto parse(format_parse_context& ctx) 
+	constexpr auto parse(format_parse_context& ctx)
 	{
 		auto it = ctx.begin();
 

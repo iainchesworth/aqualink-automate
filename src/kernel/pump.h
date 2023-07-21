@@ -38,6 +38,9 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		static PumpStatus ConvertToPumpStatus(AuxillaryStatuses aux_states);
+
+	private:
+		const boost::uuids::uuid m_Id;
 	};
 
 }

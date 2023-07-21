@@ -1,83 +1,22 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
 #include <memory>
-#include <iterator>
-#include <optional>
+#include <string>
+#include <vector>
 
-#include <boost/functional/hash.hpp>
-#include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/filtered_graph.hpp>
-#include <boost/graph/graph_traits.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <tl/expected.hpp>
+#include <boost/uuid/uuid.hpp>
 
 #include "kernel/auxillary_base.h"
+#include "kernel/device_graph/device_graph_filter_by_trait.h"
+#include "kernel/device_graph/device_graph_types.h"
 #include "logging/logging.h"
 
 namespace AqualinkAutomate::Kernel
 {
-
-	using DeviceVertexProperty = std::shared_ptr<AuxillaryBase>;
-	using DevicesGraphType = boost::adjacency_list<boost::listS, boost::vecS, boost::directedS, DeviceVertexProperty>;
-	using DeviceVertexType = boost::graph_traits<DevicesGraphType>::vertex_descriptor;
-	using DeviceVertexIter = boost::graph_traits<DevicesGraphType>::vertex_iterator;
-	using DeviceMap = std::unordered_map<uint32_t, std::shared_ptr<AuxillaryBase>>;
-
-	namespace GraphManagement
-	{
-		template<typename TRAIT_TYPE>
-		class DeviceTraitFilter
-		{
-		public:
-			DeviceTraitFilter(const DevicesGraphType& graph, TRAIT_TYPE trait_type) :
-				m_Graph(graph),
-				m_TraitType(trait_type),
-				m_OptTraitValue(std::nullopt)
-			{
-			}
-
-			DeviceTraitFilter(const DevicesGraphType& graph, TRAIT_TYPE trait_type, TRAIT_TYPE::TraitValue trait_value) :
-				m_Graph(graph),
-				m_TraitType(trait_type),
-				m_OptTraitValue(trait_value)
-			{
-			}
-
-		public:
-			bool operator()(const DevicesGraphType::edge_descriptor) const { return true; }
-			bool operator()(const DevicesGraphType::vertex_descriptor vd) const
-			{
-				if (auto device = m_Graph[vd]; nullptr == device)
-				{
-					// Invalid device pointer
-				}
-				else if (!device->AuxillaryTraits.Has(m_TraitType))
-				{
-					// Trait does not exist
-				}
-				else
-				{
-					if (m_OptTraitValue.has_value() && (m_OptTraitValue.value() != device->AuxillaryTraits[m_TraitType]))
-					{
-						// Trait value didn't match
-					}
-					else
-					{
-						// Didn't need to validate trait value OR trait value matched.
-						return true;
-					}
-				}
-
-				return false;
-			}
-
-		private:
-			const DevicesGraphType& m_Graph;
-			TRAIT_TYPE m_TraitType;
-			std::optional<typename TRAIT_TYPE::TraitValue> m_OptTraitValue;
-		};
-	}
-	// namespace GraphManagement
 
 	class DevicesGraph
 	{
@@ -86,55 +25,64 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		void Add(std::shared_ptr<AuxillaryBase> device);
+		
+		
+		bool Contains(std::shared_ptr<AuxillaryBase> device);
+
+
 		void Remove(std::shared_ptr<AuxillaryBase> device);
 
 	public:
-		void CountByLabel();
-		void FindByLabel();
+		uint32_t CountByLabel(const std::string& device_label);
+		std::vector<std::shared_ptr<AuxillaryBase>> FindByLabel(const std::string& device_label);
+
+	public:
+		uint32_t CountById(const boost::uuids::uuid& id) const;
+		std::shared_ptr<AuxillaryBase> FindById(const boost::uuids::uuid& id) const;
 
 	public:
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTrait(TRAIT_TYPE trait_type) const
 		{
-			GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type);
+			DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type);
 			return CountByTraitImpl(trait_type, trait_filter);
 		}
 		
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTrait(TRAIT_TYPE trait_type, TRAIT_TYPE::TraitValue trait_value) const 
 		{
-			GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type, trait_value);
+			DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type, trait_value);
 			return CountByTraitImpl(trait_type, trait_filter);
 		}
 
 		template<typename DEVICE_TYPE, typename TRAIT_TYPE>
 		std::vector<std::shared_ptr<DEVICE_TYPE>> FindByTrait(TRAIT_TYPE trait_type) const
 		{
-			GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type);
+			DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type);
 			return FindByTraitImpl<DEVICE_TYPE>(trait_type, trait_filter);
 		}
 
 		template<typename DEVICE_TYPE, typename TRAIT_TYPE>
 		std::vector<std::shared_ptr<DEVICE_TYPE>> FindByTrait(TRAIT_TYPE trait_type, TRAIT_TYPE::TraitValue trait_value) const
 		{
-			GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type, trait_value);
+			DeviceTraitFilter<TRAIT_TYPE> trait_filter(m_DevicesGraph, trait_type, trait_value);
 			return FindByTraitImpl<DEVICE_TYPE>(trait_type, trait_filter);
 		}
 
 	private:
 		template<typename TRAIT_TYPE>
-		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
+		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
-			boost::filtered_graph<DevicesGraphType, boost::keep_all, GraphManagement::DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
+			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
 
 			auto range = boost::make_iterator_range(boost::vertices(fg));
 			return std::distance(range.begin(), range.end());
 		}
 
 		template<typename DEVICE_TYPE, typename TRAIT_TYPE>
-		std::vector<std::shared_ptr<DEVICE_TYPE>> FindByTraitImpl(TRAIT_TYPE trait_type, GraphManagement::DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
+		std::vector<std::shared_ptr<DEVICE_TYPE>> FindByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
-			boost::filtered_graph<DevicesGraphType, boost::keep_all, GraphManagement::DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
+			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
 
 			std::vector<std::shared_ptr<DEVICE_TYPE>> found_devices;
 

@@ -130,6 +130,10 @@ add_library(
 	src/exceptions/exception_optionshelporversion.cpp 
 	src/exceptions/exception_options_conflictingoptions.cpp 
 	src/exceptions/exception_options_missingdependency.cpp 
+	src/exceptions/exception_traits_doesnotexist.cpp 
+	src/exceptions/exception_traits_failedtoset.cpp 
+	src/exceptions/exception_traits_invalidtraitvalue.cpp 
+	src/exceptions/exception_traits_notmutable.cpp 
 	src/exceptions/exception_webserver.cpp 
 	src/formatters/orp_formatter.cpp 
 	src/formatters/ph_formatter.cpp 
@@ -266,13 +270,14 @@ add_library(
 	src/kernel/auxillary.cpp
 	src/kernel/auxillary_base.cpp
 	src/kernel/auxillary_states.cpp
-	src/kernel/auxillary_traits.cpp 
-	src/kernel/auxillary_traits_types.cpp 
+	src/kernel/auxillary_traits/auxillary_traits.cpp 
+	src/kernel/auxillary_traits/auxillary_traits_base.cpp 
+	src/kernel/auxillary_traits/auxillary_traits_proxy.cpp 
+	src/kernel/auxillary_traits/auxillary_traits_types.cpp 
 	src/kernel/chlorinator.cpp 
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
-	"src/kernel/data_hub_device_graph.cpp" 
 	src/kernel/data_hub_event.cpp
 	src/kernel/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_event_temperature.cpp
@@ -286,7 +291,12 @@ add_library(
 	src/kernel/statistics_hub.cpp
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 
+	src/kernel/device_graph/device_graph.cpp
+	src/kernel/device_graph/device_graph_filter_by_id.cpp 
+	src/kernel/device_graph/device_graph_filter_by_label.cpp 
+	src/kernel/device_graph/device_graph_filter_by_trait.cpp 
 	src/logging/formatters/logging_formatters.cpp
+	src/kernel/device_graph/device_graph_types.cpp
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
 	src/logging/logging_attributes.cpp

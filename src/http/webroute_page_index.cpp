@@ -105,11 +105,24 @@ namespace AqualinkAutomate::HTTP
 			{
 				{ "triggerable_button_id", std::string {boost::uuids::to_string(device->Id())}},
 				{ "triggerable_button_label", std::string {device->Label()}},
-				{ "triggerable_button_status", std::string {"Unavailable"} }
+				{ "triggerable_button_status", std::string(magic_enum::enum_name(device->Status())) }
 			};
 
 			triggerable_buttons.push_back(button_context);
 			buttons_exist = true; 
+		}
+
+		for (const auto& chlorinator : m_DataHub.Chlorinators())
+		{
+			auto button_context = mstch::map
+			{
+				{ "triggerable_button_id", std::string {boost::uuids::to_string(chlorinator->Id())} },
+				{ "triggerable_button_label", std::string {chlorinator->Label()}},
+				{ "triggerable_button_status", std::string(magic_enum::enum_name(chlorinator->Status())) }
+			};
+
+			triggerable_buttons.push_back(button_context);
+			buttons_exist = true;
 		}
 
 		for (const auto& heater : m_DataHub.Heaters())
@@ -118,7 +131,7 @@ namespace AqualinkAutomate::HTTP
 			{
 				{ "triggerable_button_id", std::string {boost::uuids::to_string(heater->Id())} },
 				{ "triggerable_button_label", std::string {heater->Label()}},
-				{ "triggerable_button_status", std::string {"Unavailable"} }
+				{ "triggerable_button_status", std::string(magic_enum::enum_name(heater->Status())) }
 			};
 
 			triggerable_buttons.push_back(button_context);
@@ -131,7 +144,7 @@ namespace AqualinkAutomate::HTTP
 			{
 				{ "triggerable_button_id", std::string {boost::uuids::to_string(pump->Id())}},
 				{ "triggerable_button_label", std::string {pump->Label()}},
-				{ "triggerable_button_status", std::string {"Unavailable"} }
+				{ "triggerable_button_status", std::string(magic_enum::enum_name(pump->Status())) }
 			};
 
 			triggerable_buttons.push_back(button_context);

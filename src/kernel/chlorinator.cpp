@@ -1,6 +1,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "kernel/auxillary_traits_types.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/chlorinator.h"
 #include "logging/logging.h"
 
@@ -15,15 +15,15 @@ namespace AqualinkAutomate::Kernel
 	}
 
 	Chlorinator::Chlorinator(const std::string& label, const ChlorinatorStatus status) :
-		AuxillaryBaseWithStatus<ChlorinatorStatus>(label, status)
+		AuxillaryBaseWithStatus<ChlorinatorStatus>(label, status),
+		m_Id(boost::uuids::random_generator()())
 	{
-		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Chlorinator);
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 	}
 
 	boost::uuids::uuid Chlorinator::Id() const
 	{
-		static const boost::uuids::uuid this_id = boost::uuids::random_generator()();
-		return this_id;
+		return m_Id;
 	}
 
 	void Chlorinator::Status(const ChlorinatorStatus Chlorinator_status)

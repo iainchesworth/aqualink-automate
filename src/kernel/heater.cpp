@@ -1,6 +1,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "kernel/auxillary_traits_types.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/heater.h"
 #include "logging/logging.h"
 
@@ -14,15 +14,15 @@ namespace AqualinkAutomate::Kernel
 	}
 
 	Heater::Heater(const std::string& label, const HeaterStatus status) :
-		AuxillaryBaseWithStatus<HeaterStatus>(label, status)
+		AuxillaryBaseWithStatus<HeaterStatus>(label, status),
+		m_Id(boost::uuids::random_generator()())
 	{
-		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Heater);
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 	}
 
 	boost::uuids::uuid Heater::Id() const
 	{
-		static const boost::uuids::uuid this_id = boost::uuids::random_generator()();
-		return this_id;
+		return m_Id;
 	}
 
 	void Heater::Status(const HeaterStatus heater_status)

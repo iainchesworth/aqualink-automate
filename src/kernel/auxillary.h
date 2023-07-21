@@ -26,6 +26,9 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		Auxillary& operator=(const Utility::AuxillaryState& other);
+
+	private:
+		const boost::uuids::uuid m_Id;
 	};
 
 }

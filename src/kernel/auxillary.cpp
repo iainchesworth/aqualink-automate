@@ -1,7 +1,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
 #include "kernel/auxillary.h"
-#include "kernel/auxillary_traits_types.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -14,15 +14,15 @@ namespace AqualinkAutomate::Kernel
 	}
 
 	Auxillary::Auxillary(const std::string& label, const AuxillaryStatuses status) :
-		AuxillaryBaseWithStatus(label, status)
+		AuxillaryBaseWithStatus(label, status),
+		m_Id(boost::uuids::random_generator()())
 	{
-		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Auxillary);
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 	}
 
 	boost::uuids::uuid Auxillary::Id() const
 	{
-		static const boost::uuids::uuid this_id = boost::uuids::random_generator()();
-		return this_id;
+		return m_Id;
 	}
 
 	void Auxillary::Status(const AuxillaryStatuses aux_status)

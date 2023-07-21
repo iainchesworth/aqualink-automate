@@ -1,4 +1,4 @@
-#include "kernel/auxillary_traits.h"
+#include "kernel/auxillary_traits/auxillary_traits_base.h"
 
 namespace AqualinkAutomate::Kernel
 {

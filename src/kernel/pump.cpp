@@ -1,6 +1,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "kernel/auxillary_traits_types.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/pump.h"
 #include "logging/logging.h"
 
@@ -15,15 +15,15 @@ namespace AqualinkAutomate::Kernel
 	}
 
 	Pump::Pump(const std::string& label, const PumpStatus status) :
-		AuxillaryBaseWithStatus<PumpStatus>(label, status)
+		AuxillaryBaseWithStatus<PumpStatus>(label, status),
+		m_Id(boost::uuids::random_generator()())
 	{
-		AuxillaryTraits.Set(AuxillaryTraits::AuxillaryTypeTrait{}, AuxillaryTraits::AuxillaryTypes::Pump);
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
 	}
 
 	boost::uuids::uuid Pump::Id() const
 	{
-		static const boost::uuids::uuid this_id = boost::uuids::random_generator()();
-		return this_id;
+		return m_Id;
 	}
 
 	void Pump::Status(const PumpStatus pump_status)

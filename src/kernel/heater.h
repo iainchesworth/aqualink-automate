@@ -42,6 +42,9 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		static HeaterStatus ConvertToHeaterStatus(AuxillaryStatuses aux_status);
+
+	private:
+		const boost::uuids::uuid m_Id;
 	};
 	
 
