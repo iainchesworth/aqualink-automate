@@ -1,9 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <execution>
 #include <functional>
 #include <mutex>
 #include <string>
-#include <unordered_map>
+#include <unordered_set>
 
 #include "concepts/is_c_array.h"
 #include "http/webroute_types.h"
@@ -20,9 +22,7 @@ namespace AqualinkAutomate::Interfaces
 	class IWebSocket
 	{
 	public:
-		explicit IWebSocket(HTTP::Server& http_server) :
-			m_OnActionMutex(),
-			m_Connections()
+		explicit IWebSocket(HTTP::Server& http_server)
 		{
 			http_server.set_http_handler<HTTP::Methods::GET, HTTP::Methods::POST>(
 				ROUTE_URL,
@@ -54,8 +54,7 @@ namespace AqualinkAutomate::Interfaces
 		{
 			const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
 
-			auto connection = req.get_conn<cinatra::NonSSL>();
-			m_Connections.emplace(0, connection);
+			m_Connections.emplace(req.get_conn<cinatra::NonSSL>());
 
 			OnOpen(req);
 		}
@@ -71,7 +70,7 @@ namespace AqualinkAutomate::Interfaces
 			else if (HTTP::WebSocket_EventTypes::Ping_KeepAlive == websocket_event.value().Type())
 			{
 				static const HTTP::WebSocket_Event KeepAlive_PongEvent(HTTP::WebSocket_EventTypes::Pong_KeepAlive, nlohmann::json{nullptr});
-				PublishMessage_AsText(KeepAlive_PongEvent());
+				PublishMessage_AsText(req.get_conn<cinatra::NonSSL>(), KeepAlive_PongEvent());
 			}
 			else
 			{
@@ -82,12 +81,18 @@ namespace AqualinkAutomate::Interfaces
 		void HandleWebSocket_OnClose(HTTP::Request& req)
 		{
 			const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
+
+			m_Connections.erase(req.get_conn<cinatra::NonSSL>());
+
 			OnClose(req);
 		}
 
 		void HandleWebSocket_OnError(HTTP::Request& req)
 		{
 			const std::lock_guard<std::mutex> action_lock(m_OnActionMutex);
+
+			m_Connections.erase(req.get_conn<cinatra::NonSSL>());
+
 			OnError(req);
 		}
 
@@ -98,33 +103,54 @@ namespace AqualinkAutomate::Interfaces
 		virtual void OnError(HTTP::Request& req) = 0;
 
 	protected:
-		void PublishMessage_AsBinary(const std::string& message)
+		void PublishMessage_AsBinary(const HTTP::Connection& conn, const std::string& message)
 		{
-			for (auto& [id, conn] : m_Connections)
+			if (nullptr != conn)
 			{
-				if (nullptr != conn)
-				{
-					conn->send_ws_binary(message);
-				}
+				conn->send_ws_binary(message);
 			}
 		}
 
-		void PublishMessage_AsText(const std::string& message)
+		void PublishMessage_AsText(const HTTP::Connection& conn, const std::string& message)
 		{
-			for (auto& [id, conn] : m_Connections)
+			if (nullptr != conn)
 			{
-				if (nullptr != conn)
-				{
-					conn->send_ws_string(message);
-				}
+				conn->send_ws_string(message);
 			}
 		}
 
-	private:
-		std::unordered_map<uint32_t, HTTP::Connection> m_Connections;
+	protected:
+		void BroadcastMessage_AsBinary(const std::string& message)
+		{
+			std::for_each(std::execution::par, m_Connections.cbegin(), m_Connections.cend(),
+				[&message](const auto& conn) -> void
+				{
+					if (nullptr != conn)
+					{
+						conn->send_ws_binary(message);
+					}
+				}
+			);
+		}
+
+		void BroadcastMessage_AsText(const std::string& message)
+		{
+			std::for_each(std::execution::par, m_Connections.cbegin(), m_Connections.cend(),
+				[&message](const auto& conn) -> void
+				{
+					if (nullptr != conn) 
+					{
+						conn->send_ws_string(message);
+					}
+				}
+			);
+		}
 
 	private:
-		std::mutex m_OnActionMutex;
+		std::unordered_set<HTTP::Connection> m_Connections{};
+
+	private:
+		std::mutex m_OnActionMutex{};
 	};
 }
 // namespace AqualinkAutomate::Interfaces

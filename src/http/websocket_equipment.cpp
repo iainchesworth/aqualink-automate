@@ -39,11 +39,11 @@ namespace AqualinkAutomate::HTTP
 	{
 		if (nullptr == config_update_event)
 		{
-			///FIXME
+			LogDebug(Channel::Web, "Received an invalid Kernel::DataHub_Event; config_update_event -> nullptr");
 		}
 		else
 		{
-			PublishMessage_AsText(HTTP::WebSocket_Event(config_update_event).Payload());
+			BroadcastMessage_AsText(HTTP::WebSocket_Event(config_update_event).Payload());
 		}
 	}
 

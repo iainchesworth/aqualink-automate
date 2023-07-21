@@ -24,7 +24,7 @@ namespace AqualinkAutomate::HTTP
 
 				// Convert JSON to string and send it over the WebSocket connection
 				HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
-				PublishMessage_AsText(ws_statistics_update.Payload());
+				BroadcastMessage_AsText(ws_statistics_update.Payload());
 			}
 		);
 
@@ -32,7 +32,7 @@ namespace AqualinkAutomate::HTTP
 
 		// Convert JSON to string and send it over the WebSocket connection
 		HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
-		PublishMessage_AsText(ws_statistics_update.Payload());
+		PublishMessage_AsText(req.get_conn<cinatra::NonSSL>(), ws_statistics_update.Payload());
 	}
 
 	void WebSocket_Equipment_Stats::OnMessage(HTTP::Request& reqy)
