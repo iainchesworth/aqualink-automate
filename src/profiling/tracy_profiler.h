@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "interfaces/iprofiler.h"
 #include "profiling/factories/profiler_factory_registration.h"
 #include "profiling/factories/profiling_unit_factory_registration.h"
@@ -17,7 +19,7 @@ namespace AqualinkAutomate::Profiling
 		virtual void StopProfiling() override;
 
 	public:
-		virtual tl::expected<ZonePtr, bool> CreateZone(FramePtr frame, const std::string& name) const override;
+		virtual ZonePtr CreateZone(FramePtr frame, const std::string& name) const override;
 
 	private:
 		static const Factory::ProfilerRegistration<Tracy_Profiler> g_TracyProfilerRegistration;
