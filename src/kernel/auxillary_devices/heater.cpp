@@ -1,7 +1,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
+#include "kernel/auxillary_devices/heater.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
-#include "kernel/heater.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,12 +9,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Kernel
 {
 	Heater::Heater(const std::string& label) :
-		Heater(label, HeaterStatus::NotInstalled)
+		Heater(label, HeaterStatuses::NotInstalled)
 	{
 	}
 
-	Heater::Heater(const std::string& label, const HeaterStatus status) :
-		AuxillaryBaseWithStatus<HeaterStatus>(label, status),
+	Heater::Heater(const std::string& label, const HeaterStatuses status) :
+		AuxillaryBaseWithStatus<HeaterStatuses>(label, status),
 		m_Id(boost::uuids::random_generator()())
 	{
 		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Kernel
 		return m_Id;
 	}
 
-	void Heater::Status(const HeaterStatus heater_status)
+	void Heater::Status(const HeaterStatuses heater_status)
 	{
 		AuxillaryBaseWithStatus::m_Status = heater_status;
 	}
@@ -38,37 +38,37 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			Status(ConvertToHeaterStatus(aux_state.State().value()));
+			Status(ConvertToHeaterStatuses(aux_state.State().value()));
 		}
 
 		return *this;
 	}
 
-	Heater& Heater::operator=(const HeaterStatus heater_status)
+	Heater& Heater::operator=(const HeaterStatuses heater_status)
 	{
 		Status(heater_status);
 		return *this;
 	}
 
-	HeaterStatus Heater::ConvertToHeaterStatus(Kernel::AuxillaryStatuses aux_status)
+	HeaterStatuses Heater::ConvertToHeaterStatuses(Kernel::AuxillaryStatuses aux_status)
 	{
 		switch (aux_status)
 		{
 		case AuxillaryStatuses::On:
-			return HeaterStatus::Heating;
+			return HeaterStatuses::Heating;
 
 		case AuxillaryStatuses::Off:
-			return HeaterStatus::Off;
+			return HeaterStatuses::Off;
 
 		case AuxillaryStatuses::Enabled:
-			return HeaterStatus::Enabled;
+			return HeaterStatuses::Enabled;
 
 		case AuxillaryStatuses::Pending:
 			[[fallthrough]];
 		case AuxillaryStatuses::Unknown:
 			[[fallthrough]];
 		default:
-			return HeaterStatus::Unknown;
+			return HeaterStatuses::Unknown;
 		}
 	}
 

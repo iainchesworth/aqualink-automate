@@ -1,8 +1,8 @@
 #include <boost/algorithm/string.hpp>
 
-#include "kernel/auxillary.h"
-#include "kernel/heater.h"
-#include "kernel/pump.h"
+#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/heater.h"
+#include "kernel/auxillary_devices/pump.h"
 #include "jandy/factories/jandy_auxillary_factory.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 #include "logging/logging.h"

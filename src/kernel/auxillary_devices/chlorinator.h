@@ -6,37 +6,31 @@
 #include <boost/uuid/uuid.hpp>
 
 #include "kernel/auxillary_base.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	enum class ChlorinatorStatus : uint8_t
-	{
-		Off,
-		Running,
-		Unknown
-	};
-
-	class Chlorinator : public AuxillaryBaseWithStatus<ChlorinatorStatus>
+	class Chlorinator : public AuxillaryBaseWithStatus<ChlorinatorStatuses>
 	{
 	public:
 		Chlorinator(const std::string& label);
-		Chlorinator(const std::string& label, const ChlorinatorStatus status);
+		Chlorinator(const std::string& label, const ChlorinatorStatuses status);
 
 	public:
 		virtual boost::uuids::uuid Id() const final;
 
 	public:
-		using AuxillaryBaseWithStatus<ChlorinatorStatus>::Status;
-		virtual void Status(const ChlorinatorStatus chlorinator_status) override;
+		using AuxillaryBaseWithStatus<ChlorinatorStatuses>::Status;
+		virtual void Status(const ChlorinatorStatuses chlorinator_status) override;
 
 	public:
 		Chlorinator& operator=(const Utility::AuxillaryState& aux_state);
-		Chlorinator& operator=(const ChlorinatorStatus chlorinator_status);
+		Chlorinator& operator=(const ChlorinatorStatuses chlorinator_status);
 
 	public:
-		static ChlorinatorStatus ConvertToChlorinatorStatus(AuxillaryStatuses aux_states);
+		static ChlorinatorStatuses ConvertToChlorinatorStatuses(AuxillaryStatuses aux_states);
 
 	private:
 		const boost::uuids::uuid m_Id;

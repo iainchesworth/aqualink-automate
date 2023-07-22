@@ -4,7 +4,7 @@
 #include <variant>
 #include <vector>
 
-#include "kernel/auxillary.h"
+#include "kernel/auxillary_devices/auxillary.h"
 
 namespace AqualinkAutomate::Kernel
 {

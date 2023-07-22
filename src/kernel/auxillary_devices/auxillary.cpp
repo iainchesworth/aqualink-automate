@@ -1,6 +1,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "kernel/auxillary.h"
+#include "kernel/auxillary_devices/auxillary.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 

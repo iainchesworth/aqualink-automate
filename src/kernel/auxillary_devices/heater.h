@@ -6,25 +6,17 @@
 #include <boost/uuid/uuid.hpp>
 
 #include "kernel/auxillary_base.h"
+#include "kernel/auxillary_devices/heater_status.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	enum class HeaterStatus : uint8_t
-	{
-		Off = 0x00,
-		Heating = 0x01,
-		Enabled = 0x04,
-		NotInstalled,
-		Unknown
-	};
-
-	class Heater : public AuxillaryBaseWithStatus<HeaterStatus>
+	class Heater : public AuxillaryBaseWithStatus<HeaterStatuses>
 	{
 	public:
 		Heater(const std::string& label);
-		Heater(const std::string& label, const HeaterStatus status);
+		Heater(const std::string& label, const HeaterStatuses status);
 
 	public:
 		virtual boost::uuids::uuid Id() const final;
@@ -33,20 +25,19 @@ namespace AqualinkAutomate::Kernel
 
 
 	public:
-		using AuxillaryBaseWithStatus<HeaterStatus>::Status;
-		virtual void Status(const HeaterStatus heater_status) override;
+		using AuxillaryBaseWithStatus<HeaterStatuses>::Status;
+		virtual void Status(const HeaterStatuses heater_status) override;
 
 	public:
 		Heater& operator=(const Utility::AuxillaryState& aux_state);
-		Heater& operator=(const HeaterStatus heater_status);
+		Heater& operator=(const HeaterStatuses heater_status);
 
 	public:
-		static HeaterStatus ConvertToHeaterStatus(AuxillaryStatuses aux_status);
+		static HeaterStatuses ConvertToHeaterStatuses(AuxillaryStatuses aux_status);
 
 	private:
 		const boost::uuids::uuid m_Id;
 	};
 	
-
 }
 // namespace AqualinkAutomate::Kernel

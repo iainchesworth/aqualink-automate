@@ -1,10 +1,10 @@
-#include "kernel/auxillary.h"
-#include "kernel/chlorinator.h"
+#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/chlorinator.h"
+#include "kernel/auxillary_devices/heater.h"
+#include "kernel/auxillary_devices/pump.h"
 #include "kernel/device_graph/device_graph.h"
 #include "kernel/device_graph/device_graph_filter_by_id.h"
 #include "kernel/device_graph/device_graph_filter_by_label.h"
-#include "kernel/heater.h"
-#include "kernel/pump.h"
 
 namespace AqualinkAutomate::Kernel
 {

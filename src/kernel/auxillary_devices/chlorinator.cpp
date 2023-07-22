@@ -1,7 +1,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
+#include "kernel/auxillary_devices/chlorinator.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
-#include "kernel/chlorinator.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -10,12 +10,12 @@ namespace AqualinkAutomate::Kernel
 {
 
 	Chlorinator::Chlorinator(const std::string& label) :
-		Chlorinator(label, ChlorinatorStatus::Unknown)
+		Chlorinator(label, ChlorinatorStatuses::Unknown)
 	{
 	}
 
-	Chlorinator::Chlorinator(const std::string& label, const ChlorinatorStatus status) :
-		AuxillaryBaseWithStatus<ChlorinatorStatus>(label, status),
+	Chlorinator::Chlorinator(const std::string& label, const ChlorinatorStatuses status) :
+		AuxillaryBaseWithStatus<ChlorinatorStatuses>(label, status),
 		m_Id(boost::uuids::random_generator()())
 	{
 		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Kernel
 		return m_Id;
 	}
 
-	void Chlorinator::Status(const ChlorinatorStatus Chlorinator_status)
+	void Chlorinator::Status(const ChlorinatorStatuses Chlorinator_status)
 	{
 		AuxillaryBaseWithStatus::m_Status = Chlorinator_status;
 	}
@@ -39,27 +39,27 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			Status(ConvertToChlorinatorStatus(aux_state.State().value()));
+			Status(ConvertToChlorinatorStatuses(aux_state.State().value()));
 		}
 
 		return *this;
 	}
 
-	Chlorinator& Chlorinator::operator=(const ChlorinatorStatus Chlorinator_status)
+	Chlorinator& Chlorinator::operator=(const ChlorinatorStatuses Chlorinator_status)
 	{
 		Status(Chlorinator_status);
 		return *this;
 	}
 
-	ChlorinatorStatus Chlorinator::ConvertToChlorinatorStatus(Kernel::AuxillaryStatuses aux_status)
+	ChlorinatorStatuses Chlorinator::ConvertToChlorinatorStatuses(Kernel::AuxillaryStatuses aux_status)
 	{
 		switch (aux_status)
 		{
 		case AuxillaryStatuses::On:
-			return ChlorinatorStatus::Running;
+			return ChlorinatorStatuses::Running;
 
 		case AuxillaryStatuses::Off:
-			return ChlorinatorStatus::Off;
+			return ChlorinatorStatuses::Off;
 
 		case AuxillaryStatuses::Enabled:
 			[[fallthrough]];
@@ -68,7 +68,7 @@ namespace AqualinkAutomate::Kernel
 		case AuxillaryStatuses::Unknown:
 			[[fallthrough]];
 		default:
-			return ChlorinatorStatus::Unknown;
+			return ChlorinatorStatuses::Unknown;
 		}
 	}
 

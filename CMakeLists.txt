@@ -267,14 +267,20 @@ add_library(
 	src/jandy/utility/string_conversion/chemistry.cpp 
 	src/jandy/utility/string_conversion/temperature.cpp 
 	src/jandy/utility/string_conversion/timeout_duration.cpp 
-	src/kernel/auxillary.cpp
 	src/kernel/auxillary_base.cpp
-	src/kernel/auxillary_states.cpp
+	src/kernel/auxillary_devices/auxillary.cpp
+	src/kernel/auxillary_devices/auxillary_states.cpp
+	src/kernel/auxillary_devices/chlorinator.cpp
+	src/kernel/auxillary_devices/chlorinator_status.cpp
+	src/kernel/auxillary_devices/heater.cpp
+	src/kernel/auxillary_devices/heater_status.cpp
+	src/kernel/auxillary_devices/pump.cpp
+	src/kernel/auxillary_devices/pump_status.cpp
 	src/kernel/auxillary_traits/auxillary_traits.cpp 
 	src/kernel/auxillary_traits/auxillary_traits_base.cpp 
+	src/kernel/auxillary_traits/auxillary_traits_helpers.cpp
 	src/kernel/auxillary_traits/auxillary_traits_proxy.cpp 
 	src/kernel/auxillary_traits/auxillary_traits_types.cpp 
-	src/kernel/chlorinator.cpp 
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
@@ -282,12 +288,10 @@ add_library(
 	src/kernel/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_event_temperature.cpp
 	src/kernel/flow_rate.cpp 
-	src/kernel/heater.cpp
 	src/kernel/orp.cpp 
 	src/kernel/ph.cpp
 	src/kernel/pool_configurations.cpp
 	src/kernel/powercenter.cpp
-	src/kernel/pump.cpp
 	src/kernel/statistics_hub.cpp
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 

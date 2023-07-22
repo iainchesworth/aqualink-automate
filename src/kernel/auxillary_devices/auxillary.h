@@ -5,7 +5,7 @@
 #include <boost/uuid/uuid.hpp>
 
 #include "kernel/auxillary_base.h"
-#include "kernel/auxillary_states.h"
+#include "kernel/auxillary_devices/auxillary_states.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 
 namespace AqualinkAutomate::Kernel

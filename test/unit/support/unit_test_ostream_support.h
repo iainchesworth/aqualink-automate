@@ -4,10 +4,6 @@
 
 #include "http/websocket_event_types.h"
 #include "interfaces/imessage.h"
-#include "kernel/auxillary.h"
-#include "kernel/heater.h"
-#include "kernel/pool_configurations.h"
-#include "kernel/system_boards.h"
 #include "jandy/devices/jandy_emulated_device_types.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
@@ -18,6 +14,10 @@
 #include "jandy/utility/screen_data_page_processor.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 #include "jandy/utility/string_conversion/temperature.h"
+#include "kernel/pool_configurations.h"
+#include "kernel/system_boards.h"
+#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/heater.h"
 #include "logging/logging_severity_levels.h"
 #include "profiling/types/profiling_types.h"
 
@@ -36,8 +36,8 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 namespace AqualinkAutomate::Kernel
 {
     std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStatuses const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, PumpStatus const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatuses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, PumpStatuses const& right);
     std::ostream& boost_test_print_type(std::ostream& os, PoolConfigurations const& right);
     std::ostream& boost_test_print_type(std::ostream& os, SystemBoards const& right);
 }

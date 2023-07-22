@@ -25,11 +25,7 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		void Add(std::shared_ptr<AuxillaryBase> device);
-		
-		
 		bool Contains(std::shared_ptr<AuxillaryBase> device);
-
-
 		void Remove(std::shared_ptr<AuxillaryBase> device);
 
 	public:

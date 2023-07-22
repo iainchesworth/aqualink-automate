@@ -2,9 +2,10 @@
 
 #include <nlohmann/json.hpp>
 
-#include "kernel/auxillary.h"
-#include "kernel/heater.h"
-#include "kernel/pump.h"
+#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/chlorinator.h"
+#include "kernel/auxillary_devices/heater.h"
+#include "kernel/auxillary_devices/pump.h"
 
 namespace AqualinkAutomate::HTTP::JSON
 {
@@ -21,6 +22,7 @@ namespace AqualinkAutomate::Kernel
 	// See https://github.com/nlohmann/json#arbitrary-types-conversions.
 
 	void to_json(nlohmann::json& j, const Auxillary& device);
+	void to_json(nlohmann::json& j, const Chlorinator& device);
 	void to_json(nlohmann::json& j, const Heater& device);
 	void to_json(nlohmann::json& j, const Pump& device);
 

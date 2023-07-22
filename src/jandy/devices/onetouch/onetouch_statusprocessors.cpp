@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			m_Config.FilterPump().value()->Status(Kernel::PumpStatus::Running);
+			m_Config.FilterPump().value()->Status(Kernel::PumpStatuses::Running);
 		}
 	}
 
@@ -110,7 +110,7 @@ namespace AqualinkAutomate::Devices
 			if (0 == m_Config.Devices.FindByLabel(chlorinator_label).size())
 			{
 				// Check for an installed chlorinator.  If one doesn't exist, add one.
-				m_Config.Devices.Add(std::move(std::make_shared<Chlorinator>(chlorinator_label, ChlorinatorStatus::Running)));
+				m_Config.Devices.Add(std::move(std::make_shared<Chlorinator>(chlorinator_label, ChlorinatorStatuses::Running)));
 			}
 
 			m_Config.Devices.FindByLabel(chlorinator_label).front()->AuxillaryTraits.Set(DutyCycleTrait{}, group2_percentage_dutycycle);
@@ -158,7 +158,7 @@ namespace AqualinkAutomate::Devices
 			if (0 == m_Config.Devices.FindByLabel(chlorinator_label).size())
 			{
 				// Check for an installed chlorinator.  If one doesn't exist, add one.
-				m_Config.Devices.Add(std::move(std::make_shared<Chlorinator>(chlorinator_label, ChlorinatorStatus::Running)));
+				m_Config.Devices.Add(std::move(std::make_shared<Chlorinator>(chlorinator_label, ChlorinatorStatuses::Running)));
 			}
 
 			if (auto chlorinators = m_Config.Devices.FindByLabel(chlorinator_label); chlorinators.front()->AuxillaryTraits.Has(ErrorCodesTrait{}))

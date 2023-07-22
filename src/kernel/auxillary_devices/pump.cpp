@@ -1,7 +1,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 
+#include "kernel/auxillary_devices/pump.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
-#include "kernel/pump.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -10,12 +10,12 @@ namespace AqualinkAutomate::Kernel
 {
 
 	Pump::Pump(const std::string& label) :
-		Pump(label, PumpStatus::Unknown)
+		Pump(label, PumpStatuses::Unknown)
 	{
 	}
 
-	Pump::Pump(const std::string& label, const PumpStatus status) :
-		AuxillaryBaseWithStatus<PumpStatus>(label, status),
+	Pump::Pump(const std::string& label, const PumpStatuses status) :
+		AuxillaryBaseWithStatus<PumpStatuses>(label, status),
 		m_Id(boost::uuids::random_generator()())
 	{
 		AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Kernel
 		return m_Id;
 	}
 
-	void Pump::Status(const PumpStatus pump_status)
+	void Pump::Status(const PumpStatuses pump_status)
 	{
 		AuxillaryBaseWithStatus::m_Status = pump_status;
 	}
@@ -39,27 +39,27 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			Status(ConvertToPumpStatus(aux_state.State().value()));
+			Status(ConvertToPumpStatuses(aux_state.State().value()));
 		}
 
 		return *this;
 	}
 
-	Pump& Pump::operator=(const PumpStatus pump_status)
+	Pump& Pump::operator=(const PumpStatuses pump_status)
 	{
 		Status(pump_status);
 		return *this;
 	}
 
-	PumpStatus Pump::ConvertToPumpStatus(Kernel::AuxillaryStatuses aux_status)
+	PumpStatuses Pump::ConvertToPumpStatuses(Kernel::AuxillaryStatuses aux_status)
 	{
 		switch (aux_status)
 		{
 		case AuxillaryStatuses::On:
-			return PumpStatus::Running;
+			return PumpStatuses::Running;
 
 		case AuxillaryStatuses::Off:
-			return PumpStatus::Off;
+			return PumpStatuses::Off;
 
 		case AuxillaryStatuses::Enabled:
 			[[fallthrough]];
@@ -68,7 +68,7 @@ namespace AqualinkAutomate::Kernel
 		case AuxillaryStatuses::Unknown:
 			[[fallthrough]];
 		default:
-			return PumpStatus::Unknown;
+			return PumpStatuses::Unknown;
 		}
 	}
 

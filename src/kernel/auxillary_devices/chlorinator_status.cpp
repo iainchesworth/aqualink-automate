@@ -1,4 +1,4 @@
-#include "kernel/auxillary_states.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
 
 namespace AqualinkAutomate::Kernel
 {

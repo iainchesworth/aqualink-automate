@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "kernel/auxillary.h"
-#include "kernel/heater.h"
-#include "kernel/pump.h"
+#include "kernel/auxillary_devices/auxillary_states.h"
+#include "kernel/auxillary_devices/heater_status.h"
+#include "kernel/auxillary_devices/pump_status.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/jandy_message.h"
 
@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		ComboModes Mode() const;
-		Kernel::PumpStatus FilterPump() const;
+		Kernel::PumpStatuses FilterPump() const;
 		Kernel::AuxillaryStatuses Aux1() const;
 		Kernel::AuxillaryStatuses Aux2() const;
 		Kernel::AuxillaryStatuses Aux3() const;
@@ -40,9 +40,9 @@ namespace AqualinkAutomate::Messages
 		Kernel::AuxillaryStatuses Aux5() const;
 		Kernel::AuxillaryStatuses Aux6() const;
 		Kernel::AuxillaryStatuses Aux7() const;
-		Kernel::HeaterStatus PoolHeater() const;
-		Kernel::HeaterStatus SpaHeater() const;
-		Kernel::HeaterStatus SolarHeater() const;
+		Kernel::HeaterStatuses PoolHeater() const;
+		Kernel::HeaterStatuses SpaHeater() const;
+		Kernel::HeaterStatuses SolarHeater() const;
 
 	public:
 		virtual std::string ToString() const override;
@@ -53,7 +53,7 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		ComboModes m_Mode;
-		Kernel::PumpStatus m_FilterPump;
+		Kernel::PumpStatuses m_FilterPump;
 		Kernel::AuxillaryStatuses m_Aux1;
 		Kernel::AuxillaryStatuses m_Aux2;
 		Kernel::AuxillaryStatuses m_Aux3;
@@ -61,9 +61,9 @@ namespace AqualinkAutomate::Messages
 		Kernel::AuxillaryStatuses m_Aux5;
 		Kernel::AuxillaryStatuses m_Aux6;
 		Kernel::AuxillaryStatuses m_Aux7;
-		Kernel::HeaterStatus m_PoolHeater;
-		Kernel::HeaterStatus m_SolarHeater;
-		Kernel::HeaterStatus m_SpaHeater;
+		Kernel::HeaterStatuses m_PoolHeater;
+		Kernel::HeaterStatuses m_SolarHeater;
+		Kernel::HeaterStatuses m_SpaHeater;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;

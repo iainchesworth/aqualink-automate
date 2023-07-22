@@ -1,9 +1,13 @@
+#include <algorithm>
 #include <format>
+#include <ranges>
 
+#include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <magic_enum.hpp>
 
 #include "http/webroute_equipment_buttons.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -31,23 +35,29 @@ namespace AqualinkAutomate::HTTP
 
 	void WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
-		auto generate_button_json = [](auto button_ptr) -> nlohmann::json
-		{
-			nlohmann::json button;
-			button["id"] = boost::uuids::to_string(button_ptr->Id());
-			button["label"] = button_ptr->Label();
-			button["status"] = magic_enum::enum_name(button_ptr->Status());
-			return button;
-		};
+		nlohmann::json buttons, all_buttons;
 
-		nlohmann::json buttons;
+		auto all_devices = m_DataHub.Devices.FindByTrait<AuxillaryBase>(AuxillaryTraitsTypes::AuxillaryTypeTrait{});
+		std::for_each(all_devices.begin(), all_devices.end(), [&buttons](const auto& device)
+			{
+				nlohmann::json button;
 
-		for (auto& elem : m_DataHub.Auxillaries())
-		{
-			buttons.push_back(generate_button_json(elem));
-		}
+				button["id"] = boost::uuids::to_string(device->Id());
+				
+				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}))
+				{ 
+					button["label"] = *(device->AuxillaryTraits[AuxillaryTraitsTypes::AuxillaryTypeTrait{}]);
+				}
+				
+				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::StatusTrait{}))
+				{
+					button["status"] = AuxillaryTraitsTypes::ConvertStatusToString(device);
+				}
 
-		nlohmann::json all_buttons;
+				buttons.push_back(button);
+			}
+		);
+
 		all_buttons["buttons"] = buttons;
 
 		resp.set_status_and_content(
@@ -73,72 +83,46 @@ namespace AqualinkAutomate::HTTP
 		const auto button_id_sv{req.get_matches()[1]};
 		const std::string button_id{button_id_sv.str()};
 
-		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
+		try
 		{
-			Report_SystemIsInactive(resp);
-		}
-		else
-		{
-			auto check_for_device_and_return_status = [&resp](auto collection, auto& button_id) -> bool
+			if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
 			{
-				auto match_via_shared_ptr = [&button_id](const auto& button_ptr) -> bool
-				{
-					if (nullptr == button_ptr)
-					{
-						return false;
-					}
-					else if (auto ptr = std::dynamic_pointer_cast<Kernel::AuxillaryBase>(button_ptr); nullptr == ptr)
-					{
-						return false;
-					}
-					else
-					{
-						return ((*ptr) == button_id);
-					}
-				};
-
-				if (auto it = std::find_if(collection.cbegin(), collection.cend(), match_via_shared_ptr); collection.cend() == it)
-				{
-					return false;
-				}
-				else
-				{
-					nlohmann::json button;
-					button["label"] = (*it)->Label();
-					button["status"] = magic_enum::enum_name((*it)->Status());
-
-					resp.set_status_and_content
-					(
-						cinatra::status_type::ok, 
-						button.dump(),
-						cinatra::req_content_type::json, 
-						cinatra::content_encoding::none
-					);
-
-					return true;
-				}
-			};
-
-			if (button_id.empty())
-			{
-				Report_ButtonDoesntExist(resp, "");
+				Report_SystemIsInactive(resp);
 			}
-			else if (check_for_device_and_return_status(m_DataHub.Auxillaries(), button_id))
+			else if (const auto device{ m_DataHub.Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == device)
 			{
-				// Found the device --> it's an auxillary
-			}
-			else if (check_for_device_and_return_status(m_DataHub.Heaters(), button_id))
-			{
-				// Found the device --> it's an heater
-			}
-			else if (check_for_device_and_return_status(m_DataHub.Pumps(), button_id))
-			{
-				// Found the device --> it's an pump
+				// Invalid device pointer...return a bad status.
+				Report_ButtonDoesntExist(resp, button_id);
 			}
 			else
 			{
-				Report_ButtonDoesntExist(resp, button_id);
+				nlohmann::json button;
+
+				button["id"] = button_id;
+
+				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::LabelTrait{}))
+				{
+					button["label"] = *(device->AuxillaryTraits[AuxillaryTraitsTypes::LabelTrait{}]);
+				}
+
+				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::StatusTrait{}))
+				{
+					button["status"] = AuxillaryTraitsTypes::ConvertStatusToString(device);
+				}
+
+				resp.set_status_and_content
+				(
+					cinatra::status_type::ok,
+					button.dump(),
+					cinatra::req_content_type::json,
+					cinatra::content_encoding::none
+				);
 			}
+		}
+		catch (const std::runtime_error& exRE)
+		{
+			// Raised if the UUID is malformed and cannot be parsed.
+			Report_ButtonDoesntExist(resp, button_id);
 		}
 	}
 
