@@ -37,8 +37,8 @@
         <div class="row gap-3 d-flex justify-content-around">
             {{#main_action_buttons}}
             <button type="button" class="col-lg-2 col-md-5 btn btn-outline-secondary" id="{{main_action_button_id}}" onclick="handleButtonPress(this)">
-                <h2 id="button_label">{{main_action_button_label}}</h2>
-                <p id="status_id">{{main_action_button_status}}</p>
+                <h2 id="{{main_action_button_id}}_button_label">{{main_action_button_label}}</h2>
+                <p id="{{main_action_button_id}}_status_id">{{main_action_button_status}}</p>
             </button>
             {{/main_action_buttons}}
         </div>
@@ -128,8 +128,8 @@
         <div class="row gap-2 d-flex justify-content-around">
             {{#triggerable_buttons}}
             <button type="button" class="col-lg-3 col-3 btn btn-light" id="{{triggerable_button_id}}" onclick="handleButtonPress(this)">
-                <p id="button_label"><strong>{{triggerable_button_label}}</strong></p>
-                <p id="status_id">{{triggerable_button_status}}</p>
+                <p id="{{triggerable_button_id}}_button_label"><strong>{{triggerable_button_label}}</strong></p>
+                <p id="{{triggerable_button_id}}_status_id">{{triggerable_button_status}}</p>
             </button>
             {{/triggerable_buttons}}
         </div>
@@ -263,9 +263,9 @@
             return response;
         }
 
-        function updateButtonState(el, response) {
-            el.getElementById("button_label").innerHTML = "Hello";
-            el.getElementById("status_id").innerHTML = "There";
+        function updateButtonState(el_id, response) {
+            document.getElementById(el_id + "_button_label").innerHTML = "Hello";
+            document.getElementById(el_id + "_status_id").innerHTML = "There";
         }
 
         window.onload = configurePageOnLoad;
