@@ -128,7 +128,7 @@
         <div class="row gap-2 d-flex justify-content-around">
             {{#triggerable_buttons}}
             <button type="button" class="col-lg-3 col-3 btn btn-light" id="{{triggerable_button_id}}" onclick="handleButtonPress(this)">
-                <p id="{{triggerable_button_id}}_button_label"><strong>{{triggerable_button_label}}</strong></p>
+                <strong><p id="{{triggerable_button_id}}_button_label">{{triggerable_button_label}}</p></strong>
                 <p id="{{triggerable_button_id}}_status_id">{{triggerable_button_status}}</p>
             </button>
             {{/triggerable_buttons}}
@@ -264,8 +264,8 @@
         }
 
         function updateButtonState(el_id, response) {
-            document.getElementById(el_id + "_button_label").innerHTML = "Hello";
-            document.getElementById(el_id + "_status_id").innerHTML = "There";
+            document.getElementById(el_id + "_button_label").innerHTML = response.label;
+            document.getElementById(el_id + "_status_id").innerHTML = response.status ? response.status : "Unknown";
         }
 
         window.onload = configurePageOnLoad;

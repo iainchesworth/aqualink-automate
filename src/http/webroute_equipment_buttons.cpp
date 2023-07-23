@@ -138,37 +138,33 @@ namespace AqualinkAutomate::HTTP
 		}
 		else 
 		{
-			auto check_for_device_then_trigger_it_and_return_status = [this, &req, &resp](auto collection, auto& button_id) -> bool
+			try
 			{
+				if (button_id.empty())
 				{
-					///FIXME -> Trigger the device...
+					Report_ButtonDoesntExist(resp, "");
 				}
+				else if (const auto button_device{ m_DataHub.Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == button_device)
+				{
+					Report_ButtonDoesntExist(resp, button_id);
+				}
+				else
+				{
+					// Trigger the device...then get its updated status and report that back.
 
-				ButtonIndividual_GetHandler(req, resp);
+					{
+						///FIXME -> Trigger the device...
+						///button_device -> ...
+					}
 
-				return true;
-			};
-
-			if (button_id.empty())
-			{
-				Report_ButtonDoesntExist(resp, "");
+					ButtonIndividual_GetHandler(req, resp);
+				}
 			}
-			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Auxillaries(), button_id))
+			catch (const std::runtime_error& exRE)
 			{
-				// Found the device --> it's an auxillary
-			}
-			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Heaters(), button_id))
-			{
-				// Found the device --> it's an heater
-			}
-			else if (check_for_device_then_trigger_it_and_return_status(m_DataHub.Pumps(), button_id))
-			{
-				// Found the device --> it's an pump
-			}
-			else
-			{
+				// The Boost UUID generator failed as the string was invalid / incorrectly formatted.
 				Report_ButtonDoesntExist(resp, button_id);
-			}
+			}			
 		}
 	}
 

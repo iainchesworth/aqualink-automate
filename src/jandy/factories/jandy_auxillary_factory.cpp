@@ -97,7 +97,7 @@ namespace AqualinkAutomate::Factory
 			}
 			else
 			{
-				ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Unknown);
+				// Unknown device type...ignore it.
 			}
 		}
 
