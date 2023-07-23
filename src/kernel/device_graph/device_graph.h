@@ -15,6 +15,7 @@
 #include "kernel/device_graph/device_graph_filter_by_trait.h"
 #include "kernel/device_graph/device_graph_types.h"
 #include "logging/logging.h"
+#include "profiling/profiling.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -72,6 +73,8 @@ namespace AqualinkAutomate::Kernel
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountByTraitImpl", BOOST_CURRENT_LOCATION);
+
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
 			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
@@ -84,6 +87,8 @@ namespace AqualinkAutomate::Kernel
 		template<typename TRAIT_TYPE>
 		std::vector<std::shared_ptr<AuxillaryDevice>> FindByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindByTraitImpl", BOOST_CURRENT_LOCATION);
+
 			std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
 
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);

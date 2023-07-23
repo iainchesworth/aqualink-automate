@@ -14,6 +14,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DevicesGraph::Add(std::shared_ptr<AuxillaryDevice> device)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Add", BOOST_CURRENT_LOCATION);
+
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
 			std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
@@ -43,6 +45,8 @@ namespace AqualinkAutomate::Kernel
 
 	bool DevicesGraph::Contains(std::shared_ptr<AuxillaryDevice> device) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Contains", BOOST_CURRENT_LOCATION);
+
 		if (nullptr == device)
 		{
 			return false;
@@ -75,11 +79,15 @@ namespace AqualinkAutomate::Kernel
 
 	void DevicesGraph::Remove(std::shared_ptr<AuxillaryDevice> device)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Remove", BOOST_CURRENT_LOCATION);
+
 		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 	}
 
 	uint32_t DevicesGraph::CountById(const boost::uuids::uuid& id) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountById", BOOST_CURRENT_LOCATION);
+
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
 		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
@@ -93,6 +101,8 @@ namespace AqualinkAutomate::Kernel
 
 	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindById", BOOST_CURRENT_LOCATION);
+
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
 		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
@@ -110,6 +120,8 @@ namespace AqualinkAutomate::Kernel
 
 	uint32_t DevicesGraph::CountByLabel(const std::string& device_label) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountByLabel", BOOST_CURRENT_LOCATION);
+
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
 		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
@@ -122,6 +134,8 @@ namespace AqualinkAutomate::Kernel
 
 	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(const std::string& device_label) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindByLabel", BOOST_CURRENT_LOCATION);
+
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
 		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
