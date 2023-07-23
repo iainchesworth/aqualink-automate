@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -71,18 +72,23 @@ namespace AqualinkAutomate::Kernel
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
+			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
 			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
 
 			auto range = boost::make_iterator_range(boost::vertices(fg));
+
 			return std::distance(range.begin(), range.end());
 		}
 
 		template<typename TRAIT_TYPE>
 		std::vector<std::shared_ptr<AuxillaryDevice>> FindByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
-			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
-
 			std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
+
+			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
+			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
 
 			for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
 			{
@@ -99,6 +105,9 @@ namespace AqualinkAutomate::Kernel
 		DevicesGraphType m_DevicesGraph;
 		DeviceVertexType m_RootVertexId;
 		DeviceMap m_DevicesMap;
+
+	private:
+		mutable std::shared_mutex m_GraphWriteLockMutex{};
 	};	
 	
 

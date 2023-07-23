@@ -16,6 +16,8 @@ namespace AqualinkAutomate::Kernel
 	{
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
+			std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
 			auto target_vertex = boost::add_vertex(ptr, m_DevicesGraph);
 			auto edge = boost::add_edge(source_vertex, target_vertex, m_DevicesGraph);
 
@@ -47,6 +49,8 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
+			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
 			auto iter = std::find_if
 			(
 				boost::vertices(m_DevicesGraph).first,
@@ -71,21 +75,27 @@ namespace AqualinkAutomate::Kernel
 
 	void DevicesGraph::Remove(std::shared_ptr<AuxillaryDevice> device)
 	{
+		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 	}
 
 	uint32_t DevicesGraph::CountById(const boost::uuids::uuid& id) const
 	{
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
+		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
 		auto range = boost::make_iterator_range(boost::vertices(fg));
+
 		return std::distance(range.begin(), range.end());
 	}
 
 	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
 	{
 		DeviceIdFilter filter(m_DevicesGraph, id);
+
+		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
@@ -102,6 +112,8 @@ namespace AqualinkAutomate::Kernel
 	{
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
+		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
 		auto range = boost::make_iterator_range(boost::vertices(fg));
@@ -111,6 +123,8 @@ namespace AqualinkAutomate::Kernel
 	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(const std::string& device_label) const
 	{
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
+
+		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 

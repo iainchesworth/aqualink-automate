@@ -30,30 +30,37 @@ namespace AqualinkAutomate::Protocol
 		bool continue_processing = false;
 		boost::system::error_code ec;
 		std::size_t bytes_read;
-
-		bytes_read = m_SerialPort.read_some(boost::asio::buffer(read_buffer, read_buffer.size()), ec);
-		switch (ec.value())
+		
 		{
-		case boost::system::errc::success:
-			LogDebug(Channel::Protocol, std::format("Successfully read data from the serial port; bytes received: {}", bytes_read));
-			continue_processing = HandleRead_Success(read_buffer, bytes_read);
-			break;
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Performing read from serial device into buffer", BOOST_CURRENT_LOCATION);
+			bytes_read = m_SerialPort.read_some(boost::asio::buffer(read_buffer, read_buffer.size()), ec);
+		
+			switch (ec.value())
+			{
+			case boost::system::errc::success:
+				LogDebug(Channel::Protocol, std::format("Successfully read data from the serial port; bytes received: {}", bytes_read));
+				{
+					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Processing data read from serial port", BOOST_CURRENT_LOCATION);
+					continue_processing = HandleRead_Success(read_buffer, bytes_read);
+				}
+				break;
 
-		case boost::asio::error::eof:
-			LogDebug(Channel::Protocol, "Serial port's connection was closed by the peer...cannot continue.");
-			break;
+			case boost::asio::error::eof:
+				LogDebug(Channel::Protocol, "Serial port's connection was closed by the peer...cannot continue.");
+				break;
 
-		case boost::asio::error::operation_aborted:
-			LogDebug(Channel::Protocol, "Serial port's async_read_some() was cancelled or an error occurred.");
-			break;
+			case boost::asio::error::operation_aborted:
+				LogDebug(Channel::Protocol, "Serial port's async_read_some() was cancelled or an error occurred.");
+				break;
 
-		default:
-			LogError(Channel::Protocol, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
-			LogDebug(Channel::Protocol, std::format("Error message: {}", ec.message()));
-			break;
+			default:
+				LogError(Channel::Protocol, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
+				LogDebug(Channel::Protocol, std::format("Error message: {}", ec.message()));
+				break;
+			}
+
+			return continue_processing;
 		}
-
-		return continue_processing;
 	}
 
 	bool ProtocolHandler::HandleRead_Success(auto& read_buffer, auto bytes_read)

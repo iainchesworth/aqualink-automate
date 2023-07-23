@@ -16,6 +16,7 @@
 
 #include "developer/mock_serial_port.h"
 #include "interfaces/iserialport.h"
+#include "profiling/profiling.h"
 #include "serial/serial_operating_modes.h"
 
 namespace AqualinkAutomate::Serial
@@ -101,15 +102,21 @@ namespace AqualinkAutomate::Serial
 		template<typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		auto async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> async_read_some", BOOST_CURRENT_LOCATION);
+
 			switch (m_OperatingMode)
 			{
 			case OperatingModes::Mock:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> async_read_some", BOOST_CURRENT_LOCATION);
 				return m_MockSerialPort->async_read_some(buffer, std::forward<ReadToken>(token));
-				break;
+			}
 
 			case OperatingModes::Real:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> async_read_some", BOOST_CURRENT_LOCATION);
 				return m_RealSerialPort->async_read_some(buffer, std::forward<ReadToken>(token));
-				break;
+			}
 
 			default:
 				///FIXME
@@ -120,15 +127,21 @@ namespace AqualinkAutomate::Serial
 		template<typename MutableBufferSequence>
 		std::size_t read_some(const MutableBufferSequence& buffers, boost::system::error_code& ec)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> read_some", BOOST_CURRENT_LOCATION);
+
 			switch (m_OperatingMode)
 			{
 			case OperatingModes::Mock:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> read_some", BOOST_CURRENT_LOCATION);
 				throw;
-				break;
+			}
 
 			case OperatingModes::Real:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> read_some", BOOST_CURRENT_LOCATION);
 				return m_RealSerialPort->read_some(buffers, ec);
-				break;
+			}
 
 			default:
 				///FIXME
@@ -139,15 +152,21 @@ namespace AqualinkAutomate::Serial
 		template<typename ConstBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> WriteToken>
 		auto async_write_some(const ConstBufferSequence& buffer, WriteToken&& token)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> async_write_some", BOOST_CURRENT_LOCATION);
+
 			switch (m_OperatingMode)
 			{
 			case OperatingModes::Mock:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> async_write_some", BOOST_CURRENT_LOCATION);
 				return m_MockSerialPort->async_write_some(buffer, std::forward<WriteToken>(token));
-				break;
+			}
 
 			case OperatingModes::Real:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> async_write_some", BOOST_CURRENT_LOCATION);
 				return m_RealSerialPort->async_write_some(buffer, std::forward<WriteToken>(token));
-				break;
+			}
 
 			default:
 				///FIXME
@@ -155,17 +174,24 @@ namespace AqualinkAutomate::Serial
 			}
 		}
 
-		template<typename ConstBufferSequence> std::size_t write_some(const ConstBufferSequence& buffers, boost::system::error_code& ec)
+		template<typename ConstBufferSequence> 
+		std::size_t write_some(const ConstBufferSequence& buffers, boost::system::error_code& ec)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> write_some", BOOST_CURRENT_LOCATION);
+
 			switch (m_OperatingMode)
 			{
 			case OperatingModes::Mock:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> write_some", BOOST_CURRENT_LOCATION);
 				throw;
-				break;
+			}
 
 			case OperatingModes::Real:
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> write_some", BOOST_CURRENT_LOCATION);
 				return m_RealSerialPort->write_some(buffers, ec);
-				break;
+			}
 
 			default:
 				///FIXME
