@@ -2,7 +2,7 @@
 
 #include "jandy/errors/string_conversion_errors.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
-#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 
 #include "support/unit_test_ostream_support.h"
 

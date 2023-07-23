@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "kernel/auxillary_devices/auxillary_states.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
 #include "jandy/factories/jandy_message_factory_registration.h"

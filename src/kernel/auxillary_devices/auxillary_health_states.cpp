@@ -1,4 +1,4 @@
-#include "kernel/auxillary_devices/auxillary_states.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 
 namespace AqualinkAutomate::Kernel
 {

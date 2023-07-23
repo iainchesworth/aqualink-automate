@@ -1,10 +1,12 @@
 #include <boost/uuid/uuid_io.hpp>
+#include <magic_enum.hpp>
 #include <mstch/mstch.hpp>
 
 #include "formatters/temperature_formatter.h"
 #include "http/webroute_page_index.h"
 #include "http/support/support_generate_page_footer.h"
 #include "http/support/support_generate_page_header.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -89,9 +91,6 @@ namespace AqualinkAutomate::HTTP
 	void WebRoute_Page_Index::PopulateTriggerableButtons()
 	{
 		static const std::string REPEATING_SECTION_NAME{"triggerable_buttons"};
-		
-		mstch::array triggerable_buttons;
-		bool buttons_exist = false; 
 
 		// The context need to be regenerated every page refresh as the triggerable buttons may have changed.
 		if (auto elem_id = m_TemplateContext.find(REPEATING_SECTION_NAME); m_TemplateContext.end() != elem_id)
@@ -99,59 +98,33 @@ namespace AqualinkAutomate::HTTP
 			m_TemplateContext.erase(elem_id);
 		}
 
-		for (const auto& device : m_DataHub.Auxillaries())
+		auto auxillary_device_mstch_map = [](const auto& device) -> mstch::map
 		{
-			auto button_context = mstch::map
+			mstch::map button_context;
+
+			button_context.emplace("triggerable_button_id", boost::uuids::to_string(device->Id()));
+			
+			if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
 			{
-				{ "triggerable_button_id", std::string {boost::uuids::to_string(device->Id())}},
-				{ "triggerable_button_label", std::string {device->Label()}},
-				{ "triggerable_button_status", std::string(magic_enum::enum_name(device->Status())) }
-			};
+				button_context["triggerable_button_label"] = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
+			}
+			
+			button_context.emplace("triggerable_button_status", std::string{ Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device) });	
 
-			triggerable_buttons.push_back(button_context);
-			buttons_exist = true; 
-		}
+			return button_context;
+		};
 
-		for (const auto& chlorinator : m_DataHub.Chlorinators())
-		{
-			auto button_context = mstch::map
+		const auto auxillaries = m_DataHub.Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
+
+		mstch::array triggerable_buttons;
+
+		std::for_each(auxillaries.begin(), auxillaries.end(), [&triggerable_buttons, auxillary_device_mstch_map](const auto& device) -> void
 			{
-				{ "triggerable_button_id", std::string {boost::uuids::to_string(chlorinator->Id())} },
-				{ "triggerable_button_label", std::string {chlorinator->Label()}},
-				{ "triggerable_button_status", std::string(magic_enum::enum_name(chlorinator->Status())) }
-			};
+				triggerable_buttons.push_back(auxillary_device_mstch_map(device));
+			}
+		);
 
-			triggerable_buttons.push_back(button_context);
-			buttons_exist = true;
-		}
-
-		for (const auto& heater : m_DataHub.Heaters())
-		{
-			auto button_context = mstch::map
-			{
-				{ "triggerable_button_id", std::string {boost::uuids::to_string(heater->Id())} },
-				{ "triggerable_button_label", std::string {heater->Label()}},
-				{ "triggerable_button_status", std::string(magic_enum::enum_name(heater->Status())) }
-			};
-
-			triggerable_buttons.push_back(button_context);
-			buttons_exist = true;
-		}
-
-		for (const auto& pump : m_DataHub.Pumps())
-		{
-			auto button_context = mstch::map
-			{
-				{ "triggerable_button_id", std::string {boost::uuids::to_string(pump->Id())}},
-				{ "triggerable_button_label", std::string {pump->Label()}},
-				{ "triggerable_button_status", std::string(magic_enum::enum_name(pump->Status())) }
-			};
-
-			triggerable_buttons.push_back(button_context);
-			buttons_exist = true;
-		}
-
-		if (buttons_exist)
+		if (0 < auxillaries.size())
 		{
 			m_TemplateContext.emplace(REPEATING_SECTION_NAME, triggerable_buttons);
 		}

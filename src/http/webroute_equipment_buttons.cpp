@@ -7,6 +7,7 @@
 #include <magic_enum.hpp>
 
 #include "http/webroute_equipment_buttons.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "logging/logging.h"
 
@@ -37,21 +38,21 @@ namespace AqualinkAutomate::HTTP
 	{
 		nlohmann::json buttons, all_buttons;
 
-		auto all_devices = m_DataHub.Devices.FindByTrait<AuxillaryBase>(AuxillaryTraitsTypes::AuxillaryTypeTrait{});
+		const auto all_devices = m_DataHub.Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
 		std::for_each(all_devices.begin(), all_devices.end(), [&buttons](const auto& device)
 			{
 				nlohmann::json button;
 
 				button["id"] = boost::uuids::to_string(device->Id());
 				
-				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}))
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}))
 				{ 
-					button["label"] = *(device->AuxillaryTraits[AuxillaryTraitsTypes::AuxillaryTypeTrait{}]);
+					button["label"] = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}]);
 				}
 				
-				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::StatusTrait{}))
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::StatusTrait{}))
 				{
-					button["status"] = AuxillaryTraitsTypes::ConvertStatusToString(device);
+					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}
 
 				buttons.push_back(button);
@@ -100,14 +101,14 @@ namespace AqualinkAutomate::HTTP
 
 				button["id"] = button_id;
 
-				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::LabelTrait{}))
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
 				{
-					button["label"] = *(device->AuxillaryTraits[AuxillaryTraitsTypes::LabelTrait{}]);
+					button["label"] = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
 				}
 
-				if (device->AuxillaryTraits.Has(AuxillaryTraitsTypes::StatusTrait{}))
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::StatusTrait{}))
 				{
-					button["status"] = AuxillaryTraitsTypes::ConvertStatusToString(device);
+					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}
 
 				resp.set_status_and_content

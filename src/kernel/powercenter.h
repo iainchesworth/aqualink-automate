@@ -4,7 +4,7 @@
 #include <variant>
 #include <vector>
 
-#include "kernel/auxillary_devices/auxillary.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Kernel
 
 	struct PowerCenter_NotInstalled {};
 
-	using PowerCenter = std::vector<Auxillary>;
+	using PowerCenter = std::vector<AuxillaryDevice>;
 	using RemotePowerCenter = std::variant<PowerCenter_NotInstalled, PowerCenter>;
 	
 	class PowerCenters

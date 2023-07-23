@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "kernel/auxillary_devices/auxillary_status.h"
+
 namespace AqualinkAutomate::Kernel
 {
 
@@ -11,6 +13,8 @@ namespace AqualinkAutomate::Kernel
 		Running,
 		Unknown
 	};
+
+	ChlorinatorStatuses ConvertToChlorinatorStatus(AuxillaryStatuses aux_states);
 
 }
 // namespace AqualinkAutomate::Kernel

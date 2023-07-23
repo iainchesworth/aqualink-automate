@@ -5,7 +5,7 @@
 
 #include <boost/system/error_code.hpp>
 
-#include "kernel/auxillary_devices/auxillary_states.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
@@ -24,8 +24,12 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	{
 		Auxillary,
 		Chlorinator,
+		Cleaner,
 		Heater,
-		Pump
+		Pump,
+		Spillover,
+		Sprinkler,
+		Unknown
 	};
 
 	class AuxillaryTypeTrait : public ImmutableTraitType<const AuxillaryTypes>

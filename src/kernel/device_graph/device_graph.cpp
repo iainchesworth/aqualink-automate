@@ -1,7 +1,5 @@
-#include "kernel/auxillary_devices/auxillary.h"
-#include "kernel/auxillary_devices/chlorinator.h"
-#include "kernel/auxillary_devices/heater.h"
-#include "kernel/auxillary_devices/pump.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/device_graph/device_graph.h"
 #include "kernel/device_graph/device_graph_filter_by_id.h"
 #include "kernel/device_graph/device_graph_filter_by_label.h"
@@ -11,19 +9,10 @@ namespace AqualinkAutomate::Kernel
 	
 	DevicesGraph::DevicesGraph()
 	{
-		m_RootVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_AuxilleriesVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_ChlorinatorsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_HeatersVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-		m_PumpsVertexId = boost::add_vertex(std::shared_ptr<AuxillaryBase>(nullptr), m_DevicesGraph);
-
-		boost::add_edge(m_RootVertexId, m_AuxilleriesVertexId, m_DevicesGraph);
-		boost::add_edge(m_RootVertexId, m_ChlorinatorsVertexId, m_DevicesGraph);
-		boost::add_edge(m_RootVertexId, m_HeatersVertexId, m_DevicesGraph);
-		boost::add_edge(m_RootVertexId, m_PumpsVertexId, m_DevicesGraph);
+		m_RootVertexId = boost::add_vertex(std::shared_ptr<AuxillaryDevice>(nullptr), m_DevicesGraph);
 	}
 
-	void DevicesGraph::Add(std::shared_ptr<AuxillaryBase> device)
+	void DevicesGraph::Add(std::shared_ptr<AuxillaryDevice> device)
 	{
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
@@ -36,9 +25,6 @@ namespace AqualinkAutomate::Kernel
 			}
 		};
 
-		using AuxillaryTraitsTypes::AuxillaryTypeTrait;
-		using AuxillaryTraitsTypes::AuxillaryTypes;
-
 		if (nullptr == device)
 		{
 			LogDebug(Channel::Equipment, "DataHub: Failed to add device to device graph -> invalid device provided for insertion");
@@ -47,38 +33,13 @@ namespace AqualinkAutomate::Kernel
 		{
 			LogTrace(Channel::Equipment, "DataHub: Did not add device to device graph -> device already exists");
 		}
-		else if (!(device->AuxillaryTraits.Has(AuxillaryTypeTrait{})))
+		else
 		{
 			insert_device_in_graph(m_DevicesGraph, m_RootVertexId, device);
 		}
-		else
-		{
-			switch (*(device->AuxillaryTraits[AuxillaryTypeTrait{}]))
-			{
-			case AuxillaryTypes::Auxillary:
-				insert_device_in_graph(m_DevicesGraph, m_AuxilleriesVertexId, device);
-				break;
-
-			case AuxillaryTypes::Chlorinator:
-				insert_device_in_graph(m_DevicesGraph, m_ChlorinatorsVertexId, device);
-				break;
-
-			case AuxillaryTypes::Heater:
-				insert_device_in_graph(m_DevicesGraph, m_HeatersVertexId, device);
-				break;
-
-			case AuxillaryTypes::Pump:
-				insert_device_in_graph(m_DevicesGraph, m_PumpsVertexId, device);
-				break;
-
-			default:
-				LogDebug(Channel::Equipment, "DataHub: Failed to add device to device graph -> unknown AuxillaryTypeTrait");
-				break;
-			}
-		}
 	}
 
-	bool DevicesGraph::Contains(std::shared_ptr<AuxillaryBase> device)
+	bool DevicesGraph::Contains(std::shared_ptr<AuxillaryDevice> device) const
 	{
 		if (nullptr == device)
 		{
@@ -108,7 +69,7 @@ namespace AqualinkAutomate::Kernel
 		}
 	}
 
-	void DevicesGraph::Remove(std::shared_ptr<AuxillaryBase> device)
+	void DevicesGraph::Remove(std::shared_ptr<AuxillaryDevice> device)
 	{
 	}
 
@@ -122,7 +83,7 @@ namespace AqualinkAutomate::Kernel
 		return std::distance(range.begin(), range.end());
 	}
 
-	std::shared_ptr<AuxillaryBase> DevicesGraph::FindById(const boost::uuids::uuid& id) const
+	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
 	{
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
@@ -137,7 +98,7 @@ namespace AqualinkAutomate::Kernel
 		return nullptr;
 	}
 
-	uint32_t DevicesGraph::CountByLabel(const std::string& device_label)
+	uint32_t DevicesGraph::CountByLabel(const std::string& device_label) const
 	{
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
@@ -147,13 +108,13 @@ namespace AqualinkAutomate::Kernel
 		return std::distance(range.begin(), range.end());
 	}
 
-	std::vector<std::shared_ptr<AuxillaryBase>> DevicesGraph::FindByLabel(const std::string& device_label)
+	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(const std::string& device_label) const
 	{
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
-		std::vector<std::shared_ptr<AuxillaryBase>> found_devices;
+		std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
 
 		for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
 		{

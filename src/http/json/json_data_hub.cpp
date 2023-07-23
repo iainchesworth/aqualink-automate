@@ -2,6 +2,8 @@
 #include <magic_enum.hpp>
 
 #include "http/json/json_data_hub.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 
 namespace AqualinkAutomate::HTTP::JSON
 {
@@ -14,40 +16,20 @@ namespace AqualinkAutomate::HTTP::JSON
 namespace AqualinkAutomate::Kernel
 {
 
-	void to_json(nlohmann::json& j, const Auxillary& device)
+	void to_json(nlohmann::json& j, const AuxillaryDevice& device)
 	{
-		j = nlohmann::json{ 
-			{"id", boost::uuids::to_string(device.Id())},
-			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.Status())} 
-		};
-	}
+		nlohmann::json json_payload;
 
-	void to_json(nlohmann::json& j, const Chlorinator& device)
-	{
-		j = nlohmann::json{
-			{"id", boost::uuids::to_string(device.Id())},
-			{"label", device.Label()},
-			{"state", magic_enum::enum_name(device.Status())}
-		};
-	}
+		json_payload["id"] = boost::uuids::to_string(device.Id());
 
-	void to_json(nlohmann::json& j, const Heater& device)
-	{
-		j = nlohmann::json{ 
-			{"id", boost::uuids::to_string(device.Id())},
-			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.Status())}
-		};
-	}
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::LabelTrait{}))
+		{
+			json_payload["label"] = *(device.AuxillaryTraits[AuxillaryTraitsTypes::LabelTrait{}]);
+		}
 
-	void to_json(nlohmann::json& j, const Pump& device)
-	{
-		j = nlohmann::json{ 
-			{"id", boost::uuids::to_string(device.Id())},
-			{"label", device.Label()}, 
-			{"state", magic_enum::enum_name(device.Status())}
-		};
+		json_payload["state"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
+
+		j = json_payload;
 	}
 
 }

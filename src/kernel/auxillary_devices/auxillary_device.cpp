@@ -1,12 +1,27 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "kernel/auxillary_base.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 
 namespace AqualinkAutomate::Kernel
 {
+	AuxillaryDevice::AuxillaryDevice() :
+		m_Id(boost::uuids::random_generator()())
+	{
+	}
 
-	bool AuxillaryBase::operator==(const AuxillaryBase& other) const
+	AuxillaryDevice::AuxillaryDevice(const std::string& label) :
+		AuxillaryDevice()
+	{
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::LabelTrait{}, label);
+	}
+
+	boost::uuids::uuid AuxillaryDevice::Id() const
+	{
+		return m_Id;
+	}
+
+	bool AuxillaryDevice::operator==(const AuxillaryDevice& other) const
 	{
 		using AuxillaryTraitsTypes::AuxillaryTypeTrait;
 		using AuxillaryTraitsTypes::LabelTrait;
@@ -42,13 +57,13 @@ namespace AqualinkAutomate::Kernel
 		return matches;
 	}
 
-	bool AuxillaryBase::operator==(const boost::uuids::uuid id) const
+	bool AuxillaryDevice::operator==(const boost::uuids::uuid id) const
 	{
 		// This is a poor choice given how the factory generates ids.
 		return (Id() == id);
 	}
 
-	bool AuxillaryBase::operator==(const std::string& id) const
+	bool AuxillaryDevice::operator==(const std::string& id) const
 	{
 		try
 		{
@@ -64,12 +79,12 @@ namespace AqualinkAutomate::Kernel
 		}
 	}
 
-	bool AuxillaryBase::operator!=(const AuxillaryBase& other) const
+	bool AuxillaryDevice::operator!=(const AuxillaryDevice& other) const
 	{
 		return !operator==(other);
 	}
 
-	AuxillaryHealthStates AuxillaryBase::Health() const
+	AuxillaryHealthStates AuxillaryDevice::Health() const
 	{
 		using AuxillaryTraitsTypes::ErrorCodesTrait;
 

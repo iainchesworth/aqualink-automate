@@ -114,33 +114,33 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	std::vector<std::shared_ptr<Auxillary>> DataHub::Auxillaries() const
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Auxillaries() const
 	{
 		using DeviceType = decltype(Auxillaries())::value_type::element_type;
-		return Devices.FindByTrait<DeviceType>(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 	}
 
-	std::vector<std::shared_ptr<Chlorinator>> DataHub::Chlorinators() const
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Chlorinators() const
 	{
 		using DeviceType = decltype(Chlorinators())::value_type::element_type;
-		return Devices.FindByTrait<DeviceType>(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 	}
 
-	std::vector<std::shared_ptr<Heater>> DataHub::Heaters() const
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Heaters() const
 	{
 		using DeviceType = decltype(Heaters())::value_type::element_type;
-		return Devices.FindByTrait<DeviceType>(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 	}
 
-	std::vector<std::shared_ptr<Pump>> DataHub::Pumps() const
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Pumps() const
 	{
 		using DeviceType = decltype(Pumps())::value_type::element_type;
-		return Devices.FindByTrait<DeviceType>(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
 	}
 
-	std::optional<std::shared_ptr<Pump>> DataHub::FilterPump()
+	std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::FilterPump()
 	{
-		static std::shared_ptr<Pump> filter_pump(nullptr);
+		static std::shared_ptr<Kernel::AuxillaryDevice> filter_pump(nullptr);
 		const std::string filter_pump_label{ "filter pump" };
 
 		if (nullptr != filter_pump)
@@ -152,10 +152,10 @@ namespace AqualinkAutomate::Kernel
 		{
 			for (auto base_ptr : Devices.FindByLabel(filter_pump_label))
 			{
-				if (auto pump_ptr = std::dynamic_pointer_cast<Pump>(base_ptr); nullptr != pump_ptr)
+				if (nullptr != base_ptr)
 				{
 					// If there's at least one matching pump, use the first one found...
-					filter_pump = pump_ptr;
+					filter_pump = base_ptr;
 					return filter_pump;
 				}
 			}

@@ -70,7 +70,7 @@ namespace AqualinkAutomate::Kernel
 				for (auto i = 0; i < aux_count_to_add; ++i)
 				{
 					const std::string aux_name = std::format("Aux{}", i + 1);
-					pc.push_back(Auxillary{ aux_name });
+					pc.push_back(AuxillaryDevice{ aux_name });
 				}
 			}
 		};
@@ -95,7 +95,7 @@ namespace AqualinkAutomate::Kernel
 				for (auto i = 0; i < aux_count_to_add; ++i)
 				{
 					const std::string aux_name = std::format("Aux {}{}", magic_enum::enum_name(rpc_id), i + 1);
-					std::get<PowerCenter>(rpc).emplace_back(Auxillary{ aux_name });
+					std::get<PowerCenter>(rpc).emplace_back(AuxillaryDevice{ aux_name });
 				}
 			}
 		};

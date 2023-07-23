@@ -8,7 +8,7 @@
 #include <boost/system/error_code.hpp>
 #include <tl/expected.hpp>
 
-#include "kernel/auxillary_devices/auxillary_states.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 #include "jandy/errors/string_conversion_errors.h"
 
 using namespace AqualinkAutomate::Kernel;

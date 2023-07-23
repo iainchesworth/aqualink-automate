@@ -23,10 +23,7 @@
 #include "kernel/powercenter.h"
 #include "kernel/temperature.h"
 #include "kernel/system_boards.h"
-#include "kernel/auxillary_devices/auxillary.h"
-#include "kernel/auxillary_devices/chlorinator.h"
-#include "kernel/auxillary_devices/heater.h"
-#include "kernel/auxillary_devices/pump.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "logging/logging.h"
 #include "types/units_dimensionless.h"
 
@@ -135,13 +132,13 @@ namespace AqualinkAutomate::Kernel
 		DevicesGraph Devices{};
 
 	public:
-		std::vector<std::shared_ptr<Auxillary>> Auxillaries() const;
-		std::vector<std::shared_ptr<Chlorinator>> Chlorinators() const;
-		std::vector<std::shared_ptr<Heater>> Heaters() const;
-		std::vector<std::shared_ptr<Pump>> Pumps() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Auxillaries() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Chlorinators() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Heaters() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Pumps() const;
 
 	public:
-		std::optional<std::shared_ptr<Pump>> FilterPump();
+		std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> FilterPump();
 	};
 
 }

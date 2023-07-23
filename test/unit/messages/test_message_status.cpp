@@ -9,9 +9,10 @@
 #include "jandy/formatters/jandy_message_formatters.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/jandy_message_status.h"
-#include "kernel/auxillary_devices/auxillary.h"
-#include "kernel/auxillary_devices/heater.h"
-#include "kernel/auxillary_devices/pump.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_devices/heater_status.h"
+#include "kernel/auxillary_devices/pump_status.h"
 
 #include "support/unit_test_ostream_support.h"
 

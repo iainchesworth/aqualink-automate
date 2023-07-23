@@ -11,30 +11,47 @@ BOOST_AUTO_TEST_CASE(TestAuxillariesHeatersPumpsAreRegistered)
 {
 	auto check_for_device = [](const auto& label, const auto& state, const auto& device_vec) -> bool
 	{
-		bool was_found = false;
-
 		for (const auto& device : device_vec)
 		{
 			if (nullptr == device)
 			{
 				// Not a valid device...ignore
 			}
-			else if (label != device->Label())
+			else if (label != *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]))
 			{
 				// Label doesn't match...ignore.
 			}
-			else if (state != device->Status())
+			else 
 			{
-				// State doesn't match...ignore.
-			}
-			else
-			{
-				was_found = true;
-				break;
+				switch(*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}]))
+				{
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Auxillary:
+					return (*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}]) == static_cast<AuxillaryStatuses>(state));
+
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator:
+					return (*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}]) == static_cast<ChlorinatorStatuses>(state));
+
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater:
+					return (*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}]) == static_cast<HeaterStatuses>(state));
+
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Pump:
+					return (*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}]) == static_cast<PumpStatuses>(state));
+
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Cleaner:
+					[[fallthrough]];
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Spillover:
+					[[fallthrough]];
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Sprinkler:
+					[[fallthrough]];
+				case Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Unknown:
+					[[fallthrough]];
+				default:
+					break;
+				}
 			}
 		}
 
-		return was_found;
+		return false;
 	};
 
 	auto& data_hub = DataHub();

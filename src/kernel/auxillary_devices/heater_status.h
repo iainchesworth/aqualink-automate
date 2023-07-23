@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "kernel/auxillary_devices/auxillary_status.h"
+
 namespace AqualinkAutomate::Kernel
 {
 
@@ -13,6 +15,8 @@ namespace AqualinkAutomate::Kernel
 		NotInstalled,
 		Unknown
 	};
+
+	HeaterStatuses ConvertToHeaterStatus(AuxillaryStatuses aux_status);
 
 }
 // namespace AqualinkAutomate::Kernel

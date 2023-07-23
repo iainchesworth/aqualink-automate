@@ -16,8 +16,10 @@
 #include "jandy/utility/string_conversion/temperature.h"
 #include "kernel/pool_configurations.h"
 #include "kernel/system_boards.h"
-#include "kernel/auxillary_devices/auxillary.h"
-#include "kernel/auxillary_devices/heater.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_devices/heater_status.h"
+#include "kernel/auxillary_devices/pump_status.h"
 #include "logging/logging_severity_levels.h"
 #include "profiling/types/profiling_types.h"
 

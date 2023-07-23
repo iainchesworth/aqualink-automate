@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "kernel/auxillary_devices/auxillary_status.h"
+
 namespace AqualinkAutomate::Kernel
 {
 
@@ -12,6 +14,8 @@ namespace AqualinkAutomate::Kernel
 		NotInstalled,
 		Unknown
 	};
+
+	PumpStatuses ConvertToPumpStatus(AuxillaryStatuses aux_states);
 
 }
 // namespace AqualinkAutomate::Kernel

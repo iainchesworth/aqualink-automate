@@ -267,14 +267,11 @@ add_library(
 	src/jandy/utility/string_conversion/chemistry.cpp 
 	src/jandy/utility/string_conversion/temperature.cpp 
 	src/jandy/utility/string_conversion/timeout_duration.cpp 
-	src/kernel/auxillary_base.cpp
-	src/kernel/auxillary_devices/auxillary.cpp
-	src/kernel/auxillary_devices/auxillary_states.cpp
-	src/kernel/auxillary_devices/chlorinator.cpp
+	src/kernel/auxillary_devices/auxillary_device.cpp
+	src/kernel/auxillary_devices/auxillary_health_states.cpp
+	src/kernel/auxillary_devices/auxillary_status.cpp
 	src/kernel/auxillary_devices/chlorinator_status.cpp
-	src/kernel/auxillary_devices/heater.cpp
 	src/kernel/auxillary_devices/heater_status.cpp
-	src/kernel/auxillary_devices/pump.cpp
 	src/kernel/auxillary_devices/pump_status.cpp
 	src/kernel/auxillary_traits/auxillary_traits.cpp 
 	src/kernel/auxillary_traits/auxillary_traits_base.cpp 
