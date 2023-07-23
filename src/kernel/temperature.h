@@ -11,19 +11,24 @@ namespace AqualinkAutomate::Kernel
 	class Temperature
 	{
 	public:
-		Temperature(boost::units::quantity<boost::units::celsius::temperature> degrees_celsius);
-		Temperature(boost::units::quantity<boost::units::fahrenheit::temperature> degrees_fahrenheit);
+		using Celsius = boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>;
+		using Fahrenheit = boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>;
+		using Kelvin = boost::units::quantity<boost::units::absolute<boost::units::si::temperature>>;
 
 	public:
-		boost::units::quantity<boost::units::celsius::temperature> InCelsius() const;
-		boost::units::quantity<boost::units::fahrenheit::temperature> InFahrenheit() const;
+		Temperature(Celsius degrees_celsius);
+		Temperature(Fahrenheit degrees_fahrenheit);
+
+	public:
+		Celsius InCelsius() const;
+		Fahrenheit InFahrenheit() const;
 
 	public:
 		static Temperature ConvertToTemperatureInCelsius(double degrees_celsius);
 		static Temperature ConvertToTemperatureInFahrenheit(double degrees_fahrenheit);
 
 	private:
-		boost::units::quantity<boost::units::si::temperature> m_TempInKelvin;
+		Kelvin m_TempInKelvin;
 	};
 
 }

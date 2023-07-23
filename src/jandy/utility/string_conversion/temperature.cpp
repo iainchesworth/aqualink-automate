@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <charconv>
 #include <format>
 #include <limits>
@@ -60,7 +61,7 @@ namespace AqualinkAutomate::Utility
 		const auto [temperature_area, temperature, temperature_units] = ValidateAndExtractData(temperature_string);
 		if (temperature_area && temperature && temperature_units)
 		{
-			double converted_temperature;
+			int32_t converted_temperature;
 
 			auto [_, ec] = std::from_chars((*temperature).data(), (*temperature).data() + (*temperature).size(), converted_temperature);
 			if (std::errc() != ec)
@@ -73,10 +74,10 @@ namespace AqualinkAutomate::Utility
 				switch ((*temperature_units)[0])
 				{
 				case 'C':
-					m_Temperature = Kernel::Temperature::ConvertToTemperatureInCelsius(converted_temperature);
+					m_Temperature = Kernel::Temperature::ConvertToTemperatureInCelsius(static_cast<double>(converted_temperature));
 					break;
 				case 'F':
-					m_Temperature = Kernel::Temperature::ConvertToTemperatureInFahrenheit(converted_temperature);
+					m_Temperature = Kernel::Temperature::ConvertToTemperatureInFahrenheit(static_cast<double>(converted_temperature));
 					break;
 				default:
 					m_ErrorOccurred = ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
