@@ -289,6 +289,7 @@ add_library(
 	src/kernel/ph.cpp
 	src/kernel/pool_configurations.cpp
 	src/kernel/powercenter.cpp
+	src/kernel/preferences_hub.cpp 
 	src/kernel/statistics_hub.cpp
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 
@@ -298,6 +299,7 @@ add_library(
 	src/kernel/device_graph/device_graph_filter_by_trait.cpp 
 	src/logging/formatters/logging_formatters.cpp
 	src/kernel/device_graph/device_graph_types.cpp
+	src/localisation/translations_and_units_formatter.cpp 
 	src/logging/global_logger.cpp
 	src/logging/logging.cpp
 	src/logging/logging_attributes.cpp

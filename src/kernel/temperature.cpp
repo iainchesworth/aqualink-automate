@@ -5,34 +5,34 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	Temperature::Temperature(Celsius degrees_celsius) :
+	Temperature::Temperature(boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> degrees_celsius) :
 		m_TempInKelvin(degrees_celsius)
 	{
 	}
 
-	Temperature::Temperature(Fahrenheit degrees_fahrenheit) :
+	Temperature::Temperature(boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>> degrees_fahrenheit) :
 		m_TempInKelvin(degrees_fahrenheit)
 	{
 	}
 
-	Temperature::Celsius Temperature::InCelsius() const
+	boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> Temperature::InCelsius() const
 	{
-		return Celsius(m_TempInKelvin);
+		return boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>(m_TempInKelvin);
 	}
 
-	Temperature::Fahrenheit Temperature::InFahrenheit() const
+	boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>> Temperature::InFahrenheit() const
 	{
-		return Fahrenheit(m_TempInKelvin);
+		return boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>(m_TempInKelvin);
 	}
 
 	Temperature Temperature::ConvertToTemperatureInCelsius(double degrees_celsius)
 	{
-		return Temperature(degrees_celsius * Celsius::unit_type());
+		return Temperature(degrees_celsius * boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>::unit_type());
 	}
 
 	Temperature Temperature::ConvertToTemperatureInFahrenheit(double degrees_fahrenheit)
 	{
-		return Temperature(degrees_fahrenheit * Fahrenheit::unit_type());
+		return Temperature(degrees_fahrenheit * boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>::unit_type());
 	}
 
 }

@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 
 	void WebSocket_Equipment_Stats::OnOpen(HTTP::Request& req)
 	{
-		m_StatsSlot = m_StatisticsHub.Messages.Signal().connect(
+		m_StatsSlot = m_StatisticsHub.MessageCounts.Signal().connect(
 			[this]() -> void
 			{
 				LogTrace(Channel::Web, "Publishing updated message count statistics to connected web socket.");

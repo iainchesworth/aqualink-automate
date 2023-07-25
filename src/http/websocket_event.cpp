@@ -69,7 +69,7 @@ namespace AqualinkAutomate::HTTP
 		{
 			m_EventType = WebSocket_EventTypes::ChemistryUpdate;
 			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = *chem_config_event;
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = chem_config_event->ToJSON();
 		}
 
 		return *this;
@@ -85,7 +85,7 @@ namespace AqualinkAutomate::HTTP
 		{
 			m_EventType = WebSocket_EventTypes::TemperatureUpdate;
 			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = *temp_config_event;
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = temp_config_event->ToJSON();
 		}
 
 		return *this;

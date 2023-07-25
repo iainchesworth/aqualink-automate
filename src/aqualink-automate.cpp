@@ -26,6 +26,7 @@
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
 #include "kernel/data_hub.h"
+#include "kernel/preferences_hub.h"
 #include "kernel/statistics_hub.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/keypad_device.h"
@@ -120,6 +121,7 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		Kernel::DataHub data_hub;
+		Kernel::PreferencesHub preferences_hub;
 		Kernel::StatisticsHub statistics_hub;
 
 		//---------------------------------------------------------------------

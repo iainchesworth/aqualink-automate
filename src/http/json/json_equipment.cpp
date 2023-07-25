@@ -57,7 +57,7 @@ namespace AqualinkAutomate::HTTP::JSON
 	{
 		nlohmann::json je_stats;
 
-		for (auto [msg_id, msg_count] : statistics_hub.Messages)
+		for (auto [msg_id, msg_count] : statistics_hub.MessageCounts)
 		{
 			try
 			{

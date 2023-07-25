@@ -55,25 +55,29 @@ namespace AqualinkAutomate::Kernel
 		return id;
 	}
 
-	void to_json(nlohmann::json& j, const DataHub_Event_Chemistry& event)
+	nlohmann::json DataHub_Event_Chemistry::ToJSON() const
 	{
-		if (event.ORP().has_value())
+		nlohmann::json j;
+
+		if (m_ORP.has_value())
 		{
-			auto orp = event.ORP().value();
+			auto orp = m_ORP.value();
 			j["orp"] = static_cast<uint16_t>(orp().value());
 		}
 
-		if (event.pH().has_value())
+		if (m_pH.has_value())
 		{
-			auto ph = event.pH().value();
+			auto ph = m_pH.value();
 			j["ph"] = static_cast<double>(ph());
 		}
 
-		if (event.SaltLevel().has_value())
+		if (m_SaltLevel.has_value())
 		{
-			auto salt_level = event.SaltLevel().value();
+			auto salt_level = m_SaltLevel.value();
 			j["salt_level"] = static_cast<uint16_t>(salt_level.value());
 		}
+
+		return j;
 	}
 
 }

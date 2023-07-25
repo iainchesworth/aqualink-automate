@@ -5,6 +5,7 @@
 
 #include "formatters/temperature_formatter.h"
 #include "kernel/data_hub_event_temperature.h"
+#include "localisation/translations_and_units_formatter.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -53,22 +54,26 @@ namespace AqualinkAutomate::Kernel
 		return id;
 	}
 
-	void to_json(nlohmann::json& j, const DataHub_Event_Temperature& event)
+	nlohmann::json DataHub_Event_Temperature::ToJSON() const
 	{
-		if (event.PoolTemp().has_value())
+		nlohmann::json j;
+
+		if (m_PoolTemp.has_value())
 		{
-			j["pool_temp"] = std::format("{}", event.PoolTemp().value());
+			j["pool_temp"] = Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_PoolTemp.value());
 		}
 
-		if (event.SpaTemp().has_value())
+		if (m_SpaTemp.has_value())
 		{
-			j["spa_temp"] = std::format("{}", event.SpaTemp().value());
+			j["spa_temp"] = Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_SpaTemp.value());
 		}
 
-		if (event.AirTemp().has_value())
+		if (m_AirTemp.has_value())
 		{
-			j["air_temp"] = std::format("{}", event.AirTemp().value());
+			j["air_temp"] = Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_AirTemp.value());
 		}
+
+		return j;
 	}
 
 }

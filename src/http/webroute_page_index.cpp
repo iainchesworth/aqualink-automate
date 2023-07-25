@@ -1,3 +1,5 @@
+#include <string_view>
+
 #include <boost/uuid/uuid_io.hpp>
 #include <magic_enum.hpp>
 #include <mstch/mstch.hpp>
@@ -7,6 +9,7 @@
 #include "http/support/support_generate_page_footer.h"
 #include "http/support/support_generate_page_header.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
+#include "localisation/translations_and_units_formatter.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -33,9 +36,9 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			m_TemplateContext.emplace("pool_temperature", std::format("{}", m_DataHub.PoolTemp()));
-			m_TemplateContext.emplace("spa_temperature", std::format("{}", m_DataHub.SpaTemp()));
-			m_TemplateContext.emplace("air_temperature", std::format("{}", m_DataHub.AirTemp()));
+			m_TemplateContext.emplace("pool_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.PoolTemp()));
+			m_TemplateContext.emplace("spa_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.SpaTemp()));
+			m_TemplateContext.emplace("air_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.AirTemp()));
 
 			m_TemplateContext.emplace("water_orp", std::string{"-"});
 			m_TemplateContext.emplace("water_ph", std::string{"-"});

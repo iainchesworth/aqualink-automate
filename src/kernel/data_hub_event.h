@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/uuid/uuid.hpp>
+#include <nlohmann/json.hpp>
 
 namespace AqualinkAutomate::Kernel
 {
@@ -21,6 +22,7 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		virtual boost::uuids::uuid Id() const = 0;
+		virtual nlohmann::json ToJSON() const = 0;
 
 	private:
 		DataHub_EventTypes m_EventType;

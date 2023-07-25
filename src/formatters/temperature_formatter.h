@@ -3,6 +3,7 @@
 #include <format>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include <boost/format.hpp>
 
@@ -27,16 +28,10 @@ namespace std
 template<>
 struct std::formatter<AqualinkAutomate::Kernel::Temperature> : std::formatter<std::string>
 {
-	enum class TemperatureUnits : char
-	{
-		Celsius,
-		Fahrenheit
-	};
-
 	// Set the formatting defaults
 
-	TemperatureUnits units = TemperatureUnits::Celsius;
-	uint8_t precision = 0;
+	AqualinkAutomate::Kernel::TemperatureUnits display_units{ AqualinkAutomate::Kernel::TemperatureUnits::Celsius };
+	uint8_t display_precision{ 0 };
 
 	constexpr auto parse(format_parse_context& ctx)
 	{
@@ -48,12 +43,12 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature> : std::formatter<st
 			switch (*it)
 			{
 			case 'C':
-				units = TemperatureUnits::Celsius;
+				display_units = AqualinkAutomate::Kernel::TemperatureUnits::Celsius;
 				it++;
 				break;
 
 			case 'F':
-				units = TemperatureUnits::Fahrenheit;
+				display_units = AqualinkAutomate::Kernel::TemperatureUnits::Fahrenheit;
 				it++;
 				break;
 			}
@@ -65,7 +60,7 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature> : std::formatter<st
 			
 				if (it != ctx.end() && isdigit(static_cast<unsigned char>(*it)))
 				{
-					precision = *it++ - '0';
+					display_precision = *it++ - '0';
 				}
 			}
 		}
@@ -79,19 +74,19 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature> : std::formatter<st
 		double temp_value = 0.0f;
 		std::string_view temp_units = "?";
 
-		switch (units)
+		switch (display_units)
 		{
-		case TemperatureUnits::Celsius:
+		case AqualinkAutomate::Kernel::TemperatureUnits::Celsius:
 			temp_value = temperature.InCelsius().value();
 			temp_units = "C";
 			break;
 
-		case TemperatureUnits::Fahrenheit:
+		case AqualinkAutomate::Kernel::TemperatureUnits::Fahrenheit:
 			temp_value = temperature.InFahrenheit().value();
 			temp_units = "F";
 			break;
 		}
 
-		return std::vformat_to(ctx.out(), "{:.{}f}\u00B0{}", std::make_format_args(temp_value, precision, temp_units));
+		return std::vformat_to(ctx.out(), "{:.{}f}\u00B0{}", std::make_format_args(temp_value, display_precision, temp_units));
 	}
 };

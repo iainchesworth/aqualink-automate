@@ -56,7 +56,7 @@ namespace AqualinkAutomate::Equipment
 	{
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
-				m_StatsHub.Messages[id] = 0;
+				m_StatsHub.MessageCounts[id] = 0;
 			}
 		);
 
@@ -96,14 +96,14 @@ namespace AqualinkAutomate::Equipment
 		
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
 			{
-				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub.Messages[id], magic_enum::enum_name(id)));
+				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub.MessageCounts[id], magic_enum::enum_name(id)));
 			}
 		);
 
 		LogInfo(
 			Channel::Equipment, 
 			std::format("Stats: {} total messages received", 
-				std::accumulate(m_StatsHub.Messages.cbegin(), m_StatsHub.Messages.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub.Messages)::value_type& elem)
+				std::accumulate(m_StatsHub.MessageCounts.cbegin(), m_StatsHub.MessageCounts.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub.MessageCounts)::value_type& elem)
 				{
 					return previous + elem.second.Count();
 				})
@@ -171,9 +171,9 @@ namespace AqualinkAutomate::Equipment
 		}
 
 		// Capture statistics, given we are processing every message.
-		m_StatsHub.Messages[message.Id()]++;
+		m_StatsHub.MessageCounts[message.Id()]++;
 
-		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub.Messages[message.Id()], magic_enum::enum_name(message.Id())));
+		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub.MessageCounts[message.Id()], magic_enum::enum_name(message.Id())));
 	}
 	
 	void JandyEquipment::DisplayUnknownMessages(const Messages::JandyMessage& message)
