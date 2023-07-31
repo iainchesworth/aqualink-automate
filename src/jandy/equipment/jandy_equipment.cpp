@@ -12,6 +12,7 @@
 #include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/pda_device.h"
+#include "jandy/devices/serial_adapter_device.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/stats_counter_formatter.h"
@@ -38,6 +39,8 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "jandy/messages/serial_adapter/serial_adapter_message_dev_ready.h"
+#include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
@@ -83,6 +86,8 @@ namespace AqualinkAutomate::Equipment
 		m_MessageConnections.push_back(Messages::PDAMessage_Highlight::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::PDAMessage_HighlightChars::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::PDAMessage_ShiftLines::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::SerialAdapterMessage_DevReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::SerialAdapterMessage_DevStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 
 		m_MessageConnections.push_back(Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::DisplayUnknownMessages, this, std::placeholders::_1)));
 	}
@@ -154,6 +159,11 @@ namespace AqualinkAutomate::Equipment
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
 				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				break;
+
+			case Devices::DeviceClasses::SerialAdapter:
+				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
+				m_Devices.push_back(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:

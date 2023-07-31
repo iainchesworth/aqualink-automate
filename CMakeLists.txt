@@ -184,6 +184,7 @@ add_library(
 	src/jandy/devices/keypad_device.cpp 
 	src/jandy/devices/onetouch_device.cpp 
 	src/jandy/devices/pda_device.cpp 
+	src/jandy/devices/serial_adapter_device.cpp 
 	src/jandy/devices/keypad/keypad_messageprocessors.cpp 
 	src/jandy/devices/keypad/keypad_pageprocessors.cpp 
 	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 
@@ -192,6 +193,7 @@ add_library(
 	src/jandy/devices/onetouch/onetouch_statusprocessors.cpp 
 	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
 	src/jandy/devices/pda/pda_pageprocessors.cpp 
+	src/jandy/devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/equipment/jandy_equipment_versions.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
@@ -234,6 +236,9 @@ add_library(
 	src/jandy/messages/pda/pda_message_highlight.cpp 
 	src/jandy/messages/pda/pda_message_highlight_chars.cpp 
 	src/jandy/messages/pda/pda_message_shiftlines.cpp 
+	src/jandy/messages/serial_adapter/serial_adapter_message.cpp 
+	src/jandy/messages/serial_adapter/serial_adapter_message_dev_ready.cpp 
+	src/jandy/messages/serial_adapter/serial_adapter_message_dev_status.cpp 
 	src/jandy/messages/jandy_message.cpp
 	src/jandy/messages/jandy_message_ack.cpp
 	src/jandy/messages/jandy_message_constants.cpp

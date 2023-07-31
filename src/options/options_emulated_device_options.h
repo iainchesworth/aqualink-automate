@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -13,11 +15,13 @@ namespace AqualinkAutomate::Options::Emulated
 
 	boost::program_options::options_description Options();
 
+	using JandyEmulatedDevice = std::pair<Devices::JandyEmulatedDeviceTypes, Devices::JandyDeviceType>;
+	using JandyEmulatedDeviceCollection = std::vector<JandyEmulatedDevice>;
+
 	typedef struct
 	{
 		bool disable_emulation;
-		Devices::JandyEmulatedDeviceTypes controller_type;
-		Devices::JandyDeviceType device_type;
+		JandyEmulatedDeviceCollection emulated_devices;
 	}
 	Settings;
 

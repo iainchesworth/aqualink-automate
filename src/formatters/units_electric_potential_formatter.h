@@ -18,6 +18,7 @@ namespace std
 {
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Units::millivolt_quantity& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Units::volt_quantity& obj);
 
 }
 // namespace std
@@ -28,6 +29,16 @@ struct std::formatter<AqualinkAutomate::Units::millivolt_quantity> : std::format
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Units::millivolt_quantity& value_in_mV, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{} mV", std::make_format_args(value_in_mV.value()));
+		return std::vformat_to(ctx.out(), "{}mV", std::make_format_args(value_in_mV.value()));
+	}
+};
+
+template<>
+struct std::formatter<AqualinkAutomate::Units::volt_quantity> : std::formatter<std::string>
+{
+	template<typename FormatContext>
+	auto format(const AqualinkAutomate::Units::volt_quantity& value_in_V, FormatContext& ctx) const
+	{
+		return std::vformat_to(ctx.out(), "{}V", std::make_format_args(value_in_V.value()));
 	}
 };

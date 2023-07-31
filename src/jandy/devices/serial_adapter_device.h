@@ -1,0 +1,54 @@
+#pragma once
+
+#include <chrono>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
+
+#include "jandy/devices/jandy_controller.h"
+#include "jandy/devices/jandy_device_types.h"
+#include "jandy/devices/capabilities/emulated.h"
+#include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_probe.h"
+#include "jandy/messages/jandy_message_status.h"
+#include "jandy/messages/jandy_message_unknown.h"
+#include "jandy/messages/serial_adapter/serial_adapter_message_dev_ready.h"
+#include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
+#include "kernel/data_hub.h"
+#include "profiling/profiling.h"
+
+namespace AqualinkAutomate::Devices
+{
+
+	class SerialAdapterDevice : public JandyController, public Capabilities::Emulated
+	{
+		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
+
+	public:
+		SerialAdapterDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
+		virtual ~SerialAdapterDevice();
+
+	private:
+		virtual void ProcessControllerUpdates() override;
+
+	private:
+		void Slot_SerialAdapter_Ack(const Messages::JandyMessage_Ack& msg);
+		void Slot_SerialAdapter_DevReady(const Messages::SerialAdapterMessage_DevReady& msg);
+		void Slot_SerialAdapter_DevStatus(const Messages::SerialAdapterMessage_DevStatus& msg);
+		void Slot_SerialAdapter_Probe(const Messages::JandyMessage_Probe& msg);
+		void Slot_SerialAdapter_Status(const Messages::JandyMessage_Status& msg);
+		void Slot_SerialAdapter_Unknown(const Messages::JandyMessage_Unknown& msg);
+
+	private:
+		std::vector<Messages::SerialAdapter_StatusTypes> m_StatusTypesCollection;
+		std::vector<Messages::SerialAdapter_StatusTypes>::const_iterator m_StatusTypesCollectionIter;
+
+	private:
+		bool m_StatusMessageReceived;
+
+	private:
+		Types::ProfilingUnitTypePtr m_ProfilingDomain;
+	};
+
+}
+// namespace AqualinkAutomate::Devices

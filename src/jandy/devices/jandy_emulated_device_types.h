@@ -9,6 +9,7 @@ namespace AqualinkAutomate::Devices
 		OneTouch,
 		IAQ,
 		PDA,
+		SerialAdapter,
 		Unknown
 	};
 

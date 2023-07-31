@@ -82,7 +82,7 @@ namespace AqualinkAutomate::Factory
 				}
 				else
 				{
-					LogDebug(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
+					LogTrace(Channel::Messages, std::format("Message Contents -> {{{}}}", *message));
 					return message;
 				}
 			}

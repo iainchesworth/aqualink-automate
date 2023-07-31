@@ -17,5 +17,11 @@ namespace std
 		return os;
 	}
 
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Units::volt_quantity& obj)
+	{
+		os << std::format("{}", obj);
+		return os;
+	}
+
 }
 // namespace std

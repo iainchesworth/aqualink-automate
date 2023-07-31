@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <format>
 #include <string>
 
+#include <boost/iterator/zip_iterator.hpp>
 #include <boost/program_options/value_semantic.hpp>
 #include <magic_enum.hpp>
 
@@ -23,8 +25,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Options::Emulated
 {
 	AppOptionPtr OPTION_DISABLEEMULATION{ make_appoption("disable-emulation", "Disable Aqualink controller emulation", boost::program_options::bool_switch()->default_value(false)) };
-	AppOptionPtr OPTION_EMULATEDDEVICETYPE{ make_appoption("device-type", "Controller emulation type", boost::program_options::value<Devices::JandyEmulatedDeviceTypes>()) };
-	AppOptionPtr OPTION_EMULATEDDEVICEID{ make_appoption("device-id", "Controller serial id", boost::program_options::value<Devices::JandyDeviceId>()) };
+	AppOptionPtr OPTION_EMULATEDDEVICETYPE{ make_appoption("device-type", "Controller emulation type", boost::program_options::value<std::vector<Devices::JandyEmulatedDeviceTypes>>()->multitoken()) };
+	AppOptionPtr OPTION_EMULATEDDEVICEID{ make_appoption("device-id", "Controller serial id", boost::program_options::value<std::vector<Devices::JandyDeviceId>>()->multitoken()) };
 
 	std::vector EmulatedDeviceOptionsCollection
 	{
@@ -52,8 +54,43 @@ namespace AqualinkAutomate::Options::Emulated
 		Settings settings;
 
 		if (OPTION_DISABLEEMULATION->IsPresent(vm)) { settings.disable_emulation = OPTION_DISABLEEMULATION->As<bool>(vm); }
-		if (OPTION_EMULATEDDEVICETYPE->IsPresent(vm)) { settings.controller_type = OPTION_EMULATEDDEVICETYPE->As<Devices::JandyEmulatedDeviceTypes>(vm); }
-		if (OPTION_EMULATEDDEVICEID->IsPresent(vm)) { settings.device_type = Devices::JandyDeviceType(OPTION_EMULATEDDEVICEID->As<Devices::JandyDeviceId>(vm)); }
+
+		if (!OPTION_EMULATEDDEVICETYPE->IsPresent(vm))
+		{
+			// No emulated devices....ignore.
+		}
+		else if (!OPTION_EMULATEDDEVICEID->IsPresent(vm))
+		{
+			// No emulated device ids....raise an error.
+		}
+		else
+		{
+			auto device_types = OPTION_EMULATEDDEVICETYPE->As<std::vector<Devices::JandyEmulatedDeviceTypes>>(vm);
+			auto device_ids = OPTION_EMULATEDDEVICEID->As< std::vector<Devices::JandyDeviceId>>(vm);
+
+			if (device_types.size() != device_ids.size())
+			{
+				// Error
+			}
+			else
+			{
+				// This would be SOOOO much easier in C++23...
+				// settings.emulated_devices = std::ranges::views::zip(device_types, device_ids);
+
+				auto zip_begin = boost::make_zip_iterator(boost::make_tuple(device_types.begin(), device_ids.begin()));
+				auto zip_end = boost::make_zip_iterator(boost::make_tuple(device_types.end(), device_ids.end()));
+
+				std::transform(
+					zip_begin, 
+					zip_end, 
+					std::back_inserter(settings.emulated_devices),
+					[](const boost::tuple<Devices::JandyEmulatedDeviceTypes, Devices::JandyDeviceId>& t)
+					{
+						return JandyEmulatedDevice(t.get<0>(), t.get<1>());
+					}
+				);
+			}
+		}
 
 		return settings;
 	}

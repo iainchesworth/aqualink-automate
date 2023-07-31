@@ -149,7 +149,7 @@ namespace AqualinkAutomate::Messages
 			m_SolarHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
 			m_SpaHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x07) >> 0).value_or(Kernel::HeaterStatuses::Unknown);
 
-			LogInfo(
+			LogDebug(
 				Channel::Messages, 
 				std::format(
 					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 

@@ -32,6 +32,7 @@
 #include "jandy/devices/keypad_device.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/pda_device.h"
+#include "jandy/devices/serial_adapter_device.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "logging/logging.h"
@@ -134,42 +135,42 @@ int main(int argc, char* argv[])
 
 		if (!settings.emulated_device.disable_emulation)
 		{
-			LogInfo(
-				Channel::Main,
-				std::format(
-					"Enabling controller emulation; type: {}, id: {}",
-					magic_enum::enum_name(settings.emulated_device.controller_type),
-					settings.emulated_device.device_type.Id()
-				)
-			);
-
-			std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
-			switch (settings.emulated_device.controller_type)
+			for (const auto& [controller_type, device_type] : settings.emulated_device.emulated_devices)
 			{
-			case Devices::JandyEmulatedDeviceTypes::OneTouch:
-				emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
-				break;
+				LogInfo(Channel::Main, std::format("Enabling controller emulation; type: {}, id: {}", magic_enum::enum_name(controller_type), device_type.Id()));
 
-			case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-				emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
-				break;
+				std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
+				switch (controller_type)
+				{
+				case Devices::JandyEmulatedDeviceTypes::OneTouch:
+					emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, device_type, data_hub, true);
+					break;
 
-			case Devices::JandyEmulatedDeviceTypes::IAQ:
-				emulated_device = std::make_unique<Devices::IAQDevice>(io_context, settings.emulated_device.device_type, data_hub, true);
-				break;
+				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
+					emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, device_type, data_hub, true);
+					break;
 
-			case Devices::JandyEmulatedDeviceTypes::PDA:
-				emulated_device = std::make_unique<Devices::PDADevice>(io_context, settings.emulated_device.device_type, data_hub, true);
-				break;
+				case Devices::JandyEmulatedDeviceTypes::IAQ:
+					emulated_device = std::make_unique<Devices::IAQDevice>(io_context, device_type, data_hub, true);
+					break;
 
-			case Devices::JandyEmulatedDeviceTypes::Unknown:
-			default:
-				LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
-			}
+				case Devices::JandyEmulatedDeviceTypes::PDA:
+					emulated_device = std::make_unique<Devices::PDADevice>(io_context, device_type, data_hub, true);
+					break;
 
-			if (emulated_device)
-			{
-				jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
+				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
+					emulated_device = std::make_unique<Devices::SerialAdapterDevice>(io_context, device_type, data_hub, true);
+					break;
+
+				case Devices::JandyEmulatedDeviceTypes::Unknown:
+				default:
+					LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
+				}
+
+				if (emulated_device)
+				{
+					jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
+				}
 			}
 		}
 

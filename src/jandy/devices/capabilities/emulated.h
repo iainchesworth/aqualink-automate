@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <type_traits>
 
 #include <magic_enum.hpp>
 
@@ -19,14 +20,25 @@ namespace AqualinkAutomate::Devices::Capabilities
 		Emulated(bool is_emulated);
 
 	protected:
-		template<typename KEY_COMMANDS>
-		void Signal_AckMessage(AqualinkAutomate::Messages::AckTypes ack_type, KEY_COMMANDS key_command_to_send) const
+		template<typename ACK_VALUE, typename ACK_DATA_VALUE>
+		void Signal_AckMessage(ACK_VALUE ack_value, ACK_DATA_VALUE data_value_to_send) const
 		{
 			if (m_IsEmulated)
 			{
-				LogDebug(Channel::Devices, std::format("Emulated device sending ACKnowledgement message (with command: {})", magic_enum::enum_name(key_command_to_send)));
+				Messages::AckTypes ack_type = static_cast<Messages::AckTypes>(ack_value);
+				std::shared_ptr<Messages::JandyMessage_Ack> ack_message(nullptr);
 
-				auto ack_message = std::make_shared<Messages::JandyMessage_Ack>(ack_type, static_cast<uint8_t>(magic_enum::enum_integer(key_command_to_send)));
+				if constexpr (std::is_enum<ACK_DATA_VALUE>::value)
+				{
+					LogDebug(Channel::Devices, std::format("Emulated device sending ACKnowledgement message (type -> {}, command -> {})", magic_enum::enum_name(ack_type), magic_enum::enum_name(data_value_to_send)));
+					ack_message = std::make_shared<Messages::JandyMessage_Ack>(ack_type, static_cast<uint8_t>(magic_enum::enum_integer(data_value_to_send)));
+				}
+				else
+				{
+					LogDebug(Channel::Devices, std::format("Emulated device sending ACKnowledgement message (type -> 0x{:02x}, data: 0x{:02x})", ack_value, data_value_to_send));
+					ack_message = std::make_shared<Messages::JandyMessage_Ack>(ack_type, static_cast<uint8_t>(data_value_to_send));
+				}
+
 				ack_message->Signal_MessageToSend();
 			}
 		}

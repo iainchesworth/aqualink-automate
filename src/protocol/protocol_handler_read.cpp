@@ -96,8 +96,6 @@ namespace AqualinkAutomate::Protocol
 			}
 			else
 			{
-				LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages.");
-
 				switch (boost::system::error_code(message.error()).value())
 				{
 				case ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess:
@@ -110,17 +108,21 @@ namespace AqualinkAutomate::Protocol
 
 				case ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator:
 					// This means there was a packet that could not be deserialised while processing....
+					LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages -> cannot find generator for message type");
 					break;
 
 				case ErrorCodes::Message_ErrorCodes::Error_GeneratorFailed:
 					// This means there was a packet that could not be deserialised while processing....
+					LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages -> generator failed to create message");
 					break;
 
 				case ErrorCodes::Message_ErrorCodes::Error_FailedToDeserialize:
 					// This means there was a packet that could not be deserialised while processing....
+					LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages -> failed to deserialize bytes");
 					break;
 
 				default:
+					LogDebug(Logging::Channel::Protocol, "Protocol error while processing Jandy messages -> unknown error occured; terminating processing");
 					continue_processing = false;
 					process_packets = false;
 					break;

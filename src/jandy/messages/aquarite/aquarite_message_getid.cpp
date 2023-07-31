@@ -71,7 +71,7 @@ namespace AqualinkAutomate::Messages
 		}
 		else
 		{
-			m_RequestedPanelData = magic_enum::enum_cast<PanelDataTypes>(static_cast<uint8_t>(Index_RequestedDataFlag)).value_or(PanelDataTypes::Unknown);
+			m_RequestedPanelData = magic_enum::enum_cast<PanelDataTypes>(static_cast<uint8_t>(message_bytes[Index_RequestedDataFlag])).value_or(PanelDataTypes::Unknown);
 
 			return true;
 		}
