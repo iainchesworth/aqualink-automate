@@ -171,6 +171,9 @@ add_library(
 	src/interfaces/iwebpageroute.cpp
 	src/interfaces/iwebroute.cpp  
 	src/interfaces/iwebsocket.cpp 
+	src/jandy/auxillaries/jandy_auxillary_id.cpp 
+	src/jandy/auxillaries/jandy_auxillary_status.cpp 
+	src/jandy/auxillaries/jandy_auxillary_traits_types.cpp 
 	src/jandy/devices/aquarite_device.cpp 
 	src/jandy/devices/iaq_device.cpp 
 	src/jandy/devices/jandy_controller.cpp 
@@ -193,6 +196,7 @@ add_library(
 	src/jandy/devices/onetouch/onetouch_statusprocessors.cpp 
 	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
 	src/jandy/devices/pda/pda_pageprocessors.cpp 
+	src/jandy/devices/serial_adapter/serial_adapter_commandprocessors.cpp 
 	src/jandy/devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/equipment/jandy_equipment_versions.cpp 
@@ -365,6 +369,7 @@ add_library(
 	src/utility/case_insensitive_comparision.cpp 
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	
+	src/utility/overloaded_variant_visitor.cpp 
 	src/utility/signalling_stats_counter.cpp 
 	src/utility/value_debouncer.cpp 
 	src/version/version.cpp 

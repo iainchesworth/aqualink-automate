@@ -152,8 +152,15 @@ namespace AqualinkAutomate::Devices
 		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
 		{
 			auto new_aux_state = Utility::AuxillaryState(Utility::TrimWhitespace(page[row_index].Text));
-			auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().CreateDevice(new_aux_state);
-			JandyController::m_Config.Devices.Add(aux_ptr);
+			
+			if (auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().OneTouchDevice_CreateDevice(new_aux_state); !aux_ptr.has_value())
+			{
+				///FIXME
+			}
+			else
+			{
+				JandyController::m_Config.Devices.Add(aux_ptr.value());
+			}
 		}
 	}
 

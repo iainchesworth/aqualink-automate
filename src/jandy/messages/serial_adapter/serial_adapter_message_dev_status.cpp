@@ -10,6 +10,7 @@
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
 #include "jandy/utility/jandy_checksum.h"
 #include "logging/logging.h"
+#include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -48,9 +49,9 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	SerialAdapterMessage_DevStatus::SerialAdapterMessage_DevStatus(const SerialAdapter_BasicAuxOperations sa_bao) :
+	SerialAdapterMessage_DevStatus::SerialAdapterMessage_DevStatus(const Auxillaries::JandyAuxillaryIds sa_jai) :
 		SerialAdapterMessage(JandyMessageIds::RSSA_DevStatus),
-		m_StatusType(sa_bao)
+		m_StatusType(sa_jai)
 	{
 	}
 
@@ -93,6 +94,31 @@ namespace AqualinkAutomate::Messages
 		return m_SpaTemperature_SetPoint;
 	}
 
+	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::AirTemperature() const
+	{
+		return m_AirTemperature;
+	}
+
+	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::PoolTemperature() const
+	{
+		return m_PoolTemperature;
+	}
+
+	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::SolarTemperature() const
+	{
+		return m_SolarTemperature;
+	}
+
+	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::SpaTemperature() const
+	{
+		return m_SpaTemperature;
+	}
+
+	std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> SerialAdapterMessage_DevStatus::AuxilliaryState() const
+	{
+		return m_Aux_State;
+	}
+
 	std::optional<Kernel::TemperatureUnits> SerialAdapterMessage_DevStatus::TemperatureUnits() const
 	{
 		return m_TemperatureUnits;
@@ -121,7 +147,7 @@ namespace AqualinkAutomate::Messages
 		};
 
 		std::visit(
-			Overloaded
+			Utility::OverloadedVisitor
 			{ 
 				[](std::monostate)
 				{
@@ -146,10 +172,10 @@ namespace AqualinkAutomate::Messages
 					message_bytes[4] = 0x05;
 					message_bytes[5] = magic_enum::enum_integer(sa_stc);
 				},
-				[&message_bytes](SerialAdapter_BasicAuxOperations sa_bao) 
+				[&message_bytes](Auxillaries::JandyAuxillaryIds sa_jai)
 				{
 					message_bytes[4] = 0x00;
-					message_bytes[5] = magic_enum::enum_integer(sa_bao);
+					message_bytes[5] = magic_enum::enum_integer(sa_jai) + SERIALADAPTER_AUX_ID_OFFSET;
 				},
 				[&message_bytes](SerialAdapter_UnknownCommands sa_uc)
 				{
@@ -185,9 +211,9 @@ namespace AqualinkAutomate::Messages
 					LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: StatusType -> SerialAdapter_SystemPumpCommands: {}", magic_enum::enum_name(status_type.value())));
 					return status_type.value();
 				}
-				else if (auto status_type = magic_enum::enum_cast<SerialAdapter_BasicAuxOperations>(static_cast<uint8_t>(message_bytes[Index_DeviceId])); status_type.has_value())
+				else if (auto status_type = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(static_cast<uint8_t>(message_bytes[Index_DeviceId]) - SERIALADAPTER_AUX_ID_OFFSET); status_type.has_value())
 				{
-					LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: StatusType -> SerialAdapter_BasicAuxOperations: {}", magic_enum::enum_name(status_type.value())));
+					LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: StatusType -> Auxillaries::JandyAuxillaryIds: {}", magic_enum::enum_name(status_type.value())));
 					return status_type.value();
 				}
 				
@@ -237,7 +263,7 @@ namespace AqualinkAutomate::Messages
 			//
 
 			std::visit(
-				Overloaded
+				Utility::OverloadedVisitor
 				{
 					[](std::monostate)
 					{
@@ -391,85 +417,13 @@ namespace AqualinkAutomate::Messages
 							break;
 						}
 					},
-					[this, &message_bytes](SerialAdapter_BasicAuxOperations sa_bao)
+					[this, &message_bytes](Auxillaries::JandyAuxillaryIds sa_jai)
 					{
-						switch (sa_bao)
-						{
-						case SerialAdapter_BasicAuxOperations::AUX1:
-							m_Aux1_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux1 Status -> {}", magic_enum::enum_name(m_Aux1_State.value())));
-							break;
+						auto status = magic_enum::enum_cast<Auxillaries::JandyAuxillaryStatuses>(message_bytes[Index_AuxState]).value_or(Auxillaries::JandyAuxillaryStatuses::Unknown);
 
-						case SerialAdapter_BasicAuxOperations::AUX2:
-							m_Aux2_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux2 Status -> {}", magic_enum::enum_name(m_Aux2_State.value())));
-							break;
+						m_Aux_State = std::make_tuple(sa_jai, status),
 
-						case SerialAdapter_BasicAuxOperations::AUX3:
-							m_Aux3_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux3 Status -> {}", magic_enum::enum_name(m_Aux3_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX4:
-							m_Aux4_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux4 Status -> {}", magic_enum::enum_name(m_Aux4_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX5:
-							m_Aux5_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux5 Status -> {}", magic_enum::enum_name(m_Aux5_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX6:
-							m_Aux6_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux6 Status -> {}", magic_enum::enum_name(m_Aux6_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX7:
-							m_Aux7_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux7 Status -> {}", magic_enum::enum_name(m_Aux7_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX8:
-							m_Aux8_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux8 Status -> {}", magic_enum::enum_name(m_Aux8_State.value())));
-							break;;
-
-						case SerialAdapter_BasicAuxOperations::AUX9:
-							m_Aux9_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux9 Status -> {}", magic_enum::enum_name(m_Aux9_State.value())));
-							break;;
-
-						case SerialAdapter_BasicAuxOperations::AUX10:
-							m_Aux10_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux10 Status -> {}", magic_enum::enum_name(m_Aux10_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX11:
-							m_Aux11_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux11 Status -> {}", magic_enum::enum_name(m_Aux11_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX12:
-							m_Aux12_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux12 Status -> {}", magic_enum::enum_name(m_Aux12_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX13:
-							m_Aux13_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux13 Status -> {}", magic_enum::enum_name(m_Aux13_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX14:
-							m_Aux14_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux14 Status -> {}", magic_enum::enum_name(m_Aux14_State.value())));
-							break;
-
-						case SerialAdapter_BasicAuxOperations::AUX15:
-							m_Aux15_State = magic_enum::enum_cast<SerialAdapter_BAO_States>(message_bytes[Index_AuxState]).value_or(SerialAdapter_BAO_States::Unknown);
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Aux15 Status -> {}", magic_enum::enum_name(m_Aux15_State.value())));
-							break;
-						}
+						LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: {} Status -> {}", magic_enum::enum_name(sa_jai), magic_enum::enum_name(status)));
 					},
 					[this, &message_bytes](SerialAdapter_UnknownCommands sa_uc)
 					{

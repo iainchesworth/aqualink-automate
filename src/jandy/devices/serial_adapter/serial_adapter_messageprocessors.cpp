@@ -37,8 +37,8 @@ namespace AqualinkAutomate::Devices
 				[](const auto& v)
 				{
 					return 
-						std::holds_alternative<Messages::SerialAdapter_BasicAuxOperations>(v) && 
-						std::get<Messages::SerialAdapter_BasicAuxOperations>(v) == Messages::SerialAdapter_BasicAuxOperations::AUX1;
+						std::holds_alternative<Auxillaries::JandyAuxillaryIds>(v) &&
+						std::get<Auxillaries::JandyAuxillaryIds>(v) == Auxillaries::JandyAuxillaryIds::Aux_1;
 				}
 			);
 
@@ -55,8 +55,8 @@ namespace AqualinkAutomate::Devices
 				[](const auto& v)
 				{
 					return
-						std::holds_alternative<Messages::SerialAdapter_BasicAuxOperations>(v) &&
-						std::get<Messages::SerialAdapter_BasicAuxOperations>(v) == Messages::SerialAdapter_BasicAuxOperations::AUX3;
+						std::holds_alternative<Auxillaries::JandyAuxillaryIds>(v) &&
+						std::get<Auxillaries::JandyAuxillaryIds>(v) == Auxillaries::JandyAuxillaryIds::Aux_3;
 				}
 			);
 
@@ -73,6 +73,65 @@ namespace AqualinkAutomate::Devices
 			m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin(); // Iterators were invalidated; reset to OPMODE.
 		}
 
+		//
+		// Process any updates to the monitored equipment.
+		//
+
+		if (msg.ModelType().has_value())
+		{
+			Command_SerialAdapter_Model(msg.ModelType().value());
+		}
+
+		if (msg.OpMode().has_value())
+		{
+			Command_SerialAdapter_OpMode(msg.OpMode().value());
+		}
+
+		if (msg.Options().has_value())
+		{
+			Command_SerialAdapter_Options(msg.Options().value());
+		}
+
+		if (msg.BatteryCondition().has_value())
+		{
+			Command_SerialAdapter_BatteryCondition(msg.BatteryCondition().value());
+		}
+
+		if (msg.AirTemperature().has_value())
+		{
+			Command_SerialAdapter_AirTemperature(msg.AirTemperature().value());
+		}
+
+		if (msg.PoolTemperature().has_value())
+		{
+			Command_SerialAdapter_PoolTemperature(msg.PoolTemperature().value());
+		}
+
+		if (msg.SpaTemperature().has_value())
+		{
+			Command_SerialAdapter_SpaTemperature(msg.SpaTemperature().value());
+		}
+
+		if (msg.SolarTemperature().has_value())
+		{
+			Command_SerialAdapter_SolarTemperature(msg.SolarTemperature().value());
+		}
+
+		if (msg.AuxilliaryState().has_value())
+		{
+			auto aux_id = std::get<Auxillaries::JandyAuxillaryIds>(msg.AuxilliaryState().value());
+			auto jas_state = std::get<std::optional<Auxillaries::JandyAuxillaryStatuses>>(msg.AuxilliaryState().value());
+			
+			if (jas_state.has_value())
+			{
+				Command_SerialAdapter_AuxillaryStatus(aux_id, jas_state.value());
+			}
+		}
+
+		//
+		// Finalise message and state processing.
+		//
+		
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.

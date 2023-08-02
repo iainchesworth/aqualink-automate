@@ -3,6 +3,7 @@
 
 #include "logging/logging.h"
 #include "jandy/devices/serial_adapter_device.h"
+#include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
@@ -22,7 +23,7 @@ namespace AqualinkAutomate::Devices
 
 		auto status_types1{ magic_enum::enum_values<Messages::SerialAdapter_SystemConfigurationStatuses>() };
 		auto status_types2{ magic_enum::enum_values<Messages::SerialAdapter_SystemTemperatureCommands>() };
-		auto status_types3{ magic_enum::enum_values<Messages::SerialAdapter_BasicAuxOperations>() };
+		auto status_types3{ magic_enum::enum_values<AqualinkAutomate::Auxillaries::JandyAuxillaryIds>() };
 
 		m_StatusTypesCollection.insert(m_StatusTypesCollection.end(), std::make_move_iterator(status_types1.begin()), std::make_move_iterator(status_types1.end()));
 		m_StatusTypesCollection.insert(m_StatusTypesCollection.end(), std::make_move_iterator(status_types2.begin()), std::make_move_iterator(status_types2.end()));
@@ -62,7 +63,7 @@ namespace AqualinkAutomate::Devices
 			LogDebug(Channel::Messages, "ProcessControllerUpdates -> Query for Status");
 
 			std::visit(
-				Messages::SerialAdapterMessage_DevStatus::Overloaded
+				Utility::OverloadedVisitor
 				{
 					[](std::monostate)
 					{
@@ -92,11 +93,11 @@ namespace AqualinkAutomate::Devices
 						ack_type = magic_enum::enum_integer(sa_stc);
 						ack_data_value = static_cast<uint8_t>(Messages::SerialAdapter_CommandTypes::Query);
 					},
-					[&ack_type, &ack_data_value](SerialAdapter_BasicAuxOperations sa_bao)
+					[&ack_type, &ack_data_value](Auxillaries::JandyAuxillaryIds sa_jai)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_bao), magic_enum::enum_integer(sa_bao)));
+						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_jai), magic_enum::enum_integer(sa_jai) + SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET));
 						ack_type = 0x00;
-						ack_data_value = magic_enum::enum_integer(sa_bao);;
+						ack_data_value = magic_enum::enum_integer(sa_jai) + SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET;
 					},
 					[](SerialAdapter_UnknownCommands sa_uc)
 					{

@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Localisation
 	public:
 		std::string Localised(const Kernel::Temperature& object)
 		{
-			const std::string_view TEMPERATURE_DISPLAY_FORMAT{(Kernel::TemperatureUnits::Celsius == Kernel::TemperatureUnits::Celsius) ? "{C}" : "{F}" };
+			const std::string_view TEMPERATURE_DISPLAY_FORMAT{(Kernel::TemperatureUnits::Celsius == Kernel::TemperatureUnits::Celsius) ? "{:C}" : "{:F}" };
 			return std::vformat(TEMPERATURE_DISPLAY_FORMAT, std::make_format_args(object));
 		}
 	};

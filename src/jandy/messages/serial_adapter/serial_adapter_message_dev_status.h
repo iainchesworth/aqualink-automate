@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
+#include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/auxillaries/jandy_auxillary_status.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message.h"
 #include "kernel/temperature.h"
@@ -100,25 +102,6 @@ namespace AqualinkAutomate::Messages
 		SOLTMP = 0x0C
 	};
 
-	enum class SerialAdapter_BasicAuxOperations
-	{
-		AUX1 = 0x15,
-		AUX2 = 0x16,
-		AUX3 = 0x17,
-		AUX4 = 0x18,
-		AUX5 = 0x19,
-		AUX6 = 0x1A,
-		AUX7 = 0x1B,
-		AUX8 = 0x1C,
-		AUX9 = 0x1D,
-		AUX10 = 0x1E,
-		AUX11 = 0x1F,
-		AUX12 = 0x20,
-		AUX13 = 0x21,
-		AUX14 = 0x22,
-		AUX15 = 0x23
-	};
-
 	enum class SerialAdapter_BAO_States
 	{
 		Off = 0x00,
@@ -146,13 +129,12 @@ namespace AqualinkAutomate::Messages
 			SerialAdapter_SystemConfigurationStatuses, 
 			SerialAdapter_SystemPumpCommands, 
 			SerialAdapter_SystemTemperatureCommands, 
-			SerialAdapter_BasicAuxOperations, 
+			Auxillaries::JandyAuxillaryIds, 
 			SerialAdapter_UnknownCommands
 		>;
 
 	class SerialAdapterMessage_DevStatus : public SerialAdapterMessage, public Interfaces::IMessageSignalRecv<SerialAdapterMessage_DevStatus>
 	{
-	public:
 		static const uint8_t Index_StatusType = 4;
 		static const uint8_t Index_DeviceId = 7;
 		static const uint8_t Index_ModelType_Part1 = 5;
@@ -171,12 +153,15 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_AuxState = 6;
 
 	public:
+		static const uint8_t SERIALADAPTER_AUX_ID_OFFSET = 0x14;
+
+	public:
 		SerialAdapterMessage_DevStatus();
 		SerialAdapterMessage_DevStatus(const SerialAdapter_ConfigControlCommands  sa_ccc);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemConfigurationStatuses sa_scs);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemPumpCommands sa_spc);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemTemperatureCommands sa_stc);
-		SerialAdapterMessage_DevStatus(const SerialAdapter_BasicAuxOperations sa_bao);
+		SerialAdapterMessage_DevStatus(const Auxillaries::JandyAuxillaryIds sa_jai);
 		virtual ~SerialAdapterMessage_DevStatus();
 
 	public:
@@ -186,10 +171,17 @@ namespace AqualinkAutomate::Messages
 		std::optional<SerialAdapter_SCS_BatteryCondition> BatteryCondition() const;
 
 	public:
+		std::optional<Kernel::TemperatureUnits> TemperatureUnits() const;
 		std::optional<Kernel::Temperature> Pool_SetPoint_One() const;
 		std::optional<Kernel::Temperature> Pool_SetPoint_Two() const;
 		std::optional<Kernel::Temperature> Spa_SetPoint() const;
-		std::optional<Kernel::TemperatureUnits> TemperatureUnits() const;
+		std::optional<Kernel::Temperature> AirTemperature() const;
+		std::optional<Kernel::Temperature> PoolTemperature() const;
+		std::optional<Kernel::Temperature> SolarTemperature() const;
+		std::optional<Kernel::Temperature> SpaTemperature() const;
+
+	public:
+		std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> AuxilliaryState() const;
 
 	public:
 		virtual std::string ToString() const override;
@@ -197,12 +189,6 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
 		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
-
-	public:
-		template<class... Ts>
-		struct Overloaded : Ts... { using Ts::operator()...; };
-		template<class... Ts>
-		Overloaded(Ts...) -> Overloaded<Ts...>;
 
 	private:
 		SerialAdapter_StatusTypes m_StatusType;
@@ -226,25 +212,11 @@ namespace AqualinkAutomate::Messages
 		std::optional<Kernel::Temperature> m_SpaTemperature{ std::nullopt };
 
 	private:
-		std::optional<SerialAdapter_BAO_States> m_Aux1_State;
-		std::optional<SerialAdapter_BAO_States> m_Cleaner_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux2_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux3_State;
-		std::optional<SerialAdapter_BAO_States> m_Spillover_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux4_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux5_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux6_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux7_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux8_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux9_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux10_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux11_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux12_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux13_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux14_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux15_State;
-		std::optional<SerialAdapter_BAO_States> m_Aux16_State;
+		std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> m_Aux_State{ std::nullopt };
 
+	private:
+		std::optional<Auxillaries::JandyAuxillaryStatuses> m_Cleaner_State;
+		std::optional<Auxillaries::JandyAuxillaryStatuses> m_Spillover_State;
 
 	private:
 		static const Factory::JandyMessageRegistration<Messages::SerialAdapterMessage_DevStatus> g_SerialAdapterMessage_DevStatus_Registration;

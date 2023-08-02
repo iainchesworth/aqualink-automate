@@ -5,6 +5,8 @@
 
 #include <boost/asio/io_context.hpp>
 
+#include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/auxillaries/jandy_auxillary_status.h"
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -15,6 +17,7 @@
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_ready.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
 #include "kernel/data_hub.h"
+#include "kernel/temperature.h"
 #include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
@@ -23,6 +26,7 @@ namespace AqualinkAutomate::Devices
 	class SerialAdapterDevice : public JandyController, public Capabilities::Emulated
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
+		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
 		SerialAdapterDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
@@ -38,6 +42,17 @@ namespace AqualinkAutomate::Devices
 		void Slot_SerialAdapter_Probe(const Messages::JandyMessage_Probe& msg);
 		void Slot_SerialAdapter_Status(const Messages::JandyMessage_Status& msg);
 		void Slot_SerialAdapter_Unknown(const Messages::JandyMessage_Unknown& msg);
+
+	private:
+		void Command_SerialAdapter_Model(const uint16_t model_type);
+		void Command_SerialAdapter_OpMode(const Messages::SerialAdapter_SCS_OpModes& op_mode);
+		void Command_SerialAdapter_Options(const Messages::SerialAdapter_SCS_Options& options);
+		void Command_SerialAdapter_BatteryCondition(const Messages::SerialAdapter_SCS_BatteryCondition& battery_condition);
+		void Command_SerialAdapter_AirTemperature(const Kernel::Temperature& temperature);
+		void Command_SerialAdapter_PoolTemperature(const Kernel::Temperature& temperature);
+		void Command_SerialAdapter_SpaTemperature(const Kernel::Temperature& temperature);
+		void Command_SerialAdapter_SolarTemperature(const Kernel::Temperature& temperature);
+		void Command_SerialAdapter_AuxillaryStatus(const Auxillaries::JandyAuxillaryIds& aux_id, const Auxillaries::JandyAuxillaryStatuses& status);
 
 	private:
 		std::vector<Messages::SerialAdapter_StatusTypes> m_StatusTypesCollection;
