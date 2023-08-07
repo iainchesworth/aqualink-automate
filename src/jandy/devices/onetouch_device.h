@@ -30,11 +30,16 @@ namespace AqualinkAutomate::Devices
 	class OneTouchDevice : public JandyController, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
-		inline static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER{ 1 };
-		inline static const Scrapeable::ScrapeId ONETOUCH_EXAMPLE_TWO_SCRAPER{ 2 };
+		inline static const Scrapeable::ScrapeId ONETOUCH_AUX_LABELS_NAV_SCRAPER{ 1 };
+		inline static const Scrapeable::ScrapeId ONETOUCH_AUX_LABELS_TEXT_SCRAPER{ 2 };
+		inline static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER{ 3 };
 		inline static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX{ 1 };
-		inline static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX{ 2 };
+		inline static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX{ 3 };
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
+
+		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_NAV_SCRAPER_GRAPH;
+		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_TEXT_SCRAPER_GRAPH;
+		static const Scrapeable::ScraperGraph ONETOUCH_CONFIG_INIT_SCRAPER_GRAPH;
 
 		enum class OperatingStates
 		{
@@ -95,6 +100,8 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page);
 		void PageProcessor_DiagnosticsRemotes(const Utility::ScreenDataPage& page);
 		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
+		void PageProcessor_LabelAuxList(const Utility::ScreenDataPage& page);
+		void PageProcessor_LabelAux(const Utility::ScreenDataPage& page);
 
 	private:
 		void StatusProcessor_FilterPump(const Utility::ScreenDataPage& page, const uint8_t line_id);
@@ -104,6 +111,10 @@ namespace AqualinkAutomate::Devices
 		void StatusProcessor_AquaPurePercentage(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_SaltLevelPPM(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_CheckAquaPure(const Utility::ScreenDataPage& page, const uint8_t line_id);
+
+	private:
+		void Scraping_ProcessStep_StartUp();
+		void Scraping_ProcessStep_ColdAndWarmStart();
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };

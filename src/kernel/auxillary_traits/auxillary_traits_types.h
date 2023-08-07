@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		virtual TraitKey Name() const final { return std::string{"ErrorCodesTrait"}; }
 	};
 
-	class LabelTrait : public ImmutableTraitType<const std::string>
+	class LabelTrait : public MutableTraitType<const std::string>
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"LabelTrait"}; }

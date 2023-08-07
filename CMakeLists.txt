@@ -5,16 +5,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
 
 project(
 	aqualink-automate 
 	VERSION 0.0.1 
 	DESCRIPTION "Control Jandy Aqualink RS pool equipment via common IoT integrations" 
-    HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
+	HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
 	LANGUAGES C CXX)
 
 option(ENABLE_BENCHMARKS "Enable performance tests" ON)
+option(ENABLE_COVERAGE "Enable coverage of unit tests" ON)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
@@ -39,6 +40,20 @@ find_package(OpenSSL REQUIRED)
 find_package(re2 REQUIRED)
 find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
+
+#------------------------------------------------------------------------------
+#
+#
+#
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_COVERAGE)
+
+include(CodeCoverage)
+append_coverage_compiler_flags()
+
+endif(ENABLE_COVERAGE)
 
 #------------------------------------------------------------------------------
 #
@@ -290,9 +305,6 @@ add_library(
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
-	src/kernel/data_hub_event.cpp
-	src/kernel/data_hub_event_chemistry.cpp
-	src/kernel/data_hub_event_temperature.cpp
 	src/kernel/flow_rate.cpp 
 	src/kernel/orp.cpp 
 	src/kernel/ph.cpp
@@ -300,8 +312,15 @@ add_library(
 	src/kernel/powercenter.cpp
 	src/kernel/preferences_hub.cpp 
 	src/kernel/statistics_hub.cpp
+	src/kernel/service_statuses.cpp 
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 
+	src/kernel/data_hub_events/data_hub_event.cpp
+	src/kernel/data_hub_events/data_hub_eventtypes.cpp
+	src/kernel/data_hub_events/data_hub_event_chemistry.cpp
+	src/kernel/data_hub_events/data_hub_system_event_status_change.cpp
+	src/kernel/data_hub_events/data_hub_event_temperature.cpp
+	src/kernel/data_hub_events/data_hub_system_event.cpp
 	src/kernel/device_graph/device_graph.cpp
 	src/kernel/device_graph/device_graph_filter_by_id.cpp 
 	src/kernel/device_graph/device_graph_filter_by_label.cpp 
@@ -529,8 +548,7 @@ add_custom_command(
 	TARGET aqualink-automate 
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/static" "${CMAKE_BINARY_DIR}/static"
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets/templates" "${CMAKE_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets" "${CMAKE_BINARY_DIR}/templates"
 )
 
 #------------------------------------------------------------------------------

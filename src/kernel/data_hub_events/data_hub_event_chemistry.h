@@ -5,9 +5,9 @@
 #include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
-#include "kernel/data_hub_event.h"
 #include "kernel/orp.h"
 #include "kernel/ph.h"
+#include "kernel/data_hub_events/data_hub_event.h"
 #include "types/units_dimensionless.h"
 
 namespace AqualinkAutomate::Kernel
@@ -17,6 +17,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_Event_Chemistry();
+		virtual ~DataHub_Event_Chemistry();
 
 	public:
 		std::optional<Kernel::ORP> ORP() const;

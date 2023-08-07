@@ -32,6 +32,8 @@ namespace AqualinkAutomate::Utility
 		Page_DiagnosticsSensors,
 		Page_DiagnosticsRemotes,
 		Page_DiagnosticsErrors,
+		Page_LabelAuxList,
+		Page_LabelAux,
 		Page_Unknown
 	};
 

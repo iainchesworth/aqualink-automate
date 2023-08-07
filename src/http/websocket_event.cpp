@@ -59,6 +59,33 @@ namespace AqualinkAutomate::HTTP
 		this->operator=(temp_config_event);
 	}
 
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent> system_event) :
+		m_EventType(WebSocket_EventTypes::Unknown)
+	{
+		if (nullptr == system_event)
+		{
+			LogDebug(Channel::Web, "Invalid event type; cannot process DataHub_SystemEvent type and payload.");
+		}
+		else
+		{
+			switch (system_event->Type())
+			{
+			case Kernel::DataHub_EventTypes::ServiceStatus:
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_SystemEvent_StatusChange>(system_event));
+				break;
+
+			default:
+				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_SystemEvent type and payload.");
+			}
+		}
+	}
+
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event) :
+		m_EventType(WebSocket_EventTypes::Unknown)
+	{
+		this->operator=(status_system_event);
+	}
+
 	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event)
 	{
 		if (nullptr == chem_config_event)
@@ -86,6 +113,22 @@ namespace AqualinkAutomate::HTTP
 			m_EventType = WebSocket_EventTypes::TemperatureUpdate;
 			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
 			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = temp_config_event->ToJSON();
+		}
+
+		return *this;
+	}
+
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event)
+	{
+		if (nullptr == status_system_event)
+		{
+			LogDebug(Channel::Web, "Invalid DataHub_SystemEvent_StatusChange; cannot process type and payload.");
+		}
+		else
+		{
+			m_EventType = WebSocket_EventTypes::SystemStatusChange;
+			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = status_system_event->ToJSON();
 		}
 
 		return *this;

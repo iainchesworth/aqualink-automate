@@ -5,8 +5,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
-#include "kernel/data_hub_event.h"
 #include "kernel/temperature.h"
+#include "kernel/data_hub_events/data_hub_event.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_Event_Temperature();
+		~DataHub_Event_Temperature();
 
 	public:
 		std::optional<Kernel::Temperature> PoolTemp() const;
@@ -37,4 +38,4 @@ namespace AqualinkAutomate::Kernel
 	};
 
 }
-// namespace namespace AqualinkAutomate::Kernel
+// namespace AqualinkAutomate::Kernel

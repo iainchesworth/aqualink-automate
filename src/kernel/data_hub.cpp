@@ -3,8 +3,9 @@
 
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
-#include "kernel/data_hub_event_chemistry.h"
-#include "kernel/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_system_event_status_change.h"
 #include "utility/case_insensitive_comparision.h"
 
 namespace AqualinkAutomate::Kernel
@@ -12,6 +13,20 @@ namespace AqualinkAutomate::Kernel
 	
 	DataHub::DataHub()
 	{
+	}
+
+	Kernel::ServiceStatuses DataHub::ServiceStatus() const
+	{
+		return m_ServiceStatus;
+	}
+
+	void DataHub::ServiceStatus(Kernel::ServiceStatuses service_status)
+	{
+		m_ServiceStatus = service_status;
+
+		// Signal that a service status update has occurred.
+		auto ssc_event = std::make_shared<DataHub_SystemEvent_StatusChange>(m_ServiceStatus);
+		ServiceUpdateSignal(ssc_event);
 	}
 
 	Kernel::Temperature DataHub::AirTemp() const

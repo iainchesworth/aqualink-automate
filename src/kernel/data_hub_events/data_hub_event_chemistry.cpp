@@ -6,7 +6,7 @@
 
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
-#include "kernel/data_hub_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_event_chemistry.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -16,6 +16,10 @@ namespace AqualinkAutomate::Kernel
 		m_ORP(std::nullopt),
 		m_pH(std::nullopt),
 		m_SaltLevel(std::nullopt)
+	{
+	}
+
+	DataHub_Event_Chemistry::~DataHub_Event_Chemistry()
 	{
 	}
 

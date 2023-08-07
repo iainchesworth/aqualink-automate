@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <span>
@@ -18,7 +19,7 @@
 namespace AqualinkAutomate::Messages
 {
 
-	enum class SerialAdapter_CommandTypes
+	enum class SerialAdapter_CommandTypes : uint8_t
 	{
 		Query = 0x05,
 		Toggle = 0xFF,	// Actually Unknown Value
@@ -28,9 +29,9 @@ namespace AqualinkAutomate::Messages
 		Unknown = 0xFF
 	};
 
-	enum class SerialAdapter_ConfigControlCommands
+	enum class SerialAdapter_ConfigControlCommands : uint8_t
 	{
-		ECHO = 0xFF,	// Actually Unknown Value
+		ECHOCMD = 0xFF,	// Actually Unknown Value
 		RSPFMT = 0xFF,	// Actually Unknown Value
 		RST = 0xFF,		// Actually Unknown Value
 		VERS = 0xFF,	// Actually Unknown Value
@@ -42,7 +43,7 @@ namespace AqualinkAutomate::Messages
 		COSMSGS = 0xFF	// Actually Unknown Value
 	};
 
-	enum class SerialAdapter_SystemConfigurationStatuses
+	enum class SerialAdapter_SystemConfigurationStatuses : uint8_t
 	{
 		MODEL = 0x00,
 		OPTIONS = 0x01,
@@ -51,7 +52,7 @@ namespace AqualinkAutomate::Messages
 		LEDS = 0xFF		// Actually Unknown Value
 	};
 
-	enum class SerialAdapter_SCS_OpModes
+	enum class SerialAdapter_SCS_OpModes : uint8_t
 	{
 		Auto = 0x00,
 		Service = 0x01,
@@ -77,7 +78,7 @@ namespace AqualinkAutomate::Messages
 		AqualinkAutomate::Units::voltage Voltage;
 	};
 
-	enum class SerialAdapter_SystemPumpCommands
+	enum class SerialAdapter_SystemPumpCommands : uint8_t
 	{
 		PUMPLO = 0x0D,
 		PUMP = 0x0C,
@@ -86,7 +87,7 @@ namespace AqualinkAutomate::Messages
 		SPA = 0x0E
 	};
 
-	enum class SerialAdapter_SystemTemperatureCommands
+	enum class SerialAdapter_SystemTemperatureCommands : uint8_t
 	{
 		UNITS = 0x0A,
 		POOLHT = 0x11,
@@ -102,21 +103,21 @@ namespace AqualinkAutomate::Messages
 		SOLTMP = 0x0C
 	};
 
-	enum class SerialAdapter_BAO_States
+	enum class SerialAdapter_BAO_States : uint8_t
 	{
 		Off = 0x00,
 		On = 0x01,
 		Unknown = 0xFF
 	};
 
-	enum class SerialAdapter_ErrorCodes
+	enum class SerialAdapter_ErrorCodes : uint8_t
 	{
 		AuxillaryUnavailable_OptionSwitchIsSet = 0x0E,
 		AuxillaryUnavailable_NotInstalled = 0x11,
 		Unknown = 0xFF
 	};
 
-	enum class SerialAdapter_UnknownCommands
+	enum class SerialAdapter_UnknownCommands : uint8_t
 	{
 		ErrorOccurred = 0x02,
 		Unknown = 0xFF

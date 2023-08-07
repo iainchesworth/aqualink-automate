@@ -1,16 +1,12 @@
 #pragma once
 
-#include <any>
-#include <functional>
-#include <optional>
-#include <string>
-
 #include <boost/signals2.hpp>
 
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
-#include "kernel/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_system_event_status_change.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -28,11 +24,13 @@ namespace AqualinkAutomate::HTTP
 		virtual void OnError(HTTP::Request& req) override;
 
 	private:
-		void HandleEvent_DataHubUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
+		void HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
+		void HandleEvent_DataHubSystemUpdate(std::shared_ptr<Kernel::DataHub_SystemEvent> system_update_event);
 
 	private:
 		const Kernel::DataHub& m_DataHub;
 		boost::signals2::connection m_TemperatureSlot;
+		boost::signals2::connection m_StatusChangeSlot;
 	};
 
 

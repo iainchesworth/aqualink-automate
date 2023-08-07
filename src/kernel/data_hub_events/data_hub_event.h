@@ -3,19 +3,16 @@
 #include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
+#include "kernel/data_hub_events/data_hub_eventtypes.h"
+
 namespace AqualinkAutomate::Kernel
 {
-
-	enum class DataHub_EventTypes
-	{
-		Chemistry,
-		Temperature
-	};
 
 	class DataHub_Event
 	{
 	public:
 		DataHub_Event(DataHub_EventTypes event_type);
+		virtual ~DataHub_Event();
 
 	public:
 		DataHub_EventTypes Type() const;

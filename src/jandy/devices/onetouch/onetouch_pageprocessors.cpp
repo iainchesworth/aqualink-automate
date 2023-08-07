@@ -7,6 +7,7 @@
 #include <re2/re2.h>
 
 #include "logging/logging.h"
+#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/factories/jandy_auxillary_factory.h"
 #include "jandy/utility/jandy_pool_configuration_decoder.h"
@@ -423,6 +424,101 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 10 =
 			Info:   OneTouch Menu Line 11 =    Continue            Continue
 		*/
+	}
+
+	void OneTouchDevice::PageProcessor_LabelAuxList(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_LabelAuxList", BOOST_CURRENT_LOCATION);
+
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_LabelAuxList page.");
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Label Aux
+			Info:   OneTouch Menu Line 01 =
+			Info:   OneTouch Menu Line 02 = Aux1           >
+			Info:   OneTouch Menu Line 03 = Aux2           >
+			Info:   OneTouch Menu Line 04 = Aux3           >
+			Info:   OneTouch Menu Line 05 = Aux4           >
+			Info:   OneTouch Menu Line 06 = Aux5           >
+			Info:   OneTouch Menu Line 07 = Aux6           >
+			Info:   OneTouch Menu Line 08 = Aux7           >
+			Info:   OneTouch Menu Line 09 = Aux B1         >
+			Info:   OneTouch Menu Line 10 =    ^^ More vv
+			Info:   OneTouch Menu Line 11 =           
+		*/
+	}
+
+	void OneTouchDevice::PageProcessor_LabelAux(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_LabelAux", BOOST_CURRENT_LOCATION);
+
+		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_LabelAux page.");
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Label Aux1
+			Info:   OneTouch Menu Line 01 =
+			Info:   OneTouch Menu Line 02 =  Current Label 
+			Info:   OneTouch Menu Line 03 =       Aux1      
+			Info:   OneTouch Menu Line 04 =                
+			Info:   OneTouch Menu Line 05 = General Labels >
+			Info:   OneTouch Menu Line 06 = Light   Labels >
+			Info:   OneTouch Menu Line 07 = Wtrfall Labels >
+			Info:   OneTouch Menu Line 08 = Custom  Label  >
+			Info:   OneTouch Menu Line 09 =
+			Info:   OneTouch Menu Line 10 =
+			Info:   OneTouch Menu Line 11 =           
+		*/
+
+		const auto aux_custom_label = Utility::TrimWhitespace(page[3].Text);
+
+		re2::RE2 pattern("(Label) (Aux(\\s?[B-D][1-8]|\\s?[1-7]))");
+		std::string label, aux_id_string;
+
+		if (aux_custom_label.empty())
+		{
+			LogDebug(Channel::Devices, "Custom auxillary label was not set; cannot continue");
+		}
+		else if (!RE2::FullMatch(Utility::TrimWhitespace(page[0].Text), pattern, &label, &aux_id_string))
+		{
+			LogDebug(Channel::Devices, std::format("Failed to parse the row text looking for an auxillary id; text was {}", Utility::TrimWhitespace(page[0].Text)));
+		}
+		else if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(aux_id_string); !aux_id.has_value())
+		{
+			LogDebug(Channel::Devices, std::format("Failed to generate the id for Auxillary Device given string {}", aux_id_string));
+		}
+		else 
+		{
+			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
+
+			if (auto aux_collection = m_Config.Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
+			{
+				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); temp_ptr.has_value())
+				{
+					LogDebug(Channel::Devices, std::format("Failed to create a new Auxillary Device for aux id: {}", magic_enum::enum_name(aux_id.value())));
+				}
+				else
+				{
+					aux_ptr = temp_ptr.value();
+				}
+			}
+			else if (1 < aux_collection.size())
+			{
+				LogDebug(Channel::Devices, std::format("Found {} instances of Auxillary Device with aux id: {}; cannot attach custom label", aux_collection.size(), magic_enum::enum_name(aux_id.value())));
+			}
+			else
+			{
+				aux_ptr = aux_collection.front();
+			}
+
+			if (nullptr == aux_ptr)
+			{
+				LogDebug(Channel::Devices, std::format("Failed to find the Auxillary Device for aux id: {}; cannot set custom label", magic_enum::enum_name(aux_id.value())));
+			}
+			else
+			{
+				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, aux_custom_label);
+			}
+		}
 	}
 
 }

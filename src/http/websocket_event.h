@@ -7,9 +7,11 @@
 #include <nlohmann/json.hpp>
 
 #include "http/websocket_event_types.h"
-#include "kernel/data_hub_event.h"
-#include "kernel/data_hub_event_chemistry.h"
-#include "kernel/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_event.h"
+#include "kernel/data_hub_events/data_hub_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_system_event.h"
+#include "kernel/data_hub_events/data_hub_system_event_status_change.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -26,10 +28,13 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent> system_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event);
 
 	public:
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event);
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event);
+		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event);
 
 	public:
 		WebSocket_EventTypes Type() const;

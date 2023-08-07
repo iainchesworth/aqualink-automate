@@ -4,7 +4,7 @@
 #include <magic_enum.hpp>
 
 #include "formatters/temperature_formatter.h"
-#include "kernel/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_event_temperature.h"
 #include "localisation/translations_and_units_formatter.h"
 
 namespace AqualinkAutomate::Kernel
@@ -15,6 +15,10 @@ namespace AqualinkAutomate::Kernel
 		m_PoolTemp(std::nullopt),
 		m_SpaTemp(std::nullopt),
 		m_AirTemp(std::nullopt)
+	{
+	}
+
+	DataHub_Event_Temperature::~DataHub_Event_Temperature()
 	{
 	}
 

@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="/styles/modal_banner.css" />
+    
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    <script src="/scripts/modal_banner.js"></script>
 
     <!-- Your custom CSS -->
     <style>
@@ -156,10 +160,25 @@
         </div>
     </footer>
 
+    <!-- Toggleable Banner Modal -->
+    <div class="modal fade" id="toggleBanner" tabindex="-1" aria-labelledby="toggleBannerLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen">
+            <div class="modal-content" style="background-color: rgba(255, 255, 224, 0.7); height: 300px;">
+                <!-- rgba for translucent yellow -->
+                <div class="modal-body d-flex flex-column justify-content-start align-items-center">
+                    <h2 class="modal-title text-center mt-3" id="toggleBannerLabel">Headline Text</h2>
+                    <p class="text-center mt-3" id="toggleBannerDescription">Description Text</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function configurePageOnLoad() {
             configureTriggerableActionButtons();
             configureWebSocketMessageHandlers();
+
+            showBanner('Attention!', 'System initialising...');
         }
 
         function configureTriggerableActionButtons() {
@@ -221,6 +240,10 @@
                 console.debug('Pong_KeepAlive: ', payload);
             });
 
+            addEventHandler('SystemStatusChange', (payload) => {
+                console.debug('SystemStatusChange: ', payload);
+            });
+
             setInterval(() => {
                 if (WebSocket.OPEN === socket.readyState) {
                     socket.send(JSON.stringify({ type: 'Ping_KeepAlive', payload: null }));
@@ -265,7 +288,7 @@
 
         function updateButtonState(el_id, response) {
             document.getElementById(el_id + "_button_label").innerHTML = response.label;
-            document.getElementById(el_id + "_status_id").innerHTML = response.status ? response.status : "Unknown";
+            document.getElementById(el_id + "_statu1s_id").innerHTML = response.status ? response.status : "Unknown";
         }
 
         window.onload = configurePageOnLoad;

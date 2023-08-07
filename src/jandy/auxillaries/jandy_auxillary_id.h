@@ -63,19 +63,19 @@ namespace magic_enum::customize
 		switch (value)
 		{
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_1:
-			return "Aux 1";
+			return "Aux1";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_2:
-			return "Aux 2";
+			return "Aux2";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_3:
-			return "Aux 3";
+			return "Aux3";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_4:
-			return "Aux 4";
+			return "Aux4";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_5:
-			return "Aux 5";
+			return "Aux5";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_6:
-			return "Aux 6";
+			return "Aux6";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_7:
-			return "Aux 7";
+			return "Aux7";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_B1:
 			return "Aux B1";
 		case AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_B2:
