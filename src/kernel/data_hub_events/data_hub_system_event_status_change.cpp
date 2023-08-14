@@ -7,19 +7,13 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	DataHub_SystemEvent_StatusChange::DataHub_SystemEvent_StatusChange(Kernel::ServiceStatuses service_status) :
-		DataHub_SystemEvent(DataHub_EventTypes::ServiceStatus),
-		m_ServiceStatus(service_status)
+	DataHub_SystemEvent_StatusChange::DataHub_SystemEvent_StatusChange() :
+		DataHub_SystemEvent(DataHub_EventTypes::ServiceStatus)
 	{
 	}
 
 	DataHub_SystemEvent_StatusChange::~DataHub_SystemEvent_StatusChange()
 	{
-	}
-
-	Kernel::ServiceStatuses DataHub_SystemEvent_StatusChange::ServiceStatus() const
-	{
-		return m_ServiceStatus;
 	}
 
 	boost::uuids::uuid DataHub_SystemEvent_StatusChange::Id() const
@@ -32,7 +26,7 @@ namespace AqualinkAutomate::Kernel
 	{
 		nlohmann::json j;
 
-		j["service_status"] = magic_enum::enum_name(m_ServiceStatus);
+		j["service_status"] = "Unknown";
 
 		return j;
 	}

@@ -78,6 +78,28 @@ namespace AqualinkAutomate::Devices
 		return !(*this == other);
 	}
 
+	bool JandyDeviceType::operator==(const Interfaces::IDeviceIdentifier& other) const
+	{
+		if (auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
+		{
+			return operator==(*ptr);
+		}
+
+		// Could not convert to a JandyDeviceType; objects _must_ be different.
+		return false;
+	}
+
+	bool JandyDeviceType::operator!=(const Interfaces::IDeviceIdentifier& other) const
+	{
+		if (auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
+		{
+			return operator!=(*ptr);
+		}
+
+		// Could not convert to a JandyDeviceType; objects _must_ be different.
+		return true;
+	}
+
 	JandyDeviceType::DeviceId JandyDeviceType::operator()() const
 	{
 		return m_DeviceId;

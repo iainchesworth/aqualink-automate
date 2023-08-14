@@ -3,8 +3,8 @@
 
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
-#include "kernel/data_hub_events/data_hub_event_chemistry.h"
-#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
 #include "kernel/data_hub_events/data_hub_system_event_status_change.h"
 #include "utility/case_insensitive_comparision.h"
 
@@ -13,20 +13,6 @@ namespace AqualinkAutomate::Kernel
 	
 	DataHub::DataHub()
 	{
-	}
-
-	Kernel::ServiceStatuses DataHub::ServiceStatus() const
-	{
-		return m_ServiceStatus;
-	}
-
-	void DataHub::ServiceStatus(Kernel::ServiceStatuses service_status)
-	{
-		m_ServiceStatus = service_status;
-
-		// Signal that a service status update has occurred.
-		auto ssc_event = std::make_shared<DataHub_SystemEvent_StatusChange>(m_ServiceStatus);
-		ServiceUpdateSignal(ssc_event);
 	}
 
 	Kernel::Temperature DataHub::AirTemp() const
@@ -54,7 +40,7 @@ namespace AqualinkAutomate::Kernel
 		m_AirTemp = air_temp;
 
 		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Temperature>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
 		update_event->AirTemp(m_AirTemp);
 		ConfigUpdateSignal(update_event);
 	}
@@ -64,7 +50,7 @@ namespace AqualinkAutomate::Kernel
 		m_PoolTemp = pool_temp;
 
 		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Temperature>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
 		update_event->PoolTemp(m_PoolTemp);
 		ConfigUpdateSignal(update_event);
 	}
@@ -74,7 +60,7 @@ namespace AqualinkAutomate::Kernel
 		m_SpaTemp = spa_temp;
 
 		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Temperature>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
 		update_event->SpaTemp(m_SpaTemp);
 		ConfigUpdateSignal(update_event);
 	}
@@ -104,7 +90,7 @@ namespace AqualinkAutomate::Kernel
 		m_ORP = orp;
 
 		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
 		update_event->ORP(m_ORP);
 		ConfigUpdateSignal(update_event);
 	}
@@ -114,7 +100,7 @@ namespace AqualinkAutomate::Kernel
 		m_pH = pH;
 
 		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
 		update_event->pH(m_pH);
 		ConfigUpdateSignal(update_event);
 	}
@@ -124,7 +110,7 @@ namespace AqualinkAutomate::Kernel
 		m_SaltLevel = salt_level_in_ppm;
 
 		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_Event_Chemistry>();
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
 		update_event->SaltLevel(m_SaltLevel);
 		ConfigUpdateSignal(update_event);
 	}

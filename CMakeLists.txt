@@ -15,7 +15,7 @@ project(
 	LANGUAGES C CXX)
 
 option(ENABLE_BENCHMARKS "Enable performance tests" ON)
-option(ENABLE_COVERAGE "Enable coverage of unit tests" ON)
+option(ENABLE_COVERAGE "Enable coverage of unit tests" OFF)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
@@ -30,11 +30,11 @@ cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON
 
 add_subdirectory(deps)
 
+find_package(async_mqtt_iface REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
 find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
-find_package(mqtt_cpp_iface REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(re2 REQUIRED)
@@ -140,6 +140,7 @@ add_library(
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
 	src/developer/mock_serial_port.cpp
+	src/devices/device_status.cpp 
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp 
@@ -174,6 +175,8 @@ add_library(
 	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
+	src/interfaces/ideviceidentifier.cpp 
+	src/interfaces/idevicestatus.cpp 
 	src/interfaces/iequipment.cpp	
 	src/interfaces/imessage.cpp
 	src/interfaces/imessagesignal_recv.cpp
@@ -311,15 +314,15 @@ add_library(
 	src/kernel/pool_configurations.cpp
 	src/kernel/powercenter.cpp
 	src/kernel/preferences_hub.cpp 
-	src/kernel/statistics_hub.cpp
-	src/kernel/service_statuses.cpp 
+	src/kernel/statistics_hub.cpp	 
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 
+	src/kernel/data_hub_events/data_hub_config_event.cpp
+	src/kernel/data_hub_events/data_hub_config_event_chemistry.cpp
+	src/kernel/data_hub_events/data_hub_config_event_temperature.cpp
 	src/kernel/data_hub_events/data_hub_event.cpp
 	src/kernel/data_hub_events/data_hub_eventtypes.cpp
-	src/kernel/data_hub_events/data_hub_event_chemistry.cpp
 	src/kernel/data_hub_events/data_hub_system_event_status_change.cpp
-	src/kernel/data_hub_events/data_hub_event_temperature.cpp
 	src/kernel/data_hub_events/data_hub_system_event.cpp
 	src/kernel/device_graph/device_graph.cpp
 	src/kernel/device_graph/device_graph_filter_by_id.cpp 
@@ -451,6 +454,7 @@ target_include_directories(
 	libaqualink-automate 
 	SYSTEM 
 	PUBLIC 
+	${async_mqtt_INCLUDE_DIRS}
 	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
 	${Cinatra_INCLUDE_DIRS} 
@@ -470,6 +474,7 @@ add_dependencies(libaqualink-automate Cinatra)
 target_link_libraries(
 	libaqualink-automate 
 	PUBLIC
+	async_mqtt_iface::async_mqtt_iface
 	Boost::boost 
 	Boost::coroutine 
 	Boost::iostreams 
@@ -479,7 +484,6 @@ target_link_libraries(
 	mstch::mstch
 	Cinatra
 	magic_enum::magic_enum
-	mqtt_cpp_iface::mqtt_cpp_iface 
 	mstch::mstch
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 

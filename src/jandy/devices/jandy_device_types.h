@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "interfaces/ideviceidentifier.h"
 #include "jandy/devices/jandy_device_id.h"
 
 namespace AqualinkAutomate::Devices
@@ -43,7 +44,7 @@ namespace AqualinkAutomate::Devices
 		};
 	*/
 
-	class JandyDeviceType
+	class JandyDeviceType : public Interfaces::IDeviceIdentifier
 	{
 		using DeviceId = JandyDeviceId;
 		using DeviceClassAndIds = std::pair<DeviceClasses, std::vector<DeviceId>>;
@@ -82,6 +83,8 @@ namespace AqualinkAutomate::Devices
 	public:
 		bool operator==(const JandyDeviceType& other) const;
 		bool operator!=(const JandyDeviceType& other) const;
+		virtual bool operator==(const Interfaces::IDeviceIdentifier& other) const final;
+		virtual bool operator!=(const Interfaces::IDeviceIdentifier& other) const final;
 
 	public:
 		DeviceId operator()() const;

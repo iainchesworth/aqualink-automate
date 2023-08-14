@@ -7,17 +7,17 @@
 
 #include "kernel/orp.h"
 #include "kernel/ph.h"
-#include "kernel/data_hub_events/data_hub_event.h"
+#include "kernel/data_hub_events/data_hub_config_event.h"
 #include "types/units_dimensionless.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	class DataHub_Event_Chemistry : public DataHub_Event
+	class DataHub_ConfigEvent_Chemistry : public DataHub_ConfigEvent
 	{
 	public:
-		DataHub_Event_Chemistry();
-		virtual ~DataHub_Event_Chemistry();
+		DataHub_ConfigEvent_Chemistry();
+		virtual ~DataHub_ConfigEvent_Chemistry();
 
 	public:
 		std::optional<Kernel::ORP> ORP() const;

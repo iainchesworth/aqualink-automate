@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Devices
 	class JandyDevice : public Interfaces::IDevice
 	{
 	public:
-		JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds);
+		JandyDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, std::chrono::seconds timeout_in_seconds);
 		virtual ~JandyDevice();
 
 	public:
@@ -22,7 +22,6 @@ namespace AqualinkAutomate::Devices
 
 	protected:
 		Utility::SlotConnectionManager m_SlotManager;
-		const Devices::JandyDeviceType m_DeviceId;
 	};
 
 }

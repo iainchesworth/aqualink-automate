@@ -5,7 +5,7 @@
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
-#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
 #include "kernel/data_hub_events/data_hub_system_event_status_change.h"
 
 namespace AqualinkAutomate::HTTP
@@ -24,7 +24,7 @@ namespace AqualinkAutomate::HTTP
 		virtual void OnError(HTTP::Request& req) override;
 
 	private:
-		void HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event);
+		void HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event);
 		void HandleEvent_DataHubSystemUpdate(std::shared_ptr<Kernel::DataHub_SystemEvent> system_update_event);
 
 	private:

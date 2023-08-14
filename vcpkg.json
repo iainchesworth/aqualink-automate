@@ -3,6 +3,7 @@
   "name": "aqualink-automate",
   "version": "0.0.1",
   "dependencies": [
+    "async-mqtt",
     "benchmark",
     "boost-asio",
     "boost-assert",
@@ -21,7 +22,6 @@
     "boost-units",
     "boost-uuid",
     "magic-enum",
-    "mqtt-cpp",
     "mstch",
     "nlohmann-json",
     "openssl",

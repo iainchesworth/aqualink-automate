@@ -22,38 +22,38 @@ namespace AqualinkAutomate::HTTP
 		m_EventPayload[WS_JSON_PAYLOAD_FIELD] = payload;
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event> config_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		if (nullptr == config_event)
 		{
-			LogDebug(Channel::Web, "Invalid event type; cannot process DataHub_Event type and payload.");
+			LogDebug(Channel::Web, "Invalid event type; cannot process DataHub_ConfigEvent type and payload.");
 		}
 		else
 		{
 			switch (config_event->Type())
 			{
 			case Kernel::DataHub_EventTypes::Chemistry:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_Event_Chemistry>(config_event));
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Chemistry>(config_event));
 				break;
 
 			case Kernel::DataHub_EventTypes::Temperature:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_Event_Temperature>(config_event));
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Temperature>(config_event));
 				break;
 
 			default:
-				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_Event type and payload.");
+				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_ConfigEvent type and payload.");
 			}
 		}
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(chem_config_event);
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(temp_config_event);
@@ -86,11 +86,11 @@ namespace AqualinkAutomate::HTTP
 		this->operator=(status_system_event);
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Chemistry> chem_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event)
 	{
 		if (nullptr == chem_config_event)
 		{
-			LogDebug(Channel::Web, "Invalid DataHub_Event_Chemistry; cannot process type and payload.");
+			LogDebug(Channel::Web, "Invalid DataHub_ConfigEvent_Chemistry; cannot process type and payload.");
 		}
 		else
 		{
@@ -102,7 +102,7 @@ namespace AqualinkAutomate::HTTP
 		return *this;
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_Event_Temperature> temp_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event)
 	{
 		if (nullptr == temp_config_event)
 		{

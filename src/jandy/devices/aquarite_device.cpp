@@ -10,13 +10,13 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id) :
-		AquariteDevice(io_context, device_id, 0, 0, 0)
+	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id) :
+		AquariteDevice(io_context, std::move(device_id), 0, 0, 0)
 	{
 	}
 
-	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
-		JandyDevice(io_context, device_id, AQUARITE_TIMEOUT_DURATION),
+	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
+		JandyDevice(io_context, std::move(device_id), AQUARITE_TIMEOUT_DURATION),
 		m_Requested(AQUARITE_PERCENT_DEBOUNCE_THRESHOLD),
 		m_Reported(std::make_pair(reported_percentage, std::chrono::system_clock::now())),
 		m_SaltPPM(std::make_pair(salt_ppm, std::chrono::system_clock::now()))
@@ -24,9 +24,9 @@ namespace AqualinkAutomate::Devices
 		// Note that this is a debounced value so is initialised differently.
 		m_Requested = std::make_pair(requested_percentage, std::chrono::system_clock::now());
 
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>(std::bind(&AquariteDevice::Slot_Aquarite_GetId, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>(std::bind(&AquariteDevice::Slot_Aquarite_Percent, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>(std::bind(&AquariteDevice::Slot_Aquarite_PPM, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>(std::bind(&AquariteDevice::Slot_Aquarite_GetId, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>(std::bind(&AquariteDevice::Slot_Aquarite_Percent, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>(std::bind(&AquariteDevice::Slot_Aquarite_PPM, this, std::placeholders::_1), (*device_id)());
 	}
 
 	AquariteDevice::~AquariteDevice()

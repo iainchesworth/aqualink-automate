@@ -38,11 +38,11 @@ namespace AqualinkAutomate::HTTP
 		m_TemperatureSlot.disconnect();
 	}
 
-	void WebSocket_Equipment::HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_Event> config_update_event)
+	void WebSocket_Equipment::HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event)
 	{
 		if (nullptr == config_update_event)
 		{
-			LogDebug(Channel::Web, "Received an invalid Kernel::DataHub_Event; config_update_event -> nullptr");
+			LogDebug(Channel::Web, "Received an invalid Kernel::DataHub_ConfigEvent; config_update_event -> nullptr");
 		}
 		else
 		{

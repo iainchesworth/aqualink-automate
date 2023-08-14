@@ -15,7 +15,7 @@
 #include "jandy/equipment/jandy_equipment_versions.h"
 #include "jandy/utility/string_conversion/timeout_duration.h"
 #include "kernel/circulation.h"
-#include "kernel/data_hub_events/data_hub_event.h"
+#include "kernel/data_hub_events/data_hub_config_event.h"
 #include "kernel/data_hub_events/data_hub_system_event.h"
 #include "kernel/device_graph/device_graph.h"
 #include "kernel/orp.h"
@@ -23,7 +23,6 @@
 #include "kernel/pool_configurations.h"
 #include "kernel/powercenter.h"
 #include "kernel/temperature.h"
-#include "kernel/service_statuses.h"
 #include "kernel/system_boards.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "logging/logging.h"
@@ -44,7 +43,7 @@ namespace AqualinkAutomate::Kernel
 	//---------------------------------------------------------------------
 
 	public:
-		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_Event>)> ConfigUpdateSignal;
+		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_ConfigEvent>)> ConfigUpdateSignal;
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_SystemEvent>)> ServiceUpdateSignal;
 
 	//---------------------------------------------------------------------
@@ -52,13 +51,7 @@ namespace AqualinkAutomate::Kernel
 	//---------------------------------------------------------------------
 
 	public:
-		Kernel::ServiceStatuses ServiceStatus() const;
-
-	public:
-		void ServiceStatus(Kernel::ServiceStatuses service_status);
-
-	private:
-		Kernel::ServiceStatuses m_ServiceStatus{ Kernel::ServiceStatuses::Unknown };
+		///FIXME
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT CONFIGURATION

@@ -1,6 +1,7 @@
 #include <format>
 #include <functional>
 
+#include "devices/device_status.h"
 #include "interfaces/idevice.h"
 #include "logging/logging.h"
 
@@ -9,20 +10,41 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Interfaces
 {
 
-    IDevice::IDevice(boost::asio::io_context& io_context, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
+    IDevice::IDevice(boost::asio::io_context& io_context, std::unique_ptr<IDeviceIdentifier>&& device_id, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
         m_IsOperating(false),
+        m_DeviceId(std::move(device_id)),
+        m_DeviceStatus(std::make_unique<Devices::DeviceStatus_Unknown>()),
         m_TimeoutTimer(io_context),
         m_TimeoutDuration(timeout_in_seconds)
     {
+        Status(Devices::DeviceStatus_Normal{});
     }
 
     IDevice::~IDevice()
     {
     }
 
+    IDevice::IDevice(IDevice&& other) noexcept : 
+        m_IsOperating(std::move(other.m_IsOperating)),
+        m_DeviceId(std::move(other.m_DeviceId)),
+        m_TimeoutTimer(std::move(other.m_TimeoutTimer)),
+        m_TimeoutDuration(other.m_TimeoutDuration)
+    {
+    }
+
     bool IDevice::IsOperating() const
     {
         return m_IsOperating;
+    }
+
+    const IDeviceIdentifier& IDevice::DeviceId() const
+    {
+        return *m_DeviceId;
+    }
+
+    const IDeviceStatus& IDevice::Status() const
+    {
+        return *m_DeviceStatus;
     }
 
     void IDevice::StartWaitForTimeout()

@@ -6,16 +6,16 @@
 #include <nlohmann/json.hpp>
 
 #include "kernel/temperature.h"
-#include "kernel/data_hub_events/data_hub_event.h"
+#include "kernel/data_hub_events/data_hub_config_event.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	class DataHub_Event_Temperature : public DataHub_Event
+	class DataHub_ConfigEvent_Temperature : public DataHub_ConfigEvent
 	{
 	public:
-		DataHub_Event_Temperature();
-		~DataHub_Event_Temperature();
+		DataHub_ConfigEvent_Temperature();
+		~DataHub_ConfigEvent_Temperature();
 
 	public:
 		std::optional<Kernel::Temperature> PoolTemp() const;

@@ -11,8 +11,8 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	SerialAdapterDevice::SerialAdapterDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated) :
-		JandyController(io_context, device_id, SERIALADAPTER_TIMEOUT_DURATION, config),
+	SerialAdapterDevice::SerialAdapterDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated) :
+		JandyController(io_context, std::move(device_id), SERIALADAPTER_TIMEOUT_DURATION, config),
 		Capabilities::Emulated(is_emulated),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
@@ -32,15 +32,15 @@ namespace AqualinkAutomate::Devices
 
 		m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin();
 
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Probe, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<SerialAdapterMessage_DevReady>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_DevReady, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<SerialAdapterMessage_DevStatus>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_DevStatus, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Status>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Status, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Unknown>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Unknown, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Probe, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<SerialAdapterMessage_DevReady>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_DevReady, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<SerialAdapterMessage_DevStatus>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_DevStatus, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Status>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Status, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Unknown>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Unknown, this, std::placeholders::_1), (*device_id)());
 
 		if (!IsEmulated())
 		{
-			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Ack, this, std::placeholders::_1), device_id());
+			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Ack, this, std::placeholders::_1), (*device_id)());
 		}
 	}
 

@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <magic_enum.hpp>
+#include <magic_enum_utility.hpp>
 
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/iaq_device.h"
@@ -50,8 +51,6 @@ namespace AqualinkAutomate::Equipment
 {
 	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub) :
 		IEquipment(io_context),
-		m_IOContext(io_context),
-		m_Devices(),
 		m_IdentifiedDeviceIds(),
 		m_MessageConnections(),
 		m_DataHub(data_hub),
@@ -116,15 +115,23 @@ namespace AqualinkAutomate::Equipment
 		);
 	}
 
-	auto JandyEquipment::IsDeviceRegistered(const Devices::JandyDeviceType& device_id)
+	bool JandyEquipment::AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device)
 	{
-		auto const& device_it = std::find_if(m_Devices.cbegin(), m_Devices.cend(), [device_id](const std::unique_ptr<Devices::JandyDevice>& existing_device)
-			{
-				return (existing_device->DeviceId() == device_id);
-			}
-		);
+		bool added_device = false;
 
-		return device_it;
+		if (IsDeviceRegistered(device->DeviceId()))
+		{
+			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id ({}) already registered", device->DeviceId().Id()));
+		}
+		else
+		{
+			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: {}", device->DeviceId().Id()));
+
+			m_IdentifiedDeviceIds.insert(device->DeviceId().Id());
+			IEquipment::AddDevice(std::move(device));
+		}
+
+		return added_device;
 	}
 
 	void JandyEquipment::IdentifyAndAddDevice(const Messages::JandyMessage& message)
@@ -139,36 +146,38 @@ namespace AqualinkAutomate::Equipment
 		}
 		else
 		{
+			auto device_id = std::make_unique<Devices::JandyDeviceType>(message.Destination().Id());
+
 			switch (message.Destination().Class())
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, message.Destination().Id(), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
-				m_Devices.push_back(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, message.Destination().Id())));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, std::move(device_id))));
 				break;
 
 			default:
@@ -200,25 +209,6 @@ namespace AqualinkAutomate::Equipment
 				message.ChecksumValue()
 			)
 		);
-	}
-
-	bool JandyEquipment::AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device)
-	{
-		bool added_device = false;
-
-		if (m_Devices.end() != IsDeviceRegistered(device->DeviceId()))
-		{
-			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id ({}) already registered", device->DeviceId().Id()));
-		}
-		else
-		{
-			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: {}", device->DeviceId().Id()));
-
-			m_IdentifiedDeviceIds.insert(device->DeviceId().Id());
-			m_Devices.push_back(std::move(device));
-		}
-
-		return added_device;
 	}
 
 }

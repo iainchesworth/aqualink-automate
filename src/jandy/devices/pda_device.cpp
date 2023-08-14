@@ -10,12 +10,12 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 	
-	PDADevice::PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated) :
-		JandyController(io_context, device_id, PDA_TIMEOUT_DURATION, config),
+	PDADevice::PDADevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated) :
+		JandyController(io_context, std::move(device_id), PDA_TIMEOUT_DURATION, config),
 		Capabilities::Screen(PDA_PAGE_LINES),
 		Capabilities::Scrapeable
 		(
-			device_id,
+			*device_id,
 			{
 				{ PDA_CONFIG_INIT_SCRAPER + 0, { {},{} } },
 				{ PDA_CONFIG_INIT_SCRAPER + 1, { {},{} } }
@@ -42,18 +42,18 @@ namespace AqualinkAutomate::Devices
 			}
 		);
 
-		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_Clear>(std::bind(&PDADevice::Slot_PDA_Clear, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_Highlight>(std::bind(&PDADevice::Slot_PDA_Highlight, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_HighlightChars>(std::bind(&PDADevice::Slot_PDA_HighlightChars, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&PDADevice::Slot_PDA_Probe, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_MessageLong>(std::bind(&PDADevice::Slot_PDA_MessageLong, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Status>(std::bind(&PDADevice::Slot_PDA_Status, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_ShiftLines>(std::bind(&PDADevice::Slot_PDA_ShiftLines, this, std::placeholders::_1), device_id());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Unknown>(std::bind(&PDADevice::Slot_PDA_Unknown_PDA_1B, this, std::placeholders::_1), device_id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_Clear>(std::bind(&PDADevice::Slot_PDA_Clear, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_Highlight>(std::bind(&PDADevice::Slot_PDA_Highlight, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_HighlightChars>(std::bind(&PDADevice::Slot_PDA_HighlightChars, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&PDADevice::Slot_PDA_Probe, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_MessageLong>(std::bind(&PDADevice::Slot_PDA_MessageLong, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Status>(std::bind(&PDADevice::Slot_PDA_Status, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_ShiftLines>(std::bind(&PDADevice::Slot_PDA_ShiftLines, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Unknown>(std::bind(&PDADevice::Slot_PDA_Unknown_PDA_1B, this, std::placeholders::_1), (*device_id)());
 
 		if (!IsEmulated())
 		{
-			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&PDADevice::Slot_PDA_Ack, this, std::placeholders::_1), device_id());
+			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&PDADevice::Slot_PDA_Ack, this, std::placeholders::_1), (*device_id)());
 		}
 	}
 

@@ -58,7 +58,7 @@ namespace magic_enum::customize
 	//
 
 	template<>
-	constexpr customize_t magic_enum::customize::enum_name<JandyAuxillaryIds>(JandyAuxillaryIds value) noexcept
+	constexpr customize_t enum_name<JandyAuxillaryIds>(JandyAuxillaryIds value) noexcept
 	{
 		switch (value)
 		{

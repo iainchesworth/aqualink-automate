@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Devices
 	class JandyController : public JandyDevice
 	{
 	public:
-		JandyController(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, Kernel::DataHub& config);
+		JandyController(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, std::chrono::seconds timeout_in_seconds, Kernel::DataHub& config);
 		virtual ~JandyController();
 
 	protected:

@@ -6,60 +6,60 @@
 
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
-#include "kernel/data_hub_events/data_hub_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_config_event_chemistry.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	DataHub_Event_Chemistry::DataHub_Event_Chemistry() :
-		DataHub_Event(DataHub_EventTypes::Chemistry),
+	DataHub_ConfigEvent_Chemistry::DataHub_ConfigEvent_Chemistry() :
+		DataHub_ConfigEvent(DataHub_EventTypes::Chemistry),
 		m_ORP(std::nullopt),
 		m_pH(std::nullopt),
 		m_SaltLevel(std::nullopt)
 	{
 	}
 
-	DataHub_Event_Chemistry::~DataHub_Event_Chemistry()
+	DataHub_ConfigEvent_Chemistry::~DataHub_ConfigEvent_Chemistry()
 	{
 	}
 
-	std::optional<Kernel::ORP> DataHub_Event_Chemistry::ORP() const
+	std::optional<Kernel::ORP> DataHub_ConfigEvent_Chemistry::ORP() const
 	{
 		return m_ORP;
 	}
 
-	std::optional<Kernel::pH> DataHub_Event_Chemistry::pH() const
+	std::optional<Kernel::pH> DataHub_ConfigEvent_Chemistry::pH() const
 	{
 		return m_pH;
 	}
 
-	std::optional<Units::ppm_quantity> DataHub_Event_Chemistry::SaltLevel() const
+	std::optional<Units::ppm_quantity> DataHub_ConfigEvent_Chemistry::SaltLevel() const
 	{
 		return m_SaltLevel;
 	}
 
-	void DataHub_Event_Chemistry::ORP(const Kernel::ORP& orp)
+	void DataHub_ConfigEvent_Chemistry::ORP(const Kernel::ORP& orp)
 	{
 		m_ORP = orp;
 	}
 
-	void DataHub_Event_Chemistry::pH(const Kernel::pH& pH)
+	void DataHub_ConfigEvent_Chemistry::pH(const Kernel::pH& pH)
 	{
 		m_pH = pH;
 	}
 
-	void DataHub_Event_Chemistry::SaltLevel(const Units::ppm_quantity& salt_level_in_ppm)
+	void DataHub_ConfigEvent_Chemistry::SaltLevel(const Units::ppm_quantity& salt_level_in_ppm)
 	{
 		m_SaltLevel = salt_level_in_ppm;
 	}
 
-	boost::uuids::uuid DataHub_Event_Chemistry::Id() const
+	boost::uuids::uuid DataHub_ConfigEvent_Chemistry::Id() const
 	{
 		static boost::uuids::uuid id{ boost::uuids::random_generator()() };
 		return id;
 	}
 
-	nlohmann::json DataHub_Event_Chemistry::ToJSON() const
+	nlohmann::json DataHub_ConfigEvent_Chemistry::ToJSON() const
 	{
 		nlohmann::json j;
 

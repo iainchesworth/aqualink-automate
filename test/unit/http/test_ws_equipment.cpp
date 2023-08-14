@@ -4,9 +4,9 @@
 
 #include "http/websocket_event.h"
 #include "http/websocket_equipment.h"
-#include "kernel/data_hub_events/data_hub_event.h"
-#include "kernel/data_hub_events/data_hub_event_chemistry.h"
-#include "kernel/data_hub_events/data_hub_event_temperature.h"
+#include "kernel/data_hub_events/data_hub_config_event.h"
+#include "kernel/data_hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
 
 #include "support/unit_test_onetouchdevice_httpserver.h"
 #include "support/unit_test_ostream_support.h"
@@ -18,8 +18,8 @@ BOOST_FIXTURE_TEST_SUITE(WebsocketRoutes_WsEquipment, Test::Test_OneTouchDeviceP
 BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
 {
 	{
-		auto config_event_null = std::make_shared<Kernel::DataHub_Event_Chemistry>();
-		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_Event>(config_event_null);
+		auto config_event_null = std::make_shared<Kernel::DataHub_ConfigEvent_Chemistry>();
+		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent>(config_event_null);
 		BOOST_REQUIRE(nullptr != config_event_base);
 		HTTP::WebSocket_Event wse1(config_event_base);
 
@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
 	}
 
 	{
-		auto config_event_chem = std::make_shared<Kernel::DataHub_Event_Chemistry>();
+		auto config_event_chem = std::make_shared<Kernel::DataHub_ConfigEvent_Chemistry>();
 		BOOST_REQUIRE(nullptr != config_event_chem);
 		config_event_chem->ORP(650);
 		config_event_chem->pH(7.5f);
@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
 BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 {
 	{
-		auto config_event_null = std::make_shared<Kernel::DataHub_Event_Temperature>();
-		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_Event>(config_event_null);
+		auto config_event_null = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
+		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent>(config_event_null);
 		BOOST_REQUIRE(nullptr != config_event_base);
 		HTTP::WebSocket_Event wse1(config_event_base);
 
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	}
 
 	{
-		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
+		auto config_event_temp = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
 		config_event_temp->PoolTemp(Utility::Temperature("Pool        90`F")().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse2(config_event_temp);
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	}
 
 	{
-		auto config_event_temp = std::make_shared<Kernel::DataHub_Event_Temperature>();
+		auto config_event_temp = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
 		config_event_temp->PoolTemp(Utility::Temperature("Pool        21`C")().value()); // Make sure to use the right separator character --> `
 		config_event_temp->SpaTemp(Utility::Temperature("Spa         39`C")().value()); // Make sure to use the right separator character --> `

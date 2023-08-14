@@ -27,9 +27,5 @@ target_link_libraries(Cinatra INTERFACE Threads::Threads OpenSSL::SSL OpenSSL::C
 # warnings when compiling using Clang with the MSVC frontend....silence those warnings 
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     target_compile_definitions(Cinatra INTERFACE _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
-  elseif (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
-    # Do nothing as this is a non-MSVC variant.
-  endif()
 endif()

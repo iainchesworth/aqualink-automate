@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 #include <magic_enum.hpp>
+#include <magic_enum_utility.hpp>
 
 #include "logging/logging_attributes.h"
 #include "logging/logging_severity_filter.h"

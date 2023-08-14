@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Test
 		m_StatisticsHub(),
 		m_JandyEquipment(m_IOContext, m_DataHub, m_StatisticsHub),
 		m_IsEmulated(false),
-		m_OneTouch(m_IOContext, m_DeviceId, m_DataHub, m_IsEmulated)
+		m_OneTouch(m_IOContext, std::move(std::make_unique<Devices::JandyDeviceType>(m_DeviceId)), m_DataHub, m_IsEmulated)
 	{
 	}
 

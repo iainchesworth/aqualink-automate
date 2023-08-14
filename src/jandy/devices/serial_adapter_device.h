@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
-		SerialAdapterDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
+		SerialAdapterDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~SerialAdapterDevice();
 
 	private:

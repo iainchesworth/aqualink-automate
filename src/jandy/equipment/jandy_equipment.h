@@ -28,19 +28,16 @@ namespace AqualinkAutomate::Equipment
 		JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub);
 		virtual ~JandyEquipment();
 
+	public:
+		bool AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device);
+
 	private:
-		auto IsDeviceRegistered(const Devices::JandyDeviceType& device_id);
 		void IdentifyAndAddDevice(const Messages::JandyMessage& message);
 
 	private:
 		void DisplayUnknownMessages(const Messages::JandyMessage& message);
 
-	public:
-		bool AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device);
-
 	private:
-		boost::asio::io_context& m_IOContext;
-		std::vector<std::unique_ptr<Devices::JandyDevice>> m_Devices;
 		std::unordered_set<Devices::JandyDeviceId> m_IdentifiedDeviceIds;
 
 	private:
