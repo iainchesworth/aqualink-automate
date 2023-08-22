@@ -4,6 +4,7 @@
 
 #include "http/websocket_event_types.h"
 #include "interfaces/imessage.h"
+#include "jandy/auxillaries/jandy_auxillary_id.h"
 #include "jandy/devices/jandy_emulated_device_types.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
@@ -20,8 +21,22 @@
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging_severity_levels.h"
 #include "profiling/types/profiling_types.h"
+
+namespace AqualinkAutomate::Auxillaries
+{
+    std::ostream& boost_test_print_type(std::ostream& os, JandyAuxillaryIds const& right);
+}
+// namespace AqualinkAutomate::Auxillaries
+
+namespace AqualinkAutomate::Devices
+{
+    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right);
+}
+// namespace AqualinkAutomate::Devices
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -45,12 +60,11 @@ namespace AqualinkAutomate::Kernel
 }
 // namespace AqualinkAutomate::Kernel
 
-namespace AqualinkAutomate::Devices
+namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
-    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryTypes const& right);
 }
-// namespace AqualinkAutomate::Devices
+// namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 
 namespace AqualinkAutomate::HTTP
 {

@@ -15,6 +15,7 @@ add_executable(
 	unit/devices/test_devices_screendatapage_processor.cpp 
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
+	unit/factories/test_factories_jandy_auxillary.cpp 
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
 	unit/http/test_api_equipment.cpp 

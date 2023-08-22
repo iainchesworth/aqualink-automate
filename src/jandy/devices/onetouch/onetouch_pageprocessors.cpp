@@ -156,7 +156,7 @@ namespace AqualinkAutomate::Devices
 			
 			if (auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().OneTouchDevice_CreateDevice(new_aux_state); !aux_ptr.has_value())
 			{
-				///FIXME
+				LogTrace(Channel::Devices, std::format("Failed to create a device for this specific devic's row text: {}", Utility::TrimWhitespace(page[row_index].Text)));
 			}
 			else
 			{

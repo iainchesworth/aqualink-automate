@@ -10,7 +10,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Interfaces
 {
 
-    IDevice::IDevice(boost::asio::io_context& io_context, std::unique_ptr<IDeviceIdentifier>&& device_id, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
+    IDevice::IDevice(boost::asio::io_context& io_context, std::shared_ptr<IDeviceIdentifier> device_id, std::chrono::seconds timeout_in_seconds = std::chrono::seconds(30)) :
         m_IsOperating(false),
         m_DeviceId(std::move(device_id)),
         m_DeviceStatus(std::make_unique<Devices::DeviceStatus_Unknown>()),

@@ -218,6 +218,7 @@ add_library(
 	src/jandy/devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	src/jandy/equipment/jandy_equipment.cpp
 	src/jandy/equipment/jandy_equipment_versions.cpp 
+	src/jandy/errors/jandy_errors_auxillary_factory.cpp 
 	src/jandy/errors/jandy_errors_messages.cpp
 	src/jandy/errors/jandy_errors_protocol.cpp
 	src/jandy/errors/jandy_errors_scrapeable.cpp 

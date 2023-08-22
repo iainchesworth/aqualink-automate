@@ -4,6 +4,32 @@
 
 #include "support/unit_test_ostream_support.h"
 
+namespace AqualinkAutomate::Auxillaries
+{
+    std::ostream& boost_test_print_type(std::ostream& os, JandyAuxillaryIds const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+}
+// AqualinkAutomate::Auxillaries
+
+namespace AqualinkAutomate::Devices
+{
+    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+}
+// namespace AqualinkAutomate::Devices
+
 namespace AqualinkAutomate::ErrorCodes
 {
     //std::ostream& boost_test_print_type(std::ostream& os, ErrorCode const& right) { return os; };
@@ -51,21 +77,17 @@ namespace AqualinkAutomate::Kernel
 }
 // namespace AqualinkAutomate::Kernel
 
-namespace AqualinkAutomate::Devices
+namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
-    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right)
+
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryTraitsTypes::AuxillaryTypes const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
     }
 
-    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right)
-    {
-        os << magic_enum::enum_name(right);
-        return os;
-    }
 }
-// namespace AqualinkAutomate::Devices
+// namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 
 namespace AqualinkAutomate::HTTP
 {

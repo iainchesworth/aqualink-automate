@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated);
+		IAQDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~IAQDevice();
 
 	private:

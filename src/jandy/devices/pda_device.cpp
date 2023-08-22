@@ -10,8 +10,8 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 	
-	PDADevice::PDADevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated) :
-		JandyController(io_context, std::move(device_id), PDA_TIMEOUT_DURATION, config),
+	PDADevice::PDADevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated) :
+		JandyController(io_context, device_id, PDA_TIMEOUT_DURATION, config),
 		Capabilities::Screen(PDA_PAGE_LINES),
 		Capabilities::Scrapeable
 		(

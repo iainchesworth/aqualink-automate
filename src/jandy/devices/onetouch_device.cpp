@@ -12,8 +12,8 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	OneTouchDevice::OneTouchDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated) :
-		JandyController(io_context, std::move(device_id), ONETOUCH_TIMEOUT_DURATION, config),
+	OneTouchDevice::OneTouchDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated) :
+		JandyController(io_context, device_id, ONETOUCH_TIMEOUT_DURATION, config),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),
 		Capabilities::Scrapeable
 		(

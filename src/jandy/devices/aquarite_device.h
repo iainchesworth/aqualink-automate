@@ -39,8 +39,8 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		AquariteDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id);
-		AquariteDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
+		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id);
+		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice();
 
 	public:

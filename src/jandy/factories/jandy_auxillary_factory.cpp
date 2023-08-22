@@ -3,6 +3,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "jandy/auxillaries/jandy_auxillary_traits_types.h"
+#include "jandy/errors/jandy_errors_auxillary_factory.h"
 #include "jandy/factories/jandy_auxillary_factory.h"
 #include "jandy/utility/string_conversion/auxillary_state.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
@@ -60,36 +61,23 @@ namespace AqualinkAutomate::Factory
 
 	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::OneTouchDevice_CreateDevice(const Utility::AuxillaryState& aux_state)
 	{
+		auto ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_UnknownFactoryError);
+
 		if (!aux_state.Label().has_value())
 		{
 			LogDebug(Channel::Equipment, "Received an invalid auxillary status; factory cannot create a new device using auxillary status");
+			ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_ReceivedInvalidAuxillaryStatus);
 		}
 		else if (IsAuxillaryDevice(aux_state.Label().value()))
 		{
-			auto aux_label = aux_state.Label().value();
-
-			if ((5 > aux_label.size()) || (6 < aux_label.size()))
+			if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(aux_state.Label().value()); !aux_id.has_value())
 			{
-				// invalid size
-			}
-			else if (!aux_label.starts_with(AUX_PREFIX))
-			{
-				// not an auxillary prefix
+				ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_CannotCastToJandyAuxillaryId);
 			}
 			else
 			{
-				// Attempt to create an AuxillaryId
-				std::ranges::replace(aux_label, ' ', '_');
-				
-				if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(aux_label); !aux_id.has_value())
-				{
-					// could not create an AuxillaryId
-				}
-				else
-				{
-					DeviceData data{ AuxillaryDevice_Data{ std::nullopt, aux_id.value(), aux_state.State().value_or(Kernel::AuxillaryStatuses::Unknown) }};
-					return CreateDevice_Impl(data);
-				}
+				DeviceData data{ AuxillaryDevice_Data{ std::nullopt, aux_id.value(), aux_state.State().value_or(Kernel::AuxillaryStatuses::Unknown) }};
+				return CreateDevice_Impl(data);
 			}
 		}
 		else if (IsChlorinatorDevice(aux_state.Label().value()))
@@ -133,16 +121,38 @@ namespace AqualinkAutomate::Factory
 		else
 		{
 			// Unknown device type...ignore it.
+			ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_UnknownDeviceLabel);
 		}
 
-		return tl::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
+		return tl::unexpected(ec);
 	}
 
 	bool JandyAuxillaryFactory::IsAuxillaryDevice(const std::string& label) const
 	{
-		if ((label.starts_with(AUX_PREFIX)) || (EXTRA_AUX == label))
+		if (EXTRA_AUX == label)
 		{
 			return true;
+		}
+		else if (label.starts_with(AUX_PREFIX))
+		{
+			// Generic auxillary labels are "Aux1" or "Aux B1" so 4 or 6 characters.
+			static const uint8_t AUX_LABEL_LENGTH = 4;
+			static const uint8_t AUX_LABEL_RPC_LENGTH = 6;
+
+			switch (label.size())
+			{
+			case AUX_LABEL_LENGTH:
+			case AUX_LABEL_RPC_LENGTH:
+				return true;
+
+			default:
+				// Auxillary label length is not as expected.
+				break;
+			}
+		}
+		else
+		{
+			// Doesn't appear to be a valid auxillary label
 		}
 
 		return false;
@@ -182,7 +192,7 @@ namespace AqualinkAutomate::Factory
 	{
 		if (auto aux_ptr = std::make_shared<Kernel::AuxillaryDevice>(); nullptr == aux_ptr)
 		{
-			return tl::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
+			return tl::unexpected(make_error_code(ErrorCodes::Factory_ErrorCodes::Error_FailedToCreateAuxillaryPtr));
 		}
 		else
 		{

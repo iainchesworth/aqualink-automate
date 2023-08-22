@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Interfaces
     class IDevice
     {
     public:
-        IDevice(boost::asio::io_context& io_context, std::unique_ptr<IDeviceIdentifier>&& device_id, std::chrono::seconds timeout_in_seconds);
+        IDevice(boost::asio::io_context& io_context, std::shared_ptr<IDeviceIdentifier> device_id, std::chrono::seconds timeout_in_seconds);
         virtual ~IDevice();
 
     public:
@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Interfaces
         const IDeviceIdentifier& DeviceId() const;
 
     private:
-        std::unique_ptr<IDeviceIdentifier> m_DeviceId;
+        std::shared_ptr<IDeviceIdentifier> m_DeviceId;
 
     public:
         const IDeviceStatus& Status() const;

@@ -3,8 +3,8 @@
 namespace AqualinkAutomate::Devices
 {
 
-	JandyDevice::JandyDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, std::chrono::seconds timeout_in_seconds) :
-		IDevice(io_context, std::move(device_id), timeout_in_seconds),
+	JandyDevice::JandyDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, std::chrono::seconds timeout_in_seconds) :
+		IDevice(io_context, device_id, timeout_in_seconds),
 		m_SlotManager()
 	{
 	}

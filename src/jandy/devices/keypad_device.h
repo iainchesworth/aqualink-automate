@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		KeypadDevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated);
+		KeypadDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~KeypadDevice();
 
 	private:

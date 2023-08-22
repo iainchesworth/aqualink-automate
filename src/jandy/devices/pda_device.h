@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		PDADevice(boost::asio::io_context& io_context, std::unique_ptr<Devices::JandyDeviceType>&& device_id, Kernel::DataHub& config, bool is_emulated);
+		PDADevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
 		virtual ~PDADevice();
 
 	private:
