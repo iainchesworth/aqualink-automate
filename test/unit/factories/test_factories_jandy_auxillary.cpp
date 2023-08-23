@@ -1,3 +1,5 @@
+#include <tuple>
+
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/auxillaries/jandy_auxillary_traits_types.h"
@@ -21,96 +23,187 @@ BOOST_AUTO_TEST_CASE(SerialAdapterDevice_CreateDevice_Test)
 {
     Factory::JandyAuxillaryFactory& factory = Factory::JandyAuxillaryFactory::Instance();
 
-    // Test with various Auxillary IDs and Statuses
-    // Note: You should replace these with the valid IDs and statuses in your code
+    const std::vector<Auxillaries::JandyAuxillaryIds> valid_aux_ids =
+    {
+        Auxillaries::JandyAuxillaryIds::Aux_1,
+        Auxillaries::JandyAuxillaryIds::Aux_B1,
+        Auxillaries::JandyAuxillaryIds::ExtraAux
+    };
+    
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(valid_aux_ids[0]);
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Unknown);
+    }
 
-    /*auto aux_id = Auxillaries::SOME_VALID_ID;
-    auto status = Auxillaries::SOME_VALID_STATUS;
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(valid_aux_ids[1]);
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_B1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Unknown);
+    }
 
-    auto result1 = factory.SerialAdapterDevice_CreateDevice(aux_id);
-    auto result2 = factory.SerialAdapterDevice_CreateDevice(aux_id, status);*/
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(valid_aux_ids[2]);
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::ExtraAux);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Unknown);
+    }
 
-    // Validate the results according to your expectations
-    // BOOST_TEST(result1.has_value());
-    // BOOST_TEST(result2.has_value());
+    const std::vector<std::tuple<Auxillaries::JandyAuxillaryIds, Auxillaries::JandyAuxillaryStatuses>> valid_aux_ids_with_status =
+    {
+        { Auxillaries::JandyAuxillaryIds::Aux_1, Auxillaries::JandyAuxillaryStatuses::Off },
+        { Auxillaries::JandyAuxillaryIds::Aux_B1, Auxillaries::JandyAuxillaryStatuses::On },
+        { Auxillaries::JandyAuxillaryIds::ExtraAux, Auxillaries::JandyAuxillaryStatuses::Unknown }
+    };
+
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(std::get<Auxillaries::JandyAuxillaryIds>(valid_aux_ids_with_status[0]), std::get<Auxillaries::JandyAuxillaryStatuses>(valid_aux_ids_with_status[0]));
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Off);
+    }
+
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(std::get<Auxillaries::JandyAuxillaryIds>(valid_aux_ids_with_status[1]), std::get<Auxillaries::JandyAuxillaryStatuses>(valid_aux_ids_with_status[1]));
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_B1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::On);
+    }
+
+    {
+        auto test_ptr = factory.SerialAdapterDevice_CreateDevice(std::get<Auxillaries::JandyAuxillaryIds>(valid_aux_ids_with_status[2]), std::get<Auxillaries::JandyAuxillaryStatuses>(valid_aux_ids_with_status[2]));
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::ExtraAux);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Unknown);
+    }
+
 }
 
 BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test) 
 {
     Factory::JandyAuxillaryFactory& factory = Factory::JandyAuxillaryFactory::Instance();
 
-    static const std::vector<std::string> valid_aux_label_and_status =
+    const std::vector<std::string> valid_aux_label_and_status =
     {
         "Aux1         OFF",
-        "Aux B1       OFF",
+        "Aux B1        ON",
         "Extra Aux    OFF",
-        "AquaPure     OFF",
+        "AquaPure      ON",
         "Cleaner      OFF",
         "Heat Pump    OFF",
-        "Pool Pump    OFF",
-        "Spillover    OFF"
+        "Pool Pump     ON",
+        "Spillover    OFF",
+        "Spa Heat     ENA"
     };
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[0]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_1);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Off);
+
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[1]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_B1);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::Aux_B1);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::On);
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[2]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::ExtraAux);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(Auxillaries::JandyAuxillaryId{})) == Auxillaries::JandyAuxillaryIds::ExtraAux);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryStatusTrait{})) == Kernel::AuxillaryStatuses::Off);
     }
     
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[3]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::ChlorinatorStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::ChlorinatorStatusTrait{})) == Kernel::ChlorinatorStatuses::Running);
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[4]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Cleaner);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Cleaner);
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[5]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::HeaterStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::HeaterStatusTrait{})) == Kernel::HeaterStatuses::Off);
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[6]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Pump);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Pump);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::PumpStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::PumpStatusTrait{})) == Kernel::PumpStatuses::Running);
     }
 
     {
         auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[7]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
-        BOOST_TEST_REQUIRE(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Spillover);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Spillover);
+    }
+
+    {
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[8]));
+        BOOST_TEST_REQUIRE(test_ptr.has_value());
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+        BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::HeaterStatusTrait{}));
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::HeaterStatusTrait{})) == Kernel::HeaterStatuses::Enabled);
     }
 
     static const std::vector<std::string> invalid_aux_label_and_status =
