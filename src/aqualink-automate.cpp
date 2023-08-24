@@ -26,6 +26,8 @@
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
 #include "kernel/data_hub.h"
+#include "kernel/equipment_hub.h"
+#include "kernel/hub_locator.h"
 #include "kernel/preferences_hub.h"
 #include "kernel/statistics_hub.h"
 #include "jandy/devices/iaq_device.h"
@@ -118,12 +120,16 @@ int main(int argc, char* argv[])
 		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
 		//---------------------------------------------------------------------
-		// DATA HUB 
+		// INFORMATION DISTRIBUTION HUBS 
 		//---------------------------------------------------------------------
 
-		Kernel::DataHub data_hub;
-		Kernel::PreferencesHub preferences_hub;
-		Kernel::StatisticsHub statistics_hub;
+		Kernel::HubLocator hub_locator;
+
+		hub_locator
+			.Register(std::make_shared<Kernel::DataHub>())
+			.Register(std::make_shared<Kernel::EquipmentHub>())
+			.Register(std::make_shared<Kernel::PreferencesHub>())
+			.Register(std::make_shared<Kernel::StatisticsHub>());
 
 		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT
@@ -131,7 +137,7 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		Equipment::JandyEquipment jandy_equipment(io_context, data_hub, statistics_hub);
+		Equipment::JandyEquipment jandy_equipment(io_context, hub_locator);
 
 		if (!settings.emulated_device.disable_emulation)
 		{
@@ -145,23 +151,23 @@ int main(int argc, char* argv[])
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, device_id, data_hub, true);
+					emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, device_id, hub_locator, true);
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, device_id, data_hub, true);
+					emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, device_id, hub_locator, true);
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					emulated_device = std::make_unique<Devices::IAQDevice>(io_context, device_id, data_hub, true);
+					emulated_device = std::make_unique<Devices::IAQDevice>(io_context, device_id, hub_locator, true);
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					emulated_device = std::make_unique<Devices::PDADevice>(io_context, device_id, data_hub, true);
+					emulated_device = std::make_unique<Devices::PDADevice>(io_context, device_id, hub_locator, true);
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					emulated_device = std::make_unique<Devices::SerialAdapterDevice>(io_context, device_id, data_hub, true);
+					emulated_device = std::make_unique<Devices::SerialAdapterDevice>(io_context, device_id, hub_locator, true);
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:
@@ -229,8 +235,8 @@ int main(int argc, char* argv[])
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Index>(http_server, data_hub));
-			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Equipment>(http_server, data_hub));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Index>(http_server, hub_locator));
+			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Equipment>(http_server, hub_locator));
 			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Version>(http_server));
 		}
 
@@ -248,14 +254,14 @@ int main(int argc, char* argv[])
 		//     /ws/equipment/stats
 		//
 
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment>(http_server, data_hub, statistics_hub));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Buttons>(http_server, data_hub));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Devices>(http_server, data_hub));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Version>(http_server, data_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment>(http_server, hub_locator));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Buttons>(http_server, hub_locator));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Devices>(http_server, hub_locator));
+		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Version>(http_server, hub_locator));
 		http_routes.push_back(std::make_shared<HTTP::WebRoute_Version>(http_server));
 
-		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment>(http_server, data_hub));
-		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment_Stats>(http_server, statistics_hub));
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment>(http_server, hub_locator));
+		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment_Stats>(http_server, hub_locator));
 
 		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
 		auto _ = std::async(std::launch::async, [&http_server]() -> void { http_server.run(); });

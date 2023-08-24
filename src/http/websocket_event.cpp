@@ -33,11 +33,11 @@ namespace AqualinkAutomate::HTTP
 		{
 			switch (config_event->Type())
 			{
-			case Kernel::DataHub_EventTypes::Chemistry:
+			case Kernel::Hub_EventTypes::Chemistry:
 				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Chemistry>(config_event));
 				break;
 
-			case Kernel::DataHub_EventTypes::Temperature:
+			case Kernel::Hub_EventTypes::Temperature:
 				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Temperature>(config_event));
 				break;
 
@@ -59,28 +59,28 @@ namespace AqualinkAutomate::HTTP
 		this->operator=(temp_config_event);
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent> system_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		if (nullptr == system_event)
 		{
-			LogDebug(Channel::Web, "Invalid event type; cannot process DataHub_SystemEvent type and payload.");
+			LogDebug(Channel::Web, "Invalid event type; cannot process EquipmentHub_SystemEvent type and payload.");
 		}
 		else
 		{
 			switch (system_event->Type())
 			{
-			case Kernel::DataHub_EventTypes::ServiceStatus:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_SystemEvent_StatusChange>(system_event));
+			case Kernel::Hub_EventTypes::ServiceStatus:
+				this->operator=(std::dynamic_pointer_cast<Kernel::EquipmentHub_SystemEvent_StatusChange>(system_event));
 				break;
 
 			default:
-				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_SystemEvent type and payload.");
+				LogDebug(Channel::Web, "Unknown event type; cannot process EquipmentHub_SystemEvent type and payload.");
 			}
 		}
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event) :
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(status_system_event);
@@ -118,11 +118,11 @@ namespace AqualinkAutomate::HTTP
 		return *this;
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_SystemEvent_StatusChange> status_system_event)
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event)
 	{
 		if (nullptr == status_system_event)
 		{
-			LogDebug(Channel::Web, "Invalid DataHub_SystemEvent_StatusChange; cannot process type and payload.");
+			LogDebug(Channel::Web, "Invalid EquipmentHub_SystemEvent_StatusChange; cannot process type and payload.");
 		}
 		else
 		{

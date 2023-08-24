@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -33,7 +34,7 @@ namespace AqualinkAutomate::Test
 
 	public:
 		Test_OneTouchDevicePlusHttpServer();
-		~Test_OneTouchDevicePlusHttpServer();
+		virtual ~Test_OneTouchDevicePlusHttpServer();
 
 	public:
 		void StartHttpServer();

@@ -7,7 +7,7 @@
 
 #include "kernel/orp.h"
 #include "kernel/ph.h"
-#include "kernel/data_hub_events/data_hub_config_event.h"
+#include "kernel/hub_events/data_hub_config_event.h"
 #include "types/units_dimensionless.h"
 
 namespace AqualinkAutomate::Kernel

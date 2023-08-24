@@ -13,7 +13,7 @@
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_message_long.h"
 #include "jandy/messages/jandy_message_status.h"
-#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		KeypadDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
+		KeypadDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~KeypadDevice();
 
 	private:

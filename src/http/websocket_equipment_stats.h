@@ -1,11 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include <boost/signals2.hpp>
 
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
+#include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
 
 namespace AqualinkAutomate::HTTP
@@ -15,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 	class WebSocket_Equipment_Stats: public Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>, public Interfaces::IShareableRoute
 	{
 	public:
-		WebSocket_Equipment_Stats(HTTP::Server& http_server, const Kernel::StatisticsHub& statistics_hub);
+		WebSocket_Equipment_Stats(HTTP::Server& http_server, Kernel::HubLocator& hub_locator);
 
 	private:
 		virtual void OnOpen(HTTP::Request& req) override;
@@ -24,7 +26,7 @@ namespace AqualinkAutomate::HTTP
 		virtual void OnError(HTTP::Request& req) override;
 
 	private:
-		const Kernel::StatisticsHub& m_StatisticsHub;
+		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };
 		boost::signals2::connection m_StatsSlot;
 	};
 

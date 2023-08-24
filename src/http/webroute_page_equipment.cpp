@@ -7,11 +7,11 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Equipment::WebRoute_Page_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
+	WebRoute_Page_Equipment::WebRoute_Page_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>(http_server),
-		Interfaces::IShareableRoute(),
-		m_DataHub(data_hub)
+		Interfaces::IShareableRoute()
 	{
+		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
 	void WebRoute_Page_Equipment::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)

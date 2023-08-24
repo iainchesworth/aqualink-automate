@@ -7,14 +7,16 @@ namespace AqualinkAutomate::Test
 {
 
 	OneTouchDevice::OneTouchDevice() :
+		Test::HubLocatorInjector(),
 		m_IOContext(),
 		m_DeviceId(0x00), // Make the device think it's 0x00 so that signals are not filtered out.
-		m_DataHub(),
-		m_StatisticsHub(),
-		m_JandyEquipment(m_IOContext, m_DataHub, m_StatisticsHub),
-		m_IsEmulated(false),
-		m_OneTouch(m_IOContext, std::move(std::make_shared<Devices::JandyDeviceType>(m_DeviceId)), m_DataHub, m_IsEmulated)
+		m_IsEmulated(false)
 	{
+		m_DataHub = this->Find<Kernel::DataHub>();
+		m_StatisticsHub = this->Find<Kernel::StatisticsHub>();
+
+		m_JandyEquipment = std::make_shared<Equipment::JandyEquipment>(m_IOContext, *this);
+		m_OneTouch = std::make_shared<AqualinkAutomate::Devices::OneTouchDevice>(m_IOContext, std::make_shared<Devices::JandyDeviceType>(m_DeviceId), *this, m_IsEmulated);
 	}
 
 	OneTouchDevice::~OneTouchDevice()
@@ -23,17 +25,17 @@ namespace AqualinkAutomate::Test
 
 	Kernel::DataHub& OneTouchDevice::DataHub()
 	{
-		return m_DataHub;
+		return *m_DataHub;
 	}
 
 	Kernel::StatisticsHub& OneTouchDevice::StatisticsHub()
 	{
-		return m_StatisticsHub;
+		return *m_StatisticsHub;
 	}
 
 	Equipment::JandyEquipment& OneTouchDevice::Equipment()
 	{
-		return m_JandyEquipment;
+		return *m_JandyEquipment;
 	}
 
 	void OneTouchDevice::InitialiseOneTouchDevice()

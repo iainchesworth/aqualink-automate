@@ -87,8 +87,8 @@ namespace AqualinkAutomate::Devices
 		const auto model_number = Utility::TrimWhitespace(page[1].Text);
 		const auto fw_revision = Utility::TrimWhitespace(page[6].Text);
 
-		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
+		JandyController::m_DataHub->EquipmentVersions.ModelNumber = model_number;
+		JandyController::m_DataHub->EquipmentVersions.FirmwareRevision = fw_revision;
 
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Rev: {}", model_number, fw_revision));
 	}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -9,21 +10,24 @@
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/equipment/jandy_equipment.h"
 #include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
+
+#include "support/unit_test_hublocatorinjector.h"
 
 using namespace AqualinkAutomate;
 
 namespace AqualinkAutomate::Test
 {
 
-	class OneTouchDevice
+	class OneTouchDevice : public Test::HubLocatorInjector
 	{
 	public:
 		using TestPage = std::vector<std::tuple<uint8_t, std::string>>;
 
 	public:
 		OneTouchDevice();
-		~OneTouchDevice();
+		virtual ~OneTouchDevice();
 
 	public:
 		Kernel::DataHub& DataHub();
@@ -42,13 +46,13 @@ namespace AqualinkAutomate::Test
 	private:
 		boost::asio::io_context m_IOContext;
 		Devices::JandyDeviceType m_DeviceId;
-		Kernel::DataHub m_DataHub;
-		Kernel::StatisticsHub m_StatisticsHub;
-		Equipment::JandyEquipment m_JandyEquipment;
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };
+		std::shared_ptr<Equipment::JandyEquipment> m_JandyEquipment{ nullptr };
 		bool m_IsEmulated;
 
 	private:
-		AqualinkAutomate::Devices::OneTouchDevice m_OneTouch;
+		std::shared_ptr<AqualinkAutomate::Devices::OneTouchDevice> m_OneTouch{ nullptr };
 	};
 
 }

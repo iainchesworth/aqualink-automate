@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "interfaces/ishareableroute.h"
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -20,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>, public Interfaces::IShareableRoute
 	{
 	public:
-		WebRoute_Equipment_Buttons(HTTP::Server& http_server, const Kernel::DataHub& data_hub);
+		WebRoute_Equipment_Buttons(HTTP::Server& http_server, Kernel::HubLocator& hub_locator);
 
 	public:
 		void ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp);
@@ -36,7 +38,7 @@ namespace AqualinkAutomate::HTTP
 		void Report_SystemIsInactive(HTTP::Response& resp);
 
 	private:
-		const Kernel::DataHub& m_DataHub;
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 	};
 
 }

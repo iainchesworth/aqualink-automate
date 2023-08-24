@@ -16,7 +16,7 @@
 #include "jandy/messages/jandy_message_unknown.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_ready.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
-#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 #include "kernel/temperature.h"
 #include "profiling/profiling.h"
 
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
-		SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
+		SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~SerialAdapterDevice();
 
 	private:

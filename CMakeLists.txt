@@ -142,6 +142,7 @@ add_library(
 	src/developer/mock_serial_port.cpp
 	src/devices/device_status.cpp 
 	src/exceptions/exception_genericaqualinkexception.cpp
+	src/exceptions/exception_hubnotfound.cpp 
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp 
 	src/exceptions/exception_options_conflictingoptions.cpp 
@@ -178,6 +179,7 @@ add_library(
 	src/interfaces/ideviceidentifier.cpp 
 	src/interfaces/idevicestatus.cpp 
 	src/interfaces/iequipment.cpp	
+	src/interfaces/ihub.cpp 
 	src/interfaces/imessage.cpp
 	src/interfaces/imessagesignal_recv.cpp
 	src/interfaces/imessagesignal_send.cpp
@@ -309,7 +311,9 @@ add_library(
 	src/kernel/circulation.cpp
 	src/kernel/data_hub.cpp
 	src/kernel/data_hub_command.cpp
+	src/kernel/equipment_hub.cpp 
 	src/kernel/flow_rate.cpp 
+	src/kernel/hub_locator.cpp 
 	src/kernel/orp.cpp 
 	src/kernel/ph.cpp
 	src/kernel/pool_configurations.cpp
@@ -318,13 +322,13 @@ add_library(
 	src/kernel/statistics_hub.cpp	 
 	src/kernel/system_boards.cpp
 	src/kernel/temperature.cpp 
-	src/kernel/data_hub_events/data_hub_config_event.cpp
-	src/kernel/data_hub_events/data_hub_config_event_chemistry.cpp
-	src/kernel/data_hub_events/data_hub_config_event_temperature.cpp
-	src/kernel/data_hub_events/data_hub_event.cpp
-	src/kernel/data_hub_events/data_hub_eventtypes.cpp
-	src/kernel/data_hub_events/data_hub_system_event_status_change.cpp
-	src/kernel/data_hub_events/data_hub_system_event.cpp
+	src/kernel/hub_events/data_hub_config_event.cpp
+	src/kernel/hub_events/data_hub_config_event_chemistry.cpp
+	src/kernel/hub_events/data_hub_config_event_temperature.cpp
+	src/kernel/hub_events/equipment_hub_system_event.cpp
+	src/kernel/hub_events/equipment_hub_system_event_status_change.cpp
+	src/kernel/hub_events/hub_event.cpp
+	src/kernel/hub_events/hub_eventtypes.cpp
 	src/kernel/device_graph/device_graph.cpp
 	src/kernel/device_graph/device_graph_filter_by_id.cpp 
 	src/kernel/device_graph/device_graph_filter_by_label.cpp 

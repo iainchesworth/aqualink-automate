@@ -15,8 +15,8 @@ namespace AqualinkAutomate::Test
 	Test_OneTouchDevicePlusHttpServer::Test_OneTouchDevicePlusHttpServer() :
 		Test::OneTouchDevice(),
 		m_HTTPServer(1),
-		m_API_Equipment(m_HTTPServer, DataHub(), StatisticsHub()),
-		m_WS_Equipment(m_HTTPServer, DataHub()),
+		m_API_Equipment(m_HTTPServer, *this),
+		m_WS_Equipment(m_HTTPServer, *this),
 		m_HTTPServerThread()
 	{
 		m_HTTPServer.listen(LISTEN_ADDR, LISTEN_PORT);

@@ -3,7 +3,14 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	// NOTHING HERE
+	StatisticsHub::StatisticsHub() :
+		IHub()
+	{
+	}
+
+	StatisticsHub::~StatisticsHub()
+	{
+	}
 
 }
 // namespace AqualinkAutomate::Kernel

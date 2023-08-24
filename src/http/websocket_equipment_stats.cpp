@@ -7,17 +7,17 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebSocket_Equipment_Stats::WebSocket_Equipment_Stats(HTTP::Server& http_server, const Kernel::StatisticsHub& statistics_hub) :
+	WebSocket_Equipment_Stats::WebSocket_Equipment_Stats(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>(http_server),
 		Interfaces::IShareableRoute(),
-		m_StatisticsHub(statistics_hub),
 		m_StatsSlot()
 	{
+		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
 	void WebSocket_Equipment_Stats::OnOpen(HTTP::Request& req)
 	{
-		m_StatsSlot = m_StatisticsHub.MessageCounts.Signal().connect(
+		m_StatsSlot = m_StatisticsHub->MessageCounts.Signal().connect(
 			[this]() -> void
 			{
 				LogTrace(Channel::Web, "Publishing updated message count statistics to connected web socket.");

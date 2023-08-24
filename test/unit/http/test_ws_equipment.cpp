@@ -4,9 +4,9 @@
 
 #include "http/websocket_event.h"
 #include "http/websocket_equipment.h"
-#include "kernel/data_hub_events/data_hub_config_event.h"
-#include "kernel/data_hub_events/data_hub_config_event_chemistry.h"
-#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
+#include "kernel/hub_events/data_hub_config_event.h"
+#include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/hub_events/data_hub_config_event_temperature.h"
 
 #include "support/unit_test_onetouchdevice_httpserver.h"
 #include "support/unit_test_ostream_support.h"

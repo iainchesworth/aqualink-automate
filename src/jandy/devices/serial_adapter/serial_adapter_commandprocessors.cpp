@@ -20,15 +20,15 @@ namespace AqualinkAutomate::Devices
 		switch (op_mode)
 		{
 		case Messages::SerialAdapter_SCS_OpModes::Auto:
-			JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
+			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Normal;
 			break;
 
 		case Messages::SerialAdapter_SCS_OpModes::Service:
-			JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Service;
+			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Service;
 			break;
 
 		case Messages::SerialAdapter_SCS_OpModes::Timeout:
-			JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::TimeOut;
+			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::TimeOut;
 			break; 
 
 		case Messages::SerialAdapter_SCS_OpModes::Unknown:
@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Devices
 	{
 		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
 		{
-			JandyController::m_Config.AirTemp(temperature);
+			JandyController::m_DataHub->AirTemp(temperature);
 		}
 	}
 
@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Devices
 	{
 		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
 		{
-			JandyController::m_Config.PoolTemp(temperature);
+			JandyController::m_DataHub->PoolTemp(temperature);
 		}
 	}
 
@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Devices
 	{
 		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
 		{
-			JandyController::m_Config.SpaTemp(temperature);
+			JandyController::m_DataHub->SpaTemp(temperature);
 		}
 	}
 
@@ -81,7 +81,7 @@ namespace AqualinkAutomate::Devices
 		// Find (or create) a device that matches this auxillary.
 		//
 
-		auto auxillaries = JandyController::m_Config.Devices.FindByTrait(Auxillaries::JandyAuxillaryId{});
+		auto auxillaries = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{});
 
 		auto aux_has_id = [&aux_id](auto& potential_match) -> bool
 		{
@@ -105,7 +105,7 @@ namespace AqualinkAutomate::Devices
 		}
 		else if (auto new_aux_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id, status); new_aux_ptr.has_value())
 		{
-			JandyController::m_Config.Devices.Add(new_aux_ptr.value());
+			JandyController::m_DataHub->Devices.Add(new_aux_ptr.value());
 			aux_ptr = new_aux_ptr.value();			
 		}
 		else

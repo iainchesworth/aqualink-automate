@@ -3,15 +3,16 @@
 
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
-#include "kernel/data_hub_events/data_hub_config_event_chemistry.h"
-#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
-#include "kernel/data_hub_events/data_hub_system_event_status_change.h"
+#include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/hub_events/data_hub_config_event_temperature.h"
+#include "kernel/hub_events/equipment_hub_system_event_status_change.h"
 #include "utility/case_insensitive_comparision.h"
 
 namespace AqualinkAutomate::Kernel
 {
 	
-	DataHub::DataHub()
+	DataHub::DataHub() : 
+		IHub()
 	{
 	}
 

@@ -41,13 +41,13 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =    Menu / Help
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
+		JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Normal;
 
 		///FIXME - get pool / spa temperature if FP pump is running....
 
 		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
 		{
-			JandyController::m_Config.AirTemp(temperature().value());
+			JandyController::m_DataHub->AirTemp(temperature().value());
 		}
 	}
 
@@ -72,7 +72,7 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Service;
+		JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Service;
 	}
 
 	void OneTouchDevice::PageProcessor_TimeOut(const Utility::ScreenDataPage& page)
@@ -96,8 +96,8 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::TimeOut;
-		JandyController::m_Config.TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10].Text));
+		JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::TimeOut;
+		JandyController::m_DataHub->TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10].Text));
 	}
 
 	void OneTouchDevice::PageProcessor_OneTouch(const Utility::ScreenDataPage& page)
@@ -160,7 +160,7 @@ namespace AqualinkAutomate::Devices
 			}
 			else
 			{
-				JandyController::m_Config.Devices.Add(aux_ptr.value());
+				JandyController::m_DataHub->Devices.Add(aux_ptr.value());
 			}
 		}
 	}
@@ -258,12 +258,12 @@ namespace AqualinkAutomate::Devices
 
 		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
 		{
-			JandyController::m_Config.PoolTemp(temperature().value());
+			JandyController::m_DataHub->PoolTemp(temperature().value());
 		}
 
 		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
 		{
-			JandyController::m_Config.SpaTemp(temperature().value());
+			JandyController::m_DataHub->SpaTemp(temperature().value());
 		}
 
 		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
@@ -307,7 +307,7 @@ namespace AqualinkAutomate::Devices
 
 		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
 		{
-			JandyController::m_Config.FreezeProtectPoint(temperature().value());
+			JandyController::m_DataHub->FreezeProtectPoint(temperature().value());
 		}
 	}
 
@@ -352,10 +352,10 @@ namespace AqualinkAutomate::Devices
 
 		Utility::PoolConfigurationDecoder pool_config_decoder(panel_type);
 
-		JandyController::m_Config.PoolConfiguration = pool_config_decoder.Configuration();
-		JandyController::m_Config.SystemBoard = pool_config_decoder.SystemBoard();
-		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
+		JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
+		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->EquipmentVersions.ModelNumber = model_number;
+		JandyController::m_DataHub->EquipmentVersions.FirmwareRevision = fw_revision;
 		
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
 	}
@@ -490,7 +490,7 @@ namespace AqualinkAutomate::Devices
 		{
 			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
 
-			if (auto aux_collection = m_Config.Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
+			if (auto aux_collection = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
 			{
 				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); temp_ptr.has_value())
 				{

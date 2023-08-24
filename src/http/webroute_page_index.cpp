@@ -13,11 +13,12 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	WebRoute_Page_Index::WebRoute_Page_Index(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
+	WebRoute_Page_Index::WebRoute_Page_Index(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>(http_server),
-		Interfaces::IShareableRoute(),
-		m_DataHub(data_hub)
+		Interfaces::IShareableRoute()
 	{
+		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+
 		PopulateMainActionButtons();		
 	}
 
@@ -25,7 +26,7 @@ namespace AqualinkAutomate::HTTP
 	{
 		Support::GeneratePageHeader_Context(m_TemplateContext);		
 
-		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
+		if (Kernel::PoolConfigurations::Unknown == m_DataHub->PoolConfiguration)
 		{
 			m_TemplateContext.emplace("pool_temperature", std::string{"-"});
 			m_TemplateContext.emplace("spa_temperature", std::string{"-"});
@@ -36,9 +37,9 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			m_TemplateContext.emplace("pool_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.PoolTemp()));
-			m_TemplateContext.emplace("spa_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.SpaTemp()));
-			m_TemplateContext.emplace("air_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub.AirTemp()));
+			m_TemplateContext.emplace("pool_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub->PoolTemp()));
+			m_TemplateContext.emplace("spa_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub->SpaTemp()));
+			m_TemplateContext.emplace("air_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub->AirTemp()));
 
 			m_TemplateContext.emplace("water_orp", std::string{"-"});
 			m_TemplateContext.emplace("water_ph", std::string{"-"});
@@ -117,7 +118,7 @@ namespace AqualinkAutomate::HTTP
 			return button_context;
 		};
 
-		const auto auxillaries = m_DataHub.Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
+		const auto auxillaries = m_DataHub->Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
 
 		mstch::array triggerable_buttons;
 

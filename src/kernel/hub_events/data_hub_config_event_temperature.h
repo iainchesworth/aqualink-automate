@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "kernel/temperature.h"
-#include "kernel/data_hub_events/data_hub_config_event.h"
+#include "kernel/hub_events/data_hub_config_event.h"
 
 namespace AqualinkAutomate::Kernel
 {

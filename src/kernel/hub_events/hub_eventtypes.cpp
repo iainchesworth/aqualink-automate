@@ -1,4 +1,4 @@
-#include "kernel/data_hub_events/data_hub_eventtypes.h"
+#include "kernel/hub_events/hub_eventtypes.h"
 
 namespace AqualinkAutomate::Kernel
 {

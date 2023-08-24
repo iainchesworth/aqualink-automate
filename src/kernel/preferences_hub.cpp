@@ -3,7 +3,14 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	// NOTHING HERE
+	PreferencesHub::PreferencesHub() :
+		IHub()
+	{
+	}
+
+	PreferencesHub::~PreferencesHub()
+	{
+	}
 
 }
 // namespace AqualinkAutomate::Kernel

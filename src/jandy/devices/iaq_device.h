@@ -21,7 +21,7 @@
 #include "jandy/messages/iaq/iaq_message_table_message.h"
 #include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_updater.h"
-#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
+		IAQDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~IAQDevice();
 
 	private:

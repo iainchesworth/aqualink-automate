@@ -8,13 +8,13 @@
 namespace AqualinkAutomate::HTTP::JSON
 {
 
-	nlohmann::json GenerateJson_Equipment_Buttons(const Kernel::DataHub& data_hub)
+	nlohmann::json GenerateJson_Equipment_Buttons(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
 		nlohmann::json je_buttons;
 		return je_buttons;
 	}
 
-	nlohmann::json GenerateJson_Equipment_Devices(const Kernel::DataHub& data_hub)
+	nlohmann::json GenerateJson_Equipment_Devices(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
 		nlohmann::json je_devices;
 		
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP::JSON
 		nlohmann::json heaters;
 		nlohmann::json pumps;
 
-		for (const auto& device : data_hub.Auxillaries())
+		for (const auto& device : data_hub->Auxillaries())
 		{
 			if (nullptr != device)
 			{
@@ -30,7 +30,7 @@ namespace AqualinkAutomate::HTTP::JSON
 			}
 		}
 
-		for (const auto& device : data_hub.Heaters())
+		for (const auto& device : data_hub->Heaters())
 		{
 			if (nullptr != device)
 			{
@@ -38,7 +38,7 @@ namespace AqualinkAutomate::HTTP::JSON
 			}
 		}
 
-		for (const auto& device : data_hub.Pumps())
+		for (const auto& device : data_hub->Pumps())
 		{
 			if (nullptr != device)
 			{
@@ -53,11 +53,11 @@ namespace AqualinkAutomate::HTTP::JSON
 		return je_devices;
 	}
 
-	nlohmann::json GenerateJson_Equipment_Stats(const Kernel::StatisticsHub& statistics_hub)
+	nlohmann::json GenerateJson_Equipment_Stats(std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
 	{
 		nlohmann::json je_stats;
 
-		for (auto [msg_id, msg_count] : statistics_hub.MessageCounts)
+		for (auto [msg_id, msg_count] : statistics_hub->MessageCounts)
 		{
 			try
 			{
@@ -75,9 +75,9 @@ namespace AqualinkAutomate::HTTP::JSON
 		return je_stats;
 	}
 
-	nlohmann::json GenerateJson_Equipment_Version(const Kernel::DataHub& data_hub)
+	nlohmann::json GenerateJson_Equipment_Version(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
-		const auto& versions = data_hub.EquipmentVersions;
+		const auto& versions = data_hub->EquipmentVersions;
 
 		nlohmann::json version_info;
 

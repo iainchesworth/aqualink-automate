@@ -21,7 +21,7 @@
 #include "jandy/messages/pda/pda_message_highlight.h"
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 #include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
@@ -63,7 +63,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated);
+		OneTouchDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~OneTouchDevice();
 
 	private:

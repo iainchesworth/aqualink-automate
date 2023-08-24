@@ -16,6 +16,7 @@
 #include "jandy/generator/jandy_rawdata_generator.h"
 #include "jandy/messages/jandy_message.h"
 #include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
 #include "protocol/protocol_handler.h"
 
@@ -25,7 +26,7 @@ namespace AqualinkAutomate::Equipment
 	class JandyEquipment : public Interfaces::IEquipment
 	{
 	public:
-		JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub);
+		JandyEquipment(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator);
 		virtual ~JandyEquipment();
 
 	public:
@@ -44,8 +45,9 @@ namespace AqualinkAutomate::Equipment
 		std::vector<boost::signals2::connection> m_MessageConnections;
 
 	private:
-		Kernel::DataHub& m_DataHub;
-		Kernel::StatisticsHub& m_StatsHub;
+		Kernel::HubLocator& m_HubLocator;
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+		std::shared_ptr<Kernel::StatisticsHub> m_StatsHub{ nullptr };
 	};
 
 }

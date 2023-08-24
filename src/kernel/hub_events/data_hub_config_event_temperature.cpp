@@ -4,14 +4,14 @@
 #include <magic_enum.hpp>
 
 #include "formatters/temperature_formatter.h"
-#include "kernel/data_hub_events/data_hub_config_event_temperature.h"
+#include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "localisation/translations_and_units_formatter.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
 	DataHub_ConfigEvent_Temperature::DataHub_ConfigEvent_Temperature() :
-		DataHub_ConfigEvent(DataHub_EventTypes::Temperature),
+		DataHub_ConfigEvent(Hub_EventTypes::Temperature),
 		m_PoolTemp(std::nullopt),
 		m_SpaTemp(std::nullopt),
 		m_AirTemp(std::nullopt)

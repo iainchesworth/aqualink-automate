@@ -11,12 +11,12 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/signals2.hpp>
 
+#include "interfaces/ihub.h"
 #include "jandy/equipment/jandy_equipment_modes.h"
 #include "jandy/equipment/jandy_equipment_versions.h"
 #include "jandy/utility/string_conversion/timeout_duration.h"
 #include "kernel/circulation.h"
-#include "kernel/data_hub_events/data_hub_config_event.h"
-#include "kernel/data_hub_events/data_hub_system_event.h"
+#include "kernel/hub_events/data_hub_config_event.h"
 #include "kernel/device_graph/device_graph.h"
 #include "kernel/orp.h"
 #include "kernel/ph.h"
@@ -33,7 +33,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Kernel
 {
 
-	class DataHub
+	class DataHub : public Interfaces::IHub
 	{
 	public:
 		DataHub();
@@ -44,7 +44,6 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_ConfigEvent>)> ConfigUpdateSignal;
-		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_SystemEvent>)> ServiceUpdateSignal;
 
 	//---------------------------------------------------------------------
 	// SERVICE STATUS

@@ -49,16 +49,18 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::DataHub& data_hub, Kernel::StatisticsHub& statistics_hub) :
+	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator) :
 		IEquipment(io_context),
 		m_IdentifiedDeviceIds(),
 		m_MessageConnections(),
-		m_DataHub(data_hub),
-		m_StatsHub(statistics_hub)
+		m_HubLocator(hub_locator)
 	{
+		m_DataHub = m_HubLocator.Find<Kernel::DataHub>();
+		m_StatsHub = m_HubLocator.Find<Kernel::StatisticsHub>();
+
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
-				m_StatsHub.MessageCounts[id] = 0;
+				m_StatsHub->MessageCounts[id] = 0;
 			}
 		);
 
@@ -100,14 +102,14 @@ namespace AqualinkAutomate::Equipment
 		
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
 			{
-				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub.MessageCounts[id], magic_enum::enum_name(id)));
+				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub->MessageCounts[id], magic_enum::enum_name(id)));
 			}
 		);
 
 		LogInfo(
 			Channel::Equipment, 
 			std::format("Stats: {} total messages received", 
-				std::accumulate(m_StatsHub.MessageCounts.cbegin(), m_StatsHub.MessageCounts.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub.MessageCounts)::value_type& elem)
+				std::accumulate(m_StatsHub->MessageCounts.cbegin(), m_StatsHub->MessageCounts.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub->MessageCounts)::value_type& elem)
 				{
 					return previous + elem.second.Count();
 				})
@@ -152,27 +154,27 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_DataHub, false)));
+				IEquipment::AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
@@ -190,9 +192,9 @@ namespace AqualinkAutomate::Equipment
 		}
 
 		// Capture statistics, given we are processing every message.
-		m_StatsHub.MessageCounts[message.Id()]++;
+		m_StatsHub->MessageCounts[message.Id()]++;
 
-		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub.MessageCounts[message.Id()], magic_enum::enum_name(message.Id())));
+		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub->MessageCounts[message.Id()], magic_enum::enum_name(message.Id())));
 	}
 	
 	void JandyEquipment::DisplayUnknownMessages(const Messages::JandyMessage& message)

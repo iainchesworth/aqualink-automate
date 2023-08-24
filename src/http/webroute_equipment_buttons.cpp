@@ -16,7 +16,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment_Buttons::WebRoute_Equipment_Buttons(HTTP::Server& http_server, const Kernel::DataHub& data_hub) :
+	WebRoute_Equipment_Buttons::WebRoute_Equipment_Buttons(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>(http_server,
 			{
 				{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment_Buttons::ButtonCollection_GetHandler, this, std::placeholders::_1, std::placeholders::_2) },
@@ -29,16 +29,16 @@ namespace AqualinkAutomate::HTTP
 				{ HTTP::Methods::POST, std::bind(&WebRoute_Equipment_Buttons::ButtonIndividual_PostHandler, this, std::placeholders::_1, std::placeholders::_2) }
 			}
 		),
-		Interfaces::IShareableRoute(),
-		m_DataHub(data_hub)
+		Interfaces::IShareableRoute()
 	{
+		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
 	void WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(HTTP::Request& req, HTTP::Response& resp)
 	{
 		nlohmann::json buttons, all_buttons;
 
-		const auto all_devices = m_DataHub.Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
+		const auto all_devices = m_DataHub->Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
 		std::for_each(all_devices.begin(), all_devices.end(), [&buttons](const auto& device)
 			{
 				nlohmann::json button;
@@ -86,11 +86,11 @@ namespace AqualinkAutomate::HTTP
 
 		try
 		{
-			if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
+			if (Kernel::PoolConfigurations::Unknown == m_DataHub->PoolConfiguration)
 			{
 				Report_SystemIsInactive(resp);
 			}
-			else if (const auto device{ m_DataHub.Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == device)
+			else if (const auto device{ m_DataHub->Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == device)
 			{
 				// Invalid device pointer...return a bad status.
 				Report_ButtonDoesntExist(resp, button_id);
@@ -132,7 +132,7 @@ namespace AqualinkAutomate::HTTP
 		const auto button_id_sv{ req.get_matches()[1] };
 		const std::string button_id{button_id_sv.str()};
 
-		if (Kernel::PoolConfigurations::Unknown == m_DataHub.PoolConfiguration)
+		if (Kernel::PoolConfigurations::Unknown == m_DataHub->PoolConfiguration)
 		{
 			Report_SystemIsInactive(resp);
 		}
@@ -144,7 +144,7 @@ namespace AqualinkAutomate::HTTP
 				{
 					Report_ButtonDoesntExist(resp, "");
 				}
-				else if (const auto button_device{ m_DataHub.Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == button_device)
+				else if (const auto button_device{ m_DataHub->Devices.FindById(boost::uuids::string_generator()(button_id)) }; nullptr == button_device)
 				{
 					Report_ButtonDoesntExist(resp, button_id);
 				}

@@ -7,12 +7,12 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment::WebRoute_Equipment(HTTP::Server& http_server, const Kernel::DataHub& data_hub, const Kernel::StatisticsHub& statistics_hub) :
+	WebRoute_Equipment::WebRoute_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>(http_server, {{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment::WebGetRequestHandler, this, std::placeholders::_1, std::placeholders::_2) }}),
-		Interfaces::IShareableRoute(),
-		m_DataHub(data_hub),
-		m_StatisticsHub(statistics_hub)
+		Interfaces::IShareableRoute()
 	{
+		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
 	void WebRoute_Equipment::WebGetRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
@@ -24,9 +24,9 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["userStatus"] = "Off";
 		jandy_equipment_json["cleanStatus"] = "On";
 
-		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_DataHub.PoolTemp());
-		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_DataHub.SpaTemp());
-		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_DataHub.AirTemp());
+		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_DataHub->PoolTemp());
+		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_DataHub->SpaTemp());
+		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_DataHub->AirTemp());
 
 		jandy_equipment_json["chemistry"]["ph"] = "";
 		jandy_equipment_json["chemisty"]["orp"] = "";

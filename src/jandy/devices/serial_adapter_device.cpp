@@ -11,8 +11,8 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	SerialAdapterDevice::SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::DataHub& config, bool is_emulated) :
-		JandyController(io_context, device_id, SERIALADAPTER_TIMEOUT_DURATION, config),
+	SerialAdapterDevice::SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+		JandyController(io_context, device_id, SERIALADAPTER_TIMEOUT_DURATION, hub_locator),
 		Capabilities::Emulated(is_emulated),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
