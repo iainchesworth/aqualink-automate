@@ -9,7 +9,8 @@ namespace AqualinkAutomate::Devices
 {
 
 	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
-		JandyController(io_context, device_id, KEYPAD_TIMEOUT_DURATION, hub_locator),
+		JandyController(device_id, hub_locator),
+		Capabilities::Restartable(io_context, KEYPAD_TIMEOUT_DURATION),
 		Capabilities::Screen(KEYPAD_PAGE_LINES),
 		Capabilities::Emulated(is_emulated)
 	{
@@ -29,6 +30,10 @@ namespace AqualinkAutomate::Devices
 	}
 
 	void KeypadDevice::ProcessControllerUpdates()
+	{
+	}
+
+	void KeypadDevice::WatchdogTimeoutOccurred()
 	{
 	}
 

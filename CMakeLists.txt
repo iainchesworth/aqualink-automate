@@ -141,6 +141,7 @@ add_library(
 	src/concepts/is_c_array.cpp
 	src/developer/mock_serial_port.cpp
 	src/devices/device_status.cpp 
+	src/equipment/equipment_status.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_hubnotfound.cpp 
 	src/exceptions/exception_optionparsingfailed.cpp
@@ -177,7 +178,6 @@ add_library(
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/ideviceidentifier.cpp 
-	src/interfaces/idevicestatus.cpp 
 	src/interfaces/iequipment.cpp	
 	src/interfaces/ihub.cpp 
 	src/interfaces/imessage.cpp
@@ -188,6 +188,8 @@ add_library(
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
 	src/interfaces/ishareableroute.cpp 
+	src/interfaces/istatus.cpp
+	src/interfaces/istatuspublisher.cpp
 	src/interfaces/iwebpageroute.cpp
 	src/interfaces/iwebroute.cpp  
 	src/interfaces/iwebsocket.cpp 
@@ -202,6 +204,7 @@ add_library(
 	src/jandy/devices/jandy_device_types.cpp
 	src/jandy/devices/jandy_emulated_device_types.cpp 
 	src/jandy/devices/capabilities/emulated.cpp 
+	src/jandy/devices/capabilities/restartable.cpp
 	src/jandy/devices/capabilities/scrapeable.cpp 
 	src/jandy/devices/capabilities/screen.cpp 
 	src/jandy/devices/keypad_device.cpp 

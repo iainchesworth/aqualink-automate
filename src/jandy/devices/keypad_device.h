@@ -6,6 +6,7 @@
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/capabilities/scrapeable.h"
 #include "jandy/devices/capabilities/screen.h"
 #include "jandy/messages/jandy_message_ack.h"
@@ -18,7 +19,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class KeypadDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
+	class KeypadDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
 	{
 		inline static const uint8_t KEYPAD_PAGE_LINES{ 3 };
 		inline static const std::chrono::seconds KEYPAD_TIMEOUT_DURATION{ std::chrono::seconds(30) };
@@ -34,6 +35,9 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		virtual void ProcessControllerUpdates() override;
+
+	private:
+		virtual void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_Keypad_Ack(const Messages::JandyMessage_Ack& msg);

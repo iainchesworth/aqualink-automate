@@ -4,16 +4,14 @@
 #include <string_view>
 
 #include "concepts/is_c_array.h"
-#include "interfaces/idevicestatus.h"
+#include "interfaces/istatus.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	using DeviceStatusTypes = std::unique_ptr<Interfaces::IDeviceStatus>;
-
 	template<const auto& DEVICE_STATUS_STRING>
 	requires (Concepts::CArray<decltype(DEVICE_STATUS_STRING)>)
-	class DeviceStatus : public Interfaces::IDeviceStatus
+	class DeviceStatus : public Interfaces::IStatus
 	{
 	public:
 		virtual std::string_view Name() const final

@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "Serial Adapter device received a JandyMessage_Ack signal.");
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void SerialAdapterDevice::Slot_SerialAdapter_DevReady(const Messages::SerialAdapterMessage_DevReady& msg)
@@ -23,7 +23,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void SerialAdapterDevice::Slot_SerialAdapter_DevStatus(const Messages::SerialAdapterMessage_DevStatus& msg)
@@ -135,7 +135,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Probe(const Messages::JandyMessage_Probe& msg)
@@ -146,7 +146,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Status(const Messages::JandyMessage_Status& msg)
@@ -159,7 +159,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Unknown(const Messages::JandyMessage_Unknown& msg)
@@ -170,7 +170,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 }

@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, std::format("Decoded PDA-specific JandyMessage_Ack payload: key press -> {} (raw: 0x{:02x})", magic_enum::enum_name(key_press), msg.Command()));
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Clear(const Messages::PDAMessage_Clear& msg)
@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Highlight(const Messages::PDAMessage_Highlight& msg)
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_HighlightChars(const Messages::PDAMessage_HighlightChars& msg)
@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_MessageLong(const Messages::JandyMessage_MessageLong& msg)
@@ -103,7 +103,7 @@ namespace AqualinkAutomate::Devices
 		}
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Probe(const Messages::JandyMessage_Probe& msg)
@@ -114,7 +114,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Status(const Messages::JandyMessage_Status& msg)
@@ -134,7 +134,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_ShiftLines(const Messages::PDAMessage_ShiftLines& msg)
@@ -152,7 +152,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Unknown_PDA_1B(const Messages::JandyMessage_Unknown& msg)

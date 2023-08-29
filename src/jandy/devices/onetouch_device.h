@@ -9,6 +9,7 @@
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/capabilities/scrapeable.h"
 #include "jandy/devices/capabilities/screen.h"
 #include "jandy/messages/jandy_message_ack.h"
@@ -27,7 +28,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const Scrapeable::ScrapeId ONETOUCH_AUX_LABELS_NAV_SCRAPER{ 1 };
@@ -68,6 +69,9 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		virtual void ProcessControllerUpdates() override;
+
+	private:
+		virtual void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);

@@ -9,6 +9,7 @@
 
 #include "jandy/devices/jandy_device.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
@@ -17,7 +18,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class AquariteDevice : public JandyDevice
+	class AquariteDevice : public JandyDevice, public Capabilities::Restartable
 	{
 		inline static const std::chrono::seconds AQUARITE_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t AQUARITE_PERCENT_DEBOUNCE_THRESHOLD{ 10 };
@@ -42,6 +43,9 @@ namespace AqualinkAutomate::Devices
 		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id);
 		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice();
+
+	private:
+		virtual void WatchdogTimeoutOccurred() override;
 
 	public:
 		void RequestedGeneratingLevel(Percentage new_generating_level);

@@ -37,6 +37,11 @@ add_executable(
 	unit/mocks/mock_generator_rawdatatomessage.cpp 
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
+	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
+	unit/support/unit_test_hublocatorinjector.cpp 
+	unit/support/unit_test_onetouchdevice.cpp 
+	unit/support/unit_test_onetouchdevice_httpserver.cpp 
+	unit/support/unit_test_ostream_support.cpp 
 	unit/units/test_flow_rate.cpp 
 	unit/units/test_units_orp.cpp 
 	unit/units/test_units_ph.cpp 
@@ -45,10 +50,6 @@ add_executable(
 	unit/utility/test_utility_jandychecksum.cpp 
 	unit/utility/test_utility_signallingstatscounter.cpp 
 	unit/utility/test_utility_temperature.cpp 
-	unit/support/unit_test_hublocatorinjector.cpp 
-	unit/support/unit_test_onetouchdevice.cpp 
-	unit/support/unit_test_onetouchdevice_httpserver.cpp 
-	unit/support/unit_test_ostream_support.cpp 
 )
 
 if(WIN32)

@@ -46,13 +46,6 @@ namespace AqualinkAutomate::Kernel
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_ConfigEvent>)> ConfigUpdateSignal;
 
 	//---------------------------------------------------------------------
-	// SERVICE STATUS
-	//---------------------------------------------------------------------
-
-	public:
-		///FIXME
-
-	//---------------------------------------------------------------------
 	// EQUIPMENT CONFIGURATION
 	//---------------------------------------------------------------------
 

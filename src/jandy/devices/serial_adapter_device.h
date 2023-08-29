@@ -10,6 +10,7 @@
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -23,7 +24,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Emulated
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
@@ -34,6 +35,9 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		virtual void ProcessControllerUpdates() override;
+
+	private:
+		virtual void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_SerialAdapter_Ack(const Messages::JandyMessage_Ack& msg);

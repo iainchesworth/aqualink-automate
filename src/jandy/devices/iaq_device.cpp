@@ -10,7 +10,8 @@ namespace AqualinkAutomate::Devices
 {
 
 	IAQDevice::IAQDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
-		JandyController(io_context, std::move(device_id), IAQ_TIMEOUT_DURATION, hub_locator),
+		JandyController(std::move(device_id), hub_locator),
+		Capabilities::Restartable(io_context, IAQ_TIMEOUT_DURATION),
 		Capabilities::Screen(IAQ_STATUS_PAGE_LINES),
 		Capabilities::Emulated(is_emulated),
 		m_StatusPage(IAQ_STATUS_PAGE_LINES),
@@ -38,6 +39,10 @@ namespace AqualinkAutomate::Devices
 	}
 
 	void IAQDevice::ProcessControllerUpdates()
+	{
+	}
+
+	void IAQDevice::WatchdogTimeoutOccurred()
 	{
 	}
 
@@ -97,7 +102,7 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_Poll signal.");
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void IAQDevice::Slot_IAQ_StartUp(const Messages::IAQMessage_StartUp& msg)

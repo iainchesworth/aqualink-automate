@@ -8,6 +8,7 @@
 #include <magic_enum.hpp>
 #include <magic_enum_utility.hpp>
 
+#include "equipment/equipment_status.h"
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/keypad_device.h"
@@ -51,11 +52,13 @@ namespace AqualinkAutomate::Equipment
 {
 	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator) :
 		IEquipment(io_context),
+		IStatusPublisher(Equipment::EquipmentStatus_Unknown{}),
 		m_IdentifiedDeviceIds(),
 		m_MessageConnections(),
 		m_HubLocator(hub_locator)
 	{
 		m_DataHub = m_HubLocator.Find<Kernel::DataHub>();
+		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>();
 		m_StatsHub = m_HubLocator.Find<Kernel::StatisticsHub>();
 
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
@@ -117,25 +120,6 @@ namespace AqualinkAutomate::Equipment
 		);
 	}
 
-	bool JandyEquipment::AddEmulatedDevice(std::unique_ptr<Devices::JandyDevice> device)
-	{
-		bool added_device = false;
-
-		if (IsDeviceRegistered(device->DeviceId()))
-		{
-			LogWarning(Channel::Equipment, std::format("Cannot add emulated device; id ({}) already registered", device->DeviceId().Id()));
-		}
-		else
-		{
-			LogInfo(Channel::Equipment, std::format("Adding new emulated device with id: {}", device->DeviceId().Id()));
-
-			m_IdentifiedDeviceIds.insert(device->DeviceId().Id());
-			IEquipment::AddDevice(std::move(device));
-		}
-
-		return added_device;
-	}
-
 	void JandyEquipment::IdentifyAndAddDevice(const Messages::JandyMessage& message)
 	{
 		if (Messages::JandyMessageIds::Probe == message.Id())
@@ -154,32 +138,32 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::PDADevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::PDADevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
-				IEquipment::AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(m_IOContext, std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::AquariteDevice>(m_IOContext, std::move(device_id)));
 				break;
 
 			default:

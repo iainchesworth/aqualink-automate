@@ -7,6 +7,7 @@
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/capabilities/scrapeable.h"
 #include "jandy/devices/capabilities/screen.h"
 #include "jandy/messages/iaq/iaq_message_control_ready.h"
@@ -26,7 +27,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -38,6 +39,9 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		virtual void ProcessControllerUpdates() override;
+
+	private:
+		virtual void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_IAQ_ControlReady(const Messages::IAQMessage_ControlReady& msg);

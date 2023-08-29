@@ -1,6 +1,7 @@
 #include <format>
 #include <functional>
 
+#include "devices/device_status.h"
 #include "logging/logging.h"
 #include "jandy/devices/serial_adapter_device.h"
 #include "utility/overloaded_variant_visitor.h"
@@ -12,8 +13,9 @@ namespace AqualinkAutomate::Devices
 {
 
 	SerialAdapterDevice::SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
-		JandyController(io_context, device_id, SERIALADAPTER_TIMEOUT_DURATION, hub_locator),
+		JandyController(device_id, hub_locator),
 		Capabilities::Emulated(is_emulated),
+		Capabilities::Restartable(io_context, SERIALADAPTER_TIMEOUT_DURATION),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
 		m_StatusMessageReceived(false),
@@ -42,6 +44,8 @@ namespace AqualinkAutomate::Devices
 		{
 			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Ack, this, std::placeholders::_1), (*device_id)());
 		}
+
+		Status(Devices::DeviceStatus_Initializing{});
 	}
 
 	SerialAdapterDevice::~SerialAdapterDevice()
@@ -110,6 +114,12 @@ namespace AqualinkAutomate::Devices
 			if (m_StatusTypesCollection.cend() == ++m_StatusTypesCollectionIter)
 			{
 				m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin();
+
+				if (Devices::DeviceStatus_Initializing{} == Status())
+				{
+					// Update the status to indicate that the device is now initialised.
+					Status(Devices::DeviceStatus_Normal{});
+				}
 			}
 
 			m_StatusMessageReceived = false;
@@ -117,5 +127,10 @@ namespace AqualinkAutomate::Devices
 
 		Signal_AckMessage(ack_type, ack_data_value);
 	}
+
+	void SerialAdapterDevice::WatchdogTimeoutOccurred()
+	{
+	}
+
 }
 // namespace AqualinkAutomate::Devices

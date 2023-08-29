@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 	void WebSocket_Equipment::OnOpen(HTTP::Request& req)
 	{
 		m_TemperatureSlot = m_DataHub->ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubConfigUpdate, this, std::placeholders::_1));
-		m_StatusChangeSlot = m_EquipmentHub->ServiceUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubSystemUpdate, this, std::placeholders::_1));
+		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubSystemUpdate, this, std::placeholders::_1));
 	}
 
 	void WebSocket_Equipment::OnMessage(HTTP::Request& req)

@@ -16,7 +16,8 @@ namespace AqualinkAutomate::Devices
 	}
 
 	AquariteDevice::AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
-		JandyDevice(io_context, device_id, AQUARITE_TIMEOUT_DURATION),
+		JandyDevice(device_id),
+		Capabilities::Restartable(io_context, AQUARITE_TIMEOUT_DURATION),
 		m_Requested(AQUARITE_PERCENT_DEBOUNCE_THRESHOLD),
 		m_Reported(std::make_pair(reported_percentage, std::chrono::system_clock::now())),
 		m_SaltPPM(std::make_pair(salt_ppm, std::chrono::system_clock::now()))
@@ -30,6 +31,10 @@ namespace AqualinkAutomate::Devices
 	}
 
 	AquariteDevice::~AquariteDevice()
+	{
+	}
+
+	void AquariteDevice::WatchdogTimeoutOccurred()
 	{
 	}
 
@@ -68,7 +73,7 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_GetId signal.");
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void AquariteDevice::Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg)
@@ -78,7 +83,7 @@ namespace AqualinkAutomate::Devices
 		RequestedGeneratingLevel(msg.GeneratingPercentage());
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void AquariteDevice::Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg)
@@ -88,7 +93,7 @@ namespace AqualinkAutomate::Devices
 		ReportedGeneratingLevel(msg.SaltConcentrationPPM());		
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 }

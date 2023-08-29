@@ -1,6 +1,7 @@
 #include <list>
 #include <tuple>
 
+#include "devices/device_status.h"
 #include "jandy/devices/onetouch_device.h"
 #include "logging/logging.h"
 
@@ -100,6 +101,8 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping_ProcessStep_StartUp", BOOST_CURRENT_LOCATION);
 
+		Status(Devices::DeviceStatus_Initializing{});
+
 		switch (DisplayedPageType())
 		{
 		case Utility::ScreenDataPageTypes::Page_OneTouch:
@@ -165,6 +168,7 @@ namespace AqualinkAutomate::Devices
 				// NOTE: Flow was VERSION -> ONETOUCH/HOME -> [scraping] -> HOME
 				LogInfo(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) complete -> entering normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
 				m_OpState = OperatingStates::NormalOperation;
+				Status(Devices::DeviceStatus_Normal{});
 			}
 			else
 			{
@@ -197,6 +201,7 @@ namespace AqualinkAutomate::Devices
 				// No scrape is active (or waiting) but it's a cold start...this is weird so force a transition to normal operation.
 				LogDebug(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) in an abnormal state -> forcing entry to normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
 				m_OpState = OperatingStates::NormalOperation;
+				Status(Devices::DeviceStatus_Normal{});
 				break;
 			}
 		}

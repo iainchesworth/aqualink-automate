@@ -125,11 +125,12 @@ int main(int argc, char* argv[])
 
 		Kernel::HubLocator hub_locator;
 
-		hub_locator
-			.Register(std::make_shared<Kernel::DataHub>())
-			.Register(std::make_shared<Kernel::EquipmentHub>())
-			.Register(std::make_shared<Kernel::PreferencesHub>())
-			.Register(std::make_shared<Kernel::StatisticsHub>());
+		auto data_hub = std::make_shared<Kernel::DataHub>();
+		auto equipment_hub = std::make_shared<Kernel::EquipmentHub>();
+		auto preferences_hub = std::make_shared<Kernel::PreferencesHub>();
+		auto statistics_hub = std::make_shared<Kernel::StatisticsHub>();
+
+		hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
 
 		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT
@@ -137,7 +138,8 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		Equipment::JandyEquipment jandy_equipment(io_context, hub_locator);
+		auto jandy_equipment = std::make_shared<Equipment::JandyEquipment>(io_context, hub_locator);
+		equipment_hub->AddEquipment(jandy_equipment);
 
 		if (!settings.emulated_device.disable_emulation)
 		{
@@ -146,38 +148,32 @@ int main(int argc, char* argv[])
 				LogInfo(Channel::Main, std::format("Enabling controller emulation; type: {}, id: {}", magic_enum::enum_name(controller_type), device_type.Id()));
 
 				auto device_id = std::make_shared<Devices::JandyDeviceType>(device_type);
-				std::unique_ptr<Devices::JandyDevice> emulated_device(nullptr);
 
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					emulated_device = std::make_unique<Devices::OneTouchDevice>(io_context, device_id, hub_locator, true);
+					equipment_hub->AddDevice(std::make_shared<Devices::OneTouchDevice>(io_context, device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					emulated_device = std::make_unique<Devices::KeypadDevice>(io_context, device_id, hub_locator, true);
+					equipment_hub->AddDevice(std::make_shared<Devices::KeypadDevice>(io_context, device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					emulated_device = std::make_unique<Devices::IAQDevice>(io_context, device_id, hub_locator, true);
+					equipment_hub->AddDevice(std::make_shared<Devices::IAQDevice>(io_context, device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					emulated_device = std::make_unique<Devices::PDADevice>(io_context, device_id, hub_locator, true);
+					equipment_hub->AddDevice(std::make_shared<Devices::PDADevice>(io_context, device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					emulated_device = std::make_unique<Devices::SerialAdapterDevice>(io_context, device_id, hub_locator, true);
+					equipment_hub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(io_context, device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:
 				default:
 					LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
-				}
-
-				if (emulated_device)
-				{
-					jandy_equipment.AddEmulatedDevice(std::move(emulated_device));
 				}
 			}
 		}

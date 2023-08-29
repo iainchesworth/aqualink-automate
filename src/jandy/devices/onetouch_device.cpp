@@ -13,7 +13,8 @@ namespace AqualinkAutomate::Devices
 {
 
 	OneTouchDevice::OneTouchDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
-		JandyController(io_context, device_id, ONETOUCH_TIMEOUT_DURATION, hub_locator),
+		JandyController(device_id, hub_locator),
+		Capabilities::Restartable(io_context, ONETOUCH_TIMEOUT_DURATION),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),
 		Capabilities::Scrapeable
 		(
@@ -116,6 +117,10 @@ namespace AqualinkAutomate::Devices
 		}
 
 		Signal_AckMessage(m_AckType_ToSend, m_KeyCommand_ToSend);
+	}
+
+	void OneTouchDevice::WatchdogTimeoutOccurred()
+	{
 	}
 
 }

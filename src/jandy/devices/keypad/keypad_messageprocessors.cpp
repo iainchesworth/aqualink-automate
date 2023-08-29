@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void KeypadDevice::Slot_Keypad_Probe(const Messages::JandyMessage_Probe& msg)
@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void KeypadDevice::Slot_Keypad_Message(const Messages::JandyMessage_Message& msg)
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void KeypadDevice::Slot_Keypad_MessageLong(const Messages::JandyMessage_MessageLong& msg)
@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void KeypadDevice::Slot_Keypad_Status(const Messages::JandyMessage_Status& msg)
@@ -61,7 +61,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 }
