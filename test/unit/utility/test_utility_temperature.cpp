@@ -5,9 +5,9 @@
 
 #include "support/unit_test_ostream_support.h"
 
-BOOST_AUTO_TEST_SUITE(Temperature);
+BOOST_AUTO_TEST_SUITE(TestSuite_Temperature);
 
-BOOST_AUTO_TEST_CASE(ValidTemperatureStrings)
+BOOST_AUTO_TEST_CASE(Test_Temperature_ValidTemperatureStrings)
 {
     using AqualinkAutomate::Utility::Temperature;
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(ValidTemperatureStrings)
     }
 }
 
-BOOST_AUTO_TEST_CASE(InvalidTemperatureStrings)
+BOOST_AUTO_TEST_CASE(Test_Temperature_InvalidTemperatureStrings)
 {
     using AqualinkAutomate::Utility::Temperature;
 

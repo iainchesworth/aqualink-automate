@@ -12,7 +12,7 @@ namespace AqualinkAutomate::HTTP
 	WebSocket_Equipment::WebSocket_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
 		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(http_server),
 		Interfaces::IShareableRoute(),
-		m_TemperatureSlot(),
+		m_ConfigChangeSlot(),
 		m_StatusChangeSlot()
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
@@ -21,7 +21,7 @@ namespace AqualinkAutomate::HTTP
 
 	void WebSocket_Equipment::OnOpen(HTTP::Request& req)
 	{
-		m_TemperatureSlot = m_DataHub->ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubConfigUpdate, this, std::placeholders::_1));
+		m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubConfigUpdate, this, std::placeholders::_1));
 		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubSystemUpdate, this, std::placeholders::_1));
 	}
 
@@ -31,12 +31,12 @@ namespace AqualinkAutomate::HTTP
 
 	void WebSocket_Equipment::OnClose(HTTP::Request& req)
 	{
-		m_TemperatureSlot.disconnect();
+		m_ConfigChangeSlot.disconnect();
 	}
 
 	void WebSocket_Equipment::OnError(HTTP::Request& req)
 	{
-		m_TemperatureSlot.disconnect();
+		m_ConfigChangeSlot.disconnect();
 	}
 
 	void WebSocket_Equipment::HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event)

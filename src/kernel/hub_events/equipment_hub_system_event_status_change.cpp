@@ -7,8 +7,9 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	EquipmentHub_SystemEvent_StatusChange::EquipmentHub_SystemEvent_StatusChange() :
-		EquipmentHub_SystemEvent(Hub_EventTypes::ServiceStatus)
+	EquipmentHub_SystemEvent_StatusChange::EquipmentHub_SystemEvent_StatusChange(const Interfaces::IStatus& status) :
+		EquipmentHub_SystemEvent(Hub_EventTypes::ServiceStatus),
+		m_JSON_Payload(status)
 	{
 	}
 
@@ -24,11 +25,7 @@ namespace AqualinkAutomate::Kernel
 
 	nlohmann::json EquipmentHub_SystemEvent_StatusChange::ToJSON() const
 	{
-		nlohmann::json j;
-
-		j["service_status"] = "Unknown";
-
-		return j;
+		return m_JSON_Payload;
 	}
 
 }

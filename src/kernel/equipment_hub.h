@@ -83,7 +83,8 @@ namespace AqualinkAutomate::Kernel
 						}
 						else
 						{
-							EquipmentStatusChangeSignal(std::make_shared<Kernel::EquipmentHub_SystemEvent_StatusChange>());
+							LogTrace(Channel::Equipment, "Publishing a status change has occurred for a connected equipment/device");
+							EquipmentStatusChangeSignal(std::make_shared<Kernel::EquipmentHub_SystemEvent_StatusChange>(*status_ptr));
 						}
 					}
 				);

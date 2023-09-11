@@ -5,6 +5,7 @@
 #include <string>
 #include <tuple>
 
+#include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
 #include <tl/expected.hpp>
 
@@ -19,6 +20,9 @@ namespace AqualinkAutomate::Utility
 
 	class Chemistry
 	{
+		static const std::string REGEX_PATTERN;
+		static const boost::regex REGEX_PARSER;
+
 		static const uint8_t MAXIMUM_STRING_LENGTH = 14;
 		static const uint8_t MINIMUM_STRING_LENGTH = 14;
 

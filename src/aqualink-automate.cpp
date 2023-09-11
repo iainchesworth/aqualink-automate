@@ -89,37 +89,6 @@ int main(int argc, char* argv[])
 		Options::Initialise(settings, argc, argv);
 
 		//---------------------------------------------------------------------
-		// SERIAL PORT
-		//---------------------------------------------------------------------
-
-		std::shared_ptr<Serial::SerialPort> serial_port;
-
-		if (settings.developer.dev_mode_enabled)
-		{
-			LogInfo(Channel::Main, "Enabling developer mode");
-
-			if (!settings.developer.replay_file.empty())
-			{
-				serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Mock);
-				serial_port->open(settings.developer.replay_file);
-			}
-			else
-			{
-				// Normal mode as no developer mode options are enabled.
-				serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
-				Serial::Initialise(settings, serial_port);
-			}
-		}
-		else
-		{
-			// Normal mode as no developer mode options are enabled.
-			serial_port = std::make_shared<Serial::SerialPort>(io_context, OperatingModes::Real);
-			Serial::Initialise(settings, serial_port);
-		}
-
-		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
-
-		//---------------------------------------------------------------------
 		// INFORMATION DISTRIBUTION HUBS 
 		//---------------------------------------------------------------------
 
@@ -131,6 +100,37 @@ int main(int argc, char* argv[])
 		auto statistics_hub = std::make_shared<Kernel::StatisticsHub>();
 
 		hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
+
+		//---------------------------------------------------------------------
+		// SERIAL PORT
+		//---------------------------------------------------------------------
+
+		std::shared_ptr<Serial::SerialPort> serial_port;
+
+		if (settings.developer.dev_mode_enabled)
+		{
+			LogInfo(Channel::Main, "Enabling developer mode");
+
+			if (!settings.developer.replay_file.empty())
+			{
+				serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Mock);
+				serial_port->open(settings.developer.replay_file);
+			}
+			else
+			{
+				// Normal mode as no developer mode options are enabled.
+				serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Real);
+				Serial::Initialise(settings, serial_port);
+			}
+		}
+		else
+		{
+			// Normal mode as no developer mode options are enabled.
+			serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Real);
+			Serial::Initialise(settings, serial_port);
+		}
+
+		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
 
 		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT

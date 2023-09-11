@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <random>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -29,8 +30,8 @@ namespace AqualinkAutomate::Test
 
 	class Test_OneTouchDevicePlusHttpServer : public Test::OneTouchDevice
 	{
-		const std::string_view LISTEN_ADDR{ "127.0.0.1" };
-		const std::string_view LISTEN_PORT{ "49152" };
+		static const std::string LISTEN_ADDR;
+		static const std::string LISTEN_PORT;
 
 	public:
 		Test_OneTouchDevicePlusHttpServer();
@@ -42,8 +43,12 @@ namespace AqualinkAutomate::Test
 		void StartWebSocketClient(const std::string& ws_route);
 
 	public:
-		void ReadFromHttpApi_Blocking(const std::string& api_route, boost::beast::flat_buffer& buffer, boost::beast::http::response<boost::beast::http::dynamic_body>& res);
-		void ReadFromWebSocket_Blocking(boost::beast::flat_buffer& buffer);
+		void ReadFromHttpApi_NonBlocking(const std::string& api_route, boost::beast::flat_buffer& buffer, boost::beast::http::response<boost::beast::http::dynamic_body>& res);
+		void ReadFromWebSocket_NonBlocking(boost::beast::flat_buffer& buffer);
+		void BlockForAsyncOperationToComplete();
+
+	private:
+		static const std::string GenerateListeningPort();
 
 	private:
 		HTTP::Server m_HTTPServer;
@@ -52,14 +57,14 @@ namespace AqualinkAutomate::Test
 		std::thread m_HTTPServerThread;
 
 	private:
-		boost::asio::io_context ioc;
-		boost::asio::ip::tcp::resolver resolver{ioc};
-		boost::beast::tcp_stream http_stream{ioc};
-		boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws_stream{ioc};
+		boost::asio::io_context m_IOContext;
+		boost::asio::ip::tcp::resolver resolver{ m_IOContext };
+		boost::beast::tcp_stream http_stream{ m_IOContext };
+		boost::beast::websocket::stream<boost::asio::ip::tcp::socket> ws_stream{ m_IOContext };
 
 	private:
 		boost::asio::chrono::seconds m_ReadTimeout{ 5 };
-		boost::asio::steady_timer m_ReadTimer{ ioc, m_ReadTimeout };
+		boost::asio::steady_timer m_ReadTimer{ m_IOContext, m_ReadTimeout };
 	};
 
 }

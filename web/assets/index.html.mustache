@@ -288,7 +288,7 @@
 
         function updateButtonState(el_id, response) {
             document.getElementById(el_id + "_button_label").innerHTML = response.label;
-            document.getElementById(el_id + "_statu1s_id").innerHTML = response.status ? response.status : "Unknown";
+            document.getElementById(el_id + "_status_id").innerHTML = response.status ? response.status : "Unknown";
         }
 
         window.onload = configurePageOnLoad;

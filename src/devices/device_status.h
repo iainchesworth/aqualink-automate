@@ -13,14 +13,27 @@ namespace AqualinkAutomate::Devices
 	requires (Concepts::CArray<decltype(DEVICE_STATUS_STRING)>)
 	class DeviceStatus : public Interfaces::IStatus
 	{
+		inline static constexpr std::string_view SOURCE_NAME{ "my_device" };
+		inline static constexpr std::string_view SOURCE_TYPE{ "device" };
+
 	public:
-		virtual std::string_view Name() const final
+		virtual std::string_view SourceName() const final
+		{			
+			return SOURCE_NAME;
+		}
+
+		virtual std::string_view SourceType() const final
 		{
-			return m_Name;
+			return SOURCE_TYPE;
+		}
+
+		virtual std::string_view StatusType() const final
+		{
+			return m_StatusType;
 		}
 
 	private:
-		const std::string_view m_Name{ DEVICE_STATUS_STRING };
+		const std::string_view m_StatusType{ DEVICE_STATUS_STRING };
 	};
 
 	inline constexpr char DEVICESTATUS_INITIALIZING_NAME[] = "Initializing";

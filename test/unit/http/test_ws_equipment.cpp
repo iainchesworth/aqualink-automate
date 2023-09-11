@@ -13,9 +13,9 @@
 
 using namespace AqualinkAutomate;
 
-BOOST_FIXTURE_TEST_SUITE(WebsocketRoutes_WsEquipment, Test::Test_OneTouchDevicePlusHttpServer)
+BOOST_FIXTURE_TEST_SUITE(TestSuite_WebsocketRoutes_WsEquipment, Test::Test_OneTouchDevicePlusHttpServer)
 
-BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_ChemistryEventConversion)
 {
 	{
 		auto config_event_null = std::make_shared<Kernel::DataHub_ConfigEvent_Chemistry>();
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_ChemistryEventConversion)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEventConversion)
 {
 	{
 		auto config_event_null = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
@@ -74,7 +74,8 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	{
 		auto config_event_temp = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
-		config_event_temp->PoolTemp(Utility::Temperature("Pool        90`F")().value()); // Make sure to use the right separator character --> `
+		Utility::Temperature pool_temp("Pool        90`F");
+		config_event_temp->PoolTemp(pool_temp().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse2(config_event_temp);
 	
 		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::TemperatureUpdate, wse2.Type());
@@ -114,7 +115,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_TemperatureEventConversion)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishChemistryUpdate)
 {
 	boost::beast::flat_buffer buffer;
 
@@ -122,15 +123,14 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 	StartWebSocketClient("/ws/equipment");
 
 	{
-		// Send the message here....
+		ReadFromWebSocket_NonBlocking(buffer);
 		DataHub().ORP(650);
-		DataHub().pH(7.5);
-		DataHub().SaltLevel(4000 * ppm);
-
-		ReadFromWebSocket_Blocking(buffer);
+		BlockForAsyncOperationToComplete();
 		{
 			auto req = buffer.data();
-			auto wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req));
+			
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
 
 			BOOST_REQUIRE(wse_json.contains("type"));
 			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
@@ -141,10 +141,14 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 			buffer.clear();
 		}
 
-		ReadFromWebSocket_Blocking(buffer);
+		ReadFromWebSocket_NonBlocking(buffer);
+		DataHub().pH(7.5);
+		BlockForAsyncOperationToComplete();
 		{
 			auto req = buffer.data();
-			auto wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req));
+
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
 
 			BOOST_REQUIRE(wse_json.contains("type"));
 			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
@@ -155,10 +159,14 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 			buffer.clear();
 		}
 
-		ReadFromWebSocket_Blocking(buffer);
+		ReadFromWebSocket_NonBlocking(buffer);
+		DataHub().SaltLevel(4000 * ppm);
+		BlockForAsyncOperationToComplete();
 		{
 			auto req = buffer.data();
-			auto wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req));
+
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
 
 			BOOST_REQUIRE(wse_json.contains("type"));
 			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
@@ -171,7 +179,7 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishChemistryUpdate)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishTemperatureUpdate)
 {
 	boost::beast::flat_buffer buffer;
 
@@ -179,13 +187,14 @@ BOOST_AUTO_TEST_CASE(WebSocket_PublishTemperatureUpdate)
 	StartWebSocketClient("/ws/equipment");
 
 	{
-		// Send the message here....
+		ReadFromWebSocket_NonBlocking(buffer);
 		DataHub().PoolTemp(Utility::Temperature("Pool        38`C")().value());
-
-		ReadFromWebSocket_Blocking(buffer);
+		BlockForAsyncOperationToComplete();
 		{
 			auto req = buffer.data();
-			auto wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req));
+
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
 
 			BOOST_REQUIRE(wse_json.contains("type"));
 			BOOST_CHECK_EQUAL("TemperatureUpdate", wse_json["type"]);

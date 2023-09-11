@@ -32,6 +32,7 @@
 #include <boost/assert/source_location.hpp>
 #include <boost/system/system_error.hpp>
 
+#include "developer/serial_port_options.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
@@ -40,14 +41,6 @@ using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Developer
 {
-	struct mock_serial_port_options
-	{
-		boost::asio::serial_port::baud_rate baud_rate{ 9600 };
-		boost::asio::serial_port::parity parity{ boost::asio::serial_port_base::parity::none };
-		boost::asio::serial_port::character_size character_size{ 8 };
-		boost::asio::serial_port::stop_bits stop_bits{ boost::asio::serial_port_base::stop_bits::one };
-		boost::asio::serial_port::flow_control flow_control{ boost::asio::serial_port::flow_control::none };
-	};
 
 	class mock_serial_port
 	{
@@ -338,7 +331,7 @@ namespace AqualinkAutomate::Developer
 		}
 
 	private:
-		mock_serial_port_options m_Options;
+		Developer::SerialPortOptions m_Options;
 		
 	private:
 		boost::asio::io_context& m_IOContext;

@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 	StartHttpServer();
 	StartHttpClient();
 
-	ReadFromHttpApi_Blocking("/api/equipment", buffer, res);
+	ReadFromHttpApi_NonBlocking("/api/equipment", buffer, res);
 	{
 		//BOOST_CHECK_EQUAL(200, res.code);
 
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(InitialisedDataHub)
 		return was_found;
 	};
 
-	ReadFromHttpApi_Blocking("/api/equipment", buffer, res);
+	ReadFromHttpApi_NonBlocking("/api/equipment", buffer, res);
 	{
 		//BOOST_CHECK_EQUAL(200, res.code);
 

@@ -5,9 +5,9 @@
 
 #include "support/unit_test_ostream_support.h"
 
-BOOST_AUTO_TEST_SUITE(Chemistry);
+BOOST_AUTO_TEST_SUITE(TestSuite_Chemistry);
 
-BOOST_AUTO_TEST_CASE(ValidChemistryStrings)
+BOOST_AUTO_TEST_CASE(Test_Chemistry_ValidChemistryStrings)
 {
     AqualinkAutomate::Utility::Chemistry chem1("ORP/200 PH/6.8");
     BOOST_REQUIRE(chem1.ORP().has_value());
@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(ValidChemistryStrings)
     BOOST_CHECK_EQUAL(chem2.PH().value(), 8.2f);
 }
 
-BOOST_AUTO_TEST_CASE(InvalidChemistryStrings)
+BOOST_AUTO_TEST_CASE(Test_Chemistry_InvalidChemistryStrings)
 {
     // Test string length below minimum
     AqualinkAutomate::Utility::Chemistry chem1("ORP/2");
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(InvalidChemistryStrings)
     BOOST_CHECK(!chem1.PH().has_value());
 }
 
-BOOST_AUTO_TEST_CASE(TestChemistryCopyAssignmentOperators)
+BOOST_AUTO_TEST_CASE(Test_Chemistry_CopyAssignmentOperators)
 {
     AqualinkAutomate::Utility::Chemistry chem1("ORP/500 PH/7.0");
     AqualinkAutomate::Utility::Chemistry chem2 = chem1; // Copy assignment
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(TestChemistryCopyAssignmentOperators)
     BOOST_CHECK_EQUAL(chem2.PH().value(), 7.0f);
 }
 
-BOOST_AUTO_TEST_CASE(TestChemistryMoveAssignmentOperator)
+BOOST_AUTO_TEST_CASE(Test_Chemistry_MoveAssignmentOperator)
 {
     AqualinkAutomate::Utility::Chemistry chem1("ORP/600 PH/7.2");
     AqualinkAutomate::Utility::Chemistry chem2 = std::move(chem1); // Move assignment

@@ -4,7 +4,6 @@
 #include <limits>
 
 #include <magic_enum.hpp>
-#include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
 #include "jandy/utility/string_conversion/temperature.h"
@@ -14,6 +13,8 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
+	const std::string Temperature::REGEX_PATTERN{ R"(^([A-Za-z]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
+	const boost::regex Temperature::REGEX_PARSER{ REGEX_PATTERN };
 
 	Temperature::Temperature() noexcept :
 		m_Temperature(Kernel::Temperature::ConvertToTemperatureInCelsius(0)),
@@ -58,7 +59,12 @@ namespace AqualinkAutomate::Utility
 
 	void Temperature::ConvertStringToTemperature(const std::string& temperature_string) noexcept
 	{
-		const auto [temperature_area, temperature, temperature_units] = ValidateAndExtractData(temperature_string);
+		const auto temperature_data = ValidateAndExtractData(temperature_string);
+
+		const auto temperature_area = std::get<0>(temperature_data);
+		const auto temperature = std::get<1>(temperature_data);
+		const auto temperature_units = std::get<2>(temperature_data);
+
 		if (temperature_area && temperature && temperature_units)
 		{
 			int32_t converted_temperature;
@@ -96,22 +102,30 @@ namespace AqualinkAutomate::Utility
 
 	std::tuple<std::optional<std::string>, std::optional<std::string>, std::optional<std::string>> Temperature::ValidateAndExtractData(const std::string& temperature_string)  noexcept
 	{
+		boost::smatch match_results;
+
 		if (MINIMUM_STRING_LENGTH > temperature_string.size() || MAXIMUM_STRING_LENGTH < temperature_string.size())
 		{
-			return { std::nullopt, std::nullopt, std::nullopt };
+			// Invalid string length...do nothing.
 		}
-
-		re2::RE2 re("^([A-Za-z]{1,10})\\s{1,10}(-?\\d{1,2})`([CF])$");
-		std::string match1, match2, match3;
-
-		if (re2::RE2::FullMatch(temperature_string, re, &match1, &match2, &match3))
+		else if (!boost::regex_search(temperature_string, match_results, REGEX_PARSER))
 		{
-			return { match1, match2, match3 };
+			// Invalid pattern match...do nothing.	
+		}
+		else if (3 > match_results.size())
+		{
+			// Insufficent resultset to pull groups from.
 		}
 		else 
 		{
-			return { std::nullopt, std::nullopt, std::nullopt };
+			return std::make_tuple<>(
+				std::optional<std::string>(match_results[1]),
+				std::optional<std::string>(match_results[2]),
+				std::optional<std::string>(match_results[3])
+			);
 		}
+
+		return std::make_tuple(std::nullopt, std::nullopt, std::nullopt);
 	}
 
 }

@@ -34,7 +34,7 @@ namespace AqualinkAutomate::HTTP
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub{ nullptr };
-		boost::signals2::connection m_TemperatureSlot;
+		boost::signals2::connection m_ConfigChangeSlot;
 		boost::signals2::connection m_StatusChangeSlot;
 	};
 

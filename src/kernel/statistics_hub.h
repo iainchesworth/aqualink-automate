@@ -1,9 +1,11 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 
 #include "interfaces/ihub.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "utility/bandwidth_utilisation.h"
 #include "utility/signalling_stats_counter.h"
 
 namespace AqualinkAutomate::Kernel
@@ -19,13 +21,19 @@ namespace AqualinkAutomate::Kernel
 		// The total number of messages sent or received
 		Utility::SignallingStatsCounter<Messages::JandyMessageIds> MessageCounts;
 
-		uint32_t MessageErrorRate;
-		uint32_t BandwidthUtilisation;
-		uint32_t AvgMinMaxMessageSizes;
-		uint32_t SerialOverflowCount;
-		uint32_t SerialUnderflowCount;
-		uint32_t TransmissionFailures;
-		uint32_t SerialWriteQueueDepth;
+	public:
+		Utility::BandwidthMetricsCollection BandwidthMetrics;
+
+	public:
+		struct SerialMetrics
+		{
+			uint64_t MessageErrorRate;
+			uint64_t AvgMinMaxMessageSizes;
+			uint64_t SerialOverflowCount;
+			uint64_t SerialUnderflowCount;
+			uint64_t TransmissionFailures;
+			uint64_t SerialWriteQueueDepth;
+		};
 	};
 
 }

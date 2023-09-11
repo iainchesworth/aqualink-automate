@@ -15,7 +15,10 @@
 #include <boost/system/error_code.hpp>
 
 #include "developer/mock_serial_port.h"
+#include "exceptions/exception_serial_invalidmode.h"
 #include "interfaces/iserialport.h"
+#include "kernel/hub_locator.h"
+#include "kernel/statistics_hub.h"
 #include "profiling/profiling.h"
 #include "serial/serial_operating_modes.h"
 
@@ -30,74 +33,16 @@ namespace AqualinkAutomate::Serial
 		using RealSerialPortPtr = std::unique_ptr<RealSerialPort>;
 
 	public:
-		SerialPort(boost::asio::io_context& io_context, OperatingModes operating_mode = OperatingModes::Real) :
-			m_IOContext(io_context),
-			m_OperatingMode(operating_mode),
-			m_MockSerialPort(std::make_unique<MockSerialPort>(io_context)),
-			m_RealSerialPort(std::make_unique<RealSerialPort>(io_context))
-		{
-		}
+		SerialPort(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator, OperatingModes operating_mode = OperatingModes::Real);
 
 	public:
-		void open(const std::string& device)
-		{
-			boost::system::error_code ec;
-			open(device, ec);
-			boost::asio::detail::throw_error(ec, "SerialPort::open");
-		}
-
-		void open(const std::string& device, boost::system::error_code& ec)
-		{
-			switch (m_OperatingMode)
-			{
-			case OperatingModes::Mock: m_MockSerialPort->open(device, ec); break;
-			case OperatingModes::Real: m_RealSerialPort->open(device, ec); break;
-			}
-		}
-
-		bool is_open() const
-		{
-			switch (m_OperatingMode)
-			{
-			case OperatingModes::Mock: return m_MockSerialPort->is_open();
-			case OperatingModes::Real: return m_RealSerialPort->is_open();
-			default:
-				///FIXME
-				throw;
-			}
-		}
-
-		void cancel()
-		{
-			boost::system::error_code ec;
-			cancel(ec);
-			boost::asio::detail::throw_error(ec, "SerialPort::cancel");
-		}
-
-		void cancel(boost::system::error_code& ec)
-		{
-			switch (m_OperatingMode)
-			{
-			case OperatingModes::Mock: m_MockSerialPort->cancel(ec); break;
-			case OperatingModes::Real: m_RealSerialPort->cancel(ec); break;
-			}
-		}
-
-		void close()
-		{
-			boost::system::error_code ec;
-			close(ec);
-			boost::asio::detail::throw_error(ec, "SerialPort::close");
-		}
-
-		void close(boost::system::error_code& ec)
-		{
-			switch (m_OperatingMode)
-			{
-			case OperatingModes::Mock: m_MockSerialPort->close(ec); break;
-			case OperatingModes::Real: m_RealSerialPort->close(ec); break;
-			}
-		}
+		void open(const std::string& device);
+		void open(const std::string& device, boost::system::error_code& ec);
+		bool is_open() const;
+		void cancel();
+		void cancel(boost::system::error_code& ec);
+		void close();
+		void close(boost::system::error_code& ec);
 
 		template<typename MutableBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> ReadToken>
 		auto async_read_some(const MutableBufferSequence& buffer, ReadToken&& token)
@@ -119,8 +64,7 @@ namespace AqualinkAutomate::Serial
 			}
 
 			default:
-				///FIXME
-				throw;
+				throw Exceptions::Serial_InvalidMode();
 			}
 		}
 
@@ -128,6 +72,7 @@ namespace AqualinkAutomate::Serial
 		std::size_t read_some(const MutableBufferSequence& buffers, boost::system::error_code& ec)
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> read_some", BOOST_CURRENT_LOCATION);
+			std::size_t bytes_read{ 0 };
 
 			switch (m_OperatingMode)
 			{
@@ -140,13 +85,16 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Real:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> read_some", BOOST_CURRENT_LOCATION);
-				return m_RealSerialPort->read_some(buffers, ec);
+				bytes_read = m_RealSerialPort->read_some(buffers, ec);
+				break;
 			}
 
 			default:
-				///FIXME
-				throw;
+				throw Exceptions::Serial_InvalidMode();
 			}
+
+			m_StatisticsHub->BandwidthMetrics.Read += bytes_read;
+			return bytes_read;
 		}
 
 		template<typename ConstBufferSequence, boost::asio::completion_token_for<void(boost::system::error_code, std::size_t)> WriteToken>
@@ -169,8 +117,7 @@ namespace AqualinkAutomate::Serial
 			}
 
 			default:
-				///FIXME
-				throw;
+				throw Exceptions::Serial_InvalidMode();
 			}
 		}
 
@@ -178,6 +125,7 @@ namespace AqualinkAutomate::Serial
 		std::size_t write_some(const ConstBufferSequence& buffers, boost::system::error_code& ec)
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> write_some", BOOST_CURRENT_LOCATION);
+			std::size_t bytes_written{ 0 };
 
 			switch (m_OperatingMode)
 			{
@@ -190,13 +138,16 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Real:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> boost serial port -> write_some", BOOST_CURRENT_LOCATION);
-				return m_RealSerialPort->write_some(buffers, ec);
+				bytes_written = m_RealSerialPort->write_some(buffers, ec);
+				break;
 			}
 
 			default:
-				///FIXME
-				throw;
+				throw Exceptions::Serial_InvalidMode();
 			}
+
+			m_StatisticsHub->BandwidthMetrics.Write += bytes_written;
+			return bytes_written;
 		}
 
 		template<typename SettableSerialPortOption>
@@ -206,6 +157,7 @@ namespace AqualinkAutomate::Serial
 			{
 			case OperatingModes::Mock: m_MockSerialPort->set_option(option, ec); break;
 			case OperatingModes::Real: m_RealSerialPort->set_option(option, ec); break;
+			default: throw Exceptions::Serial_InvalidMode();
 			}
 		}
 
@@ -216,6 +168,9 @@ namespace AqualinkAutomate::Serial
 		boost::asio::io_context& m_IOContext;
 		MockSerialPortPtr m_MockSerialPort;
 		RealSerialPortPtr m_RealSerialPort;
+	
+	private:
+		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub;
 	};
 
 }

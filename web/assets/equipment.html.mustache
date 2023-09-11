@@ -6,6 +6,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <title>Equipment Message Stats</title>
 </head>
@@ -35,7 +38,45 @@
                 </tbody>
             </table>
         </div>
-    
+
+        <!-- Serial Metrics Section -->
+        <div class="container mt-5">
+            <h2>Serial Metrics</h2>
+            <table id="serial-metrics-table" class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Metric</th>
+                        <th scope="col">Total Bytes</th>
+                        <th scope="col">Util % (Last 1s)</th>
+                        <th scope="col">Util % (Last 30s)</th>
+                        <th scope="col">Util % (Last 5m)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="serial-metrics-table-row_read">
+                        <td>Read</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr id="serial-metrics-table-row_write">
+                        <td>Write</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ChartJS Graph -->
+        <div class="container mt-5">
+            <h2>Utilisation Chart</h2>
+            <canvas id="serial-utilisation-chart"></canvas>
+        </div>
+
         <!-- Continue with other rows here as necessary... -->
     </div>
 
@@ -59,8 +100,73 @@
     </footer>
 
     <script>
+        let utilisationChart;
+        let timeData = [];
+        let readUtilData = [];
+        let writeUtilData = [];
+        let maxDataPoints = 500;  // Maximum data points to show on graph
+
         function configurePageOnLoad() {
+            configureSerialUtilisationChart();
             configureWebSocketMessageHandlers();
+        }
+
+        function configureSerialUtilisationChart() {
+            const ctx = document.getElementById('serial-utilisation-chart').getContext('2d');
+            utilisationChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeData,
+                    datasets: [
+                        {
+                            label: 'Read Utilisation %',
+                            borderColor: 'blue',
+                            data: readUtilData,
+                            yAxisID: 'y-axis-util',
+                        },
+                        {
+                            label: 'Write Utilisation %',
+                            borderColor: 'red',
+                            data: writeUtilData,
+                            yAxisID: 'y-axis-util',
+                        }
+                    ]
+                },
+                options: {
+                    elements: {
+                        line: {
+                            tension: 1
+                        }  
+                    },
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            ticks: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        'y-axis-util': {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Utilisation %'
+                            }
+                        }
+                    },
+                    plugins: {
+                        decimation: {
+                            enabled: true,
+                            algorithm: 'lttb',  // Using largest-triangle-three-buckets algorithm
+                        }
+                    }
+                }
+            });
         }
 
         function configureWebSocketMessageHandlers() {
@@ -93,8 +199,36 @@
 
             addEventHandler('StatisticsUpdate', (payload) => {
                 console.debug('StatisticsUpdate: ', payload);
+                if (payload && payload.message_counts) {
+                    updateStatisticsTable(payload.message_counts);
+                }
+
+                read_metrics_row = document.getElementById("serial-metrics-table-row_read");
+                read_metrics_row.cells[1].innerHTML = payload.bandwidth_read.total_bytes;
+                read_metrics_row.cells[2].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_1sec).toFixed(2);
+                read_metrics_row.cells[3].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_30sec).toFixed(2);
+                read_metrics_row.cells[4].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_5mins).toFixed(2);
+
+                write_metrics_row = document.getElementById("serial-metrics-table-row_write");
+                write_metrics_row.cells[1].innerHTML = payload.bandwidth_write.total_bytes;
+                write_metrics_row.cells[2].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_1sec).toFixed(2);
+                write_metrics_row.cells[3].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_30sec).toFixed(2);
+                write_metrics_row.cells[4].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_5mins).toFixed(2);
+
                 if (payload) {
-                    updateStatisticsTable(payload);
+
+                    let read_util = 0;
+                    let write_util = 0;
+
+                    if (payload.bandwidth_read && payload.bandwidth_read.average_utilisation_1sec) {
+                        read_util = payload.bandwidth_read.average_utilisation_1sec;
+                    }
+
+                    if (payload.bandwidth_write && payload.bandwidth_write.average_utilisation_1sec) {
+                        write_util = payload.bandwidth_write.average_utilisation_1sec;
+                    }
+
+                    updateUtilisationChart(read_util, write_util);
                 }
             });
 
@@ -110,21 +244,48 @@
         }
 
         function updateStatisticsTable(stats) {
-            const table = document.getElementById('stats-table');
-            while (table.rows.length > 1) {
-                table.deleteRow(1);
+            const tableBody = document.getElementById('stats-table').getElementsByTagName("tbody")[0];
+
+            stats.forEach(stat => {
+                let newRow;
+
+                // Check if row with this ID already exists
+                newRow = document.getElementById("stats-table-row_" + stat.id);
+
+                if (!newRow) {
+                    // Insert new row and set ID
+                    newRow = tableBody.insertRow();
+                    newRow.id = "stats-table-row_" + stat.id;
+
+                    // Create cells for the new row
+                    newRow.insertCell(0);
+                    newRow.insertCell(1);
+                    newRow.insertCell(2);
+                }
+
+                // Update cells
+                newRow.cells[0].innerHTML = stat.id;
+                newRow.cells[1].innerHTML = stat.count;
+            });
+        }
+
+        function updateUtilisationChart(read_util, write_util) {
+            const currentTime = new Date().toISOString();
+
+            timeData.push(currentTime);
+            readUtilData.push(read_util);
+            writeUtilData.push(write_util);
+
+            // Remove old data to keep max data points
+            if (timeData.length > maxDataPoints)
+            {
+                timeData.shift();
+                readUtilData.shift();
+                writeUtilData.shift();
             }
 
-            // Add new rows
-            stats.forEach(stat => {
-                const row = table.insertRow(-1); // -1 means the new row will be inserted at the last position
-
-                const cell1 = row.insertCell(0);
-                const cell2 = row.insertCell(1);
-
-                cell1.textContent = stat.id;
-                cell2.textContent = stat.count;
-            });
+            // Update the chart
+            utilisationChart.update();
         }
 
         window.onload = configurePageOnLoad;

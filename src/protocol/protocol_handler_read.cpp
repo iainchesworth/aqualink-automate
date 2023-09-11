@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Protocol
 				break;
 
 			case boost::asio::error::operation_aborted:
-				LogDebug(Channel::Protocol, "Serial port's async_read_some() was cancelled or an error occurred.");
+				LogDebug(Channel::Protocol, "Serial port's read_some() was cancelled or an error occurred.");
 				break;
 
 			default:

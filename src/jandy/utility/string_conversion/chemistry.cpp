@@ -4,7 +4,6 @@
 
 #include <boost/cstdfloat.hpp>
 #include <magic_enum.hpp>
-#include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
 #include "jandy/utility/string_conversion/chemistry.h"
@@ -14,6 +13,8 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
+	const std::string Chemistry::REGEX_PATTERN{ "(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))" };
+	const boost::regex Chemistry::REGEX_PARSER{ REGEX_PATTERN };
 
 	Chemistry::Chemistry() noexcept :
 		m_ORP(0),
@@ -96,7 +97,11 @@ namespace AqualinkAutomate::Utility
 
 	void Chemistry::ConvertStringToChemistry(const std::string& chemistry_string) noexcept
 	{
-		const auto [orp, ph] = ValidateAndExtractData(chemistry_string);
+		const auto chemistry_data = ValidateAndExtractData(chemistry_string);
+
+		const auto orp = std::get<0>(chemistry_data);
+		const auto ph = std::get<1>(chemistry_data);
+
 		if (orp && ph)
 		{
 			boost::float64_t converted_orp;
@@ -127,15 +132,21 @@ namespace AqualinkAutomate::Utility
 
 	std::tuple<std::optional<std::string>, std::optional<std::string>> Chemistry::ValidateAndExtractData(const std::string& chemistry_string) noexcept
 	{
+		boost::smatch match_results;
+
 		if (MINIMUM_STRING_LENGTH > chemistry_string.size() || MAXIMUM_STRING_LENGTH < chemistry_string.size())
 		{
-			return { std::nullopt, std::nullopt };
+			// Invalid string length...do nothing.
 		}
-
-		re2::RE2 re("(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))");
-		std::string match1, match2, match3, match4;
-
-		if (re2::RE2::FullMatch(chemistry_string, re, &match1, &match2, &match3, &match4))
+		else if (!boost::regex_search(chemistry_string, match_results, REGEX_PARSER))
+		{
+			// Invalid pattern match...do nothing.
+		}
+		else if (4 > match_results.size())
+		{
+			// Insufficent resultset to pull groups from.
+		}
+		else
 		{
 			// NOTE: This regex will capture the following groups:
 			//
@@ -145,12 +156,13 @@ namespace AqualinkAutomate::Utility
 			//    Group 4 -> #.#
 			//
 
-			return { match2, match4 };
+			return std::make_tuple<>(
+				std::optional<std::string>(match_results[2]),
+				std::optional<std::string>(match_results[4])
+			);
 		}
-		else
-		{
-			return { std::nullopt, std::nullopt };
-		}
+
+		return std::make_tuple(std::nullopt, std::nullopt);
 	}
 
 }

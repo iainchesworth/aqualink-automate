@@ -139,15 +139,19 @@ add_library(
 	src/certificates/certificate_management.cpp 
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
-	src/developer/mock_serial_port.cpp
+	src/developer/chrono_clocks.cpp 
+	src/developer/mock_serial_port.cpp 
+	src/developer/serial_port_options.cpp 
 	src/devices/device_status.cpp 
 	src/equipment/equipment_status.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_hubnotfound.cpp 
+	src/exceptions/exception_notimplemented.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
 	src/exceptions/exception_optionshelporversion.cpp 
 	src/exceptions/exception_options_conflictingoptions.cpp 
 	src/exceptions/exception_options_missingdependency.cpp 
+	src/exceptions/exception_serial_invalidmode.cpp 
 	src/exceptions/exception_traits_doesnotexist.cpp 
 	src/exceptions/exception_traits_failedtoset.cpp 
 	src/exceptions/exception_traits_invalidtraitvalue.cpp 
@@ -396,6 +400,7 @@ add_library(
 	src/types/units_electric_potential.cpp
 	src/types/units_flow_rate.cpp 
 	src/utility/array_standard_formatter.cpp
+	src/utility/bandwidth_utilisation.cpp 
 	src/utility/case_insensitive_comparision.cpp 
 	src/utility/circular_buffer_wrapping_iterator.cpp
 	src/utility/get_terminal_column_width.cpp	

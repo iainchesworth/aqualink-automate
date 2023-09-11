@@ -33,6 +33,7 @@ add_executable(
 	unit/messages/test_message_probe.cpp 
 	unit/messages/test_message_status.cpp 
 	unit/messages/test_message_unknown.cpp 
+	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
 	unit/mocks/mock_generator_rawdatatomessage.cpp 
 	unit/mocks/mock_serialport.cpp 
@@ -46,6 +47,7 @@ add_executable(
 	unit/units/test_units_orp.cpp 
 	unit/units/test_units_ph.cpp 
 	unit/utility/test_utility_auxillarystate.cpp 
+	unit/utility/test_utility_bandwidthutilisation.cpp 
 	unit/utility/test_utility_chemistry.cpp 
 	unit/utility/test_utility_jandychecksum.cpp 
 	unit/utility/test_utility_signallingstatscounter.cpp 

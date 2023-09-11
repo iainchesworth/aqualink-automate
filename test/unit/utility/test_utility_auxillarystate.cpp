@@ -6,9 +6,9 @@
 
 #include "support/unit_test_ostream_support.h"
 
-BOOST_AUTO_TEST_SUITE(AuxillaryState);
+BOOST_AUTO_TEST_SUITE(TestSuite_AuxillaryState);
 
-BOOST_AUTO_TEST_CASE(ConstructorTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_ConstructorTest)
 {
     using AqualinkAutomate::Kernel::AuxillaryStatuses::On;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
     BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStatuses::On);
 }
 
-BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_AssignmentOperatorTest)
 {
     using AqualinkAutomate::Kernel::AuxillaryStatuses::Off;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
     BOOST_CHECK_EQUAL(status.State().value(), AuxillaryStatuses::Off);
 }
 
-BOOST_AUTO_TEST_CASE(InvalidStringTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_InvalidStringTest)
 {
     using AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE(InvalidStringTest)
     BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
-BOOST_AUTO_TEST_CASE(IncorrectlyFormattedStringTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_IncorrectlyFormattedStringTest)
 {
     using AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(IncorrectlyFormattedStringTest)
     BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
-BOOST_AUTO_TEST_CASE(WrongLengthStringTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_WrongLengthStringTest)
 {
     using AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(WrongLengthStringTest)
     BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
-BOOST_AUTO_TEST_CASE(EmptyStringTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_EmptyStringTest)
 {
     using AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes::MalformedInput;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(EmptyStringTest)
     BOOST_CHECK_EQUAL(status.State().error(), make_error_code(StringConversion_ErrorCodes::MalformedInput));
 }
 
-BOOST_AUTO_TEST_CASE(StatusTypesTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_StatusTypesTest)
 {
     using AqualinkAutomate::Kernel::AuxillaryStatuses::On;
     using AqualinkAutomate::Kernel::AuxillaryStatuses::Off;
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(StatusTypesTest)
     BOOST_CHECK_EQUAL(status4.State().value(), AuxillaryStatuses::Pending);
 }
 
-BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_MaximumLengthNameTest)
 {
     using AqualinkAutomate::Kernel::AuxillaryStatuses;
     using AqualinkAutomate::Utility::AuxillaryState;
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(MaximumLengthNameTest)
     BOOST_CHECK_EQUAL(status.Label().value(), "A_MaximumName");
 }
 
-BOOST_AUTO_TEST_CASE(MinimumLengthNameTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_MinimumLengthNameTest)
 {
     using AqualinkAutomate::Utility::AuxillaryState;
 
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(MinimumLengthNameTest)
     BOOST_CHECK_EQUAL(status.Label().value(), "A");
 }
 
-BOOST_AUTO_TEST_CASE(NameWithSpacesTest)
+BOOST_AUTO_TEST_CASE(Test_AuxillaryState_NameWithSpacesTest)
 {
     using AqualinkAutomate::Utility::AuxillaryState;
 

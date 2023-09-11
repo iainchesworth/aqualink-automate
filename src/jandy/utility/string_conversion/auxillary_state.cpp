@@ -10,6 +10,8 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
+	const std::string AuxillaryState::REGEX_PATTERN{ R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))" };
+	const boost::regex AuxillaryState::REGEX_PARSER{ REGEX_PATTERN };
 
 	AuxillaryState::AuxillaryState() noexcept :
 		m_Label(),
@@ -92,7 +94,11 @@ namespace AqualinkAutomate::Utility
 
 	void AuxillaryState::ConvertStringToStatus(const std::string& auxillary_status_string) noexcept
 	{
-		const auto [name, status] = ValidateAndExtractData(auxillary_status_string);
+		const auto auxillary_status_data = ValidateAndExtractData(auxillary_status_string);
+
+		const auto name = std::get<0>(auxillary_status_data);
+		const auto status = std::get<1>(auxillary_status_data);
+
 		if (name && status)
 		{
 			m_Label = TrimWhitespace(name.value());
@@ -128,22 +134,29 @@ namespace AqualinkAutomate::Utility
 
 	std::tuple<std::optional<std::string>, std::optional<std::string>> AuxillaryState::ValidateAndExtractData(const std::string& auxillary_status_string) noexcept
 	{
+		boost::smatch match_results;
+
 		if (MINIMUM_STRING_LENGTH > auxillary_status_string.size() || MAXIMUM_STRING_LENGTH < auxillary_status_string.size())
 		{
-			return { std::nullopt, std::nullopt };
+			// Invalid string length...do nothing.
 		}
-
-		re2::RE2 re(R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))");
-		std::string match1, match2;
-
-		if (re2::RE2::FullMatch(auxillary_status_string, re, &match1, &match2))
+		else if (!boost::regex_search(auxillary_status_string, match_results, REGEX_PARSER))
 		{
-			return { match1, match2 };
+			// Invalid pattern match...do nothing.	
+		}
+		else if (2 > match_results.size())
+		{
+			// Insufficent resultset to pull groups from.
 		}
 		else
 		{
-			return { std::nullopt, std::nullopt };
+			return std::make_tuple<>(
+				std::optional<std::string>(match_results[1]),
+				std::optional<std::string>(match_results[2])
+			);
 		}
+
+		return std::make_tuple(std::nullopt, std::nullopt);
 	}
 
 }

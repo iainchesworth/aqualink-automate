@@ -55,7 +55,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Stats(std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
 	{
-		nlohmann::json je_stats;
+		nlohmann::json je_stats, message_counts;
 
 		for (auto [msg_id, msg_count] : statistics_hub->MessageCounts)
 		{
@@ -64,13 +64,29 @@ namespace AqualinkAutomate::HTTP::JSON
 				nlohmann::json stat;
 				stat["id"] = magic_enum::enum_name(std::get<Messages::JandyMessageIds>(msg_id));
 				stat["count"] = msg_count.Count();
-				je_stats.push_back(stat);
+				message_counts.push_back(stat);
 			}
 			catch (std::bad_variant_access const& ex)
 			{
 				///FIXME
 			}
 		}
+
+		je_stats["message_counts"] = message_counts;
+
+		nlohmann::json bandwidth_util_read;
+		bandwidth_util_read["total_bytes"] = statistics_hub->BandwidthMetrics.Read.TotalBytes;
+		bandwidth_util_read["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation();
+		bandwidth_util_read["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation();
+		bandwidth_util_read["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation();
+		je_stats["bandwidth_read"] = bandwidth_util_read;
+
+		nlohmann::json bandwidth_util_write;
+		bandwidth_util_write["total_bytes"] = statistics_hub->BandwidthMetrics.Write.TotalBytes;
+		bandwidth_util_write["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation();
+		bandwidth_util_write["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation();
+		bandwidth_util_write["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation();
+		je_stats["bandwidth_write"] = bandwidth_util_write;
 
 		return je_stats;
 	}

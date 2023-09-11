@@ -13,14 +13,27 @@ namespace AqualinkAutomate::Equipment
 	requires (Concepts::CArray<decltype(EQUPIMENT_STATUS_STRING)>)
 	class EquipmentStatus : public Interfaces::IStatus
 	{
+		inline static constexpr std::string_view SOURCE_NAME{ "my_source" };
+		inline static constexpr std::string_view SOURCE_TYPE{ "equipment" };
+
 	public:
-		virtual std::string_view Name() const final
+		virtual std::string_view SourceName() const final
 		{
-			return m_Name;
+			return SOURCE_NAME;
+		}
+
+		virtual std::string_view SourceType() const final
+		{
+			return SOURCE_TYPE;
+		}
+
+		virtual std::string_view StatusType() const final
+		{
+			return m_StatusType;
 		}
 
 	private:
-		const std::string_view m_Name{ EQUPIMENT_STATUS_STRING };
+		const std::string_view m_StatusType{ EQUPIMENT_STATUS_STRING };
 	};
 
 	inline constexpr char EQUIPMENTSTATUS_UNKNOWN_NAME[] = "Unknown";
