@@ -7,15 +7,14 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment::WebRoute_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>(http_server, {{ HTTP::Methods::GET, std::bind(&WebRoute_Equipment::WebGetRequestHandler, this, std::placeholders::_1, std::placeholders::_2) }}),
-		Interfaces::IShareableRoute()
+	WebRoute_Equipment::WebRoute_Equipment(Kernel::HubLocator& hub_locator) : 
+		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>()
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
-	void WebRoute_Equipment::WebGetRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
+	Message WebRoute_Equipment::OnRequest(HTTP::Request req)
 	{
 		nlohmann::json jandy_equipment_json;
 
@@ -37,12 +36,15 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["stats"] = JSON::GenerateJson_Equipment_Stats(m_StatisticsHub);
 		jandy_equipment_json["version"] = JSON::GenerateJson_Equipment_Version(m_DataHub);
 
-		resp.set_status_and_content(
-			cinatra::status_type::ok, 
-			jandy_equipment_json.dump(),
-			cinatra::req_content_type::json, 
-			cinatra::content_encoding::none
-		);
+		HTTP::Response resp{HTTP::Status::ok, req.version()};
+
+        resp.set(boost::beast::http::field::server, "1.2.3.4");
+        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.keep_alive(req.keep_alive());
+        resp.body() = jandy_equipment_json.dump();
+        resp.prepare_payload();
+
+        return resp;
 	}
 
 }

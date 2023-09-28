@@ -1,17 +1,17 @@
 #pragma once
 
-#include <boost/asio/io_context.hpp>
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Interfaces
 {
 	class IEquipment
 	{
 	public:
-		IEquipment(boost::asio::io_context& io_context);
+		IEquipment(Types::ExecutorType executor);
 		virtual ~IEquipment();
-	
+
 	protected:
-		boost::asio::io_context& m_IOContext;
+		Types::ExecutorType m_Executor;
 	};
 
 }

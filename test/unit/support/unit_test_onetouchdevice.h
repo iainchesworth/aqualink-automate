@@ -12,6 +12,8 @@
 #include "kernel/data_hub.h"
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
+#include "types/asynchronous_executor.h"
+#include "types/asynchronous_threadpool.h"
 
 #include "support/unit_test_hublocatorinjector.h"
 
@@ -44,7 +46,7 @@ namespace AqualinkAutomate::Test
 		void LoadAndSignalTestPage(const TestPage& test_page);
 
 	private:
-		boost::asio::io_context m_IOContext;
+		Types::AsyncThreadPool m_ThreadPool;
 		Devices::JandyDeviceType m_DeviceId;
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };

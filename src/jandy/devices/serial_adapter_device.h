@@ -3,8 +3,6 @@
 #include <chrono>
 #include <vector>
 
-#include <boost/asio/io_context.hpp>
-
 #include "jandy/auxillaries/jandy_auxillary_id.h"
 #include "jandy/auxillaries/jandy_auxillary_status.h"
 #include "jandy/devices/jandy_controller.h"
@@ -20,6 +18,7 @@
 #include "kernel/hub_locator.h"
 #include "kernel/temperature.h"
 #include "profiling/profiling.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -30,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
-		SerialAdapterDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		SerialAdapterDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~SerialAdapterDevice();
 
 	private:

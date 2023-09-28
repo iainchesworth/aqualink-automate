@@ -9,9 +9,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebSocket_Equipment::WebSocket_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(http_server),
-		Interfaces::IShareableRoute(),
+	WebSocket_Equipment::WebSocket_Equipment(Kernel::HubLocator& hub_locator) :
+		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(),
 		m_ConfigChangeSlot(),
 		m_StatusChangeSlot()
 	{

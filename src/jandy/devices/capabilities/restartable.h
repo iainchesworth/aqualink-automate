@@ -3,8 +3,9 @@
 #include <atomic>
 #include <chrono>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
+
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices::Capabilities
 {
@@ -14,7 +15,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		static const std::chrono::seconds DEFAULT_WATCHDOG_TIMEOUT;
 
 	protected:
-		Restartable(boost::asio::io_context& io_context, std::chrono::seconds timeout_in_seconds = DEFAULT_WATCHDOG_TIMEOUT, bool delayed_start = false);
+		Restartable(Types::ExecutorType executor, std::chrono::seconds timeout_in_seconds = DEFAULT_WATCHDOG_TIMEOUT, bool delayed_start = false);
 		virtual ~Restartable();
 
 	protected:

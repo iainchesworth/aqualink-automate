@@ -21,6 +21,7 @@
     "boost-test",
     "boost-units",
     "boost-uuid",
+    "boost-url",
     "magic-enum",
     "mstch",
     "nlohmann-json",

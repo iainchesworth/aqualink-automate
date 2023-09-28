@@ -7,23 +7,25 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Version::WebRoute_Page_Version(HTTP::Server& http_server) :
-		Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>(http_server),
-		Interfaces::IShareableRoute()
+	WebRoute_Page_Version::WebRoute_Page_Version() :
+		Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>()
 	{
 	}
 
-	void WebRoute_Page_Version::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
+	HTTP::Message WebRoute_Page_Version::OnRequest(HTTP::Request req)
 	{
 		Support::GeneratePageHeader_Context(m_TemplateContext);
-		Support::GeneratePageFooter_Context(m_TemplateContext);
+        Support::GeneratePageFooter_Context(m_TemplateContext);
 
-		resp.set_status_and_content(
-			cinatra::status_type::ok,
-			mstch::render(m_TemplateContent, m_TemplateContext),
-			cinatra::req_content_type::html,
-			cinatra::content_encoding::none
-		);
+        HTTP::Response resp{HTTP::Status::ok, req.version()};
+
+        resp.set(boost::beast::http::field::server, "1.2.3.4");
+        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.keep_alive(req.keep_alive());
+        resp.body() = mstch::render(m_TemplateContent, m_TemplateContext);
+        resp.prepare_payload();
+
+        return resp;
 	}
 
 }

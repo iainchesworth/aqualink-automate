@@ -50,8 +50,8 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator) :
-		IEquipment(io_context),
+	JandyEquipment::JandyEquipment(Types::ExecutorType executor, Kernel::HubLocator& hub_locator) :
+		IEquipment(executor),
 		IStatusPublisher(Equipment::EquipmentStatus_Unknown{}),
 		m_IdentifiedDeviceIds(),
 		m_MessageConnections(),
@@ -138,32 +138,32 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::IAQDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::IAQDevice>(m_Executor, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::OneTouchDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::OneTouchDevice>(m_Executor, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::PDADevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::PDADevice>(m_Executor, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::KeypadDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::KeypadDevice>(m_Executor, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(m_IOContext, std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(m_Executor, std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::make_shared<Devices::AquariteDevice>(m_IOContext, std::move(device_id)));
+				m_EquipmentHub->AddDevice(std::make_shared<Devices::AquariteDevice>(m_Executor, std::move(device_id)));
 				break;
 
 			default:

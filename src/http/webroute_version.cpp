@@ -6,14 +6,8 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Version::WebRoute_Version(HTTP::Server& http_server) :
-		Interfaces::IWebRoute<VERSION_ROUTE_URL>(http_server, { { HTTP::Methods::GET, std::bind(&WebRoute_Version::WebRequestHandler, this, std::placeholders::_1, std::placeholders::_2) } }),
-		Interfaces::IShareableRoute()
+	boost::beast::http::message_generator WebRoute_Version::OnRequest(HTTP::Request req)
 	{
-	}
-
-	void WebRoute_Version::WebRequestHandler(const HTTP::Request& req, HTTP::Response& resp)
-	{	
 		nlohmann::json version_info;
 
 		version_info["software_version"]["name"] = Version::VersionInfo::ProjectName();
@@ -28,12 +22,15 @@ namespace AqualinkAutomate::HTTP
 			version_info["git_info"]["uncommitted_changes"] = Version::GitMetadata::AnyUncommittedChanges();
 		}
 
-		resp.set_status_and_content(
-			cinatra::status_type::ok,
-			version_info.dump(),
-			cinatra::req_content_type::json,
-			cinatra::content_encoding::none
-		);
+		HTTP::Response resp{ HTTP::Status::ok, req.version() };
+
+		resp.set(boost::beast::http::field::server, "1.2.3.4");
+		resp.set(boost::beast::http::field::content_type, "application/json");
+		resp.keep_alive(req.keep_alive());
+		resp.body() = version_info.dump();
+		resp.prepare_payload();
+
+		return resp;
 	}
 
 }

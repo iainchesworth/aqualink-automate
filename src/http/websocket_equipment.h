@@ -4,7 +4,6 @@
 
 #include <boost/signals2.hpp>
 
-#include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
@@ -16,16 +15,16 @@ namespace AqualinkAutomate::HTTP
 {
 	inline constexpr char EQUIPMENT_WEBSOCKET_URL[] = "/ws/equipment";
 
-	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>, public Interfaces::IShareableRoute
+	class WebSocket_Equipment : public Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>
 	{
 	public:
-		WebSocket_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator);
+		WebSocket_Equipment(Kernel::HubLocator& hub_locator);
 
 	private:
-		virtual void OnOpen(HTTP::Request& req) override;
-		virtual void OnMessage(HTTP::Request& req) override;
-		virtual void OnClose(HTTP::Request& req) override;
-		virtual void OnError(HTTP::Request& req) override;
+        virtual void OnOpen(HTTP::Request& req) override;
+        virtual void OnMessage(HTTP::Request& req) override;
+        virtual void OnClose(HTTP::Request& req) override;
+        virtual void OnError(HTTP::Request& req) override;
 
 	private:
 		void HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event);
@@ -37,7 +36,6 @@ namespace AqualinkAutomate::HTTP
 		boost::signals2::connection m_ConfigChangeSlot;
 		boost::signals2::connection m_StatusChangeSlot;
 	};
-
 
 }
 // namespace AqualinkAutomate::HTTP

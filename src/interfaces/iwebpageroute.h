@@ -9,7 +9,7 @@
 #include <mstch/mstch.hpp>
 
 #include "concepts/is_c_array.h"
-#include "http/webroute_types.h"
+#include "interfaces/iwebroute.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -19,22 +19,16 @@ namespace AqualinkAutomate::Interfaces
 
 	template<const auto& ROUTE_URL, const auto& TEMPLATE_FILENAME>
 	requires (Concepts::CArray<decltype(ROUTE_URL)> && Concepts::CArrayRef<decltype(TEMPLATE_FILENAME)>)
-	class IWebPageRoute
+	class IWebPageRoute : public IWebRoute<ROUTE_URL>
 	{
 	public:
-		explicit IWebPageRoute(HTTP::Server& http_server) : 
+		explicit IWebPageRoute() : 
+			IWebRoute<ROUTE_URL>(),
 			m_TemplateContent(LoadTemplateFromFile(TEMPLATE_FILENAME))
 		{
-			http_server.set_http_handler<HTTP::Methods::GET>(ROUTE_URL,
-				[this](HTTP::Request& req, HTTP::Response& resp) -> void
-				{
-					WebRequestHandler(req, resp);
-				}
-			);
 		}
 
-	protected:
-		virtual void WebRequestHandler(HTTP::Request& req, HTTP::Response& resp) = 0;
+		virtual ~IWebPageRoute() = default;
 
 	protected:
 		static std::string LoadTemplateFromFile(const char * path)

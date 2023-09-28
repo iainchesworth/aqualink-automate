@@ -2,8 +2,6 @@
 
 #include <chrono>
 
-#include <boost/asio/io_context.hpp>
-
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -23,6 +21,7 @@
 #include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_updater.h"
 #include "kernel/hub_locator.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -34,7 +33,7 @@ namespace AqualinkAutomate::Devices
 		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
 	public:
-		IAQDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		IAQDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~IAQDevice();
 
 	private:

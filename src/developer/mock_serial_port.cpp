@@ -2,23 +2,23 @@
 
 namespace AqualinkAutomate::Developer
 {
-	mock_serial_port::mock_serial_port(boost::asio::io_context& io_context) :
-		m_IOContext(io_context),
-		m_WriteDelayTimer(io_context),
+	mock_serial_port::mock_serial_port(Types::ExecutorType executor) :
+		m_Executor(executor),
+		m_WriteDelayTimer(m_Executor),
 		m_RandomDevice{},
 		m_Distribution(32, 127),
 		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("mock_serial_port")))
 	{
 	}
 
-	mock_serial_port::mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name)
-		: mock_serial_port(io_context)
+	mock_serial_port::mock_serial_port(Types::ExecutorType executor, const std::string& device_name)
+		: mock_serial_port(executor)
 	{
 		open(device_name);
 	}
 
-	mock_serial_port::mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name, boost::system::error_code& ec)
-		: mock_serial_port(io_context)
+	mock_serial_port::mock_serial_port(Types::ExecutorType executor, const std::string& device_name, boost::system::error_code& ec)
+		: mock_serial_port(executor)
 	{
 		open(device_name, ec);
 	}
@@ -120,9 +120,9 @@ namespace AqualinkAutomate::Developer
 		}
 	}
 
-	boost::asio::executor mock_serial_port::get_executor()
+	Types::ExecutorType mock_serial_port::get_executor()
 	{
-		return m_IOContext.get_executor();
+		return m_Executor;
 	}
 
 	void mock_serial_port::set_option(const boost::asio::serial_port_base::baud_rate& option, boost::system::error_code& ec)

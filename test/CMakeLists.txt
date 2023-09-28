@@ -35,7 +35,7 @@ add_executable(
 	unit/messages/test_message_unknown.cpp 
 	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
-	unit/mocks/mock_generator_rawdatatomessage.cpp 
+	unit/mocks/mock_generator_rawdatatomessage.cpp 	 
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp 

@@ -4,8 +4,6 @@
 #include <list>
 #include <vector>
 
-#include <boost/asio/io_context.hpp>
-
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -24,6 +22,7 @@
 #include "jandy/messages/pda/pda_message_shiftlines.h"
 #include "kernel/hub_locator.h"
 #include "profiling/profiling.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -64,7 +63,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		OneTouchDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~OneTouchDevice();
 
 	private:

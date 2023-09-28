@@ -3,8 +3,8 @@
 namespace AqualinkAutomate::Interfaces
 {
 
-	IEquipment::IEquipment(boost::asio::io_context& io_context) :
-		m_IOContext(io_context)
+	IEquipment::IEquipment(Types::ExecutorType executor) :
+		m_Executor(executor)
 	{
 	}
 

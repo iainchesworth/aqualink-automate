@@ -13,16 +13,15 @@
 
 namespace AqualinkAutomate::HTTP
 {
-	WebRoute_Page_Index::WebRoute_Page_Index(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>(http_server),
-		Interfaces::IShareableRoute()
+	WebRoute_Page_Index::WebRoute_Page_Index(Kernel::HubLocator& hub_locator) :
+		Interfaces::IWebPageRoute<PAGE_INDEX_ROUTE_URL, PAGE_INDEX_TEMPLATE>()
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 
 		PopulateMainActionButtons();		
 	}
 
-	void WebRoute_Page_Index::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
+	HTTP::Message WebRoute_Page_Index::OnRequest(HTTP::Request req)
 	{
 		Support::GeneratePageHeader_Context(m_TemplateContext);		
 
@@ -49,12 +48,15 @@ namespace AqualinkAutomate::HTTP
 
 		Support::GeneratePageFooter_Context(m_TemplateContext);
 
-		resp.set_status_and_content(
-			cinatra::status_type::ok,
-			mstch::render(m_TemplateContent, m_TemplateContext),
-			cinatra::req_content_type::html,
-			cinatra::content_encoding::none
-		);
+        HTTP::Response resp{HTTP::Status::ok, req.version()};
+
+        resp.set(boost::beast::http::field::server, "1.2.3.4");
+        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.keep_alive(req.keep_alive());
+        resp.body() = mstch::render(m_TemplateContent, m_TemplateContext);
+        resp.prepare_payload();
+
+        return resp;
 	}
 
 	void WebRoute_Page_Index::PopulateMainActionButtons()

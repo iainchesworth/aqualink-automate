@@ -2,8 +2,6 @@
 
 #include <memory>
 
-#include <boost/asio/io_context.hpp>
-
 #include "interfaces/idevice.h"
 #include "interfaces/istatuspublisher.h"
 #include "jandy/devices/jandy_device_types.h"

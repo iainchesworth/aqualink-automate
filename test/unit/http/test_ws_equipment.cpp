@@ -117,93 +117,91 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEvent
 
 BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishChemistryUpdate)
 {
-	boost::beast::flat_buffer buffer;
+	{
+		DataHub().ORP(650);
 
-	StartHttpServer();
-	StartWebSocketClient("/ws/equipment");
+		boost::beast::flat_buffer buffer;
+
+		ReadFromWebSocket_NonBlocking(buffer);
+
+		auto req = buffer.data();
+
+		nlohmann::json wse_json;
+		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+
+		BOOST_REQUIRE(wse_json.contains("type"));
+		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+		BOOST_REQUIRE(wse_json.contains("payload"));
+		BOOST_REQUIRE(wse_json["payload"].contains("orp"));
+		BOOST_CHECK_EQUAL(650, wse_json["payload"]["orp"]);
+
+		buffer.clear();
+	}
 
 	{
-		ReadFromWebSocket_NonBlocking(buffer);
-		DataHub().ORP(650);
-		BlockForAsyncOperationToComplete();
-		{
-			auto req = buffer.data();
-			
-			nlohmann::json wse_json;
-			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
-
-			BOOST_REQUIRE(wse_json.contains("type"));
-			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-			BOOST_REQUIRE(wse_json.contains("payload"));
-			BOOST_REQUIRE(wse_json["payload"].contains("orp"));
-			BOOST_CHECK_EQUAL(650, wse_json["payload"]["orp"]);
-
-			buffer.clear();
-		}
-
-		ReadFromWebSocket_NonBlocking(buffer);
 		DataHub().pH(7.5);
-		BlockForAsyncOperationToComplete();
-		{
-			auto req = buffer.data();
 
-			nlohmann::json wse_json;
-			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
-
-			BOOST_REQUIRE(wse_json.contains("type"));
-			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-			BOOST_REQUIRE(wse_json.contains("payload"));
-			BOOST_REQUIRE(wse_json["payload"].contains("ph"));
-			BOOST_CHECK_EQUAL(7.5, wse_json["payload"]["ph"]);
-
-			buffer.clear();
-		}
+		boost::beast::flat_buffer buffer;
 
 		ReadFromWebSocket_NonBlocking(buffer);
+
+		auto req = buffer.data();
+
+		nlohmann::json wse_json;
+		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+
+		BOOST_REQUIRE(wse_json.contains("type"));
+		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+		BOOST_REQUIRE(wse_json.contains("payload"));
+		BOOST_REQUIRE(wse_json["payload"].contains("ph"));
+		BOOST_CHECK_EQUAL(7.5, wse_json["payload"]["ph"]);
+
+		buffer.clear();
+	}
+
+	{		
 		DataHub().SaltLevel(4000 * ppm);
-		BlockForAsyncOperationToComplete();
-		{
-			auto req = buffer.data();
 
-			nlohmann::json wse_json;
-			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+		boost::beast::flat_buffer buffer;
+		
+		ReadFromWebSocket_NonBlocking(buffer);
 
-			BOOST_REQUIRE(wse_json.contains("type"));
-			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-			BOOST_REQUIRE(wse_json.contains("payload"));
-			BOOST_REQUIRE(wse_json["payload"].contains("salt_level"));
-			BOOST_CHECK_EQUAL(4000, wse_json["payload"]["salt_level"]);
+		auto req = buffer.data();
 
-			buffer.clear();
-		}
+		nlohmann::json wse_json;
+		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+
+		BOOST_REQUIRE(wse_json.contains("type"));
+		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+		BOOST_REQUIRE(wse_json.contains("payload"));
+		BOOST_REQUIRE(wse_json["payload"].contains("salt_level"));
+		BOOST_CHECK_EQUAL(4000, wse_json["payload"]["salt_level"]);
+
+		buffer.clear();
 	}
 }
 
 BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishTemperatureUpdate)
 {
-	boost::beast::flat_buffer buffer;
-
-	StartHttpServer();
-	StartWebSocketClient("/ws/equipment");
-
 	{
-		ReadFromWebSocket_NonBlocking(buffer);
 		DataHub().PoolTemp(Utility::Temperature("Pool        38`C")().value());
-		BlockForAsyncOperationToComplete();
-		{
-			auto req = buffer.data();
 
-			nlohmann::json wse_json;
-			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+		boost::beast::flat_buffer buffer;
 
-			BOOST_REQUIRE(wse_json.contains("type"));
-			BOOST_CHECK_EQUAL("TemperatureUpdate", wse_json["type"]);
-			BOOST_REQUIRE(wse_json.contains("payload"));
-			BOOST_REQUIRE(wse_json["payload"].contains("pool_temp"));
-			BOOST_CHECK_EQUAL("38\u00B0C", wse_json["payload"]["pool_temp"]);
+		ReadFromWebSocket_NonBlocking(buffer);
 
-			buffer.clear();
-		}
+		auto req = buffer.data();
+
+		nlohmann::json wse_json;
+		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(boost::asio::buffers_begin(req), boost::asio::buffers_end(req)));
+
+		BOOST_REQUIRE(wse_json.contains("type"));
+		BOOST_CHECK_EQUAL("TemperatureUpdate", wse_json["type"]);
+		BOOST_REQUIRE(wse_json.contains("payload"));
+		BOOST_REQUIRE(wse_json["payload"].contains("pool_temp"));
+		BOOST_CHECK_EQUAL("38\u00B0C", wse_json["payload"]["pool_temp"]);
+
+		buffer.clear();
 	}
 }
 

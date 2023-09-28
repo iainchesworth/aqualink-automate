@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/signals2.hpp>
 
 #include "interfaces/iequipment.h"
@@ -21,6 +20,7 @@
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
 #include "protocol/protocol_handler.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Equipment
 {
@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Equipment
 	class JandyEquipment : public Interfaces::IEquipment, public Interfaces::IStatusPublisher
 	{
 	public:
-		JandyEquipment(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator);
+		JandyEquipment(Types::ExecutorType executor, Kernel::HubLocator& hub_locator);
 		virtual ~JandyEquipment();
 
 	private:

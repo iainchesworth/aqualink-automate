@@ -1,6 +1,5 @@
 #include <boost/test/unit_test.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <nlohmann/json.hpp>
 
@@ -10,21 +9,15 @@
 
 using namespace AqualinkAutomate;
 
-BOOST_FIXTURE_TEST_SUITE(HttpRoutes_ApiEquipment, Test::Test_OneTouchDevicePlusHttpServer)
+BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_ApiEquipment, Test::Test_OneTouchDevicePlusHttpServer)
 
-BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
+BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 {
-	boost::beast::http::response<boost::beast::http::dynamic_body> res;
 	boost::beast::flat_buffer buffer;
 
-	StartHttpServer();
-	StartHttpClient();
-
-	ReadFromHttpApi_NonBlocking("/api/equipment", buffer, res);
+	ReadFromHttpApi_NonBlocking("/api/equipment", buffer);
 	{
-		//BOOST_CHECK_EQUAL(200, res.code);
-
-		auto body = boost::beast::buffers_to_string(res.body().data());
+		auto body = boost::beast::buffers_to_string(buffer.data());
 		nlohmann::json json_response = nlohmann::json::parse(body);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));
@@ -51,13 +44,9 @@ BOOST_AUTO_TEST_CASE(UninitialisedDataHub)
 
 }
 
-BOOST_AUTO_TEST_CASE(InitialisedDataHub)
+BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 {
-	boost::beast::http::response<boost::beast::http::dynamic_body> res;
 	boost::beast::flat_buffer buffer;
-
-	StartHttpServer();
-	StartHttpClient();
 
 	InitialiseOneTouchDevice();
 	EquipmentOnOff_Page1();
@@ -96,11 +85,9 @@ BOOST_AUTO_TEST_CASE(InitialisedDataHub)
 		return was_found;
 	};
 
-	ReadFromHttpApi_NonBlocking("/api/equipment", buffer, res);
+	ReadFromHttpApi_NonBlocking("/api/equipment", buffer);
 	{
-		//BOOST_CHECK_EQUAL(200, res.code);
-
-		auto body = boost::beast::buffers_to_string(res.body().data());
+		auto body = boost::beast::buffers_to_string(buffer.data());
 		nlohmann::json json_response = nlohmann::json::parse(body);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));

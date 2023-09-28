@@ -3,9 +3,6 @@
 #include <mutex>
 #include <string>
 
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/detached.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/stacktrace.hpp>
 #include <magic_enum.hpp>
@@ -14,6 +11,7 @@
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
+#include "http/server/router.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_devices.h"
@@ -21,10 +19,10 @@
 #include "http/webroute_page_index.h"
 #include "http/webroute_page_equipment.h"
 #include "http/webroute_page_version.h"
-#include "http/webroute_types.h"
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
+#include "http/server/listener.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
@@ -48,6 +46,8 @@
 #include "serial/serial_port.h"
 #include "signals/signal_awaitable.h"
 #include "signals/signal_cleanup.h"
+#include "types/asynchronous_executor.h"
+#include "types/asynchronous_threadpool.h"
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 {
 	try
 	{
-		boost::asio::io_context io_context;
+		Types::AsyncThreadPool thread_pool(std::thread::hardware_concurrency());
 
 		//---------------------------------------------------------------------
 		// LOGGING
@@ -113,20 +113,20 @@ int main(int argc, char* argv[])
 
 			if (!settings.developer.replay_file.empty())
 			{
-				serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Mock);
+				serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Mock);
 				serial_port->open(settings.developer.replay_file);
 			}
 			else
 			{
 				// Normal mode as no developer mode options are enabled.
-				serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Real);
+				serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Real);
 				Serial::Initialise(settings, serial_port);
 			}
 		}
 		else
 		{
 			// Normal mode as no developer mode options are enabled.
-			serial_port = std::make_shared<Serial::SerialPort>(io_context, hub_locator, OperatingModes::Real);
+			serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Real);
 			Serial::Initialise(settings, serial_port);
 		}
 
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		auto jandy_equipment = std::make_shared<Equipment::JandyEquipment>(io_context, hub_locator);
+		auto jandy_equipment = std::make_shared<Equipment::JandyEquipment>(thread_pool.get_executor(), hub_locator);
 		equipment_hub->AddEquipment(jandy_equipment);
 
 		if (!settings.emulated_device.disable_emulation)
@@ -152,23 +152,23 @@ int main(int argc, char* argv[])
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::make_shared<Devices::OneTouchDevice>(io_context, device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::make_shared<Devices::OneTouchDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::make_shared<Devices::KeypadDevice>(io_context, device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::make_shared<Devices::KeypadDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::make_shared<Devices::IAQDevice>(io_context, device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::make_shared<Devices::IAQDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::make_shared<Devices::PDADevice>(io_context, device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::make_shared<Devices::PDADevice>(thread_pool.get_executor(), device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(io_context, device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:
@@ -186,13 +186,13 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
 
-		Protocol::ProtocolHandler protocol_handler(io_context, *serial_port);
+		Protocol::ProtocolHandler protocol_handler(*serial_port);
 		protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
 
 		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
 		protocol_handler.Run();
 
-		CleanUp::Register({ "Protocol Handler Thread", [&io_context]() -> void { /* DO NOTHING */ } });
+		CleanUp::Register({ "Protocol Handler", []() -> void { /* DO NOTHING */ } });
 
 		//---------------------------------------------------------------------
 		// WEB SERVER
@@ -200,40 +200,13 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		HTTP::Server http_server(std::thread::hardware_concurrency());
-		std::vector<std::shared_ptr<Interfaces::IShareableRoute>> http_routes;
-		
-		http_server.enable_timeout(true);
-		http_server.enable_response_time(true);
-		http_server.enable_http_cache(false);
-		http_server.listen(settings.web.bind_address, std::to_string(settings.web.bind_port));
-		http_server.set_keep_alive_timeout(30);
-		http_server.set_static_dir(settings.web.doc_root);
-		
-		if (!settings.web.http_server_is_insecure)
-		{
-			http_server.set_ssl_conf({ settings.web.cert_file.Path(), settings.web.cert_key_file.Path(), "nopassword" });
-
-			/*boost::asio::ssl::context ctx(asio::ssl::context::tls);
-			ctx.set_options(
-				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
-				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
-				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
-				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
-				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
-			);
-
-			Certificates::LoadWebCertificates(settings.web, ctx);
-			http_server.ssl(std::move(ctx));*/
-		}
+		auto http_router = std::make_shared<HTTP::Router>();
 
 		if (!settings.web.http_content_is_disabled)
 		{
-			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Index>(http_server, hub_locator));
-			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Equipment>(http_server, hub_locator));
-			http_routes.push_back(std::make_shared<HTTP::WebRoute_Page_Version>(http_server));
+            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator)));
+            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator)));
+            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Version>()));
 		}
 
 		// Routes are configured as follows
@@ -250,25 +223,45 @@ int main(int argc, char* argv[])
 		//     /ws/equipment/stats
 		//
 
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment>(http_server, hub_locator));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Buttons>(http_server, hub_locator));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Devices>(http_server, hub_locator));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Equipment_Version>(http_server, hub_locator));
-		http_routes.push_back(std::make_shared<HTTP::WebRoute_Version>(http_server));
+		http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator)));
+        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator)));
+        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator)));
+        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator)));
+        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Version>()));
 
-		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment>(http_server, hub_locator));
-		http_routes.push_back(std::make_shared<HTTP::WebSocket_Equipment_Stats>(http_server, hub_locator));
+		http_router->Add(std::move(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator)));
+        http_router->Add(std::move(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator)));
 
-		// This is a non-blocking call; note that the clean-up will trigger a "stop" which terminates the server.
-		auto _ = std::async(std::launch::async, [&http_server]() -> void { http_server.run(); });
+		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls);
 
-		CleanUp::Register({ "Web Server Thread", [&http_server]() -> void { http_server.stop(); } });
+		if (!settings.web.http_server_is_insecure)
+		{
+			ssl_context.set_options(
+				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
+				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
+				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
+				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
+				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
+				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
+				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
+			);
+
+			Certificates::LoadWebCertificates(settings.web, ssl_context);
+		}
+
+		boost::asio::ip::tcp::endpoint bind_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.bind_port);
+        auto http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), bind_endpoint, ssl_context, http_router);
+
+		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
+		http_server->Run();
+
+		CleanUp::Register({ "Web Server", []() -> void { /* DO NOTHING */ }});
 
 		//---------------------------------------------------------------------
 		// SIGNALS
 		//---------------------------------------------------------------------
 
-		boost::asio::signal_set ss(io_context);
+		boost::asio::signal_set ss(thread_pool.get_executor());
 		Signal_Awaitable(ss);
 
 		//---------------------------------------------------------------------
@@ -276,8 +269,7 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
-
-		io_context.run();
+		thread_pool.join();
 
 		//---------------------------------------------------------------------
 		// STOP APPLICATION

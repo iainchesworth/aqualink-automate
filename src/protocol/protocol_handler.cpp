@@ -5,8 +5,7 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
-	ProtocolHandler::ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port) :
-		m_IOContext(io_context),
+	ProtocolHandler::ProtocolHandler(Serial::SerialPort& serial_port) :
 		m_SerialPort(serial_port),
 		m_SerialData_Incoming(),
 		m_SerialData_Outgoing(),
@@ -33,7 +32,7 @@ namespace AqualinkAutomate::Protocol
 
 	void ProtocolHandler::Run()
 	{
-		m_IOContext.post([&]() -> void { Step(); });
+		boost::asio::post([&]() -> void { Step(); });
 	}
 
 	void ProtocolHandler::Step()
@@ -54,7 +53,7 @@ namespace AqualinkAutomate::Protocol
 		}
 		else
 		{
-			m_IOContext.post([&]() -> void { Step(); });
+			boost::asio::post([&]() -> void { Step(); });
 		}
 
 		profiling_frame->End();

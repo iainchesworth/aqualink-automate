@@ -7,24 +7,26 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Equipment::WebRoute_Page_Equipment(HTTP::Server& http_server, Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>(http_server),
-		Interfaces::IShareableRoute()
+	WebRoute_Page_Equipment::WebRoute_Page_Equipment(Kernel::HubLocator& hub_locator) :
+		Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>()
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
-	void WebRoute_Page_Equipment::WebRequestHandler(HTTP::Request& req, HTTP::Response& resp)
+	HTTP::Message WebRoute_Page_Equipment::OnRequest(HTTP::Request req)
 	{
 		Support::GeneratePageHeader_Context(m_TemplateContext);
 		Support::GeneratePageFooter_Context(m_TemplateContext);
+		
+        HTTP::Response resp{HTTP::Status::ok, req.version()};
 
-		resp.set_status_and_content(
-			cinatra::status_type::ok,
-			mstch::render(m_TemplateContent, m_TemplateContext),
-			cinatra::req_content_type::html,
-			cinatra::content_encoding::none
-		);
+        resp.set(boost::beast::http::field::server, "1.2.3.4");
+        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.keep_alive(req.keep_alive());
+        resp.body() = mstch::render(m_TemplateContent, m_TemplateContext);
+        resp.prepare_payload();
+
+        return resp;
 	}
 
 }

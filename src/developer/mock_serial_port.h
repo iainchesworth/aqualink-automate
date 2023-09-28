@@ -35,6 +35,7 @@
 #include "developer/serial_port_options.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
+#include "types/asynchronous_executor.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -45,9 +46,9 @@ namespace AqualinkAutomate::Developer
 	class mock_serial_port
 	{
 	public:
-		explicit mock_serial_port(boost::asio::io_context& io_context);
-		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name);
-		mock_serial_port(boost::asio::io_context& io_context, const std::string& device_name, boost::system::error_code& ec);
+		explicit mock_serial_port(Types::ExecutorType executor);
+		mock_serial_port(Types::ExecutorType executor, const std::string& device_name);
+		mock_serial_port(Types::ExecutorType executor, const std::string& device_name, boost::system::error_code& ec);
 		~mock_serial_port();
 
 		mock_serial_port(const mock_serial_port&) = delete;
@@ -66,7 +67,7 @@ namespace AqualinkAutomate::Developer
 		void cancel();
 		void cancel(boost::system::error_code& ec);
 
-		boost::asio::executor get_executor();
+		Types::ExecutorType get_executor();
 
 		void set_option(const boost::asio::serial_port_base::baud_rate& option, boost::system::error_code& ec);
 		void set_option(const boost::asio::serial_port_base::character_size& option, boost::system::error_code& ec);
@@ -334,7 +335,7 @@ namespace AqualinkAutomate::Developer
 		Developer::SerialPortOptions m_Options;
 		
 	private:
-		boost::asio::io_context& m_IOContext;
+		Types::ExecutorType m_Executor;
 		boost::asio::steady_timer m_WriteDelayTimer;
 		std::random_device m_RandomDevice;
 		std::uniform_int_distribution<> m_Distribution;

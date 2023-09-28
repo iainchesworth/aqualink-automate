@@ -8,9 +8,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	KeypadDevice::KeypadDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	KeypadDevice::KeypadDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
-		Capabilities::Restartable(io_context, KEYPAD_TIMEOUT_DURATION),
+		Capabilities::Restartable(executor, KEYPAD_TIMEOUT_DURATION),
 		Capabilities::Screen(KEYPAD_PAGE_LINES),
 		Capabilities::Emulated(is_emulated)
 	{

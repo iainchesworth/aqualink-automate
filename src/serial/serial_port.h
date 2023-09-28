@@ -7,10 +7,6 @@
 #include <span>
 #include <string>
 
-#include <boost/asio.hpp>
-#include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/async_result.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/system/error_code.hpp>
 
@@ -33,7 +29,7 @@ namespace AqualinkAutomate::Serial
 		using RealSerialPortPtr = std::unique_ptr<RealSerialPort>;
 
 	public:
-		SerialPort(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator, OperatingModes operating_mode = OperatingModes::Real);
+		SerialPort(Types::ExecutorType executor, Kernel::HubLocator& hub_locator, OperatingModes operating_mode = OperatingModes::Real);
 
 	public:
 		void open(const std::string& device);
@@ -165,7 +161,6 @@ namespace AqualinkAutomate::Serial
 		const OperatingModes m_OperatingMode;
 
 	private:
-		boost::asio::io_context& m_IOContext;
 		MockSerialPortPtr m_MockSerialPort;
 		RealSerialPortPtr m_RealSerialPort;
 	

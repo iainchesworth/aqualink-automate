@@ -19,7 +19,7 @@ namespace AqualinkAutomate::Protocol
 	class ProtocolHandler
 	{
 	public:
-		ProtocolHandler(boost::asio::io_context& io_context, Serial::SerialPort& serial_port);
+		ProtocolHandler(Serial::SerialPort& serial_port);
 		~ProtocolHandler();
 
 	public:
@@ -62,9 +62,6 @@ namespace AqualinkAutomate::Protocol
 		bool HandleWrite();
 		bool HandleWrite_Success(auto& write_buffer, auto bytes_written);
 		bool HandleWrite_Partial(auto& write_buffer, auto bytes_written);
-
-	private:
-		boost::asio::io_context& m_IOContext;
 
 	private:
 		Serial::SerialPort& m_SerialPort;

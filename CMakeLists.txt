@@ -19,6 +19,7 @@ option(ENABLE_COVERAGE "Enable coverage of unit tests" OFF)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
 option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
+option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
 #------------------------------------------------------------------------------
@@ -32,7 +33,7 @@ add_subdirectory(deps)
 
 find_package(async_mqtt_iface REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework)
+find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework url)
 find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -145,6 +146,7 @@ add_library(
 	src/devices/device_status.cpp 
 	src/equipment/equipment_status.cpp
 	src/exceptions/exception_genericaqualinkexception.cpp
+	src/exceptions/exception_http_duplicateroute.cpp 
 	src/exceptions/exception_hubnotfound.cpp 
 	src/exceptions/exception_notimplemented.cpp
 	src/exceptions/exception_optionparsingfailed.cpp
@@ -169,7 +171,6 @@ add_library(
 	src/http/webroute_page_index.cpp 
 	src/http/webroute_page_equipment.cpp 
 	src/http/webroute_page_version.cpp 
-	src/http/webroute_types.cpp 
 	src/http/webroute_version.cpp 
 	src/http/websocket_event.cpp 
 	src/http/websocket_event_types.cpp 
@@ -177,21 +178,34 @@ add_library(
 	src/http/websocket_equipment_stats.cpp 
 	src/http/json/json_data_hub.cpp 
 	src/http/json/json_equipment.cpp 
+	src/http/server/detectsession.cpp
+	src/http/server/http_plainsession.cpp	 
+	src/http/server/http_session.cpp 
+	src/http/server/http_sslsession.cpp 
+	src/http/server/listener.cpp 
+	src/http/server/parse_query_string.cpp 
+	src/http/server/response_404.cpp 
+	src/http/server/router.cpp 
+	src/http/server/server_types.cpp 
+	src/http/server/websocket_plainsession.cpp
+	src/http/server/websocket_session.cpp
+	src/http/server/websocket_session_helper.cpp
+	src/http/server/websocket_sslsession.cpp
 	src/http/support/support_generate_page_footer.cpp 
 	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/ideviceidentifier.cpp 
-	src/interfaces/iequipment.cpp	
+	src/interfaces/iequipment.cpp		 
 	src/interfaces/ihub.cpp 
 	src/interfaces/imessage.cpp
 	src/interfaces/imessagesignal_recv.cpp
 	src/interfaces/imessagesignal_send.cpp
 	src/interfaces/iprofiler.cpp
-	src/interfaces/iprofilingunit.cpp 
+	src/interfaces/iprofilingunit.cpp 	 
 	src/interfaces/iserializable.cpp
 	src/interfaces/iserialport.cpp
-	src/interfaces/ishareableroute.cpp 
+	src/interfaces/isession.cpp 
 	src/interfaces/istatus.cpp
 	src/interfaces/istatuspublisher.cpp
 	src/interfaces/iwebpageroute.cpp
@@ -390,12 +404,14 @@ add_library(
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
 	src/serial/serial_types.cpp
-	src/types/units_electric_potential.cpp 
 	src/signals/async_signal.cpp
 	src/signals/async_slot.cpp
 	src/signals/signal_awaitable.cpp
 	src/signals/signal_cleanup.cpp
 	src/signals/signal_handler.cpp
+	src/types/asynchronous_executor.cpp 
+	src/types/asynchronous_threadpool.cpp 
+	src/types/units_electric_potential.cpp 
 	src/types/units_dimensionless.cpp 
 	src/types/units_electric_potential.cpp
 	src/types/units_flow_rate.cpp 
@@ -403,6 +419,7 @@ add_library(
 	src/utility/bandwidth_utilisation.cpp 
 	src/utility/case_insensitive_comparision.cpp 
 	src/utility/circular_buffer_wrapping_iterator.cpp
+	src/utility/enumerate.cpp 
 	src/utility/get_terminal_column_width.cpp	
 	src/utility/overloaded_variant_visitor.cpp 
 	src/utility/signalling_stats_counter.cpp 
@@ -436,6 +453,9 @@ target_compile_definitions(
 	-DNOMINMAX
 	-DMAGIC_ENUM_RANGE_MIN=0
 	-DMAGIC_ENUM_RANGE_MAX=255
+	PUBLIC 
+	-DBOOST_ASIO_ENABLE_HANDLER_TRACKING
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
 )
 endif(WIN32)
 
@@ -470,7 +490,6 @@ target_include_directories(
 	${async_mqtt_INCLUDE_DIRS}
 	${asio_INCLUDE_DIRS} 
 	${Boost_INCLUDE_DIRS} 
-	${Cinatra_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
 	${mstch_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
@@ -481,9 +500,6 @@ target_include_directories(
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
 	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
 )
-
-add_dependencies(libaqualink-automate Cinatra)
-
 target_link_libraries(
 	libaqualink-automate 
 	PUBLIC
@@ -494,8 +510,8 @@ target_link_libraries(
 	Boost::log 
 	Boost::log_setup 
 	Boost::program_options 
+	Boost::url
 	mstch::mstch
-	Cinatra
 	magic_enum::magic_enum
 	mstch::mstch
 	nlohmann_json::nlohmann_json

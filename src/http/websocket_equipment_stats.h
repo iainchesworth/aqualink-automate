@@ -5,7 +5,6 @@
 
 #include <boost/signals2.hpp>
 
-#include "interfaces/ishareableroute.h"
 #include "interfaces/iwebsocket.h"
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
@@ -14,10 +13,10 @@ namespace AqualinkAutomate::HTTP
 {
 	inline constexpr char EQUIPMENTSTATS_WEBSOCKET_URL[] = "/ws/equipment/stats";
 
-	class WebSocket_Equipment_Stats: public Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>, public Interfaces::IShareableRoute
+	class WebSocket_Equipment_Stats: public Interfaces::IWebSocket<EQUIPMENTSTATS_WEBSOCKET_URL>
 	{
 	public:
-		WebSocket_Equipment_Stats(HTTP::Server& http_server, Kernel::HubLocator& hub_locator);
+		WebSocket_Equipment_Stats(Kernel::HubLocator& hub_locator);
 
 	private:
 		virtual void OnOpen(HTTP::Request& req) override;

@@ -3,8 +3,6 @@
 #include <chrono>
 #include <list>
 
-#include <boost/asio/io_context.hpp>
-
 #include "jandy/devices/jandy_controller.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/emulated.h"
@@ -21,6 +19,7 @@
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
 #include "kernel/hub_locator.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -44,7 +43,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		PDADevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		PDADevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~PDADevice();
 
 	private:

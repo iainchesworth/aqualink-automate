@@ -5,8 +5,6 @@
 #include <cstdint>
 #include <utility>
 
-#include <boost/asio/io_context.hpp>
-
 #include "jandy/devices/jandy_device.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/capabilities/restartable.h"
@@ -14,6 +12,7 @@
 #include "jandy/messages/aquarite/aquarite_message_percent.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
 #include "utility/value_debouncer.h"
+#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -40,8 +39,8 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id);
-		AquariteDevice(boost::asio::io_context& io_context, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
+		AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id);
+		AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice();
 
 	private:

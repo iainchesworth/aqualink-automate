@@ -9,9 +9,9 @@ namespace AqualinkAutomate::Devices::Capabilities
 {
 	const std::chrono::seconds Restartable::DEFAULT_WATCHDOG_TIMEOUT{ std::chrono::seconds(30) };
 
-	Restartable::Restartable(boost::asio::io_context& io_context, std::chrono::seconds timeout_in_seconds, bool delayed_start) :
+	Restartable::Restartable(Types::ExecutorType executor, std::chrono::seconds timeout_in_seconds, bool delayed_start) :
 		m_TimeoutDuration(timeout_in_seconds),
-		m_WatchdogTimer(io_context),
+		m_WatchdogTimer(executor),
 		m_IsRunning(false)
 	{
 		if (!delayed_start)
