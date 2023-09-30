@@ -179,6 +179,7 @@ add_library(
 	src/http/json/json_data_hub.cpp 
 	src/http/json/json_equipment.cpp 
 	src/http/server/detectsession.cpp
+	src/http/server/handle_request.cpp
 	src/http/server/http_plainsession.cpp	 
 	src/http/server/http_session.cpp 
 	src/http/server/http_sslsession.cpp 
@@ -191,6 +192,11 @@ add_library(
 	src/http/server/websocket_session.cpp
 	src/http/server/websocket_session_helper.cpp
 	src/http/server/websocket_sslsession.cpp
+	src/http/server/router/child_idx_vector.cpp 
+	src/http/server/router/matches.cpp 
+	src/http/server/router/node.cpp 
+	src/http/server/router/router.cpp 
+	src/http/server/router/segment_template.cpp 
 	src/http/support/support_generate_page_footer.cpp 
 	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 

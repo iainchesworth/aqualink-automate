@@ -35,10 +35,10 @@ struct std::hash<std::tuple<boost::beast::http::verb, boost::urls::url_view>>
 namespace AqualinkAutomate::HTTP
 {
 
-    class Router
+    class RouterOld
     {
     public:
-        Router();
+        RouterOld();
 
     public:
         void Add(Verbs verb, std::unique_ptr<Interfaces::IWebRouteBase>&& handler);

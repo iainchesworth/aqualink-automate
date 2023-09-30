@@ -4,7 +4,7 @@
 
 #include "exceptions/exception_http_duplicateroute.h"
 #include "http/server/response_404.h"
-#include "http/server/router.h"
+#include "http/server/RouterOld.h"
 
 #include "logging/logging.h"
 
@@ -13,13 +13,13 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-    Router::Router() : 
+    RouterOld::RouterOld() : 
         m_HttpRoutes(), 
         m_WsRoutes()
     {
     }
 
-    void Router::Add(Verbs verb, std::unique_ptr<Interfaces::IWebRouteBase>&& handler)
+    void RouterOld::Add(Verbs verb, std::unique_ptr<Interfaces::IWebRouteBase>&& handler)
     {
         if (auto url = boost::urls::parse_origin_form(handler->Route()); url.has_error())
         {
@@ -35,7 +35,7 @@ namespace AqualinkAutomate::HTTP
         }
     }
 
-    void Router::Add(std::unique_ptr<Interfaces::IWebSocketBase>&& handler)
+    void RouterOld::Add(std::unique_ptr<Interfaces::IWebSocketBase>&& handler)
     {
         if (auto url = boost::urls::parse_origin_form(handler->Route()); url.has_error())
         {
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::HTTP
         }
     }
 
-    HTTP::Message Router::HTTP_OnRequest(HTTP::Request const& req)
+    HTTP::Message RouterOld::HTTP_OnRequest(HTTP::Request const& req)
     {
         try
         {

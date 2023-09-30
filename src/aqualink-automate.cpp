@@ -11,7 +11,7 @@
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
-#include "http/server/router.h"
+#include "http/server/router/router.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_devices.h"
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		auto http_router = std::make_shared<HTTP::Router>();
+		auto http_router = std::make_shared<HTTP::Router::Router<std::unique_ptr<Interfaces::IWebRouteBase>>>();
 
 		if (!settings.web.http_content_is_disabled)
 		{
