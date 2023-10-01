@@ -1,6 +1,11 @@
+#include <format>
+
 #include <boost/system/error_code.hpp>
 
 #include "http/server/http_plainsession.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -30,7 +35,10 @@ namespace AqualinkAutomate::HTTP
 	{
 		boost::system::error_code ec;
 
-		m_Stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+		if (m_Stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec); ec)
+		{
+			LogTrace(Channel::Web, std::format("Failed to shutdown tcp socket; error was -> {}", ec.message()));
+		}
 	}
 
 }

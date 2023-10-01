@@ -1,6 +1,7 @@
 #pragma once 
 
 #include <chrono>
+#include <format>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,6 +21,9 @@
 #include "http/server/router.h"
 #include "http/server/websocket_session_helper.h"
 #include "interfaces/isession.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -63,11 +67,13 @@ namespace AqualinkAutomate::HTTP
                     case boost::system::errc::success:
 						if (boost::beast::websocket::is_upgrade(m_Parser->get()))
 						{
+							LogTrace(Channel::Web, "WebSocket upgrade requested detected on HTTP stream -> transitioning to WebSockets");
 							boost::beast::get_lowest_layer(SessionType().Stream()).expires_never();
 							return WebSocket_MakeSession(SessionType().ReleaseStream(), m_Parser->release());
 						}
 						else
 						{
+							LogTrace(Channel::Web, "HTTP request from client; handling request");
                             QueueWrite(m_Router->HTTP_OnRequest(m_Parser->release()));
 
 							if (QUEUE_LIMIT > m_ResponseQueue.size())
@@ -78,9 +84,9 @@ namespace AqualinkAutomate::HTTP
 						break;
 
 					case boost::asio::ssl::error::stream_truncated:
-						break;
-
+						[[fallthrough]];
 					default:
+						LogDebug(Channel::Web, std::format("Failed during read of HTTP stream; error was -> {}", ec.message()));
 						break;
 					}
 				}
@@ -110,22 +116,24 @@ namespace AqualinkAutomate::HTTP
                         case boost::system::errc::success:
 							if (!keep_alive)
 							{
+								LogTrace(Channel::Web, "Write completed; no keep-alive required so transitioning to EOF and closing stream");
 								return SessionType().DoEOF();
 							}
 							else if (DoWrite())
 							{
+								LogTrace(Channel::Web, "Write completed; keep-alive required so actioning next read");
 								DoRead();
 							}
 							else
 							{
-								//FIXME
+								LogDebug(Channel::Web, "Write completed; keep-alive required but queuing next write failed");
 							}
 							break;
 
 						case boost::asio::ssl::error::stream_truncated:
-							break;
-
+							[[fallthrough]];
 						default:
+							LogDebug(Channel::Web, std::format("Failed during write of HTTP stream; error was -> {}", ec.message()));
 							break;
 						}
 					}
@@ -140,7 +148,11 @@ namespace AqualinkAutomate::HTTP
 		{
 			m_ResponseQueue.push_back(std::move(response));
 
-			if (1 == m_ResponseQueue.size())
+			if (1 != m_ResponseQueue.size())
+			{
+				///FIXME
+			}
+			else
 			{
 				DoWrite();
 			}

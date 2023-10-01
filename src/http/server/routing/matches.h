@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <string_view>
 
-namespace AqualinkAutomate::HTTP::Router
+namespace AqualinkAutomate::HTTP::Routing
 {
 
     class matches_base
@@ -68,16 +68,6 @@ namespace AqualinkAutomate::HTTP::Router
             }
         }
 
-        virtual std::string_view* matches() override
-        {
-            return matches_storage_;
-        }
-
-        virtual std::string_view* ids() override
-        {
-            return ids_storage_;
-        }
-
     public:
         matches_storage() = default;
 
@@ -87,6 +77,16 @@ namespace AqualinkAutomate::HTTP::Router
         }
 
         virtual std::string_view const* ids() const override
+        {
+            return ids_storage_;
+        }
+
+        virtual std::string_view* matches() override
+        {
+            return matches_storage_;
+        }
+
+        virtual std::string_view* ids() override
         {
             return ids_storage_;
         }
@@ -105,4 +105,4 @@ namespace AqualinkAutomate::HTTP::Router
     using matches = matches_storage<20>;
 
 }
-// namespace AqualinkAutomate::HTTP::Router
+// namespace AqualinkAutomate::HTTP::Routing

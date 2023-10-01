@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Page_Index(Kernel::HubLocator& hub_locator);
 
 	public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) final;
+		virtual std::string GenerateBody(HTTP::Request req) final;
 
 	private:
 		void PopulateMainActionButtons();

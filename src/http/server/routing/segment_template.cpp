@@ -6,9 +6,9 @@
 #include <boost/url/grammar/token_rule.hpp>
 #include <boost/url/grammar/variant_rule.hpp>
 #include <boost/url/rfc/detail/path_rules.hpp>
-#include "http/server/router/segment_template.h"
+#include "http/server/routing/segment_template.h"
 
-namespace AqualinkAutomate::HTTP::Router
+namespace AqualinkAutomate::HTTP::Routing
 {
 
     bool segment_template::match(boost::urls::pct_string_view seg) const
@@ -91,4 +91,4 @@ namespace AqualinkAutomate::HTTP::Router
     }
 
 }
-// namespace AqualinkAutomate::HTTP::Router
+// namespace AqualinkAutomate::HTTP::Routing

@@ -9,6 +9,7 @@
 #include <mstch/mstch.hpp>
 
 #include "concepts/is_c_array.h"
+#include "http/server/responses/response_405.h"
 #include "interfaces/iwebroute.h"
 #include "logging/logging.h"
 
@@ -29,6 +30,35 @@ namespace AqualinkAutomate::Interfaces
 		}
 
 		virtual ~IWebPageRoute() = default;
+
+	public:
+		virtual HTTP::Message OnRequest(HTTP::Request req) final
+		{
+			auto generate_page = [this](HTTP::Request req) -> HTTP::Message
+				{
+					HTTP::Response resp{ HTTP::Status::ok, req.version() };
+
+					resp.set(boost::beast::http::field::server, "1.2.3.4");
+					resp.set(boost::beast::http::field::content_type, "text/html");
+					resp.keep_alive(req.keep_alive());
+					resp.body() = GenerateBody(req);
+					resp.prepare_payload();
+
+					return resp;
+				};
+
+			switch (req.method())
+			{
+			case HTTP::Verbs::get:
+				return generate_page(req);
+
+			default:
+				return HTTP::Responses::Response_405(req);
+			}
+		}
+
+	protected:
+		virtual std::string GenerateBody(HTTP::Request req) = 0;
 
 	protected:
 		static std::string LoadTemplateFromFile(const char * path)

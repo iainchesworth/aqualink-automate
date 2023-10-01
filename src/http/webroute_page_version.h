@@ -13,7 +13,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Page_Version();
 
 	public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) final;
+		virtual std::string GenerateBody(HTTP::Request req) final;
 	};
 
 }

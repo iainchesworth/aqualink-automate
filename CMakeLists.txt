@@ -159,12 +159,16 @@ add_library(
 	src/exceptions/exception_traits_invalidtraitvalue.cpp 
 	src/exceptions/exception_traits_notmutable.cpp 
 	src/exceptions/exception_webserver.cpp 
+	src/formatters/asio_endpoint_formatter.cpp 
+	src/formatters/beast_stringview_formatter.cpp 
 	src/formatters/orp_formatter.cpp 
 	src/formatters/ph_formatter.cpp 
 	src/formatters/temperature_formatter.cpp 
 	src/formatters/units_dimensionless_formatter.cpp 
 	src/formatters/units_electric_potential_formatter.cpp 
+	src/formatters/url_segments_encoded_view_formatter.cpp 
 	src/http/webroute_equipment.cpp 
+	src/http/webroute_equipment_button.cpp 
 	src/http/webroute_equipment_buttons.cpp 
 	src/http/webroute_equipment_devices.cpp 
 	src/http/webroute_equipment_version.cpp 
@@ -178,25 +182,26 @@ add_library(
 	src/http/websocket_equipment_stats.cpp 
 	src/http/json/json_data_hub.cpp 
 	src/http/json/json_equipment.cpp 
-	src/http/server/detectsession.cpp
-	src/http/server/handle_request.cpp
+	src/http/server/detectsession.cpp	
 	src/http/server/http_plainsession.cpp	 
 	src/http/server/http_session.cpp 
 	src/http/server/http_sslsession.cpp 
 	src/http/server/listener.cpp 
 	src/http/server/parse_query_string.cpp 
-	src/http/server/response_404.cpp 
-	src/http/server/router.cpp 
+	src/http/server/responses/response_400.cpp 
+	src/http/server/responses/response_404.cpp 
+	src/http/server/responses/response_405.cpp 
+	src/http/server/responses/response_500.cpp 
+	src/http/server/router.cpp 	 
 	src/http/server/server_types.cpp 
 	src/http/server/websocket_plainsession.cpp
 	src/http/server/websocket_session.cpp
 	src/http/server/websocket_session_helper.cpp
 	src/http/server/websocket_sslsession.cpp
-	src/http/server/router/child_idx_vector.cpp 
-	src/http/server/router/matches.cpp 
-	src/http/server/router/node.cpp 
-	src/http/server/router/router.cpp 
-	src/http/server/router/segment_template.cpp 
+	src/http/server/routing/child_idx_vector.cpp 
+	src/http/server/routing/matches.cpp 
+	src/http/server/routing/node.cpp 
+	src/http/server/routing/segment_template.cpp 
 	src/http/support/support_generate_page_footer.cpp 
 	src/http/support/support_generate_page_header.cpp 	 
 	src/interfaces/icertificate.cpp 
@@ -460,7 +465,6 @@ target_compile_definitions(
 	-DMAGIC_ENUM_RANGE_MIN=0
 	-DMAGIC_ENUM_RANGE_MAX=255
 	PUBLIC 
-	-DBOOST_ASIO_ENABLE_HANDLER_TRACKING
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
 )
 endif(WIN32)

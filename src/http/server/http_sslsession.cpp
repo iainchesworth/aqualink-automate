@@ -1,8 +1,12 @@
 #include <chrono>
+#include <format>
 
 #include <boost/system/error_code.hpp>
 
 #include "http/server/http_sslsession.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -20,16 +24,18 @@ namespace AqualinkAutomate::HTTP
 		m_Stream.async_handshake(
 			boost::asio::ssl::stream_base::server,
 			m_Buffer.data(),
-                                 [this, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_used)
+            [this, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_used)
 			{
 				switch (ec.value())
 				{
                 case boost::system::errc::success:
+					LogTrace(Channel::Web, std::format("Completed SSL handshake on HTTPS stream; {} bytes were consumed", bytes_used));
 					m_Buffer.consume(bytes_used);
 					DoRead();
 					break;
 
 				default:
+					LogDebug(Channel::Web, std::format("Failed to complete SSL handshake on HTTPS stream; error was -> {}", ec.message()));
 					break;
 				}
 			}
@@ -56,10 +62,11 @@ namespace AqualinkAutomate::HTTP
                 switch (ec.value())
 				{
                 case boost::system::errc::success:
-					// Nothing...
+					LogTrace(Channel::Web, "Completed SSL shutdown on HTTPS stream");
 					break;
 
 				default:
+					LogDebug(Channel::Web, std::format("Failed to complete SSL shutdown on HTTPS stream; error was -> {}", ec.message()));
 					break;
 				}
 			}

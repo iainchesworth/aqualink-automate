@@ -11,8 +11,9 @@
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
-#include "http/server/router/router.h"
+#include "http/server/router.h"
 #include "http/webroute_equipment.h"
+#include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_devices.h"
 #include "http/webroute_equipment_version.h"
@@ -200,13 +201,13 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		auto http_router = std::make_shared<HTTP::Router::Router<std::unique_ptr<Interfaces::IWebRouteBase>>>();
+		auto http_router = std::make_shared<HTTP::Router>();
 
 		if (!settings.web.http_content_is_disabled)
 		{
-            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator)));
-            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator)));
-            http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Page_Version>()));
+            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Index>(hub_locator));
+            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Equipment>(hub_locator));
+            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Version>());
 		}
 
 		// Routes are configured as follows
@@ -223,14 +224,15 @@ int main(int argc, char* argv[])
 		//     /ws/equipment/stats
 		//
 
-		http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator)));
-        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator)));
-        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator)));
-        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator)));
-        http_router->Add(HTTP::Verbs::get, std::move(std::make_unique<HTTP::WebRoute_Version>()));
+		http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment>(hub_locator));
+		http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Button>(hub_locator));
+        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
+        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Devices>(hub_locator));
+        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Version>(hub_locator));
+        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Version>());
 
-		http_router->Add(std::move(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator)));
-        http_router->Add(std::move(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator)));
+		http_router->Add(std::make_shared<HTTP::WebSocket_Equipment>(hub_locator));
+        http_router->Add(std::make_shared<HTTP::WebSocket_Equipment_Stats>(hub_locator));
 
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls);
 

@@ -8,7 +8,7 @@
 #include <boost/url/grammar/tuple_rule.hpp>
 
 
-namespace AqualinkAutomate::HTTP::Router
+namespace AqualinkAutomate::HTTP::Routing
 {
 
     class segment_template
@@ -128,4 +128,4 @@ namespace AqualinkAutomate::HTTP::Router
                     segment_template_rule)));
 
 }
-// namespace AqualinkAutomate::HTTP::Router
+// namespace AqualinkAutomate::HTTP::Routing

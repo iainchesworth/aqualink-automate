@@ -1,4 +1,5 @@
 #include <chrono>
+#include <format>
 
 #include <boost/asio/basic_socket_acceptor.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -8,6 +9,9 @@
 #include "http/server/detectsession.h"
 #include "http/server/http_plainsession.h"
 #include "http/server/http_sslsession.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -34,14 +38,16 @@ namespace AqualinkAutomate::HTTP
 					{
 						if (ec)
 						{
-							// An error occurred.
+							LogDebug(Channel::Web, std::format("Failed to complete SSL detection on HTTP stream; error was -> {}", ec.message()));
 						}
 						else if (ssl_was_detected)
 						{
+							LogTrace(Channel::Web, "SSL detected on HTTP stream -> transitioning to HTTPS");
 							std::make_shared<HTTP_SSLSession>(std::move(m_Stream), m_SSLContext, std::move(m_Buffer), m_Router)->Run();
 						}
 						else
 						{
+							LogTrace(Channel::Web, "SSL not detected on HTTP stream -> staying with HTTP");
                             std::make_shared<HTTP_PlainSession>(std::move(m_Stream), std::move(m_Buffer), m_Router)->Run();
 						}
 					}

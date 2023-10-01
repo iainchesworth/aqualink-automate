@@ -5,7 +5,7 @@
 
 #include <boost/assert.hpp>
 
-namespace AqualinkAutomate::HTTP::Router
+namespace AqualinkAutomate::HTTP::Routing
 {
 
     class child_idx_vector
@@ -116,4 +116,4 @@ namespace AqualinkAutomate::HTTP::Router
     };
 
 }
-// namespace AqualinkAutomate::HTTP::Router
+// namespace AqualinkAutomate::HTTP::Routing

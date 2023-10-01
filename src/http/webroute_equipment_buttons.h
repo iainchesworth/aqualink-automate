@@ -15,9 +15,8 @@
 namespace AqualinkAutomate::HTTP
 {
 	inline constexpr char EQUIPMENTBUTTONS_ROUTE_URL[] = "/api/equipment/buttons";
-	inline constexpr char EQUIPMENTBUTTONS_BUTTON_ROUTE_URL[] = "/api/equipment/buttons/{:button_id}";
 
-	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL> //, public Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>
+	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>
 	{
 	public:
         WebRoute_Equipment_Buttons(Kernel::HubLocator& hub_locator);
@@ -28,15 +27,6 @@ namespace AqualinkAutomate::HTTP
 	public:
         HTTP::Message ButtonCollection_GetHandler(HTTP::Request req);
         HTTP::Message ButtonCollection_PostHandler(HTTP::Request req);
-
-	public:
-        HTTP::Message ButtonIndividual_GetHandler(HTTP::Request req);
-        HTTP::Message ButtonIndividual_PostHandler(HTTP::Request req);
-
-	private:
-        HTTP::Message Report_ButtonDoesntExist(HTTP::Request req, const std::string& button_id);
-        HTTP::Message Report_ButtonIsInactive(HTTP::Request req, const std::string& button_id);
-        HTTP::Message Report_SystemIsInactive(HTTP::Request req);
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };

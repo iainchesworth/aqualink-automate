@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <memory>
 #include <string>
 
@@ -61,9 +62,9 @@ namespace AqualinkAutomate::HTTP
                         break;
 
                     case boost::asio::ssl::error::stream_truncated:
-                        break;
-
+                        [[fallthrough]];
                     default:
+                        LogDebug(Channel::Web, std::format("Failed during accept of WebSocket stream; error was -> {}", ec.message()));
                         break;
                     }
                 }
@@ -97,6 +98,7 @@ namespace AqualinkAutomate::HTTP
                                     break;
 
                                 default:
+                                    LogDebug(Channel::Web, std::format("Failed during write of WebSocket stream; error was -> {}", ec.message()));
                                     break;
                                 }
                             }
@@ -104,9 +106,9 @@ namespace AqualinkAutomate::HTTP
                         break;
 
                     case boost::asio::ssl::error::stream_truncated:
-                        break;
-
+                        [[fallthrough]];
                     default:
+                        LogDebug(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
                         break;
                     }
                 }

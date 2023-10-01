@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "interfaces/iwebpageroute.h"
 #include "kernel/data_hub.h"
@@ -17,7 +18,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Page_Equipment(Kernel::HubLocator& hub_locator);
 
 	public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) final;
+		virtual std::string GenerateBody(HTTP::Request req) final;
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };

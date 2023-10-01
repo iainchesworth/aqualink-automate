@@ -1,11 +1,16 @@
 #include <format>
 
+#include <boost/url/parse_path.hpp>
 #include <magic_enum.hpp>
 
 #include "exceptions/exception_http_duplicateroute.h"
-#include "http/server/response_404.h"
-#include "http/server/RouterOld.h"
-
+#include "formatters/beast_stringview_formatter.h"
+#include "formatters/url_segments_encoded_view_formatter.h"
+#include "http/server/responses/response_400.h"
+#include "http/server/responses/response_404.h"
+#include "http/server/responses/response_500.h"
+#include "http/server/router.h"
+#include "http/server/routing/matches.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -13,73 +18,59 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-    RouterOld::RouterOld() : 
+    Router::Router() : 
         m_HttpRoutes(), 
         m_WsRoutes()
     {
     }
 
-    void RouterOld::Add(Verbs verb, std::unique_ptr<Interfaces::IWebRouteBase>&& handler)
+    void Router::Add(Verbs verb, std::shared_ptr<Interfaces::IWebRouteBase> handler)
     {
-        if (auto url = boost::urls::parse_origin_form(handler->Route()); url.has_error())
-        {
-            throw; ///FIXME
-        }
-        else if (m_HttpRoutes.contains({verb, url.value()}))
-        {
-            throw Exceptions::HTTP_DuplicateRoute();
-        }
-        else
-        {
-            m_HttpRoutes[{verb, url.value()}] = std::move(handler);
-        }
+        LogTrace(Channel::Web, std::format("Adding HTTP handler for route '{}'", handler->Route()));
+        m_HttpRoutes.insert_impl(handler->Route(), handler);
     }
 
-    void RouterOld::Add(std::unique_ptr<Interfaces::IWebSocketBase>&& handler)
+    void Router::Add(std::shared_ptr<Interfaces::IWebSocketBase> handler)
     {
-        if (auto url = boost::urls::parse_origin_form(handler->Route()); url.has_error())
-        {
-            throw; /// FIXME
-        }
-        else if (m_WsRoutes.contains(url.value()))
-        {
-            throw Exceptions::HTTP_DuplicateRoute();
-        }
-        else
-        {
-            m_WsRoutes[url.value()] = std::move(handler);
-        }
+        LogTrace(Channel::Web, std::format("Adding WebSocket handler for route '{}'", handler->Route()));
+        m_WsRoutes.insert_impl(handler->Route(), handler);
     }
 
-    HTTP::Message RouterOld::HTTP_OnRequest(HTTP::Request const& req)
+    HTTP::Message Router::HTTP_OnRequest(HTTP::Request const& req)
     {
         try
         {
-            if (auto url = boost::urls::parse_origin_form(req.target()); url.has_error())
-            {
-                LogDebug(Channel::Web, std::format("Failed to parse HTTP request: {} -> error: {}", req.target().data(), url.error().message()));
-            }
-            else if (auto stripped_url = boost::urls::parse_origin_form(url->path()); stripped_url.has_error())
-            {
-                LogDebug(Channel::Web, std::format("Failed to parse stripped URL: {} -> error: {}", url->path(), stripped_url.error().message()));
-            }
-            else if (!m_HttpRoutes.contains({req.method(), stripped_url.value()}))
-            {
-                LogDebug(Channel::Web, std::format("Failed to match <method, route> key in route collection -> key was <{}, {}>", magic_enum::enum_name(req.method()), stripped_url.value().path()));
+            auto path(boost::urls::parse_path(req.target()));
+            
+            HTTP::Routing::matches m;
 
-                return HTTP::Response_404(req);
+            std::string_view* matches_it = m.matches();
+            std::string_view* ids_it = m.ids();
+
+            if (path.has_error())
+            {
+                LogDebug(Channel::Web, std::format("Supplied path could not be parsed; error was -> {}", path.error().message()));
+                return HTTP::Responses::Response_400(req);
+            }
+            else if (auto p = m_HttpRoutes.find_impl(*path, matches_it, ids_it); nullptr != p)
+            {
+                LogTrace(Channel::Web, std::format("Handling HTTP {} request for {}", magic_enum::enum_name(req.method()), req.target()));
+                m.resize(static_cast<std::size_t>(matches_it - m.matches()));
+                return p->OnRequest(req);
             }
             else
             {
-                return m_HttpRoutes[{req.method(), stripped_url.value()}]->OnRequest(req);
+                LogDebug(Channel::Web, std::format("Path '{}' was requested but no handler was available", req.target()));
             }
         }
-        catch (...)
+        catch (const std::exception& ex)
         {
-            throw; /// FIXME 5xx
+            LogDebug(Channel::Web, std::format("An exception was thrown while processing an HTTP request: exception was -> {}", ex.what()));
+            return HTTP::Responses::Response_500(req);
         }
 
-        throw;
+        LogDebug(Channel::Web, "Could not handle request -> returning a 404 NOT FOUND");
+        return HTTP::Responses::Response_404(req);
     }
 
 }

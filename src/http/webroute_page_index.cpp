@@ -21,18 +21,18 @@ namespace AqualinkAutomate::HTTP
 		PopulateMainActionButtons();		
 	}
 
-	HTTP::Message WebRoute_Page_Index::OnRequest(HTTP::Request req)
+	std::string WebRoute_Page_Index::GenerateBody(HTTP::Request req)
 	{
-		Support::GeneratePageHeader_Context(m_TemplateContext);		
+		Support::GeneratePageHeader_Context(m_TemplateContext);
 
 		if (Kernel::PoolConfigurations::Unknown == m_DataHub->PoolConfiguration)
 		{
-			m_TemplateContext.emplace("pool_temperature", std::string{"-"});
-			m_TemplateContext.emplace("spa_temperature", std::string{"-"});
-			m_TemplateContext.emplace("air_temperature", std::string{"-"});
+			m_TemplateContext.emplace("pool_temperature", std::string{ "-" });
+			m_TemplateContext.emplace("spa_temperature", std::string{ "-" });
+			m_TemplateContext.emplace("air_temperature", std::string{ "-" });
 
-			m_TemplateContext.emplace("water_orp", std::string{"-"});
-			m_TemplateContext.emplace("water_ph", std::string{"-"});
+			m_TemplateContext.emplace("water_orp", std::string{ "-" });
+			m_TemplateContext.emplace("water_ph", std::string{ "-" });
 		}
 		else
 		{
@@ -40,23 +40,15 @@ namespace AqualinkAutomate::HTTP
 			m_TemplateContext.emplace("spa_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub->SpaTemp()));
 			m_TemplateContext.emplace("air_temperature", Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_DataHub->AirTemp()));
 
-			m_TemplateContext.emplace("water_orp", std::string{"-"});
-			m_TemplateContext.emplace("water_ph", std::string{"-"});
+			m_TemplateContext.emplace("water_orp", std::string{ "-" });
+			m_TemplateContext.emplace("water_ph", std::string{ "-" });
 		}
 
 		PopulateTriggerableButtons();
 
 		Support::GeneratePageFooter_Context(m_TemplateContext);
 
-        HTTP::Response resp{HTTP::Status::ok, req.version()};
-
-        resp.set(boost::beast::http::field::server, "1.2.3.4");
-        resp.set(boost::beast::http::field::content_type, "application/json");
-        resp.keep_alive(req.keep_alive());
-        resp.body() = mstch::render(m_TemplateContent, m_TemplateContext);
-        resp.prepare_payload();
-
-        return resp;
+		return mstch::render(m_TemplateContent, m_TemplateContext);
 	}
 
 	void WebRoute_Page_Index::PopulateMainActionButtons()

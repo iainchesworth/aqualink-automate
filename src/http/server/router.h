@@ -1,48 +1,26 @@
 #pragma once
 
 #include <memory>
-#include <string_view>
-#include <tuple>
-#include <unordered_map>
 
 #include <boost/url.hpp>
 
 #include "http/server/server_types.h"
+#include "http/server/routing/node.h"
 #include "interfaces/iwebroute.h"
 #include "interfaces/iwebsocket.h"
 
-template<> 
-struct std::hash<std::tuple<boost::beast::http::verb, boost::urls::url_view>>
-{
-    std::size_t operator()(const std::tuple<boost::beast::http::verb, boost::urls::url_view>& tuple) const
-    {
-        std::size_t hash = 0;
-
-        hash_combine(hash, std::hash<int>{}(static_cast<int>(std::get<0>(tuple))));
-        hash_combine(hash, std::hash<std::string_view>{}(std::get<1>(tuple).path()));
-
-        return hash;
-    }
-
-    template<typename T> 
-    void hash_combine(std::size_t& seed, const T& val) const
-    {
-        std::hash<T> hasher;
-        seed ^= hasher(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-};
 
 namespace AqualinkAutomate::HTTP
 {
 
-    class RouterOld
+    class Router
     {
     public:
-        RouterOld();
+        Router();
 
     public:
-        void Add(Verbs verb, std::unique_ptr<Interfaces::IWebRouteBase>&& handler);
-        void Add(std::unique_ptr<Interfaces::IWebSocketBase>&& handler);
+        void Add(Verbs verb, std::shared_ptr<Interfaces::IWebRouteBase> handler);
+        void Add(std::shared_ptr<Interfaces::IWebSocketBase> handler);
 
     public:
         HTTP::Message HTTP_OnRequest(HTTP::Request const &req);
@@ -54,8 +32,8 @@ namespace AqualinkAutomate::HTTP
         void WebSocket_OnError();
 
     private:
-        std::unordered_map<std::tuple<Verbs, boost::urls::url_view>, std::unique_ptr<Interfaces::IWebRouteBase>> m_HttpRoutes;
-        std::unordered_map<boost::urls::url_view, std::unique_ptr<Interfaces::IWebSocketBase>> m_WsRoutes;
+        HTTP::Routing::impl<Interfaces::IWebRouteBase> m_HttpRoutes;
+        HTTP::Routing::impl<Interfaces::IWebSocketBase> m_WsRoutes;
     };
 
 }

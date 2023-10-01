@@ -3,9 +3,9 @@
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
 
-#include "http/server/router/matches.h"
+#include "http/server/routing/matches.h"
 
-namespace AqualinkAutomate::HTTP::Router
+namespace AqualinkAutomate::HTTP::Routing
 {
 
     matches_base::const_reference matches_base::at(size_type pos) const
@@ -71,4 +71,4 @@ namespace AqualinkAutomate::HTTP::Router
     }
 
 }
-// namespace AqualinkAutomate::HTTP::Router
+// namespace AqualinkAutomate::HTTP::Routing

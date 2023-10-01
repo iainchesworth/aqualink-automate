@@ -1,8 +1,14 @@
+#include <format>
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/system/error_code.hpp>
 
+#include "formatters/asio_endpoint_formatter.h"
 #include "http/server/detectsession.h"
 #include "http/server/listener.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -16,19 +22,19 @@ namespace AqualinkAutomate::HTTP
 
 		if (m_Acceptor.open(endpoint.protocol(), ec); ec)
 		{
-			throw;
+			LogWarning(Channel::Web, std::format("Failed to open HTTP server acceptor; error was -> {}", ec.message()));
 		}
 		else if (m_Acceptor.set_option(boost::asio::socket_base::reuse_address(true), ec); ec)
 		{
-			throw;
+			LogWarning(Channel::Web, std::format("Failed to configure HTTP server acceptor to reuse address; error was -> {}", ec.message()));
 		}
 		else if (m_Acceptor.bind(endpoint, ec); ec)
 		{
-			throw;
+			LogWarning(Channel::Web, std::format("Failed to bind HTTP server to endpoint {}; error was -> {}", endpoint, ec.message()));
 		}
 		else if (m_Acceptor.listen(boost::asio::socket_base::max_listen_connections, ec); ec)
 		{
-			throw;
+			LogWarning(Channel::Web, std::format("Failed to listen to HTTP server endpoint {}; error was -> {}", endpoint, ec.message()));
 		}
 		else
 		{
@@ -54,6 +60,7 @@ namespace AqualinkAutomate::HTTP
 					break;
 
 				default:
+					LogDebug(Channel::Web, std::format("Failed to accept HTTP connection from {}; error was -> {}", socket.remote_endpoint(), ec.message()));
 					break;
 				}
 
