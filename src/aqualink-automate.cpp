@@ -11,6 +11,7 @@
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
+#include "http/server/static_file_handler.h"
 #include "http/server/router.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
@@ -233,6 +234,8 @@ int main(int argc, char* argv[])
 
 		http_router->Add(std::make_shared<HTTP::WebSocket_Equipment>(hub_locator));
         http_router->Add(std::make_shared<HTTP::WebSocket_Equipment_Stats>(hub_locator));
+
+		http_router->StaticHandler(std::move(std::make_unique<HTTP::StaticFileHandler>("/", settings.web.doc_root)));
 
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls);
 

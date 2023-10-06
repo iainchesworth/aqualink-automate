@@ -97,8 +97,14 @@ namespace AqualinkAutomate::HTTP
 		{
 			bool const was_full = (QUEUE_LIMIT == m_ResponseQueue.size());
 
-			if (!m_ResponseQueue.empty())
+			if (m_ResponseQueue.empty())
 			{
+				LogTrace(Channel::Web, "Response queue is empty -> stopping active write loop");
+			}
+			else
+			{
+				LogTrace(Channel::Web, std::format("Response queue contains {} elements to send -> queuing async write of first time", m_ResponseQueue.size()));
+
 				boost::beast::http::message_generator msg = std::move(m_ResponseQueue.front());
 				m_ResponseQueue.erase(m_ResponseQueue.begin());
 
@@ -111,30 +117,19 @@ namespace AqualinkAutomate::HTTP
 					{
 						boost::ignore_unused(bytes_transferred);
 
-						switch (ec.value())
+						if (ec)
 						{
-                        case boost::system::errc::success:
-							if (!keep_alive)
-							{
-								LogTrace(Channel::Web, "Write completed; no keep-alive required so transitioning to EOF and closing stream");
-								return SessionType().DoEOF();
-							}
-							else if (DoWrite())
-							{
-								LogTrace(Channel::Web, "Write completed; keep-alive required so actioning next read");
-								DoRead();
-							}
-							else
-							{
-								LogDebug(Channel::Web, "Write completed; keep-alive required but queuing next write failed");
-							}
-							break;
-
-						case boost::asio::ssl::error::stream_truncated:
-							[[fallthrough]];
-						default:
 							LogDebug(Channel::Web, std::format("Failed during write of HTTP stream; error was -> {}", ec.message()));
-							break;
+						}
+						else if (!keep_alive)
+						{
+							LogTrace(Channel::Web, "Write completed; no keep-alive required so transitioning to EOF and closing stream");
+							SessionType().DoEOF();
+						}
+						else if (DoWrite())
+						{
+							LogTrace(Channel::Web, "Write completed; keep-alive active and response queue is not full so queuing another read");
+							DoRead();
 						}
 					}
 				);
@@ -148,12 +143,9 @@ namespace AqualinkAutomate::HTTP
 		{
 			m_ResponseQueue.push_back(std::move(response));
 
-			if (1 != m_ResponseQueue.size())
+			if (1 == m_ResponseQueue.size())
 			{
-				///FIXME
-			}
-			else
-			{
+				LogTrace(Channel::Web, "Response queue has a queued response in it so commence response write loop");
 				DoWrite();
 			}
 		}

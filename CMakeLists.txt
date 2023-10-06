@@ -188,16 +188,18 @@ add_library(
 	src/http/server/http_sslsession.cpp 
 	src/http/server/listener.cpp 
 	src/http/server/parse_query_string.cpp 
-	src/http/server/responses/response_400.cpp 
-	src/http/server/responses/response_404.cpp 
-	src/http/server/responses/response_405.cpp 
-	src/http/server/responses/response_500.cpp 
 	src/http/server/router.cpp 	 
 	src/http/server/server_types.cpp 
+	src/http/server/static_file_handler.cpp	 
 	src/http/server/websocket_plainsession.cpp
 	src/http/server/websocket_session.cpp
 	src/http/server/websocket_session_helper.cpp
 	src/http/server/websocket_sslsession.cpp
+	src/http/server/responses/response_staticfile.cpp
+	src/http/server/responses/response_400.cpp 
+	src/http/server/responses/response_404.cpp 
+	src/http/server/responses/response_405.cpp 
+	src/http/server/responses/response_500.cpp
 	src/http/server/routing/child_idx_vector.cpp 
 	src/http/server/routing/matches.cpp 
 	src/http/server/routing/node.cpp 
