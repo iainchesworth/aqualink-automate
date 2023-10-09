@@ -141,6 +141,7 @@ add_library(
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
 	src/developer/chrono_clocks.cpp 
+	src/developer/firewall_manager.cpp
 	src/developer/mock_serial_port.cpp 
 	src/developer/serial_port_options.cpp 
 	src/devices/device_status.cpp 
@@ -448,8 +449,10 @@ if(WIN32)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
-	src/platform/application/application_defaults_win32.cpp
-	src/platform/utility/get_terminal_column_width_win32.cpp
+	src/platform/windows/application_defaults.cpp
+	src/platform/windows/firewall_manager.cpp
+	src/platform/windows/get_terminal_column_width.cpp
+	src/platform/windows/uac_elevation.cpp
 )
 
 target_compile_definitions(
@@ -464,10 +467,14 @@ target_compile_definitions(
 	-DNOGDI
 	-DNOGDICAPMASKS
 	-DNOMINMAX
-	-DMAGIC_ENUM_RANGE_MIN=0
-	-DMAGIC_ENUM_RANGE_MAX=255
-	PUBLIC 
-	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
+)
+
+target_link_libraries(
+	libaqualink-automate
+	PUBLIC
+	comsuppw
+	ole32
+	oleaut32
 )
 endif(WIN32)
 
@@ -475,8 +482,9 @@ if(LINUX)
 target_sources(
 	libaqualink-automate 
 	PRIVATE
-	src/platform/application/application_defaults_linux.cpp
-	src/platform/utility/get_terminal_column_width_linux.cpp
+	src/platform/linux/application_defaults.cpp
+	src/platform/linux/firewall_manager.cpp
+	src/platform/linux/get_terminal_column_width.cpp
 )
 endif(LINUX)
 
@@ -485,7 +493,10 @@ target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
 target_compile_definitions(
 	libaqualink-automate 
 	PUBLIC 
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
 )
 
 target_include_directories(

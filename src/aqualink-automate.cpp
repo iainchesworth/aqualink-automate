@@ -8,6 +8,7 @@
 #include <magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
+#include "developer/firewall_manager.h"
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
@@ -201,6 +202,8 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
+
+		Developer::FirewallUtils::CheckAndConfigureExceptions();
 
 		auto http_router = std::make_shared<HTTP::Router>();
 

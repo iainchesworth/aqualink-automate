@@ -9,6 +9,7 @@
     "boost-assert",
     "boost-beast",
     "boost-circular-buffer",
+    "boost-dll",
     "boost-graph",
     "boost-iostreams",
     "boost-log",
