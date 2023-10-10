@@ -18,22 +18,22 @@ namespace AqualinkAutomate::HTTP
 		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
 	}
 
-	void WebSocket_Equipment::OnOpen(HTTP::Request& req)
+	void WebSocket_Equipment::OnOpen()
 	{
 		m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubConfigUpdate, this, std::placeholders::_1));
 		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubSystemUpdate, this, std::placeholders::_1));
 	}
 
-	void WebSocket_Equipment::OnMessage(HTTP::Request& req)
+	void WebSocket_Equipment::OnMessage(const boost::beast::flat_buffer& buffer)
 	{
 	}
 
-	void WebSocket_Equipment::OnClose(HTTP::Request& req)
+	void WebSocket_Equipment::OnClose()
 	{
 		m_ConfigChangeSlot.disconnect();
 	}
 
-	void WebSocket_Equipment::OnError(HTTP::Request& req)
+	void WebSocket_Equipment::OnError()
 	{
 		m_ConfigChangeSlot.disconnect();
 	}

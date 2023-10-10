@@ -13,10 +13,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context &ssl_context, std::shared_ptr<Router> router) :
+	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context &ssl_context) :
 		m_SSLContext(ssl_context),
-		m_Acceptor(boost::asio::make_strand(executor)),
-		m_Router(router)
+		m_Acceptor(boost::asio::make_strand(executor))
 	{
         boost::system::error_code ec;
 
@@ -56,7 +55,7 @@ namespace AqualinkAutomate::HTTP
 				switch (ec.value())
 				{
                 case boost::system::errc::success:
-					std::make_shared<DetectSession>(std::move(socket), m_SSLContext, m_Router)->Run();
+					std::make_shared<DetectSession>(std::move(socket), m_SSLContext)->Run();
 					break;
 
 				default:

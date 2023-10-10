@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_set>
 
+#include <boost/beast/core/flat_buffer.hpp>
+
 #include "concepts/is_c_array.h"
 #include "http/server/server_types.h"
 #include "interfaces/isession.h"
@@ -23,6 +25,30 @@ namespace AqualinkAutomate::Interfaces
 
     public:
         virtual const std::string_view Route() const = 0;
+
+    public:
+        void Handle_OnOpen(std::shared_ptr<Interfaces::ISession> session);
+        void Handle_OnMessage(std::shared_ptr<Interfaces::ISession> session, const boost::beast::flat_buffer& buffer);
+        void Handle_OnClose(std::shared_ptr<Interfaces::ISession> session);
+        void Handle_OnError(std::shared_ptr<Interfaces::ISession> session);
+
+    protected:
+        virtual void OnOpen() = 0;
+        virtual void OnMessage(const boost::beast::flat_buffer& buffer) = 0;
+        virtual void OnClose() = 0;
+        virtual void OnError() = 0;
+
+    protected:
+        void BroadcastMessage_AsBinary(const std::string& message);
+        void BroadcastMessage_AsText(const std::string& message);
+
+    private:
+        void PublishMessage_AsBinary(std::shared_ptr<Interfaces::ISession> session, const std::string& message);
+        void PublishMessage_AsText(std::shared_ptr<Interfaces::ISession> session, const std::string& message);
+
+
+    private:
+        std::unordered_set<std::shared_ptr<Interfaces::ISession>> m_ActiveSessions;
     };
 
 	template<const auto& ROUTE_URL>
@@ -38,121 +64,6 @@ namespace AqualinkAutomate::Interfaces
         {
             return ROUTE_URL;
         }
-
-	public:
-		void HandleOpen(std::shared_ptr<Interfaces::ISession> session, HTTP::Request& req)
-		{
-			if (nullptr == session)
-			{
-				///FIXME
-			}
-			else
-			{
-                m_ActiveSessions.emplace(session);
-                OnOpen(req);
-			}
-        }
-
-        void HandleMessage(std::shared_ptr<Interfaces::ISession> session, HTTP::Request& req)
-        {
-            if (nullptr == session)
-            {
-                /// FIXME
-            }
-            else
-            {
-                OnMessage(req);
-            }
-        }
-
-        void HandleClose(std::shared_ptr<Interfaces::ISession> session, HTTP::Request& req)
-        {
-            if (nullptr == session)
-            {
-                /// FIXME
-            }
-            else
-            {
-				if (auto session_it = m_ActiveSessions.find(session); m_ActiveSessions.end() != session_it)
-				{
-                    m_ActiveSessions.erase(session_it);
-				}
-
-                OnClose(req);
-            }
-        }
-
-        void HandleError(std::shared_ptr<Interfaces::ISession> session, HTTP::Request& req)
-        {
-            if (nullptr == session)
-            {
-                /// FIXME
-            }
-            else
-            {
-                if (auto session_it = m_ActiveSessions.find(session); m_ActiveSessions.end() != session_it)
-                {
-                    m_ActiveSessions.erase(session_it);
-                }
-
-                OnError(req);
-            }
-        }
-
-	protected:
-        virtual void OnOpen(HTTP::Request& req) = 0;
-        virtual void OnMessage(HTTP::Request& req) = 0;
-        virtual void OnClose(HTTP::Request& req) = 0;
-        virtual void OnError(HTTP::Request& req) = 0;
-
-	protected:
-        void PublishMessage_AsBinary(std::shared_ptr<Interfaces::ISession> session, const std::string& message)
-		{
-            if (nullptr == session)
-			{
-				LogTrace(Channel::Web, "Attempted to publish a binary message to an invalid session (nullptr)");
-			}
-			else
-			{
-				// conn->SendBinary(message);
-			}
-		}
-
-		void PublishMessage_AsText(std::shared_ptr<Interfaces::ISession> session, const std::string& message)
-		{
-            if (nullptr == session)
-			{
-				LogTrace(Channel::Web, "Attempted to publish a text message to an invalid session (nullptr)");
-			}
-			else
-			{
-				// conn->SendText(message);
-			}
-		}
-
-	protected:
-		void BroadcastMessage_AsBinary(const std::string& message)
-		{
-            std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-				[this, &message](const auto& session) -> void
-				{
-					PublishMessage_AsBinary(session, message);
-				}
-			);
-		}
-
-		void BroadcastMessage_AsText(const std::string& message)
-		{
-            std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-				[this, &message](const auto& session) -> void
-				{
-					PublishMessage_AsText(session, message);
-				}
-			);
-		}
-
-	private:
-        std::unordered_set<std::shared_ptr<Interfaces::ISession>> m_ActiveSessions;
 	};
 }
 // namespace AqualinkAutomate::Interfaces

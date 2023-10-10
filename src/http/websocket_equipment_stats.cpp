@@ -16,7 +16,7 @@ namespace AqualinkAutomate::HTTP
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
-	void WebSocket_Equipment_Stats::OnOpen(HTTP::Request& req)
+	void WebSocket_Equipment_Stats::OnOpen()
 	{
 		m_StatsSlot = m_StatisticsHub->MessageCounts.Signal().connect(
 			[this]() -> void
@@ -36,16 +36,16 @@ namespace AqualinkAutomate::HTTP
 		///FIXME PublishMessage_AsText(req.get_conn<cinatra::NonSSL>(), ws_statistics_update.Payload());
 	}
 
-	void WebSocket_Equipment_Stats::OnMessage(HTTP::Request& reqy)
+	void WebSocket_Equipment_Stats::OnMessage(const boost::beast::flat_buffer& buffer)
 	{
 	}
 
-	void WebSocket_Equipment_Stats::OnClose(HTTP::Request& req)
+	void WebSocket_Equipment_Stats::OnClose()
 	{
 		m_StatsSlot.disconnect();
 	}
 
-	void WebSocket_Equipment_Stats::OnError(HTTP::Request& req)
+	void WebSocket_Equipment_Stats::OnError()
 	{
 		m_StatsSlot.disconnect();
 	}

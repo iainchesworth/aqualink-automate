@@ -16,10 +16,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	DetectSession::DetectSession(boost::asio::ip::tcp::socket&& socket, boost::asio::ssl::context& ssl_context, std::shared_ptr<Router> router) :
+	DetectSession::DetectSession(boost::asio::ip::tcp::socket&& socket, boost::asio::ssl::context& ssl_context) :
 		m_Stream(std::move(socket)),
-		m_SSLContext(ssl_context),
-		m_Router(router)
+		m_SSLContext(ssl_context)
 	{
 	}
 
@@ -43,12 +42,12 @@ namespace AqualinkAutomate::HTTP
 						else if (ssl_was_detected)
 						{
 							LogTrace(Channel::Web, "SSL detected on HTTP stream -> transitioning to HTTPS");
-							std::make_shared<HTTP_SSLSession>(std::move(m_Stream), m_SSLContext, std::move(m_Buffer), m_Router)->Run();
+							std::make_shared<HTTP_SSLSession>(std::move(m_Stream), m_SSLContext, std::move(m_Buffer))->Run();
 						}
 						else
 						{
 							LogTrace(Channel::Web, "SSL not detected on HTTP stream -> staying with HTTP");
-                            std::make_shared<HTTP_PlainSession>(std::move(m_Stream), std::move(m_Buffer), m_Router)->Run();
+                            std::make_shared<HTTP_PlainSession>(std::move(m_Stream), std::move(m_Buffer))->Run();
 						}
 					}
 				);

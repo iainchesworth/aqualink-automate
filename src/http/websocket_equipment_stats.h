@@ -19,10 +19,10 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Equipment_Stats(Kernel::HubLocator& hub_locator);
 
 	private:
-		virtual void OnOpen(HTTP::Request& req) override;
-		virtual void OnMessage(HTTP::Request& req) override;
-		virtual void OnClose(HTTP::Request& req) override;
-		virtual void OnError(HTTP::Request& req) override;
+		virtual void OnOpen() override;
+		virtual void OnMessage(const boost::beast::flat_buffer& buffer) override;
+		virtual void OnClose() override;
+		virtual void OnError() override;
 
 	private:
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };

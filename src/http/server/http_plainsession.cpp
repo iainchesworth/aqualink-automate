@@ -10,8 +10,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	HTTP_PlainSession::HTTP_PlainSession(boost::beast::tcp_stream&& stream, boost::beast::flat_buffer&& buffer, std::shared_ptr<Router> router) :
-		HTTP_Session<HTTP_PlainSession>(std::move(buffer), router),
+	HTTP_PlainSession::HTTP_PlainSession(boost::beast::tcp_stream&& stream, boost::beast::flat_buffer&& buffer) :
+		HTTP_Session<HTTP_PlainSession>(std::move(buffer)),
 		m_Stream(std::move(stream))
 	{
 	}

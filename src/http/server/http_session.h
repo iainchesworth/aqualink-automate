@@ -18,8 +18,8 @@
 #include <boost/beast/core/tcp_stream.hpp>
 #include <boost/system/error_code.hpp>
 
-#include "http/server/router.h"
 #include "http/server/websocket_session_helper.h"
+#include "http/server/routing/routing.h"
 #include "interfaces/isession.h"
 #include "logging/logging.h"
 
@@ -40,8 +40,7 @@ namespace AqualinkAutomate::HTTP
 		}
 
 	public:
-        HTTP_Session(boost::beast::flat_buffer buffer, std::shared_ptr<Router> router) :
-			m_Router(router),
+        HTTP_Session(boost::beast::flat_buffer buffer) :
 			m_Buffer(std::move(buffer))
 		{
 		}
@@ -74,7 +73,7 @@ namespace AqualinkAutomate::HTTP
 						else
 						{
 							LogTrace(Channel::Web, "HTTP request from client; handling request");
-                            QueueWrite(m_Router->HTTP_OnRequest(m_Parser->release()));
+                            QueueWrite(Routing::HTTP_OnRequest(m_Parser->release()));
 
 							if (QUEUE_LIMIT > m_ResponseQueue.size())
 							{
@@ -154,7 +153,6 @@ namespace AqualinkAutomate::HTTP
 		boost::beast::flat_buffer m_Buffer;
 
 	private:
-		std::shared_ptr<Router> m_Router;
 		std::vector<boost::beast::http::message_generator> m_ResponseQueue;
 		std::optional<boost::beast::http::request_parser<boost::beast::http::string_body>> m_Parser;
 	};

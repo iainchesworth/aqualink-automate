@@ -8,7 +8,6 @@
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "http/server/static_file_handler.h"
-#include "http/server/router.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
@@ -21,6 +20,7 @@
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
 #include "http/server/listener.h"
+#include "http/server/routing/routing.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
@@ -200,13 +200,11 @@ int main(int argc, char* argv[])
 
 		Developer::FirewallUtils::CheckAndConfigureExceptions();
 
-		auto http_router = std::make_shared<HTTP::Router>();
-
 		if (!settings.web.http_content_is_disabled)
 		{
-            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Index>(hub_locator));
-            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Equipment>(hub_locator));
-            http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Page_Version>());
+            HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Version>());
 		}
 
 		// Routes are configured as follows
@@ -223,17 +221,17 @@ int main(int argc, char* argv[])
 		//     /ws/equipment/stats
 		//
 
-		http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment>(hub_locator));
-		http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Button>(hub_locator));
-        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
-        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Devices>(hub_locator));
-        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Equipment_Version>(hub_locator));
-        http_router->Add(HTTP::Verbs::get, std::make_shared<HTTP::WebRoute_Version>());
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
-		http_router->Add(std::make_shared<HTTP::WebSocket_Equipment>(hub_locator));
-        http_router->Add(std::make_shared<HTTP::WebSocket_Equipment_Stats>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
+		HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator));
 
-		http_router->StaticHandler(std::move(std::make_unique<HTTP::StaticFileHandler>("/", settings.web.doc_root)));
+		HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", settings.web.doc_root));
 
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls);
 
@@ -253,7 +251,7 @@ int main(int argc, char* argv[])
 		}
 
 		boost::asio::ip::tcp::endpoint bind_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.bind_port);
-        auto http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), bind_endpoint, ssl_context, http_router);
+        auto http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), bind_endpoint, ssl_context);
 
 		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
 		http_server->Run();

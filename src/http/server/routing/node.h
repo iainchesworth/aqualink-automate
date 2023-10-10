@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,7 +12,7 @@
 
 namespace AqualinkAutomate::HTTP::Routing
 {
-
+	
 	template<typename HANDLER_TYPE>
 	struct node
 	{
@@ -23,7 +22,7 @@ namespace AqualinkAutomate::HTTP::Routing
 		segment_template seg{};
 
 		// A pointer to the resource
-		std::shared_ptr<typename HANDLER_TYPE> resource{ nullptr };
+		HANDLER_TYPE* resource{ nullptr };
 
 		// The complete match for the resource
 		std::string path_template;
@@ -50,11 +49,11 @@ namespace AqualinkAutomate::HTTP::Routing
 		{
 			for (auto& r : nodes_)
 			{
-				r.resource.reset();
+				r.resource = nullptr;
 			}
 		}
 
-		void insert_impl(std::string_view path, std::shared_ptr<typename HANDLER_TYPE> v)
+		void insert_impl(std::string_view path, HANDLER_TYPE* v)
 		{
 			// Parse dynamic route segments
 			if (path.starts_with("/"))
@@ -65,7 +64,7 @@ namespace AqualinkAutomate::HTTP::Routing
 			auto segsr = boost::urls::grammar::parse(path, path_template_rule);
 			if (!segsr)
 			{
-				v.reset();
+				///FIXME --> v.reset();
 				segsr.value();
 			}
 
@@ -172,7 +171,7 @@ namespace AqualinkAutomate::HTTP::Routing
 
 			if (level != 0)
 			{
-				v.reset();
+				///FIXME --> v.reset();
 				boost::urls::detail::throw_invalid_argument();
 			}
 
@@ -180,7 +179,7 @@ namespace AqualinkAutomate::HTTP::Routing
 			cur->path_template = path;
 		}
 
-		std::shared_ptr<typename HANDLER_TYPE> find_impl(boost::urls::segments_encoded_view path, std::string_view*& matches, std::string_view*& ids) const
+		HANDLER_TYPE* find_impl(boost::urls::segments_encoded_view path, std::string_view*& matches, std::string_view*& ids) const
 		{
 			// parse_path is inconsistent for empty paths
 			if (path.empty())

@@ -8,7 +8,6 @@
 #include <boost/beast/core/tcp_stream.hpp>
 
 #include "http/server/http_session.h"
-#include "http/server/router.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -16,7 +15,7 @@ namespace AqualinkAutomate::HTTP
 	class HTTP_SSLSession : public HTTP_Session<HTTP_SSLSession>, public std::enable_shared_from_this<HTTP_SSLSession>
 	{
 	public:
-        HTTP_SSLSession(boost::beast::tcp_stream&& stream, boost::asio::ssl::context& ssl_context, boost::beast::flat_buffer&& buffer, std::shared_ptr<Router> router);
+        HTTP_SSLSession(boost::beast::tcp_stream&& stream, boost::asio::ssl::context& ssl_context, boost::beast::flat_buffer&& buffer);
 
 	public:
 		void Run();
