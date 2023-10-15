@@ -11,6 +11,7 @@
 #include <boost/system/error_code.hpp>
 
 #include "developer/mock_serial_port.h"
+#include "exceptions/exception_notimplemented.h"
 #include "exceptions/exception_serial_invalidmode.h"
 #include "interfaces/iserialport.h"
 #include "kernel/hub_locator.h"
@@ -75,7 +76,7 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Mock:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> read_some", BOOST_CURRENT_LOCATION);
-				throw;
+				throw Exceptions::NotImplemented();
 			}
 
 			case OperatingModes::Real:
@@ -128,7 +129,7 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Mock:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> write_some", BOOST_CURRENT_LOCATION);
-				throw;
+				throw Exceptions::NotImplemented();
 			}
 
 			case OperatingModes::Real:

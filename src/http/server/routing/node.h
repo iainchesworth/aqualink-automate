@@ -64,7 +64,6 @@ namespace AqualinkAutomate::HTTP::Routing
 			auto segsr = boost::urls::grammar::parse(path, path_template_rule);
 			if (!segsr)
 			{
-				///FIXME --> v.reset();
 				segsr.value();
 			}
 
@@ -171,7 +170,6 @@ namespace AqualinkAutomate::HTTP::Routing
 
 			if (level != 0)
 			{
-				///FIXME --> v.reset();
 				boost::urls::detail::throw_invalid_argument();
 			}
 

@@ -1,7 +1,10 @@
 #include <algorithm>
 
+#include "logging/logging.h"
 #include "profiling/profiling_units/tracy_zone.h"
 #include "profiling/profiling_units/tracy_zone_datamap.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Profiling
 {
@@ -40,7 +43,7 @@ namespace AqualinkAutomate::Profiling
 			}
 			else
 			{
-				///FIXME
+				LogWarning(Channel::Profiling, "Failed to insert Tracy profiling zone into the zone data map");
 			}
 		}
 	}

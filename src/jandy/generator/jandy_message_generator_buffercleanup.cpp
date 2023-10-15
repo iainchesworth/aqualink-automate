@@ -42,8 +42,7 @@ namespace AqualinkAutomate::Generators
 			const auto distance_between_start_and_end = std::distance(p1s, p1e);
 			if (0 == distance_between_start_and_end)
 			{
-				///TODO - this is an exceptional case!!!!!
-				throw;
+				LogDebug(Channel::Messages, "Attempted to action a clean-up here the start and end location were the same...ignoring");
 			}
 			else if (0 > distance_between_start_and_end)
 			{

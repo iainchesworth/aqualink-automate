@@ -111,7 +111,7 @@ namespace AqualinkAutomate::Utility
 			{
 				auto& ctx = this->template context<StateMachine<PAGE_TYPE>>();
 
-				///FIXME Validate the line id is within the size permitted.
+				// Validate that the line id is within the size permitted.
 				if (ev.Id() >= ctx().Size())
 				{
 					LogDebug(Channel::Devices, "Attempted to update a page line that is does not exist in the page.");

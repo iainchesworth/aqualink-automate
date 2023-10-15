@@ -3,6 +3,7 @@
 #include <format>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <boost/asio/ssl/error.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -13,6 +14,7 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/websocket/stream.hpp>
 
+#include "formatters/beast_stringview_formatter.h"
 #include "http/server/routing/routing.h"
 #include "interfaces/isession.h"
 #include "interfaces/iwebsocket.h"
@@ -57,7 +59,7 @@ namespace AqualinkAutomate::HTTP
 
             if (m_Handler_WeakPtr = Routing::WS_OnAccept(req.target()); nullptr == m_Handler_WeakPtr)
             {
-                ///FIXME - logging/close or timeout or something
+                LogDebug(Channel::Web, std::format("Could not find a suitable route handler for {}; ignoring request", req.target()));
             }
             else
             {
@@ -73,7 +75,7 @@ namespace AqualinkAutomate::HTTP
                         {
                             if (nullptr == m_Handler_WeakPtr)
                             {
-                                ///FIXME logging
+                                LogDebug(Channel::Web, "Invalid session pointer; no OnOpen handler being called");
                             }
                             else
                             {
@@ -97,10 +99,11 @@ namespace AqualinkAutomate::HTTP
 
                     if (nullptr == m_Handler_WeakPtr)
                     {
-                        ///FIXME
+                        LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no OnMessage handler being called");
                     }
                     else if (boost::beast::websocket::error::closed == ec)
                     {
+                        LogTrace(Channel::Web, "WebSocket was closed (during read); calling OnClose handler");
                         m_Handler_WeakPtr->Handle_OnClose(self);
                     }
                     else if (ec)
@@ -141,32 +144,62 @@ namespace AqualinkAutomate::HTTP
     private:
         void DoWrite()
         {
+            auto& [buffer_ptr, is_binary] = m_ResponseQueue.front();
+
+            SessionType().WS().binary(is_binary);
+
             SessionType().WS().async_write(
-                m_Buffer,
+                boost::asio::buffer(*buffer_ptr),
                 [this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
                 {
                     boost::ignore_unused(bytes_transferred);
 
                     if (nullptr == m_Handler_WeakPtr)
                     {
-                        ///FIXME
+                        LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no handlers will be called");
+                        m_ResponseQueue.clear();
                     }
                     else if (boost::beast::websocket::error::closed == ec)
                     {
+                        LogTrace(Channel::Web, "WebSocket was closed (during write); calling OnClose handler");
                         m_Handler_WeakPtr->Handle_OnClose(self);
+                        m_ResponseQueue.clear();
                     }
                     else if (ec)
                     {
                         LogDebug(Channel::Web, std::format("Failed during write of WebSocket stream; error was -> {}", ec.message()));
                         m_Handler_WeakPtr->Handle_OnError(self);
+                        m_ResponseQueue.clear();
                     }
                     else
                     {
-                        DoWrite();
+                        m_ResponseQueue.erase(m_ResponseQueue.begin());
+
+                        // Send the next message, if any
+                        if (!m_ResponseQueue.empty())
+                        {
+                            DoWrite();
+                        }
                     }
                 }
             );
         }
+
+    public:
+        void QueueWrite(std::shared_ptr<const std::string> message, bool is_binary)
+        {
+            m_ResponseQueue.push_back({ message, is_binary });
+                    
+            if (1 == m_ResponseQueue.size())
+            {
+                LogTrace(Channel::Web, "Response queue has a queued response in it so commence response write loop");
+                DoWrite();
+            }
+        }
+
+    private:
+        using ResponseQueueBufferType = std::tuple<std::shared_ptr<const std::string>, bool>;
+        std::vector<ResponseQueueBufferType> m_ResponseQueue;
 
     private:
         Interfaces::IWebSocketBase* m_Handler_WeakPtr{ nullptr };

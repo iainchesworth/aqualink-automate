@@ -155,6 +155,7 @@ add_library(
 	src/exceptions/exception_options_conflictingoptions.cpp 
 	src/exceptions/exception_options_missingdependency.cpp 
 	src/exceptions/exception_serial_invalidmode.cpp 
+	src/exceptions/exception_signallingstatscounter_badaccess.cpp 
 	src/exceptions/exception_traits_doesnotexist.cpp 
 	src/exceptions/exception_traits_failedtoset.cpp 
 	src/exceptions/exception_traits_invalidtraitvalue.cpp 

@@ -9,6 +9,7 @@
 
 #include <boost/signals2.hpp>
 
+#include "exceptions/exception_signallingstatscounter_badaccess.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -90,8 +91,7 @@ namespace AqualinkAutomate::Utility
 				}
 			}
 
-			///FIXME
-			throw;
+			throw Exceptions::SignallingStatsCounter_BadAccess();
 		}
 
 	public:

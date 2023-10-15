@@ -1,9 +1,13 @@
+#include <format>
 #include <functional>
 
 #include <magic_enum.hpp>
 
 #include "http/json/json_data_hub.h"
 #include "http/json/json_equipment.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP::JSON
 {
@@ -68,7 +72,7 @@ namespace AqualinkAutomate::HTTP::JSON
 			}
 			catch (std::bad_variant_access const& ex)
 			{
-				///FIXME
+				LogWarning(Channel::Equipment, std::format("Failed to extract message id from MessageCounts; error was -> {}", ex.what()));
 			}
 		}
 

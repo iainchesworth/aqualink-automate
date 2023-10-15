@@ -1,4 +1,7 @@
+#include "logging/logging.h"
 #include "platform/windows/uac_elevation.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Developer
 {
@@ -10,12 +13,12 @@ namespace AqualinkAutomate::Developer
 
 		if (HANDLE hToken = NULL; !::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &hToken))
 		{
-			///FIXME LOGGING
+			LogWarning(Channel::Platform, "Failed to get access token associated with the current process");
 			return tl::unexpected(E_FAIL);
 		}
 		else if (!::GetTokenInformation(hToken, TokenElevation, &te, sizeof(TOKEN_ELEVATION), &dwReturnLength))
 		{
-			///FIXME LOGGING
+			LogWarning(Channel::Platform, "Failed to query access token for elevation information");
 			return tl::unexpected(E_FAIL);
 		}
 		else
