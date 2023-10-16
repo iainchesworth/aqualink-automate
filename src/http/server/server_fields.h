@@ -18,8 +18,8 @@ namespace AqualinkAutomate::HTTP
 	class ServerFields
 	{
 	public:
-		static const std::string_view Server();
 		static const std::string_view RetryAfter();
+		static const std::string_view Server();
 	};
 
 }
