@@ -236,19 +236,9 @@
                 }
             });
 
-            addEventHandler('Pong_KeepAlive', (payload) => {
-                console.debug('Pong_KeepAlive: ', payload);
-            });
-
             addEventHandler('SystemStatusChange', (payload) => {
                 console.debug('SystemStatusChange: ', payload);
             });
-
-            setInterval(() => {
-                if (WebSocket.OPEN === socket.readyState) {
-                    socket.send(JSON.stringify({ type: 'Ping_KeepAlive', payload: null }));
-                }
-            }, 5000);
         }
 
         function fetchAndUpdateButtonState(el) {

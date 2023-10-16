@@ -26,6 +26,7 @@
         <div class="mt-3"></div>
 
         <div class="container">
+            <h2>Message Counts</h2>
             <table id="stats-table" class="table">
                 <thead>
                     <tr>
@@ -231,16 +232,6 @@
                     updateUtilisationChart(read_util, write_util);
                 }
             });
-
-            addEventHandler('Pong_KeepAlive', (payload) => {
-                console.debug('Pong_KeepAlive: ', payload);
-            });
-
-            setInterval(() => {
-                if (WebSocket.OPEN === socket.readyState) {
-                    socket.send(JSON.stringify({ type: 'Ping_KeepAlive', payload: null }));
-                }
-            }, 5000);
         }
 
         function updateStatisticsTable(stats) {

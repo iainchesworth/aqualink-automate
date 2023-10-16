@@ -9,9 +9,6 @@ namespace AqualinkAutomate::HTTP
 		StatisticsUpdate,
 		TemperatureUpdate,
 
-		Ping_KeepAlive,
-		Pong_KeepAlive,
-
 		SystemStatusChange,
 
 		Unknown
