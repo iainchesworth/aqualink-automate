@@ -8,6 +8,7 @@
 
 #include "http/webroute_equipment_button.h"
 #include "http/server/parse_query_string.h"
+#include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
@@ -76,8 +77,8 @@ namespace AqualinkAutomate::HTTP
 
 				HTTP::Response resp{ HTTP::Status::ok, req.version() };
 
-				resp.set(boost::beast::http::field::server, "1.2.3.4");
-				resp.set(boost::beast::http::field::content_type, "application/json");
+				resp.set(boost::beast::http::field::server, ServerFields::Server());
+				resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
 				resp.keep_alive(req.keep_alive());
 				resp.body() = button.dump();
 				resp.prepare_payload();
@@ -138,8 +139,8 @@ namespace AqualinkAutomate::HTTP
 
 		HTTP::Response resp{ HTTP::Status::not_found, req.version() };
 
-		resp.set(boost::beast::http::field::server, "1.2.3.4");
-		resp.set(boost::beast::http::field::content_type, "text/plain");
+		resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
 		resp.set(boost::beast::http::field::content_encoding, "none");
 		resp.keep_alive(req.keep_alive());
 		resp.body() = std::format("'{}' is an invalid button id", button_id);
@@ -160,9 +161,9 @@ namespace AqualinkAutomate::HTTP
 
 		HTTP::Response resp{ HTTP::Status::service_unavailable, req.version() };
 
-		resp.set(boost::beast::http::field::server, "1.2.3.4");
-		resp.set(boost::beast::http::field::content_type, "text/plain");
-		resp.set(boost::beast::http::field::retry_after, "30");
+		resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+		resp.set(boost::beast::http::field::retry_after, ServerFields::RetryAfter());
 		resp.keep_alive(req.keep_alive());
 		resp.body() = "Service is not initialised; cannot action button";
 		resp.prepare_payload();

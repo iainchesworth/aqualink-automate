@@ -4,6 +4,7 @@
 #include <magic_enum.hpp>
 
 #include "formatters/beast_stringview_formatter.h"
+#include "http/server/server_fields.h"
 #include "http/server/responses/response_staticfile.h"
 #include "http/server/responses/response_400.h"
 #include "http/server/responses/response_404.h"
@@ -97,7 +98,7 @@ namespace AqualinkAutomate::HTTP::Responses
                 std::make_tuple(boost::beast::http::status::ok, req.version())
             };
 
-            res.set(boost::beast::http::field::server, "1.2.3.4");
+            res.set(boost::beast::http::field::server, ServerFields::Server());
             res.set(boost::beast::http::field::content_type, mime_type(result.string()));
             res.content_length(size);
             res.keep_alive(req.keep_alive());

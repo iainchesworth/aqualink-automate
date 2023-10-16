@@ -9,6 +9,7 @@
 #include <mstch/mstch.hpp>
 
 #include "concepts/is_c_array.h"
+#include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
 #include "interfaces/iwebroute.h"
 #include "logging/logging.h"
@@ -38,8 +39,8 @@ namespace AqualinkAutomate::Interfaces
 				{
 					HTTP::Response resp{ HTTP::Status::ok, req.version() };
 
-					resp.set(boost::beast::http::field::server, "1.2.3.4");
-					resp.set(boost::beast::http::field::content_type, "text/html");
+					resp.set(boost::beast::http::field::server, HTTP::ServerFields::Server());
+					resp.set(boost::beast::http::field::content_type, HTTP::ContentTypes::TEXT_HTML);
 					resp.keep_alive(req.keep_alive());
 					resp.body() = GenerateBody(req);
 					resp.prepare_payload();

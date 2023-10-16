@@ -3,6 +3,7 @@
 #include <magic_enum.hpp>
 
 #include "formatters/beast_stringview_formatter.h"
+#include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
 #include "logging/logging.h"
 
@@ -22,8 +23,8 @@ namespace AqualinkAutomate::HTTP::Responses
             req.version()
         };
 
-        res.set(boost::beast::http::field::server, "1.2.3.4");
-        res.set(boost::beast::http::field::content_type, "text/html");
+        res.set(boost::beast::http::field::server, ServerFields::Server());
+        res.set(boost::beast::http::field::content_type, ContentTypes::TEXT_HTML);
         res.keep_alive(req.keep_alive());
         res.body() = "Method '" + std::string(magic_enum::enum_name(req.method())) + "' not permitted for '" + std::string(req.target()) + "'.";
         res.prepare_payload();

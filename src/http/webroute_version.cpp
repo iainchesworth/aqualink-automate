@@ -1,6 +1,7 @@
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_version.h"
+#include "http/server/server_fields.h"
 #include "version/version.h"
 
 namespace AqualinkAutomate::HTTP
@@ -24,8 +25,8 @@ namespace AqualinkAutomate::HTTP
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };
 
-		resp.set(boost::beast::http::field::server, "1.2.3.4");
-		resp.set(boost::beast::http::field::content_type, "application/json");
+		resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
 		resp.keep_alive(req.keep_alive());
 		resp.body() = version_info.dump();
 		resp.prepare_payload();

@@ -8,6 +8,7 @@
 
 #include "http/webroute_equipment_buttons.h"
 #include "http/server/parse_query_string.h"
+#include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
@@ -68,8 +69,8 @@ namespace AqualinkAutomate::HTTP
 
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 
-        resp.set(boost::beast::http::field::server, "1.2.3.4");
-        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
         resp.keep_alive(req.keep_alive());
         resp.body() = all_buttons.dump();
         resp.prepare_payload();
@@ -81,8 +82,8 @@ namespace AqualinkAutomate::HTTP
     {
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 
-        resp.set(boost::beast::http::field::server, "1.2.3.4");
-        resp.set(boost::beast::http::field::content_type, "text/html");
+        resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_HTML);
         resp.keep_alive(req.keep_alive());
         resp.body() = std::string("");
         resp.prepare_payload();

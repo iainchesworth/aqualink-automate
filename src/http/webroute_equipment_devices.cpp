@@ -1,4 +1,5 @@
 #include "http/json/json_equipment.h"
+#include "http/server/server_fields.h"
 #include "http/webroute_equipment_devices.h"
 
 namespace AqualinkAutomate::HTTP
@@ -14,8 +15,8 @@ namespace AqualinkAutomate::HTTP
     {
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 
-        resp.set(boost::beast::http::field::server, "1.2.3.4");
-        resp.set(boost::beast::http::field::content_type, "application/json");
+        resp.set(boost::beast::http::field::server, ServerFields::Server());
+        resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
         resp.keep_alive(req.keep_alive());
         resp.body() = JSON::GenerateJson_Equipment_Devices(m_DataHub).dump();
         resp.prepare_payload();

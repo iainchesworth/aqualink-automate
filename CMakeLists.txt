@@ -189,7 +189,8 @@ add_library(
 	src/http/server/http_session.cpp 
 	src/http/server/http_sslsession.cpp 
 	src/http/server/listener.cpp 
-	src/http/server/parse_query_string.cpp 	 	 
+	src/http/server/parse_query_string.cpp 
+	src/http/server/server_fields.cpp 
 	src/http/server/server_types.cpp 
 	src/http/server/static_file_handler.cpp	 	 
 	src/http/server/websocket_plainsession.cpp
