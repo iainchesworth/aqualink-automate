@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <boost/asio/ip/tcp.hpp>
@@ -14,14 +16,14 @@ namespace AqualinkAutomate::HTTP
 	class DetectSession : public std::enable_shared_from_this<DetectSession>
 	{
 	public:
-        explicit DetectSession(boost::asio::ip::tcp::socket &&socket, boost::asio::ssl::context &ssl_context);
+        explicit DetectSession(boost::asio::ip::tcp::socket&& socket, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context);
 
 	public:
 		void Run();
 
 	private:
 		boost::beast::tcp_stream m_Stream;
-		boost::asio::ssl::context& m_SSLContext;
+		std::optional<std::reference_wrapper<boost::asio::ssl::context>> m_SSLContext;
 		boost::beast::flat_buffer m_Buffer;
 	};
 

@@ -234,8 +234,9 @@ int main(int argc, char* argv[])
 		HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", settings.web.doc_root));
 
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls_server);
+		std::shared_ptr<HTTP::Listener> http_server, https_server;
 
-		if (!settings.web.http_server_is_insecure)
+		if (settings.web.https_server_is_enabled)
 		{
 			ssl_context.set_options(
 				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
@@ -248,13 +249,18 @@ int main(int argc, char* argv[])
 			);
 
 			Certificates::LoadSslCertificates(settings.web, ssl_context);
+
+			boost::asio::ip::tcp::endpoint https_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.https_port);
+			https_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), https_endpoint, ssl_context);
+			https_server->Run();
 		}
 
-		boost::asio::ip::tcp::endpoint bind_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.bind_port);
-        auto http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), bind_endpoint, ssl_context);
-
-		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
-		http_server->Run();
+		if (settings.web.http_server_is_enabled)
+		{
+			boost::asio::ip::tcp::endpoint http_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.http_port);
+			http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), http_endpoint);
+			http_server->Run();
+		}
 
 		CleanUp::Register({ "Web Server", []() -> void { /* DO NOTHING */ }});
 

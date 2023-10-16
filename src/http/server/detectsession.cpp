@@ -16,7 +16,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	DetectSession::DetectSession(boost::asio::ip::tcp::socket&& socket, boost::asio::ssl::context& ssl_context) :
+	DetectSession::DetectSession(boost::asio::ip::tcp::socket&& socket, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context) :
 		m_Stream(std::move(socket)),
 		m_SSLContext(ssl_context)
 	{
@@ -39,10 +39,14 @@ namespace AqualinkAutomate::HTTP
 						{
 							LogDebug(Channel::Web, std::format("Failed to complete SSL detection on HTTP stream; error was -> {}", ec.message()));
 						}
-						else if (ssl_was_detected)
+						else if (ssl_was_detected && m_SSLContext.has_value())
 						{
 							LogTrace(Channel::Web, "SSL detected on HTTP stream -> transitioning to HTTPS");
-							std::make_shared<HTTP_SSLSession>(std::move(m_Stream), m_SSLContext, std::move(m_Buffer))->Run();
+							std::make_shared<HTTP_SSLSession>(std::move(m_Stream), m_SSLContext.value().get(), std::move(m_Buffer))->Run();
+						}
+						else if (ssl_was_detected)
+						{
+							LogInfo(Channel::Web, "SSL detected on HTTP stream but HTTPS is disabled -> ignoring...");
 						}
 						else
 						{

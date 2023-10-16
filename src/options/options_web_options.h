@@ -23,12 +23,14 @@ namespace AqualinkAutomate::Options::Web
 	typedef struct
 	{
 		std::string bind_address;
-		uint16_t bind_port;
+		uint16_t http_port;
+		uint16_t https_port;
 
 		std::string doc_root;
 		
 		bool http_content_is_disabled;
-		bool http_server_is_insecure;
+		bool http_server_is_enabled;
+		bool https_server_is_enabled;
 
 		SslCertificate ssl_certificate;
 		std::optional<std::filesystem::path> ca_chain_certificate;

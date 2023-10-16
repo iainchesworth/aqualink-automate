@@ -108,7 +108,7 @@ namespace AqualinkAutomate::HTTP
                     }
                     else if (ec)
                     {
-                        LogDebug(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
+                        LogTrace(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
                         m_Handler_WeakPtr->Handle_OnError(self);
                     }
                     else 
@@ -116,27 +116,6 @@ namespace AqualinkAutomate::HTTP
                         m_Handler_WeakPtr->Handle_OnMessage(self, m_Buffer);
                         DoRead();
                     }
-
-                    /*SessionType().WS().text(SessionType().WS().got_text());
-                    SessionType().WS().async_write(
-                        m_Buffer.data(),
-                        [this, self = SessionType().shared_from_this()](boost::beast::error_code ec, std::size_t bytes_transferred)
-                        {
-                            boost::ignore_unused(bytes_transferred);
-
-                            switch (ec.value())
-                            {
-                            case boost::system::errc::success:
-                                m_Buffer.consume(m_Buffer.size());
-                                DoRead();
-                                break;
-
-                            default:
-                                LogDebug(Channel::Web, std::format("Failed during write of WebSocket stream; error was -> {}", ec.message()));
-                                break;
-                            }
-                        }
-                    );*/
                 }
             );
         }

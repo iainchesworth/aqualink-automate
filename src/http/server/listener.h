@@ -1,6 +1,8 @@
 #pragma once 
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <boost/asio/strand.hpp>
@@ -16,7 +18,11 @@ namespace AqualinkAutomate::HTTP
 	class Listener : public std::enable_shared_from_this<Listener>
 	{
 	public:
+		Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint);
         Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context& ssl_context);
+
+	private:
+		Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context_ref);
 
 	public:
 		void Run();
@@ -25,7 +31,7 @@ namespace AqualinkAutomate::HTTP
 		void DoAccept();
 
 	private:
-		boost::asio::ssl::context& m_SSLContext;
+		std::optional<std::reference_wrapper<boost::asio::ssl::context>> m_SSLContext;
 		boost::asio::ip::tcp::acceptor m_Acceptor;
 	};
 

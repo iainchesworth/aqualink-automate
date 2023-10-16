@@ -16,9 +16,11 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Options::Web
 {
 	AppOptionPtr OPTION_INTERFACE{ make_appoption("address", "Specific network interface to which to bind", boost::program_options::value<std::string>()->default_value("0.0.0.0")) };
-	AppOptionPtr OPTION_PORT{ make_appoption("port", "Specific port number on which to listen", boost::program_options::value<uint16_t>()) };
-	AppOptionPtr OPTION_NOCONTENT{ make_appoption("disable-content", "Disable serving of content; only enable HTTP APIs", boost::program_options::bool_switch()->default_value(false)) };
-	AppOptionPtr OPTION_NOTLS{ make_appoption("disable-tls", "Disable SSL/TLS support for web services", boost::program_options::bool_switch()->default_value(false)) };
+	AppOptionPtr OPTION_HTTPPORT{ make_appoption("http-port", "Specific HTTP port number on which to listen", boost::program_options::value<uint16_t>()) };
+	AppOptionPtr OPTION_HTTPSPORT{ make_appoption("https-port", "Specific HTTPS port number on which to listen", boost::program_options::value<uint16_t>()) };
+	AppOptionPtr OPTION_NOCONTENT{ make_appoption("disable-content", "Disable serving of rendered content; only enable APIs", boost::program_options::bool_switch()->default_value(false)) };
+	AppOptionPtr OPTION_NOHTTP{ make_appoption("disable-http", "Disable HTTP support for web services", boost::program_options::bool_switch()->default_value(false)) };
+	AppOptionPtr OPTION_NOHTTPS{ make_appoption("disable-https", "Disable HTTPS support for web services", boost::program_options::bool_switch()->default_value(false)) };
 	AppOptionPtr OPTION_TLSCERT{ make_appoption("cert", "Specify the certificate (PEM format) to use", boost::program_options::value<std::string>()->default_value(Application::DEFAULT_CERTIFICATE))};
 	AppOptionPtr OPTION_TLSCERTKEY{ make_appoption("cert-key", "Specify the certificate's key (PEM format) to use", boost::program_options::value<std::string>()->default_value(Application::DEFAULT_PRIVATE_KEY)) };
 	AppOptionPtr OPTION_TLSCACERT{ make_appoption("cachain-cert", "Specify the CA chain certificate (PEM format) to use", boost::program_options::value<std::string>()) };
@@ -27,9 +29,11 @@ namespace AqualinkAutomate::Options::Web
 	std::vector WebOptionsCollection
 	{
 		OPTION_INTERFACE,
-		OPTION_PORT,
+		OPTION_HTTPPORT,
+		OPTION_HTTPSPORT,
 		OPTION_NOCONTENT,
-		OPTION_NOTLS,
+		OPTION_NOHTTP,
+		OPTION_NOHTTPS,
 		OPTION_TLSCERT,
 		OPTION_TLSCERTKEY,
 		OPTION_TLSCACERT,
@@ -69,9 +73,16 @@ namespace AqualinkAutomate::Options::Web
 			settings.doc_root = OPTION_DOCROOT->As<std::string>(vm); 
 		}
 
-		if (OPTION_NOTLS->IsPresent(vm))
+		if (OPTION_NOHTTP->IsPresent(vm))
 		{ 
-			settings.http_server_is_insecure = OPTION_NOTLS->As<bool>(vm);
+			// Note the inverted setting vs. parameter
+			settings.http_server_is_enabled = !(OPTION_NOHTTP->As<bool>(vm));
+		}
+
+		if (OPTION_NOHTTPS->IsPresent(vm))
+		{
+			// Note the inverted setting vs. parameter
+			settings.https_server_is_enabled = !(OPTION_NOHTTPS->As<bool>(vm));
 		}
 
 		if (OPTION_TLSCERT->IsPresent(vm) && OPTION_TLSCERTKEY->IsPresent(vm))
@@ -89,17 +100,27 @@ namespace AqualinkAutomate::Options::Web
 		}
 
 		//
-		// The last parameter to set is the web server port (as the defaults are set above then overridden here).
+		// The last parameter to set is the web server ports (as the defaults are set above then overridden here).
 		//
 
-		if (OPTION_PORT->IsPresent(vm))
+		if (OPTION_HTTPPORT->IsPresent(vm))
 		{
-			settings.bind_port = OPTION_PORT->As<uint16_t>(vm);
+			settings.http_port = OPTION_HTTPPORT->As<uint16_t>(vm);
 		}		
 		else
 		{
-			// Set the default web server port to be the HTTP/HTTPS default.
-			settings.bind_port = settings.http_server_is_insecure ? Application::DEFAULT_HTTP_PORT : Application::DEFAULT_HTTPS_PORT;
+			// Set the default web server port to be the HTTP default.
+			settings.http_port = Application::DEFAULT_HTTP_PORT;
+		}
+
+		if (OPTION_HTTPSPORT->IsPresent(vm))
+		{
+			settings.https_port = OPTION_HTTPSPORT->As<uint16_t>(vm);
+		}
+		else
+		{
+			// Set the default web server port to be the HTTPS default.
+			settings.https_port = Application::DEFAULT_HTTPS_PORT;
 		}
 
 		return settings;
@@ -109,6 +130,12 @@ namespace AqualinkAutomate::Options::Web
 	{
 		Helper_ValidateOptionDependencies(vm, OPTION_TLSCERT, OPTION_TLSCERTKEY);
 		Helper_ValidateOptionDependencies(vm, OPTION_TLSCERTKEY, OPTION_TLSCERT);
+
+		Helper_CheckForConflictingOptions(vm, OPTION_NOHTTP, OPTION_HTTPPORT);
+		Helper_CheckForConflictingOptions(vm, OPTION_NOHTTPS, OPTION_HTTPSPORT);
+		Helper_CheckForConflictingOptions(vm, OPTION_NOHTTPS, OPTION_TLSCERT);
+		Helper_CheckForConflictingOptions(vm, OPTION_NOHTTPS, OPTION_TLSCERTKEY);
+		Helper_CheckForConflictingOptions(vm, OPTION_NOHTTPS, OPTION_TLSCACERT);
 	}
 
 }

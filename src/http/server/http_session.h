@@ -61,32 +61,29 @@ namespace AqualinkAutomate::HTTP
 				{
 					boost::ignore_unused(bytes_transferred);
 
-					switch (ec.value())
+					if (boost::beast::http::error::end_of_stream == ec)
 					{
-                    case boost::system::errc::success:
-						if (boost::beast::websocket::is_upgrade(m_Parser->get()))
-						{
-							LogTrace(Channel::Web, "WebSocket upgrade requested detected on HTTP stream -> transitioning to WebSockets");
-							boost::beast::get_lowest_layer(SessionType().Stream()).expires_never();
-							return WebSocket_MakeSession(SessionType().ReleaseStream(), m_Parser->release());
-						}
-						else
-						{
-							LogTrace(Channel::Web, "HTTP request from client; handling request");
-                            QueueWrite(Routing::HTTP_OnRequest(m_Parser->release()));
+						return SessionType().DoEOF();
+					} 
+					else if (ec)
+					{
+						LogTrace(Channel::Web, std::format("Failed during read of HTTP stream; error was -> {}", ec.message()));
+					} 
+					else if (boost::beast::websocket::is_upgrade(m_Parser->get()))
+					{
+						LogTrace(Channel::Web, "WebSocket upgrade requested detected on HTTP stream -> transitioning to WebSockets");
+						boost::beast::get_lowest_layer(SessionType().Stream()).expires_never();
+						return WebSocket_MakeSession(SessionType().ReleaseStream(), m_Parser->release());
+					}
+					else
+					{
+						LogTrace(Channel::Web, "HTTP request from client; handling request");
+						QueueWrite(Routing::HTTP_OnRequest(m_Parser->release()));
 
-							if (QUEUE_LIMIT > m_ResponseQueue.size())
-							{
-								DoRead();
-							}
+						if (QUEUE_LIMIT > m_ResponseQueue.size())
+						{
+							DoRead();
 						}
-						break;
-
-					case boost::asio::ssl::error::stream_truncated:
-						[[fallthrough]];
-					default:
-						LogDebug(Channel::Web, std::format("Failed during read of HTTP stream; error was -> {}", ec.message()));
-						break;
 					}
 				}
 			);

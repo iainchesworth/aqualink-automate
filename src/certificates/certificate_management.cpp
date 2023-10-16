@@ -17,9 +17,9 @@ namespace AqualinkAutomate::Certificates
 
     void LoadSslCertificates(const AqualinkAutomate::Options::Web::Settings& cfg, boost::asio::ssl::context& ctx)
     {
-        if (cfg.http_server_is_insecure)
+        if (!cfg.https_server_is_enabled)
         {
-            LogDebug(Channel::Certificates, "Certificates::LoadCertificates - insecure option has been used, not loading certificates");
+            LogDebug(Channel::Certificates, "Certificates::LoadCertificates - HTTPS server has been disabled...not loading certificates");
         }
         else if (!std::filesystem::exists(cfg.ssl_certificate.certificate))
         {
