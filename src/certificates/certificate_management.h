@@ -7,7 +7,7 @@
 namespace AqualinkAutomate::Certificates
 {
 
-	void LoadWebCertificates(const AqualinkAutomate::Options::Web::Settings& cfg, boost::asio::ssl::context &ctx);
+	void LoadSslCertificates(const AqualinkAutomate::Options::Web::Settings& cfg, boost::asio::ssl::context &ctx);
 
 } 
 // namespace AqualinkAutomate::Certificates

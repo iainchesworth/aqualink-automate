@@ -25,6 +25,7 @@ namespace AqualinkAutomate::Options::Developer
 	AppOptionPtr OPTION_DEVMODE{ make_appoption("dev-mode", "Enable developer mode", boost::program_options::bool_switch()->default_value(false)) };
 	AppOptionPtr OPTION_DEVREPLAYFILE{ make_appoption("replay-filename", "Developer replay file from which to source test data", boost::program_options::value<std::string>()) };
 	AppOptionPtr OPTION_LOGLEVEL_MAIN{ make_appoption ("loglevel-main", "Set the logging level for Channel::Main", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken())};
+	AppOptionPtr OPTION_LOGLEVEL_CERTIFICATES{ make_appoption("loglevel-certificates", "Set the logging level for Channel::Certificates", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 	AppOptionPtr OPTION_LOGLEVEL_DEVICES{ make_appoption("loglevel-devices", "Set the logging level for Channel::Devices", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) }; 
 	AppOptionPtr OPTION_LOGLEVEL_EQUIPMENT{ make_appoption("loglevel-equipment", "Set the logging level for Channel::Equipment", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) }; 
 	AppOptionPtr OPTION_LOGLEVEL_EXCEPTIONS{ make_appoption("loglevel-exceptions", "Set the logging level for Channel::Exceptions", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -43,6 +44,7 @@ namespace AqualinkAutomate::Options::Developer
 		OPTION_DEVMODE,
 		OPTION_DEVREPLAYFILE,
 		OPTION_LOGLEVEL_MAIN,
+		OPTION_LOGLEVEL_CERTIFICATES,
 		OPTION_LOGLEVEL_DEVICES,
 		OPTION_LOGLEVEL_EQUIPMENT,
 		OPTION_LOGLEVEL_EXCEPTIONS,
@@ -79,6 +81,7 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_DEVREPLAYFILE->IsPresent(vm)) { settings.replay_file = OPTION_DEVREPLAYFILE->As<std::string>(vm); }
 
 		if (OPTION_LOGLEVEL_MAIN->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Main, OPTION_LOGLEVEL_MAIN->As<Severity>(vm)); }
+		if (OPTION_LOGLEVEL_CERTIFICATES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Certificates, OPTION_LOGLEVEL_CERTIFICATES->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_DEVICES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Devices, OPTION_LOGLEVEL_DEVICES->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_EQUIPMENT->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Equipment, OPTION_LOGLEVEL_EQUIPMENT->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_EXCEPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Exceptions, OPTION_LOGLEVEL_EXCEPTIONS->As<Severity>(vm)); }
@@ -100,6 +103,7 @@ namespace AqualinkAutomate::Options::Developer
 	{
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_DEVMODE);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MAIN);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_CERTIFICATES);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_DEVICES);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EQUIPMENT);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EXCEPTIONS);

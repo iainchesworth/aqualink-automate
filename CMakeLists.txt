@@ -134,9 +134,7 @@ set_source_files_properties(${VERSION_CMAKE_DEST_FILE} PROPERTIES GENERATED 1)
 
 add_library(
 	libaqualink-automate
-	src/application/application_defaults.cpp 
-	src/certificates/certificate_pemformat.cpp 
-	src/certificates/certificate_staticdata.cpp 
+	src/application/application_defaults.cpp 	 
 	src/certificates/certificate_management.cpp 
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
@@ -146,6 +144,8 @@ add_library(
 	src/developer/serial_port_options.cpp 
 	src/devices/device_status.cpp 
 	src/equipment/equipment_status.cpp
+	src/exceptions/exception_certificate_invalidformat.cpp 
+	src/exceptions/exception_certificate_notfound.cpp 
 	src/exceptions/exception_genericaqualinkexception.cpp
 	src/exceptions/exception_http_duplicateroute.cpp 
 	src/exceptions/exception_hubnotfound.cpp 
@@ -208,7 +208,6 @@ add_library(
 	src/http/server/routing/segment_template.cpp 		
 	src/http/support/support_generate_page_footer.cpp 
 	src/http/support/support_generate_page_header.cpp 	 
-	src/interfaces/icertificate.cpp 
 	src/interfaces/idevice.cpp 
 	src/interfaces/ideviceidentifier.cpp 
 	src/interfaces/iequipment.cpp		 
@@ -605,7 +604,14 @@ add_custom_command(
 	TARGET aqualink-automate 
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/web/assets" "${CMAKE_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_BINARY_DIR}/templates"
+)
+
+add_custom_command(
+	TARGET aqualink-automate 
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying SSL assets to build folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/ssl" "${CMAKE_BINARY_DIR}/ssl"
 )
 
 #------------------------------------------------------------------------------
