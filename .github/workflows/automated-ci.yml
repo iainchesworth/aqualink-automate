@@ -35,8 +35,6 @@ jobs:
         sudo apt install -y gcc-13 g++-13
     
     - uses: ilammy/msvc-dev-cmd@v1
-      with:
-        toolset: 14.36
 
     - uses: lukka/get-cmake@latest
 

@@ -56,8 +56,6 @@ jobs:
           submodules: 'true'
     
       - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          toolset: 14.36
 
       - uses: lukka/get-cmake@latest
 
