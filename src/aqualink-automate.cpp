@@ -1,4 +1,6 @@
-﻿#include <boost/asio/ssl/context.hpp>
+﻿#include <thread>
+
+#include <boost/asio/ssl/context.hpp>
 #include <boost/stacktrace.hpp>
 #include <magic_enum.hpp>
 
