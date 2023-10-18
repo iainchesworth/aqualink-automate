@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstddef>
+#include <iterator>
 #include <tuple>
+#include <utility>
 
 namespace AqualinkAutomate::Utility
 {
@@ -9,7 +12,7 @@ namespace AqualinkAutomate::Utility
     {
         struct iterator
         {
-            size_t i;
+            std::size_t i;
             TIter iter;
 
             bool operator!=(const iterator &other) const
