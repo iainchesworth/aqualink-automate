@@ -12,15 +12,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        compiler: [llvm-17.0.1, gcc-13.2.0]
+        compiler: [llvm-17, gcc-13]
         include:
         #- os: macos-12
         #  CMAKE_PRESET: ci-clang-macos-x86_64
         - os: ubuntu-22.04
-          CMAKE_PRESET: ci-gcc-linux-x86_64
+          #CMAKE_PRESET: ci-gcc-linux-x86_64
         - os: windows-2022
           compiler: "msvc"
-          CMAKE_PRESET: ci-msvc-windows-x86_64
+          #CMAKE_PRESET: ci-msvc-windows-x86_64
+    env:
+      CMAKE_PRESET: ci-${{ steps.set_compiler_and_platform.outputs.compiler }}-${{ steps.set_compiler_and_platform.outputs.platform }}-x86_64
 
     steps:
     - uses: actions/checkout@v3
@@ -35,6 +37,20 @@ jobs:
     #    sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev pkg-config rpm wget unzip zip
     #    sudo apt install -y gcc-13 g++-13
     
+    - name: Configure Preset
+      id: set_compiler_and_platform
+      run: |
+        COMPILER=$(echo "${{ matrix.compiler }}" | awk -F- '{print $1}')
+        if [ "$COMPILER" = "clang" ]; then
+          COMPILER="llvm"
+        fi
+        echo "::set-output name=compiler::$COMPILER"
+        PLATFORM=$(echo "${{ matrix.os }}" | awk -F- '{print $1}')
+        if [ "$PLATFORM" = "ubuntu" ]; then
+          PLATFORM="linux"
+        fi
+        echo "::set-output name=platform::$PLATFORM"
+
     - uses: aminya/setup-cpp@v1
       with:
         compiler: ${{ matrix.compiler }}
