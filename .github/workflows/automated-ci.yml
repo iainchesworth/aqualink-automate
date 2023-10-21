@@ -16,9 +16,6 @@ jobs:
         include:
         - os: windows-2022
           compiler: msvc
-        exclude:
-        - os: windows-2022
-          compiler: gcc-13
 
     steps:
     - uses: actions/checkout@v3
@@ -30,9 +27,6 @@ jobs:
       shell: bash
       run: |
         COMPILER=$(echo "${{ matrix.compiler }}" | awk -F- '{print $1}')
-        if [ "$COMPILER" = "llvm" ]; then
-          COMPILER="clang"
-        fi
         PLATFORM=$(echo "${{ matrix.os }}" | awk -F- '{print $1}')
         if [ "$PLATFORM" = "ubuntu" ]; then
           PLATFORM="linux"

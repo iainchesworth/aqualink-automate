@@ -15,14 +15,46 @@
       "toolchainFile": "${sourceDir}/deps/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_WITH_INSTALL_RPATH": "ON",
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_CLANG_TIDY": "OFF",
-        "ENABLE_PROFILING": "ON",
+        "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "OFF",
         "SANITIZE_ADDRESS": "OFF",
         "SANITIZE_MEMORY": "OFF",
         "SANITIZE_THREAD": "OFF",
         "SANITIZE_UNDEFINED": "OFF"
+      }
+    },
+    {
+      "name": "core-debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PROFILING": "ON"
+      }
+    },
+    {
+      "name": "compiler-gcc",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc-13",
+        "CMAKE_CXX_COMPILER": "g++-13"
+      }
+    },
+    {
+      "name": "compiler-llvm",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "compiler-msvc",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
       }
     },
     {
@@ -32,9 +64,7 @@
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "${sourceDir}/cmake/toolchains/linux.toolchain.cmake"
-        },
-        "CMAKE_C_COMPILER": "gcc-13",
-        "CMAKE_CXX_COMPILER": "g++-13"
+        }
       }
     },
     {
@@ -44,9 +74,7 @@
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "${sourceDir}/cmake/toolchains/macos.toolchain.cmake"
-        },
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        }
       }
     },
     {
@@ -56,16 +84,15 @@
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "${sourceDir}/cmake/toolchains/windows.toolchain.cmake"
-        },
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe"
+        }
       }
     },
     {
-      "name": "ci-gcc-linux-x86_64",
+      "name": "ci-llvm-linux-x86_64",
       "inherits": [
         "core",
-        "toolchain-linux"
+        "toolchain-linux",
+        "compiler-llvm"
       ],
       "condition": {
         "type": "equals",
@@ -74,10 +101,24 @@
       }
     },
     {
-      "name": "ci-clang-macos-x86_64",
+      "name": "ci-gcc-linux-x86_64",
       "inherits": [
         "core",
-        "toolchain-macos"
+        "toolchain-linux",
+        "compiler-gcc"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "ci-llvm-macos-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-macos",
+        "compiler-llvm"
       ],
       "condition": {
         "type": "equals",
@@ -86,10 +127,37 @@
       }
     },
     {
+      "name": "ci-llvm-windows-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-windows",
+        "compiler-llvm"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-gcc-windows-x86_64",
+      "inherits": [
+        "core",
+        "toolchain-windows",
+        "compiler-gcc"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "ci-msvc-windows-x86_64",
       "inherits": [
         "core",
-        "toolchain-windows"
+        "toolchain-windows",
+        "compiler-msvc"
       ],
       "condition": {
         "type": "equals",
@@ -100,6 +168,15 @@
   ],
   "buildPresets": [
     {
+      "name": "ci-llvm-linux-x86_64",
+      "configurePreset": "ci-llvm-linux-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
       "name": "ci-gcc-linux-x86_64",
       "configurePreset": "ci-gcc-linux-x86_64",
       "condition": {
@@ -109,12 +186,30 @@
       }
     },
     {
-      "name": "ci-clang-macos-x86_64",
-      "configurePreset": "ci-clang-macos-x86_64",
+      "name": "ci-llvm-macos-x86_64",
+      "configurePreset": "ci-llvm-macos-x86_64",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "ci-llvm-windows-x86_64",
+      "configurePreset": "ci-llvm-windows-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-gcc-windows-x86_64",
+      "configurePreset": "ci-gcc-windows-x86_64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
@@ -129,6 +224,22 @@
   ],
   "testPresets": [
     {
+      "name": "ci-llvm-linux-x86_64",
+      "configurePreset": "ci-llvm-linux-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
       "name": "ci-gcc-linux-x86_64",
       "configurePreset": "ci-gcc-linux-x86_64",
       "output": {
@@ -145,8 +256,8 @@
       }
     },
     {
-      "name": "ci-clang-macos-x86_64",
-      "configurePreset": "ci-clang-macos-x86_64",
+      "name": "ci-llvm-macos-x86_64",
+      "configurePreset": "ci-llvm-macos-x86_64",
       "output": {
         "outputOnFailure": true
       },
@@ -158,6 +269,38 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "ci-llvm-windows-x86_64",
+      "configurePreset": "ci-llvm-windows-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-gcc-windows-x86_64",
+      "configurePreset": "ci-gcc-windows-x86_64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {

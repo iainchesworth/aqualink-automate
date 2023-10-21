@@ -7,63 +7,27 @@
   },
   "configurePresets": [
     {
-      "name": "ci-clang-linux-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-linux"
-      ],
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
-    },
-    {
       "name": "ci-gcc-linux-x86_64-debug",
       "inherits": [
         "core",
-        "toolchain-linux"
+        "core-debug",
+        "toolchain-linux",
+        "compiler-gcc"
       ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-clang-windows-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-windows"
-      ],
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang.exe",
-        "CMAKE_CXX_COMPILER": "clang++.exe"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
       }
     },
     {
       "name": "ci-msvc-windows-x86_64-debug",
       "inherits": [
         "core",
-        "toolchain-windows"
+        "core-debug",
+        "toolchain-windows",
+        "compiler-msvc"
       ],
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
-        "CMAKE_BUILD_TYPE": "Debug"
-      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -73,30 +37,12 @@
   ],
   "buildPresets": [
     {
-      "name": "ci-clang-linux-x86_64",
-      "configurePreset": "ci-clang-linux-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
-    },
-    {
       "name": "ci-gcc-linux-x86_64-debug",
       "configurePreset": "ci-gcc-linux-x86_64-debug",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-clang-windows-x86_64",
-      "configurePreset": "ci-clang-windows-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
       }
     },
     {
@@ -111,22 +57,6 @@
   ],
   "testPresets": [
     {
-      "name": "ci-clang-linux-x86_64",
-      "configurePreset": "ci-clang-linux-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
-    },
-    {
       "name": "ci-gcc-linux-x86_64-debug",
       "configurePreset": "ci-gcc-linux-x86_64-debug",
       "output": {
@@ -140,22 +70,6 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-clang-windows-x86_64",
-      "configurePreset": "ci-clang-windows-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
       }
     },
     {
