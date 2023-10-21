@@ -24,6 +24,7 @@ jobs:
     
     - name: Configure CMake Preset
       id: set_cmake_preset
+      shell: bash
       run: |
         COMPILER=$(echo "${{ matrix.compiler }}" | awk -F- '{print $1}')
         if [ "$COMPILER" = "clang" ]; then
