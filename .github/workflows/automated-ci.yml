@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        compiler: [gcc-13] # llvm-17 is not yet available in aminya/setup-cpp
+        compiler: [gcc-13, llvm-17]
         include:
         - os: windows-2022
           compiler: msvc
@@ -35,7 +35,7 @@ jobs:
 
     - name: Fix MSVC 14.35 and 14.37 on GH CI
       # See GH runner issue https://github.com/actions/runner-images/issues/8259.
-      if: matrix.os == 'windows-2022'
+      if: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
       run: |
         Set-Location "C:\Program Files (x86)\Microsoft Visual Studio\Installer\"
         $InstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
@@ -65,10 +65,10 @@ jobs:
         $process = Start-Process -FilePath cmd.exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
         $process = Start-Process -FilePath cmd.exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
 
-    - uses: aminya/setup-cpp@v1
+    - uses: iainchesworth/setup-cpp@feature/add-support-for-llvm-17
       with:
         compiler: ${{ matrix.compiler }}
-        vcvarsall: ${{ contains(matrix.os, 'windows') }}
+        vcvarsall: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
         cmake: true
         ninja: true
         vcpkg: false
