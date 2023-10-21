@@ -14,42 +14,26 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         compiler: [llvm-17, gcc-13]
         include:
-        #- os: macos-12
-        #  CMAKE_PRESET: ci-clang-macos-x86_64
-        - os: ubuntu-22.04
-          #CMAKE_PRESET: ci-gcc-linux-x86_64
         - os: windows-2022
           compiler: "msvc"
-          #CMAKE_PRESET: ci-msvc-windows-x86_64
-    env:
-      CMAKE_PRESET: ci-${{ steps.set_compiler_and_platform.outputs.compiler }}-${{ steps.set_compiler_and_platform.outputs.platform }}-x86_64
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
-
-    #- name: Install Linux Dependencies i.e. Build Tools
-    #  if: matrix.os == 'ubuntu-latest'
-    #  run: |
-    #    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-    #    sudo apt update
-    #    sudo apt install -y build-essential ca-certificates cmake curl git gpg linux-libc-dev pkg-config rpm wget unzip zip
-    #    sudo apt install -y gcc-13 g++-13
     
-    - name: Configure Preset
-      id: set_compiler_and_platform
+    - name: Configure CMake Preset
+      id: set_cmake_preset
       run: |
         COMPILER=$(echo "${{ matrix.compiler }}" | awk -F- '{print $1}')
         if [ "$COMPILER" = "clang" ]; then
           COMPILER="llvm"
         fi
-        echo "::set-output name=compiler::$COMPILER"
         PLATFORM=$(echo "${{ matrix.os }}" | awk -F- '{print $1}')
         if [ "$PLATFORM" = "ubuntu" ]; then
           PLATFORM="linux"
         fi
-        echo "::set-output name=platform::$PLATFORM"
+        echo "::set-output name=cmake_preset::ci-$COMPILER-$PLATFORM-x86_64"
 
     - uses: aminya/setup-cpp@v1
       with:
@@ -73,11 +57,11 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: '${{matrix.CMAKE_PRESET}}'
-        buildPreset: '${{matrix.CMAKE_PRESET}}'
-        testPreset: '${{matrix.CMAKE_PRESET}}'
+        configurePreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
+        buildPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
+        testPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
 
     - name: Package
       working-directory: ${{github.workspace}}/build
       # Execute packaging defined by the CMake configuration
-      run: cmake --build ${{github.workspace}}/build/${{matrix.CMAKE_PRESET}} --target pack-aqualink-automate 
+      run: cmake --build ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }} --target pack-aqualink-automate 
