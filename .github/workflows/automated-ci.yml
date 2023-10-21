@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        compiler: [llvm-17, gcc-13]
+        compiler: [gcc-13] # llvm-17 is not yet available in aminya/setup-cpp
         include:
         - os: windows-2022
-          compiler: "msvc"
+          compiler: msvc
 
     steps:
     - uses: actions/checkout@v3
