@@ -65,7 +65,7 @@ jobs:
         $process = Start-Process -FilePath cmd.exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
         $process = Start-Process -FilePath cmd.exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
 
-    - uses: iainchesworth/setup-cpp@feature/add-support-for-llvm-17
+    - uses: aminya/setup-cpp@master
       with:
         compiler: ${{ matrix.compiler }}
         vcvarsall: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
