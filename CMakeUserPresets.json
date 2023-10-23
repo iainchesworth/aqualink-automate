@@ -9,8 +9,8 @@
     {
       "name": "ci-gcc-linux-x86_64-debug",
       "inherits": [
-        "core",
         "core-debug",
+        "core",
         "toolchain-linux",
         "compiler-gcc"
       ],
@@ -23,8 +23,8 @@
     {
       "name": "ci-msvc-windows-x86_64-debug",
       "inherits": [
-        "core",
         "core-debug",
+        "core",
         "toolchain-windows",
         "compiler-msvc"
       ],

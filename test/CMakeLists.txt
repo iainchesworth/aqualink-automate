@@ -40,8 +40,7 @@ add_executable(
 	unit/protocol/test_protocol_handler.cpp 
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
 	unit/support/unit_test_hublocatorinjector.cpp 
-	unit/support/unit_test_onetouchdevice.cpp 
-	unit/support/unit_test_onetouchdevice_httpserver.cpp 
+	unit/support/unit_test_onetouchdevice.cpp 	 
 	unit/support/unit_test_ostream_support.cpp 
 	unit/units/test_flow_rate.cpp 
 	unit/units/test_units_orp.cpp 

@@ -1,24 +1,39 @@
 #include <boost/test/unit_test.hpp>
 
+#include <algorithm>
+#include <string>
+
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_equipment.h"
 
-#include "support/unit_test_onetouchdevice_httpserver.h"
+#include "support/unit_test_onetouchdevice.h"
 
 using namespace AqualinkAutomate;
 
-BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_ApiEquipment, Test::Test_OneTouchDevicePlusHttpServer)
+BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_ApiEquipment, Test::OneTouchDevice)
 
 BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 {
-	boost::beast::flat_buffer buffer;
+	HTTP::WebRoute_Equipment route_api_equiment(*this);
+	BOOST_REQUIRE("/api/equipment" == route_api_equiment.Route());
 
-	ReadFromHttpApi_NonBlocking("/api/equipment", buffer);
+	auto body = route_api_equiment.OnRequest(HTTP::Request{});
 	{
-		auto body = boost::beast::buffers_to_string(buffer.data());
-		nlohmann::json json_response = nlohmann::json::parse(body);
+		boost::beast::error_code ec;
+
+		auto buffer = body.prepare(ec);
+		BOOST_REQUIRE(!ec);
+
+		auto body = boost::beast::buffers_to_string(buffer);
+		const std::string delimiter = "\r\n\r\n";
+		auto it = std::search(body.begin(), body.end(), delimiter.begin(), delimiter.end());
+		if (it != body.end()) std::advance(it, delimiter.length());
+		auto offset = std::distance(body.begin(), it);
+		std::string_view body_substr = std::string_view(body).substr(offset);
+
+		nlohmann::json json_response = nlohmann::json::parse(body_substr);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));
 		BOOST_REQUIRE(json_response.contains("devices"));
@@ -46,8 +61,6 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 
 BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 {
-	boost::beast::flat_buffer buffer;
-
 	InitialiseOneTouchDevice();
 	EquipmentOnOff_Page1();
 	EquipmentOnOff_Page2();
@@ -85,10 +98,24 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 		return was_found;
 	};
 
-	ReadFromHttpApi_NonBlocking("/api/equipment", buffer);
+	HTTP::WebRoute_Equipment route_api_equiment(*this);
+	BOOST_REQUIRE("/api/equipment" == route_api_equiment.Route());
+
+	auto body = route_api_equiment.OnRequest(HTTP::Request{});
 	{
-		auto body = boost::beast::buffers_to_string(buffer.data());
-		nlohmann::json json_response = nlohmann::json::parse(body);
+		boost::beast::error_code ec;
+
+		auto buffer = body.prepare(ec);
+		BOOST_REQUIRE(!ec);
+
+		auto body = boost::beast::buffers_to_string(buffer);
+		const std::string delimiter = "\r\n\r\n";
+		auto it = std::search(body.begin(), body.end(), delimiter.begin(), delimiter.end());
+		if (it != body.end()) std::advance(it, delimiter.length());
+		auto offset = std::distance(body.begin(), it);
+		std::string_view body_substr = std::string_view(body).substr(offset);
+
+		nlohmann::json json_response = nlohmann::json::parse(body_substr);
 
 		BOOST_REQUIRE(json_response.contains("buttons"));
 		BOOST_REQUIRE(json_response.contains("devices"));
