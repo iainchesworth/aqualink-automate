@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "develop", "main" ]
 
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
 jobs:
   Build:
     name: Building On ${{ matrix.os }} Using ${{ matrix.compiler }}
@@ -19,6 +24,9 @@ jobs:
           compiler: gcc-13
         - os: windows-2022
           compiler: msvc
+        exclude:
+        - os: windows-2022
+          compiler: gcc-13
 
     steps:
     - uses: actions/checkout@v3
