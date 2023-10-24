@@ -21,7 +21,8 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
         COMPONENT Runtime
     )
 
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION bin COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION bin COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION bin COMPONENT WebAssets)
 
     # Windows installer
     set(CPACK_GENERATOR "ZIP" CACHE STRING "Package targets")
@@ -31,7 +32,8 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
     include(GNUInstallDirs)
 
     install(TARGETS aqualink-automate)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION . COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION . COMPONENT WebAssets)
 
     # System installation packages for unix systems
     set(CPACK_GENERATOR "TGZ;DEB;RPM" CACHE STRING "Package targets")
@@ -39,7 +41,8 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
  else()
 
     install(TARGETS aqualink-automate)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION . COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION . COMPONENT WebAssets)
 
     # Default (portable package for any platform)
     set(CPACK_GENERATOR "ZIP;TGZ" CACHE STRING "Package targets")
