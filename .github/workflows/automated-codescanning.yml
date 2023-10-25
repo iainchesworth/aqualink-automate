@@ -12,6 +12,11 @@ permissions:
   security-events: write
 
 jobs:
+
+  ##
+  ## CODEQL JOB
+  ##
+
   CodeScanning_CodeQL:
     runs-on: ubuntu-22.04
     steps:
@@ -55,6 +60,10 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
 
+  ##
+  ## SONARCLOUD JOB
+  ##
+
   CodeScanning_SonarCloud:
     runs-on: ubuntu-22.04
     env:
@@ -94,7 +103,7 @@ jobs:
 
     - name: Run build-wrapper
       run: |
-        build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build . --preset=ci-gcc-linux-x86_64
+        build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build . --preset=ci-gcc-linux-x86_64
 
     - name: Run sonar-scanner
       env:
@@ -102,6 +111,10 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
       run: |
         sonar-scanner --define sonar.host.url=https://sonarcloud.io --define sonar.sources=src --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.sourceEncoding=UTF-8
+
+  ##
+  ## MSVC CODE ANALYSIS JOB
+  ##
 
   CodeScanning_MSVCCodeAnalysis:
     runs-on: windows-2022
@@ -138,7 +151,7 @@ jobs:
        id: run-analysis
        with:
          cmakeBuildDirectory: ${{github.workspace}}/build/ci-msvc-windows-x86_64
-         buildConfiguration: ci-msvc-windows-x86_64
+         buildConfiguration: Release
          ruleset: NativeRecommendedRules.ruleset
          ignoredPaths: ${{github.workspace}}/deps;${{github.workspace}}/test
 
