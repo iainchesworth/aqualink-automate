@@ -1,0 +1,154 @@
+name: Automated Code Scanning
+
+on:
+  push:
+    branches: [ "develop", "main", "feature/**", "bug/**" ]
+  pull_request:
+    branches: [ "develop", "main" ]
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  CodeScanning_CodeQL:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
+
+    - uses: aminya/setup-cpp@v1
+      with:
+        compiler: gcc-13
+        vcvarsall: false
+        cmake: true
+        ninja: true
+        vcpkg: false
+        ccache: false
+        clangtidy: false
+        cppcheck: false
+        doxygen: false
+        gcovr: false
+        make: false
+        task: false
+        nala: false
+
+    - uses: lukka/run-vcpkg@v11
+      with: 
+        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+
+    - uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ci-gcc-linux-x86_64'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: cpp
+
+    - uses: lukka/run-cmake@v10
+      with:
+        buildPreset: 'ci-gcc-linux-x86_64'
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+
+  CodeScanning_SonarCloud:
+    runs-on: ubuntu-22.04
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+        submodules: 'true'
+
+    - name: Install sonar-scanner and build-wrapper
+      uses: sonarsource/sonarcloud-github-c-cpp@v2
+
+    - uses: aminya/setup-cpp@v1
+      with:
+        compiler: gcc-13
+        vcvarsall: false
+        cmake: true
+        ninja: true
+        vcpkg: false
+        ccache: false
+        clangtidy: false
+        cppcheck: false
+        doxygen: false
+        gcovr: false
+        make: false
+        task: false
+        nala: false
+
+    - uses: lukka/run-vcpkg@v11
+      with: 
+        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+
+    - uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ci-gcc-linux-x86_64'
+
+    - name: Run build-wrapper
+      run: |
+        build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build . --preset=ci-gcc-linux-x86_64
+
+    - name: Run sonar-scanner
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+      run: |
+        sonar-scanner --define sonar.host.url=https://sonarcloud.io --define sonar.sources=src --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.sourceEncoding=UTF-8
+
+  CodeScanning_MSVCCodeAnalysis:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true'   
+
+    - uses: aminya/setup-cpp@v1
+      with:
+        compiler: msvc
+        vcvarsall: true
+        cmake: true
+        ninja: true
+        vcpkg: false
+        ccache: false
+        clangtidy: false
+        cppcheck: false
+        doxygen: false
+        gcovr: false
+        make: false
+        task: false
+        nala: false
+
+    - uses: lukka/run-vcpkg@v11
+      with: 
+        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+
+    - uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'ci-msvc-windows-x86_64'
+
+    -  uses: microsoft/msvc-code-analysis-action@v0.1.1
+       id: run-analysis
+       with:
+         cmakeBuildDirectory: ${{github.workspace}}/build/ci-msvc-windows-x86_64
+         buildConfiguration: ci-msvc-windows-x86_64
+         ruleset: NativeRecommendedRules.ruleset
+         ignoredPaths: ${{github.workspace}}/deps;${{github.workspace}}/test
+
+    - name: Upload SARIF to GitHub
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: ${{ steps.run-analysis.outputs.sarif }}
+
+    - name: Upload SARIF as an Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: sarif-file
+        path: ${{ steps.run-analysis.outputs.sarif }}
