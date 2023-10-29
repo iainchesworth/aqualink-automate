@@ -96,11 +96,25 @@ jobs:
         configurePreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
         buildPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
 
+    - uses: actions/upload-artifact@v3
+      with:
+        name: build-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/
+
   Test:
     name: Running Unit Tests On ${{ matrix.os }}
     needs: [Build]
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-2022]
+
     steps: 
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}
+
     - uses: lukka/run-cmake@v10
       with:
         testPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
@@ -109,7 +123,16 @@ jobs:
     name: Packaging Build for ${{ matrix.os }}
     needs: [Test]
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-2022]
+
     steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}
+
     - working-directory: ${{github.workspace}}/build
       run: |
         cmake --build ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }} --target pack-aqualink-automate 
@@ -117,7 +140,7 @@ jobs:
     - name: Upload Binary Packages
       uses: actions/upload-artifact@v3
       with:
-        name: package-artefacts
+        name: package-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
         path: |
           ${{github.workspace}}/packages/*.deb
           ${{github.workspace}}/packages/*.rpm
@@ -134,5 +157,5 @@ jobs:
     - name: Download Binary Packages
       uses: actions/download-artifact@v3
       with: 
-        name: package-artefacts
+        name: package-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
         path: ${{github.workspace}}/packages
