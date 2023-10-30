@@ -18,10 +18,15 @@ namespace AqualinkAutomate::Options::Emulated
 	using JandyEmulatedDevice = std::pair<Devices::JandyEmulatedDeviceTypes, Devices::JandyDeviceType>;
 	using JandyEmulatedDeviceCollection = std::vector<JandyEmulatedDevice>;
 
-	typedef struct
+	typedef struct tagSettings
 	{
+		tagSettings() : 
+			emulated_devices{}
+		{
+		}
+
 		bool disable_emulation;
-		JandyEmulatedDeviceCollection emulated_devices{};
+		JandyEmulatedDeviceCollection emulated_devices;
 	}
 	Settings;
 

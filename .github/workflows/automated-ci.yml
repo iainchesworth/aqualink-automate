@@ -97,7 +97,7 @@ jobs:
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.a
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/CMakeFiles/
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/deps/
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg/
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg_installed/
 
   Test:
     name: Running Unit Tests On ${{ matrix.os }}
