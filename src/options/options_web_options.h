@@ -20,17 +20,26 @@ namespace AqualinkAutomate::Options::Web
 	}
 	SslCertificate;
 
-	typedef struct
+	typedef struct tagSettings
 	{
+		tagSettings() :
+			http_port{ 80 },
+			https_port{ 443 },
+			http_content_is_disabled{ false },
+			http_server_is_enabled{ true },
+			https_server_is_enabled{ true }
+		{
+		}
+
 		std::string bind_address;
-		uint16_t http_port{ 80 };
-		uint16_t https_port{ 443 };
+		uint16_t http_port;
+		uint16_t https_port;
 
 		std::string doc_root;
 		
-		bool http_content_is_disabled{ false };
-		bool http_server_is_enabled{ true };
-		bool https_server_is_enabled{ true };
+		bool http_content_is_disabled;
+		bool http_server_is_enabled;
+		bool https_server_is_enabled;
 
 		SslCertificate ssl_certificate;
 		std::optional<std::filesystem::path> ca_chain_certificate;

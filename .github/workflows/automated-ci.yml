@@ -11,6 +11,7 @@ jobs:
     name: Building ${{ matrix.cmake_preset }} (${{ matrix.os }} With ${{ matrix.compiler }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022]
         include:
@@ -93,7 +94,8 @@ jobs:
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.ilk
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.lib
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.pdb
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.so
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.a
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/CMakeFiles/
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/deps/
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg/
 
@@ -102,6 +104,7 @@ jobs:
     needs: [Build]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022]
         include:
@@ -125,6 +128,7 @@ jobs:
     needs: [Test]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-2022]
         include:
@@ -159,6 +163,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [Build, Test, Package]
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022]
+        include:
+        - os: ubuntu-22.04
+          cmake_preset: ci-gcc-linux-x86_64
+        - os: windows-2022
+          cmake_preset: ci-msvc-windows-x86_64
+
     steps:
     - name: Download Binary Packages
       uses: actions/download-artifact@v3

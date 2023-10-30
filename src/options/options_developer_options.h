@@ -10,11 +10,18 @@ namespace AqualinkAutomate::Options::Developer
 
 	boost::program_options::options_description Options();
 
-	typedef struct
+	typedef struct tagSettings
 	{
-		bool debug_logging_enabled{ false };
-		bool trace_logging_enabled{ false };
-		bool dev_mode_enabled{ false };
+		tagSettings() :
+			debug_logging_enabled{ false },
+			trace_logging_enabled{ false },
+			dev_mode_enabled{ false }
+		{
+		}
+
+		bool debug_logging_enabled;
+		bool trace_logging_enabled;
+		bool dev_mode_enabled;
 		std::string replay_file;
 	}
 	Settings;
