@@ -12,9 +12,9 @@ namespace AqualinkAutomate::Options::Developer
 
 	typedef struct
 	{
-		bool debug_logging_enabled;
-		bool trace_logging_enabled;
-		bool dev_mode_enabled;
+		bool debug_logging_enabled{ false };
+		bool trace_logging_enabled{ false };
+		bool dev_mode_enabled{ False };
 		std::string replay_file;
 	}
 	Settings;

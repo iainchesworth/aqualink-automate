@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Options::Emulated
 	typedef struct
 	{
 		bool disable_emulation;
-		JandyEmulatedDeviceCollection emulated_devices;
+		JandyEmulatedDeviceCollection emulated_devices{};
 	}
 	Settings;
 

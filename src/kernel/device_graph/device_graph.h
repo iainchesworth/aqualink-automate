@@ -103,7 +103,7 @@ namespace AqualinkAutomate::Kernel
 				}
 			}
 
-			return std::move(found_devices);
+			return found_devices;
 		}
 	
 	private:

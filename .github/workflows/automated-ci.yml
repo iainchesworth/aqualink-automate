@@ -41,7 +41,7 @@ jobs:
         fi
         echo "cmake_preset=ci-$COMPILER-$PLATFORM-x86_64" >> $GITHUB_OUTPUT
 
-    - name: Fix MSVC 14.35 and 14.37 on GH CI
+    - name: Fix MSVC 14.35 vs. 14.37 on GH CI
       # See GH runner issue https://github.com/actions/runner-images/issues/8259.
       if: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
       run: |
@@ -101,7 +101,14 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: build-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/
+        path: |
+          ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.ilk
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.lib
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.pdb
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.so
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/deps/
+          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/vcpkg/
 
   Test:
     name: Running Unit Tests On ${{ matrix.os }}

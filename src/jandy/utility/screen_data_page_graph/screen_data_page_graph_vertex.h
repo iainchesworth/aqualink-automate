@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
 
 	struct Vertex
 	{
-		VertexId id;
+		VertexId id{ 0 };
 		std::any page;
 	};
 	
