@@ -5,6 +5,8 @@ on:
     branches: [ "develop", "main", "feature/**", "bug/**" ]
   pull_request:
     branches: [ "develop", "main" ]
+  schedule:
+    - cron: '42 21 * * 2'
 
 permissions:
   actions: read
@@ -18,11 +20,22 @@ jobs:
   ##
 
   CodeScanning_CodeQL:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-22.04' }}
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'c-cpp' ]
+
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
 
     - uses: aminya/setup-cpp@v1
       with:
@@ -48,17 +61,14 @@ jobs:
       with:
         configurePreset: 'ci-gcc-linux-x86_64'
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: cpp
-
     - uses: lukka/run-cmake@v10
       with:
         buildPreset: 'ci-gcc-linux-x86_64'
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
 
   ##
   ## SONARCLOUD JOB
@@ -68,6 +78,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
+
     steps:
     - uses: actions/checkout@v3
       with:

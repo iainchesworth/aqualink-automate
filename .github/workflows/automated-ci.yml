@@ -22,6 +22,8 @@ jobs:
         exclude:
         - os: windows-2022
           compiler: gcc-13
+    outputs:
+      cmake_preset: ${{ steps.set_cmake_preset.outputs.cmake_preset }}
 
     steps:
     - uses: actions/checkout@v3
@@ -37,7 +39,7 @@ jobs:
         if [ "$PLATFORM" = "ubuntu" ]; then
           PLATFORM="linux"
         fi
-        echo "::set-output name=cmake_preset::ci-$COMPILER-$PLATFORM-x86_64"
+        echo "cmake_preset=ci-$COMPILER-$PLATFORM-x86_64" >> $GITHUB_OUTPUT
 
     - name: Fix MSVC 14.35 and 14.37 on GH CI
       # See GH runner issue https://github.com/actions/runner-images/issues/8259.
@@ -112,12 +114,12 @@ jobs:
     steps: 
     - uses: actions/download-artifact@v3
       with:
-        name: build-artifacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        name: build-artifacts-${{ needs.Build.outputs.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }}
 
     - uses: lukka/run-cmake@v10
       with:
-        testPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
+        testPreset: '${{ needs.Build.outputs.cmake_preset }}'
 
   Package:
     name: Packaging Build for ${{ matrix.os }}
@@ -130,17 +132,17 @@ jobs:
     steps:
     - uses: actions/download-artifact@v3
       with:
-        name: build-artifacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        name: build-artifacts-${{ needs.Build.outputs.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }}
 
     - working-directory: ${{github.workspace}}/build
       run: |
-        cmake --build ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }} --target pack-aqualink-automate 
+        cmake --build ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }} --target pack-aqualink-automate 
     
     - name: Upload Binary Packages
       uses: actions/upload-artifact@v3
       with:
-        name: package-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        name: package-artefacts-${{ needs.Build.outputs.cmake_preset }}
         path: |
           ${{github.workspace}}/packages/*.deb
           ${{github.workspace}}/packages/*.rpm
@@ -157,5 +159,5 @@ jobs:
     - name: Download Binary Packages
       uses: actions/download-artifact@v3
       with: 
-        name: package-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        name: package-artefacts-${{ needs.Build.outputs.cmake_preset }}
         path: ${{github.workspace}}/packages
