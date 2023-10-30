@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Options::Developer
 	{
 		bool debug_logging_enabled{ false };
 		bool trace_logging_enabled{ false };
-		bool dev_mode_enabled{ False };
+		bool dev_mode_enabled{ false };
 		std::string replay_file;
 	}
 	Settings;

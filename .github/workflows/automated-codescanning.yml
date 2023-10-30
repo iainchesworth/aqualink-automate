@@ -136,7 +136,6 @@ jobs:
 
     - name: Fix MSVC 14.35 vs. 14.37 on GH CI
       # See GH runner issue https://github.com/actions/runner-images/issues/8259.
-      if: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
       run: |
         Set-Location "C:\Program Files (x86)\Microsoft Visual Studio\Installer\"
         $InstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"

@@ -26,11 +26,11 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
     public:
         ForwardIterator(ScreenDataPageGraph& graph, VertexId start_id);
         ForwardIterator(const ForwardIterator& other);
-        ForwardIterator(ForwardIterator&& other);
+        ForwardIterator(ForwardIterator&& other) noexcept;
 
     public:
         ForwardIterator& operator=(const ForwardIterator& other);
-        ForwardIterator& operator=(ForwardIterator&& other);
+        ForwardIterator& operator=(ForwardIterator&& other) noexcept;
 
     public:
         ForwardIterator& operator++();

@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
     {
     }
 
-    ForwardIterator::ForwardIterator(ForwardIterator&& other) :
+    ForwardIterator::ForwardIterator(ForwardIterator&& other) noexcept :
         m_Graph(other.m_Graph),
         m_CurrentStep(std::move(other.m_CurrentStep)),
         m_Visited(std::move(other.m_Visited))
@@ -44,7 +44,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
         return *this;
     }
 
-    ForwardIterator& ForwardIterator::operator=(ForwardIterator&& other)
+    ForwardIterator& ForwardIterator::operator=(ForwardIterator&& other) noexcept
     {
         if (this != &other)
         {

@@ -8,42 +8,29 @@ on:
 
 jobs:
   Build:
-    name: Building On ${{ matrix.os }} Using ${{ matrix.compiler }}
+    name: Building ${{ matrix.cmake_preset }} (${{ matrix.os }} With ${{ matrix.compiler }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
-        compiler: [gcc-13]
         include:
         - os: ubuntu-22.04
+          cmake_preset: ci-gcc-linux-x86_64
           compiler: gcc-13
         - os: windows-2022
+          cmake_preset: ci-msvc-windows-x86_64
           compiler: msvc
-        exclude:
-        - os: windows-2022
-          compiler: gcc-13
     outputs:
-      cmake_preset: ${{ steps.set_cmake_preset.outputs.cmake_preset }}
+      cmake_preset: ${{ matrix.cmake_preset }}
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
-    
-    - name: Configure CMake Preset
-      id: set_cmake_preset
-      shell: bash
-      run: |
-        COMPILER=$(echo "${{ matrix.compiler }}" | awk -F- '{print $1}')
-        PLATFORM=$(echo "${{ matrix.os }}" | awk -F- '{print $1}')
-        if [ "$PLATFORM" = "ubuntu" ]; then
-          PLATFORM="linux"
-        fi
-        echo "cmake_preset=ci-$COMPILER-$PLATFORM-x86_64" >> $GITHUB_OUTPUT
 
     - name: Fix MSVC 14.35 vs. 14.37 on GH CI
       # See GH runner issue https://github.com/actions/runner-images/issues/8259.
-      if: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
+      if: ${{ contains(matrix.os, 'windows') }}
       run: |
         Set-Location "C:\Program Files (x86)\Microsoft Visual Studio\Installer\"
         $InstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
@@ -76,7 +63,7 @@ jobs:
     - uses: aminya/setup-cpp@v1
       with:
         compiler: ${{ matrix.compiler }}
-        vcvarsall: ${{ contains(matrix.os, 'windows') && contains(matrix.compiler, 'msvc') }}
+        vcvarsall: ${{ contains(matrix.os, 'windows') }}
         cmake: true
         ninja: true
         vcpkg: false
@@ -95,20 +82,20 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
-        buildPreset: '${{ steps.set_cmake_preset.outputs.cmake_preset }}'
+        configurePreset: '${{ matrix.cmake_preset }}'
+        buildPreset: '${{ matrix.cmake_preset }}'
 
     - uses: actions/upload-artifact@v3
       with:
-        name: build-artefacts-${{ steps.set_cmake_preset.outputs.cmake_preset }}
+        name: build-artefacts-${{ matrix.cmake_preset }}
         path: |
-          ${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.ilk
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.lib
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.pdb
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/**/*.so
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/deps/
-          !${{github.workspace}}/build/${{ steps.set_cmake_preset.outputs.cmake_preset }}/vcpkg/
+          ${{github.workspace}}/build/${{ matrix.cmake_preset }}/
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.ilk
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.lib
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.pdb
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.so
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/deps/
+          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg/
 
   Test:
     name: Running Unit Tests On ${{ matrix.os }}
@@ -117,16 +104,21 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
+        include:
+        - os: ubuntu-22.04
+          cmake_preset: ci-gcc-linux-x86_64
+        - os: windows-2022
+          cmake_preset: ci-msvc-windows-x86_64
 
     steps: 
     - uses: actions/download-artifact@v3
       with:
-        name: build-artifacts-${{ needs.Build.outputs.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }}
+        name: build-artifacts-${{ matrix.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ matrix.cmake_preset }}
 
     - uses: lukka/run-cmake@v10
       with:
-        testPreset: '${{ needs.Build.outputs.cmake_preset }}'
+        testPreset: '${{ matrix.cmake_preset }}'
 
   Package:
     name: Packaging Build for ${{ matrix.os }}
@@ -135,21 +127,26 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022]
+        include:
+        - os: ubuntu-22.04
+          cmake_preset: ci-gcc-linux-x86_64
+        - os: windows-2022
+          cmake_preset: ci-msvc-windows-x86_64
 
     steps:
     - uses: actions/download-artifact@v3
       with:
-        name: build-artifacts-${{ needs.Build.outputs.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }}
+        name: build-artifacts-${{ matrix.cmake_preset }}
+        path: ${{github.workspace}}/build/${{ matrix.cmake_preset }}
 
     - working-directory: ${{github.workspace}}/build
       run: |
-        cmake --build ${{github.workspace}}/build/${{ needs.Build.outputs.cmake_preset }} --target pack-aqualink-automate 
+        cmake --build ${{github.workspace}}/build/${{ matrix.cmake_preset }} --target pack-aqualink-automate 
     
     - name: Upload Binary Packages
       uses: actions/upload-artifact@v3
       with:
-        name: package-artefacts-${{ needs.Build.outputs.cmake_preset }}
+        name: package-artefacts-${{ matrix.cmake_preset }}
         path: |
           ${{github.workspace}}/packages/*.deb
           ${{github.workspace}}/packages/*.rpm
@@ -166,5 +163,5 @@ jobs:
     - name: Download Binary Packages
       uses: actions/download-artifact@v3
       with: 
-        name: package-artefacts-${{ needs.Build.outputs.cmake_preset }}
+        name: package-artefacts-${{ matrix.cmake_preset }}
         path: ${{github.workspace}}/packages
