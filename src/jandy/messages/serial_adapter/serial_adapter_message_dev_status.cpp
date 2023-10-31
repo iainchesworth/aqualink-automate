@@ -335,6 +335,7 @@ namespace AqualinkAutomate::Messages
 
 						case SerialAdapter_SystemPumpCommands::PUMPLO:
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PumpLowSpeed -> {:02x} {:02x} {:02x} {:02x}", message_bytes[4], message_bytes[5], message_bytes[6], message_bytes[7]));
+							break;
 
 						case SerialAdapter_SystemPumpCommands::SPA:
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: Spa -> {:02x} {:02x} {:02x} {:02x}", message_bytes[4], message_bytes[5], message_bytes[6], message_bytes[7]));

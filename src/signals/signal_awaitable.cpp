@@ -39,7 +39,8 @@ namespace AqualinkAutomate::Signals
 						break;
 
 					case boost::system::errc::operation_canceled:
-						LogDebug(Channel::Signals, "Signal handler's aysnc_wait was cancelled.");
+						LogDebug(Channel::Signals, "Signal handler's async_wait was cancelled.");
+						[[fallthrough]];
 					default:
 						LogError(Channel::Signals, std::format("Error occured in signal handler.  Error Code: {}", ec.value()));
 						LogDebug(Channel::Signals, std::format("Error message: {}", ec.message()));

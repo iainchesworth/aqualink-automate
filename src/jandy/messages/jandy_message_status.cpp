@@ -121,7 +121,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes into JandyMessage_Status type", message_bytes.size()));
 
-		if ((JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH) != message_bytes.size())
+		if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH) != message_bytes.size())
 		{
 			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, message_bytes.size()));
 		}

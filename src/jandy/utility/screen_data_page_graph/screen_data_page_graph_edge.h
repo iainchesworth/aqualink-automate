@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
 
 	struct Edge
 	{
-		EdgeId id;
+		EdgeId id{ 0 };
 		std::any key_command;
 	};
 

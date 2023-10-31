@@ -71,7 +71,7 @@ namespace AqualinkAutomate::Messages
 		{
 			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise LineText");
 		}
-		else if ((JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
+		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise content of LineText");
 		}

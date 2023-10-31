@@ -26,12 +26,12 @@ namespace AqualinkAutomate::Factory
         static ProfilerFactory& Instance();
 
     public:
-        bool Register(const Types::ProfilerTypes type, const Types::ProfilerTypePtr&& instance_ptr);
+        bool Register(Types::ProfilerTypes type, Types::ProfilerTypePtr&& instance_ptr);
         void SetDesired(Types::ProfilerTypes type);
         Types::ProfilerTypePtr Get();
 
     private:
-        std::unordered_map<Types::ProfilerTypes, const Types::ProfilerTypePtr> m_Profilers;
+        std::unordered_map<Types::ProfilerTypes, Types::ProfilerTypePtr> m_Profilers;
         std::optional<Types::ProfilerTypes> m_DesiredProfiler;
 
 	};

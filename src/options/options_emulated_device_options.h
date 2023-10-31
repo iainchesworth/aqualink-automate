@@ -21,6 +21,7 @@ namespace AqualinkAutomate::Options::Emulated
 	typedef struct tagSettings
 	{
 		tagSettings() : 
+			disable_emulation{ false },
 			emulated_devices{}
 		{
 		}

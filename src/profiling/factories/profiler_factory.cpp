@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Factory
 		return instance;
 	}
 
-	bool ProfilerFactory::Register(const Types::ProfilerTypes type, const Types::ProfilerTypePtr&& instance_ptr)
+	bool ProfilerFactory::Register(Types::ProfilerTypes type, Types::ProfilerTypePtr&& instance_ptr)
 	{
 		return m_Profilers.emplace(type, std::move(instance_ptr)).second;
 	}

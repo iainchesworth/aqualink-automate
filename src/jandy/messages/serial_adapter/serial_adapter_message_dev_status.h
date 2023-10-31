@@ -74,8 +74,8 @@ namespace AqualinkAutomate::Messages
 
 	struct SerialAdapter_SCS_BatteryCondition
 	{
-		bool IsLow;
-		AqualinkAutomate::Units::voltage Voltage;
+		bool IsLow{ true };
+		AqualinkAutomate::Units::voltage Voltage{ 0 * AqualinkAutomate::Units::volts };
 	};
 
 	enum class SerialAdapter_SystemPumpCommands : uint8_t
