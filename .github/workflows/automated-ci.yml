@@ -88,7 +88,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: build-artefacts-${{ matrix.cmake_preset }}
+        name: build-artifacts-${{ matrix.cmake_preset }}
         path: |
           ${{github.workspace}}/build/${{ matrix.cmake_preset }}/
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.ilk
@@ -150,7 +150,7 @@ jobs:
     - name: Upload Binary Packages
       uses: actions/upload-artifact@v3
       with:
-        name: package-artefacts-${{ matrix.cmake_preset }}
+        name: package-artifacts-${{ matrix.cmake_preset }}
         path: |
           ${{github.workspace}}/packages/*.deb
           ${{github.workspace}}/packages/*.rpm
@@ -177,5 +177,5 @@ jobs:
     - name: Download Binary Packages
       uses: actions/download-artifact@v3
       with: 
-        name: package-artefacts-${{ matrix.cmake_preset }}
+        name: package-artifacts-${{ matrix.cmake_preset }}
         path: ${{github.workspace}}/packages
