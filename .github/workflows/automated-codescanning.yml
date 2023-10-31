@@ -188,6 +188,7 @@ jobs:
     - uses: lukka/run-cmake@v10
       with:
         configurePreset: 'ci-msvc-windows-x86_64'
+        buildPreset: 'ci-msvc-windows-x86_64'
 
     - uses: microsoft/msvc-code-analysis-action@v0.1.1
       id: run-analysis
