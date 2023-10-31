@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.26 FATAL_ERROR)
+﻿cmake_minimum_required (VERSION 3.27 FATAL_ERROR)
 
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 set(CMAKE_CXX_STANDARD 20)

@@ -1,8 +1,8 @@
 ﻿{
-  "version": 5,
+  "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 26,
+    "minor": 27,
     "patch": 0
   },
   "configurePresets": [
@@ -318,6 +318,84 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "ci-windows-x86_64",
+      "description": "",
+      "configurePreset": "ci-msvc-windows-x86_64",
+      "generators": [
+        "ZIP"
+      ],
+      "packageDirectory": "packages",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-linux-x86_64",
+      "description": "",
+      "configurePreset": "ci-gcc-linux-x86_64",
+      "generators": [
+        "TGZ",
+        "DEB",
+        "RPM"
+      ],
+      "packageDirectory": "packages",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ci-windows-x86_64",
+      "description": "",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ci-msvc-windows-x86_64"
+        },
+        {
+          "type": "build",
+          "name": "ci-msvc-windows-x86_64"
+        },
+        {
+          "type": "test",
+          "name": "ci-msvc-windows-x86_64"
+        },
+        {
+          "type": "package",
+          "name": "ci-windows-x86_64"
+        }
+      ]
+    },
+    {
+      "name": "ci-linux-x86_64",
+      "description": "",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ci-gcc-linux-x86_64"
+        },
+        {
+          "type": "build",
+          "name": "ci-gcc-linux-x86_64"
+        },
+        {
+          "type": "test",
+          "name": "ci-gcc-linux-x86_64"
+        },
+        {
+          "type": "package",
+          "name": "ci-linux-x86_64"
+        }
+      ]
     }
   ]
 }
