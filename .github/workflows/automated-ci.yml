@@ -114,6 +114,26 @@ jobs:
           cmake_preset: ci-msvc-windows-x86_64
 
     steps: 
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'true' 
+
+    - uses: aminya/setup-cpp@v1
+      with:
+        compiler: false
+        vcvarsall: false
+        cmake: true
+        ninja: true
+        vcpkg: false
+        ccache: false
+        clangtidy: false
+        cppcheck: false
+        doxygen: false
+        gcovr: false
+        make: false
+        task: false
+        nala: false
+
     - uses: actions/download-artifact@v3
       with:
         name: build-artifacts-${{ matrix.cmake_preset }}

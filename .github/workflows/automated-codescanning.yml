@@ -195,7 +195,7 @@ jobs:
         cmakeBuildDirectory: ${{github.workspace}}/build/ci-msvc-windows-x86_64
         buildConfiguration: Release
         ruleset: NativeRecommendedRules.ruleset
-        ignoredPaths: ${{github.workspace}}/deps;${{github.workspace}}/test
+        ignoredPaths: ${{github.workspace}}/deps;${{github.workspace}}/src/version;${{github.workspace}}/test
 
     - name: Upload SARIF to GitHub
       uses: github/codeql-action/upload-sarif@v2
