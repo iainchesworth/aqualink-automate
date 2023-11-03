@@ -16,10 +16,10 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         include:
         - os: ubuntu-22.04
-          cmake_preset: ci-gcc-linux-x86_64
+          cmake_preset: ci-ninja-gcc-linux-x86_64-release
           compiler: gcc-13
         - os: windows-2022
-          cmake_preset: ci-msvc-windows-x86_64
+          cmake_preset: ci-ninja-msvc-windows-x64-release
           compiler: msvc
     outputs:
       cmake_preset: ${{ matrix.cmake_preset }}
@@ -67,15 +67,6 @@ jobs:
         vcvarsall: ${{ contains(matrix.os, 'windows') }}
         cmake: true
         ninja: true
-        vcpkg: false
-        ccache: false
-        clangtidy: false
-        cppcheck: false
-        doxygen: false
-        gcovr: false
-        make: false
-        task: false
-        nala: false
 
     - uses: lukka/run-vcpkg@v11
       with: 
@@ -109,9 +100,9 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         include:
         - os: ubuntu-22.04
-          cmake_preset: ci-gcc-linux-x86_64
+          cmake_preset: ci-ninja-gcc-linux-x86_64-release
         - os: windows-2022
-          cmake_preset: ci-msvc-windows-x86_64
+          cmake_preset: ci-ninja-msvc-windows-x64-release
 
     steps: 
     - uses: actions/checkout@v3
@@ -120,19 +111,8 @@ jobs:
 
     - uses: aminya/setup-cpp@v1
       with:
-        compiler: false
-        vcvarsall: false
         cmake: true
         ninja: true
-        vcpkg: false
-        ccache: false
-        clangtidy: false
-        cppcheck: false
-        doxygen: false
-        gcovr: false
-        make: false
-        task: false
-        nala: false
 
     - uses: actions/download-artifact@v3
       with:
@@ -153,9 +133,9 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         include:
         - os: ubuntu-22.04
-          cmake_preset: ci-gcc-linux-x86_64
+          cmake_preset: ci-ninja-gcc-linux-x86_64-release
         - os: windows-2022
-          cmake_preset: ci-msvc-windows-x86_64
+          cmake_preset: ci-ninja-msvc-windows-x64-release
 
     steps:
     - uses: actions/download-artifact@v3
@@ -189,9 +169,9 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         include:
         - os: ubuntu-22.04
-          cmake_preset: ci-gcc-linux-x86_64
+          cmake_preset: ci-ninja-gcc-linux-x86_64-release
         - os: windows-2022
-          cmake_preset: ci-msvc-windows-x86_64
+          cmake_preset: ci-ninja-msvc-windows-x64-release
 
     steps:
     - name: Download Binary Packages

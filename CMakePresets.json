@@ -9,16 +9,19 @@
     {
       "name": "core",
       "hidden": true,
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/install/${presetName}",
       "toolchainFile": "${sourceDir}/deps/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_WITH_INSTALL_RPATH": "ON",
         "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_BENCHMARKS": "ON",
+        "ENABLE_COVERAGE": "OFF",
+        "ENABLE_TESTS": "ON",
         "ENABLE_CLANG_TIDY": "OFF",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "OFF",
+        "ENABLE_ASIO_TRACKING": "OFF",
         "SANITIZE_ADDRESS": "OFF",
         "SANITIZE_MEMORY": "OFF",
         "SANITIZE_THREAD": "OFF",
@@ -58,6 +61,11 @@
       }
     },
     {
+      "name": "generator-ninja",
+      "hidden": true,
+      "generator": "Ninja"
+    },
+    {
       "name": "toolchain-linux",
       "hidden": true,
       "cacheVariables": {
@@ -88,11 +96,26 @@
       }
     },
     {
-      "name": "ci-llvm-linux-x86_64",
+      "name": "ci-ninja-msvc-windows-x64-release",
+      "inherits": [
+        "core",
+        "toolchain-windows",
+        "compiler-msvc",
+        "generator-ninja"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-ninja-gcc-linux-x86_64-release",
       "inherits": [
         "core",
         "toolchain-linux",
-        "compiler-llvm"
+        "compiler-gcc",
+        "generator-ninja"
       ],
       "condition": {
         "type": "equals",
@@ -101,75 +124,38 @@
       }
     },
     {
-      "name": "ci-gcc-linux-x86_64",
+      "name": "ci-ninja-gcc-linux-x86_64-coverage",
       "inherits": [
+        "core-debug",
         "core",
         "toolchain-linux",
-        "compiler-gcc"
+        "compiler-gcc",
+        "generator-ninja"
       ],
+      "cacheVariables": {
+        "ENABLE_BENCHMARKS": "OFF",
+        "ENABLE_COVERAGE": "ON"
+      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-llvm-macos-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-macos",
-        "compiler-llvm"
-      ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "ci-llvm-windows-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-windows",
-        "compiler-llvm"
-      ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-gcc-windows-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-windows",
-        "compiler-gcc"
-      ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-msvc-windows-x86_64",
-      "inherits": [
-        "core",
-        "toolchain-windows",
-        "compiler-msvc"
-      ],
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "ci-llvm-linux-x86_64",
-      "configurePreset": "ci-llvm-linux-x86_64",
+      "name": "ci-ninja-msvc-windows-x64-release",
+      "configurePreset": "ci-ninja-msvc-windows-x64-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-ninja-gcc-linux-x86_64-release",
+      "configurePreset": "ci-ninja-gcc-linux-x86_64-release",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -177,55 +163,38 @@
       }
     },
     {
-      "name": "ci-gcc-linux-x86_64",
-      "configurePreset": "ci-gcc-linux-x86_64",
+      "name": "ci-ninja-gcc-linux-x86_64-coverage",
+      "configurePreset": "ci-ninja-gcc-linux-x86_64-coverage",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-llvm-macos-x86_64",
-      "configurePreset": "ci-llvm-macos-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "ci-llvm-windows-x86_64",
-      "configurePreset": "ci-llvm-windows-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-gcc-windows-x86_64",
-      "configurePreset": "ci-gcc-windows-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-msvc-windows-x86_64",
-      "configurePreset": "ci-msvc-windows-x86_64",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
+      },
+      "targets": [
+        "coverage-testaqualink-automate"
+      ]
     }
   ],
   "testPresets": [
     {
-      "name": "ci-llvm-linux-x86_64",
-      "configurePreset": "ci-llvm-linux-x86_64",
+      "name": "ci-ninja-msvc-windows-x64-release",
+      "configurePreset": "ci-ninja-msvc-windows-x64-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ci-ninja-gcc-linux-x86_64-release",
+      "configurePreset": "ci-ninja-gcc-linux-x86_64-release",
       "output": {
         "outputOnFailure": true
       },
@@ -240,8 +209,8 @@
       }
     },
     {
-      "name": "ci-gcc-linux-x86_64",
-      "configurePreset": "ci-gcc-linux-x86_64",
+      "name": "ci-ninja-gcc-linux-x86_64-coverage",
+      "configurePreset": "ci-ninja-gcc-linux-x86_64-coverage",
       "output": {
         "outputOnFailure": true
       },
@@ -253,78 +222,14 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
-      }
-    },
-    {
-      "name": "ci-llvm-macos-x86_64",
-      "configurePreset": "ci-llvm-macos-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "ci-llvm-windows-x86_64",
-      "configurePreset": "ci-llvm-windows-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-gcc-windows-x86_64",
-      "configurePreset": "ci-gcc-windows-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "ci-msvc-windows-x86_64",
-      "configurePreset": "ci-msvc-windows-x86_64",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
       }
     }
   ],
   "packagePresets": [
     {
-      "name": "ci-windows-x86_64",
+      "name": "ci-ninja-msvc-windows-x64-release",
       "description": "",
-      "configurePreset": "ci-msvc-windows-x86_64",
+      "configurePreset": "ci-ninja-msvc-windows-x64-release",
       "generators": [
         "ZIP"
       ],
@@ -336,9 +241,9 @@
       }
     },
     {
-      "name": "ci-linux-x86_64",
+      "name": "ci-ninja-gcc-linux-x86_64-release",
       "description": "",
-      "configurePreset": "ci-gcc-linux-x86_64",
+      "configurePreset": "ci-ninja-gcc-linux-x86_64-release",
       "generators": [
         "TGZ",
         "DEB",
@@ -354,46 +259,64 @@
   ],
   "workflowPresets": [
     {
-      "name": "ci-windows-x86_64",
+      "name": "ci-windows-x64-release",
       "description": "",
       "steps": [
         {
           "type": "configure",
-          "name": "ci-msvc-windows-x86_64"
+          "name": "ci-ninja-msvc-windows-x64-release"
         },
         {
           "type": "build",
-          "name": "ci-msvc-windows-x86_64"
+          "name": "ci-ninja-msvc-windows-x64-release"
         },
         {
           "type": "test",
-          "name": "ci-msvc-windows-x86_64"
+          "name": "ci-ninja-msvc-windows-x64-release"
         },
         {
           "type": "package",
-          "name": "ci-windows-x86_64"
+          "name": "ci-ninja-msvc-windows-x64-release"
         }
       ]
     },
     {
-      "name": "ci-linux-x86_64",
+      "name": "ci-linux-x86_64-release",
       "description": "",
       "steps": [
         {
           "type": "configure",
-          "name": "ci-gcc-linux-x86_64"
+          "name": "ci-ninja-gcc-linux-x86_64-release"
         },
         {
           "type": "build",
-          "name": "ci-gcc-linux-x86_64"
+          "name": "ci-ninja-gcc-linux-x86_64-release"
         },
         {
           "type": "test",
-          "name": "ci-gcc-linux-x86_64"
+          "name": "ci-ninja-gcc-linux-x86_64-release"
         },
         {
           "type": "package",
-          "name": "ci-linux-x86_64"
+          "name": "ci-ninja-gcc-linux-x86_64-release"
+        }
+      ]
+    },
+    {
+      "name": "ci-linux-x86_64-coverage",
+      "description": "",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "ci-ninja-gcc-linux-x86_64-coverage"
+        },
+        {
+          "type": "build",
+          "name": "ci-ninja-gcc-linux-x86_64-coverage"
+        },
+        {
+          "type": "test",
+          "name": "ci-ninja-gcc-linux-x86_64-coverage"
         }
       ]
     }

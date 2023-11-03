@@ -7,12 +7,13 @@
   },
   "configurePresets": [
     {
-      "name": "ci-gcc-linux-x86_64-debug",
+      "name": "dev-ninja-gcc-linux-x86_64-debug",
       "inherits": [
         "core-debug",
         "core",
         "toolchain-linux",
-        "compiler-gcc"
+        "compiler-gcc",
+        "generator-ninja"
       ],
       "condition": {
         "type": "equals",
@@ -21,12 +22,56 @@
       }
     },
     {
-      "name": "ci-msvc-windows-x86_64-debug",
+      "name": "dev-ninja-llvm-linux-x86_64-debug",
+      "inherits": [
+        "core-debug",
+        "core",
+        "toolchain-linux",
+        "compiler-llvm",
+        "generator-ninja"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "dev-ninja-gcc-windows-x64-release",
+      "inherits": [
+        "core",
+        "toolchain-windows",
+        "compiler-gcc",
+        "generator-ninja"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-ninja-llvm-windows-x64-release",
+      "inherits": [
+        "core",
+        "toolchain-windows",
+        "compiler-llvm",
+        "generator-ninja"
+      ],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-ninja-msvc-windows-x64-debug",
       "inherits": [
         "core-debug",
         "core",
         "toolchain-windows",
-        "compiler-msvc"
+        "compiler-msvc",
+        "generator-ninja"
       ],
       "condition": {
         "type": "equals",
@@ -37,8 +82,8 @@
   ],
   "buildPresets": [
     {
-      "name": "ci-gcc-linux-x86_64-debug",
-      "configurePreset": "ci-gcc-linux-x86_64-debug",
+      "name": "dev-ninja-gcc-linux-x86_64-debug",
+      "configurePreset": "dev-ninja-gcc-linux-x86_64-debug",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -46,8 +91,35 @@
       }
     },
     {
-      "name": "ci-msvc-windows-x86_64-debug",
-      "configurePreset": "ci-msvc-windows-x86_64-debug",
+      "name": "dev-ninja-llvm-linux-x86_64-debug",
+      "configurePreset": "dev-ninja-llvm-linux-x86_64-debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "dev-ninja-gcc-windows-x64-release",
+      "configurePreset": "dev-ninja-gcc-windows-x64-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-ninja-llvm-windows-x64-release",
+      "configurePreset": "dev-ninja-llvm-windows-x64-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-ninja-msvc-windows-x64-debug",
+      "configurePreset": "dev-ninja-msvc-windows-x64-debug",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -57,8 +129,8 @@
   ],
   "testPresets": [
     {
-      "name": "ci-gcc-linux-x86_64-debug",
-      "configurePreset": "ci-gcc-linux-x86_64-debug",
+      "name": "dev-ninja-gcc-linux-x86_64-debug",
+      "configurePreset": "dev-ninja-gcc-linux-x86_64-debug",
       "output": {
         "outputOnFailure": true
       },
@@ -73,8 +145,24 @@
       }
     },
     {
-      "name": "ci-msvc-windows-x86_64-debug",
-      "configurePreset": "ci-msvc-windows-x86_64-debug",
+      "name": "dev-ninja-llvm-linux-x86_64-debug",
+      "configurePreset": "dev-ninja-llvm-linux-x86_64-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "dev-ninja-gcc-windows-x64-release",
+      "configurePreset": "dev-ninja-gcc-windows-x64-release",
       "output": {
         "outputOnFailure": true
       },
@@ -87,6 +175,76 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    },
+    {
+      "name": "dev-ninja-llvm-windows-x64-release",
+      "configurePreset": "dev-ninja-llvm-windows-x64-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "dev-ninja-msvc-windows-x64-debug",
+      "configurePreset": "dev-ninja-msvc-windows-x64-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev-linux-x86_64-debug",
+      "description": "",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-ninja-gcc-linux-x86_64-debug"
+        },
+        {
+          "type": "build",
+          "name": "dev-ninja-gcc-linux-x86_64-debug"
+        },
+        {
+          "type": "test",
+          "name": "dev-ninja-gcc-linux-x86_64-debug"
+        }
+      ]
+    },
+    {
+      "name": "dev-windows-x64-debug",
+      "description": "",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-ninja-msvc-windows-x64-debug"
+        },
+        {
+          "type": "build",
+          "name": "dev-ninja-msvc-windows-x64-debug"
+        },
+        {
+          "type": "test",
+          "name": "dev-ninja-msvc-windows-x64-debug"
+        }
+      ]
     }
   ]
 }

@@ -74,15 +74,22 @@ target_link_libraries(
 add_test(AqualinkAutomateUnitTests testaqualink-automate)
 
 if(ENABLE_COVERAGE)
-setup_target_for_coverage_lcov(
+
+# GCOVR_ADDITIONAL_ARGS to supply additional flags to the GCVOR command; the "--sonarqube" 
+# parameter enables output compatible with SonarCloud (per https://gcovr.com/en/master/output/sonarqube.html)
+
+setup_target_for_coverage_gcovr_xml(
 	NAME coverage-testaqualink-automate 
 	EXECUTABLE ctest -j ${PROCESSOR_COUNT} 
 	DEPENDENCIES testaqualink-automate
 	EXCLUDE 
 		"${PROJECT_SOURCE_DIR}/deps/*"
+		"${CMAKE_BINARY_DIR}/vcpkg_installed/*"
 		"/usr/include/*"
 		"include/*"
+	OUTPUT_FORMAT sonarqube
 )
+
 endif(ENABLE_COVERAGE)
 
 if(ENABLE_SANITIZERS)

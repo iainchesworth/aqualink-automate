@@ -87,6 +87,9 @@
 #     - fix append_coverage_compiler_flags_to_target to correctly add flags
 #     - replace "-fprofile-arcs -ftest-coverage" with "--coverage" (equivalent)
 #
+# 2023-11-03, Iain Chesworth
+#     - Add support for picking the output format of the GCOV XML report (cobertura vs. sonarqube)
+#
 # USAGE:
 #
 # 1. Copy this file into your cmake modules path.
@@ -402,13 +405,15 @@ endfunction() # setup_target_for_coverage_lcov
 #                                            #  (defaults to PROJECT_SOURCE_DIR)
 #     EXCLUDE "src/dir1/*" "src/dir2/*"      # Patterns to exclude (can be relative
 #                                            #  to BASE_DIRECTORY, with CMake 3.4+)
+#     OUTPUT_FORMAT sonarqube                # XML output format (defaults to
+#                                            #  cobertura)
 # )
 # The user can set the variable GCOVR_ADDITIONAL_ARGS to supply additional flags to the
 # GCVOR command.
 function(setup_target_for_coverage_gcovr_xml)
 
     set(options NONE)
-    set(oneValueArgs BASE_DIRECTORY NAME)
+    set(oneValueArgs BASE_DIRECTORY NAME OUTPUT_FORMAT)
     set(multiValueArgs EXCLUDE EXECUTABLE EXECUTABLE_ARGS DEPENDENCIES)
     cmake_parse_arguments(Coverage "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -421,6 +426,11 @@ function(setup_target_for_coverage_gcovr_xml)
         get_filename_component(BASEDIR ${Coverage_BASE_DIRECTORY} ABSOLUTE)
     else()
         set(BASEDIR ${PROJECT_SOURCE_DIR})
+    endif()
+
+    # Set XML output format or default to cobertura
+    if(NOT DEFINED Coverage_OUTPUT_FORMAT)
+        set(Coverage_OUTPUT_FORMAT "cobertura")
     endif()
 
     # Collect excludes (CMake 3.4+: Also compute absolute paths)
@@ -447,7 +457,7 @@ function(setup_target_for_coverage_gcovr_xml)
     )
     # Running gcovr
     set(GCOVR_XML_CMD
-        ${GCOVR_PATH} --xml ${Coverage_NAME}.xml -r ${BASEDIR} ${GCOVR_ADDITIONAL_ARGS}
+        ${GCOVR_PATH} --${Coverage_OUTPUT_FORMAT} ${Coverage_NAME}.xml -r ${BASEDIR} ${GCOVR_ADDITIONAL_ARGS}
         ${GCOVR_EXCLUDE_ARGS} --object-directory=${PROJECT_BINARY_DIR}
     )
 
@@ -471,7 +481,7 @@ function(setup_target_for_coverage_gcovr_xml)
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         DEPENDS ${Coverage_DEPENDENCIES}
         VERBATIM # Protect arguments to commands
-        COMMENT "Running gcovr to produce Cobertura code coverage report."
+        COMMENT "Running gcovr to produce ${Coverage_OUTPUT_FORMAT} code coverage report."
     )
 
     # Show info where to find the report

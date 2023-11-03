@@ -40,18 +40,8 @@ jobs:
     - uses: aminya/setup-cpp@v1
       with:
         compiler: gcc-13
-        vcvarsall: false
         cmake: true
         ninja: true
-        vcpkg: false
-        ccache: false
-        clangtidy: false
-        cppcheck: false
-        doxygen: false
-        gcovr: false
-        make: false
-        task: false
-        nala: false
 
     - uses: lukka/run-vcpkg@v11
       with: 
@@ -59,11 +49,11 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'ci-gcc-linux-x86_64'
+        configurePreset: 'ci-ninja-gcc-linux-x86_64-release'
 
     - uses: lukka/run-cmake@v10
       with:
-        buildPreset: 'ci-gcc-linux-x86_64'
+        buildPreset: 'ci-ninja-gcc-linux-x86_64-release'
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
@@ -91,18 +81,10 @@ jobs:
     - uses: aminya/setup-cpp@v1
       with:
         compiler: gcc-13
-        vcvarsall: false
         cmake: true
         ninja: true
-        vcpkg: false
-        ccache: false
-        clangtidy: false
-        cppcheck: false
-        doxygen: false
-        gcovr: false
-        make: false
-        task: false
-        nala: false
+        gcovr: true
+        python: true # Dependency for gcovr and SonarCloud
 
     - uses: lukka/run-vcpkg@v11
       with: 
@@ -110,18 +92,21 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'ci-gcc-linux-x86_64'
+        configurePreset: 'ci-ninja-gcc-linux-x86_64-coverage'
 
     - name: Run build-wrapper
       run: |
-        build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build . --preset=ci-gcc-linux-x86_64
+        build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build . --preset=ci-ninja-gcc-linux-x86_64-coverage
 
     - name: Run sonar-scanner
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
-        sonar-scanner -Dproject.settings="${{github.workspace}}/sonar-project.properties" -Dsonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+        sonar-scanner \
+            -Dproject.settings="${{github.workspace}}/sonar-project.properties" \
+            -Dsonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+            -Dsonar.coverageReportPaths="${{github.workspace}}/build/ci-ninja-gcc-linux-x86_64-coverage/coverage-testaqualink-automate.xml"
 
   ##
   ## MSVC CODE ANALYSIS JOB
@@ -171,15 +156,6 @@ jobs:
         vcvarsall: true
         cmake: true
         ninja: true
-        vcpkg: false
-        ccache: false
-        clangtidy: false
-        cppcheck: false
-        doxygen: false
-        gcovr: false
-        make: false
-        task: false
-        nala: false
 
     - uses: lukka/run-vcpkg@v11
       with: 
@@ -187,13 +163,13 @@ jobs:
 
     - uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'ci-msvc-windows-x86_64'
-        buildPreset: 'ci-msvc-windows-x86_64'
+        configurePreset: 'ci-ninja-msvc-windows-x64-release'
+        buildPreset: 'ci-ninja-msvc-windows-x64-release'
 
     - uses: microsoft/msvc-code-analysis-action@v0.1.1
       id: run-analysis
       with:
-        cmakeBuildDirectory: ${{github.workspace}}/build/ci-msvc-windows-x86_64
+        cmakeBuildDirectory: ${{github.workspace}}/build/ci-ninja-msvc-windows-x64-release
         buildConfiguration: Release
         ruleset: NativeRecommendedRules.ruleset
         ignoredPaths: ${{github.workspace}}/deps;${{github.workspace}}/src/version;${{github.workspace}}/test
