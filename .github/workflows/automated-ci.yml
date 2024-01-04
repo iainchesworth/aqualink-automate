@@ -87,6 +87,13 @@ jobs:
         name: build-artifacts-${{ matrix.cmake_preset }}
         path: ${{github.workspace}}/build/${{ matrix.cmake_preset }}
 
+    - run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          chmod +x ${{github.workspace}}/build/${{ matrix.cmake_preset }}/test/testaqualink-automate
+          chmod +x ${{github.workspace}}/build/${{ matrix.cmake_preset }}/test/perfaqualink-automate
+        fi
+      shell: bash
+
     - uses: lukka/run-cmake@v10
       with:
         testPreset: '${{ matrix.cmake_preset }}'
