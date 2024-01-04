@@ -25,7 +25,8 @@
         "SANITIZE_ADDRESS": "OFF",
         "SANITIZE_MEMORY": "OFF",
         "SANITIZE_THREAD": "OFF",
-        "SANITIZE_UNDEFINED": "OFF"
+        "SANITIZE_UNDEFINED": "OFF",
+        "USE_SONARQUBE": "OFF"
       }
     },
     {
@@ -134,7 +135,8 @@
       ],
       "cacheVariables": {
         "ENABLE_BENCHMARKS": "OFF",
-        "ENABLE_COVERAGE": "ON"
+        "ENABLE_COVERAGE": "ON",
+        "USE_SONARQUBE": "OFF"
       },
       "condition": {
         "type": "equals",

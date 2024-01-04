@@ -22,6 +22,8 @@ option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
+option(USE_SONARQUBE "Use SonarQube for coverage of unit tests" OFF)
+
 #------------------------------------------------------------------------------
 #
 #
