@@ -54,7 +54,7 @@ jobs:
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.lib
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.pdb
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.a
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/CMakeFiles/
+          # !${{github.workspace}}/build/${{ matrix.cmake_preset }}/CMakeFiles/ <-- Needed to ensure pack commands work...
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/deps/
           !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg_installed/
 
