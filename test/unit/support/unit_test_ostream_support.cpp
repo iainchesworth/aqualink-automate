@@ -133,6 +133,12 @@ namespace AqualinkAutomate::Messages
         os << magic_enum::enum_name(right);
         return os;
     }
+
+    std::ostream& boost_test_print_type(std::ostream& os, PanelDataTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
 }
 // namespace AqualinkAutomate::Messages
 

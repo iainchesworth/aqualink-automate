@@ -8,6 +8,7 @@
 #include "jandy/devices/jandy_emulated_device_types.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
+#include "jandy/messages/aquarite/aquarite_message_getid.h"
 #include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -93,6 +94,7 @@ namespace AqualinkAutomate::Messages
 {
     std::ostream& boost_test_print_type(std::ostream& os, AckTypes const& right);
     std::ostream& boost_test_print_type(std::ostream& os, ComboModes const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, PanelDataTypes const& right);
 }
 // namespace AqualinkAutomate::Messages
 

@@ -25,6 +25,7 @@ add_executable(
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_message.cpp 
 	unit/messages/test_message_ack.cpp 
 	unit/messages/test_message_message.cpp 
