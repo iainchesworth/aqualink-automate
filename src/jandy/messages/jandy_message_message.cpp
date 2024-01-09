@@ -56,7 +56,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Message type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineText)
+		if (message_bytes.size() <= Index_LineText)
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Message is too short to deserialise LineText");
 		}

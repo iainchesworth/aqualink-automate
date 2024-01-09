@@ -53,15 +53,15 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_FirstLineId)
+		if (message_bytes.size() <= Index_FirstLineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise FirstLineId.");
 		}
-		else if (message_bytes.size() < Index_LastLineId)
+		else if (message_bytes.size() <= Index_LastLineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LastLineId.");
 		}
-		else if (message_bytes.size() < Index_LineShift)
+		else if (message_bytes.size() <= Index_LineShift)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LineShift.");
 		}

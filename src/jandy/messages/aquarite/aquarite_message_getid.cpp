@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_GetId type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_RequestedDataFlag)
+		if (message_bytes.size() <= Index_RequestedDataFlag)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_Percent is too short to deserialise RequestedPanelData.");
 		}

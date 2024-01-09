@@ -47,11 +47,11 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_TableMessage type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineId)
+		if (message_bytes.size() <= Index_LineId)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_TableMessage is too short to deserialise LineId.");
 		}
-		else if (message_bytes.size() < Index_LineText)
+		else if (message_bytes.size() <= Index_LineText)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_TableMessage is too short to deserialise LineText.");
 		}

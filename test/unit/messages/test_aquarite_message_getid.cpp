@@ -7,8 +7,10 @@
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/jandy_message_formatters.h"
+#include "jandy/messages/jandy_message_constants.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/aquarite/aquarite_message_getid.h"
+#include "jandy/utility/jandy_checksum.h"
 
 #include "support/unit_test_ostream_support.h"
 
@@ -60,6 +62,58 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_EQUAL(0x0C, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
     BOOST_CHECK_EQUAL(0x10, message2.ChecksumValue());
+}
+
+BOOST_AUTO_TEST_CASE(TestDeserialization_MessageMissingPayload)
+{
+    std::vector<std::vector<uint8_t>> message_bytes =
+    { 
+        {
+            HEADER_BYTE_DLE,
+            HEADER_BYTE_STX,
+            0x00,            
+            // 
+            // The following would be the "expected" bytes...
+            // 
+            // magic_enum::enum_integer(JandyMessageIds::AQUARITE_GetId),
+            // magic_enum::enum_integer(PanelDataTypes::Unknown),
+            // <checksum>,
+            // HEADER_BYTE_DLE,
+            // HEADER_BYTE_ETX
+        },
+        {
+            HEADER_BYTE_DLE,
+            HEADER_BYTE_STX,
+            0x00,
+            magic_enum::enum_integer(JandyMessageIds::AQUARITE_GetId),
+            // 
+            // The following would be the "expected" bytes...
+            // 
+            // magic_enum::enum_integer(PanelDataTypes::Unknown)
+            // <checksum>
+            // HEADER_BYTE_DLE
+            // HEADER_BYTE_ETX
+        },
+        {
+            HEADER_BYTE_DLE,
+            HEADER_BYTE_STX,
+            0x00,
+            magic_enum::enum_integer(JandyMessageIds::AQUARITE_GetId),
+            magic_enum::enum_integer(PanelDataTypes::Unknown),
+            // 
+            // The following would be the "expected" bytes...
+            // 
+            // <checksum>
+            // HEADER_BYTE_DLE
+            // HEADER_BYTE_ETX
+        }
+    };
+
+    AquariteMessage_GetId message;
+
+    BOOST_CHECK_EQUAL(false, message.DeserializeContents(message_bytes[0]));
+    BOOST_CHECK_EQUAL(false, message.DeserializeContents(message_bytes[1]));
+    BOOST_CHECK_EQUAL(true,  message.DeserializeContents(message_bytes[2]));
 }
 
 BOOST_AUTO_TEST_CASE(TestToString)

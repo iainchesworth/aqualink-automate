@@ -59,11 +59,11 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Ack type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_AckType)
+		if (message_bytes.size() <= Index_AckType)
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Ack is too short to deserialise AckType.");
 		}
-		else if (message_bytes.size() < Index_Command)
+		else if (message_bytes.size() <= Index_Command)
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Ack is too short to deserialise Command.");
 		}

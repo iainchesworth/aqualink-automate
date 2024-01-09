@@ -56,15 +56,15 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageButton type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_ButtonState)
+		if (message_bytes.size() <= Index_ButtonState)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonState.");
 		}
-		else if (message_bytes.size() < Index_ButtonType)
+		else if (message_bytes.size() <= Index_ButtonType)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonType.");
 		}
-		else if (message_bytes.size() < Index_ButtonNameText)
+		else if (message_bytes.size() <= Index_ButtonNameText)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise context of ButtonName.");
 		}

@@ -53,15 +53,15 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_HighlightChars type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineId)
+		if (message_bytes.size() <= Index_LineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise LineId.");
 		}
-		else if (message_bytes.size() < Index_StartIndex)
+		else if (message_bytes.size() <= Index_StartIndex)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StartIndex.");
 		}
-		else if (message_bytes.size() < Index_StopIndex)
+		else if (message_bytes.size() <= Index_StopIndex)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StopIndex.");
 		}

@@ -2,8 +2,10 @@
 
 #include <magic_enum.hpp>
 
+#include "jandy/messages/jandy_message_constants.h"
 #include "jandy/messages/jandy_message_ids.h"
 #include "jandy/messages/aquarite/aquarite_message_ppm.h"
+#include "jandy/utility/jandy_checksum.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging; 
@@ -42,18 +44,34 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_PPM::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		message_bytes =
+		{
+			Messages::HEADER_BYTE_DLE,
+			Messages::HEADER_BYTE_STX,
+			0x00,
+			magic_enum::enum_integer(JandyMessageIds::AQUARITE_PPM),
+			static_cast<uint8_t>(m_PPM / 100),
+			magic_enum::enum_integer(m_Status),
+			0x00,
+			Messages::HEADER_BYTE_DLE,
+			Messages::HEADER_BYTE_ETX
+		};
+
+		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
+		message_bytes[6] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+
+		return true;
 	}
 
 	bool AquariteMessage_PPM::DeserializeContents(const std::vector<uint8_t>& message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_PPM)
+		if (message_bytes.size() <= Index_PPM)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise PPM.");
 		}
-		else if (message_bytes.size() < Index_Status)
+		else if (message_bytes.size() <= Index_Status)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise Status.");
 		}

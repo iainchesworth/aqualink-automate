@@ -196,7 +196,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into SerialAdapterMessage_DevStatus type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_StatusType)
+		if (message_bytes.size() <= Index_StatusType)
 		{
 			LogDebug(Channel::Messages, "SerialAdapterMessage_DevStatus is too short to deserialise StatusType");
 		}

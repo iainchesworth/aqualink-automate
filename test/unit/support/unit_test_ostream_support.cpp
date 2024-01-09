@@ -128,6 +128,12 @@ namespace AqualinkAutomate::Messages
         return os;
     }
 
+    std::ostream& boost_test_print_type(std::ostream& os, AquariteStatuses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
     std::ostream& boost_test_print_type(std::ostream& os, ComboModes const& right)
     {
         os << magic_enum::enum_name(right);
