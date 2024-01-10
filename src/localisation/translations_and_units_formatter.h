@@ -28,17 +28,29 @@ namespace AqualinkAutomate::Localisation
 
 	public:
 		template<typename T>
-		std::string Localised(const T& object)
+		constexpr std::string Localised(const T& object) const
 		{
 			// Default implementation for generic types.
 			return std::string{};
 		}
 
 	public:
-		std::string Localised(const Kernel::Temperature& object)
+		constexpr std::string Localised(const Kernel::Temperature& object) const
 		{
-			const std::string_view TEMPERATURE_DISPLAY_FORMAT{(Kernel::TemperatureUnits::Celsius == Kernel::TemperatureUnits::Celsius) ? "{:C}" : "{:F}" };
-			return std::vformat(TEMPERATURE_DISPLAY_FORMAT, std::make_format_args(object));
+			const Kernel::TemperatureUnits temp_format{ Kernel::TemperatureUnits::Celsius };
+			
+			switch (temp_format)
+			{
+			case Kernel::TemperatureUnits::Celsius:
+				return std::format("{:C}", object);
+
+			case Kernel::TemperatureUnits::Fahrenheit:
+				return std::format("{:F}", object);
+
+			default:
+				///FIXME - add a specific-to-localisation exception here.
+				throw;
+			}
 		}
 	};
 

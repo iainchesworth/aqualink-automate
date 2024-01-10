@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     };
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[0]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[0]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[1]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[1]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[2]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[2]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
     
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[3]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[3]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
@@ -166,14 +166,14 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[4]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[4]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Cleaner);
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[5]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[5]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Heater);
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[6]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[6]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Pump);
@@ -191,14 +191,14 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[7]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[7]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Spillover);
     }
 
     {
-        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(valid_aux_label_and_status[8]));
+        auto test_ptr = factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(valid_aux_label_and_status[8]));
         BOOST_TEST_REQUIRE(test_ptr.has_value());
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Heater);
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
 
     for (auto bad_device_and_status : invalid_aux_label_and_status)
     {
-        BOOST_TEST(!factory.OneTouchDevice_CreateDevice(Utility::AuxillaryState(bad_device_and_status)).has_value());
+        BOOST_TEST(!factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(bad_device_and_status)).has_value());
     }
 }
 

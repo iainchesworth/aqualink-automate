@@ -7,7 +7,7 @@
 namespace AqualinkAutomate::Utility
 {
 
-	class TimeoutDuration
+	class TimeoutDurationStringConverter
 	{
 		static const uint8_t EXPECTED_STRING_LENGTH = 8;
 		static const uint8_t TIMEOUT_DELIM_ONE_INDEX = 2;
@@ -21,15 +21,15 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t SECS_INDEX_END = 8;
 
 	public:
-		TimeoutDuration() noexcept;
-		TimeoutDuration(const std::string& timeout_string) noexcept;
-		TimeoutDuration(const TimeoutDuration& other) noexcept;
-		TimeoutDuration(TimeoutDuration&& other) noexcept;
+		TimeoutDurationStringConverter() noexcept;
+		TimeoutDurationStringConverter(const std::string& timeout_string) noexcept;
+		TimeoutDurationStringConverter(const TimeoutDurationStringConverter& other) noexcept;
+		TimeoutDurationStringConverter(TimeoutDurationStringConverter&& other) noexcept;
 
 	public:
-		TimeoutDuration& operator=(const TimeoutDuration& other) noexcept;
-		TimeoutDuration& operator=(TimeoutDuration&& other) noexcept;
-		TimeoutDuration& operator=(const std::string& timeout_string) noexcept;
+		TimeoutDurationStringConverter& operator=(const TimeoutDurationStringConverter& other) noexcept;
+		TimeoutDurationStringConverter& operator=(TimeoutDurationStringConverter&& other) noexcept;
+		TimeoutDurationStringConverter& operator=(const std::string& timeout_string) noexcept;
 
 	public:
 		std::chrono::seconds operator()() const noexcept;

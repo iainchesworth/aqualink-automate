@@ -17,7 +17,7 @@ using namespace AqualinkAutomate::Kernel;
 namespace AqualinkAutomate::Utility
 {
 
-	class AuxillaryState
+	class AuxillaryStateStringConverter
 	{
 		static const std::string REGEX_PATTERN;
 		static const boost::regex REGEX_PARSER;
@@ -26,15 +26,15 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t MINIMUM_STRING_LENGTH = 4;
 
 	public:
-		AuxillaryState() noexcept;
-		AuxillaryState(const std::string& auxillary_status_string) noexcept;
-		AuxillaryState(const AuxillaryState& other) noexcept;
-		AuxillaryState(AuxillaryState&& other) noexcept;
+		AuxillaryStateStringConverter() noexcept;
+		AuxillaryStateStringConverter(const std::string& auxillary_status_string) noexcept;
+		AuxillaryStateStringConverter(const AuxillaryStateStringConverter& other) noexcept;
+		AuxillaryStateStringConverter(AuxillaryStateStringConverter&& other) noexcept;
 
 	public:
-		AuxillaryState& operator=(const AuxillaryState& other) noexcept;
-		AuxillaryState& operator=(AuxillaryState&& other) noexcept;
-		AuxillaryState& operator=(const std::string& auxillary_status_string) noexcept;
+		AuxillaryStateStringConverter& operator=(const AuxillaryStateStringConverter& other) noexcept;
+		AuxillaryStateStringConverter& operator=(AuxillaryStateStringConverter&& other) noexcept;
+		AuxillaryStateStringConverter& operator=(const std::string& auxillary_status_string) noexcept;
 
 	public:
 		tl::expected<std::string, boost::system::error_code> Label() const noexcept;

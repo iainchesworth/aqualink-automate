@@ -8,7 +8,7 @@
 
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
-#include "jandy/utility/string_conversion/chemistry.h"
+#include "jandy/utility/string_conversion/chemistry_string_converter.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -21,16 +21,16 @@ namespace AqualinkAutomate::Formatters
 namespace std
 {
 
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::Chemistry& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::ChemistryStringConverter& obj);
 
 }
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Utility::Chemistry> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Utility::ChemistryStringConverter> : std::formatter<std::string>
 {
 	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Utility::Chemistry& chemistry, FormatContext& ctx) const
+	auto format(const AqualinkAutomate::Utility::ChemistryStringConverter& chemistry, FormatContext& ctx) const
 	{
 		try
 		{

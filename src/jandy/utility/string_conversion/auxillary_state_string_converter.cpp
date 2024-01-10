@@ -3,24 +3,24 @@
 #include <re2/re2.h>
 
 #include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
+#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string AuxillaryState::REGEX_PATTERN{ R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))" };
-	const boost::regex AuxillaryState::REGEX_PARSER{ REGEX_PATTERN };
+	const std::string AuxillaryStateStringConverter::REGEX_PATTERN{ R"((.{1,13})\s+(ON|OFF|ENA|\*\*\*))" };
+	const boost::regex AuxillaryStateStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
-	AuxillaryState::AuxillaryState() noexcept :
+	AuxillaryStateStringConverter::AuxillaryStateStringConverter() noexcept :
 		m_Label(),
 		m_State(Kernel::AuxillaryStatuses::Unknown),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
-	AuxillaryState::AuxillaryState(const std::string& auxillary_status_string) noexcept :
+	AuxillaryStateStringConverter::AuxillaryStateStringConverter(const std::string& auxillary_status_string) noexcept :
 		m_Label(),
 		m_State(Kernel::AuxillaryStatuses::Unknown),
 		m_ErrorOccurred(std::nullopt)
@@ -28,21 +28,21 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToStatus(auxillary_status_string);
 	}
 
-	AuxillaryState::AuxillaryState(const AuxillaryState& other) noexcept :
+	AuxillaryStateStringConverter::AuxillaryStateStringConverter(const AuxillaryStateStringConverter& other) noexcept :
 		m_Label(other.m_Label),
 		m_State(other.m_State),
 		m_ErrorOccurred(other.m_ErrorOccurred)
 	{
 	}
 
-	AuxillaryState::AuxillaryState(AuxillaryState&& other) noexcept :
+	AuxillaryStateStringConverter::AuxillaryStateStringConverter(AuxillaryStateStringConverter&& other) noexcept :
 		m_Label(std::move(other.m_Label)),
 		m_State(std::move(other.m_State)),
 		m_ErrorOccurred(std::move(other.m_ErrorOccurred))
 	{
 	}
 
-	AuxillaryState& AuxillaryState::operator=(const AuxillaryState& other) noexcept
+	AuxillaryStateStringConverter& AuxillaryStateStringConverter::operator=(const AuxillaryStateStringConverter& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -54,7 +54,7 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	AuxillaryState& AuxillaryState::operator=(AuxillaryState&& other) noexcept
+	AuxillaryStateStringConverter& AuxillaryStateStringConverter::operator=(AuxillaryStateStringConverter&& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -66,13 +66,13 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	AuxillaryState& AuxillaryState::operator=(const std::string& auxillary_status_string) noexcept
+	AuxillaryStateStringConverter& AuxillaryStateStringConverter::operator=(const std::string& auxillary_status_string) noexcept
 	{
 		ConvertStringToStatus(auxillary_status_string);
 		return *this;
 	}
 
-	tl::expected<std::string, boost::system::error_code> AuxillaryState::Label() const noexcept
+	tl::expected<std::string, boost::system::error_code> AuxillaryStateStringConverter::Label() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -82,7 +82,7 @@ namespace AqualinkAutomate::Utility
 		return m_Label;
 	}
 
-	tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> AuxillaryState::State() const noexcept
+	tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> AuxillaryStateStringConverter::State() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -92,7 +92,7 @@ namespace AqualinkAutomate::Utility
 		return m_State;
 	}
 
-	void AuxillaryState::ConvertStringToStatus(const std::string& auxillary_status_string) noexcept
+	void AuxillaryStateStringConverter::ConvertStringToStatus(const std::string& auxillary_status_string) noexcept
 	{
 		const auto auxillary_status_data = ValidateAndExtractData(auxillary_status_string);
 
@@ -132,7 +132,7 @@ namespace AqualinkAutomate::Utility
 		}
 	}
 
-	std::tuple<std::optional<std::string>, std::optional<std::string>> AuxillaryState::ValidateAndExtractData(const std::string& auxillary_status_string) noexcept
+	std::tuple<std::optional<std::string>, std::optional<std::string>> AuxillaryStateStringConverter::ValidateAndExtractData(const std::string& auxillary_status_string) noexcept
 	{
 		boost::smatch match_results;
 

@@ -17,7 +17,7 @@ using namespace AqualinkAutomate::ErrorCodes;
 namespace AqualinkAutomate::Utility
 {
 
-	class Temperature
+	class TemperatureStringConverter
 	{
 		static const std::string REGEX_PATTERN;
 		static const boost::regex REGEX_PARSER;
@@ -25,20 +25,12 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t MAXIMUM_STRING_LENGTH = 16;
 		static const uint8_t MINIMUM_STRING_LENGTH = 7;
 
-	private:
-		enum class Units 
-		{
-			Celsius,
-			Farenheit,
-			Unknown
-		};
+	public:
+		TemperatureStringConverter() noexcept;
+		TemperatureStringConverter(const std::string& temperature_string) noexcept;
 
 	public:
-		Temperature() noexcept;
-		Temperature(const std::string& temperature_string) noexcept;
-
-	public:
-		Temperature& operator=(const std::string& temperature_string) noexcept;
+		TemperatureStringConverter& operator=(const std::string& temperature_string) noexcept;
 
 	public:
 		tl::expected<Kernel::Temperature, boost::system::error_code> operator()() const noexcept;

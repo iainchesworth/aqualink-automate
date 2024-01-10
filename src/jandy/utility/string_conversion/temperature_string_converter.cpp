@@ -6,24 +6,24 @@
 #include <magic_enum.hpp>
 
 #include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/temperature.h"
+#include "jandy/utility/string_conversion/temperature_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string Temperature::REGEX_PATTERN{ R"(^([A-Za-z]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
-	const boost::regex Temperature::REGEX_PARSER{ REGEX_PATTERN };
+	const std::string TemperatureStringConverter::REGEX_PATTERN{ R"(^([A-Za-z]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
+	const boost::regex TemperatureStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
-	Temperature::Temperature() noexcept :
+	TemperatureStringConverter::TemperatureStringConverter() noexcept :
 		m_Temperature(Kernel::Temperature::ConvertToTemperatureInCelsius(0)),
 		m_TemperatureArea(),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
-	Temperature::Temperature(const std::string& temperature_string) noexcept :
+	TemperatureStringConverter::TemperatureStringConverter(const std::string& temperature_string) noexcept :
 		m_Temperature(Kernel::Temperature::ConvertToTemperatureInCelsius(0)),
 		m_TemperatureArea(),
 		m_ErrorOccurred(std::nullopt)
@@ -31,13 +31,13 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToTemperature(TrimWhitespace(temperature_string));
 	}
 
-	Temperature& Temperature::operator=(const std::string& temperature_string) noexcept
+	TemperatureStringConverter& TemperatureStringConverter::operator=(const std::string& temperature_string) noexcept
 	{
 		ConvertStringToTemperature(TrimWhitespace(temperature_string));
 		return *this;
 	}
 
-	tl::expected<Kernel::Temperature, boost::system::error_code> Temperature::operator()() const noexcept
+	tl::expected<Kernel::Temperature, boost::system::error_code> TemperatureStringConverter::operator()() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -47,7 +47,7 @@ namespace AqualinkAutomate::Utility
 		return m_Temperature;
 	}
 
-	tl::expected<std::string, boost::system::error_code> Temperature::TemperatureArea() const noexcept
+	tl::expected<std::string, boost::system::error_code> TemperatureStringConverter::TemperatureArea() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Utility
 		return m_TemperatureArea;
 	}
 
-	void Temperature::ConvertStringToTemperature(const std::string& temperature_string) noexcept
+	void TemperatureStringConverter::ConvertStringToTemperature(const std::string& temperature_string) noexcept
 	{
 		const auto temperature_data = ValidateAndExtractData(temperature_string);
 
@@ -100,7 +100,7 @@ namespace AqualinkAutomate::Utility
 		}
 	}
 
-	std::tuple<std::optional<std::string>, std::optional<std::string>, std::optional<std::string>> Temperature::ValidateAndExtractData(const std::string& temperature_string)  noexcept
+	std::tuple<std::optional<std::string>, std::optional<std::string>, std::optional<std::string>> TemperatureStringConverter::ValidateAndExtractData(const std::string& temperature_string)  noexcept
 	{
 		boost::smatch match_results;
 

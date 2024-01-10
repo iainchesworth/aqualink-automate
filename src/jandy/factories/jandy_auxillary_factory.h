@@ -9,7 +9,7 @@
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "jandy/auxillaries/jandy_auxillary_id.h"
 #include "jandy/auxillaries/jandy_auxillary_status.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
+#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
 
 namespace AqualinkAutomate::Factory
 {
@@ -89,7 +89,7 @@ namespace AqualinkAutomate::Factory
 	public:
 		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id);
 		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status);
-		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> OneTouchDevice_CreateDevice(const Utility::AuxillaryState& aux_state);
+		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state);
 
 	private:
 		bool IsAuxillaryDevice(const std::string& label) const;

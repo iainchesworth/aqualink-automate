@@ -12,8 +12,8 @@
 #include "jandy/factories/jandy_auxillary_factory.h"
 #include "jandy/utility/jandy_pool_configuration_decoder.h"
 #include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
-#include "jandy/utility/string_conversion/temperature.h"
+#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
+#include "jandy/utility/string_conversion/temperature_string_converter.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Devices
 
 		///FIXME - get pool / spa temperature if FP pump is running....
 
-		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
 		{
 			JandyController::m_DataHub->AirTemp(temperature().value());
 		}
@@ -97,7 +97,7 @@ namespace AqualinkAutomate::Devices
 		*/
 
 		JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::TimeOut;
-		JandyController::m_DataHub->TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10].Text));
+		JandyController::m_DataHub->TimeoutRemaining = Utility::TimeoutDurationStringConverter(Utility::TrimWhitespace(page[10].Text));
 	}
 
 	void OneTouchDevice::PageProcessor_OneTouch(const Utility::ScreenDataPage& page)
@@ -152,7 +152,7 @@ namespace AqualinkAutomate::Devices
 
 		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
 		{
-			auto new_aux_state = Utility::AuxillaryState(Utility::TrimWhitespace(page[row_index].Text));
+			auto new_aux_state = Utility::AuxillaryStateStringConverter(Utility::TrimWhitespace(page[row_index].Text));
 			
 			if (auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().OneTouchDevice_CreateDevice(new_aux_state); !aux_ptr.has_value())
 			{
@@ -256,12 +256,12 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
 		{
 			JandyController::m_DataHub->PoolTemp(temperature().value());
 		}
 
-		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
 		{
 			JandyController::m_DataHub->SpaTemp(temperature().value());
 		}
@@ -305,7 +305,7 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (auto temperature = Utility::Temperature(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
 		{
 			JandyController::m_DataHub->FreezeProtectPoint(temperature().value());
 		}

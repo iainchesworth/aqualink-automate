@@ -3,7 +3,7 @@
 
 #include <magic_enum.hpp>
 
-#include "jandy/utility/string_conversion/timeout_duration.h"
+#include "jandy/utility/string_conversion/timeout_duration_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -12,28 +12,28 @@ namespace AqualinkAutomate::Utility
 {
 	using namespace std::chrono_literals;
 
-	TimeoutDuration::TimeoutDuration() noexcept :
+	TimeoutDurationStringConverter::TimeoutDurationStringConverter() noexcept :
 		m_TimeoutDuration(0s)
 	{
 	}
 
-	TimeoutDuration::TimeoutDuration(const std::string& timeout_string) noexcept :
+	TimeoutDurationStringConverter::TimeoutDurationStringConverter(const std::string& timeout_string) noexcept :
 		m_TimeoutDuration(0s)
 	{
 		ConvertStringToTimeoutDuration(timeout_string);
 	}
 
-	TimeoutDuration::TimeoutDuration(const TimeoutDuration& other) noexcept :
+	TimeoutDurationStringConverter::TimeoutDurationStringConverter(const TimeoutDurationStringConverter& other) noexcept :
 		m_TimeoutDuration(other.m_TimeoutDuration)
 	{
 	}
 
-	TimeoutDuration::TimeoutDuration(TimeoutDuration&& other) noexcept :
+	TimeoutDurationStringConverter::TimeoutDurationStringConverter(TimeoutDurationStringConverter&& other) noexcept :
 		m_TimeoutDuration(std::move(other.m_TimeoutDuration))
 	{
 	}
 
-	TimeoutDuration& TimeoutDuration::operator=(const TimeoutDuration& other) noexcept
+	TimeoutDurationStringConverter& TimeoutDurationStringConverter::operator=(const TimeoutDurationStringConverter& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	TimeoutDuration& TimeoutDuration::operator=(TimeoutDuration&& other) noexcept
+	TimeoutDurationStringConverter& TimeoutDurationStringConverter::operator=(TimeoutDurationStringConverter&& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -53,18 +53,18 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	TimeoutDuration& TimeoutDuration::operator=(const std::string& timeout_string) noexcept
+	TimeoutDurationStringConverter& TimeoutDurationStringConverter::operator=(const std::string& timeout_string) noexcept
 	{
 		ConvertStringToTimeoutDuration(timeout_string);
 		return *this;
 	}
 
-	std::chrono::seconds TimeoutDuration::operator()() const noexcept
+	std::chrono::seconds TimeoutDurationStringConverter::operator()() const noexcept
 	{
 		return m_TimeoutDuration;
 	}
 
-	void TimeoutDuration::ConvertStringToTimeoutDuration(const std::string& timeout_string) noexcept
+	void TimeoutDurationStringConverter::ConvertStringToTimeoutDuration(const std::string& timeout_string) noexcept
 	{
 		int8_t hours{ 0 }, minutes{ 0 }, seconds{ 0 };
 

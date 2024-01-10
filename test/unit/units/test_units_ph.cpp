@@ -36,4 +36,41 @@ BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
     BOOST_CHECK_EQUAL(pHValue3(), 14.0f);
 }
 
+BOOST_AUTO_TEST_CASE(OstreamOperatorNormalCase)
+{
+    {
+        AqualinkAutomate::Kernel::pH pH_value(7.35f);
+
+        std::ostringstream oss;
+        oss << pH_value;
+        std::string result = oss.str();
+
+        BOOST_CHECK_EQUAL(result, "7.4");
+    }
+    {
+        AqualinkAutomate::Kernel::pH pH_value(8.f);
+
+        std::ostringstream oss;
+        oss << pH_value;
+        std::string result = oss.str();
+
+        BOOST_CHECK_EQUAL(result, "8.0");
+    }
+}
+
+BOOST_AUTO_TEST_CASE(FormatNormalCase)
+{
+    {
+        AqualinkAutomate::Kernel::pH pH_value(7.35f);
+        std::string result = std::format("{}", pH_value);
+        BOOST_CHECK_EQUAL(result, "7.4");
+    }
+
+    {
+        AqualinkAutomate::Kernel::pH pH_value(8.f);
+        std::string result = std::format("{}", pH_value);
+        BOOST_CHECK_EQUAL(result, "8.0");
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

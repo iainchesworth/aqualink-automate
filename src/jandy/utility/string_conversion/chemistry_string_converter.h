@@ -18,7 +18,7 @@ using namespace AqualinkAutomate::ErrorCodes;
 namespace AqualinkAutomate::Utility
 {
 
-	class Chemistry
+	class ChemistryStringConverter
 	{
 		static const std::string REGEX_PATTERN;
 		static const boost::regex REGEX_PARSER;
@@ -27,15 +27,15 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t MINIMUM_STRING_LENGTH = 14;
 
 	public:
-		Chemistry() noexcept;
-		Chemistry(const std::string& chemistry_string) noexcept;
-		Chemistry(const Chemistry& other) noexcept;
-		Chemistry(Chemistry&& other) noexcept;
+		ChemistryStringConverter() noexcept;
+		ChemistryStringConverter(const std::string& chemistry_string) noexcept;
+		ChemistryStringConverter(const ChemistryStringConverter& other) noexcept;
+		ChemistryStringConverter(ChemistryStringConverter&& other) noexcept;
 
 	public:
-		Chemistry& operator=(const Chemistry& other) noexcept;
-		Chemistry& operator=(Chemistry&& other) noexcept;
-		Chemistry& operator=(const std::string& chemistry_string) noexcept;
+		ChemistryStringConverter& operator=(const ChemistryStringConverter& other) noexcept;
+		ChemistryStringConverter& operator=(ChemistryStringConverter&& other) noexcept;
+		ChemistryStringConverter& operator=(const std::string& chemistry_string) noexcept;
 
 	public:
 		tl::expected<Kernel::ORP, boost::system::error_code> ORP() const noexcept;

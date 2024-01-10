@@ -331,10 +331,10 @@ add_library(
 	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
 	src/jandy/utility/slot_connection_manager.cpp
 	src/jandy/utility/string_manipulation.cpp 
-	src/jandy/utility/string_conversion/auxillary_state.cpp 
-	src/jandy/utility/string_conversion/chemistry.cpp 
-	src/jandy/utility/string_conversion/temperature.cpp 
-	src/jandy/utility/string_conversion/timeout_duration.cpp 
+	src/jandy/utility/string_conversion/auxillary_state_string_converter.cpp 
+	src/jandy/utility/string_conversion/chemistry_string_converter.cpp 
+	src/jandy/utility/string_conversion/temperature_string_converter.cpp 
+	src/jandy/utility/string_conversion/timeout_duration_string_converter.cpp 
 	src/kernel/auxillary_devices/auxillary_device.cpp
 	src/kernel/auxillary_devices/auxillary_health_states.cpp
 	src/kernel/auxillary_devices/auxillary_status.cpp

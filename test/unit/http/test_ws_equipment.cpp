@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEvent
 	{
 		auto config_event_temp = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
-		Utility::Temperature pool_temp("Pool        90`F");
+		Utility::TemperatureStringConverter pool_temp("Pool        90`F");
 		config_event_temp->PoolTemp(pool_temp().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse2(config_event_temp);
 	
@@ -92,9 +92,9 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEvent
 	{
 		auto config_event_temp = std::make_shared<Kernel::DataHub_ConfigEvent_Temperature>();
 		BOOST_REQUIRE(nullptr != config_event_temp);
-		config_event_temp->PoolTemp(Utility::Temperature("Pool        21`C")().value()); // Make sure to use the right separator character --> `
-		config_event_temp->SpaTemp(Utility::Temperature("Spa         39`C")().value()); // Make sure to use the right separator character --> `
-		config_event_temp->AirTemp(Utility::Temperature("Air         16`C")().value()); // Make sure to use the right separator character --> `
+		config_event_temp->PoolTemp(Utility::TemperatureStringConverter("Pool        21`C")().value()); // Make sure to use the right separator character --> `
+		config_event_temp->SpaTemp(Utility::TemperatureStringConverter("Spa         39`C")().value()); // Make sure to use the right separator character --> `
+		config_event_temp->AirTemp(Utility::TemperatureStringConverter("Air         16`C")().value()); // Make sure to use the right separator character --> `
 		HTTP::WebSocket_Event wse3(config_event_temp);
 
 		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::TemperatureUpdate, wse3.Type());
@@ -105,13 +105,13 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEvent
 		BOOST_CHECK_EQUAL("TemperatureUpdate", wse3_json_type);
 		BOOST_CHECK(wse3_json["payload"].contains("pool_temp"));
 		BOOST_CHECK(wse3_json["payload"]["pool_temp"].is_string());
-		BOOST_CHECK_EQUAL("21\u00B0C", wse3_json["payload"]["pool_temp"]); // Make sure to use the right separator character --> \u00B0
+		BOOST_CHECK("21\u00B0C" == wse3_json["payload"]["pool_temp"]); // Make sure to use the right separator character --> \u00B0
 		BOOST_CHECK(wse3_json["payload"].contains("spa_temp"));
 		BOOST_CHECK(wse3_json["payload"]["spa_temp"].is_string());
-		BOOST_CHECK_EQUAL("39\u00B0C", wse3_json["payload"]["spa_temp"]); // Make sure to use the right separator character --> \u00B0
+		BOOST_CHECK("39\u00B0C" == wse3_json["payload"]["spa_temp"]); // Make sure to use the right separator character --> \u00B0
 		BOOST_CHECK(wse3_json["payload"].contains("air_temp"));
 		BOOST_CHECK(wse3_json["payload"]["air_temp"].is_string());
-		BOOST_CHECK_EQUAL("16\u00B0C", wse3_json["payload"]["air_temp"]); // Make sure to use the right separator character --> \u00B0
+		BOOST_CHECK("16\u00B0C" == wse3_json["payload"]["air_temp"]); // Make sure to use the right separator character --> \u00B0
 	}
 }
 
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishChemistry
 BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishTemperatureUpdate)
 {
 	{/*
-		DataHub().PoolTemp(Utility::Temperature("Pool        38`C")().value());
+		DataHub().PoolTemp(Utility::TemperatureStringConverter("Pool        38`C")().value());
 
 		boost::beast::flat_buffer buffer;
 

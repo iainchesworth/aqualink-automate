@@ -14,7 +14,7 @@
 #include "interfaces/ihub.h"
 #include "jandy/equipment/jandy_equipment_modes.h"
 #include "jandy/equipment/jandy_equipment_versions.h"
-#include "jandy/utility/string_conversion/timeout_duration.h"
+#include "jandy/utility/string_conversion/timeout_duration_string_converter.h"
 #include "kernel/circulation.h"
 #include "kernel/hub_events/data_hub_config_event.h"
 #include "kernel/device_graph/device_graph.h"
@@ -59,7 +59,7 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		Equipment::JandyEquipmentModes Mode{ Equipment::JandyEquipmentModes::Normal };
-		Utility::TimeoutDuration TimeoutRemaining;
+		Utility::TimeoutDurationStringConverter TimeoutRemaining;
 		std::chrono::year_month_day Date{ std::chrono::year{2000}, std::chrono::month{1}, std::chrono::day{1} };
 		std::chrono::hh_mm_ss<std::chrono::milliseconds> Time{ std::chrono::milliseconds(0) };
 

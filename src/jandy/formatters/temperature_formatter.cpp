@@ -1,4 +1,4 @@
-#include "jandy/formatters/chemistry_formatter.h"
+#include "jandy/formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Formatters
 namespace std
 {
 
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::ChemistryStringConverter& obj)
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::TemperatureStringConverter& obj)
 	{
 		os << std::format("{}", obj);
 		return os;

@@ -26,4 +26,22 @@ BOOST_AUTO_TEST_CASE(AssignmentOperatorTest)
     BOOST_CHECK_EQUAL(orp(), 800.0 * millivolt);
 }
 
+BOOST_AUTO_TEST_CASE(OstreamOperatorNormalCase)
+{
+    AqualinkAutomate::Kernel::ORP orp_value(650);
+
+    std::ostringstream oss;
+    oss << orp_value;
+    std::string result = oss.str();
+
+    BOOST_CHECK_EQUAL(result, "650mV");
+}
+
+BOOST_AUTO_TEST_CASE(FormatNormalCase)
+{
+    AqualinkAutomate::Kernel::ORP orp_value(650);
+    std::string result = std::format("{}", orp_value);
+    BOOST_CHECK_EQUAL(result, "650mV");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

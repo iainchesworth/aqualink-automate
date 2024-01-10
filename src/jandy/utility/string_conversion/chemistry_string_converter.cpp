@@ -6,24 +6,24 @@
 #include <magic_enum.hpp>
 
 #include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/chemistry.h"
+#include "jandy/utility/string_conversion/chemistry_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string Chemistry::REGEX_PATTERN{ "(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))" };
-	const boost::regex Chemistry::REGEX_PARSER{ REGEX_PATTERN };
+	const std::string ChemistryStringConverter::REGEX_PATTERN{ "(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))" };
+	const boost::regex ChemistryStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
-	Chemistry::Chemistry() noexcept :
+	ChemistryStringConverter::ChemistryStringConverter() noexcept :
 		m_ORP(0),
 		m_PH(0.0f),
 		m_ErrorOccurred(std::nullopt)
 	{
 	}
 
-	Chemistry::Chemistry(const std::string& chemistry_string) noexcept :
+	ChemistryStringConverter::ChemistryStringConverter(const std::string& chemistry_string) noexcept :
 		m_ORP(0),
 		m_PH(0.0f),
 		m_ErrorOccurred(std::nullopt)
@@ -31,21 +31,21 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToChemistry(TrimWhitespace(chemistry_string));
 	}
 
-	Chemistry::Chemistry(const Chemistry& other) noexcept :
+	ChemistryStringConverter::ChemistryStringConverter(const ChemistryStringConverter& other) noexcept :
 		m_ORP(other.m_ORP),
 		m_PH(other.m_PH),
 		m_ErrorOccurred(other.m_ErrorOccurred)
 	{
 	}
 
-	Chemistry::Chemistry(Chemistry&& other) noexcept :
+	ChemistryStringConverter::ChemistryStringConverter(ChemistryStringConverter&& other) noexcept :
 		m_ORP(std::move(other.m_ORP)),
 		m_PH(std::move(other.m_PH)),
 		m_ErrorOccurred(std::move(other.m_ErrorOccurred))
 	{
 	}
 
-	Chemistry& Chemistry::operator=(const Chemistry& other) noexcept
+	ChemistryStringConverter& ChemistryStringConverter::operator=(const ChemistryStringConverter& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	Chemistry& Chemistry::operator=(Chemistry&& other) noexcept
+	ChemistryStringConverter& ChemistryStringConverter::operator=(ChemistryStringConverter&& other) noexcept
 	{
 		if (this != &other)
 		{
@@ -69,13 +69,13 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	Chemistry& Chemistry::operator=(const std::string& chemistry_string) noexcept
+	ChemistryStringConverter& ChemistryStringConverter::operator=(const std::string& chemistry_string) noexcept
 	{
 		ConvertStringToChemistry(TrimWhitespace(chemistry_string));
 		return *this;
 	}
 
-	tl::expected<Kernel::ORP, boost::system::error_code> Chemistry::ORP() const noexcept
+	tl::expected<Kernel::ORP, boost::system::error_code> ChemistryStringConverter::ORP() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -85,7 +85,7 @@ namespace AqualinkAutomate::Utility
 		return m_ORP;
 	}
 
-	tl::expected<Kernel::pH, boost::system::error_code> Chemistry::PH() const noexcept
+	tl::expected<Kernel::pH, boost::system::error_code> ChemistryStringConverter::PH() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
@@ -95,7 +95,7 @@ namespace AqualinkAutomate::Utility
 		return m_PH;
 	}
 
-	void Chemistry::ConvertStringToChemistry(const std::string& chemistry_string) noexcept
+	void ChemistryStringConverter::ConvertStringToChemistry(const std::string& chemistry_string) noexcept
 	{
 		const auto chemistry_data = ValidateAndExtractData(chemistry_string);
 
@@ -130,7 +130,7 @@ namespace AqualinkAutomate::Utility
 		}
 	}
 
-	std::tuple<std::optional<std::string>, std::optional<std::string>> Chemistry::ValidateAndExtractData(const std::string& chemistry_string) noexcept
+	std::tuple<std::optional<std::string>, std::optional<std::string>> ChemistryStringConverter::ValidateAndExtractData(const std::string& chemistry_string) noexcept
 	{
 		boost::smatch match_results;
 

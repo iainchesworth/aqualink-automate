@@ -5,7 +5,7 @@
 #include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/errors/jandy_errors_auxillary_factory.h"
 #include "jandy/factories/jandy_auxillary_factory.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
+#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
@@ -59,7 +59,7 @@ namespace AqualinkAutomate::Factory
 		return CreateDevice_Impl(data);
 	}
 
-	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::OneTouchDevice_CreateDevice(const Utility::AuxillaryState& aux_state)
+	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state)
 	{
 		auto ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_UnknownFactoryError);
 
