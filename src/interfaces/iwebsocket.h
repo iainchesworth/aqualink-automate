@@ -1,14 +1,15 @@
 #pragma once
 
-#include <execution>
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/beast/core/flat_buffer.hpp>
 
 #include "concepts/is_c_array.h"
-#include "http/server/server_types.h"
 #include "interfaces/isession.h"
 #include "logging/logging.h"
 
@@ -39,12 +40,12 @@ namespace AqualinkAutomate::Interfaces
         virtual void OnError() = 0;
 
     protected:
-        void BroadcastMessage_AsBinary(const std::string& buffer);
-        void BroadcastMessage_AsText(const std::string& buffer);
+        void BroadcastMessage(const std::vector<uint8_t>& buffer);
+        void BroadcastMessage(const std::string& buffer);
 
     private:
-        void PublishMessage_AsBinary(std::shared_ptr<Interfaces::ISession> session, std::shared_ptr<const std::string> buffer_ptr);
-        void PublishMessage_AsText(std::shared_ptr<Interfaces::ISession> session, std::shared_ptr<const std::string> buffer_ptr);
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::vector<uint8_t>& buffer);
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::string& buffer);
 
 
     private:

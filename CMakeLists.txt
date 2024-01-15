@@ -440,6 +440,7 @@ add_library(
 	src/utility/get_terminal_column_width.cpp	
 	src/utility/overloaded_variant_visitor.cpp 
 	src/utility/signalling_stats_counter.cpp 
+	src/utility/singular_bytes_from_range.cpp
 	src/utility/value_debouncer.cpp 
 	src/version/version.cpp 
 	src/version/version_cmake.cpp 

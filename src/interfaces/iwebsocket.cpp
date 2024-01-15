@@ -1,3 +1,4 @@
+#include <execution>
 #include <format>
 
 #include "http/server/websocket_plainsession.h"
@@ -69,37 +70,33 @@ namespace AqualinkAutomate::Interfaces
         }
     }
 
-    void IWebSocketBase::BroadcastMessage_AsBinary(const std::string& buffer)
+    void IWebSocketBase::BroadcastMessage(const std::vector<uint8_t>& buffer)
     {
-        LogTrace(Channel::Web, std::format("Broadcasting binary message to all sessions; message -> {}", buffer));
-
-        auto buffer_ptr = std::make_shared<const std::string>(buffer);
+        LogTrace(Channel::Web, std::format("Broadcasting binary message to all ({}) sessions; message -> <is binary data>", m_ActiveSessions.size()));
 
         std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-            [this, buffer_ptr](const auto& session) -> void
+            [this, &buffer](const auto& session) -> void
             {
                 LogTrace(Channel::Web, std::format("Broadcasting binary message to session"));
-                PublishMessage_AsBinary(session, buffer_ptr);
+                PublishMessage(session, buffer);
             }
         );
     }
 
-    void IWebSocketBase::BroadcastMessage_AsText(const std::string& buffer)
+    void IWebSocketBase::BroadcastMessage(const std::string& buffer)
     {
-        LogTrace(Channel::Web, std::format("Broadcasting text message to all sessions; message -> {}", buffer));
-
-        auto buffer_ptr = std::make_shared<const std::string>(buffer);
+        LogTrace(Channel::Web, std::format("Broadcasting text message (copy) to all ({}) sessions; message -> {}", m_ActiveSessions.size(), buffer));
 
         std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-            [this, buffer_ptr](const auto& session) -> void
+            [this, &buffer](const auto& session) -> void
             {
                 LogTrace(Channel::Web, std::format("Broadcasting text message to session"));
-                PublishMessage_AsText(session, buffer_ptr);
+                PublishMessage(session, buffer);
             }
         );
     }
 
-    void IWebSocketBase::PublishMessage_AsBinary(std::shared_ptr<Interfaces::ISession> session, std::shared_ptr<const std::string> buffer_ptr)
+    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::vector<uint8_t>& buffer)
     {
         if (nullptr == session)
         {
@@ -107,11 +104,11 @@ namespace AqualinkAutomate::Interfaces
         }
         else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_PlainSession>(session); nullptr != session_ptr)
         {
-            session_ptr->QueueWrite(buffer_ptr, true);
+            session_ptr->QueueWrite(buffer);
         }
         else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_SSLSession>(session); nullptr != session_ptr)
         {
-            session_ptr->QueueWrite(buffer_ptr, true);
+            session_ptr->QueueWrite(buffer);
         }
         else
         {
@@ -119,7 +116,7 @@ namespace AqualinkAutomate::Interfaces
         }
     }
 
-    void IWebSocketBase::PublishMessage_AsText(std::shared_ptr<Interfaces::ISession> session, std::shared_ptr<const std::string> buffer_ptr)
+    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::string& buffer)
     {
         if (nullptr == session)
         {
@@ -127,11 +124,11 @@ namespace AqualinkAutomate::Interfaces
         }
         else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_PlainSession>(session); nullptr != session_ptr)
         {
-            session_ptr->QueueWrite(buffer_ptr, false);
+            session_ptr->QueueWrite(buffer);
         }
         else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_SSLSession>(session); nullptr != session_ptr)
         {
-            session_ptr->QueueWrite(buffer_ptr, false);
+            session_ptr->QueueWrite(buffer);
         }
         else
         {

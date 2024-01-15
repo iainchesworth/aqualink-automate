@@ -46,7 +46,7 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			BroadcastMessage_AsText(HTTP::WebSocket_Event(config_update_event).Payload());
+			BroadcastMessage(std::move(HTTP::WebSocket_Event(config_update_event).Payload()));
 		}
 	}
 
@@ -58,7 +58,7 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			BroadcastMessage_AsText(HTTP::WebSocket_Event(system_update_event).Payload());
+			BroadcastMessage(std::move(HTTP::WebSocket_Event(system_update_event).Payload()));
 		}
 	}
 
