@@ -20,8 +20,8 @@ jobs:
   ##
 
   CodeScanning_CodeQL:
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-22.04' }}
-    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+    runs-on: 'ubuntu-22.04'
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
         submodules: 'true'
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
 
@@ -56,11 +56,9 @@ jobs:
         buildPreset: 'ci-ninja-gcc-linux-x86_64-release'
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3
       with:
         upload: false # disable the upload here - results are uploaded in a different action
-        output: sarif-results
-        category: "/language:${{matrix.language}}"
 
     - name: filter-sarif
       uses: advanced-security/filter-sarif@v1
@@ -68,13 +66,21 @@ jobs:
         patterns: |
           -**/*          # Deny all items
           src/**/*       # Add items in the "src" folder
-        input: sarif-results/${{ matrix.language }}.sarif
-        output: sarif-results/${{ matrix.language }}.sarif
+        input: sarif-results/cpp.sarif
+        output: sarif-results/cpp.sarif
 
     - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: sarif-results/${{ matrix.language }}.sarif
+        category: "/language:${{ matrix.language }}"
+
+    - name: Upload Analysis as a Build Artifact
+      uses: actions/upload-artifact@v2.2.0
+      with:
+        name: sarif-results
+        path: sarif-results
+        retention-days: 1
 
   ##
   ## SONARCLOUD JOB
