@@ -19,6 +19,7 @@ add_executable(
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
 	unit/http/test_api_equipment.cpp 
+	unit/http/test_http_sessions.cpp 
 	unit/http/test_ws_equipment.cpp 
 	unit/kernel/test_auxillary_traits.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
