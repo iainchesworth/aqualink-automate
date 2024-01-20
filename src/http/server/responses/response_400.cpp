@@ -12,7 +12,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP::Responses
 {
 
-    HTTP::Message Response_400(HTTP::Request const& req)
+    HTTP::Response Response_400(HTTP::Request const& req)
     {
         LogTrace(Channel::Web, std::format("Responding 400 BAD REQUEST to HTTP {} request for {}", magic_enum::enum_name(req.method()), req.target()));
 

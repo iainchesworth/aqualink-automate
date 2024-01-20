@@ -19,7 +19,9 @@ add_executable(
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
 	unit/http/test_api_equipment.cpp 
+	unit/http/test_http_error_responses.cpp 
 	unit/http/test_http_sessions.cpp 
+	unit/http/test_routing_matches.cpp 
 	unit/http/test_ws_equipment.cpp 
 	unit/kernel/test_auxillary_traits.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
@@ -37,6 +39,7 @@ add_executable(
 	unit/messages/test_message_probe.cpp 
 	unit/messages/test_message_status.cpp 
 	unit/messages/test_message_unknown.cpp 
+	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
 	unit/mocks/mock_generator_rawdatatomessage.cpp 	 
@@ -146,3 +149,17 @@ add_sanitizers(perfaqualink-automate)
 endif(ENABLE_SANITIZERS)
 
 endif(ENABLE_BENCHMARKS)
+
+#------------------------------------------------------------------------------
+#
+#  The various unit tests for HTTP routing require that the templates exist
+#  so that the mstch can render the payloads to be validated.
+#
+#------------------------------------------------------------------------------
+
+add_custom_command(
+	TARGET testaqualink-automate 
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)

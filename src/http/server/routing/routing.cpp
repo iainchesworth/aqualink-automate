@@ -84,7 +84,6 @@ namespace AqualinkAutomate::HTTP::Routing
 			else if (auto p = http_routes.find_impl(*path, matches_it, ids_it); nullptr != p)
 			{
 				LogTrace(Channel::Web, std::format("Handling HTTP {} request for {}", magic_enum::enum_name(req.method()), req.target()));
-				m.resize(static_cast<std::size_t>(matches_it - m.matches()));
 				return p->OnRequest(req);
 			}
 			else if (sf_route.has_value() && sf_route->match(req.target(), static_file_result))
@@ -95,6 +94,8 @@ namespace AqualinkAutomate::HTTP::Routing
 			else
 			{
 				LogDebug(Channel::Web, std::format("Path '{}' was requested but no HTTP handler was available", req.target()));
+				LogDebug(Channel::Web, "Could not handle request -> returning a 404 NOT FOUND");
+				return HTTP::Responses::Response_404(req);
 			}
 		}
 		catch (const std::exception& ex)
@@ -102,9 +103,6 @@ namespace AqualinkAutomate::HTTP::Routing
 			LogDebug(Channel::Web, std::format("An exception was thrown while processing an HTTP request: exception was -> {}", ex.what()));
 			return HTTP::Responses::Response_500(req);
 		}
-
-		LogDebug(Channel::Web, "Could not handle request -> returning a 404 NOT FOUND");
-		return HTTP::Responses::Response_404(req);
 	}
 
 	Interfaces::IWebSocketBase* WS_OnAccept(const std::string_view target)
@@ -127,7 +125,6 @@ namespace AqualinkAutomate::HTTP::Routing
 			else
 			{
 				LogTrace(Channel::Web, std::format("Handling WS request for {}", target));
-				m.resize(static_cast<std::size_t>(matches_it - m.matches()));
 				return p;
 			}
 		}

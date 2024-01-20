@@ -48,10 +48,12 @@ namespace AqualinkAutomate::HTTP
 		{
 			boost::system::error_code ec;
 
-			if (m_Stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec); ec)
-			{
-				LogTrace(Channel::Web, std::format("Failed to shutdown tcp socket; error was -> {}", ec.message()));
-			}
+			m_Stream.close();
+
+			// if (m_Stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec); ec)
+			//{
+				//LogTrace(Channel::Web, std::format("Failed to shutdown tcp socket; error was -> {}", ec.message()));
+			//}
 		}
 
 	private:

@@ -8,7 +8,7 @@
 namespace AqualinkAutomate::HTTP::Responses
 {
 
-	HTTP::Response Response_500(const HTTP::Request& req, std::optional<const std::string_view> reason = std::nullopt);
+	HTTP::Response Response_503(const HTTP::Request& req, std::optional<const std::string_view> reason = std::nullopt);
 
 }
 // namespace AqualinkAutomate::HTTP::Responses

@@ -18,7 +18,7 @@ namespace AqualinkAutomate::HTTP
 		Support::GeneratePageHeader_Context(m_TemplateContext);
 		Support::GeneratePageFooter_Context(m_TemplateContext);
 
-		return mstch::render(m_TemplateContent, m_TemplateContext);
+		return mstch::render(m_TemplateContent.value(), m_TemplateContext);
 	}
 
 }

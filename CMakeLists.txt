@@ -204,6 +204,7 @@ add_library(
 	src/http/server/responses/response_404.cpp 
 	src/http/server/responses/response_405.cpp 
 	src/http/server/responses/response_500.cpp
+	src/http/server/responses/response_503.cpp 
 	src/http/server/routing/child_idx_vector.cpp 		
 	src/http/server/routing/matches.cpp 
 	src/http/server/routing/node.cpp 

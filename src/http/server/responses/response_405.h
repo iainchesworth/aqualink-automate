@@ -5,7 +5,7 @@
 namespace AqualinkAutomate::HTTP::Responses
 {
 
-	HTTP::Message Response_405(const HTTP::Request& req);
+	HTTP::Response Response_405(const HTTP::Request& req);
 
 }
 // namespace AqualinkAutomate::HTTP::Responses

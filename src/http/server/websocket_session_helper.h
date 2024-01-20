@@ -14,6 +14,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
+    template<class STREAM, class BODY, class ALLOCATOR>
+    void WebSocket_MakeSession(STREAM stream, boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)
+    {
+        throw;
+    }
+
     template<class BODY, class ALLOCATOR>
     void WebSocket_MakeSession(boost::beast::tcp_stream stream, boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)
     {

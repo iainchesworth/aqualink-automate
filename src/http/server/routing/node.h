@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,9 @@
 
 #include "http/server/routing/child_idx_vector.h"
 #include "http/server/routing/segment_template.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP::Routing
 {
@@ -32,7 +36,7 @@ namespace AqualinkAutomate::HTTP::Routing
 		std::size_t parent_idx{ npos };
 
 		// Index of child nodes in the pool
-		child_idx_vector child_idx;
+		ChildIdxVector child_idx;
 	};
 
 	template<typename HANDLER_TYPE>
@@ -55,6 +59,8 @@ namespace AqualinkAutomate::HTTP::Routing
 
 		void insert_impl(std::string_view path, HANDLER_TYPE* v)
 		{
+			LogTrace(Channel::Web, std::format("Inserting route {} into core routing impl", path));
+
 			// Parse dynamic route segments
 			if (path.starts_with("/"))
 			{

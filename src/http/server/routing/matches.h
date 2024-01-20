@@ -1,5 +1,6 @@
 #pragma once 
 
+#include <array>
 #include <cstddef>
 #include <string_view>
 
@@ -32,8 +33,6 @@ namespace AqualinkAutomate::HTTP::Routing
 
         virtual std::size_t size() const = 0;
 
-        virtual void resize(std::size_t) = 0;
-
         const_reference at(size_type pos) const;
 
         const_reference at(std::string_view id) const;
@@ -55,9 +54,9 @@ namespace AqualinkAutomate::HTTP::Routing
     template <std::size_t N = 20>
     class matches_storage : public matches_base
     {
-        std::string_view matches_storage_[N];
-        std::string_view ids_storage_[N];
-        std::size_t size_;
+        std::array<std::string_view, N> matches_storage_;
+        std::array<std::string_view, N> ids_storage_;
+        const std::size_t size_{ N };
 
         matches_storage(std::string_view matches[N], std::string_view ids[N], std::size_t n)
         {
@@ -73,32 +72,27 @@ namespace AqualinkAutomate::HTTP::Routing
 
         virtual std::string_view const* matches() const override
         {
-            return matches_storage_;
+            return matches_storage_.data();
         }
 
         virtual std::string_view const* ids() const override
         {
-            return ids_storage_;
+            return ids_storage_.data();
         }
 
         virtual std::string_view* matches() override
         {
-            return matches_storage_;
+            return matches_storage_.data();
         }
 
         virtual std::string_view* ids() override
         {
-            return ids_storage_;
+            return ids_storage_.data();
         }
 
         virtual std::size_t size() const override
         {
             return size_;
-        }
-
-        virtual void resize(std::size_t n) override
-        {
-            size_ = n;
         }
     };
 

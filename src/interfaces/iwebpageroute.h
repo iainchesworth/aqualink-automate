@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <format>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -11,6 +12,8 @@
 #include "concepts/is_c_array.h"
 #include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
+#include "http/server/responses/response_500.h"
+#include "http/server/responses/response_503.h"
 #include "interfaces/iwebroute.h"
 #include "logging/logging.h"
 
@@ -37,15 +40,31 @@ namespace AqualinkAutomate::Interfaces
 		{
 			auto generate_page = [this](HTTP::Request req) -> HTTP::Message
 				{
-					HTTP::Response resp{ HTTP::Status::ok, req.version() };
+					try
+					{
+						HTTP::Response resp{ HTTP::Status::ok, req.version() };
 
-					resp.set(boost::beast::http::field::server, HTTP::ServerFields::Server());
-					resp.set(boost::beast::http::field::content_type, HTTP::ContentTypes::TEXT_HTML);
-					resp.keep_alive(req.keep_alive());
-					resp.body() = GenerateBody(req);
-					resp.prepare_payload();
+						resp.set(boost::beast::http::field::server, HTTP::ServerFields::Server());
+						resp.set(boost::beast::http::field::content_type, HTTP::ContentTypes::TEXT_HTML);
+						resp.keep_alive(req.keep_alive());
+						resp.body() = GenerateBody(req);
+						resp.prepare_payload();
 
-					return resp;
+						return resp;
+					}
+					catch (const std::bad_optional_access& /* unused */)
+					{						
+						if (!m_TemplateContent.has_value())
+						{
+							// One of the page generators likely failed due to a missing template
+							// during the rendering of the mstch.
+
+							static const std::string_view REASON_MISSING_TEMPLATE{ "Could not generate page content; template is missing/not loaded" };
+							return HTTP::Responses::Response_503(req, REASON_MISSING_TEMPLATE);
+						}
+
+						return HTTP::Responses::Response_500(req);
+					}
 				};
 
 			switch (req.method())
@@ -62,10 +81,10 @@ namespace AqualinkAutomate::Interfaces
 		virtual std::string GenerateBody(HTTP::Request req) = 0;
 
 	protected:
-		static std::string LoadTemplateFromFile(const char * path)
+		static std::optional<std::string> LoadTemplateFromFile(const char * path)
 		{
 			std::error_code ec;
-			std::string ret;
+			std::optional<std::string> ret{ std::nullopt };
 
 			if (!std::filesystem::exists(path))
 			{
@@ -84,12 +103,17 @@ namespace AqualinkAutomate::Interfaces
 			{
 				try 
 				{
-					ret.resize(bytes);
+					std::string loaded_template;
 
-					if (auto bytes_read = std::fread(ret.data(), 1, bytes, fd); bytes != bytes_read)
+					loaded_template.resize(bytes);
+
+					if (auto bytes_read = std::fread(loaded_template.data(), 1, bytes, fd); bytes != bytes_read)
 					{
 						LogWarning(Channel::Web, std::format("Failed to read the specified template content: expected {} bytes; actual {} bytes", bytes, bytes_read));
-						ret.clear();
+					}
+					else
+					{
+						ret = std::move(loaded_template);
 					}
 
 					std::fclose(fd);
@@ -105,7 +129,7 @@ namespace AqualinkAutomate::Interfaces
 		};
 
 	protected:
-		std::string m_TemplateContent{};
+		std::optional<std::string> m_TemplateContent{ std::nullopt };
 		mstch::map m_TemplateContext{};
 	};
 

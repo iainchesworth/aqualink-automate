@@ -48,7 +48,7 @@ namespace AqualinkAutomate::HTTP
 
 		Support::GeneratePageFooter_Context(m_TemplateContext);
 
-		return mstch::render(m_TemplateContent, m_TemplateContext);
+		return mstch::render(m_TemplateContent.value(), m_TemplateContext);
 	}
 
 	void WebRoute_Page_Index::PopulateMainActionButtons()

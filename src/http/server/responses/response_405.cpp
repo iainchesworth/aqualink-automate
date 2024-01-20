@@ -12,7 +12,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP::Responses
 {
 
-    HTTP::Message Response_405(HTTP::Request const& req)
+    HTTP::Response Response_405(HTTP::Request const& req)
     {
         LogTrace(Channel::Web, std::format("Responding 405 METHOD NOT ALLOWED to HTTP {} request for {}", magic_enum::enum_name(req.method()), req.target()));
 
