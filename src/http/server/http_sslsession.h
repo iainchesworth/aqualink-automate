@@ -16,6 +16,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	public:
         HTTP_SSLSession(boost::beast::tcp_stream&& stream, boost::asio::ssl::context& ssl_context, boost::beast::flat_buffer&& buffer);
+		virtual ~HTTP_SSLSession();
 
 	public:
 		void Run();

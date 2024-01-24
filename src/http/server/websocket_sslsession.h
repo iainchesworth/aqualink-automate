@@ -15,6 +15,7 @@ namespace AqualinkAutomate::HTTP
     {
     public:
         explicit WebSocket_SSLSession(boost::beast::ssl_stream<boost::beast::tcp_stream>&& stream);
+        virtual ~WebSocket_SSLSession();
 
     public:
         boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>>& WS();

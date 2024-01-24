@@ -5,6 +5,7 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/ssl/ssl_stream.hpp>
 
+#include "exceptions/exception_webserver.h"
 #include "http/server/websocket_plainsession.h"
 #include "http/server/websocket_sslsession.h"
 #include "logging/logging.h"
@@ -13,12 +14,6 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
-
-    template<class STREAM, class BODY, class ALLOCATOR>
-    void WebSocket_MakeSession(STREAM stream, boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)
-    {
-        throw;
-    }
 
     template<class BODY, class ALLOCATOR>
     void WebSocket_MakeSession(boost::beast::tcp_stream stream, boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)

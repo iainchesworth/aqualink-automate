@@ -10,6 +10,26 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Interfaces
 {
+    IWebSocketBase::~IWebSocketBase()
+    {
+        if (0 == m_ActiveSessions.size())
+        {
+            // No active sessions...do nothing.
+        }
+        else
+        {
+            LogDebug(Channel::Web, std::format("Destroying {} active websocket sessions...", m_ActiveSessions.size()));
+        
+            for (auto& session : m_ActiveSessions)
+            {
+                LogTrace(Channel::Web, std::format("Websocket id {} has a use_count of {}", boost::uuids::to_string(session->Id()), session.use_count()));
+
+                session->Stop();
+            }
+
+            m_ActiveSessions.clear();
+        }
+    }
     
     void IWebSocketBase::Handle_OnOpen(std::shared_ptr<Interfaces::ISession> session)
     {
@@ -44,12 +64,12 @@ namespace AqualinkAutomate::Interfaces
         }
         else
         {
+            OnClose();
+
             if (auto session_it = m_ActiveSessions.find(session); m_ActiveSessions.end() != session_it)
             {
                 m_ActiveSessions.erase(session_it);
             }
-
-            OnClose();
         }
     }
 
@@ -61,78 +81,64 @@ namespace AqualinkAutomate::Interfaces
         }
         else
         {
+            OnError();
+
             if (auto session_it = m_ActiveSessions.find(session); m_ActiveSessions.end() != session_it)
             {
                 m_ActiveSessions.erase(session_it);
             }
-
-            OnError();
         }
     }
 
-    void IWebSocketBase::BroadcastMessage(const std::vector<uint8_t>& buffer)
+    void IWebSocketBase::BroadcastMessage(std::vector<uint8_t>&& buffer)
     {
         LogTrace(Channel::Web, std::format("Broadcasting binary message to all ({}) sessions; message -> <is binary data>", m_ActiveSessions.size()));
 
         std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-            [this, &buffer](const auto& session) -> void
+            [this, buffer = std::move(buffer)](const auto& session) mutable -> void
             {
-                LogTrace(Channel::Web, std::format("Broadcasting binary message to session"));
-                PublishMessage(session, buffer);
+                LogTrace(Channel::Web, std::format("Broadcasting binary message ({} bytes) to session {}", buffer.size(), boost::uuids::to_string(session->Id())));
+                PublishMessage(session, std::move(buffer));
             }
         );
     }
 
-    void IWebSocketBase::BroadcastMessage(const std::string& buffer)
+    void IWebSocketBase::BroadcastMessage(std::string&& buffer)
     {
         LogTrace(Channel::Web, std::format("Broadcasting text message (copy) to all ({}) sessions; message -> {}", m_ActiveSessions.size(), buffer));
 
         std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
-            [this, &buffer](const auto& session) -> void
+            [this, buffer = std::move(buffer)](const auto& session) mutable -> void
             {
-                LogTrace(Channel::Web, std::format("Broadcasting text message to session"));
-                PublishMessage(session, buffer);
+                LogTrace(Channel::Web, std::format("Broadcasting text message ({} bytes) to session {}", buffer.size(), boost::uuids::to_string(session->Id())));
+                PublishMessage(session, std::move(buffer));
             }
         );
     }
 
-    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::vector<uint8_t>& buffer)
+    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::vector<uint8_t>&& buffer)
     {
         if (nullptr == session)
         {
             LogTrace(Channel::Web, "Attempted to publish a binary message to an invalid session (nullptr)");
         }
-        else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_PlainSession>(session); nullptr != session_ptr)
-        {
-            session_ptr->QueueWrite(buffer);
-        }
-        else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_SSLSession>(session); nullptr != session_ptr)
-        {
-            session_ptr->QueueWrite(buffer);
-        }
         else
         {
-            LogDebug(Channel::Web, "Failed to find a valid WebSocket session; could not sent binary message");
+            LogTrace(Channel::Web, std::format("Queuing binary message to session {}", boost::uuids::to_string(session->Id())));
+            session->QueueWrite(std::move(buffer));
         }
     }
 
-    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::string& buffer)
+    void IWebSocketBase::PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::string&& buffer)
     {
         if (nullptr == session)
         {
             LogTrace(Channel::Web, "Attempted to publish a text message to an invalid session (nullptr)");
         }
-        else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_PlainSession>(session); nullptr != session_ptr)
-        {
-            session_ptr->QueueWrite(buffer);
-        }
-        else if (auto session_ptr = std::dynamic_pointer_cast<HTTP::WebSocket_SSLSession>(session); nullptr != session_ptr)
-        {
-            session_ptr->QueueWrite(buffer);
-        }
         else
         {
-            LogDebug(Channel::Web, "Failed to find a valid WebSocket session; could not sent text message");
+            LogTrace(Channel::Web, std::format("Queuing text message to session {}", boost::uuids::to_string(session->Id())));
+            session->QueueWrite(std::move(buffer));
         }
     }
 

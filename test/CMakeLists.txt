@@ -46,9 +46,10 @@ add_executable(
 	unit/mocks/mock_serialport.cpp 
 	unit/protocol/test_protocol_handler.cpp 
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
+	unit/support/unit_test_httprequestresponse.cpp
 	unit/support/unit_test_hublocatorinjector.cpp 
 	unit/support/unit_test_onetouchdevice.cpp 	 
-	unit/support/unit_test_ostream_support.cpp 
+	unit/support/unit_test_ostream_support.cpp 	 
 	unit/units/test_flow_rate.cpp 
 	unit/units/test_units_orp.cpp 
 	unit/units/test_units_ph.cpp 
@@ -68,6 +69,14 @@ endif(WIN32)
 if(LINUX)
 target_sources(testaqualink-automate PRIVATE unit/platform/test_main_linux.cpp)
 endif(LINUX)
+
+target_compile_definitions(
+	testaqualink-automate 
+	PUBLIC 
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
+)
 
 target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/unit")
 

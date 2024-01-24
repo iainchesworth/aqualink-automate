@@ -13,8 +13,15 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP_SSLSession::HTTP_SSLSession(boost::beast::tcp_stream&& stream, boost::asio::ssl::context& ssl_context, boost::beast::flat_buffer&& buffer) :
 		HTTP_Session<HTTP_SSLSession>(std::move(buffer)),
+		std::enable_shared_from_this<HTTP_SSLSession>(),
 		m_Stream(std::move(stream), ssl_context)
 	{
+		LogTrace(Channel::Web, std::format("Creating HTTP SSL session: {}", boost::uuids::to_string(Id())));
+	}
+
+	HTTP_SSLSession::~HTTP_SSLSession()
+	{
+		LogTrace(Channel::Web, std::format("Destroying HTTP SSL session: {}", boost::uuids::to_string(Id())));
 	}
 
 	void HTTP_SSLSession::Run()

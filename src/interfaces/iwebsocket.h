@@ -10,6 +10,7 @@
 #include <boost/beast/core/flat_buffer.hpp>
 
 #include "concepts/is_c_array.h"
+#include "developer/instance_counter.h"
 #include "interfaces/isession.h"
 #include "logging/logging.h"
 
@@ -18,11 +19,11 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Interfaces
 {
 
-    class IWebSocketBase
+    class IWebSocketBase : public Developer::InstanceCounterImpl<IWebSocketBase>
     {
     public:
         IWebSocketBase() = default;
-        virtual ~IWebSocketBase() = default;
+        virtual ~IWebSocketBase();
 
     public:
         virtual const std::string_view Route() const = 0;
@@ -40,13 +41,12 @@ namespace AqualinkAutomate::Interfaces
         virtual void OnError() = 0;
 
     protected:
-        void BroadcastMessage(const std::vector<uint8_t>& buffer);
-        void BroadcastMessage(const std::string& buffer);
+        void BroadcastMessage(std::vector<uint8_t>&& buffer);
+        void BroadcastMessage(std::string&& buffer);
 
     private:
-        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::vector<uint8_t>& buffer);
-        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, const std::string& buffer);
-
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::vector<uint8_t>&& buffer);
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::string&& buffer);
 
     private:
         std::unordered_set<std::shared_ptr<Interfaces::ISession>> m_ActiveSessions;

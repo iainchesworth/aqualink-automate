@@ -6,6 +6,8 @@
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
 
+#include "profiling/profiling.h"
+
 using namespace AqualinkAutomate;
 
 //
@@ -25,10 +27,26 @@ struct UnitTestGlobalFixture
 
 	void setup()
 	{
+		//---------------------------------------------------------------------
+		// ENABLE PROFILING
+		//---------------------------------------------------------------------
+
+		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+		{
+			profiler->StartProfiling();
+		}
 	}
 
 	void teardown()
 	{
+		//---------------------------------------------------------------------
+		// DISABLE PROFILING
+		//---------------------------------------------------------------------
+
+		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+		{
+			profiler->StopProfiling();
+		}
 	}
 
 	~UnitTestGlobalFixture()

@@ -18,6 +18,7 @@ namespace AqualinkAutomate::Profiling
 
 	void Tracy_Profiler::StopProfiling()
 	{
+		tracy::GetProfiler().RequestShutdown();
 	}
 
 	ZonePtr Tracy_Profiler::CreateZone(FramePtr frame, const std::string& name) const

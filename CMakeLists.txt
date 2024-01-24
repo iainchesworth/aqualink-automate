@@ -140,8 +140,10 @@ add_library(
 	src/certificates/certificate_management.cpp 
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
+	src/concepts/is_one_of.cpp 
 	src/developer/chrono_clocks.cpp 
 	src/developer/firewall_manager.cpp
+	src/developer/instance_counter.cpp 
 	src/developer/mock_serial_port.cpp 
 	src/developer/serial_port_options.cpp 
 	src/devices/device_status.cpp 

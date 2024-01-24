@@ -8,6 +8,8 @@
 #include <variant>
 #include <vector>
 
+#include <boost/asio/bind_cancellation_slot.hpp>
+#include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/ssl/error.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/system/error_code.hpp>
@@ -38,16 +40,45 @@ namespace AqualinkAutomate::HTTP
 		}
 
 	public:
+		WebSocket_Session() : 
+			Interfaces::ISession()
+		{
+			LogTrace(Channel::Web, std::format("Creating WebSocket session: {}", boost::uuids::to_string(Id())));
+		}
+
+		virtual ~WebSocket_Session()
+		{
+			LogTrace(Channel::Web, std::format("Destroying WebSocket session: {}", boost::uuids::to_string(Id())));
+
+			m_CancelAccept.emit(boost::asio::cancellation_type::terminal);
+			m_CancelRead.emit(boost::asio::cancellation_type::terminal);
+			m_CancelWrite.emit(boost::asio::cancellation_type::terminal);
+		}
+
+	public:
 		template<class BODY, class ALLOCATOR>
 		void Run(boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)
 		{
+			LogTrace(Channel::Web, std::format("WebSocket session {}: Run()", boost::uuids::to_string(Id())));
 			DoAccept(std::move(req));
+		}
+
+	public:
+		virtual void Stop() override
+		{
+			LogTrace(Channel::Web, std::format("WebSocket session {}: Stop()", boost::uuids::to_string(Id())));
+			m_CancelAccept.emit(boost::asio::cancellation_type::partial);
+			m_CancelRead.emit(boost::asio::cancellation_type::partial);
+			m_CancelWrite.emit(boost::asio::cancellation_type::partial);
+			m_Buffer.clear();
 		}
 
 	private:
 		template<class Body, class Allocator>
 		void DoAccept(boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>> req)
 		{
+			LogTrace(Channel::Web, std::format("WebSocket session {}: DoAccept()", boost::uuids::to_string(Id())));
+
 			SessionType().WS().set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::server));
 			SessionType().WS().set_option(
 				boost::beast::websocket::stream_base::decorator(
@@ -69,72 +100,89 @@ namespace AqualinkAutomate::HTTP
 			{
 				SessionType().WS().async_accept(
 					req,
-					[this, self = SessionType().shared_from_this()](boost::system::error_code ec)
-					{
-						if (ec)
+					boost::asio::bind_cancellation_slot(
+						m_CancelAccept.slot(),
+						[this, self = SessionType().shared_from_this()](boost::system::error_code ec)
 						{
-							LogDebug(Channel::Web, std::format("Failed during accept of WebSocket stream; error was -> {}", ec.message()));
-						}
-						else
-						{
-							if (nullptr == m_Handler_WeakPtr)
+							if (ec)
 							{
-								LogDebug(Channel::Web, "Invalid session pointer; no OnOpen handler being called");
+								LogDebug(Channel::Web, std::format("Failed during accept of WebSocket stream; error was -> {}", ec.message()));
 							}
 							else
 							{
-								m_Handler_WeakPtr->Handle_OnOpen(self);
-								DoRead();
+								if (nullptr == m_Handler_WeakPtr)
+								{
+									LogDebug(Channel::Web, "Invalid session pointer; no OnOpen handler being called");
+								}
+								else
+								{
+									m_Handler_WeakPtr->Handle_OnOpen(self);
+									DoRead();
+								}
 							}
 						}
-					}
+					)
 				);
 			}
 		}
 
 	private:
-		void DoRead()
+		virtual void DoReadImpl() override
 		{
+			LogTrace(Channel::Web, std::format("WebSocket session {}: DoReadImpl()", boost::uuids::to_string(Id())));
+
 			SessionType().WS().async_read(
 				m_Buffer,
-				[this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
-				{
-					boost::ignore_unused(bytes_transferred);
+				boost::asio::bind_cancellation_slot(
+					m_CancelRead.slot(), 
+					[this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
+					{
+						LogTrace(Channel::Web, std::format("WebSocket session {}: DoReadImpl()->Handler", boost::uuids::to_string(Id())));
 
-					if (nullptr == m_Handler_WeakPtr)
-					{
-						LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no OnMessage handler being called");
+						boost::ignore_unused(bytes_transferred);
+
+						if (nullptr == m_Handler_WeakPtr)
+						{
+							LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no OnMessage handler being called");
+						}
+						else if (boost::beast::websocket::error::closed == ec)
+						{
+							LogTrace(Channel::Web, "WebSocket was closed (during read); calling OnClose handler");
+							m_Handler_WeakPtr->Handle_OnClose(self);
+						}
+						else if (ec)
+						{
+							LogTrace(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
+							m_Handler_WeakPtr->Handle_OnError(self);
+						}
+						else
+						{
+							m_Handler_WeakPtr->Handle_OnMessage(self, m_Buffer);
+							DoRead();
+						}
 					}
-					else if (boost::beast::websocket::error::closed == ec)
-					{
-						LogTrace(Channel::Web, "WebSocket was closed (during read); calling OnClose handler");
-						m_Handler_WeakPtr->Handle_OnClose(self);
-					}
-					else if (ec)
-					{
-						LogTrace(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
-						m_Handler_WeakPtr->Handle_OnError(self);
-					}
-					else
-					{
-						m_Handler_WeakPtr->Handle_OnMessage(self, m_Buffer);
-						DoRead();
-					}
-				}
+				)
 			);
 		}
 
-	private:
-		void DoWrite()
+		virtual void DoWriteImpl() override
 		{
+			LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()", boost::uuids::to_string(Id())));
+
 			auto async_write_remove_and_kick =
 				[this]()
 				{
+					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick", boost::uuids::to_string(Id())));
+
+					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick->Removing This Write ({} total)", boost::uuids::to_string(Id()), m_ResponseQueue.size()));
+
 					m_ResponseQueue.erase(m_ResponseQueue.begin());
 
 					// Send the next message, if any
 					if (!m_ResponseQueue.empty())
 					{
+						LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick->Triggering Next Write ({} remaining)", boost::uuids::to_string(Id()), m_ResponseQueue.size()));
+
 						DoWrite();
 					}
 				};
@@ -142,6 +190,8 @@ namespace AqualinkAutomate::HTTP
 			auto async_write_handler = 
 				[this, async_write_remove_and_kick, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
 				{
+					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler", boost::uuids::to_string(Id())));
+
 					boost::ignore_unused(bytes_transferred);
 
 					if (nullptr == m_Handler_WeakPtr)
@@ -179,12 +229,17 @@ namespace AqualinkAutomate::HTTP
 					[this, async_write_handler](const ResponseQueueTextElement& text_data)
 					{
 						SessionType().WS().binary(false);
-						SessionType().WS().async_write(boost::asio::buffer(text_data), async_write_handler);
+						SessionType().WS().async_write(boost::asio::buffer(text_data), boost::asio::bind_cancellation_slot(m_CancelWrite.slot(), async_write_handler));
 					},
 					[this, async_write_handler](const ResponseQueueBinaryElement& binary_data)
 					{
 						SessionType().WS().binary(true);
-						SessionType().WS().async_write(boost::asio::buffer(binary_data), async_write_handler);
+						SessionType().WS().async_write(boost::asio::buffer(binary_data), boost::asio::bind_cancellation_slot(m_CancelWrite.slot(), async_write_handler));
+					},
+					[this, async_write_remove_and_kick](const ResponseQueueMessageElement&)
+					{
+						LogDebug(Channel::Web, "Invalid payload type (non-binary, non-text) being sent over websocket");
+						async_write_remove_and_kick();
 					}
 				},
 				m_ResponseQueue.front()
@@ -192,34 +247,7 @@ namespace AqualinkAutomate::HTTP
 		}
 
 	private:
-		using ResponseQueueTextElement = std::string;
-		using ResponseQueueBinaryElement = std::vector<uint8_t>;
-		using ResponseQueueElement = std::variant<ResponseQueueTextElement, ResponseQueueBinaryElement>;
-		using ResponseQueueType = std::vector<ResponseQueueElement>;
-
-	public:
-		template<std::ranges::range PAYLOAD>
-			requires std::is_same_v<PAYLOAD, ResponseQueueTextElement> || std::is_same_v<PAYLOAD, ResponseQueueBinaryElement>
-		void QueueWrite(const PAYLOAD& payload)
-		{
-			// NOTE: The message is copied into the queued payload (as it's an async operation and 
-			// guarantees of lifetimes are required).
-
-			PAYLOAD local_copy_of_payload(payload);
-
-			m_ResponseQueue.push_back(std::move(local_copy_of_payload));
-
-			if (1 == m_ResponseQueue.size())
-			{
-				LogTrace(Channel::Web, "Response queue has a queued response in it so commence response write loop");
-				DoWrite();
-			}
-		}
-
-	private:
-		ResponseQueueType m_ResponseQueue;
-
-	private:
+		boost::asio::cancellation_signal m_CancelRead{}, m_CancelWrite{}, m_CancelAccept{};
 		Interfaces::IWebSocketBase* m_Handler_WeakPtr{ nullptr };
 		boost::beast::flat_buffer m_Buffer{};
 	};

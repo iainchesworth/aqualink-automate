@@ -7,6 +7,8 @@
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
 
+#include "profiling/profiling.h"
+
 using namespace AqualinkAutomate;
 
 int main(int argc, char* argv[])
@@ -16,6 +18,30 @@ int main(int argc, char* argv[])
 
     Logging::SeverityFiltering::SetGlobalFilterLevel(Logging::Severity::Fatal);
     Logging::Initialise();
+    
+    //---------------------------------------------------------------------
+	// ENABLE PROFILING
+	//---------------------------------------------------------------------
 
-    return boost::unit_test::unit_test_main(&init_unit_test, argc, argv);
+    if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+    {
+        profiler->StartProfiling();
+    }
+
+    //---------------------------------------------------------------------
+    // EXECUTE TESTS
+    //---------------------------------------------------------------------
+
+    auto result = boost::unit_test::unit_test_main(&init_unit_test, argc, argv);
+
+    //---------------------------------------------------------------------
+    // DISABLE PROFILING
+    //---------------------------------------------------------------------
+
+    if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+    {
+        profiler->StopProfiling();
+    }
+
+    return result;
 }
