@@ -40,9 +40,7 @@ namespace AqualinkAutomate::Test
 		BOOST_TEST_REQUIRE(0 == ec.value());
 		BOOST_TEST_REQUIRE(0 != bytes_written);
 
-		io_context.poll_one(); // ASYNC_READ (request)
-		io_context.poll_one(); // ASYNC_WRITE (response)
-		io_context.poll_one(); // ASYNC_READ (queued)
+		io_context.poll(); // ASYNC OPS
 
 		const auto bytes_read = boost::beast::http::read(tro->local_stream, tro->response_buffer, tro->last_response, ec);
 
@@ -77,8 +75,7 @@ namespace AqualinkAutomate::Test
 		BOOST_TEST_REQUIRE(0 == ec.value());
 		BOOST_TEST_REQUIRE(0 != bytes_written);
 
-		io_context.poll_one(); // ASYNC_READ
-		io_context.poll_one(); // ASYNC_ACCEPT
+		io_context.poll(); // ASYNC OPS
 		
 		const auto bytes_read = boost::beast::http::read(tro->local_stream, tro->response_buffer, tro->last_response, ec);
 		BOOST_TEST_REQUIRE(0 == ec.value());
