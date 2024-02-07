@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <string_view>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
@@ -10,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class SignallingStatsCounter_BadAccess : public GenericAqualinkException
 	{
-		static constexpr std::string_view BAD_ACCESS_MESSAGE{ "" };
+		static constexpr std::string BAD_ACCESS_MESSAGE{ "" };
 
 	public:
 		SignallingStatsCounter_BadAccess();

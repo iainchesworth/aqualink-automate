@@ -17,11 +17,11 @@ using namespace AqualinkAutomate;
 namespace AqualinkAutomate::Test
 {
 
-	std::unique_ptr<TestResponseObject> PerformHttpRequestResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
+	std::shared_ptr<TestResponseObject> PerformHttpRequestResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
 	{
 		boost::beast::flat_buffer remote_stream_buffer;
 		Test::MockBeastBasicStreamWithTimeout remote_stream(io_context);
-		auto tro = std::make_unique<Test::TestResponseObject>(io_context, remote_stream);
+		auto tro = std::make_shared<Test::TestResponseObject>(io_context, remote_stream);
 
 		tro->last_request.version(11);
 		tro->last_request.method(boost::beast::http::verb::get);
@@ -34,20 +34,37 @@ namespace AqualinkAutomate::Test
 
 		tro->session_ptr->Run();
 
-		boost::beast::error_code ec;
+		boost::beast::http::async_write(
+			tro->local_stream, 
+			tro->last_request,
+			[](const boost::beast::error_code& error, std::size_t bytes_transferred) -> auto
+			{
+				BOOST_TEST_REQUIRE(0 == error.value());
+				BOOST_TEST_REQUIRE(0 != bytes_transferred);
 
-		const auto bytes_written = boost::beast::http::write(tro->local_stream, tro->last_request, ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_written);
+				return;
+			}
+		);
+
+		boost::beast::http::async_read(
+			tro->local_stream, 
+			tro->response_buffer, 
+			tro->last_response, 
+			[](const boost::beast::error_code& error, std::size_t bytes_transferred) -> auto
+			{
+				BOOST_TEST_REQUIRE(0 == error.value());
+				BOOST_TEST_REQUIRE(0 != bytes_transferred);
+
+				return;
+			}
+		);
 
 		io_context.poll(); // ASYNC OPS
 
-		const auto bytes_read = boost::beast::http::read(tro->local_stream, tro->response_buffer, tro->last_response, ec);
-
-		return std::move(tro);
+		return tro;
 	}
 
-	std::unique_ptr<TestResponseObject> PerformHttpWsUpgradeResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
+	std::shared_ptr<TestResponseObject> PerformHttpWsUpgradeResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
 	{
 		boost::beast::flat_buffer remote_stream_buffer;
 		Test::MockBeastBasicStreamWithTimeout remote_stream(io_context);
@@ -69,19 +86,36 @@ namespace AqualinkAutomate::Test
 
 		tro->session_ptr->Run();
 
-		boost::beast::error_code ec;
-		
-		const auto bytes_written = boost::beast::http::write(tro->local_stream, tro->last_request, ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_written);
+		boost::beast::http::async_write(
+			tro->local_stream,
+			tro->last_request,
+			[](const boost::beast::error_code& error, std::size_t bytes_transferred) -> auto
+			{
+				BOOST_TEST_REQUIRE(0 == error.value());
+				BOOST_TEST_REQUIRE(0 != bytes_transferred);
 
-		io_context.poll(); // ASYNC OPS
-		
-		const auto bytes_read = boost::beast::http::read(tro->local_stream, tro->response_buffer, tro->last_response, ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
+				return;
+			}
+		);
+
+		boost::beast::http::async_read(
+			tro->local_stream,
+			tro->response_buffer,
+			tro->last_response,
+			[](const boost::beast::error_code& error, std::size_t bytes_transferred) -> auto
+			{
+				BOOST_TEST_REQUIRE(0 == error.value());
+				BOOST_TEST_REQUIRE(0 != bytes_transferred);
+
+				return;
+			}
+		);
+
+		io_context.poll(); // ASYNC_OPS
+
 		BOOST_TEST_REQUIRE(boost::beast::http::status::switching_protocols == tro->last_response.result());
 
-		return std::move(tro);
+		return tro;
 	}
 
 }

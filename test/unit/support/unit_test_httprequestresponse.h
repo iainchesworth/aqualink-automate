@@ -4,6 +4,8 @@
 #include <tuple>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/beast/_experimental/test/stream.hpp>
+#include <boost/beast/_experimental/test/tcp.hpp>
 
 #include "http/server/http_plainsession.h"
 #include "http/server/server_types.h"
@@ -43,22 +45,23 @@ namespace AqualinkAutomate::Test
 			local_stream.connect(remote_stream);
 		}
 
+		TestResponseObject(const TestResponseObject&) = delete;
+		TestResponseObject(TestResponseObject&&) noexcept = delete;
+
 		~TestResponseObject()
 		{
-			// Close down the connections...ensure that any outstanding handlers are called i.e. stream reads/writes are cancelled
-
-			local_stream.clear();
 			local_stream.close_remote();
 			local_stream.close();
 
-			internal_ioc.poll();
-
-			session_ptr = nullptr;
+			if (nullptr != session_ptr)
+			{
+				session_ptr->Stop();
+			}
 		}
 	};
 
-	std::unique_ptr<TestResponseObject> PerformHttpRequestResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve);
-	std::unique_ptr<TestResponseObject> PerformHttpWsUpgradeResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve);
+	std::shared_ptr<TestResponseObject> PerformHttpRequestResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve);
+	std::shared_ptr<TestResponseObject> PerformHttpWsUpgradeResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve);
 
 }
 // namespace AqualinkAutomate::Test

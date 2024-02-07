@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Exceptions
 		LogTrace(Channel::Exceptions, "OptionParsingFailed exception was constructed");
 	}
 
-	OptionParsingFailed::OptionParsingFailed(const std::string_view& message) :
+	OptionParsingFailed::OptionParsingFailed(const std::string& message) :
 		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, std::format("OptionParsingFailed exception was constructed with message: {}", message));

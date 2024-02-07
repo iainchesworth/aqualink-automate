@@ -1,25 +1,29 @@
 #pragma once
 
-#include <stdexcept>
-#include <string_view>
+#include <source_location>
+#include <string>
 
 #include <boost/exception/all.hpp>
 #include <boost/stacktrace.hpp>
 
 namespace AqualinkAutomate::Exceptions
 {
-	typedef boost::error_info<struct tag_stacktrace, boost::stacktrace::stacktrace> Traced;
-	
-	template <class E>
-	void TracedThrow(const E& e) 
-	{
-		throw boost::enable_error_info(e) << Traced(boost::stacktrace::stacktrace());
-	}
 
-	class GenericAqualinkException : public std::runtime_error
+	class GenericAqualinkException
 	{
 	public:
-		GenericAqualinkException(const std::string_view& message);
+		GenericAqualinkException(std::string message, std::source_location location = std::source_location::current(), boost::stacktrace::stacktrace trace = boost::stacktrace::stacktrace());
+
+	public:
+		std::string& What();
+		const std::string& What() const noexcept;
+		const std::source_location& Where() const noexcept;
+		const boost::stacktrace::stacktrace& StackTrace() const noexcept;
+
+	private:
+		std::string m_ExceptionMessage;
+		const std::source_location m_SourceLocation;
+		const boost::stacktrace::stacktrace m_StackTrace;
 	};
 
 }

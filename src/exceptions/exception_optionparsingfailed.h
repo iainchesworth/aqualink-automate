@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <string>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
@@ -9,13 +9,11 @@ namespace AqualinkAutomate::Exceptions
 
 	class OptionParsingFailed : public GenericAqualinkException
 	{
-		static constexpr std::string_view OPTION_PARSING_FAILED_MESSAGE{ "" };
+		static constexpr std::string OPTION_PARSING_FAILED_MESSAGE{ "" };
 
 	public:
 		OptionParsingFailed();
-
-	protected:
-		OptionParsingFailed(const std::string_view& message);
+		OptionParsingFailed(const std::string& message);
 	};
 
 }

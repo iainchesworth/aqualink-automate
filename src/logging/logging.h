@@ -25,6 +25,9 @@ namespace AqualinkAutomate::Logging
 			case Channel::Certificates:
 				return GlobalLogger_Certificates::get();
 
+			case Channel::Developer:
+				return GlobalLogger_Developer::get();
+
 			case Channel::Devices:
 				return GlobalLogger_Devices::get();
 

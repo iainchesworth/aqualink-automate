@@ -293,13 +293,13 @@ int main(int argc, char* argv[])
 		
 		return EXIT_SUCCESS;
 	}
-	catch (const Exceptions::OptionsHelpOrVersion& ex_ohov)
+	catch (const Exceptions::OptionsHelpOrVersion&)
 	{
 		// Nothing happens since the user has been informed of the help/version information.
 		// Just terminate as if nothing had happened.
 		return EXIT_SUCCESS;
 	}
-	catch (const Exceptions::OptionParsingFailed& ex_opf)
+	catch (const Exceptions::OptionParsingFailed&)
 	{
 		// Nothing happens since the user has been informed of the option parsing error.
 		// Just terminate as if nothing had happened.
@@ -307,15 +307,24 @@ int main(int argc, char* argv[])
 	}
 	catch (const Exceptions::GenericAqualinkException& ex_gae)
 	{
-		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", ex_gae.what()));
+		const auto& sl = ex_gae.Where();
+		const auto& st = ex_gae.StackTrace();
 
-		if (const boost::stacktrace::stacktrace* st = boost::get_error_info<Exceptions::Traced>(ex_gae); nullptr != st)
+		LogFatal(
+			Channel::Main,
+			std::format(
+				"Unknown exception occurred at {} ({}:{})...terminating!  Message: {}",
+				sl.file_name(),
+				sl.line(),
+				sl.column(),
+				ex_gae.What()
+			)
+		);
+
+		for (const boost::stacktrace::frame& frame : st)
 		{
-			for (const boost::stacktrace::frame& frame : *st)
-			{
-				LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
-			}
-		}		
+			LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+		}
 
 		return EXIT_FAILURE;
 	}

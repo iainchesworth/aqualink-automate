@@ -3,6 +3,7 @@
 namespace AqualinkAutomate::Logging
 {
 	BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(GlobalLogger_Certificates, Logger, (boost::log::keywords::channel = Channel::Certificates));
+	BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(GlobalLogger_Developer, Logger, (boost::log::keywords::channel = Channel::Developer));
 	BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(GlobalLogger_Devices, Logger, (boost::log::keywords::channel = Channel::Devices));
 	BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(GlobalLogger_Equipment, Logger, (boost::log::keywords::channel = Channel::Equipment));
 	BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(GlobalLogger_Exceptions, Logger, (boost::log::keywords::channel = Channel::Exceptions));

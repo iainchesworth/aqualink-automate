@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <string_view>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
@@ -10,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Traits_FailedToSet : public GenericAqualinkException
 	{
-		static constexpr std::string_view TRAIT_FAILED_TO_SET_MESSAGE{ "" };
+		static constexpr std::string TRAIT_FAILED_TO_SET_MESSAGE{ "" };
 
 	public:
 		Traits_FailedToSet();
