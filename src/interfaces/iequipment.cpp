@@ -4,11 +4,7 @@ namespace AqualinkAutomate::Interfaces
 {
 
 	IEquipment::IEquipment(Types::ExecutorType executor) :
-		m_Executor(executor)
-	{
-	}
-
-	IEquipment::~IEquipment()
+		m_Executor(std::move(executor))
 	{
 	}
 

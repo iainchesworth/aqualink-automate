@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class SignallingStatsCounter_BadAccess : public GenericAqualinkException
 	{
-		static constexpr std::string BAD_ACCESS_MESSAGE{ "" };
+		static const std::string BAD_ACCESS_MESSAGE;
 
 	public:
 		SignallingStatsCounter_BadAccess();

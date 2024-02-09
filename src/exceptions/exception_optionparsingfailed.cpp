@@ -8,6 +8,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string OptionParsingFailed::OPTION_PARSING_FAILED_MESSAGE{ "OPTION_PARSING_FAILED_MESSAGE" };
+
 	OptionParsingFailed::OptionParsingFailed() :
 		GenericAqualinkException(OPTION_PARSING_FAILED_MESSAGE)
 	{

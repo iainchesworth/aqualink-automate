@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Devices
 	public:
 		AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id);
 		AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
-		virtual ~AquariteDevice();
+		virtual ~AquariteDevice() = default;
 
 	private:
 		virtual void WatchdogTimeoutOccurred() override;

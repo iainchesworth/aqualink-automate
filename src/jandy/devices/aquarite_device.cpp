@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Devices
 
 	AquariteDevice::AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
 		JandyDevice(device_id),
-		Capabilities::Restartable(executor, AQUARITE_TIMEOUT_DURATION),
+		Capabilities::Restartable(std::move(executor), AQUARITE_TIMEOUT_DURATION),
 		m_Requested(AQUARITE_PERCENT_DEBOUNCE_THRESHOLD),
 		m_Reported(std::make_pair(reported_percentage, std::chrono::system_clock::now())),
 		m_SaltPPM(std::make_pair(salt_ppm, std::chrono::system_clock::now()))
@@ -25,13 +25,9 @@ namespace AqualinkAutomate::Devices
 		// Note that this is a debounced value so is initialised differently.
 		m_Requested = std::make_pair(requested_percentage, std::chrono::system_clock::now());
 
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>(std::bind(&AquariteDevice::Slot_Aquarite_GetId, this, std::placeholders::_1), (*device_id)());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>(std::bind(&AquariteDevice::Slot_Aquarite_Percent, this, std::placeholders::_1), (*device_id)());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>(std::bind(&AquariteDevice::Slot_Aquarite_PPM, this, std::placeholders::_1), (*device_id)());
-	}
-
-	AquariteDevice::~AquariteDevice()
-	{
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>([this](auto&& PH1) { Slot_Aquarite_GetId(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>([this](auto&& PH1) { Slot_Aquarite_Percent(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>([this](auto&& PH1) { Slot_Aquarite_PPM(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
 	}
 
 	void AquariteDevice::WatchdogTimeoutOccurred()

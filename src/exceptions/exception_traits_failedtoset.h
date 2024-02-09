@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Traits_FailedToSet : public GenericAqualinkException
 	{
-		static constexpr std::string TRAIT_FAILED_TO_SET_MESSAGE{ "" };
+		static const std::string TRAIT_FAILED_TO_SET_MESSAGE;
 
 	public:
 		Traits_FailedToSet();

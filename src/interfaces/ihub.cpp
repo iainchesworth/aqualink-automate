@@ -3,13 +3,7 @@
 namespace AqualinkAutomate::Interfaces
 {
 
-	IHub::IHub()
-	{
-	}
-
-	IHub::~IHub()
-	{
-	}
+	// NOTHING HERE
 
 }
 // namespace AqualinkAutomate::Interfaces

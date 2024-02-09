@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
 
 project(
 	aqualink-automate 
@@ -18,7 +18,8 @@ option(ENABLE_BENCHMARKS "Enable performance tests" ON)
 option(ENABLE_COVERAGE "Enable coverage of unit tests" OFF)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
-option(ENABLE_CLANG_TIDY "DevTools: Enable Clang-Tidy analysis" ON)
+option(ENABLE_CLANG_TIDY "DevTools: Enable static analysis using clang-tidy" ON)
+option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" ON)
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
 
@@ -91,19 +92,6 @@ option(SANITIZE_UNDEFINED "DevTools: Sanitizers -> Use UndefinedBehaviourSanitiz
 find_package(Sanitizers)
 
 endif(ENABLE_SANITIZERS)
-
-#------------------------------------------------------------------------------
-#
-#
-#
-#
-#------------------------------------------------------------------------------
-
-if(ENABLE_CLANG_TIDY)
-
-find_package(ClangTidy)
-
-endif(ENABLE_CLANG_TIDY)
 
 #------------------------------------------------------------------------------
 #
@@ -571,6 +559,39 @@ target_link_libraries(
 	PRIVATE 
 	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
 )
+
+#------------------------------------------------------------------------------
+#
+#    STATIC ANALYSIS CONFIGURATION
+#    =============================
+#
+#------------------------------------------------------------------------------
+
+if(ENABLE_CLANG_TIDY)
+
+find_package(ClangTidy)
+
+set_target_properties(aqualink-automate PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
+
+endif(ENABLE_CLANG_TIDY)
+
+if(ENABLE_PVS_STUDIO)
+
+include(PVS-Studio)
+
+pvs_studio_add_target(
+	ALL
+	TARGET aqualink-automate.analyze
+	ANALYZE aqualink-automate libaqualink-automate 
+	OUTPUT
+	LOG "${CMAKE_CURRENT_BINARY_DIR}/aqualink-automate.pvs-studio.log"
+	FORMAT fullhtml 
+	MODE 64+GA+OP+CS+MISRA+AUTOSAR+OWASP
+	SOURCES "${CMAKE_SOURCE_DIR}/src"
+	ARGS --exclude-path "${CMAKE_SOURCE_DIR}/build"
+)
+
+endif(ENABLE_PVS_STUDIO)
 
 #------------------------------------------------------------------------------
 #

@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Options_ConflictingOptions::OPTION_CONFLICTING_OPTIONS_MESSAGE{ "OPTION_CONFLICTING_OPTIONS_MESSAGE" };
+
 	Options_ConflictingOptions::Options_ConflictingOptions() :
 		OptionParsingFailed(OPTION_CONFLICTING_OPTIONS_MESSAGE)
 	{

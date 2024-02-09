@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string WebServerException::OPTIONS_WEBSERVER_EXCEPTION_MESSAGE{ "OPTIONS_WEBSERVER_EXCEPTION_MESSAGE" };
+
 	WebServerException::WebServerException(const std::string& message) :
 		GenericAqualinkException(OPTIONS_WEBSERVER_EXCEPTION_MESSAGE)
 	{

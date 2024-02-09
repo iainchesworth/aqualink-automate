@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Developer
 {
 	mock_serial_port::mock_serial_port(Types::ExecutorType executor) :
-		m_Executor(executor),
+		m_Executor(std::move(executor)),
 		m_WriteDelayTimer(m_Executor),
 		m_RandomDevice{},
 		m_Distribution(32, 127),

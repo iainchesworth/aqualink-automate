@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Traits_DoesNotExist::TRAIT_DOES_NOT_EXIST_MESSAGE{ "TRAIT_DOES_NOT_EXIST_MESSAGE" };
+
 	Traits_DoesNotExist::Traits_DoesNotExist() :
 		GenericAqualinkException(TRAIT_DOES_NOT_EXIST_MESSAGE)
 	{

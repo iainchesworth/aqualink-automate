@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Formatters
 namespace std
 {
 
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Units::ppm_quantity& obj);
+	auto operator<<(std::ostream& os, const AqualinkAutomate::Units::ppm_quantity& obj) -> std::ostream&;
 
 }
 // namespace std

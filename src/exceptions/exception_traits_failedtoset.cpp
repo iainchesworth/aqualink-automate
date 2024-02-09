@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Traits_FailedToSet::TRAIT_FAILED_TO_SET_MESSAGE{ "TRAIT_FAILED_TO_SET_MESSAGE" };
+
 	Traits_FailedToSet::Traits_FailedToSet() :
 		GenericAqualinkException(TRAIT_FAILED_TO_SET_MESSAGE)
 	{

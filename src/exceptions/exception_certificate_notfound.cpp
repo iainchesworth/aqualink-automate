@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Certificate_NotFound::CERTIFICATE_NOT_FOUND_MESSAGE{ "CERTIFICATE_NOT_FOUND_MESSAGE" };
+
 	Certificate_NotFound::Certificate_NotFound() :
 		GenericAqualinkException(CERTIFICATE_NOT_FOUND_MESSAGE)
 	{

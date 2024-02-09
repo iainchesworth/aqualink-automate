@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class OptionsHelpOrVersion : public GenericAqualinkException
 	{
-		static constexpr std::string OPTIONS_HELP_OR_VERSION_MESSAGE{ "" };
+		static const std::string OPTIONS_HELP_OR_VERSION_MESSAGE;
 
 	public:
 		OptionsHelpOrVersion();

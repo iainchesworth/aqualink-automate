@@ -13,9 +13,9 @@ namespace AqualinkAutomate::Devices
 		m_DeviceClass(DeviceClasses::Unknown),
 		m_DeviceId(device_id)
 	{
-		for (auto& device_class : m_KnownDeviceIdsList)
+		for (const auto& device_class : m_KnownDeviceIdsList)
 		{
-			for (auto& id : device_class.second)
+			for (const auto& id : device_class.second)
 			{
 				if (static_cast<DeviceId>(id) == device_id)
 				{
@@ -44,8 +44,8 @@ namespace AqualinkAutomate::Devices
 	}
 
 	JandyDeviceType::JandyDeviceType(JandyDeviceType&& other) noexcept :
-		m_DeviceClass(std::move(other.m_DeviceClass)),
-		m_DeviceId(std::move(other.m_DeviceId))
+		m_DeviceClass(other.m_DeviceClass),
+		m_DeviceId(other.m_DeviceId)
 	{
 		// Reset the other instance to default "unknown" values.
 		other.m_DeviceClass = DeviceClasses::Unknown;
@@ -57,8 +57,8 @@ namespace AqualinkAutomate::Devices
 		if (this != &other)
 		{
 			// "Move" the data to this instance.
-			m_DeviceClass = std::move(other.m_DeviceClass);
-			m_DeviceId = std::move(other.m_DeviceId);
+			m_DeviceClass =other.m_DeviceClass;
+			m_DeviceId = other.m_DeviceId;
 
 			// Reset the other instance to default "unknown" values.
 			other.m_DeviceClass = DeviceClasses::Unknown;
@@ -80,7 +80,7 @@ namespace AqualinkAutomate::Devices
 
 	bool JandyDeviceType::operator==(const Interfaces::IDeviceIdentifier& other) const
 	{
-		if (auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
+		if (const auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
 		{
 			return operator==(*ptr);
 		}
@@ -91,7 +91,7 @@ namespace AqualinkAutomate::Devices
 
 	bool JandyDeviceType::operator!=(const Interfaces::IDeviceIdentifier& other) const
 	{
-		if (auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
+		if (const auto ptr = dynamic_cast<const JandyDeviceType*>(&other); nullptr != ptr)
 		{
 			return operator!=(*ptr);
 		}

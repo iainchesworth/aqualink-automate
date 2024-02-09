@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+    const std::string HTTP_DuplicateRoute::DUPLICATE_ROUTE_MESSAGE{ "DUPLICATE_ROUTE_MESSAGE" };
+
     HTTP_DuplicateRoute::HTTP_DuplicateRoute() : GenericAqualinkException(DUPLICATE_ROUTE_MESSAGE)
     {
         LogTrace(Channel::Exceptions, "HTTP_DuplicateRoute exception was constructed");

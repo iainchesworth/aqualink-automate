@@ -182,7 +182,7 @@ namespace AqualinkAutomate::Utility
 
 			const double temp1 = bits_start + bits_per_character + bits_parity + bits_stop;
 			const double temp2 = bits_per_character / temp1;
-			const double temp3 = options.baud_rate.value() / 8;
+			const double temp3 = options.baud_rate.value() / 8.0f;
 
 			const double byterate_useful = temp2 * temp3;
 			return byterate_useful;

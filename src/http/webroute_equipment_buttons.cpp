@@ -25,7 +25,7 @@ namespace AqualinkAutomate::HTTP
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
     }
 
-    HTTP::Message WebRoute_Equipment_Buttons::OnRequest(HTTP::Request req)
+    HTTP::Message WebRoute_Equipment_Buttons::OnRequest(const HTTP::Request& req)
     {
 		switch (req.method())
 		{
@@ -40,7 +40,7 @@ namespace AqualinkAutomate::HTTP
 		}
     }
 
-	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(const HTTP::Request& req)
 	{
 		nlohmann::json buttons, all_buttons;
 
@@ -78,7 +78,7 @@ namespace AqualinkAutomate::HTTP
         return resp;
 	}
 
-	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(const HTTP::Request& req)
     {
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 

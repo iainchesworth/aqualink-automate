@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Interfaces
         virtual const std::string_view Route() const = 0;
 
     public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) = 0;
+        virtual HTTP::Message OnRequest(const HTTP::Request& req) = 0;
     };
 
 	template<const auto& ROUTE_URL>

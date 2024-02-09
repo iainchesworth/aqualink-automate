@@ -47,9 +47,9 @@ namespace AqualinkAutomate::Utility
 				row.HighlightRange = std::nullopt;
 			}
 		}
-		else if (m_Rows.size() < line_id)
+		else if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
 		}
 		else
 		{
@@ -60,9 +60,9 @@ namespace AqualinkAutomate::Utility
 
 	void ScreenDataPage::HighlightChars(uint8_t line_id, uint8_t start_index, uint8_t stop_index)
 	{
-		if (m_Rows.size() < line_id)
+		if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
 		}
 		else
 		{

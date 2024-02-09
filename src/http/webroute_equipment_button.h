@@ -22,16 +22,16 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Equipment_Button(Kernel::HubLocator& hub_locator);
 
 	public:
-		virtual HTTP::Message OnRequest(HTTP::Request req) final;
+		virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
 
 	public:
-		HTTP::Message ButtonIndividual_GetHandler(HTTP::Request req);
-		HTTP::Message ButtonIndividual_PostHandler(HTTP::Request req);
+		HTTP::Message ButtonIndividual_GetHandler(const HTTP::Request& req);
+		HTTP::Message ButtonIndividual_PostHandler(const HTTP::Request& req);
 
 	private:
-		HTTP::Message Report_ButtonDoesntExist(HTTP::Request req, const std::string& button_id);
-		HTTP::Message Report_ButtonIsInactive(HTTP::Request req, const std::string& button_id);
-		HTTP::Message Report_SystemIsInactive(HTTP::Request req);
+		HTTP::Message Report_ButtonDoesntExist(const HTTP::Request& req, const std::string& button_id);
+		HTTP::Message Report_ButtonIsInactive(const HTTP::Request& req, const std::string& button_id);
+		HTTP::Message Report_SystemIsInactive(const HTTP::Request& req);
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };

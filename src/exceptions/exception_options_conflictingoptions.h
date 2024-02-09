@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Options_ConflictingOptions : public OptionParsingFailed
 	{
-		static constexpr std::string OPTION_CONFLICTING_OPTIONS_MESSAGE{ "" };
+		static const std::string OPTION_CONFLICTING_OPTIONS_MESSAGE;
 
 	public:
 		Options_ConflictingOptions();

@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Traits_NotMutable : public GenericAqualinkException
 	{
-		static constexpr std::string TRAIT_NOT_MUTABLE_MESSAGE{ "" };
+		static const std::string TRAIT_NOT_MUTABLE_MESSAGE;
 
 	public:
 		Traits_NotMutable();

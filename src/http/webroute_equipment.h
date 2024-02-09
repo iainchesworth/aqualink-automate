@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Equipment(Kernel::HubLocator& hub_locator);
 
 	public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) final;
+        virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };

@@ -7,7 +7,7 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	boost::beast::http::message_generator WebRoute_Version::OnRequest(HTTP::Request req)
+	boost::beast::http::message_generator WebRoute_Version::OnRequest(const HTTP::Request& req)
 	{
 		nlohmann::json version_info;
 

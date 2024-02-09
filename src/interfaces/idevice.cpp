@@ -8,10 +8,6 @@ namespace AqualinkAutomate::Interfaces
     {
     }
 
-    IDevice::~IDevice()
-    {
-    }
-
     IDevice::IDevice(IDevice&& other) noexcept : 
         m_DeviceId(std::move(other.m_DeviceId))
     {

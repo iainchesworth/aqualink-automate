@@ -8,7 +8,7 @@ namespace AqualinkAutomate::Interfaces
 	{
 	public:
 		IEquipment(Types::ExecutorType executor);
-		virtual ~IEquipment();
+		virtual ~IEquipment() = default;
 
 	protected:
 		Types::ExecutorType m_Executor;

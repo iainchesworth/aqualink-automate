@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Traits_InvalidTraitValue : public GenericAqualinkException
 	{
-		static constexpr std::string TRAIT_INVALID_TRAIT_VALUE_MESSAGE{ "" };
+		static const std::string TRAIT_INVALID_TRAIT_VALUE_MESSAGE;
 
 	public:
 		Traits_InvalidTraitValue();

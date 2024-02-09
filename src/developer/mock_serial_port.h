@@ -300,6 +300,7 @@ namespace AqualinkAutomate::Developer
 					case FileReadErrors::ErrorFileReachedEOF:
 						ec = boost::asio::error::eof;
 						keep_reading = false;
+						break;
 
 					case FileReadErrors::ErrorDuringRead:
 					case FileReadErrors::NoDataWasRead:

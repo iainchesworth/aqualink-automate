@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Interfaces
 	class IProfilingUnit
 	{
 	public:
-		IProfilingUnit(const std::string& name);
+		IProfilingUnit(std::string name);
 		virtual ~IProfilingUnit() = default;
 
 	public:

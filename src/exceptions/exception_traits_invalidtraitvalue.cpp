@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Traits_InvalidTraitValue::TRAIT_INVALID_TRAIT_VALUE_MESSAGE{ "TRAIT_INVALID_TRAIT_VALUE_MESSAGE" };
+
 	Traits_InvalidTraitValue::Traits_InvalidTraitValue() :
 		GenericAqualinkException(TRAIT_INVALID_TRAIT_VALUE_MESSAGE)
 	{

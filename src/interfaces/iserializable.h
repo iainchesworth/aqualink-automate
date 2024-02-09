@@ -11,8 +11,8 @@ namespace AqualinkAutomate::Interfaces
     class ISerializable
     {
     public:
-        ISerializable();
-        virtual ~ISerializable();
+        ISerializable() = default;
+        virtual ~ISerializable() = default;
 
     public:
         virtual bool Serialize(std::vector<uint8_t>& message_bytes) const = 0;

@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Formatters
 namespace std
 {
 
-	std::ostream& operator<<(std::ostream& os, const boost::beast::string_view& obj)
+	auto operator<<(std::ostream& os, const boost::beast::string_view& obj) -> std::ostream&
 	{
 		os << std::format("{}", obj);
 		return os;

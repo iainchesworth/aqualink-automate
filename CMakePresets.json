@@ -19,6 +19,7 @@
         "ENABLE_COVERAGE": "OFF",
         "ENABLE_TESTS": "ON",
         "ENABLE_CLANG_TIDY": "OFF",
+        "ENABLE_PVS_STUDIO": "OFF",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "OFF",
         "ENABLE_ASIO_TRACKING": "OFF",

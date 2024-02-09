@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Certificate_NotFound : public GenericAqualinkException
 	{
-		static constexpr std::string CERTIFICATE_NOT_FOUND_MESSAGE{ "" };
+		static const std::string CERTIFICATE_NOT_FOUND_MESSAGE;
 
 	public:
 		Certificate_NotFound();

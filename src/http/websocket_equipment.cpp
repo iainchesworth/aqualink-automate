@@ -10,7 +10,6 @@ namespace AqualinkAutomate::HTTP
 {
 
 	WebSocket_Equipment::WebSocket_Equipment(Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebSocket<EQUIPMENT_WEBSOCKET_URL>(),
 		m_ConfigChangeSlot(),
 		m_StatusChangeSlot()
 	{
@@ -20,8 +19,8 @@ namespace AqualinkAutomate::HTTP
 
 	void WebSocket_Equipment::OnOpen()
 	{
-		m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubConfigUpdate, this, std::placeholders::_1));
-		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(std::bind(&WebSocket_Equipment::HandleEvent_DataHubSystemUpdate, this, std::placeholders::_1));
+		m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect([this](auto&& PH1) { HandleEvent_DataHubConfigUpdate(std::forward<decltype(PH1)>(PH1)); });
+		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect([this](auto&& PH1) { HandleEvent_DataHubSystemUpdate(std::forward<decltype(PH1)>(PH1)); });
 	}
 
 	void WebSocket_Equipment::OnMessage(const boost::beast::flat_buffer& buffer)
@@ -46,7 +45,7 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			BroadcastMessage(std::move(HTTP::WebSocket_Event(config_update_event).Payload()));
+			BroadcastMessage(HTTP::WebSocket_Event(config_update_event).Payload());
 		}
 	}
 
@@ -58,7 +57,7 @@ namespace AqualinkAutomate::HTTP
 		}
 		else
 		{
-			BroadcastMessage(std::move(HTTP::WebSocket_Event(system_update_event).Payload()));
+			BroadcastMessage(HTTP::WebSocket_Event(system_update_event).Payload());
 		}
 	}
 

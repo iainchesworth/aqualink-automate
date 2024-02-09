@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Options_MissingDependency::OPTION_MISSING_DEPENDENCY_MESSAGE{ "OPTION_MISSING_DEPENDENCY_MESSAGE" };
+
 	Options_MissingDependency::Options_MissingDependency() :
 		OptionParsingFailed(OPTION_MISSING_DEPENDENCY_MESSAGE)
 	{

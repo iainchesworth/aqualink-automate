@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string NotImplemented::NOT_IMPLEMENTED_MESSAGE{ "NOT_IMPLEMENTED_MESSAGE" };
+
 	NotImplemented::NotImplemented() :
 		GenericAqualinkException(NOT_IMPLEMENTED_MESSAGE)
 	{

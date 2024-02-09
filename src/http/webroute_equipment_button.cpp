@@ -19,13 +19,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Equipment_Button::WebRoute_Equipment_Button(Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebRoute<EQUIPMENTBUTTONS_BUTTON_ROUTE_URL>()
+	WebRoute_Equipment_Button::WebRoute_Equipment_Button(Kernel::HubLocator& hub_locator)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::OnRequest(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Button::OnRequest(const HTTP::Request& req)
 	{
 		switch (req.method())
 		{
@@ -40,7 +39,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::ButtonIndividual_GetHandler(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Button::ButtonIndividual_GetHandler(const HTTP::Request& req)
 	{
 		const std::string UNKNOWN_BUTTON_ID{ "Unknown Or Missing Button Id" };
 
@@ -93,7 +92,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::ButtonIndividual_PostHandler(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Button::ButtonIndividual_PostHandler(const HTTP::Request& req)
 	{
 		const std::string UNKNOWN_BUTTON_ID{ "Unknown Or Missing Button Id" };
 
@@ -133,7 +132,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::Report_ButtonDoesntExist(HTTP::Request req, const std::string& button_id)
+	HTTP::Message WebRoute_Equipment_Button::Report_ButtonDoesntExist(const HTTP::Request& req, const std::string& button_id)
 	{
 		LogInfo(Channel::Web, std::format("Received an invalid button id ('{}'); rejecting button request", button_id));
 
@@ -149,13 +148,13 @@ namespace AqualinkAutomate::HTTP
 		return resp;
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::Report_ButtonIsInactive(HTTP::Request req, const std::string& button_id)
+	HTTP::Message WebRoute_Equipment_Button::Report_ButtonIsInactive(const HTTP::Request& req, const std::string& button_id)
 	{
 		///FIXME
 		throw;
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::Report_SystemIsInactive(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Button::Report_SystemIsInactive(const HTTP::Request& req)
 	{
 		LogInfo(Channel::Web, "Aqualink Automate has not yet initialised (PoolConfiguration == Unknown); rejecting button action request");
 

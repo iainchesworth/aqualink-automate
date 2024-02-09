@@ -15,7 +15,7 @@ namespace AqualinkAutomate::HTTP
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
-	Message WebRoute_Equipment::OnRequest(HTTP::Request req)
+	Message WebRoute_Equipment::OnRequest(const HTTP::Request& req)
 	{
 		nlohmann::json jandy_equipment_json;
 

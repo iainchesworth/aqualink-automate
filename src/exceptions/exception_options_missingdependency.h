@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Options_MissingDependency : public OptionParsingFailed
 	{
-		static constexpr std::string OPTION_MISSING_DEPENDENCY_MESSAGE{ "" };
+		static const std::string OPTION_MISSING_DEPENDENCY_MESSAGE;
 
 	public:
 		Options_MissingDependency();

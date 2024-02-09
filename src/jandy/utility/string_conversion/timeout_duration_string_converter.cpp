@@ -82,15 +82,15 @@ namespace AqualinkAutomate::Utility
 		{
 			LogDebug(Channel::Devices, "Failed to convert timeout duration; invalid second delimiter");
 		}
-		else if (auto [p, ec] = std::from_chars(timeout_string.data() + HOURS_INDEX_START, timeout_string.data() + HOURS_INDEX_END, hours); std::errc() != ec)
+		else if (auto [_, ec] = std::from_chars(timeout_string.data() + HOURS_INDEX_START, timeout_string.data() + HOURS_INDEX_END, hours); std::errc() != ec)
 		{
 			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert hours to number: error -> {}", magic_enum::enum_name(ec)));
 		}
-		else if (auto [p, ec] = std::from_chars(timeout_string.data() + MINS_INDEX_START, timeout_string.data() + MINS_INDEX_END, minutes); std::errc() != ec)
+		else if (auto [_, ec] = std::from_chars(timeout_string.data() + MINS_INDEX_START, timeout_string.data() + MINS_INDEX_END, minutes); std::errc() != ec)
 		{
 			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert minutes to number: error -> {}", magic_enum::enum_name(ec)));
 		}
-		else if (auto [p, ec] = std::from_chars(timeout_string.data() + SECS_INDEX_START, timeout_string.data() + SECS_INDEX_END, seconds); std::errc() != ec)
+		else if (auto [_, ec] = std::from_chars(timeout_string.data() + SECS_INDEX_START, timeout_string.data() + SECS_INDEX_END, seconds); std::errc() != ec)
 		{
 			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert seconds to number: error -> {}", magic_enum::enum_name(ec)));
 		}

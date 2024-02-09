@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class NotImplemented : public GenericAqualinkException
 	{
-		static constexpr std::string NOT_IMPLEMENTED_MESSAGE{ "" };
+		static const std::string NOT_IMPLEMENTED_MESSAGE;
 
 	public:
 		NotImplemented();

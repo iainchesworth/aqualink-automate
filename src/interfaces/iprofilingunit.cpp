@@ -5,8 +5,8 @@
 namespace AqualinkAutomate::Interfaces
 {
 
-	IProfilingUnit::IProfilingUnit(const std::string& name) :
-		m_Name(name),
+	IProfilingUnit::IProfilingUnit(std::string name) :
+		m_Name(std::move(name)),
 		m_UUID(boost::uuids::random_generator()())
 	{
 	}

@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Serial_InvalidMode : public GenericAqualinkException
 	{
-		static constexpr std::string SERIAL_INVALID_MODE_MESSAGE{ "" };
+		static const std::string SERIAL_INVALID_MODE_MESSAGE;
 
 	public:
 		Serial_InvalidMode();

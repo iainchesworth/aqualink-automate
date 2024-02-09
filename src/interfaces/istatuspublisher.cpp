@@ -5,7 +5,7 @@ namespace AqualinkAutomate::Interfaces
 
 	IStatusPublisher::StatusType IStatusPublisher::Status() const
 	{
-		return StatusType(m_Status);
+		return { m_Status };
 	}
 
 }

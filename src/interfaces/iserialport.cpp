@@ -3,13 +3,7 @@
 namespace AqualinkAutomate::Interfaces
 {
 
-	ISerialPort::ISerialPort()
-	{
-	}
-
-	ISerialPort::~ISerialPort()
-	{
-	}
+	// NOTHING HERE
 
 }
 // namespace AqualinkAutomate::Interfaces

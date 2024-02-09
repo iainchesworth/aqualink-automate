@@ -36,9 +36,9 @@ namespace AqualinkAutomate::Interfaces
 		virtual ~IWebPageRoute() = default;
 
 	public:
-		virtual HTTP::Message OnRequest(HTTP::Request req) final
+		virtual HTTP::Message OnRequest(const HTTP::Request& req) final
 		{
-			auto generate_page = [this](HTTP::Request req) -> HTTP::Message
+			auto generate_page = [this](const HTTP::Request& req) -> HTTP::Message
 				{
 					try
 					{

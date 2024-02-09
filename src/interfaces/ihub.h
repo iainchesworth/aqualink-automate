@@ -6,8 +6,8 @@ namespace AqualinkAutomate::Interfaces
     class IHub
     {
     public:
-        IHub();
-        virtual ~IHub();
+        IHub() = default;
+        virtual ~IHub() = default;
     };
 
 }

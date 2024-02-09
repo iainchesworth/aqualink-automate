@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string OptionsHelpOrVersion::OPTIONS_HELP_OR_VERSION_MESSAGE{ "OPTIONS_HELP_OR_VERSION_MESSAGE" };
+
 	OptionsHelpOrVersion::OptionsHelpOrVersion() :
 		GenericAqualinkException(OPTIONS_HELP_OR_VERSION_MESSAGE)
 	{

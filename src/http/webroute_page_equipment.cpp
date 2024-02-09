@@ -7,8 +7,7 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Page_Equipment::WebRoute_Page_Equipment(Kernel::HubLocator& hub_locator) :
-		Interfaces::IWebPageRoute<PAGE_EQUIPMENT_ROUTE_URL, PAGE_EQUIPMENT_TEMPLATE>()
+	WebRoute_Page_Equipment::WebRoute_Page_Equipment(Kernel::HubLocator& hub_locator)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}

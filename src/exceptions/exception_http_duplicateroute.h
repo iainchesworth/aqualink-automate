@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
     class HTTP_DuplicateRoute : public GenericAqualinkException
     {
-        static constexpr std::string DUPLICATE_ROUTE_MESSAGE{""};
+        static const std::string DUPLICATE_ROUTE_MESSAGE;
 
     public:
         HTTP_DuplicateRoute();

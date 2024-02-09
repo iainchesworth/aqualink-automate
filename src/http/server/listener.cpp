@@ -13,12 +13,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint) :
-		Listener(executor, endpoint, std::nullopt)
+		Listener(std::move(executor), endpoint, std::nullopt)
 	{
 	}
 
 	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context& ssl_context) :
-		Listener(executor, endpoint, std::make_optional(std::ref(ssl_context)))
+		Listener(std::move(executor), endpoint, std::make_optional(std::ref(ssl_context)))
 	{
 	}
 

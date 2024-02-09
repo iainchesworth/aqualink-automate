@@ -13,7 +13,7 @@ namespace AqualinkAutomate::HTTP
         virtual ~WebRoute_Version() = default;
 
 	public:
-        virtual HTTP::Message OnRequest(HTTP::Request req) final;
+        virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
 	};
 
 }

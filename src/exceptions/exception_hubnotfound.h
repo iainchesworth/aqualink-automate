@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Hub_NotFound : public GenericAqualinkException
 	{
-		static constexpr std::string HUB_NOT_FOUND_MESSAGE{ "" };
+		static const std::string HUB_NOT_FOUND_MESSAGE;
 
 	public:
 		Hub_NotFound();

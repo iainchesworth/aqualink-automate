@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string SignallingStatsCounter_BadAccess::BAD_ACCESS_MESSAGE{ "BAD_ACCESS_MESSAGE" };
+
 	SignallingStatsCounter_BadAccess::SignallingStatsCounter_BadAccess() :
 		GenericAqualinkException(BAD_ACCESS_MESSAGE)
 	{

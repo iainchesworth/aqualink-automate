@@ -41,12 +41,12 @@ namespace AqualinkAutomate::Interfaces
         virtual void OnError() = 0;
 
     protected:
-        void BroadcastMessage(std::vector<uint8_t>&& buffer);
-        void BroadcastMessage(std::string&& buffer);
+        void BroadcastMessage(const std::vector<uint8_t>& buffer);
+        void BroadcastMessage(const std::string& buffer);
 
     private:
-        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::vector<uint8_t>&& buffer);
-        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::string&& buffer);
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::vector<uint8_t> buffer);
+        void PublishMessage(std::shared_ptr<Interfaces::ISession> session, std::string buffer);
 
     private:
         std::unordered_set<std::shared_ptr<Interfaces::ISession>> m_ActiveSessions;

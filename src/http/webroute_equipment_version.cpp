@@ -11,7 +11,7 @@ namespace AqualinkAutomate::HTTP
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
-	HTTP::Message WebRoute_Equipment_Version::OnRequest(HTTP::Request req)
+	HTTP::Message WebRoute_Equipment_Version::OnRequest(const HTTP::Request& req)
 	{
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 

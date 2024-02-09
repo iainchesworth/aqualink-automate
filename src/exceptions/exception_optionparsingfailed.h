@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class OptionParsingFailed : public GenericAqualinkException
 	{
-		static constexpr std::string OPTION_PARSING_FAILED_MESSAGE{ "" };
+		static const std::string OPTION_PARSING_FAILED_MESSAGE;
 
 	public:
 		OptionParsingFailed();

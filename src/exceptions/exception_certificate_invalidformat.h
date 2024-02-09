@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Exceptions
 
 	class Certificate_InvalidFormat : public GenericAqualinkException
 	{
-		static constexpr std::string CERTIFICATE_INVALID_FORMAT_MESSAGE{ "" };
+		static const std::string CERTIFICATE_INVALID_FORMAT_MESSAGE;
 
 	public:
 		Certificate_InvalidFormat();

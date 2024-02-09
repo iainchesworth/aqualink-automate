@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Traits_NotMutable::TRAIT_NOT_MUTABLE_MESSAGE{ "TRAIT_NOT_MUTABLE_MESSAGE" };
+
 	Traits_NotMutable::Traits_NotMutable() :
 		GenericAqualinkException(TRAIT_NOT_MUTABLE_MESSAGE)
 	{

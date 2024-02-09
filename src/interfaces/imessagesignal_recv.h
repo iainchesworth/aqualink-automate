@@ -43,10 +43,6 @@ namespace AqualinkAutomate::Interfaces
 			{
 				LogTrace(Channel::Messages, "Could not retrieve signal shared_ptr from IMessageSignalRecv::GetSignal()");
 			}
-			else if (auto signal = signal_ptr.get(); nullptr == signal)
-			{
-				LogTrace(Channel::Messages, "Could not get underlying pointer (nullptr) from signal shared_ptr returned from IMessageSignalRecv::GetSignal()");
-			}
 			else if (auto upcast_ptr = dynamic_cast<MESSAGE_TYPE *>(this); nullptr == upcast_ptr)
 			{
 				const std::type_info& src_type = typeid(this);
@@ -56,7 +52,7 @@ namespace AqualinkAutomate::Interfaces
 			}
 			else
 			{
-				(*signal)(*upcast_ptr);
+				(*signal_ptr)(*upcast_ptr);
 			}
 		}
 	};

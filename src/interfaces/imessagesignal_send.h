@@ -43,10 +43,6 @@ namespace AqualinkAutomate::Interfaces
 			{
 				LogTrace(Channel::Messages, "Could not retrieve signal shared_ptr from IMessageSignalSend::GetPublisher()");
 			}
-			else if (auto publisher = publisher_ptr.get(); nullptr == publisher)
-			{
-				LogTrace(Channel::Messages, "Could not get underlying pointer (nullptr) from publisher shared_ptr returned from IMessageSignalSend::GetPublisher()");
-			}
 			else if (auto upcast_ptr = dynamic_cast<MESSAGE_TYPE *>(this); nullptr == upcast_ptr)
 			{
 				const std::type_info& src_type = typeid(this);
@@ -56,7 +52,7 @@ namespace AqualinkAutomate::Interfaces
 			}
 			else
 			{
-				(*publisher)(*upcast_ptr);
+				(*publisher_ptr)(*upcast_ptr);
 			}
 		}
 	};

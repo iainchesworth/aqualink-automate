@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Interfaces
     {
     public:
         IDevice(std::shared_ptr<IDeviceIdentifier> device_id);
-        virtual ~IDevice();
+        virtual ~IDevice() = default;
 
     public:
         IDevice(const IDevice& other) = delete;

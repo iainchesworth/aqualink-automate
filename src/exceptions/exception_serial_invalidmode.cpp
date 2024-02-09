@@ -6,6 +6,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
+	const std::string Serial_InvalidMode::SERIAL_INVALID_MODE_MESSAGE{ "SERIAL_INVALID_MODE_MESSAGE" };
+
 	Serial_InvalidMode::Serial_InvalidMode() :
 		GenericAqualinkException(SERIAL_INVALID_MODE_MESSAGE)
 	{
