@@ -56,7 +56,7 @@ namespace AqualinkAutomate::Protocol
 			break;
 
 		default:
-			LogError(Channel::Protocol, std::format("Error {} occured in protocol handler.  Error Code: {}", ec.to_string(), ec.value()));
+			LogDebug(Channel::Protocol, std::format("Error occurred in protocol handler (HandleWrite).  Error Code: {}", ec.value()));
 			LogDebug(Channel::Protocol, std::format("Error message: {}", ec.message()));
 			continue_processing = false;
 			break;

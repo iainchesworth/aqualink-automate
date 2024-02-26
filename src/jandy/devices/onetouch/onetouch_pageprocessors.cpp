@@ -199,7 +199,7 @@ namespace AqualinkAutomate::Devices
 			{ std::bind(&OneTouchDevice::StatusProcessor_CheckAquaPure, this, std::placeholders::_1, std::placeholders::_2) }
 		};
 
-		std::for_each(std::execution::par, line_processors.begin(), line_processors.end(), [&page](const auto& matcher_processor)
+		std::for_each(std::execution::par_unseq, line_processors.begin(), line_processors.end(), [&page](const auto& matcher_processor)
 			{
 				bool regex_matched_line = false;
 				bool device_matched_line = false;

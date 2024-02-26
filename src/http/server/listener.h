@@ -20,12 +20,14 @@ namespace AqualinkAutomate::HTTP
 	public:
 		Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint);
         Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context& ssl_context);
+		virtual ~Listener();
 
 	private:
 		Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context_ref);
 
 	public:
 		void Run();
+		void Stop();
 
 	private:
 		void DoAccept();

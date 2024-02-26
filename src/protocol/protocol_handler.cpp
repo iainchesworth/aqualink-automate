@@ -5,20 +5,18 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
-	ProtocolHandler::ProtocolHandler(Serial::SerialPort& serial_port) :
+	ProtocolHandler::ProtocolHandler(Types::ExecutorType executor, Serial::SerialPort& serial_port) :
 		m_SerialPort(serial_port),
-		m_SerialData_Incoming(),
-		m_SerialData_Outgoing(),
-		m_SerialData_IncomingMutex(),
-		m_SerialData_OutgoingMutex(),
-		m_PublishableMessages(),
-		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("ProtocolHandler")))
+		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("ProtocolHandler"))),
+		m_Executor(std::move(executor))
 	{
 		m_ProfilingDomain->Start();
 	}
 
 	ProtocolHandler::~ProtocolHandler()
 	{
+		Stop();
+
 		m_ProfilingDomain->End();
 	}
 
@@ -32,7 +30,17 @@ namespace AqualinkAutomate::Protocol
 
 	void ProtocolHandler::Run()
 	{
-		boost::asio::post([&]() -> void { Step(); });
+		boost::asio::post(m_Executor, [&]() -> void { Step(); });
+	}
+
+	void ProtocolHandler::Stop()
+	{
+		boost::system::error_code ec;
+
+		if (m_SerialPort.cancel(ec); ec.failed())
+		{
+			LogDebug(Channel::Protocol, std::format("Failed to cancel outstanding serial port asynchronous actions.  Error was -> {}", ec.message()));
+		}
 	}
 
 	void ProtocolHandler::Step()
@@ -43,7 +51,7 @@ namespace AqualinkAutomate::Protocol
 		
 		profiling_frame->Start();
 
-		if ((0 < m_SerialData_Outgoing.size()) && (continue_processing = HandleWrite()); !continue_processing)
+		if ((!m_SerialData_Outgoing.empty()) && (continue_processing = HandleWrite()); !continue_processing)
 		{
 			LogTrace(Channel::Protocol, "Completed HandleWrite but an error was returned; halting processing.");
 		}
@@ -53,7 +61,7 @@ namespace AqualinkAutomate::Protocol
 		}
 		else
 		{
-			boost::asio::post([&]() -> void { Step(); });
+			boost::asio::post(m_Executor, [&]() -> void { Step(); });
 		}
 
 		profiling_frame->End();

@@ -11,7 +11,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 	AquariteDevice::AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id) :
-		AquariteDevice(executor, device_id, 0, 0, 0)
+		AquariteDevice(std::move(executor), device_id, 0, 0, 0)
 	{
 	}
 

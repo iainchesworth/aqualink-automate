@@ -79,9 +79,9 @@
         "rhs": "Windows"
       },
       "cacheVariables": {
-        "ENABLE_ASIO_TRACKING": "OFF",
-        "ENABLE_CLANG_TIDY":  "ON",
-        "ENABLE_PVS_STUDIO": "ON"
+        "ENABLE_ASIO_TRACKING": "ON",
+        "ENABLE_CLANG_TIDY":  "OFF",
+        "ENABLE_PVS_STUDIO": "OFF"
       }
     }
   ],

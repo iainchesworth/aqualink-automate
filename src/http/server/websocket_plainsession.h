@@ -6,6 +6,9 @@
 #include <boost/beast/websocket/stream.hpp>
 
 #include "http/server/websocket_session.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
@@ -17,6 +20,11 @@ namespace AqualinkAutomate::HTTP
         explicit WebSocket_PlainSession_Base(TCP_STREAM&& stream) :
             m_WS(std::move(stream))
         {
+        }
+
+        virtual ~WebSocket_PlainSession_Base()
+        {
+            LogTrace(Channel::Web, std::format("Destroying Plain WebSocket session: {}", boost::uuids::to_string(WebSocket_Session<WebSocket_PlainSession_Base<TCP_STREAM>>::Id())));
         }
 
     public:

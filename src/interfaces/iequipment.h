@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/uuid/uuid.hpp>
+
 #include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Interfaces

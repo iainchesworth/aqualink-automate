@@ -10,6 +10,7 @@
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 #include "serial/serial_port.h"
+#include "types/asynchronous_executor.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -19,7 +20,7 @@ namespace AqualinkAutomate::Protocol
 	class ProtocolHandler
 	{
 	public:
-		ProtocolHandler(Serial::SerialPort& serial_port);
+		ProtocolHandler(Types::ExecutorType executor, Serial::SerialPort& serial_port);
 		~ProtocolHandler();
 
 	public:
@@ -52,6 +53,7 @@ namespace AqualinkAutomate::Protocol
 
 	public:
 		void Run();
+		void Stop();
 
 	private:
 		void Step();
@@ -75,6 +77,7 @@ namespace AqualinkAutomate::Protocol
 
 	private:
 		Types::ProfilingUnitTypePtr m_ProfilingDomain;
+		Types::ExecutorType m_Executor;
 	};
 }
 // namespace AqualinkAutomate::Protocol

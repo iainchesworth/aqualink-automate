@@ -130,7 +130,24 @@ int main(int argc, char* argv[])
 			Serial::Initialise(settings, serial_port);
 		}
 
-		CleanUp::Register({ "Serial", [&serial_port]()->void { serial_port->cancel(); serial_port->close(); } });
+		CleanUp::Register(
+			{ 
+				"Serial",
+				[&serial_port]() -> void 
+				{ 
+					boost::system::error_code ec;
+					
+					if (serial_port->cancel(ec); ec.failed())
+					{
+						LogDebug(Channel::Protocol, std::format("CleanUp failed to cancel outstanding serial port asynchronous actions.  Error was -> {}", ec.message()));
+					}
+
+					if (serial_port->close(ec); ec.failed())
+					{
+						LogDebug(Channel::Protocol, std::format("CleanUp failed to close serial port.  Error was -> {}", ec.message()));
+					}
+				} 
+			});
 
 		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT
@@ -138,8 +155,7 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		auto jandy_equipment = std::make_shared<Equipment::JandyEquipment>(thread_pool.get_executor(), hub_locator);
-		equipment_hub->AddEquipment(jandy_equipment);
+		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(thread_pool.get_executor(), hub_locator));
 
 		if (!settings.emulated_device.disable_emulation)
 		{
@@ -152,23 +168,23 @@ int main(int argc, char* argv[])
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::make_shared<Devices::OneTouchDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::make_shared<Devices::KeypadDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::make_shared<Devices::IAQDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::make_shared<Devices::PDADevice>(thread_pool.get_executor(), device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::make_shared<Devices::SerialAdapterDevice>(thread_pool.get_executor(), device_id, hub_locator, true));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:
@@ -178,7 +194,29 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		CleanUp::Register({ "JandyEquipment", [&jandy_equipment]()->void { /* DO NOTHING */ } });
+		CleanUp::Register(
+			{ 
+				"JandyEquipment", 
+				[&equipment_hub]() -> void 
+				{
+					if (!equipment_hub)
+					{
+						// The equipment hub does not exist so don't attempt to close down the devices/equipment.
+					}
+					else
+					{
+						/*for (const auto& device : equipment_hub->ActiveDevices())
+						{
+							//equipment_hub->RemoveDevice(device);
+						}
+
+						for (const auto& equipment : equipment_hub->ActiveEquipment())
+						{
+							//equipment_hub->RemoveEquipment(equipment);
+						}*/
+					}
+				} 
+			});
 
 		//---------------------------------------------------------------------
 		// PROTOCOL HANDLER
@@ -186,13 +224,13 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
 
-		Protocol::ProtocolHandler protocol_handler(*serial_port);
+		Protocol::ProtocolHandler protocol_handler(thread_pool.get_executor(), *serial_port);
 		protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
 
 		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
 		protocol_handler.Run();
 
-		CleanUp::Register({ "Protocol Handler", []() -> void { /* DO NOTHING */ } });
+		CleanUp::Register({ "Protocol Handler", [&protocol_handler]() -> void { protocol_handler.Stop(); } });
 
 		//---------------------------------------------------------------------
 		// WEB SERVER
@@ -264,7 +302,7 @@ int main(int argc, char* argv[])
 			http_server->Run();
 		}
 
-		CleanUp::Register({ "Web Server", []() -> void { /* DO NOTHING */ }});
+		CleanUp::Register({ "Web Server", [&http_server, &https_server]() -> void { http_server->Stop(); https_server->Stop(); } });
 
 		//---------------------------------------------------------------------
 		// SIGNALS

@@ -23,8 +23,6 @@ namespace AqualinkAutomate::Interfaces
             for (const auto& session : m_ActiveSessions)
             {
                 LogTrace(Channel::Web, std::format("Websocket id {} has a use_count of {}", boost::uuids::to_string(session->Id()), session.use_count()));
-
-                session->Stop();
             }
 
             m_ActiveSessions.clear();
@@ -94,7 +92,7 @@ namespace AqualinkAutomate::Interfaces
     {
         LogTrace(Channel::Web, std::format("Broadcasting binary message to all ({}) sessions; message -> <is binary data>", m_ActiveSessions.size()));
 
-        std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
+        std::for_each(std::execution::par_unseq, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
             [this, &buffer](const auto& session) -> void
             {
                 LogTrace(Channel::Web, std::format("Broadcasting binary message ({} bytes) to session {}", buffer.size(), boost::uuids::to_string(session->Id())));
@@ -107,7 +105,7 @@ namespace AqualinkAutomate::Interfaces
     {
         LogTrace(Channel::Web, std::format("Broadcasting text message (copy) to all ({}) sessions; message -> {}", m_ActiveSessions.size(), buffer));
 
-        std::for_each(std::execution::par, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
+        std::for_each(std::execution::par_unseq, m_ActiveSessions.cbegin(), m_ActiveSessions.cend(),
             [this, &buffer](const auto& session) -> void
             {
                 LogTrace(Channel::Web, std::format("Broadcasting text message ({} bytes) to session {}", buffer.size(), boost::uuids::to_string(session->Id())));

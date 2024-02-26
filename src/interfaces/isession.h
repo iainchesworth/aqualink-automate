@@ -44,9 +44,6 @@ namespace AqualinkAutomate::Interfaces
 			return m_SessionId;
 		}
 
-	public:
-		virtual void Stop() = 0;
-
 	protected:
 		virtual void DoReadImpl() = 0;
 		virtual void DoWriteImpl() = 0;

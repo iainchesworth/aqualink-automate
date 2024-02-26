@@ -50,13 +50,11 @@ namespace AqualinkAutomate::Test
 
 		~TestResponseObject()
 		{
-			local_stream.close_remote();
-			local_stream.close();
+			// local_stream.close_remote();
+			//local_stream.close();
 
-			if (nullptr != session_ptr)
-			{
-				session_ptr->Stop();
-			}
+			internal_ioc.stop();
+			internal_ioc.reset();
 		}
 	};
 

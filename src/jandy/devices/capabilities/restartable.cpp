@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	Restartable::Restartable(Types::ExecutorType executor, std::chrono::seconds timeout_in_seconds, bool delayed_start) :
 		m_TimeoutDuration(timeout_in_seconds),
-		m_WatchdogTimer(executor),
+		m_WatchdogTimer(std::move(executor)),
 		m_IsRunning(false)
 	{
 		if (!delayed_start)
@@ -80,8 +80,15 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Restartable::Stop()
 	{
-		m_IsRunning.store(false);
-		m_WatchdogTimer.cancel();
+		try
+		{
+			m_IsRunning.store(false);
+			m_WatchdogTimer.cancel();
+		}
+		catch (const boost::system::system_error& ex_bse)
+		{
+			LogDebug(Channel::Devices, std::format("Exception thrown while attempting to cancel watchdog timer; error was -> {}", ex_bse.what()));
+		}
 	}
 
 	std::chrono::seconds Restartable::GetTimeout() const

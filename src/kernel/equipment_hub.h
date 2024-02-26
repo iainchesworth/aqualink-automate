@@ -2,6 +2,9 @@
 
 #include <memory>
 #include <vector>
+#include <typeindex>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <boost/signals2.hpp>
 
@@ -28,8 +31,8 @@ namespace AqualinkAutomate::Kernel
 	class EquipmentHub : public Interfaces::IHub
 	{
 	public:
-		EquipmentHub();
-		virtual ~EquipmentHub();
+		EquipmentHub() = default;
+		virtual ~EquipmentHub() = default;
 
 		//---------------------------------------------------------------------
 		// UPDATES / NOTIFICATIONS / EVENTS
@@ -43,20 +46,12 @@ namespace AqualinkAutomate::Kernel
 		//---------------------------------------------------------------------
 
 	public:
-		const std::vector<std::shared_ptr<Interfaces::IEquipment>>& ActiveEquipment() const;
-		const std::vector<std::shared_ptr<Interfaces::IDevice>>& ActiveDevices() const;
-
-	public:
-		void AddEquipment(std::shared_ptr<Interfaces::IEquipment> equipment);
-		void AddDevice(std::shared_ptr<Interfaces::IDevice> device);
-
-	public:
-		bool IsEquipmentRegistered(const std::shared_ptr<Interfaces::IEquipment> equipment) const;
-		bool IsDeviceRegistered(const Interfaces::IDeviceIdentifier& device_id) const;
+		bool AddEquipment(std::unique_ptr<Interfaces::IEquipment> device);
+		bool AddDevice(std::unique_ptr<Interfaces::IDevice> device);
 
 	private:
-		std::vector<std::shared_ptr<Interfaces::IEquipment>> m_ActiveEquipment{};
-		std::vector<std::shared_ptr<Interfaces::IDevice>> m_ActiveDevices{};
+		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;
+		std::unordered_set<std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
 
 		//---------------------------------------------------------------------
 		// SERVICE STATUS

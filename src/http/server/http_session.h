@@ -50,18 +50,6 @@ namespace AqualinkAutomate::HTTP
 		virtual ~HTTP_Session()
 		{
 			LogTrace(Channel::Web, std::format("Destroying HTTP session: {}", boost::uuids::to_string(Id())));
-
-			m_CancelRead.emit(boost::asio::cancellation_type::terminal);
-			m_CancelWrite.emit(boost::asio::cancellation_type::terminal);
-		}
-
-	public:
-		virtual void Stop() override
-		{
-			LogTrace(Channel::Web, std::format("HTTP session {}: Stop()", boost::uuids::to_string(Id())));
-			m_CancelRead.emit(boost::asio::cancellation_type::partial);
-			m_CancelWrite.emit(boost::asio::cancellation_type::partial);
-			m_Buffer.clear();
 		}
 
 	private:
@@ -78,40 +66,37 @@ namespace AqualinkAutomate::HTTP
 				SessionType().Stream(),
 				m_Buffer,
 				*m_Parser,
-				boost::asio::bind_cancellation_slot(
-					m_CancelRead.slot(),
-					[this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
+				[this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
+				{
+					LogTrace(Channel::Web, std::format("HTTP session {}: DoReadImpl()->Handler", boost::uuids::to_string(Id())));
+
+					boost::ignore_unused(bytes_transferred);
+
+					if (boost::beast::http::error::end_of_stream == ec)
 					{
-						LogTrace(Channel::Web, std::format("HTTP session {}: DoReadImpl()->Handler", boost::uuids::to_string(Id())));
+						return SessionType().DoEOF();
+					} 
+					else if (ec)
+					{
+						LogTrace(Channel::Web, std::format("Failed during read of HTTP stream; error was -> {}", ec.message()));
+					} 
+					else if (boost::beast::websocket::is_upgrade(m_Parser->get()))
+					{
+						LogTrace(Channel::Web, "WebSocket upgrade requested detected on HTTP stream -> transitioning to WebSockets");
+						boost::beast::get_lowest_layer(SessionType().Stream()).expires_never();
+						return WebSocket_MakeSession(SessionType().ReleaseStream(), m_Parser->release());
+					}
+					else
+					{
+						LogTrace(Channel::Web, "HTTP request from client; handling request");
+						QueueWrite(std::move(Routing::HTTP_OnRequest(m_Parser->release())));
 
-						boost::ignore_unused(bytes_transferred);
-
-						if (boost::beast::http::error::end_of_stream == ec)
+						if (QUEUE_LIMIT > m_ResponseQueue.size())
 						{
-							return SessionType().DoEOF();
-						} 
-						else if (ec)
-						{
-							LogTrace(Channel::Web, std::format("Failed during read of HTTP stream; error was -> {}", ec.message()));
-						} 
-						else if (boost::beast::websocket::is_upgrade(m_Parser->get()))
-						{
-							LogTrace(Channel::Web, "WebSocket upgrade requested detected on HTTP stream -> transitioning to WebSockets");
-							boost::beast::get_lowest_layer(SessionType().Stream()).expires_never();
-							return WebSocket_MakeSession(SessionType().ReleaseStream(), m_Parser->release());
-						}
-						else
-						{
-							LogTrace(Channel::Web, "HTTP request from client; handling request");
-							QueueWrite(std::move(Routing::HTTP_OnRequest(m_Parser->release())));
-
-							if (QUEUE_LIMIT > m_ResponseQueue.size())
-							{
-								DoRead();
-							}
+							DoRead();
 						}
 					}
-				)
+				}
 			);
 		}
 
@@ -142,30 +127,27 @@ namespace AqualinkAutomate::HTTP
 					boost::beast::async_write(
 						SessionType().Stream(),
 						std::move(msg),
-						boost::asio::bind_cancellation_slot(
-							m_CancelWrite.slot(),
-							[this, self = SessionType().shared_from_this(), keep_alive](boost::system::error_code ec, std::size_t bytes_transferred)
+						[this, self = SessionType().shared_from_this(), keep_alive](boost::system::error_code ec, std::size_t bytes_transferred)
+						{
+							LogTrace(Channel::Web, std::format("HTTP session {}: DoWriteImpl()->Handler", boost::uuids::to_string(Id())));
+
+							boost::ignore_unused(bytes_transferred);
+
+							if (ec)
 							{
-								LogTrace(Channel::Web, std::format("HTTP session {}: DoWriteImpl()->Handler", boost::uuids::to_string(Id())));
-
-								boost::ignore_unused(bytes_transferred);
-
-								if (ec)
-								{
-									LogDebug(Channel::Web, std::format("Failed during write of HTTP stream; error was -> {}", ec.message()));
-								}
-								else if (!keep_alive)
-								{
-									LogTrace(Channel::Web, "Write completed; no keep-alive required so transitioning to EOF and closing stream");
-									SessionType().DoEOF();
-								}
-								else if (DoWrite())
-								{
-									LogTrace(Channel::Web, "Write completed; keep-alive active and response queue is not full so queuing another read");
-									DoRead();
-								}
+								LogDebug(Channel::Web, std::format("Failed during write of HTTP stream; error was -> {}", ec.message()));
 							}
-						)
+							else if (!keep_alive)
+							{
+								LogTrace(Channel::Web, "Write completed; no keep-alive required so transitioning to EOF and closing stream");
+								SessionType().DoEOF();
+							}
+							else if (DoWrite())
+							{
+								LogTrace(Channel::Web, "Write completed; keep-alive active and response queue is not full so queuing another read");
+								DoRead();
+							}
+						}
 					);
 				}
 				catch (const std::bad_variant_access& ex)
@@ -180,7 +162,6 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		std::optional<boost::beast::http::request_parser<boost::beast::http::string_body>> m_Parser;
-		boost::asio::cancellation_signal m_CancelRead{}, m_CancelWrite{};
 	};
 
 }

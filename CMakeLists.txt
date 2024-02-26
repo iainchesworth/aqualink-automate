@@ -129,6 +129,7 @@ add_library(
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
 	src/concepts/is_one_of.cpp 
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:src/developer/asio_tracking.cpp>
 	src/developer/chrono_clocks.cpp 
 	src/developer/firewall_manager.cpp
 	src/developer/instance_counter.cpp 
@@ -492,6 +493,7 @@ target_compile_definitions(
 	-DMAGIC_ENUM_RANGE_MAX=255
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_CUSTOM_HANDLER_TRACKING=\"developer/asio_tracking.h\" > # Enable ASIO connection tracking to aid debug async operations
 )
 
 target_include_directories(

@@ -127,70 +127,72 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishChemistry
 	EquipmentOnOff_Page2();
 	EquipmentOnOff_Page3();
 
-	auto route_ws_equipment = std::make_unique<HTTP::WebSocket_Equipment>(*this);
-	BOOST_REQUIRE(nullptr != route_ws_equipment);
-	HTTP::Routing::Add(std::move(route_ws_equipment));
-
-	auto&& tro = Test::PerformHttpWsUpgradeResponse(io_context, "/ws/equipment");
-
-	std::array<uint8_t, 1024> websocket_buffer;
-	BOOST_TEST_REQUIRE(0 == tro->local_stream.buffer().size());
-
 	{
-		DataHub().ORP(650);
-		io_context.poll(); // ASYNC_READ
+		auto route_ws_equipment = std::make_unique<HTTP::WebSocket_Equipment>(*this);
+		BOOST_REQUIRE(nullptr != route_ws_equipment);
+		HTTP::Routing::Add(std::move(route_ws_equipment));
 
-		auto size = tro->local_stream.buffer().size();
-		const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_read);
+		auto&& tro = Test::PerformHttpWsUpgradeResponse(io_context, "/ws/equipment");
 
-		nlohmann::json wse_json;
-		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+		std::array<uint8_t, 1024> websocket_buffer;
+		BOOST_TEST_REQUIRE(0 == tro->local_stream.buffer().size());
 
-		BOOST_REQUIRE(wse_json.contains("type"));
-		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-		BOOST_REQUIRE(wse_json.contains("payload"));
-		BOOST_REQUIRE(wse_json["payload"].contains("orp"));
-		BOOST_CHECK_EQUAL(650, wse_json["payload"]["orp"]);
-	}
+		{
+			DataHub().ORP(650);
+			io_context.poll(); // ASYNC_READ
 
-	{
-		DataHub().pH(7.5);
-		io_context.poll(); // ASYNC_READ
+			auto size = tro->local_stream.buffer().size();
+			const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
+			BOOST_TEST_REQUIRE(0 == ec.value());
+			BOOST_TEST_REQUIRE(0 != bytes_read);
 
-		auto size = tro->local_stream.buffer().size();
-		const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_read);
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
 
-		nlohmann::json wse_json;
-		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+			BOOST_REQUIRE(wse_json.contains("type"));
+			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+			BOOST_REQUIRE(wse_json.contains("payload"));
+			BOOST_REQUIRE(wse_json["payload"].contains("orp"));
+			BOOST_CHECK_EQUAL(650, wse_json["payload"]["orp"]);
+		}
 
-		BOOST_REQUIRE(wse_json.contains("type"));
-		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-		BOOST_REQUIRE(wse_json.contains("payload"));
-		BOOST_REQUIRE(wse_json["payload"].contains("ph"));
-		BOOST_CHECK_EQUAL(7.5, wse_json["payload"]["ph"]);
-	}
+		{
+			DataHub().pH(7.5);
+			io_context.poll(); // ASYNC_READ
 
-	{
-		DataHub().SaltLevel(4000 * ppm);
-		io_context.poll(); // ASYNC_READ
+			auto size = tro->local_stream.buffer().size();
+			const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
+			BOOST_TEST_REQUIRE(0 == ec.value());
+			BOOST_TEST_REQUIRE(0 != bytes_read);
 
-		auto size = tro->local_stream.buffer().size();
-		const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_read);
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
 
-		nlohmann::json wse_json;
-		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+			BOOST_REQUIRE(wse_json.contains("type"));
+			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+			BOOST_REQUIRE(wse_json.contains("payload"));
+			BOOST_REQUIRE(wse_json["payload"].contains("ph"));
+			BOOST_CHECK_EQUAL(7.5, wse_json["payload"]["ph"]);
+		}
 
-		BOOST_REQUIRE(wse_json.contains("type"));
-		BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
-		BOOST_REQUIRE(wse_json.contains("payload"));
-		BOOST_REQUIRE(wse_json["payload"].contains("salt_level"));
-		BOOST_CHECK_EQUAL(4000, wse_json["payload"]["salt_level"]);
+		{
+			DataHub().SaltLevel(4000 * ppm);
+			io_context.poll(); // ASYNC_READ
+
+			auto size = tro->local_stream.buffer().size();
+			const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
+			BOOST_TEST_REQUIRE(0 == ec.value());
+			BOOST_TEST_REQUIRE(0 != bytes_read);
+
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+
+			BOOST_REQUIRE(wse_json.contains("type"));
+			BOOST_CHECK_EQUAL("ChemistryUpdate", wse_json["type"]);
+			BOOST_REQUIRE(wse_json.contains("payload"));
+			BOOST_REQUIRE(wse_json["payload"].contains("salt_level"));
+			BOOST_CHECK_EQUAL(4000, wse_json["payload"]["salt_level"]);
+		}
 	}
 }
 
@@ -204,32 +206,34 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishTemperatu
 	EquipmentOnOff_Page2();
 	EquipmentOnOff_Page3();
 
-	auto route_ws_equipment = std::make_unique<HTTP::WebSocket_Equipment>(*this);
-	BOOST_REQUIRE(nullptr != route_ws_equipment);
-	HTTP::Routing::Add(std::move(route_ws_equipment));
-
-	auto&& tro = Test::PerformHttpWsUpgradeResponse(io_context, "/ws/equipment");
-
-	std::array<uint8_t, 1024> websocket_buffer;
-	BOOST_TEST_REQUIRE(0 == tro->local_stream.buffer().size());
-
 	{
-		DataHub().PoolTemp(Utility::TemperatureStringConverter("Pool        38`C")().value());
-		io_context.poll(); // ASYNC_READ
+		auto route_ws_equipment = std::make_unique<HTTP::WebSocket_Equipment>(*this);
+		BOOST_REQUIRE(nullptr != route_ws_equipment);
+		HTTP::Routing::Add(std::move(route_ws_equipment));
 
-		auto size = tro->local_stream.buffer().size();
-		const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
-		BOOST_TEST_REQUIRE(0 == ec.value());
-		BOOST_TEST_REQUIRE(0 != bytes_read);
+		auto&& tro = Test::PerformHttpWsUpgradeResponse(io_context, "/ws/equipment");
 
-		nlohmann::json wse_json;
-		BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+		std::array<uint8_t, 1024> websocket_buffer;
+		BOOST_TEST_REQUIRE(0 == tro->local_stream.buffer().size());
 
-		BOOST_REQUIRE(wse_json.contains("type"));
-		BOOST_CHECK_EQUAL("TemperatureUpdate", wse_json["type"]);
-		BOOST_REQUIRE(wse_json.contains("payload"));
-		BOOST_REQUIRE(wse_json["payload"].contains("pool_temp"));
-		BOOST_CHECK_EQUAL("38\u00B0C", wse_json["payload"]["pool_temp"]);
+		{
+			DataHub().PoolTemp(Utility::TemperatureStringConverter("Pool        38`C")().value());
+			io_context.poll(); // ASYNC_READ
+
+			auto size = tro->local_stream.buffer().size();
+			const auto bytes_read = tro->local_stream.read_some(boost::asio::buffer(websocket_buffer), ec);
+			BOOST_TEST_REQUIRE(0 == ec.value());
+			BOOST_TEST_REQUIRE(0 != bytes_read);
+
+			nlohmann::json wse_json;
+			BOOST_REQUIRE_NO_THROW(wse_json = nlohmann::json::parse(websocket_buffer.data() + 2, websocket_buffer.data() + bytes_read));
+
+			BOOST_REQUIRE(wse_json.contains("type"));
+			BOOST_CHECK_EQUAL("TemperatureUpdate", wse_json["type"]);
+			BOOST_REQUIRE(wse_json.contains("payload"));
+			BOOST_REQUIRE(wse_json["payload"].contains("pool_temp"));
+			BOOST_CHECK_EQUAL("38\u00B0C", wse_json["payload"]["pool_temp"]);
+		}
 	}
 }
 

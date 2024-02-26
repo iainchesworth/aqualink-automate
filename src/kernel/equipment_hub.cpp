@@ -1,85 +1,69 @@
 #include <algorithm>
+#include <execution>
+#include <typeinfo>
 
 #include "kernel/equipment_hub.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	EquipmentHub::EquipmentHub() :
-		IHub()
+	bool EquipmentHub::AddEquipment(std::unique_ptr<Interfaces::IEquipment> equipment_to_add)
 	{
-	}
-
-	EquipmentHub::~EquipmentHub()
-	{
-	}
-
-	const std::vector<std::shared_ptr<Interfaces::IEquipment>>& EquipmentHub::ActiveEquipment() const
-	{
-		return m_ActiveEquipment;
-	}
-
-	const std::vector<std::shared_ptr<Interfaces::IDevice>>& EquipmentHub::ActiveDevices() const
-	{
-		return m_ActiveDevices;
-	}
-
-	void EquipmentHub::AddEquipment(std::shared_ptr<Interfaces::IEquipment> equipment)
-	{
-		if (IsEquipmentRegistered(equipment))
+		if (!equipment_to_add)
 		{
-			// Do nothing...this equipment is already being tracked.
-			LogDebug(Channel::Equipment, "Equipment has already been registered in the equipment hub...ignoring duplicate registration");
+			LogWarning(Channel::Devices, "Cannot register equipment with equipment hub; equipment object was invalid");
 		}
 		else
 		{
-			m_ActiveEquipment.push_back(equipment);
-			CheckAndRegisterForUpdateEvents(equipment);
+			std::type_index equipment_id_to_add = typeid(decltype(equipment_to_add)::element_type);
+
+			if (bool equipment_exists = m_ActiveEquipment.contains(equipment_id_to_add); equipment_exists)
+			{
+				LogDebug(Channel::Devices, "Failed to register equipment with equipment hub; equipment id already registered");
+			}
+			else if (auto [_, was_inserted] = m_ActiveEquipment.emplace(std::move(equipment_id_to_add), std::move(equipment_to_add)); !was_inserted)
+			{
+				LogDebug(Channel::Devices, "Failed to add equipment to equipment hub; internal error while adding equipment object");
+			}
+			else
+			{
+				return true;
+			}
 		}
+
+		return false;
 	}
 
-	void EquipmentHub::AddDevice(std::shared_ptr<Interfaces::IDevice> device)
+	bool EquipmentHub::AddDevice(std::unique_ptr<Interfaces::IDevice> device_to_add)
 	{
-		if (IsDeviceRegistered(device->DeviceId()))
+		if (!device_to_add)
 		{
-			// Do nothing...this device is already being tracked.
-			LogDebug(Channel::Devices, "Device has already been registered in the equipment hub...ignoring duplicate registration");
+			LogWarning(Channel::Devices, "Cannot register device with equipment hub; device object was invalid");
 		}
 		else
 		{
-			m_ActiveDevices.push_back(device);
-			CheckAndRegisterForUpdateEvents(device);
+			bool device_exists = std::any_of(
+				std::execution::par_unseq,
+				m_ActiveDevices.begin(),
+				m_ActiveDevices.end(),
+				[&device_to_add](const auto& existing_device)
+				{
+					return (device_to_add->DeviceId() == existing_device->DeviceId());
+				}
+			);
+
+			if (device_exists)
+			{
+				LogDebug(Channel::Devices, "Failed to register device with equipment hub; device id already registered");
+			}
+			else
+			{
+				m_ActiveDevices.insert(std::move(device_to_add));
+				return true;
+			}
 		}
-	}
 
-	bool EquipmentHub::IsEquipmentRegistered(const std::shared_ptr<Interfaces::IEquipment> equipment) const
-	{
-		bool equipment_exists = std::any_of
-		(
-			m_ActiveEquipment.begin(), 
-			m_ActiveEquipment.end(),
-			[&equipment](const auto& equipment_ptr)
-			{
-				return equipment_ptr == equipment;
-			}
-		);
-
-		return equipment_exists;
-	}
-
-	bool EquipmentHub::IsDeviceRegistered(const Interfaces::IDeviceIdentifier& device_id) const
-	{
-		bool device_exists = std::any_of
-		(
-			m_ActiveDevices.begin(),
-			m_ActiveDevices.end(),
-			[&device_id](const auto& device_ptr)
-			{
-				return (device_id == device_ptr->DeviceId());
-			}
-		);
-
-		return device_exists;
+		return false;
 	}
 
 }

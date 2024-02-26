@@ -50,9 +50,32 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
+	Listener::~Listener()
+	{
+		LogTrace(Channel::Web, "Destroying Listener");
+
+		Stop();
+
+		m_Acceptor.close();
+	}
+
 	void Listener::Run()
 	{
+		LogTrace(Channel::Web, "Starting Listener");
+
 		DoAccept();
+	}
+
+	void Listener::Stop()
+	{
+		LogTrace(Channel::Web, "Stopping Listener");
+
+		boost::system::error_code ec;
+
+		if (m_Acceptor.cancel(ec); ec.failed())
+		{
+			LogDebug(Channel::Web, "Failed to cancel outstanding asynchronous actions while stopping listener");
+		}
 	}
 
 	void Listener::DoAccept()
@@ -61,18 +84,23 @@ namespace AqualinkAutomate::HTTP
 			boost::asio::make_strand(m_Acceptor.get_executor()),
 			[this, self = shared_from_this()](boost::system::error_code ec, boost::asio::ip::tcp::socket socket) -> void
 			{
-				switch (ec.value())
+				if (auto err = ec.value(); boost::asio::error::operation_aborted == err)
 				{
-                case boost::system::errc::success:
-					std::make_shared<DetectSession>(std::move(socket), m_SSLContext)->Run();
-					break;
-
-				default:
-					LogDebug(Channel::Web, std::format("Failed to accept HTTP connection from {}; error was -> {}", socket.remote_endpoint(), ec.message()));
-					break;
+					LogDebug(Channel::Web, "Outstanding acceptor actions were cancelled; handler will not restart accept action");
 				}
+				else
+				{
+					if (boost::system::errc::success == err)
+					{
+						std::make_shared<DetectSession>(std::move(socket), m_SSLContext)->Run();
+					}
+					else
+					{
+						LogDebug(Channel::Web, std::format("Failed to accept HTTP connection from {}; error was -> {}", socket.remote_endpoint(), ec.message()));
+					}
 
-				DoAccept();
+					DoAccept();
+				}
 			}
 		);
 	}

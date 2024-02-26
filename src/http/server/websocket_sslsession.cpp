@@ -11,12 +11,14 @@ namespace AqualinkAutomate::HTTP
         std::enable_shared_from_this<WebSocket_SSLSession>(),
         m_WS(std::move(stream))
     {
-        LogTrace(Channel::Web, std::format("Creating WebSocket SSL session: {}", boost::uuids::to_string(Id())));
+        LogTrace(Channel::Web, std::format("Creating SSL WebSocket session: {}", boost::uuids::to_string(Id())));
     }
 
     WebSocket_SSLSession::~WebSocket_SSLSession()
     {
-        LogTrace(Channel::Web, std::format("Destroying WebSocket SSL session: {}", boost::uuids::to_string(Id())));
+        LogTrace(Channel::Web, std::format("Destroying SSL WebSocket session: {}", boost::uuids::to_string(Id())));
+
+        m_WS.next_layer().next_layer().cancel();
     }
 
     boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>>& WebSocket_SSLSession::WS()
