@@ -1,10 +1,13 @@
 ﻿#include <thread>
+#include <vector>
 
-#include <boost/asio/ssl/context.hpp>
+#include <boost/asio.hpp>
+#include <boost/cobalt.hpp>
 #include <boost/stacktrace.hpp>
 #include <magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
+#include "coroutines/asynchronous_executor.h"
 #include "developer/firewall_manager.h"
 #include "developer/mock_serial_port.h"
 #include "exceptions/exception_optionparsingfailed.h"
@@ -44,10 +47,6 @@
 #include "protocol/protocol_handler.h"
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
-#include "signals/signal_awaitable.h"
-#include "signals/signal_cleanup.h"
-#include "types/asynchronous_executor.h"
-#include "types/asynchronous_threadpool.h"
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
@@ -57,13 +56,12 @@ using namespace AqualinkAutomate::Messages;
 using namespace AqualinkAutomate::Profiling;
 using namespace AqualinkAutomate::Protocol;
 using namespace AqualinkAutomate::Serial;
-using namespace AqualinkAutomate::Signals;
 
-int main(int argc, char* argv[])
+boost::cobalt::main co_main(int argc, char* argv[])
 {
 	try
 	{
-		Types::AsyncThreadPool thread_pool(std::thread::hardware_concurrency());
+		boost::cobalt::wait_group server_tasks_wg;
 
 		//---------------------------------------------------------------------
 		// LOGGING
@@ -105,6 +103,7 @@ int main(int argc, char* argv[])
 		// SERIAL PORT
 		//---------------------------------------------------------------------
 
+		auto serial_port_executor = co_await boost::cobalt::this_coro::executor;
 		std::shared_ptr<Serial::SerialPort> serial_port;
 
 		if (settings.developer.dev_mode_enabled)
@@ -113,41 +112,22 @@ int main(int argc, char* argv[])
 
 			if (!settings.developer.replay_file.empty())
 			{
-				serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Mock);
+				serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Mock);
 				serial_port->open(settings.developer.replay_file);
 			}
 			else
 			{
 				// Normal mode as no developer mode options are enabled.
-				serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Real);
+				serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Real);
 				Serial::Initialise(settings, serial_port);
 			}
 		}
 		else
 		{
 			// Normal mode as no developer mode options are enabled.
-			serial_port = std::make_shared<Serial::SerialPort>(thread_pool.get_executor(), hub_locator, OperatingModes::Real);
+			serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Real);
 			Serial::Initialise(settings, serial_port);
 		}
-
-		CleanUp::Register(
-			{ 
-				"Serial",
-				[&serial_port]() -> void 
-				{ 
-					boost::system::error_code ec;
-					
-					if (serial_port->cancel(ec); ec.failed())
-					{
-						LogDebug(Channel::Protocol, std::format("CleanUp failed to cancel outstanding serial port asynchronous actions.  Error was -> {}", ec.message()));
-					}
-
-					if (serial_port->close(ec); ec.failed())
-					{
-						LogDebug(Channel::Protocol, std::format("CleanUp failed to close serial port.  Error was -> {}", ec.message()));
-					}
-				} 
-			});
 
 		//---------------------------------------------------------------------
 		// JANDY EQUIPMENT
@@ -155,7 +135,7 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(thread_pool.get_executor(), hub_locator));
+		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator));
 
 		if (!settings.emulated_device.disable_emulation)
 		{
@@ -168,23 +148,23 @@ int main(int argc, char* argv[])
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(thread_pool.get_executor(), device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true)));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:
@@ -194,43 +174,14 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		CleanUp::Register(
-			{ 
-				"JandyEquipment", 
-				[&equipment_hub]() -> void 
-				{
-					if (!equipment_hub)
-					{
-						// The equipment hub does not exist so don't attempt to close down the devices/equipment.
-					}
-					else
-					{
-						/*for (const auto& device : equipment_hub->ActiveDevices())
-						{
-							//equipment_hub->RemoveDevice(device);
-						}
-
-						for (const auto& equipment : equipment_hub->ActiveEquipment())
-						{
-							//equipment_hub->RemoveEquipment(equipment);
-						}*/
-					}
-				} 
-			});
-
 		//---------------------------------------------------------------------
 		// PROTOCOL HANDLER
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
 
-		Protocol::ProtocolHandler protocol_handler(thread_pool.get_executor(), *serial_port);
-		protocol_handler.RegisterPublishableMessage<Messages::JandyMessage_Ack>();
-
-		// This is a non-blocking call as it posts the step into the io context; note that the clean-up will trigger a "stop".
-		protocol_handler.Run();
-
-		CleanUp::Register({ "Protocol Handler", [&protocol_handler]() -> void { protocol_handler.Stop(); } });
+		server_tasks_wg.push_back(Protocol::ProtocolHandler_ReadOp(*serial_port));
+		server_tasks_wg.push_back(Protocol::ProtocolHandler_WriteOp<Messages::JandyMessage_Ack>(*serial_port));
 
 		//---------------------------------------------------------------------
 		// WEB SERVER
@@ -274,7 +225,6 @@ int main(int argc, char* argv[])
 		HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", settings.web.doc_root));
 
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls_server);
-		std::shared_ptr<HTTP::Listener> http_server, https_server;
 
 		if (settings.web.https_server_is_enabled)
 		{
@@ -290,33 +240,21 @@ int main(int argc, char* argv[])
 
 			Certificates::LoadSslCertificates(settings.web, ssl_context);
 
-			boost::asio::ip::tcp::endpoint https_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.https_port);
-			https_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), https_endpoint, ssl_context);
-			https_server->Run();
+			server_tasks_wg.push_back(HTTP::Listener(boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(settings.web.bind_address),settings.web.https_port }, ssl_context));
 		}
 
 		if (settings.web.http_server_is_enabled)
 		{
-			boost::asio::ip::tcp::endpoint http_endpoint(boost::asio::ip::address::from_string(settings.web.bind_address), settings.web.http_port);
-			http_server = std::make_shared<HTTP::Listener>(thread_pool.get_executor(), http_endpoint);
-			http_server->Run();
+			server_tasks_wg.push_back(HTTP::Listener(boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(settings.web.bind_address),settings.web.http_port }));
 		}
-
-		CleanUp::Register({ "Web Server", [&http_server, &https_server]() -> void { http_server->Stop(); https_server->Stop(); } });
-
-		//---------------------------------------------------------------------
-		// SIGNALS
-		//---------------------------------------------------------------------
-
-		boost::asio::signal_set ss(thread_pool.get_executor());
-		Signal_Awaitable(ss);
 
 		//---------------------------------------------------------------------
 		// START APPLICATION
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
-		thread_pool.join();
+
+		co_await server_tasks_wg.wait();
 
 		//---------------------------------------------------------------------
 		// STOP APPLICATION
@@ -329,19 +267,19 @@ int main(int argc, char* argv[])
 			profiler->StopProfiling();
 		}
 		
-		return EXIT_SUCCESS;
+		co_return EXIT_SUCCESS;
 	}
 	catch (const Exceptions::OptionsHelpOrVersion&)
 	{
 		// Nothing happens since the user has been informed of the help/version information.
 		// Just terminate as if nothing had happened.
-		return EXIT_SUCCESS;
+		co_return EXIT_SUCCESS;
 	}
 	catch (const Exceptions::OptionParsingFailed&)
 	{
 		// Nothing happens since the user has been informed of the option parsing error.
 		// Just terminate as if nothing had happened.
-		return EXIT_SUCCESS;
+		co_return EXIT_SUCCESS;
 	}
 	catch (const Exceptions::GenericAqualinkException& ex_gae)
 	{
@@ -364,16 +302,16 @@ int main(int argc, char* argv[])
 			LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
 		}
 
-		return EXIT_FAILURE;
+		co_return EXIT_FAILURE;
 	}
 	catch (const boost::system::system_error& err)
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-		return EXIT_FAILURE;
+		co_return EXIT_FAILURE;
 	}
 	catch (const std::exception& err)
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-		return EXIT_FAILURE;
+		co_return EXIT_FAILURE;
 	}
 }

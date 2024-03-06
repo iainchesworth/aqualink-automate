@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(StatsSignalTest)
 
     bool signalReceived = false;
 
-    signal.connect([&signalReceived]() { signalReceived = true; });
+    signal.connect([&signalReceived](uint64_t /* ignored */) { signalReceived = true; });
 
     AqualinkAutomate::Utility::StatsCounter counter(signal);
 
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(VariantStatsSignalTest)
 
     bool signalReceived = false;
     
-    counter.Signal().connect([&signalReceived]() { signalReceived = true; });
+    counter.Signal().connect([&signalReceived](uint64_t /* ignored */) { signalReceived = true; });
 
     // Trigger the signal by accessing a new stats counter
     counter[3.14] += 1;

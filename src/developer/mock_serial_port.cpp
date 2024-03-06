@@ -2,7 +2,7 @@
 
 namespace AqualinkAutomate::Developer
 {
-	mock_serial_port::mock_serial_port(Types::ExecutorType executor) :
+	mock_serial_port::mock_serial_port(Coroutines::ExecutorType executor) :
 		m_Executor(std::move(executor)),
 		m_WriteDelayTimer(m_Executor),
 		m_RandomDevice{},
@@ -11,13 +11,13 @@ namespace AqualinkAutomate::Developer
 	{
 	}
 
-	mock_serial_port::mock_serial_port(Types::ExecutorType executor, const std::string& device_name)
+	mock_serial_port::mock_serial_port(Coroutines::ExecutorType executor, const std::string& device_name)
 		: mock_serial_port(executor)
 	{
 		open(device_name);
 	}
 
-	mock_serial_port::mock_serial_port(Types::ExecutorType executor, const std::string& device_name, boost::system::error_code& ec)
+	mock_serial_port::mock_serial_port(Coroutines::ExecutorType executor, const std::string& device_name, boost::system::error_code& ec)
 		: mock_serial_port(executor)
 	{
 		open(device_name, ec);
@@ -120,7 +120,7 @@ namespace AqualinkAutomate::Developer
 		}
 	}
 
-	Types::ExecutorType mock_serial_port::get_executor()
+	Coroutines::ExecutorType mock_serial_port::get_executor()
 	{
 		return m_Executor;
 	}

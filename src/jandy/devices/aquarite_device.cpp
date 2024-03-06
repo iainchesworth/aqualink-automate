@@ -10,14 +10,14 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	AquariteDevice::AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id) :
-		AquariteDevice(std::move(executor), device_id, 0, 0, 0)
+	AquariteDevice::AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+		AquariteDevice(device_id, 0, 0, 0)
 	{
 	}
 
-	AquariteDevice::AquariteDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
+	AquariteDevice::AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
 		JandyDevice(device_id),
-		Capabilities::Restartable(std::move(executor), AQUARITE_TIMEOUT_DURATION),
+		Capabilities::Restartable(AQUARITE_TIMEOUT_DURATION),
 		m_Requested(AQUARITE_PERCENT_DEBOUNCE_THRESHOLD),
 		m_Reported(std::make_pair(reported_percentage, std::chrono::system_clock::now())),
 		m_SaltPPM(std::make_pair(salt_ppm, std::chrono::system_clock::now()))

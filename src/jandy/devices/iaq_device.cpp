@@ -9,9 +9,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	IAQDevice::IAQDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	IAQDevice::IAQDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(std::move(device_id), hub_locator),
-		Capabilities::Restartable(std::move(executor), IAQ_TIMEOUT_DURATION),
+		Capabilities::Restartable(IAQ_TIMEOUT_DURATION),
 		Capabilities::Screen(IAQ_STATUS_PAGE_LINES),
 		Capabilities::Emulated(is_emulated),
 		m_StatusPage(IAQ_STATUS_PAGE_LINES),

@@ -48,28 +48,28 @@ namespace AqualinkAutomate::Utility
 	StatsCounter& StatsCounter::operator=(const uint64_t count_to_assign)
 	{
 		m_Count = count_to_assign;
-		m_StatsSignal();
+		m_StatsSignal(m_Count);
 		return *this;
 	}
 
 	StatsCounter& StatsCounter::operator+=(const uint64_t count_to_add)
 	{
 		m_Count += count_to_add;
-		m_StatsSignal(); 
+		m_StatsSignal(m_Count);
 		return *this;
 	}
 
 	StatsCounter& StatsCounter::operator++()
 	{
 		m_Count++;
-		m_StatsSignal(); 
+		m_StatsSignal(m_Count);
 		return *this;
 	}
 
 	StatsCounter& StatsCounter::operator++(int)
 	{
 		++m_Count;
-		m_StatsSignal(); 
+		m_StatsSignal(m_Count);
 		return *this;
 	}
 

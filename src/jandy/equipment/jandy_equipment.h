@@ -20,7 +20,6 @@
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
 #include "protocol/protocol_handler.h"
-#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Equipment
 {
@@ -28,7 +27,7 @@ namespace AqualinkAutomate::Equipment
 	class JandyEquipment : public Interfaces::IEquipment, public Interfaces::IStatusPublisher
 	{
 	public:
-		JandyEquipment(Types::ExecutorType executor, Kernel::HubLocator& hub_locator);
+		JandyEquipment(Kernel::HubLocator& hub_locator);
 		virtual ~JandyEquipment();
 
 	private:

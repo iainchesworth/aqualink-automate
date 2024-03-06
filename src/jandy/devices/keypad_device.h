@@ -30,7 +30,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		KeypadDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		KeypadDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~KeypadDevice();
 
 	private:

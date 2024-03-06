@@ -1,5 +1,8 @@
 #include <functional>
 
+#include <boost/cobalt/race.hpp>
+
+#include "coroutines/awaitable_signal.h"
 #include "http/websocket_event.h"
 #include "http/websocket_equipment.h"
 #include "logging/logging.h"
@@ -17,48 +20,51 @@ namespace AqualinkAutomate::HTTP
 		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
 	}
 
+	boost::cobalt::generator<std::string> WebSocket_Equipment::MessageGenerator()
+	{
+		while (!co_await boost::cobalt::this_coro::cancelled)
+		{
+			auto res = co_await boost::cobalt::race(
+				Coroutines::AwaitSignal<std::shared_ptr<Kernel::DataHub_ConfigEvent>>(m_DataHub->ConfigUpdateSignal),
+				Coroutines::AwaitSignal<std::shared_ptr<Kernel::EquipmentHub_SystemEvent>>(m_EquipmentHub->EquipmentStatusChangeSignal)
+			);
+
+			struct SignalVisitor
+			{
+				std::string operator()(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event)
+				{
+					return HTTP::WebSocket_Event(config_update_event).Payload();
+				}
+				std::string operator()(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_update_event)
+				{
+					return HTTP::WebSocket_Event(system_update_event).Payload();
+				}
+			};
+
+			boost::variant2::visit(SignalVisitor(), res);
+		}
+
+		co_return std::string{};
+	}
+
 	void WebSocket_Equipment::OnOpen()
 	{
-		m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect([this](auto&& PH1) { HandleEvent_DataHubConfigUpdate(std::forward<decltype(PH1)>(PH1)); });
-		m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect([this](auto&& PH1) { HandleEvent_DataHubSystemUpdate(std::forward<decltype(PH1)>(PH1)); });
 	}
 
 	void WebSocket_Equipment::OnMessage(const boost::beast::flat_buffer& buffer)
 	{
 	}
 
+	void WebSocket_Equipment::OnPublish()
+	{
+	}
+
 	void WebSocket_Equipment::OnClose()
 	{
-		m_ConfigChangeSlot.disconnect();
 	}
 
 	void WebSocket_Equipment::OnError()
 	{
-		m_ConfigChangeSlot.disconnect();
-	}
-
-	void WebSocket_Equipment::HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event)
-	{
-		if (nullptr == config_update_event)
-		{
-			LogDebug(Channel::Web, "Received an invalid Kernel::DataHub_ConfigEvent; config_update_event -> nullptr");
-		}
-		else
-		{
-			BroadcastMessage(HTTP::WebSocket_Event(config_update_event).Payload());
-		}
-	}
-
-	void WebSocket_Equipment::HandleEvent_DataHubSystemUpdate(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_update_event)
-	{
-		if (nullptr == system_update_event)
-		{
-			LogDebug(Channel::Web, "Received an invalid Kernel::EquipmentHub_SystemEvent; system_update_event -> nullptr");
-		}
-		else
-		{
-			BroadcastMessage(HTTP::WebSocket_Event(system_update_event).Payload());
-		}
 	}
 
 }

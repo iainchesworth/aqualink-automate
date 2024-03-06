@@ -5,7 +5,6 @@
 
 #include "http/server/server_types.h"
 #include "http/server/static_file_handler.h"
-#include "interfaces/isession.h"
 #include "interfaces/iwebroute.h"
 #include "interfaces/iwebsocket.h"
 

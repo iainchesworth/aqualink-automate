@@ -1,3 +1,4 @@
+#include <boost/cobalt.hpp>
 #include <boost/system/error_code.hpp>
 
 #include "jandy/devices/capabilities/restartable.h"
@@ -9,9 +10,9 @@ namespace AqualinkAutomate::Devices::Capabilities
 {
 	const std::chrono::seconds Restartable::DEFAULT_WATCHDOG_TIMEOUT{ std::chrono::seconds(30) };
 
-	Restartable::Restartable(Types::ExecutorType executor, std::chrono::seconds timeout_in_seconds, bool delayed_start) :
+	Restartable::Restartable(std::chrono::seconds timeout_in_seconds, bool delayed_start) :
 		m_TimeoutDuration(timeout_in_seconds),
-		m_WatchdogTimer(std::move(executor)),
+		//m_WatchdogTimer(co_await boost::cobalt::this_coro::executor),
 		m_IsRunning(false)
 	{
 		if (!delayed_start)
@@ -45,7 +46,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 	{
 		if (m_IsRunning.load())
 		{
-			m_WatchdogTimer.expires_from_now(m_TimeoutDuration);
+			/*m_WatchdogTimer.expires_from_now(m_TimeoutDuration);
 			m_WatchdogTimer.async_wait
 			(
 				[this](const boost::system::error_code& ec)
@@ -70,7 +71,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 					}
 					
 				}
-			);
+			);*/
 		}
 		else
 		{
@@ -83,7 +84,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		try
 		{
 			m_IsRunning.store(false);
-			m_WatchdogTimer.cancel();
+			//m_WatchdogTimer.cancel();
 		}
 		catch (const boost::system::system_error& ex_bse)
 		{

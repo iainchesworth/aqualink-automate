@@ -1,108 +1,74 @@
 #include <format>
 
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio.hpp>
+#include <boost/cobalt.hpp>
 #include <boost/system/error_code.hpp>
+#include <tl/expected.hpp>
 
+#include "coroutines/cancellation_signal.h"
 #include "formatters/asio_endpoint_formatter.h"
 #include "http/server/detectsession.h"
 #include "http/server/listener.h"
+#include "http/server/server_types.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
-	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint) :
-		Listener(std::move(executor), endpoint, std::nullopt)
-	{
-	}
 
-	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, boost::asio::ssl::context& ssl_context) :
-		Listener(std::move(executor), endpoint, std::make_optional(std::ref(ssl_context)))
+	namespace
 	{
+		Coroutines::MultiSlot_CancellationSignal detectsession_cancellationsignal;
 	}
+	// namespace
 
-	Listener::Listener(Types::ExecutorType executor, boost::asio::ip::tcp::endpoint endpoint, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context_ref) :
-		m_SSLContext(ssl_context_ref),
-		m_Acceptor(boost::asio::make_strand(executor))
+	boost::cobalt::promise<void> Listener(boost::asio::ip::tcp::endpoint endpoint, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context)
 	{
+		auto exec = co_await boost::cobalt::this_coro::executor;
+
+		TcpAcceptor acceptor(exec);
+		
 		boost::system::error_code ec;
-
-		if (m_Acceptor.open(endpoint.protocol(), ec); ec)
+				
+		if (acceptor.open(endpoint.protocol(), ec); ec)
 		{
 			LogWarning(Channel::Web, std::format("Failed to open HTTP server acceptor; error was -> {}", ec.message()));
 		}
-		else if (m_Acceptor.set_option(boost::asio::socket_base::reuse_address(true), ec); ec)
+		else if (acceptor.set_option(boost::asio::socket_base::reuse_address(true), ec); ec)
 		{
 			LogWarning(Channel::Web, std::format("Failed to configure HTTP server acceptor to reuse address; error was -> {}", ec.message()));
 		}
-		else if (m_Acceptor.bind(endpoint, ec); ec)
+		else if (acceptor.bind(endpoint, ec); ec)
 		{
 			LogWarning(Channel::Web, std::format("Failed to bind HTTP server to endpoint {}; error was -> {}", endpoint, ec.message()));
 		}
-		else if (m_Acceptor.listen(boost::asio::socket_base::max_listen_connections, ec); ec)
+		else if (acceptor.listen(boost::asio::socket_base::max_listen_connections, ec); ec)
 		{
 			LogWarning(Channel::Web, std::format("Failed to listen to HTTP server endpoint {}; error was -> {}", endpoint, ec.message()));
 		}
 		else
 		{
-			// All good.
-		}
-	}
-
-	Listener::~Listener()
-	{
-		LogTrace(Channel::Web, "Destroying Listener");
-
-		Stop();
-
-		m_Acceptor.close();
-	}
-
-	void Listener::Run()
-	{
-		LogTrace(Channel::Web, "Starting Listener");
-
-		DoAccept();
-	}
-
-	void Listener::Stop()
-	{
-		LogTrace(Channel::Web, "Stopping Listener");
-
-		boost::system::error_code ec;
-
-		if (m_Acceptor.cancel(ec); ec.failed())
-		{
-			LogDebug(Channel::Web, "Failed to cancel outstanding asynchronous actions while stopping listener");
-		}
-	}
-
-	void Listener::DoAccept()
-	{
-		m_Acceptor.async_accept(
-			boost::asio::make_strand(m_Acceptor.get_executor()),
-			[this, self = shared_from_this()](boost::system::error_code ec, boost::asio::ip::tcp::socket socket) -> void
+			while (!co_await boost::cobalt::this_coro::cancelled)
 			{
-				if (auto err = ec.value(); boost::asio::error::operation_aborted == err)
+				auto [ec, sock] = co_await acceptor.async_accept(boost::asio::as_tuple(boost::cobalt::use_op));
+				if (ec)
 				{
-					LogDebug(Channel::Web, "Outstanding acceptor actions were cancelled; handler will not restart accept action");
+					LogDebug(Channel::Web, std::format("Accepter has terminated -> {}: {}", ec.value(), ec.message()));
+					break;
 				}
 				else
 				{
-					if (boost::system::errc::success == err)
-					{
-						std::make_shared<DetectSession>(std::move(socket), m_SSLContext)->Run();
-					}
-					else
-					{
-						LogDebug(Channel::Web, std::format("Failed to accept HTTP connection from {}; error was -> {}", socket.remote_endpoint(), ec.message()));
-					}
-
-					DoAccept();
+					// Create a detached coroutine for this session...and go back to listening.
+					DetectSession(TcpStream(std::move(sock)), ssl_context, detectsession_cancellationsignal.Slot());
 				}
 			}
-		);
+
+			// Trigger cancellation for any detached sessions (spawned from the co_await DetectSession...).
+			detectsession_cancellationsignal.Emit(boost::asio::cancellation_type::all);
+		}
+
+		co_return;
 	}
 
 }

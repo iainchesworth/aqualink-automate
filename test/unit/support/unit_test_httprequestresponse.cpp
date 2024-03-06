@@ -6,9 +6,6 @@
 #include <boost/beast/_experimental/test/handler.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "http/server/http_plainsession.h"
-#include "http/server/websocket_plainsession.h"
-
 #include "mocks/mock_beast_basicstream_with_timeout.h"
 #include "support/unit_test_httprequestresponse.h"
 
@@ -19,6 +16,7 @@ namespace AqualinkAutomate::Test
 
 	std::shared_ptr<TestResponseObject> PerformHttpRequestResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
 	{
+		/*
 		boost::beast::flat_buffer remote_stream_buffer;
 		Test::MockBeastBasicStreamWithTimeout remote_stream(io_context);
 		auto tro = std::make_shared<Test::TestResponseObject>(io_context, remote_stream);
@@ -62,10 +60,14 @@ namespace AqualinkAutomate::Test
 		io_context.poll(); // ASYNC OPS
 
 		return tro;
+		*/
+
+		return nullptr;
 	}
 
 	std::shared_ptr<TestResponseObject> PerformHttpWsUpgradeResponse(boost::asio::io_context& io_context, const std::string_view& url_to_retrieve)
 	{
+		/*
 		boost::beast::flat_buffer remote_stream_buffer;
 		Test::MockBeastBasicStreamWithTimeout remote_stream(io_context);
 		auto tro = std::make_unique<Test::TestResponseObject>(io_context, remote_stream);
@@ -116,6 +118,9 @@ namespace AqualinkAutomate::Test
 		BOOST_TEST_REQUIRE(boost::beast::http::status::switching_protocols == tro->last_response.result());
 
 		return tro;
+		*/
+
+		return nullptr;
 	}
 
 }

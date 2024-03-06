@@ -30,7 +30,7 @@ namespace AqualinkAutomate::Serial
 		using RealSerialPortPtr = std::unique_ptr<RealSerialPort>;
 
 	public:
-		SerialPort(Types::ExecutorType executor, Kernel::HubLocator& hub_locator, OperatingModes operating_mode = OperatingModes::Real);
+		SerialPort(Coroutines::ExecutorType executor, Kernel::HubLocator& hub_locator, OperatingModes operating_mode = OperatingModes::Real);
 
 	public:
 		void open(const std::string& device);
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Mock:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> async_read_some", BOOST_CURRENT_LOCATION);
-				return m_MockSerialPort->async_read_some(buffer, std::forward<ReadToken>(token));
+				throw; ///FIXME return m_MockSerialPort->async_read_some(buffer, std::forward<ReadToken>(token));
 			}
 
 			case OperatingModes::Real:
@@ -104,7 +104,7 @@ namespace AqualinkAutomate::Serial
 			case OperatingModes::Mock:
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> mock serial port -> async_write_some", BOOST_CURRENT_LOCATION);
-				return m_MockSerialPort->async_write_some(buffer, std::forward<WriteToken>(token));
+				throw;// return m_MockSerialPort->async_write_some(buffer, std::forward<WriteToken>(token));
 			}
 
 			case OperatingModes::Real:

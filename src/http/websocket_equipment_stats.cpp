@@ -1,3 +1,6 @@
+#include <cstdint>
+
+#include "coroutines/awaitable_signal.h"
 #include "http/json/json_equipment.h"
 #include "http/websocket_equipment_stats.h"
 #include "http/websocket_event.h"
@@ -16,38 +19,36 @@ namespace AqualinkAutomate::HTTP
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
+	boost::cobalt::generator<std::string> WebSocket_Equipment_Stats::MessageGenerator()
+	{
+		while (!co_await boost::cobalt::this_coro::cancelled)
+		{
+			co_await Coroutines::AwaitSignal<uint64_t>(m_StatisticsHub->MessageCounts.Signal());
+			
+			co_yield HTTP::WebSocket_Event(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub)).Payload();
+		}
+
+		co_return std::string{};
+	}
+
 	void WebSocket_Equipment_Stats::OnOpen()
 	{
-		m_StatsSlot = m_StatisticsHub->MessageCounts.Signal().connect(
-			[this]() -> void
-			{
-				LogTrace(Channel::Web, "Publishing updated message count statistics to connected web socket.");
-
-				// Convert JSON to string and send it over the WebSocket connection
-				HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
-				BroadcastMessage(ws_statistics_update.Payload());
-			}
-		);
-
-		LogTrace(Channel::Web, "Publishing initial message count statistics to connected web socket.");
-
-		// Convert JSON to string and send it over the WebSocket connection
-		HTTP::WebSocket_Event ws_statistics_update(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub));
-		BroadcastMessage(ws_statistics_update.Payload());
 	}
 
 	void WebSocket_Equipment_Stats::OnMessage(const boost::beast::flat_buffer& buffer)
 	{
 	}
 
+	void WebSocket_Equipment_Stats::OnPublish()
+	{
+	}
+
 	void WebSocket_Equipment_Stats::OnClose()
 	{
-		m_StatsSlot.disconnect();
 	}
 
 	void WebSocket_Equipment_Stats::OnError()
 	{
-		m_StatsSlot.disconnect();
 	}
 
 }

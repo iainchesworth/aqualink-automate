@@ -18,9 +18,13 @@ namespace AqualinkAutomate::HTTP
 	public:
 		WebSocket_Equipment_Stats(Kernel::HubLocator& hub_locator);
 
-	private:
+	public:
+		virtual boost::cobalt::generator<std::string> MessageGenerator() override;
+
+	public:
 		virtual void OnOpen() override;
 		virtual void OnMessage(const boost::beast::flat_buffer& buffer) override;
+		virtual void OnPublish() override;
 		virtual void OnClose() override;
 		virtual void OnError() override;
 

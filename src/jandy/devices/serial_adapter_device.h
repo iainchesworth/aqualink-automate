@@ -18,7 +18,6 @@
 #include "kernel/hub_locator.h"
 #include "kernel/temperature.h"
 #include "profiling/profiling.h"
-#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -29,7 +28,7 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
-		SerialAdapterDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		SerialAdapterDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~SerialAdapterDevice();
 
 	private:

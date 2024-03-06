@@ -5,8 +5,6 @@
 #include <string>
 #include <string_view>
 
-#include <boost/format.hpp>
-
 #include "kernel/temperature.h"
 #include "utility/to_string.h"
 

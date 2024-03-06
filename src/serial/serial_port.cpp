@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Serial
 {
 
-	SerialPort::SerialPort(Types::ExecutorType executor, Kernel::HubLocator& hub_locator, OperatingModes operating_mode) :
+	SerialPort::SerialPort(Coroutines::ExecutorType executor, Kernel::HubLocator& hub_locator, OperatingModes operating_mode) :
 		m_OperatingMode(operating_mode),
 		m_MockSerialPort(std::make_unique<MockSerialPort>(executor)),
 		m_RealSerialPort(std::make_unique<RealSerialPort>(executor)),

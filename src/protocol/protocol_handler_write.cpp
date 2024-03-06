@@ -1,8 +1,8 @@
 #include <format>
+#include <mutex>
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/error.hpp>
-#include <boost/system/error_code.hpp>
+#include <boost/asio.hpp>
+#include <boost/cobalt.hpp>
 
 #include "jandy/generator/jandy_message_generator.h"
 #include "logging/logging.h"
@@ -16,70 +16,55 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
-	bool ProtocolHandler::HandleWrite()
+	namespace
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Writing Serial Data", BOOST_CURRENT_LOCATION, Profiling::UnitColours::Green);
+		std::mutex ProtocolHandler_WriteOp_MessagePublisher_Mutex;
+	}
+	// namespace
 
-		std::lock_guard<std::mutex> lock(m_SerialData_OutgoingMutex);
+	boost::cobalt::promise<void> ProtocolHandler_WriteOp_MessagePublisher(Serial::SerialPort& serial_port, std::vector<uint8_t> buffer)
+	{
+		std::lock_guard<std::mutex> guard(ProtocolHandler_WriteOp_MessagePublisher_Mutex);
 
-		bool continue_processing = true;
-		boost::system::error_code ec;
-		std::size_t bytes_written;
-
-		bytes_written = m_SerialPort.write_some(boost::asio::buffer(m_SerialData_Outgoing), ec);
-		switch (ec.value())
+		while (!co_await boost::cobalt::this_coro::cancelled)
 		{
-		case boost::system::errc::success:
-		{
-			LogDebug(Channel::Protocol, std::format("Successfully wrote data to the serial port; bytes transmitted: {}", bytes_written));
-			LogTrace(Channel::Protocol, std::format("The following bytes were written to the serial device: {}", m_SerialData_Outgoing));
-			
-			if (bytes_written == m_SerialData_Outgoing.size())
+			auto [ec, bytes_written] = co_await serial_port.async_write_some(boost::asio::buffer(buffer), boost::asio::as_tuple(boost::cobalt::use_op));
+			if (ec)
 			{
-				continue_processing = HandleWrite_Success(m_SerialData_Outgoing, bytes_written);
+				switch (ec.value())
+				{
+				case boost::asio::error::eof:
+					LogDebug(Channel::Protocol, "Serial port's connection was closed by the peer...cannot continue.");
+					break;
+
+				case boost::asio::error::operation_aborted:
+					LogDebug(Channel::Protocol, "Serial port's async_write_some() was cancelled or an error occurred.");
+					break;
+
+				default:
+					LogDebug(Channel::Protocol, std::format("Error occurred in protocol handler (HandleWrite).  Error Code: {}", ec.value()));
+					LogDebug(Channel::Protocol, std::format("Error message: {}", ec.message()));
+					break;
+				}
+
+				// Exit this co-routine as there's nothing more to be done.
+				break;
+			}
+			else if (bytes_written == buffer.size())
+			{
+				LogTrace(Channel::Protocol, "Completed all serial data writing; clearing internal write buffer");
+
+				// Exit this co-routine as there's nothing more to be done.
+				break;
 			}
 			else
 			{
-				continue_processing = HandleWrite_Partial(m_SerialData_Outgoing, bytes_written);
-			}			
-			break;
+				LogTrace(Channel::Protocol, std::format("Only partially completed serial data writing; {} bytes of {} bytes were transmitted", bytes_written, buffer.size()));
+				buffer.erase(buffer.begin(), buffer.begin() + bytes_written);
+			}
 		}
 
-		case boost::asio::error::eof:
-			LogDebug(Channel::Protocol, "Serial port's connection was closed by the peer...cannot continue.");
-			continue_processing = false;
-			break;
-
-		case boost::asio::error::operation_aborted:
-			LogDebug(Channel::Protocol, "Serial port's async_write_some() was cancelled or an error occurred.");
-			continue_processing = false;
-			break;
-
-		default:
-			LogDebug(Channel::Protocol, std::format("Error occurred in protocol handler (HandleWrite).  Error Code: {}", ec.value()));
-			LogDebug(Channel::Protocol, std::format("Error message: {}", ec.message()));
-			continue_processing = false;
-			break;
-		}
-
-		return continue_processing;
-	}
-
-	bool ProtocolHandler::HandleWrite_Success(auto& write_buffer, auto bytes_written)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Success; Clearing Internal Buffers", BOOST_CURRENT_LOCATION);
-		LogTrace(Channel::Protocol, "Completed all serial data writing; clearing internal write buffer");
-		m_SerialData_Outgoing.clear();
-
-		return true;
-	}
-
-	bool ProtocolHandler::HandleWrite_Partial(auto& write_buffer, auto bytes_written)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleWrite -> Write Partial; Handling Additional Transmission", BOOST_CURRENT_LOCATION);
-		LogTrace(Channel::Protocol, std::format("Only partially completed serial data writing; {} bytes of {} bytes were transmitted", bytes_written, m_SerialData_Outgoing.size()));
-
-		return true;
+		co_return;
 	}
 
 }

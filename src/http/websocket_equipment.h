@@ -20,15 +20,15 @@ namespace AqualinkAutomate::HTTP
 	public:
 		WebSocket_Equipment(Kernel::HubLocator& hub_locator);
 
-	private:
+	public:
+		virtual boost::cobalt::generator<std::string> MessageGenerator() override;
+
+	public:
         virtual void OnOpen() override;
         virtual void OnMessage(const boost::beast::flat_buffer& buffer) override;
+		virtual void OnPublish() override;
         virtual void OnClose() override;
         virtual void OnError() override;
-
-	private:
-		void HandleEvent_DataHubConfigUpdate(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_update_event);
-		void HandleEvent_DataHubSystemUpdate(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_update_event);
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };

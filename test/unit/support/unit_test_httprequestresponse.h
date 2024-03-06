@@ -7,7 +7,6 @@
 #include <boost/beast/_experimental/test/stream.hpp>
 #include <boost/beast/_experimental/test/tcp.hpp>
 
-#include "http/server/http_plainsession.h"
 #include "http/server/server_types.h"
 
 #include "mocks/mock_beast_basicstream_with_timeout.h"
@@ -16,7 +15,6 @@ using namespace AqualinkAutomate;
 
 namespace AqualinkAutomate::Test
 {
-	using HTTP_PlainSession_Test = HTTP::HTTP_PlainSession_Base<Test::MockBeastBasicStreamWithTimeout>;
 
 	struct TestResponseObject
 	{
@@ -25,7 +23,7 @@ namespace AqualinkAutomate::Test
 
 	public:
 		Test::MockBeastBasicStreamWithTimeout local_stream;
-		std::shared_ptr<HTTP_PlainSession_Test> session_ptr;
+		///std::shared_ptr<HTTP_PlainSession_Test> session_ptr;
 		
 		boost::beast::flat_buffer request_buffer;
 		HTTP::Request last_request;
@@ -36,7 +34,7 @@ namespace AqualinkAutomate::Test
 		TestResponseObject(boost::asio::io_context& ioc, Test::MockBeastBasicStreamWithTimeout& remote_stream) :
 			internal_ioc(ioc),
 			local_stream(ioc),
-			session_ptr(nullptr),
+			///session_ptr(nullptr),
 			request_buffer(),
 			last_request(),
 			response_buffer(),

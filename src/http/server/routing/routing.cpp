@@ -18,7 +18,6 @@
 #include "http/server/routing/matches.h"
 #include "http/server/routing/node.h"
 #include "http/server/routing/routing.h"
-#include "interfaces/isession.h"
 #include "interfaces/iwebroute.h"
 #include "interfaces/iwebsocket.h"
 #include "logging/logging.h"

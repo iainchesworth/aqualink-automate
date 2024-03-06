@@ -1,83 +1,49 @@
 #pragma once
 
 #include <cstdint>
-#include <format>
-#include <mutex>
 #include <vector>
 
-#include <boost/signals2.hpp>
+#include <boost/cobalt/promise.hpp>
+#include <boost/signals2/connection.hpp>
 
+#include "coroutines/awaitable_signal.h"
 #include "logging/logging.h"
-#include "profiling/profiling.h"
 #include "serial/serial_port.h"
-#include "types/asynchronous_executor.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Protocol
 {
 
-	class ProtocolHandler
-	{
-	public:
-		ProtocolHandler(Types::ExecutorType executor, Serial::SerialPort& serial_port);
-		~ProtocolHandler();
+	boost::cobalt::promise<void> ProtocolHandler_ReadOp(Serial::SerialPort& serial_port);
 
-	public:
-		template<typename MESSAGE_PUBLISHER>
-		void RegisterPublishableMessage()
+	boost::cobalt::promise<void> ProtocolHandler_WriteOp_MessagePublisher(Serial::SerialPort& serial_port, std::vector<uint8_t> buffer);
+
+	template<typename MESSAGE_PUBLISHER>
+	boost::cobalt::promise<void> ProtocolHandler_WriteOp(Serial::SerialPort& serial_port)
+	{	
+		using SignalPayload = typename MESSAGE_PUBLISHER::PublisherRef;
+
+		if (auto signal_ptr = MESSAGE_PUBLISHER::GetPublisher(); nullptr == signal_ptr)
 		{
-			auto publish_message = [&](const auto& msg) -> bool
+			///FIXME
+		}
+		else
+		{
+			while (!co_await boost::cobalt::this_coro::cancelled)
 			{
-				std::vector<uint8_t> buffer;
-				if (!msg.Serialize(buffer))
+				SignalPayload signal_payload = co_await Coroutines::AwaitSignal<SignalPayload>(*signal_ptr);
+				if (std::vector<uint8_t> buffer; !(signal_payload.get().Serialize(buffer)))
 				{
-					LogTrace(Channel::Protocol, "Failed to serialise message during publishing");
-				}
-				else if (!PublishRawData(std::move(buffer)))
-				{
-					LogTrace(Channel::Protocol, "Failed to move serialised message buffer during publishing");
+					/// FIXME
 				}
 				else
 				{
-					return true;
+					co_await ProtocolHandler_WriteOp_MessagePublisher(serial_port, buffer);
 				}
-
-				return false;
-			};
-
-			m_PublishableMessages.push_back(MESSAGE_PUBLISHER::GetPublisher()->connect(publish_message));
+			}
 		}
+	}
 
-		bool PublishRawData(std::vector<uint8_t>&& raw_data);
-
-	public:
-		void Run();
-		void Stop();
-
-	private:
-		void Step();
-
-	private:
-		bool HandleRead();
-		bool HandleRead_Success(auto& read_buffer, auto bytes_read);
-		bool HandleWrite();
-		bool HandleWrite_Success(auto& write_buffer, auto bytes_written);
-		bool HandleWrite_Partial(auto& write_buffer, auto bytes_written);
-
-	private:
-		Serial::SerialPort& m_SerialPort;
-		std::vector<uint8_t> m_SerialData_Incoming;
-		std::vector<uint8_t> m_SerialData_Outgoing;
-		std::mutex m_SerialData_IncomingMutex;
-		std::mutex m_SerialData_OutgoingMutex;
-
-	private:
-		std::vector<boost::signals2::connection> m_PublishableMessages;
-
-	private:
-		Types::ProfilingUnitTypePtr m_ProfilingDomain;
-		Types::ExecutorType m_Executor;
-	};
 }
 // namespace AqualinkAutomate::Protocol

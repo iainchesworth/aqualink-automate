@@ -17,7 +17,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Utility
 {
 
-	using StatsSignalFunc = void();
+	using StatsSignalFunc = void(uint64_t);
 	using StatsSignal = boost::signals2::signal<StatsSignalFunc>;
 
 	//---------------------------------------------------------------------

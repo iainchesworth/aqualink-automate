@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <functional>
 #include <memory>
 #include <type_traits>
 
@@ -26,7 +27,7 @@ namespace AqualinkAutomate::Interfaces
 		virtual ~IMessageSignalSend() = default;
 
 	public:
-		using PublisherRef = const MESSAGE_TYPE&;
+		using PublisherRef = std::reference_wrapper<const MESSAGE_TYPE>;
 		using PublisherFunc = boost::signals2::signal<void(PublisherRef)>;
 		using PublisherPtr = std::shared_ptr<PublisherFunc>;
 

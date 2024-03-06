@@ -10,9 +10,9 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 	
-	PDADevice::PDADevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	PDADevice::PDADevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
-		Capabilities::Restartable(executor, PDA_TIMEOUT_DURATION),
+		Capabilities::Restartable(PDA_TIMEOUT_DURATION),
 		Capabilities::Screen(PDA_PAGE_LINES),
 		Capabilities::Scrapeable
 		(

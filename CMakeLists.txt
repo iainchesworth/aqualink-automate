@@ -36,7 +36,7 @@ add_subdirectory(deps)
 
 find_package(async_mqtt_iface REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(Boost REQUIRED COMPONENTS coroutine graph iostreams log log_setup program_options regex system unit_test_framework url)
+find_package(Boost REQUIRED COMPONENTS cobalt coroutine graph iostreams log log_setup program_options regex system unit_test_framework url)
 find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -129,10 +129,12 @@ add_library(
 	src/certificates/certificate_verification.cpp 
 	src/concepts/is_c_array.cpp
 	src/concepts/is_one_of.cpp 
+	src/coroutines/asynchronous_executor.cpp 
+	src/coroutines/awaitable_signal.cpp 
+	src/coroutines/cancellation_signal.cpp 	 
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:src/developer/asio_tracking.cpp>
 	src/developer/chrono_clocks.cpp 
-	src/developer/firewall_manager.cpp
-	src/developer/instance_counter.cpp 
+	src/developer/firewall_manager.cpp	 
 	src/developer/mock_serial_port.cpp 
 	src/developer/serial_port_options.cpp 
 	src/devices/device_status.cpp 
@@ -177,19 +179,14 @@ add_library(
 	src/http/websocket_equipment_stats.cpp 
 	src/http/json/json_data_hub.cpp 
 	src/http/json/json_equipment.cpp 
-	src/http/server/detectsession.cpp	
-	src/http/server/http_plainsession.cpp	 
-	src/http/server/http_session.cpp 
-	src/http/server/http_sslsession.cpp 
+	src/http/server/detectsession.cpp			 
+	src/http/server/http_session.cpp 	 
 	src/http/server/listener.cpp 
 	src/http/server/parse_query_string.cpp 
 	src/http/server/server_fields.cpp 
 	src/http/server/server_types.cpp 
-	src/http/server/static_file_handler.cpp	 	 
-	src/http/server/websocket_plainsession.cpp
-	src/http/server/websocket_session.cpp
-	src/http/server/websocket_session_helper.cpp
-	src/http/server/websocket_sslsession.cpp
+	src/http/server/static_file_handler.cpp	 	
+	src/http/server/websocket_session.cpp 
 	src/http/server/responses/response_staticfile.cpp
 	src/http/server/responses/response_400.cpp 
 	src/http/server/responses/response_404.cpp 
@@ -213,8 +210,7 @@ add_library(
 	src/interfaces/iprofiler.cpp
 	src/interfaces/iprofilingunit.cpp 	 
 	src/interfaces/iserializable.cpp
-	src/interfaces/iserialport.cpp
-	src/interfaces/isession.cpp 
+	src/interfaces/iserialport.cpp	 
 	src/interfaces/istatus.cpp
 	src/interfaces/istatuspublisher.cpp
 	src/interfaces/iwebpageroute.cpp
@@ -412,14 +408,7 @@ add_library(
 	src/serial/serial_initialise.cpp
 	src/serial/serial_operating_modes.cpp
 	src/serial/serial_port.cpp
-	src/serial/serial_types.cpp
-	src/signals/async_signal.cpp
-	src/signals/async_slot.cpp
-	src/signals/signal_awaitable.cpp
-	src/signals/signal_cleanup.cpp
-	src/signals/signal_handler.cpp
-	src/types/asynchronous_executor.cpp 
-	src/types/asynchronous_threadpool.cpp 
+	src/serial/serial_types.cpp	
 	src/types/units_electric_potential.cpp 
 	src/types/units_dimensionless.cpp 
 	src/types/units_electric_potential.cpp
@@ -456,8 +445,9 @@ target_compile_definitions(
 	PUBLIC 
 	-D_SCL_SECURE_NO_WARNINGS
 	-D_CRT_SECURE_NO_WARNINGS
-	-D_WIN32_WINNT=0x0601 
-	-DWINVER=0x0601 
+	-D_WIN32_WINNT=0x0A00 
+	-DWINVER=0x0A00 
+	-DNTDDI_VERSION=0x0A000000
 	-DWIN32_LEAN_AND_MEAN 
 	-DVC_EXTRALEAN
 	-DNOGDI
@@ -525,6 +515,7 @@ target_link_libraries(
 	PUBLIC
 	async_mqtt_iface::async_mqtt_iface
 	Boost::boost 
+	Boost::cobalt
 	Boost::coroutine 
 	Boost::iostreams 
 	Boost::log 

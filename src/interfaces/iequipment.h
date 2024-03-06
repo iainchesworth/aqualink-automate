@@ -2,18 +2,13 @@
 
 #include <boost/uuid/uuid.hpp>
 
-#include "types/asynchronous_executor.h"
-
 namespace AqualinkAutomate::Interfaces
 {
 	class IEquipment
 	{
 	public:
-		IEquipment(Types::ExecutorType executor);
+		IEquipment() = default;
 		virtual ~IEquipment() = default;
-
-	protected:
-		Types::ExecutorType m_Executor;
 	};
 
 }

@@ -19,7 +19,6 @@
 #include "jandy/messages/pda/pda_message_highlight_chars.h"
 #include "jandy/messages/pda/pda_message_shiftlines.h"
 #include "kernel/hub_locator.h"
-#include "types/asynchronous_executor.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -43,7 +42,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		PDADevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		PDADevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~PDADevice();
 
 	private:

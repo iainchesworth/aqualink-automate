@@ -12,10 +12,10 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	SerialAdapterDevice::SerialAdapterDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	SerialAdapterDevice::SerialAdapterDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
 		Capabilities::Emulated(is_emulated),
-		Capabilities::Restartable(executor, SERIALADAPTER_TIMEOUT_DURATION),
+		Capabilities::Restartable(SERIALADAPTER_TIMEOUT_DURATION),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
 		m_StatusMessageReceived(false),

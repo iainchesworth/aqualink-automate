@@ -1,246 +1,129 @@
 #pragma once
 
-#include <format>
 #include <memory>
-#include <ranges>
-#include <string>
-#include <type_traits>
-#include <variant>
-#include <vector>
 
-#include <boost/asio/ssl/error.hpp>
-#include <boost/core/ignore_unused.hpp>
-#include <boost/system/error_code.hpp>
-#include <boost/beast/core/flat_buffer.hpp>
+#include <boost/asio/as_tuple.hpp>
 #include <boost/beast/core/tcp_stream.hpp>
-#include <boost/beast/http/fields.hpp>
-#include <boost/beast/http/message.hpp>
 #include <boost/beast/websocket/stream.hpp>
+#include <boost/cobalt/detached.hpp>
+#include <boost/cobalt/promise.hpp>
 
-#include "developer/asio_tracking.h"
-#include "formatters/beast_stringview_formatter.h"
 #include "http/server/routing/routing.h"
-#include "interfaces/isession.h"
+#include "http/server/server_types.h"
 #include "interfaces/iwebsocket.h"
 #include "logging/logging.h"
-#include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::HTTP
 {
 
-	template<class SESSION_TYPE>
-	class WebSocket_Session : public Interfaces::ISession
-	{
-		SESSION_TYPE& SessionType()
-		{
-			return static_cast<SESSION_TYPE&>(*this);
-		}
+    template<typename WEBSOCKET_STREAM>
+    boost::cobalt::promise<void> HandleWebSocketSession_ReadOp(WEBSOCKET_STREAM& ws, boost::beast::flat_buffer& buffer, Interfaces::IWebSocketBase* ws_route_handler)
+    {
+        while (!co_await boost::cobalt::this_coro::cancelled)
+        {
+            auto [ec, bytes_transferred] = co_await ws.async_read(buffer, boost::asio::as_tuple(boost::cobalt::use_op));
+            if (boost::beast::websocket::error::closed == ec)
+            {
+                LogTrace(Channel::Web, "WebSocket was closed (during read); calling OnClose handler");
+                ws_route_handler->OnClose();
+                break;
+            }
+            else if (ec)
+            {
+                LogTrace(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
+                ws_route_handler->OnError();
+                break;
+            }
+            else
+            {
+                ws_route_handler->OnMessage(buffer);
+            }
+        }
 
-	public:
-		WebSocket_Session() : 
-			Interfaces::ISession()
-		{
-			LogTrace(Channel::Web, std::format("Creating WebSocket session: {}", boost::uuids::to_string(Id())));
-		}
+        co_return;
+    }
 
-		virtual ~WebSocket_Session()
-		{
-			LogTrace(Channel::Web, std::format("Destroying WebSocket session: {}", boost::uuids::to_string(Id())));
-		}
+    template<typename WEBSOCKET_STREAM>
+    boost::cobalt::promise<void> HandleWebSocketSession_WriteOp(WEBSOCKET_STREAM& ws, Interfaces::IWebSocketBase* ws_route_handler)
+    {
+        auto msg_generator = ws_route_handler->MessageGenerator();
 
-	public:
-		template<class BODY, class ALLOCATOR>
-		void Run(boost::beast::http::request<BODY, boost::beast::http::basic_fields<ALLOCATOR>> req)
-		{
-			LogTrace(Channel::Web, std::format("WebSocket session {}: Run()", boost::uuids::to_string(Id())));
-			DoAccept(std::move(req));
-		}
+        while (!co_await boost::cobalt::this_coro::cancelled)
+        {
+            auto msg = co_await msg_generator;
 
-	private:
-		template<class Body, class Allocator>
-		void DoAccept(boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>> req)
-		{
-			LogTrace(Channel::Web, std::format("WebSocket session {}: DoAccept()", boost::uuids::to_string(Id())));
+            ws.binary(false);
 
-			HANDLER_LOCATION;
+            auto [ec, bytes_transferred] = co_await ws.async_write(boost::asio::buffer(msg), boost::asio::as_tuple(boost::cobalt::use_op));
+            if (boost::beast::websocket::error::closed == ec)
+            {
+                LogTrace(Channel::Web, "WebSocket was closed (during write); calling OnClose handler");
+                ws_route_handler->OnClose();
+                break;
+            }
+            else if (ec)
+            {
+                LogDebug(Channel::Web, std::format("Failed during write of WebSocket stream; error was -> {}", ec.message()));
+                ws_route_handler->OnError();
+                break;
+            }
+            else
+            {
+                ws_route_handler->OnPublish();
+            }
+        }
 
-			SessionType().WS().set_option(boost::beast::websocket::stream_base::timeout::suggested(boost::beast::role_type::server));
-			SessionType().WS().set_option(
-				boost::beast::websocket::stream_base::decorator(
-					[](boost::beast::websocket::response_type& res)
-					{
-						res.set(
-							boost::beast::http::field::server,
-							std::string(BOOST_BEAST_VERSION_STRING) + " advanced-server-flex"
-						);
-					}
-				)
-			);
+        co_return;
+    }
 
-			if (m_Handler_WeakPtr = Routing::WS_OnAccept(req.target()); nullptr == m_Handler_WeakPtr)
-			{
-				LogDebug(Channel::Web, std::format("Could not find a suitable route handler for {}; ignoring request", req.target()));
-			}
-			else
-			{
-				SessionType().WS().async_accept(
-					req,
-					[this, self = SessionType().shared_from_this()](boost::system::error_code ec)
-					{
-						HANDLER_LOCATION;
+    template<typename WEBSOCKET_STREAM, class REQUEST_BODY, class REQUEST_ALLOCATOR>
+    boost::cobalt::promise<void> HandleWebSocketSession(WEBSOCKET_STREAM& stream, boost::beast::flat_buffer& buffer, boost::beast::http::request<REQUEST_BODY, boost::beast::http::basic_fields<REQUEST_ALLOCATOR>> req)
+    {
+        boost::beast::websocket::stream<WEBSOCKET_STREAM&> ws{ stream };
 
-						if (ec)
-						{
-							LogDebug(Channel::Web, std::format("Failed during accept of WebSocket stream; error was -> {}", ec.message()));
-						}
-						else
-						{
-							if (nullptr == m_Handler_WeakPtr)
-							{
-								LogDebug(Channel::Web, "Invalid session pointer; no OnOpen handler being called");
-							}
-							else
-							{
-								m_Handler_WeakPtr->Handle_OnOpen(self);
-								DoRead();
-							}
-						}
-					}
-				);
-			}
-		}
+        ws.set_option(
+            boost::beast::websocket::stream_base::timeout::suggested(
+                boost::beast::role_type::server
+            )
+        );
 
-	private:
-		virtual void DoReadImpl() override
-		{
-			LogTrace(Channel::Web, std::format("WebSocket session {}: DoReadImpl()", boost::uuids::to_string(Id())));
+        ws.set_option(
+            boost::beast::websocket::stream_base::decorator(
+                [](boost::beast::websocket::response_type& res)
+                {
+                    res.set(
+                        boost::beast::http::field::server,
+                        std::string(BOOST_BEAST_VERSION_STRING) + " advanced-server-flex" ///FIXME
+                    );
+                }
+            )
+        );
 
-			HANDLER_LOCATION;
+        if (auto ws_route_handler = Routing::WS_OnAccept(req.target()); nullptr == ws_route_handler)
+        {
+            LogDebug(Channel::Web, "Invalid session pointer; no OnOpen handler being called");
+        }
+        else if (auto [ec] = co_await ws.async_accept(req, boost::asio::as_tuple(boost::cobalt::use_op)); ec)
+        {
+            LogDebug(Channel::Web, std::format("Failed to accept the websocket connection -> {}: {}", ec.value(), ec.message()));
+        }
+        else
+        {
+            ws_route_handler->OnOpen();
 
-			SessionType().WS().async_read(
-				m_Buffer,
-				[this, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
-				{
-					LogTrace(Channel::Web, std::format("WebSocket session {}: DoReadImpl()->Handler", boost::uuids::to_string(Id())));
+            // Execute the websocket reads and writes in parallel; these co-routines will continue
+            // until one or more is cancelled or has an error.
 
-					HANDLER_LOCATION;
+            co_await boost::cobalt::join(
+                HandleWebSocketSession_ReadOp(ws, buffer, ws_route_handler),
+                HandleWebSocketSession_WriteOp(ws, ws_route_handler)
+            );
+        }
 
-					boost::ignore_unused(bytes_transferred);
-
-					if (nullptr == m_Handler_WeakPtr)
-					{
-						LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no OnMessage handler being called");
-					}
-					else if (boost::beast::websocket::error::closed == ec)
-					{
-						LogTrace(Channel::Web, "WebSocket was closed (during read); calling OnClose handler");
-						m_Handler_WeakPtr->Handle_OnClose(self);
-					}
-					else if (ec)
-					{
-						LogTrace(Channel::Web, std::format("Failed during read of WebSocket stream; error was -> {}", ec.message()));
-						m_Handler_WeakPtr->Handle_OnError(self);
-					}
-					else
-					{
-						m_Handler_WeakPtr->Handle_OnMessage(self, m_Buffer);
-						DoRead();
-					}
-				}
-			);
-		}
-
-		virtual void DoWriteImpl() override
-		{
-			LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()", boost::uuids::to_string(Id())));
-
-			HANDLER_LOCATION;
-
-			auto async_write_remove_and_kick =
-				[this]()
-				{
-					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick", boost::uuids::to_string(Id())));
-
-					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick->Removing This Write ({} total)", boost::uuids::to_string(Id()), m_ResponseQueue.size()));
-
-					m_ResponseQueue.erase(m_ResponseQueue.begin());
-
-					// Send the next message, if any
-					if (!m_ResponseQueue.empty())
-					{
-						LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler->RemoveAndKick->Triggering Next Write ({} remaining)", boost::uuids::to_string(Id()), m_ResponseQueue.size()));
-
-						DoWrite();
-					}
-				};
-
-			auto async_write_handler = 
-				[this, async_write_remove_and_kick, self = SessionType().shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred)
-				{
-					LogTrace(Channel::Web, std::format("WebSocket session {}: DoWriteImpl()->Handler", boost::uuids::to_string(Id())));
-
-					HANDLER_LOCATION;
-
-					boost::ignore_unused(bytes_transferred);
-
-					if (nullptr == m_Handler_WeakPtr)
-					{
-						LogDebug(Channel::Web, "Invalid session pointer; ignoring read i.e. no handlers will be called");
-						m_ResponseQueue.clear();
-					}
-					else if (boost::beast::websocket::error::closed == ec)
-					{
-						LogTrace(Channel::Web, "WebSocket was closed (during write); calling OnClose handler");
-						m_Handler_WeakPtr->Handle_OnClose(self);
-						m_ResponseQueue.clear();
-					}
-					else if (ec)
-					{
-						LogDebug(Channel::Web, std::format("Failed during write of WebSocket stream; error was -> {}", ec.message()));
-						m_Handler_WeakPtr->Handle_OnError(self);
-						m_ResponseQueue.clear();
-					}
-					else
-					{
-						async_write_remove_and_kick();
-					}
-				};
-
-			std::visit(
-				Utility::OverloadedVisitor
-				{
-					[this, async_write_remove_and_kick](std::monostate)
-					{
-						LogDebug(Channel::Web, "Invalid payload type (non-binary, non-text) being sent over websocket");
-						async_write_remove_and_kick();
-
-					},
-					[this, async_write_handler](const ResponseQueueTextElement& text_data)
-					{
-						SessionType().WS().binary(false);
-						SessionType().WS().async_write(boost::asio::buffer(text_data), async_write_handler);
-					},
-					[this, async_write_handler](const ResponseQueueBinaryElement& binary_data)
-					{
-						SessionType().WS().binary(true);
-						SessionType().WS().async_write(boost::asio::buffer(binary_data), async_write_handler);
-					},
-					[this, async_write_remove_and_kick](const ResponseQueueMessageElement&)
-					{
-						LogDebug(Channel::Web, "Invalid payload type (non-binary, non-text) being sent over websocket");
-						async_write_remove_and_kick();
-					}
-				},
-				m_ResponseQueue.front()
-			);
-		}
-
-	private:
-		Interfaces::IWebSocketBase* m_Handler_WeakPtr{ nullptr };
-		boost::beast::flat_buffer m_Buffer{};
-	};
+        co_return;
+    }
 
 }
 // namespace AqualinkAutomate::HTTP

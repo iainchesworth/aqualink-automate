@@ -4,8 +4,6 @@
 #include <iostream>
 #include <string>
 
-#include <boost/format.hpp>
-
 #include "kernel/ph.h"
 
 namespace AqualinkAutomate::Formatters

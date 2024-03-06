@@ -12,9 +12,9 @@ using namespace AqualinkAutomate::Messages;
 namespace AqualinkAutomate::Devices
 {
 
-	OneTouchDevice::OneTouchDevice(Types::ExecutorType executor, std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	OneTouchDevice::OneTouchDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
-		Capabilities::Restartable(executor, ONETOUCH_TIMEOUT_DURATION),
+		Capabilities::Restartable(ONETOUCH_TIMEOUT_DURATION),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),
 		Capabilities::Scrapeable
 		(
