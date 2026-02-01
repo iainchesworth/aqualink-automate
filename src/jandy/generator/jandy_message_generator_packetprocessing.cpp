@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/generator/jandy_message_generator_packetprocessing.h"
-#include "jandy/generator/jandy_message_generator_startendsequence.h"
+#include "generator/jandy_message_generator_packetprocessing.h"
+#include "generator/jandy_message_generator_startendsequence.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
@@ -10,9 +10,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Generators
 {
 	
-	void PacketProcessing_GetPacketLocations(std::vector<uint8_t>& serial_data, std::vector<uint8_t>::iterator& p1s, std::vector<uint8_t>::iterator& p1e, std::vector<uint8_t>::iterator& p2s)
+	void PacketProcessing_GetPacketLocations(boost::circular_buffer<uint8_t>& serial_data, boost::circular_buffer<uint8_t>::iterator& p1s, boost::circular_buffer<uint8_t>::iterator& p1e, boost::circular_buffer<uint8_t>::iterator& p2s)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", BOOST_CURRENT_LOCATION);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", std::source_location::current());
 
 		p1e = serial_data.end();
 		p2s = serial_data.end();
@@ -28,41 +28,56 @@ namespace AqualinkAutomate::Generators
 		}
 	}
 
-	void PacketProcessing_OutputSerialDataToConsole(const std::vector<uint8_t>& serial_data, const std::vector<uint8_t>::iterator& p1s, const std::vector<uint8_t>::iterator& p1e, const std::vector<uint8_t>::iterator& p2s)
+	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& p1s, const boost::circular_buffer<uint8_t>::iterator& p1e, const boost::circular_buffer<uint8_t>::iterator& p2s)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", BOOST_CURRENT_LOCATION);
+		auto zone1 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", std::source_location::current());
 
-		std::string output_message;
-		std::size_t elem_position = 0;
+		thread_local std::string output_message = []()
+			{
+				std::string s;
+				s.reserve(512);
+				return s;
+			}();
 
-		auto packet_one_start_pos = std::distance<std::vector<uint8_t>::const_iterator>(serial_data.cbegin(), p1s);
-		auto packet_one_end_pos = std::distance<std::vector<uint8_t>::const_iterator>(serial_data.cbegin(), p1e) + 1; // Account for the length of the footer bytes.
-		auto packet_two_start_pos = std::distance<std::vector<uint8_t>::const_iterator>(serial_data.cbegin(), p2s);
+		output_message.clear();
 
-		for (const auto& elem : serial_data)
 		{
-			if ((serial_data.end() != p1s) && (packet_one_start_pos == elem_position))
+			auto zone2 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console -> Generate", std::source_location::current());
+
+			std::size_t elem_position = 0;
+
+			auto packet_one_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p1s);
+			auto packet_one_end_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p1e) + 1; // Account for the length of the footer bytes.
+			auto packet_two_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p2s);
+
+			for (const auto& elem : serial_data)
 			{
-				output_message.append("->");
+				if ((serial_data.end() != p1s) && (packet_one_start_pos == elem_position))
+				{
+					output_message.append("->");
+				}
+
+				if ((serial_data.end() != p2s) && (packet_two_start_pos == elem_position))
+				{
+					output_message.append("|| =>");
+				}
+
+				output_message.append(std::format("{:02x}", elem));
+
+				if ((serial_data.end() != p1e) && (packet_one_end_pos == elem_position))
+				{
+					output_message.append("<-");
+				}
+
+				output_message.append(" ");
+				elem_position++;
 			}
 
-			if ((serial_data.end() != p2s) && (packet_two_start_pos == elem_position))
 			{
-				output_message.append("|| =>");
+				auto zone3 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console -> Logging", std::source_location::current());
+				LogTrace(Channel::Messages, std::format("Serial Data: {}", output_message));
 			}
-
-			output_message.append(std::format("{:02x}", elem));
-
-			if ((serial_data.end() != p1e) && (packet_one_end_pos == elem_position))
-			{
-				output_message.append("<-");
-			}
-
-			output_message.append(" ");
-			elem_position++;
 		}
-
-		LogTrace(Channel::Messages, std::format("Serial Data: {}", output_message));
 	}
 
 }

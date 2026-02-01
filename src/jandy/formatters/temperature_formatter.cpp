@@ -1,4 +1,4 @@
-#include "jandy/formatters/temperature_formatter.h"
+#include "formatters/temperature_formatter.h"
 
 namespace AqualinkAutomate::Formatters
 {

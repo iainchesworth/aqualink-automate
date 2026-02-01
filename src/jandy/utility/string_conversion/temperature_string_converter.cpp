@@ -3,10 +3,10 @@
 #include <format>
 #include <limits>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/temperature_string_converter.h"
+#include "utility/string_manipulation.h"
+#include "utility/string_conversion/temperature_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

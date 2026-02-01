@@ -1,6 +1,6 @@
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/utility/jandy_null_handler.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_constants.h"
+#include "utility/jandy_null_handler.h"
 
 namespace AqualinkAutomate::Utility
 {

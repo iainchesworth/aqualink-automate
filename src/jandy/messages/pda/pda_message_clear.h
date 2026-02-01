@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/pda/pda_message.h"
+#include "messages/pda/pda_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -15,7 +14,7 @@ namespace AqualinkAutomate::Messages
 	class PDAMessage_Clear : public PDAMessage, public Interfaces::IMessageSignalRecv<PDAMessage_Clear>
 	{
 	public:
-		PDAMessage_Clear();
+		PDAMessage_Clear() noexcept;
 		virtual ~PDAMessage_Clear();
 
 	public:
@@ -24,9 +23,6 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
 		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::PDAMessage_Clear> g_PDAMessage_Clear_Registration;
 	};
 
 }

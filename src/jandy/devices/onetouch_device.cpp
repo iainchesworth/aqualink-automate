@@ -1,13 +1,15 @@
 #include <functional>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
-#include "jandy/devices/onetouch_device.h"
-#include "jandy/utility/screen_data_page_processor.h"
+#include "devices/onetouch_device.h"
+#include "formatters/jandy_device_formatters.h"
+#include "utility/screen_data_page_processor.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
+using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Devices
 {
@@ -29,6 +31,10 @@ namespace AqualinkAutomate::Devices
 		Capabilities::Emulated(is_emulated),
 		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("OneTouchDevice")))
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice Constructor", std::source_location::current());
+
+		LogInfo(Channel::Devices, std::format("Creating OneTouchDevice: device_id={}, emulated={}, timeout={}s", *device_id, is_emulated, ONETOUCH_TIMEOUT_DURATION.count()));
+
 		m_ProfilingDomain->Start();
 
 		PageProcessors(
@@ -56,7 +62,9 @@ namespace AqualinkAutomate::Devices
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LabelAux, { 2, "Current Label" }, std::bind(&OneTouchDevice::PageProcessor_LabelAux, this, std::placeholders::_1))
 			}
 		);
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): Registered {} page processors for OneTouchDevice", DeviceId(), PageProcessors().size()));
 
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): Registering OneTouchDevice message slot handlers", DeviceId()));
 		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_MessageLong>(std::bind(&OneTouchDevice::Slot_OneTouch_MessageLong, this, std::placeholders::_1), (*device_id)());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&OneTouchDevice::Slot_OneTouch_Probe, this, std::placeholders::_1), (*device_id)());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Status>(std::bind(&OneTouchDevice::Slot_OneTouch_Status, this, std::placeholders::_1), (*device_id)());
@@ -68,18 +76,29 @@ namespace AqualinkAutomate::Devices
 
 		if (!IsEmulated())
 		{
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): Registering ACK handler for non-emulated device", DeviceId()));
 			m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Ack>(std::bind(&OneTouchDevice::Slot_OneTouch_Ack, this, std::placeholders::_1), (*device_id)());
 		}
+
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): OneTouchDevice construction complete - device ready", DeviceId()));
 	}
 
 	OneTouchDevice::~OneTouchDevice()
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice Destructor", std::source_location::current());
+
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Destroying OneTouchDevice: final state was {}", DeviceId(), magic_enum::enum_name(m_OpState)));
+
 		m_ProfilingDomain->End();
+
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): OneTouchDevice destruction complete", DeviceId()));
 	}
 
 	void OneTouchDevice::ProcessControllerUpdates()
 	{	
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", BOOST_CURRENT_LOCATION);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", std::source_location::current());
+
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): ProcessControllerUpdates called: state={}", DeviceId(), magic_enum::enum_name(m_OpState)));
 
 		m_KeyCommand_ToSend = KeyCommands::NoKeyCommand;
 
@@ -87,8 +106,8 @@ namespace AqualinkAutomate::Devices
 		{
 		case OperatingStates::StartUp:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Start Up)", BOOST_CURRENT_LOCATION);
-
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Start Up)", std::source_location::current());
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing StartUp state", DeviceId()));
 			Scraping_ProcessStep_StartUp();
 			break;
 		}
@@ -97,23 +116,30 @@ namespace AqualinkAutomate::Devices
 			[[fallthrough]];
 		case OperatingStates::WarmStart:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Cold/Warm Start)", BOOST_CURRENT_LOCATION);
-
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Cold/Warm Start)", std::source_location::current());
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing {} state", DeviceId(), magic_enum::enum_name(m_OpState)));
 			Scraping_ProcessStep_ColdAndWarmStart();
 			break;
 		}
 
 		case OperatingStates::NormalOperation:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Normal Operation)", BOOST_CURRENT_LOCATION);
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Normal Operation)", std::source_location::current());
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing NormalOperation state", DeviceId()));
 			break;
 		}
 
 		case OperatingStates::FaultHasOccurred:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Fault Occurred)", BOOST_CURRENT_LOCATION);
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State (Fault Occurred)", std::source_location::current());
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Processing FaultHasOccurred state", DeviceId()));
 			break;
 		}
+		}
+
+		if (m_KeyCommand_ToSend != KeyCommands::NoKeyCommand)
+		{
+			LogTrace(Channel::Devices, std::format("OneTouch({}) : Sending key command: {}", DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
 		}
 
 		Signal_AckMessage(m_AckType_ToSend, m_KeyCommand_ToSend);
@@ -121,6 +147,12 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::WatchdogTimeoutOccurred()
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WatchdogTimeoutOccurred", std::source_location::current());
+
+		LogWarning(Channel::Devices, std::format("OneTouch({}) : Watchdog timeout occurred: state={}, timeout_duration={}s", DeviceId(), magic_enum::enum_name(m_OpState), ONETOUCH_TIMEOUT_DURATION.count()));
+
+		// Additional recovery logic could be added here
+		LogInfo(Channel::Devices, std::format("OneTouch({}) : Device will be restarted due to watchdog timeout", DeviceId()));
 	}
 
 }

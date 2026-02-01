@@ -4,8 +4,8 @@
 
 #include "interfaces/idevice.h"
 #include "interfaces/istatuspublisher.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/utility/slot_connection_manager.h"
+#include "devices/jandy_device_types.h"
+#include "utility/slot_connection_manager.h"
 
 namespace AqualinkAutomate::Devices
 {

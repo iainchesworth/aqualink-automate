@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_id.h"
 #include "kernel/auxillary_traits/auxillary_traits_base.h"
 
 namespace AqualinkAutomate::Auxillaries

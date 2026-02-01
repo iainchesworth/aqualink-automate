@@ -19,7 +19,7 @@ BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_ApiEquipment, Test::OneTouchDevice
 
 BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 {
-	boost::asio::io_context io_context;
+	HTTP::Routing::Clear();
 
 	auto route_api_equiment = std::make_unique<HTTP::WebRoute_Equipment>(*this);
 	BOOST_REQUIRE(nullptr != route_api_equiment);
@@ -29,10 +29,10 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 	HTTP::Routing::Add(std::move(route_api_equiment));
 
 	{
-		auto&& tro = Test::PerformHttpRequestResponse(io_context, route_api_equipment_route);
-		BOOST_CHECK_EQUAL(boost::beast::http::status::ok, tro->last_response.result());
+		auto resp = Test::PerformHttpRequestResponse(route_api_equipment_route);
+		BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
 
-		const auto& res_body = tro->last_response.body();
+		const auto& res_body = resp.body();
 		BOOST_TEST_REQUIRE(0 != res_body.length());
 
 		{
@@ -64,6 +64,8 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 
 BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 {
+	HTTP::Routing::Clear();
+
 	InitialiseOneTouchDevice();
 	EquipmentOnOff_Page1();
 	EquipmentOnOff_Page2();
@@ -111,10 +113,10 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 	HTTP::Routing::Add(std::move(route_api_equiment));
 
 	{
-		auto&& tro = Test::PerformHttpRequestResponse(io_context, route_api_equipment_route);
-		BOOST_CHECK_EQUAL(boost::beast::http::status::ok, tro->last_response.result());
+		auto resp = Test::PerformHttpRequestResponse(route_api_equipment_route);
+		BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
 
-		const auto& res_body = tro->last_response.body();
+		const auto& res_body = resp.body();
 		BOOST_TEST_REQUIRE(0 != res_body.length());
 
 		{

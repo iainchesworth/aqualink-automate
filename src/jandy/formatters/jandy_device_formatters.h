@@ -4,8 +4,8 @@
 #include <iostream>
 #include <string>
 
-#include "jandy/devices/jandy_device_id.h"
-#include "jandy/devices/jandy_device_types.h"
+#include "devices/jandy_device_id.h"
+#include "devices/jandy_device_types.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -25,21 +25,33 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Devices::JandyDeviceId> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Devices::JandyDeviceId>
 {
+	constexpr auto parse(std::format_parse_context& ctx) 
+	{ 
+		return ctx.begin(); 
+	}
+
 	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Devices::JandyDeviceId& device_id, FormatContext& ctx) const
+	auto format(const AqualinkAutomate::Devices::JandyDeviceId& device_id, FormatContext& ctx) const -> typename FormatContext::iterator
 	{
-		return std::vformat_to(ctx.out(), "0x{:02x}", std::make_format_args(static_cast<uint8_t>(device_id())));
+		const auto v{ device_id() };
+		return std::format_to(ctx.out(), "0x{:02x}", v);
 	}
 };
 
 template<>
-struct std::formatter<AqualinkAutomate::Devices::JandyDeviceType> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Devices::JandyDeviceType>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Devices::JandyDeviceType& device_type, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(device_type.Id()));
+		const auto v{ device_type.Id() };
+		return std::format_to(ctx.out(), "{}", v);
 	}
 };

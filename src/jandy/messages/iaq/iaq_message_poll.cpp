@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_poll.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_poll.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_Poll> IAQMessage_Poll::g_IAQMessage_Poll_Registration(JandyMessageIds::IAQ_Poll);
-
-	IAQMessage_Poll::IAQMessage_Poll() : 
+	IAQMessage_Poll::IAQMessage_Poll() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_Poll),
 		Interfaces::IMessageSignalRecv<IAQMessage_Poll>()
 	{

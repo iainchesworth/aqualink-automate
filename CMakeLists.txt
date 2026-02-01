@@ -1,7 +1,15 @@
-﻿cmake_minimum_required (VERSION 3.27 FATAL_ERROR)
+﻿cmake_minimum_required (VERSION 3.31 FATAL_ERROR)
 
-set(Boost_NO_WARN_NEW_VERSIONS 1)
-set(CMAKE_CXX_STANDARD 20)
+if(POLICY CMP0053)
+  cmake_policy(SET CMP0053 NEW)
+endif()
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
+set(Boost_NO_WARN_NEW_VERSIONS	 ON) # suppress the warning about unknown dependencies for new Boost versions
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -34,14 +42,12 @@ option(USE_SONARQUBE "Use SonarQube for coverage of unit tests" OFF)
 
 add_subdirectory(deps)
 
-find_package(async_mqtt_iface REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(Boost REQUIRED COMPONENTS cobalt coroutine graph iostreams log log_setup program_options regex system unit_test_framework url)
+find_package(Boost REQUIRED COMPONENTS graph iostreams log log_setup program_options regex system unit_test_framework url)
 find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
-find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(re2 REQUIRED)
+find_package(nlohmann_json REQUIRED)
 find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -91,6 +97,11 @@ option(SANITIZE_UNDEFINED "DevTools: Sanitizers -> Use UndefinedBehaviourSanitiz
 
 find_package(Sanitizers)
 
+# Clang normally links using the static runtime library; this causes problems when building
+# so link with the shared library to avoid this.
+
+add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
+
 endif(ENABLE_SANITIZERS)
 
 #------------------------------------------------------------------------------
@@ -102,14 +113,14 @@ endif(ENABLE_SANITIZERS)
 
 # Template the git commit information prior to building the application.
 set(GIT_FAIL_IF_NONZERO_EXIT false)
-set(PRE_CONFIGURE_FILE "src/version/version_git.constants.cpp.in")
-set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/version/version_git.constants.cpp")
+set(PRE_CONFIGURE_FILE "src/core/version/version_git.constants.cpp.in")
+set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/core/version/version_git.constants.cpp")
 include(GitWatcher)
 
-# Template the versioning information prior to building the application. 
-set(VERSION_CMAKE_SOURCE_FILE "src/version/version_cmake.constants.cpp.in")
-set(VERSION_CMAKE_DEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/version/version_cmake.constants.cpp")
-configure_file(${VERSION_CMAKE_SOURCE_FILE} ${VERSION_CMAKE_DEST_FILE})
+# Template the versioning information prior to building the application.
+set(VERSION_CMAKE_SOURCE_FILE "src/core/version/version_cmake.constants.cpp.in")
+set(VERSION_CMAKE_DEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/src/core/version/version_cmake.constants.cpp")
+include(CMakeVersionWatcher)
 
 # Mark the source files as generated so that the add_XXXXX command doesn't complain
 set_source_files_properties(${POST_CONFIGURE_FILE} PROPERTIES GENERATED 1)
@@ -122,436 +133,7 @@ set_source_files_properties(${VERSION_CMAKE_DEST_FILE} PROPERTIES GENERATED 1)
 #
 #------------------------------------------------------------------------------
 
-add_library(
-	libaqualink-automate
-	src/application/application_defaults.cpp 	 
-	src/certificates/certificate_management.cpp 
-	src/certificates/certificate_verification.cpp 
-	src/concepts/is_c_array.cpp
-	src/concepts/is_one_of.cpp 
-	src/coroutines/asynchronous_executor.cpp 
-	src/coroutines/awaitable_signal.cpp 
-	src/coroutines/cancellation_signal.cpp 	 
-	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:src/developer/asio_tracking.cpp>
-	src/developer/chrono_clocks.cpp 
-	src/developer/firewall_manager.cpp	 
-	src/developer/mock_serial_port.cpp 
-	src/developer/serial_port_options.cpp 
-	src/devices/device_status.cpp 
-	src/equipment/equipment_status.cpp
-	src/exceptions/exception_certificate_invalidformat.cpp 
-	src/exceptions/exception_certificate_notfound.cpp 
-	src/exceptions/exception_genericaqualinkexception.cpp
-	src/exceptions/exception_http_duplicateroute.cpp 
-	src/exceptions/exception_hubnotfound.cpp 
-	src/exceptions/exception_notimplemented.cpp
-	src/exceptions/exception_optionparsingfailed.cpp
-	src/exceptions/exception_optionshelporversion.cpp 
-	src/exceptions/exception_options_conflictingoptions.cpp 
-	src/exceptions/exception_options_missingdependency.cpp 
-	src/exceptions/exception_serial_invalidmode.cpp 
-	src/exceptions/exception_signallingstatscounter_badaccess.cpp 
-	src/exceptions/exception_traits_doesnotexist.cpp 
-	src/exceptions/exception_traits_failedtoset.cpp 
-	src/exceptions/exception_traits_invalidtraitvalue.cpp 
-	src/exceptions/exception_traits_notmutable.cpp 
-	src/exceptions/exception_webserver.cpp 
-	src/formatters/asio_endpoint_formatter.cpp 
-	src/formatters/beast_stringview_formatter.cpp 
-	src/formatters/orp_formatter.cpp 
-	src/formatters/ph_formatter.cpp 
-	src/formatters/temperature_formatter.cpp 
-	src/formatters/units_dimensionless_formatter.cpp 
-	src/formatters/units_electric_potential_formatter.cpp 
-	src/formatters/url_segments_encoded_view_formatter.cpp 
-	src/http/webroute_equipment.cpp 
-	src/http/webroute_equipment_button.cpp 
-	src/http/webroute_equipment_buttons.cpp 
-	src/http/webroute_equipment_devices.cpp 
-	src/http/webroute_equipment_version.cpp 
-	src/http/webroute_page_index.cpp 
-	src/http/webroute_page_equipment.cpp 
-	src/http/webroute_page_version.cpp 
-	src/http/webroute_version.cpp 
-	src/http/websocket_event.cpp 
-	src/http/websocket_event_types.cpp 
-	src/http/websocket_equipment.cpp 
-	src/http/websocket_equipment_stats.cpp 
-	src/http/json/json_data_hub.cpp 
-	src/http/json/json_equipment.cpp 
-	src/http/server/detectsession.cpp			 
-	src/http/server/http_session.cpp 	 
-	src/http/server/listener.cpp 
-	src/http/server/parse_query_string.cpp 
-	src/http/server/server_fields.cpp 
-	src/http/server/server_types.cpp 
-	src/http/server/static_file_handler.cpp	 	
-	src/http/server/websocket_session.cpp 
-	src/http/server/responses/response_staticfile.cpp
-	src/http/server/responses/response_400.cpp 
-	src/http/server/responses/response_404.cpp 
-	src/http/server/responses/response_405.cpp 
-	src/http/server/responses/response_500.cpp
-	src/http/server/responses/response_503.cpp 
-	src/http/server/routing/child_idx_vector.cpp 		
-	src/http/server/routing/matches.cpp 
-	src/http/server/routing/node.cpp 
-	src/http/server/routing/routing.cpp
-	src/http/server/routing/segment_template.cpp 		
-	src/http/support/support_generate_page_footer.cpp 
-	src/http/support/support_generate_page_header.cpp 	 
-	src/interfaces/idevice.cpp 
-	src/interfaces/ideviceidentifier.cpp 
-	src/interfaces/iequipment.cpp		 
-	src/interfaces/ihub.cpp 
-	src/interfaces/imessage.cpp
-	src/interfaces/imessagesignal_recv.cpp
-	src/interfaces/imessagesignal_send.cpp
-	src/interfaces/iprofiler.cpp
-	src/interfaces/iprofilingunit.cpp 	 
-	src/interfaces/iserializable.cpp
-	src/interfaces/iserialport.cpp	 
-	src/interfaces/istatus.cpp
-	src/interfaces/istatuspublisher.cpp
-	src/interfaces/iwebpageroute.cpp
-	src/interfaces/iwebroute.cpp  
-	src/interfaces/iwebsocket.cpp 
-	src/jandy/auxillaries/jandy_auxillary_id.cpp 
-	src/jandy/auxillaries/jandy_auxillary_status.cpp 
-	src/jandy/auxillaries/jandy_auxillary_traits_types.cpp 
-	src/jandy/devices/aquarite_device.cpp 
-	src/jandy/devices/iaq_device.cpp 
-	src/jandy/devices/jandy_controller.cpp 
-	src/jandy/devices/jandy_device.cpp 
-	src/jandy/devices/jandy_device_id.cpp 
-	src/jandy/devices/jandy_device_types.cpp
-	src/jandy/devices/jandy_emulated_device_types.cpp 
-	src/jandy/devices/capabilities/emulated.cpp 
-	src/jandy/devices/capabilities/restartable.cpp
-	src/jandy/devices/capabilities/scrapeable.cpp 
-	src/jandy/devices/capabilities/screen.cpp 
-	src/jandy/devices/keypad_device.cpp 
-	src/jandy/devices/onetouch_device.cpp 
-	src/jandy/devices/pda_device.cpp 
-	src/jandy/devices/serial_adapter_device.cpp 
-	src/jandy/devices/keypad/keypad_messageprocessors.cpp 
-	src/jandy/devices/keypad/keypad_pageprocessors.cpp 
-	src/jandy/devices/onetouch/onetouch_messageprocessors.cpp 
-	src/jandy/devices/onetouch/onetouch_pageprocessors.cpp 
-	src/jandy/devices/onetouch/onetouch_screenscraping.cpp 
-	src/jandy/devices/onetouch/onetouch_statusprocessors.cpp 
-	src/jandy/devices/pda/pda_messageprocessors.cpp 	 
-	src/jandy/devices/pda/pda_pageprocessors.cpp 
-	src/jandy/devices/serial_adapter/serial_adapter_commandprocessors.cpp 
-	src/jandy/devices/serial_adapter/serial_adapter_messageprocessors.cpp 
-	src/jandy/equipment/jandy_equipment.cpp
-	src/jandy/equipment/jandy_equipment_versions.cpp 
-	src/jandy/errors/jandy_errors_auxillary_factory.cpp 
-	src/jandy/errors/jandy_errors_messages.cpp
-	src/jandy/errors/jandy_errors_protocol.cpp
-	src/jandy/errors/jandy_errors_scrapeable.cpp 
-	src/jandy/errors/string_conversion_errors.cpp
-	src/jandy/factories/jandy_auxillary_factory.cpp 
-	src/jandy/factories/jandy_message_factory.cpp
-	src/jandy/factories/jandy_message_factory_registration.cpp
-	src/jandy/formatters/chemistry_formatter.cpp 
-	src/jandy/formatters/jandy_device_formatters.cpp 
-	src/jandy/formatters/jandy_message_formatters.cpp 
-	src/jandy/formatters/screen_data_page_formatter.cpp
-	src/jandy/formatters/stats_counter_formatter.cpp	 
-	src/jandy/generator/jandy_message_generator.cpp
-	src/jandy/generator/jandy_message_generator_buffercleanup.cpp
-	src/jandy/generator/jandy_message_generator_buffervalidation.cpp
-	src/jandy/generator/jandy_message_generator_packetprocessing.cpp
-	src/jandy/generator/jandy_message_generator_packetvalidation.cpp
-	src/jandy/generator/jandy_message_generator_startendsequence.cpp
-	src/jandy/generator/jandy_rawdata_generator.cpp 
-	src/jandy/jandy.cpp
-	src/jandy/messages/aquarite/aquarite_message.cpp
-	src/jandy/messages/aquarite/aquarite_message_getid.cpp
-	src/jandy/messages/aquarite/aquarite_message_percent.cpp
-	src/jandy/messages/aquarite/aquarite_message_ppm.cpp
-	src/jandy/messages/iaq/iaq_message.cpp
-	src/jandy/messages/iaq/iaq_message_control_ready.cpp
-	src/jandy/messages/iaq/iaq_message_message_long.cpp
-	src/jandy/messages/iaq/iaq_message_page_button.cpp
-	src/jandy/messages/iaq/iaq_message_page_continue.cpp
-	src/jandy/messages/iaq/iaq_message_page_end.cpp
-	src/jandy/messages/iaq/iaq_message_page_message.cpp
-	src/jandy/messages/iaq/iaq_message_page_start.cpp
-	src/jandy/messages/iaq/iaq_message_poll.cpp
-	src/jandy/messages/iaq/iaq_message_startup.cpp
-	src/jandy/messages/iaq/iaq_message_table_message.cpp
-	src/jandy/messages/pda/pda_message.cpp 
-	src/jandy/messages/pda/pda_message_clear.cpp 
-	src/jandy/messages/pda/pda_message_highlight.cpp 
-	src/jandy/messages/pda/pda_message_highlight_chars.cpp 
-	src/jandy/messages/pda/pda_message_shiftlines.cpp 
-	src/jandy/messages/serial_adapter/serial_adapter_message.cpp 
-	src/jandy/messages/serial_adapter/serial_adapter_message_dev_ready.cpp 
-	src/jandy/messages/serial_adapter/serial_adapter_message_dev_status.cpp 
-	src/jandy/messages/jandy_message.cpp
-	src/jandy/messages/jandy_message_ack.cpp
-	src/jandy/messages/jandy_message_constants.cpp
-	src/jandy/messages/jandy_message_ids.cpp
-	src/jandy/messages/jandy_message_message.cpp
-	src/jandy/messages/jandy_message_message_long.cpp	
-	src/jandy/messages/jandy_message_probe.cpp
-	src/jandy/messages/jandy_message_status.cpp	 
-	src/jandy/messages/jandy_message_unknown.cpp
-	src/jandy/types/jandy_types.cpp
-	src/jandy/utility/filtered_slot.cpp 
-	src/jandy/utility/jandy_checksum.cpp 
-	src/jandy/utility/jandy_null_handler.cpp 
-	src/jandy/utility/jandy_pool_configuration_decoder.cpp
-	src/jandy/utility/screen_data_page.cpp
-	src/jandy/utility/screen_data_page_graph.cpp 
-	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
-	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp 
-	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_validator.cpp
-	src/jandy/utility/screen_data_page_graph/screen_data_page_graph_vertex.cpp 
-	src/jandy/utility/screen_data_page_processor.cpp 
-	src/jandy/utility/screen_data_page_updater.cpp
-	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_context.cpp
-	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlight.cpp 
-	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
-	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
-	src/jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
-	src/jandy/utility/slot_connection_manager.cpp
-	src/jandy/utility/string_manipulation.cpp 
-	src/jandy/utility/string_conversion/auxillary_state_string_converter.cpp 
-	src/jandy/utility/string_conversion/chemistry_string_converter.cpp 
-	src/jandy/utility/string_conversion/temperature_string_converter.cpp 
-	src/jandy/utility/string_conversion/timeout_duration_string_converter.cpp 
-	src/kernel/auxillary_devices/auxillary_device.cpp
-	src/kernel/auxillary_devices/auxillary_health_states.cpp
-	src/kernel/auxillary_devices/auxillary_status.cpp
-	src/kernel/auxillary_devices/chlorinator_status.cpp
-	src/kernel/auxillary_devices/heater_status.cpp
-	src/kernel/auxillary_devices/pump_status.cpp
-	src/kernel/auxillary_traits/auxillary_traits.cpp 
-	src/kernel/auxillary_traits/auxillary_traits_base.cpp 
-	src/kernel/auxillary_traits/auxillary_traits_helpers.cpp
-	src/kernel/auxillary_traits/auxillary_traits_proxy.cpp 
-	src/kernel/auxillary_traits/auxillary_traits_types.cpp 
-	src/kernel/circulation.cpp
-	src/kernel/data_hub.cpp
-	src/kernel/data_hub_command.cpp
-	src/kernel/equipment_hub.cpp 
-	src/kernel/flow_rate.cpp 
-	src/kernel/hub_locator.cpp 
-	src/kernel/orp.cpp 
-	src/kernel/ph.cpp
-	src/kernel/pool_configurations.cpp
-	src/kernel/powercenter.cpp
-	src/kernel/preferences_hub.cpp 
-	src/kernel/statistics_hub.cpp	 
-	src/kernel/system_boards.cpp
-	src/kernel/temperature.cpp 
-	src/kernel/hub_events/data_hub_config_event.cpp
-	src/kernel/hub_events/data_hub_config_event_chemistry.cpp
-	src/kernel/hub_events/data_hub_config_event_temperature.cpp
-	src/kernel/hub_events/equipment_hub_system_event.cpp
-	src/kernel/hub_events/equipment_hub_system_event_status_change.cpp
-	src/kernel/hub_events/hub_event.cpp
-	src/kernel/hub_events/hub_eventtypes.cpp
-	src/kernel/device_graph/device_graph.cpp
-	src/kernel/device_graph/device_graph_filter_by_id.cpp 
-	src/kernel/device_graph/device_graph_filter_by_label.cpp 
-	src/kernel/device_graph/device_graph_filter_by_trait.cpp 
-	src/logging/formatters/logging_formatters.cpp
-	src/kernel/device_graph/device_graph_types.cpp
-	src/localisation/translations_and_units_formatter.cpp 
-	src/logging/global_logger.cpp
-	src/logging/logging.cpp
-	src/logging/logging_attributes.cpp
-	src/logging/logging_channels.cpp
-	src/logging/logging_formatter.cpp
-	src/logging/logging_initialise.cpp
-	src/logging/logging_severity_filter.cpp
-	src/logging/logging_severity_levels.cpp
-	src/options/options_app_options.cpp
-	src/options/options_developer_options.cpp
-	src/options/options_emulated_device_options.cpp 
-	src/options/options_initialise.cpp
-	src/options/options_option_type.cpp
-	src/options/options_serial_options.cpp
-	src/options/options_settings.cpp
-	src/options/options_web_options.cpp
-	src/options/helpers/conflicting_options_helper.cpp 
-	src/options/helpers/option_dependency_helper.cpp 
-	src/options/validators/jandy_device_id_validator.cpp 
-	src/options/validators/jandy_emulated_device_type_validator.cpp
-	src/options/validators/profiler_type_validator.cpp
-	src/options/validators/severity_level_validator.cpp
-	src/profiling/noop_profiler.cpp
-	src/profiling/profiling.cpp
-	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/tracy_profiler.cpp>	
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:src/profiling/uprof_profiler.cpp>
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:src/profiling/vtune_profiler.cpp>
-	src/profiling/factories/profiler_factory.cpp
-	src/profiling/factories/profiler_factory_registration.cpp
-	src/profiling/factories/profiling_unit_factory.cpp 
-	src/profiling/factories/profiling_unit_factory_registration.cpp 
-	src/profiling/formatters/profiling_formatters.cpp
-	src/profiling/profiling_units/domain.cpp 
-	src/profiling/profiling_units/frame.cpp 
-	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_frame.cpp>	
-	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_zone.cpp>	
-	$<$<BOOL:${ENABLE_PROFILING}>:src/profiling/profiling_units/tracy_zone_datamap.cpp>	
-	src/profiling/profiling_units/timed_zone.cpp 
-	src/profiling/profiling_units/zone.cpp 
-	src/profiling/types/profiling_types.cpp
-	src/protocol/protocol_handler.cpp 
-	src/protocol/protocol_handler_read.cpp 
-	src/protocol/protocol_handler_write.cpp 
-	src/serial/serial_initialise.cpp
-	src/serial/serial_operating_modes.cpp
-	src/serial/serial_port.cpp
-	src/serial/serial_types.cpp	
-	src/types/units_electric_potential.cpp 
-	src/types/units_dimensionless.cpp 
-	src/types/units_electric_potential.cpp
-	src/types/units_flow_rate.cpp 
-	src/utility/array_standard_formatter.cpp
-	src/utility/bandwidth_utilisation.cpp 
-	src/utility/case_insensitive_comparision.cpp 
-	src/utility/circular_buffer_wrapping_iterator.cpp
-	src/utility/enumerate.cpp 
-	src/utility/get_terminal_column_width.cpp	
-	src/utility/overloaded_variant_visitor.cpp 
-	src/utility/signalling_stats_counter.cpp 
-	src/utility/singular_bytes_from_range.cpp
-	src/utility/value_debouncer.cpp 
-	src/version/version.cpp 
-	src/version/version_cmake.cpp 
-	src/version/version_git.cpp 
-	${CMAKE_CURRENT_BINARY_DIR}/src/version/version_cmake.constants.cpp # Generated by the configure_file command in the versioning section
-	${CMAKE_CURRENT_BINARY_DIR}/src/version/version_git.constants.cpp   # Generated by the GitWatcher.cmake in the versioning section
-)
-
-if(WIN32)
-target_sources(
-	libaqualink-automate 
-	PRIVATE
-	src/platform/windows/application_defaults.cpp
-	src/platform/windows/firewall_manager.cpp
-	src/platform/windows/get_terminal_column_width.cpp
-	src/platform/windows/uac_elevation.cpp
-)
-
-target_compile_definitions(
-	libaqualink-automate 
-	PUBLIC 
-	-D_SCL_SECURE_NO_WARNINGS
-	-D_CRT_SECURE_NO_WARNINGS
-	-D_WIN32_WINNT=0x0A00 
-	-DWINVER=0x0A00 
-	-DNTDDI_VERSION=0x0A000000
-	-DWIN32_LEAN_AND_MEAN 
-	-DVC_EXTRALEAN
-	-DNOGDI
-	-DNOGDICAPMASKS
-	-DNOMINMAX
-)
-
-target_link_libraries(
-	libaqualink-automate
-	PUBLIC
-	comsuppw
-	ole32
-	oleaut32
-)
-endif(WIN32)
-
-if(LINUX)
-target_sources(
-	libaqualink-automate 
-	PRIVATE
-	src/platform/linux/application_defaults.cpp
-	src/platform/linux/firewall_manager.cpp
-	src/platform/linux/get_terminal_column_width.cpp
-)
-endif(LINUX)
-
-target_compile_features(libaqualink-automate PUBLIC cxx_std_20)
-
-target_compile_definitions(
-	libaqualink-automate 
-	PUBLIC 
-	-DMAGIC_ENUM_RANGE_MIN=0
-	-DMAGIC_ENUM_RANGE_MAX=255
-	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
-	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
-	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_CUSTOM_HANDLER_TRACKING=\"developer/asio_tracking.h\" > # Enable ASIO connection tracking to aid debug async operations
-)
-
-target_include_directories(
-	libaqualink-automate 
-	PUBLIC 
-	"${PROJECT_SOURCE_DIR}/src" 
-	"${CMAKE_CURRENT_BINARY_DIR}/src"
-)
-
-target_include_directories(
-	libaqualink-automate 
-	SYSTEM 
-	PUBLIC 
-	${async_mqtt_INCLUDE_DIRS}
-	${asio_INCLUDE_DIRS} 
-	${Boost_INCLUDE_DIRS} 
-	${magic_enum_INCLUDE_DIRS}
-	${mstch_INCLUDE_DIRS}
-	${nlohmann_json_INCLUDE_DIRS}
-	${OpenSSL_INCLUDE_DIRS}
-	${re2_INCLUDE_DIRS}
-	${tl_expected_INCLUDE_DIRS}
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
-	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
-)
-target_link_libraries(
-	libaqualink-automate 
-	PUBLIC
-	async_mqtt_iface::async_mqtt_iface
-	Boost::boost 
-	Boost::cobalt
-	Boost::coroutine 
-	Boost::iostreams 
-	Boost::log 
-	Boost::log_setup 
-	Boost::program_options 
-	Boost::url
-	mstch::mstch
-	magic_enum::magic_enum
-	mstch::mstch
-	nlohmann_json::nlohmann_json
-	OpenSSL::SSL 
-	OpenSSL::Crypto
-	re2::re2
-	ZLIB::ZLIB
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
-	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
-	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
-)
-
-#------------------------------------------------------------------------------
-#
-#
-#
-#
-#------------------------------------------------------------------------------
-
-add_executable(
-	aqualink-automate
-	src/aqualink-automate.cpp 
-)
-
-target_link_libraries(
-	aqualink-automate 
-	PRIVATE 
-	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
-)
+add_subdirectory(src)
 
 #------------------------------------------------------------------------------
 #
@@ -613,27 +195,6 @@ add_sanitizers(libaqualink-automate)
 add_sanitizers(aqualink-automate)
 
 endif(ENABLE_SANITIZERS)
-
-#------------------------------------------------------------------------------
-#
-#
-#
-#
-#------------------------------------------------------------------------------
-
-add_custom_command(
-	TARGET aqualink-automate 
-	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_BINARY_DIR}/templates"
-)
-
-add_custom_command(
-	TARGET aqualink-automate 
-	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E echo "Copying SSL assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/ssl" "${CMAKE_BINARY_DIR}/ssl"
-)
 
 #------------------------------------------------------------------------------
 #

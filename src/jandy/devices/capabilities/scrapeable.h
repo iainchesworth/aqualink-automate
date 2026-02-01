@@ -8,17 +8,17 @@
 #include <tuple>
 #include <unordered_map>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <tl/expected.hpp>
 
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/errors/jandy_errors_scrapeable.h"
-#include "jandy/formatters/jandy_device_formatters.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/utility/screen_data_page_graph.h"
-#include "jandy/utility/screen_data_page_processor.h"
-#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
-#include "jandy/utility/slot_connection_manager.h"
+#include "devices/jandy_device_types.h"
+#include "errors/jandy_errors_scrapeable.h"
+#include "formatters/jandy_device_formatters.h"
+#include "messages/jandy_message_ids.h"
+#include "utility/screen_data_page_graph.h"
+#include "utility/screen_data_page_processor.h"
+#include "utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
+#include "utility/slot_connection_manager.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		{
 			auto slot_waitingformessage = [&](const auto& msg) -> void
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", BOOST_CURRENT_LOCATION);
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> Waiting For Message", std::source_location::current());
 
 				if (m_ParentDeviceId != msg.Destination().Id())
 				{

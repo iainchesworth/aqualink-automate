@@ -9,7 +9,7 @@
 #include <boost/system/error_code.hpp>
 #include <tl/expected.hpp>
 
-#include "jandy/errors/string_conversion_errors.h"
+#include "errors/string_conversion_errors.h"
 #include "kernel/temperature.h"
 
 using namespace AqualinkAutomate::ErrorCodes;

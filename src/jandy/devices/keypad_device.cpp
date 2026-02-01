@@ -1,7 +1,7 @@
 #include <functional>
 
 #include "logging/logging.h"
-#include "jandy/devices/keypad_device.h"
+#include "devices/keypad_device.h"
 
 using namespace AqualinkAutomate::Logging;
 

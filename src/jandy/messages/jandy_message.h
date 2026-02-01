@@ -2,17 +2,24 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <ranges>
 #include <string>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 #include "interfaces/imessage.h"
 #include "interfaces/iserializable.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "devices/jandy_device_types.h"
+#include "messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {
+	template <typename Range>
+	concept JandyRawMessageRange = std::ranges::random_access_range<Range> && std::same_as<std::ranges::range_value_t<Range>, uint8_t>;
+
+	template <typename Range>
+	concept MutableJandyRawMessageRange = JandyRawMessageRange<Range> && std::same_as<std::ranges::range_reference_t<Range>, uint8_t&>;
 
 	class JandyMessage : public Interfaces::IMessage<JandyMessageIds>, public Interfaces::ISerializable
 	{
@@ -48,8 +55,35 @@ namespace AqualinkAutomate::Messages
 		virtual bool Deserialize(const std::span<const std::byte>& message_bytes) final;
 		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) = 0;
 
+	public:
+		template <MutableJandyRawMessageRange RAW_MESSAGE_RANGE>
+		[[nodiscard]] bool Serialize(RAW_MESSAGE_RANGE& raw_message) const
+		{
+			std::vector<uint8_t> contiguous_raw_data;
+			auto result = Serialize(contiguous_raw_data);
+			raw_message.reserve(contiguous_raw_data.size());
+			std::ranges::copy(contiguous_raw_data, std::back_inserter(raw_message));
+
+			return result;
+		}
+
+		template <JandyRawMessageRange RAW_MESSAGE_RANGE>
+		[[nodiscard]] bool Deserialize(const RAW_MESSAGE_RANGE& raw_message)
+		{
+			std::vector<uint8_t> contiguous_raw_data;
+			contiguous_raw_data.reserve(std::ranges::size(raw_message));
+			std::ranges::copy(raw_message, std::back_inserter(contiguous_raw_data));
+			auto* raw_data_ptr = reinterpret_cast<const std::byte*>(contiguous_raw_data.data());
+			const auto raw_data_span = std::span<const std::byte>{ raw_data_ptr, contiguous_raw_data.size() };
+			auto result = Deserialize(raw_data_span);
+
+			return result;
+		}
+
 	protected:
-		bool PacketIsValid(const std::span<const std::byte>& message_bytes) const;
+		bool PacketSizeIsValid(const std::span<const std::byte>& message_bytes) const;
+		bool PacketFramingIsValid(const std::vector<uint8_t>& message_bytes) const;
+		bool PacketChecksumIsValid(const std::vector<uint8_t>& message_bytes) const;
 
 	protected:
 		Devices::JandyDeviceType m_Destination;

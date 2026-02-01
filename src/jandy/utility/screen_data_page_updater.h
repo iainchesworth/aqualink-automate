@@ -12,11 +12,11 @@
 #include <boost/statechart/transition.hpp>
 
 #include "logging/logging.h"
-#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_context.h"
-#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlight.h"
-#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.h"
-#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_evshift.h"
-#include "jandy/utility/screen_data_page_updater/screen_data_page_updater_evupdate.h"
+#include "utility/screen_data_page_updater/screen_data_page_updater_context.h"
+#include "utility/screen_data_page_updater/screen_data_page_updater_evhighlight.h"
+#include "utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.h"
+#include "utility/screen_data_page_updater/screen_data_page_updater_evshift.h"
+#include "utility/screen_data_page_updater/screen_data_page_updater_evupdate.h"
 
 using namespace AqualinkAutomate::Logging;
 

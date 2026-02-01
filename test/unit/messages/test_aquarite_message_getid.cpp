@@ -2,7 +2,7 @@
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/formatters/jandy_device_formatters.h"
@@ -59,9 +59,9 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_NE(message1.RawId(), message2.RawId()); // Deserialisation captures the message "raw" id...
     BOOST_CHECK_EQUAL(0x14, message2.RawId());
     BOOST_CHECK_NE(message1.MessageLength(), message2.MessageLength());  // Deserialisation captures the message length...
-    BOOST_CHECK_EQUAL(0x0C, message2.MessageLength());
+    BOOST_CHECK_EQUAL(8, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
-    BOOST_CHECK_EQUAL(0x10, message2.ChecksumValue());
+    BOOST_CHECK_EQUAL(0x28, message2.ChecksumValue());
 }
 
 BOOST_AUTO_TEST_CASE(TestDeserialization_MessageMissingPayload)

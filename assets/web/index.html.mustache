@@ -1,287 +1,329 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <link href="/styles/modal_banner.css" />
-    
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
-    <script src="/scripts/modal_banner.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Your custom CSS -->
-    <style>
-        .rotate-text {
-            transform: rotate(-90deg);
-            font-size: small;
-        }
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="styles/pool-monitor.css" rel="stylesheet">
 
-        .small-text {
-            font-size: small;
-        }
-    </style>
-
-    <title>Aqualink Automate</title>
+    <title>Aqualink Automate - Pool Monitor</title>
 </head>
 <body>
-    <!-- Title banner -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-gradient-primary sticky-top shadow">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">Pool Controller {{controller_type}} (Firmware {{controller_firmware}})</span>
-            <span class="navbar-text ml-auto">Date Time: {{controller_date}} {{controller_time}}</span>
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="bi bi-water me-2 fs-3"></i>
+                <span class="fw-bold">Aqualink Automate</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="bi bi-house-door me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/equipment"><i class="bi bi-bar-chart me-1"></i>Statistics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/version"><i class="bi bi-info-circle me-1"></i>About</a>
+                    </li>
+                </ul>
+                <div class="navbar-text ms-3 d-none d-lg-block">
+                    <span class="badge bg-light text-dark" id="lastUpdateTime">
+                        <i class="bi bi-clock me-1"></i>Connecting...
+                    </span>
+                </div>
+            </div>
         </div>
     </nav>
 
-    <div class="mt-3"></div>
-
-    <!-- First row - 4 panels -->
-    <div class="container">
-        <div class="row gap-3 d-flex justify-content-around">
-            {{#main_action_buttons}}
-            <button type="button" class="col-lg-2 col-md-5 btn btn-outline-secondary" id="{{main_action_button_id}}" onclick="handleButtonPress(this)">
-                <h2 id="{{main_action_button_id}}_button_label">{{main_action_button_label}}</h2>
-                <p id="{{main_action_button_id}}_status_id">{{main_action_button_status}}</p>
-            </button>
-            {{/main_action_buttons}}
+    <!-- System Status Banner -->
+    <div class="container-fluid mt-3">
+        <div id="systemStatusBanner" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+                <div>
+                    <strong id="bannerTitle">System Status</strong>
+                    <p class="mb-0" id="bannerMessage">Loading system information...</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="mt-3"></div>
+    <!-- Main Content -->
+    <div class="container-fluid px-4 py-3">
 
-    <!-- Second Row - 3 panels -->
-    <div class="container">
-        <div class="row mt-3">
-
-            <!-- Temperature Panel -->
-            <div class="col-lg-4 col-md-12">
-                <div class="card h-100">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col-2 d-flex justify-content-center">
-                            <div class="rotate-text">Temperature</div>
+        <!-- Controller Info Card -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <span class="text-muted small">Controller:</span>
+                            <strong id="controllerType" class="ms-2">Loading...</strong>
+                            <span class="text-muted small ms-3">Firmware:</span>
+                            <strong id="controllerFirmware" class="ms-2">-</strong>
                         </div>
-                        <div class="col-10">
-                            <div class="card-body text-center">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <h2 id="poolTemp">{{pool_temperature}}</h2>
-                                        <p class="small-text">Pool</p>
+                        <div class="text-end">
+                            <span class="text-muted small">System Time:</span>
+                            <strong id="systemDateTime" class="ms-2">--:--:--</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Status Cards -->
+        <div class="row g-3 mb-4">
+            <!-- Pool Temperature Card -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card status-card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3">
+                            <i class="bi bi-thermometer-half text-primary"></i>
+                        </div>
+                        <h6 class="text-muted mb-2">Pool Temperature</h6>
+                        <h2 class="mb-0 fw-bold" id="poolTemp">--</h2>
+                        <div class="mt-2">
+                            <span class="badge bg-info" id="poolHeatStatus">Unknown</span>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted" style="font-size: 0.7rem;">Requires filter pump in pool mode</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spa Temperature Card -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card status-card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3">
+                            <i class="bi bi-thermometer-high text-danger"></i>
+                        </div>
+                        <h6 class="text-muted mb-2">Spa Temperature</h6>
+                        <h2 class="mb-0 fw-bold" id="spaTemp">--</h2>
+                        <div class="mt-2">
+                            <span class="badge bg-info" id="spaHeatStatus">Unknown</span>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted" style="font-size: 0.7rem;">Requires filter pump in spa mode</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Air Temperature Card -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card status-card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3">
+                            <i class="bi bi-wind text-info"></i>
+                        </div>
+                        <h6 class="text-muted mb-2">Air Temperature</h6>
+                        <h2 class="mb-0 fw-bold" id="airTemp">--</h2>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark">Ambient</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status Card -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card status-card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3">
+                            <i class="bi bi-power text-success" id="systemStatusIcon"></i>
+                        </div>
+                        <h6 class="text-muted mb-2">System Status</h6>
+                        <h5 class="mb-0 fw-bold" id="systemStatus">Initializing</h5>
+                        <div class="mt-2">
+                            <div class="connection-indicator">
+                                <span class="status-dot" id="connectionStatus"></span>
+                                <small class="text-muted ms-1" id="connectionText">Connecting</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Water Chemistry -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0 d-flex align-items-center">
+                        <i class="bi bi-droplet-half text-primary me-2 fs-4"></i>
+                        <h5 class="mb-0">Water Chemistry</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="chemistry-item p-3 rounded text-center">
+                                    <i class="bi bi-activity fs-2 text-warning mb-2"></i>
+                                    <h6 class="text-muted mb-1">pH Level</h6>
+                                    <h3 class="mb-0 fw-bold" id="phLevel">-</h3>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar bg-warning" role="progressbar" id="phProgress" style="width: 0%"></div>
                                     </div>
-                                    <div class="col">
-                                        <h2 id="spaTemp">{{spa_temperature}}</h2>
-                                        <p class="small-text">Spa</p>
+                                    <small class="text-muted">Target: 7.2 - 7.8</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="chemistry-item p-3 rounded text-center">
+                                    <i class="bi bi-lightning-charge fs-2 text-success mb-2"></i>
+                                    <h6 class="text-muted mb-1">ORP (Oxidation)</h6>
+                                    <h3 class="mb-0 fw-bold" id="orpLevel">-</h3>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" role="progressbar" id="orpProgress" style="width: 0%"></div>
                                     </div>
-                                    <div class="col">
-                                        <h2 id="airTemp">{{air_temperature}}</h2>
-                                        <p class="small-text">Air</p>
+                                    <small class="text-muted">Target: 700 - 750 mV</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="chemistry-item p-3 rounded text-center">
+                                    <i class="bi bi-droplet-half fs-2 text-info mb-2"></i>
+                                    <h6 class="text-muted mb-1">Salt Level</h6>
+                                    <h3 class="mb-0 fw-bold" id="saltLevel">-</h3>
+                                    <div class="progress mt-2" style="height: 6px;">
+                                        <div class="progress-bar bg-info" role="progressbar" id="saltProgress" style="width: 0%"></div>
                                     </div>
+                                    <small class="text-muted">Target: 3800 - 4200 ppm</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Chemistry Panel -->
-            <div class="col-lg-4 col-md-12">
-                <div class="card h-100">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col-2 d-flex justify-content-center">
-                            <div class="rotate-text">Chemistry</div>
+        <!-- Equipment Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-toggles text-primary me-2 fs-4"></i>
+                            <h5 class="mb-0">Equipment Controls</h5>
                         </div>
-                        <div class="col-10">
-                            <div class="card-body text-center">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <h2 id="orp">{{water_orp}}</h2>
-                                        <p class="small-text">ORP</p>
-                                    </div>
-                                    <div class="col">
-                                        <h2 id="ph">{{water_ph}}</h2>
-                                        <p class="small-text">pH</p>
-                                    </div>
+                        <button class="btn btn-sm btn-outline-secondary" id="refreshButtons" title="Refresh">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="equipmentButtons" class="row g-3">
+                            <!-- Buttons will be dynamically loaded here -->
+                            <div class="col-12 text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- User Panel -->
-            <div class="col-lg-4 col-md-12">
-                <div class="card h-100">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col-2 d-flex justify-content-center">
-                            <div class="rotate-text">User</div>
-                        </div>
-                        <div class="col-10">
-                            <div class="card-body">
-                                <!-- Add User information here -->
+                                <p class="text-muted mt-3">Loading equipment controls...</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="mt-3"></div>
-
-    <div class="container">
-        <div class="row gap-2 d-flex justify-content-around">
-            {{#triggerable_buttons}}
-            <button type="button" class="col-lg-3 col-3 btn btn-light" id="{{triggerable_button_id}}" onclick="handleButtonPress(this)">
-                <strong><p id="{{triggerable_button_id}}_button_label">{{triggerable_button_label}}</p></strong>
-                <p id="{{triggerable_button_id}}_status_id">{{triggerable_button_status}}</p>
-            </button>
-            {{/triggerable_buttons}}
+        <!-- Main Action Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0 d-flex align-items-center">
+                        <i class="bi bi-gear-fill text-primary me-2 fs-4"></i>
+                        <h5 class="mb-0">Main Functions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-lg-3 col-md-6">
+                                <button class="btn btn-action w-100" id="spaHeatBtn">
+                                    <i class="bi bi-fire"></i>
+                                    <span>Spa Heat</span>
+                                    <small class="status-text" id="spaHeatBtnStatus">Unavailable</small>
+                                </button>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <button class="btn btn-action w-100" id="poolHeatBtn">
+                                    <i class="bi bi-sun"></i>
+                                    <span>Pool Heat</span>
+                                    <small class="status-text" id="poolHeatBtnStatus">Unavailable</small>
+                                </button>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <button class="btn btn-action w-100" id="solarHeatBtn">
+                                    <i class="bi bi-brightness-high"></i>
+                                    <span>Solar Heat</span>
+                                    <small class="status-text" id="solarHeatBtnStatus">Unavailable</small>
+                                </button>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <button class="btn btn-action w-100" id="userBtn">
+                                    <i class="bi bi-person-gear"></i>
+                                    <span>User Function</span>
+                                    <small class="status-text" id="userBtnStatus">Unavailable</small>
+                                </button>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <button class="btn btn-action w-100" id="cleanBtn">
+                                    <i class="bi bi-brush"></i>
+                                    <span>Cleaner</span>
+                                    <small class="status-text" id="cleanBtnStatus">Unavailable</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
 
-    <div class="mt-3"></div>
-
-    <!-- Continue with other rows here as necessary... -->
-
-    <footer class="footer mt-auto py-3 bg-light">
+    <!-- Footer -->
+    <footer class="bg-light mt-5 py-4">
         <div class="container">
-            <div class="row">
-                <!-- Left side - Version -->
-                <div class="col text-muted text-start">
-                    Version {{aqualink_automate_version}} ({{aqualink_automate_gitinfo}})
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <small class="text-muted">
+                        <i class="bi bi-code-square me-1"></i>
+                        Version <span id="appVersion">-</span>
+                        <span id="gitInfo" class="ms-2"></span>
+                    </small>
                 </div>
-
-                <!-- Right side - Links -->
-                <div class="col text-muted text-end">
-                    <a href="{{aqualink_automate_github}}/LICENSE.txt">Copyright License</a> |
-                    <a href="{{aqualink_automate_github}}">GitHub</a>
+                <div class="col-md-6 text-center text-md-end">
+                    <small class="text-muted">
+                        <a href="/LICENSE.txt" class="text-decoration-none me-3">License</a>
+                        <a href="https://github.com/aqualink-automate" class="text-decoration-none" target="_blank">
+                            <i class="bi bi-github me-1"></i>GitHub
+                        </a>
+                    </small>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Toggleable Banner Modal -->
-    <div class="modal fade" id="toggleBanner" tabindex="-1" aria-labelledby="toggleBannerLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered modal-fullscreen">
-            <div class="modal-content" style="background-color: rgba(255, 255, 224, 0.7); height: 300px;">
-                <!-- rgba for translucent yellow -->
-                <div class="modal-body d-flex flex-column justify-content-start align-items-center">
-                    <h2 class="modal-title text-center mt-3" id="toggleBannerLabel">Headline Text</h2>
-                    <p class="text-center mt-3" id="toggleBannerDescription">Description Text</p>
-                </div>
+    <!-- Toast Notifications Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-bell-fill me-2"></i>
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <small id="toastTime">Now</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Message here
             </div>
         </div>
     </div>
 
-    <script>
-        function configurePageOnLoad() {
-            configureTriggerableActionButtons();
-            configureWebSocketMessageHandlers();
-
-            showBanner('Attention!', 'System initialising...');
-        }
-
-        function configureTriggerableActionButtons() {
-
-        }
-
-        function configureWebSocketMessageHandlers() {
-            const eventHandlers = {};
-
-            function addEventHandler(eventName, handlerFunction) {
-                console.debug('Adding event handler for event: ', eventName);
-                if (!eventHandlers[eventName]) {
-                    eventHandlers[eventName] = [];
-                }
-                eventHandlers[eventName].push(handlerFunction);
-            }
-
-            const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment";
-            const socket = new WebSocket(wsUrl);
-
-            socket.addEventListener('open', function (event) { });
-            socket.addEventListener('close', function (event) { });
-            socket.addEventListener('error', event => console.error('WebSocket error: ', event));
-
-            socket.addEventListener('message', function (event) {
-                const data = JSON.parse(event.data);
-                if (data && data.type && eventHandlers[data.type]) {
-                    eventHandlers[data.type].forEach((handler) => handler(data.payload));
-                }
-                else {
-                    console.error('No event handler registered for event: ', data.type);
-                }
-            });
-
-            addEventHandler('ChemistryUpdate', (payload) => {
-                console.debug('ChemistryUpdate: ', payload);
-                if (payload && payload.orp_level) {
-                    document.getElementById('orp').innerText = payload.orp;
-                }
-                if (payload && payload.ph_level) {
-                    document.getElementById('ph').innerText = payload.ph;
-                }
-            });
-
-            addEventHandler('TemperatureUpdate', (payload) => {
-                console.debug('TemperatureUpdate: ', payload);
-                if (payload && payload.pool_temp) {
-                    document.getElementById('poolTemp').innerText = payload.pool_temp;
-                }
-                if (payload && payload.spa_temp) {
-                    document.getElementById('spaTemp').innerText = payload.spa_temp;
-                }
-                if (payload && payload.air_temp) {
-                    document.getElementById('airTemp').innerText = payload.air_temp;
-                }
-            });
-
-            addEventHandler('SystemStatusChange', (payload) => {
-                console.debug('SystemStatusChange: ', payload);
-            });
-        }
-
-        function fetchAndUpdateButtonState(el) {
-            const elementId = el.id;
-            const fetchPromise = fetch('/api/equipment' + elementId);
-
-            fetchPromise
-                .then(handleErrorsDuringFetch)
-                .then(response => response.json())
-                .then(response => updateButtonState(elementId, response))
-                .catch(error => console.error(error));
-        }
-
-        function handleButtonPress(el) {
-            const elementId = el.id;
-            const updatedStatusPromise = fetch('/api/equipment/buttons/' + elementId, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ elementId })
-            });
-
-            updatedStatusPromise
-                .then(handleErrorsDuringFetch)
-                .then(response => response.json())
-                .then(response => updateButtonState(elementId, response))
-                .catch(error => console.error(error));
-        }
-
-        function handleErrorsDuringFetch(response) {
-            if (!response.ok) {
-                throw Error(response.statusText);
-            }
-            return response;
-        }
-
-        function updateButtonState(el_id, response) {
-            document.getElementById(el_id + "_button_label").innerHTML = response.label;
-            document.getElementById(el_id + "_status_id").innerHTML = response.status ? response.status : "Unknown";
-        }
-
-        window.onload = configurePageOnLoad;
-    </script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="scripts/pool-monitor.js"></script>
 </body>
 </html>

@@ -2,284 +2,254 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-
-    <title>Equipment Message Stats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="styles/pool-monitor.css" rel="stylesheet">
+    
+    <title>Aqualink Automate - Equipment Statistics</title>
 </head>
 <body>
-    <!-- Title banner -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-gradient-primary sticky-top shadow">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">Pool Controller {{controller_type}} (Firmware {{controller_firmware}})</span>
-            <span class="navbar-text ml-auto">Date Time: {{controller_date}} {{controller_time}}</span>
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="bi bi-water me-2 fs-3"></i>
+                <span class="fw-bold">Aqualink Automate</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house-door me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/equipment"><i class="bi bi-bar-chart me-1"></i>Statistics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/version"><i class="bi bi-info-circle me-1"></i>About</a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <div class="container-fluid">
-
-        <div class="mt-3"></div>
-
-        <div class="container">
-            <h2>Message Counts</h2>
-            <table id="stats-table" class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">ID</th>
-                        <th scope="col">Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Rows will be added here by JavaScript -->
-                </tbody>
-            </table>
+    <!-- Main Content -->
+    <div class="container-fluid px-4 py-4">
+        
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="bi bi-bar-chart-fill text-primary me-2"></i>
+                            Equipment Statistics
+                        </h2>
+                        <p class="text-muted mb-0">Real-time performance metrics and message statistics</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary" id="refreshStats">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Serial Metrics Section -->
-        <div class="container mt-5">
-            <h2>Serial Metrics</h2>
-            <table id="serial-metrics-table" class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Metric</th>
-                        <th scope="col">Total Bytes</th>
-                        <th scope="col">Util % (Last 1s)</th>
-                        <th scope="col">Util % (Last 30s)</th>
-                        <th scope="col">Util % (Last 5m)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr id="serial-metrics-table-row_read">
-                        <td>Read</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                    <tr id="serial-metrics-table-row_write">
-                        <td>Write</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Device Information -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">
+                                    <i class="bi bi-cpu me-1"></i>Controller Information
+                                </h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">Model:</small>
+                                        <p class="mb-2"><strong id="deviceModel">Loading...</strong></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Firmware:</small>
+                                        <p class="mb-2"><strong id="deviceFirmware">-</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">
+                                    <i class="bi bi-clock-history me-1"></i>Connection Status
+                                </h6>
+                                <div class="d-flex align-items-center">
+                                    <span class="status-dot connected me-2" id="statsConnectionDot"></span>
+                                    <span id="statsConnectionStatus">Connected</span>
+                                    <small class="text-muted ms-3">Last update: <span id="statsLastUpdate">-</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- ChartJS Graph -->
-        <div class="container mt-5">
-            <h2>Utilisation Chart</h2>
-            <canvas id="serial-utilisation-chart"></canvas>
+        <!-- Serial Bandwidth Metrics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0">
+                            <i class="bi bi-speedometer2 text-primary me-2"></i>
+                            Serial Port Utilization
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Direction</th>
+                                        <th>Total Bytes</th>
+                                        <th>Util % (1s)</th>
+                                        <th>Util % (30s)</th>
+                                        <th>Util % (5m)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <i class="bi bi-download text-success me-1"></i>
+                                            <strong>Read</strong>
+                                        </td>
+                                        <td id="readTotalBytes">-</td>
+                                        <td>
+                                            <span id="readUtil1s" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <span id="readUtil30s" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <span id="readUtil5m" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 20px; width: 100px;">
+                                                <div id="readUtilBar" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <i class="bi bi-upload text-primary me-1"></i>
+                                            <strong>Write</strong>
+                                        </td>
+                                        <td id="writeTotalBytes">-</td>
+                                        <td>
+                                            <span id="writeUtil1s" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <span id="writeUtil30s" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <span id="writeUtil5m" class="badge bg-light text-dark">-</span>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 20px; width: 100px;">
+                                                <div id="writeUtilBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%">0%</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Continue with other rows here as necessary... -->
+        <!-- Utilization Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up text-primary me-2"></i>
+                            Real-time Utilization Graph
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="utilizationChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Statistics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0">
+                            <i class="bi bi-envelope-fill text-primary me-2"></i>
+                            Message Statistics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="messageStatsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Message ID</th>
+                                        <th>Count</th>
+                                        <th>Frequency</th>
+                                        <th>Last Seen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                            Loading message statistics...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <div class="mt-3"></div>
-
-    <footer class="footer mt-auto py-3 bg-light">
+    <!-- Footer -->
+    <footer class="bg-light mt-5 py-4">
         <div class="container">
-            <div class="row">
-                <!-- Left side - Version -->
-                <div class="col text-muted text-start">
-                    Version {{aqualink_automate_version}} ({{aqualink_automate_gitinfo}})
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <small class="text-muted">
+                        <i class="bi bi-code-square me-1"></i>
+                        Version <span id="appVersion">-</span>
+                    </small>
                 </div>
-
-                <!-- Right side - Links -->
-                <div class="col text-muted text-end">
-                    <a href="{{aqualink_automate_github}}/LICENSE.txt">Copyright License</a> |
-                    <a href="{{aqualink_automate_github}}">GitHub</a>
+                <div class="col-md-6 text-center text-md-end">
+                    <small class="text-muted">
+                        <a href="/" class="text-decoration-none me-3">Dashboard</a>
+                        <a href="/version" class="text-decoration-none">About</a>
+                    </small>
                 </div>
             </div>
         </div>
     </footer>
 
-    <script>
-        let utilisationChart;
-        let timeData = [];
-        let readUtilData = [];
-        let writeUtilData = [];
-        let maxDataPoints = 500;  // Maximum data points to show on graph
-
-        function configurePageOnLoad() {
-            configureSerialUtilisationChart();
-            configureWebSocketMessageHandlers();
-        }
-
-        function configureSerialUtilisationChart() {
-            const ctx = document.getElementById('serial-utilisation-chart').getContext('2d');
-            utilisationChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: timeData,
-                    datasets: [
-                        {
-                            label: 'Read Utilisation %',
-                            borderColor: 'blue',
-                            data: readUtilData,
-                            yAxisID: 'y-axis-util',
-                        },
-                        {
-                            label: 'Write Utilisation %',
-                            borderColor: 'red',
-                            data: writeUtilData,
-                            yAxisID: 'y-axis-util',
-                        }
-                    ]
-                },
-                options: {
-                    elements: {
-                        line: {
-                            tension: 1
-                        }  
-                    },
-                    responsive: true,
-                    scales: {
-                        x: {
-                            type: 'time',
-                            ticks: {
-                                display: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            }
-                        },
-                        'y-axis-util': {
-                            type: 'linear',
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Utilisation %'
-                            }
-                        }
-                    },
-                    plugins: {
-                        decimation: {
-                            enabled: true,
-                            algorithm: 'lttb',  // Using largest-triangle-three-buckets algorithm
-                        }
-                    }
-                }
-            });
-        }
-
-        function configureWebSocketMessageHandlers() {
-            const eventHandlers = {};
-
-            function addEventHandler(eventName, handlerFunction) {
-                console.debug('Adding event handler for event: ', eventName);
-                if (!eventHandlers[eventName]) {
-                    eventHandlers[eventName] = [];
-                }
-                eventHandlers[eventName].push(handlerFunction);
-            }
-
-            const wsUrl = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws/equipment/stats";
-            const socket = new WebSocket(wsUrl);
-
-            socket.addEventListener('open', function (event) { });
-            socket.addEventListener('close', function (event) { });
-            socket.addEventListener('error', event => console.error('WebSocket error: ', event));
-
-            socket.addEventListener('message', function (event) {
-                const data = JSON.parse(event.data);
-                if (data && data.type && eventHandlers[data.type]) {
-                    eventHandlers[data.type].forEach((handler) => handler(data.payload));
-                }
-                else {
-                    console.error('No event handler registered for event: ', data.type);
-                }
-            });
-
-            addEventHandler('StatisticsUpdate', (payload) => {
-                console.debug('StatisticsUpdate: ', payload);
-                if (payload && payload.message_counts) {
-                    updateStatisticsTable(payload.message_counts);
-                }
-
-                read_metrics_row = document.getElementById("serial-metrics-table-row_read");
-                read_metrics_row.cells[1].innerHTML = payload.bandwidth_read.total_bytes;
-                read_metrics_row.cells[2].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_1sec).toFixed(2);
-                read_metrics_row.cells[3].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_30sec).toFixed(2);
-                read_metrics_row.cells[4].innerHTML = Number.parseFloat(payload.bandwidth_read.average_utilisation_5mins).toFixed(2);
-
-                write_metrics_row = document.getElementById("serial-metrics-table-row_write");
-                write_metrics_row.cells[1].innerHTML = payload.bandwidth_write.total_bytes;
-                write_metrics_row.cells[2].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_1sec).toFixed(2);
-                write_metrics_row.cells[3].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_30sec).toFixed(2);
-                write_metrics_row.cells[4].innerHTML = Number.parseFloat(payload.bandwidth_write.average_utilisation_5mins).toFixed(2);
-
-                if (payload) {
-
-                    let read_util = 0;
-                    let write_util = 0;
-
-                    if (payload.bandwidth_read && payload.bandwidth_read.average_utilisation_1sec) {
-                        read_util = payload.bandwidth_read.average_utilisation_1sec;
-                    }
-
-                    if (payload.bandwidth_write && payload.bandwidth_write.average_utilisation_1sec) {
-                        write_util = payload.bandwidth_write.average_utilisation_1sec;
-                    }
-
-                    updateUtilisationChart(read_util, write_util);
-                }
-            });
-        }
-
-        function updateStatisticsTable(stats) {
-            const tableBody = document.getElementById('stats-table').getElementsByTagName("tbody")[0];
-
-            stats.forEach(stat => {
-                let newRow;
-
-                // Check if row with this ID already exists
-                newRow = document.getElementById("stats-table-row_" + stat.id);
-
-                if (!newRow) {
-                    // Insert new row and set ID
-                    newRow = tableBody.insertRow();
-                    newRow.id = "stats-table-row_" + stat.id;
-
-                    // Create cells for the new row
-                    newRow.insertCell(0);
-                    newRow.insertCell(1);
-                    newRow.insertCell(2);
-                }
-
-                // Update cells
-                newRow.cells[0].innerHTML = stat.id;
-                newRow.cells[1].innerHTML = stat.count;
-            });
-        }
-
-        function updateUtilisationChart(read_util, write_util) {
-            const currentTime = new Date().toISOString();
-
-            timeData.push(currentTime);
-            readUtilData.push(read_util);
-            writeUtilData.push(write_util);
-
-            // Remove old data to keep max data points
-            if (timeData.length > maxDataPoints)
-            {
-                timeData.shift();
-                readUtilData.shift();
-                writeUtilData.shift();
-            }
-
-            // Update the chart
-            utilisationChart.update();
-        }
-
-        window.onload = configurePageOnLoad;
-    </script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="scripts/equipment-stats.js"></script>
 </body>
 </html>

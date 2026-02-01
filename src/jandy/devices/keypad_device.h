@@ -3,17 +3,17 @@
 #include <chrono>
 #include <cstdint>
 
-#include "jandy/devices/jandy_controller.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/emulated.h"
-#include "jandy/devices/capabilities/restartable.h"
-#include "jandy/devices/capabilities/scrapeable.h"
-#include "jandy/devices/capabilities/screen.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_message.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_status.h"
+#include "devices/jandy_controller.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/emulated.h"
+#include "devices/capabilities/restartable.h"
+#include "devices/capabilities/scrapeable.h"
+#include "devices/capabilities/screen.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_message.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_status.h"
 #include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
@@ -24,7 +24,7 @@ namespace AqualinkAutomate::Devices
 		inline static const uint8_t KEYPAD_PAGE_LINES{ 3 };
 		inline static const std::chrono::seconds KEYPAD_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		enum class KeyCommands
+		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
 		};

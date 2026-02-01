@@ -49,32 +49,31 @@ BOOST_AUTO_TEST_CASE(StatsSignalTest)
     BOOST_TEST(signalReceived);
 }
 
+enum class TestStatA { Stat1, Stat2, Stat3 };
+enum class TestStatB { Alpha, Beta };
+
 BOOST_AUTO_TEST_CASE(StatsCounterAccessTest)
 {
-    using CounterType = AqualinkAutomate::Utility::SignallingStatsCounter<std::string, int>;
-
-    CounterType counter;
+    AqualinkAutomate::Utility::SignallingStatsCounter counter;
 
     // Test accessing and modifying stats counters
-    counter["stat1"] += 5;
-    counter[42] = 10;
+    counter[TestStatA::Stat1] += 5;
+    counter[TestStatA::Stat2] = 10;
 
-    BOOST_TEST(counter["stat1"].Count() == 5);
-    BOOST_TEST(counter[42].Count() == 10);
+    BOOST_TEST(counter[TestStatA::Stat1].Count() == 5);
+    BOOST_TEST(counter[TestStatA::Stat2].Count() == 10);
 }
 
 BOOST_AUTO_TEST_CASE(VariantStatsSignalTest)
 {
-    using CounterType = AqualinkAutomate::Utility::SignallingStatsCounter<double>;
-
-    CounterType counter;
+    AqualinkAutomate::Utility::SignallingStatsCounter counter;
 
     bool signalReceived = false;
-    
+
     counter.Signal().connect([&signalReceived](uint64_t /* ignored */) { signalReceived = true; });
 
     // Trigger the signal by accessing a new stats counter
-    counter[3.14] += 1;
+    counter[TestStatB::Alpha] += 1;
 
     // Check if the signal was received
     BOOST_TEST(signalReceived);

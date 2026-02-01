@@ -1,5 +1,5 @@
-#include "jandy/formatters/jandy_device_formatters.h"
-#include "jandy/formatters/jandy_message_formatters.h"
+#include "formatters/jandy_device_formatters.h"
+#include "formatters/jandy_message_formatters.h"
 
 namespace AqualinkAutomate::Formatters
 {

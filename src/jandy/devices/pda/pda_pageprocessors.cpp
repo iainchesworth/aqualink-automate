@@ -1,8 +1,8 @@
 #include <format>
 
 #include "logging/logging.h"
-#include "jandy/devices/pda_device.h"
-#include "jandy/utility/string_manipulation.h"
+#include "devices/pda_device.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 

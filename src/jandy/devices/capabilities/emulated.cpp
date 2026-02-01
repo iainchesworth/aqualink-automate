@@ -1,4 +1,4 @@
-#include "jandy/devices/capabilities/emulated.h"
+#include "devices/capabilities/emulated.h"
 
 namespace AqualinkAutomate::Devices::Capabilities
 {

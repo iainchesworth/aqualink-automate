@@ -3,7 +3,7 @@
 
 #include "devices/device_status.h"
 #include "logging/logging.h"
-#include "jandy/devices/serial_adapter_device.h"
+#include "devices/serial_adapter_device.h"
 #include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -55,14 +55,14 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::ProcessControllerUpdates()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", BOOST_CURRENT_LOCATION);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", std::source_location::current());
 
 		uint8_t ack_type{ 0x00 };
 		uint8_t ack_data_value{ 0x00 };
 
 		if (m_StatusMessageReceived)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Query for Status", BOOST_CURRENT_LOCATION);
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Query for Status", std::source_location::current());
 			
 			LogDebug(Channel::Messages, "ProcessControllerUpdates -> Query for Status");
 

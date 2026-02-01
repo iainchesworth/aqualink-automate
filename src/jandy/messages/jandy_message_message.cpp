@@ -1,9 +1,9 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_message.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -11,9 +11,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> JandyMessage_Message::g_JandyMessage_Message_Registration(JandyMessageIds::Message);
+	//const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> JandyMessage_Message::g_JandyMessage_Message_Registration(JandyMessageIds::Message);
 
-	JandyMessage_Message::JandyMessage_Message() : 
+	JandyMessage_Message::JandyMessage_Message() noexcept : 
 		JandyMessage_Message(std::string())
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);

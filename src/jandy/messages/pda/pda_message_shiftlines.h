@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/pda/pda_message.h"
+#include "messages/pda/pda_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -20,7 +19,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_LineShift = 6;
 
 	public:
-		PDAMessage_ShiftLines();
+		PDAMessage_ShiftLines() noexcept;
 		virtual ~PDAMessage_ShiftLines();
 
 	public:
@@ -39,9 +38,6 @@ namespace AqualinkAutomate::Messages
 		uint8_t m_FirstLineId;
 		uint8_t m_LastLineId;
 		int8_t m_LineShift;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::PDAMessage_ShiftLines> g_PDAMessage_ShiftLines_Registration;
 	};
 
 }

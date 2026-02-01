@@ -1,0 +1,436 @@
+/* Pool Monitor Styles */
+
+:root {
+    --primary-color: #0066cc;
+    --primary-gradient: linear-gradient(135deg, #0066cc 0%, #004c99 100%);
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-bg: #f8f9fa;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --card-hover-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    --transition: all 0.3s ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    min-height: 100vh;
+}
+
+/* Navbar Styles */
+.bg-gradient-primary {
+    background: var(--primary-gradient);
+}
+
+.navbar-brand {
+    font-size: 1.3rem;
+    transition: var(--transition);
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.nav-link {
+    transition: var(--transition);
+    border-radius: 0.25rem;
+    margin: 0 0.25rem;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Status Cards */
+.status-card {
+    transition: var(--transition);
+    background: white;
+    border-radius: 1rem;
+}
+
+.status-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.status-icon i {
+    font-size: 3rem;
+    opacity: 0.8;
+}
+
+.status-card h2 {
+    font-size: 2.5rem;
+    color: #2c3e50;
+}
+
+.status-card h6 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Connection Status Indicator */
+.connection-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 1rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--secondary-color);
+    animation: pulse 2s infinite;
+}
+
+.status-dot.connected {
+    background-color: var(--success-color);
+}
+
+.status-dot.disconnected {
+    background-color: var(--danger-color);
+    animation: none;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Chemistry Section */
+.chemistry-item {
+    background-color: rgba(0, 0, 0, 0.02);
+    transition: var(--transition);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chemistry-item:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
+}
+
+.chemistry-item h3 {
+    font-size: 2rem;
+    color: #2c3e50;
+}
+
+.progress {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+/* Equipment Buttons */
+.equipment-button {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.equipment-button:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-4px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.equipment-button.active {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-color: #28a745;
+    color: white;
+}
+
+.equipment-button.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: left 0.5s;
+}
+
+.equipment-button.active:hover::before {
+    left: 100%;
+}
+
+.equipment-button i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.equipment-button .button-label {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.equipment-button .button-status {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.equipment-button.active .button-status {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.equipment-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.equipment-button:disabled:hover {
+    transform: none;
+    border-color: #dee2e6;
+}
+
+/* Main Action Buttons */
+.btn-action {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 1rem;
+    padding: 1.5rem 1rem;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    height: 100%;
+    color: #2c3e50;
+}
+
+.btn-action i {
+    font-size: 2rem;
+}
+
+.btn-action span {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.btn-action .status-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+}
+
+.btn-action:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-4px);
+    box-shadow: var(--card-hover-shadow);
+    color: var(--primary-color);
+}
+
+.btn-action.active {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.btn-action.active .status-text {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Cards */
+.card {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.5rem;
+}
+
+.card-header h5 {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Badges */
+.badge {
+    padding: 0.35rem 0.75rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+/* Loading State */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Toast Notifications */
+.toast {
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.75rem;
+}
+
+.toast-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* System Status Banner */
+#systemStatusBanner {
+    border-radius: 0.75rem;
+    border: none;
+    box-shadow: var(--card-shadow);
+}
+
+/* Footer */
+footer {
+    background-color: white !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+footer a {
+    color: #6c757d;
+    transition: var(--transition);
+}
+
+footer a:hover {
+    color: var(--primary-color);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .status-card h2 {
+        font-size: 2rem;
+    }
+    
+    .status-icon i {
+        font-size: 2.5rem;
+    }
+    
+    .chemistry-item h3 {
+        font-size: 1.5rem;
+    }
+    
+    .equipment-button {
+        padding: 1rem;
+    }
+    
+    .equipment-button i {
+        font-size: 2rem;
+    }
+    
+    .btn-action {
+        padding: 1rem 0.75rem;
+    }
+    
+    .btn-action i {
+        font-size: 1.5rem;
+    }
+}
+
+/* Utility Classes */
+.text-truncate-2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Temperature Indicators */
+.temp-cold {
+    color: #17a2b8 !important;
+}
+
+.temp-warm {
+    color: #ffc107 !important;
+}
+
+.temp-hot {
+    color: #dc3545 !important;
+}
+
+/* Status Badge Colors */
+.badge.status-on {
+    background-color: #28a745 !important;
+}
+
+.badge.status-off {
+    background-color: #6c757d !important;
+}
+
+.badge.status-enabled {
+    background-color: #17a2b8 !important;
+}
+
+.badge.status-unavailable {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+}

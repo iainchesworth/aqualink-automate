@@ -33,6 +33,7 @@ bld/
 [Bb]uild/
 [Oo]ut/
 [Pp]ackages/
+[Vv]cpkg_installed/
 
 # SonarCloud working directories
 .scannerwork/

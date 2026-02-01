@@ -1,16 +1,16 @@
 #include <format>
-#include <ranges>
+#include <span>
 #include <vector>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/formatters/jandy_device_formatters.h"
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/utility/jandy_checksum.h"
-#include "jandy/utility/jandy_null_handler.h"
+#include "formatters/array_standard_formatter.h"
+#include "formatters/jandy_device_formatters.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_constants.h"
+#include "utility/jandy_checksum.h"
+#include "utility/jandy_null_handler.h"
 #include "logging/logging.h"
-#include "utility/array_standard_formatter.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -90,7 +90,7 @@ namespace AqualinkAutomate::Messages
 
 		const auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), message_bytes.size()));
 
-		message_bytes.emplace_back(Utility::JandyPacket_CalculateChecksum(message_span_to_checksum));
+		message_bytes.emplace_back(Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend()));
 		message_bytes.emplace_back(Messages::HEADER_BYTE_DLE);
 		message_bytes.emplace_back(Messages::HEADER_BYTE_ETX);
 		
@@ -103,12 +103,12 @@ namespace AqualinkAutomate::Messages
 
 	bool JandyMessage::Deserialize(const std::span<const std::byte>& message_bytes)
 	{
-		if (!PacketIsValid(message_bytes))
+		if (!PacketSizeIsValid(message_bytes))
 		{
-			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet is not valid");
+			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet size is not valid");
 		}
 		else
-		{		
+		{
 			std::vector<uint8_t> filtered_data(message_bytes.size());
 			std::transform(message_bytes.begin(), message_bytes.end(), filtered_data.begin(),
 				[](std::byte b)
@@ -119,23 +119,77 @@ namespace AqualinkAutomate::Messages
 
 			Utility::JandyPacket_NullCharHandler_Deserialization(filtered_data);
 
-			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(filtered_data[Index_DestinationId])));
-			m_RawId = static_cast<uint8_t>(filtered_data[Index_MessageType]);
-			m_MessageLength = message_bytes.size_bytes();
-			m_ChecksumValue = static_cast<uint8_t>(filtered_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
+			if (!PacketFramingIsValid(filtered_data))
+			{
+				LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet framing is not valid");
+			}
+			else if (!PacketChecksumIsValid(filtered_data))
+			{
+				LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet checksum is not valid");
+			}
+			else 
+			{
+				m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(filtered_data[Index_DestinationId])));
+				m_RawId = static_cast<uint8_t>(filtered_data[Index_MessageType]);
+				m_MessageLength = filtered_data.size();
+				m_ChecksumValue = static_cast<uint8_t>(filtered_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
 
-			return DeserializeContents(filtered_data);
+				return DeserializeContents(filtered_data);
+			}
 		}
 
 		return false;
 	}
 
-	bool JandyMessage::PacketIsValid(const std::span<const std::byte>& message_bytes) const
+	bool JandyMessage::PacketSizeIsValid(const std::span<const std::byte>& message_bytes) const
 	{
 		bool packet_is_valid = true;
 
 		packet_is_valid &= (MINIMUM_PACKET_LENGTH <= message_bytes.size());
 		packet_is_valid &= (MAXIMUM_PACKET_LENGTH >= message_bytes.size());
+
+		LogTrace(Channel::Messages, std::format("Packet size validation check passed: {}", packet_is_valid));
+
+		return packet_is_valid;
+	}
+
+	bool JandyMessage::PacketFramingIsValid(const std::vector<uint8_t>& message_bytes) const
+	{
+		if (MINIMUM_PACKET_LENGTH > message_bytes.size())
+		{
+			LogDebug(Channel::Messages, "Attempted to validate framing on a packet with an invalid size!");
+			return false;
+		}
+		
+		bool packet_is_valid = true;
+
+		packet_is_valid &= (message_bytes[0] == Messages::HEADER_BYTE_DLE);
+		packet_is_valid &= (message_bytes[1] == Messages::HEADER_BYTE_STX);
+		packet_is_valid &= (message_bytes[message_bytes.size() - 2] == Messages::HEADER_BYTE_DLE);
+		packet_is_valid &= (message_bytes[message_bytes.size() - 1] == Messages::HEADER_BYTE_ETX);
+
+		LogTrace(Channel::Messages, std::format("Packet framing validation check passed: {}", packet_is_valid));
+
+		return packet_is_valid;
+	}
+
+	bool JandyMessage::PacketChecksumIsValid(const std::vector<uint8_t>& message_bytes) const
+	{
+		if (MINIMUM_PACKET_LENGTH > message_bytes.size())
+		{
+			LogDebug(Channel::Messages, "Attempted to validate checksum on a packet with an invalid size!");
+			return false;
+		}
+
+		bool packet_is_valid = true;
+
+		std::span<const uint8_t> message_span_to_checksum(message_bytes.data(), message_bytes.size() - PACKET_FOOTER_LENGTH);
+		const auto expected_checksum = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend());
+		const auto received_checksum = message_bytes[message_bytes.size() - PACKET_FOOTER_LENGTH];
+
+		packet_is_valid &= (expected_checksum == received_checksum);
+
+		LogTrace(Channel::Messages, std::format("Packet checksum validation check passed: {}", packet_is_valid));
 
 		return packet_is_valid;
 	}

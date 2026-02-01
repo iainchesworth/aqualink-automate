@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/jandy_message.h"
+//#include "factories/jandy_message_factory_registration.h"
+#include "messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_LineText = 5;
 
 	public:
-		JandyMessage_MessageLong();
+		JandyMessage_MessageLong() noexcept;
 		JandyMessage_MessageLong(const uint8_t line_id, const std::string line);
 		virtual ~JandyMessage_MessageLong();
 
@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Messages
 		std::string m_Line;
 
 	private:
-		static const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> g_JandyMessage_MessageLong_Registration;
+		//static const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> g_JandyMessage_MessageLong_Registration;
 	};
 
 }

@@ -14,9 +14,8 @@ namespace AqualinkAutomate::Test
 		m_DataHub = this->Find<Kernel::DataHub>();
 		m_StatisticsHub = this->Find<Kernel::StatisticsHub>();
 
-		///FIXME m_JandyEquipment = std::make_shared<Equipment::JandyEquipment>(co_await boost::cobalt::this_coro::executor, *this);
-		///FIXME m_OneTouch = std::make_shared<AqualinkAutomate::Devices::OneTouchDevice>(co_await boost::cobalt::this_coro::executor, std::make_shared<Devices::JandyDeviceType>(m_DeviceId), *this, m_IsEmulated);
-		throw;
+		m_JandyEquipment = std::make_shared<Equipment::JandyEquipment>(*this);
+		m_OneTouch = std::make_shared<AqualinkAutomate::Devices::OneTouchDevice>(std::make_shared<Devices::JandyDeviceType>(m_DeviceId), *this, m_IsEmulated);
 	}
 
 	OneTouchDevice::~OneTouchDevice()

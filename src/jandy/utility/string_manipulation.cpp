@@ -1,6 +1,6 @@
 #include <algorithm>
 
-#include "jandy/utility/string_manipulation.h"
+#include "utility/string_manipulation.h"
 
 namespace AqualinkAutomate::Utility
 {

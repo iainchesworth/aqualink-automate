@@ -1,5 +1,5 @@
 #include "devices/device_status.h"
-#include "jandy/devices/jandy_device.h"
+#include "devices/jandy_device.h"
 
 namespace AqualinkAutomate::Devices
 {

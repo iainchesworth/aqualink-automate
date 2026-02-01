@@ -1,9 +1,6 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
-#include "jandy/utility/jandy_checksum.h"
+#include "messages/aquarite/aquarite_message_percent.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging; 
@@ -11,9 +8,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent> AquariteMessage_Percent::g_AquariteMessage_Percent_Registration(JandyMessageIds::AQUARITE_Percent);
-
-	AquariteMessage_Percent::AquariteMessage_Percent() : 
+	AquariteMessage_Percent::AquariteMessage_Percent() noexcept :
 		AquariteMessage(JandyMessageIds::AQUARITE_Percent),
 		Interfaces::IMessageSignalRecv<AquariteMessage_Percent>(),
 		m_Percent(0)
@@ -36,20 +31,7 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_Percent::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		message_bytes =
-		{
-			Messages::HEADER_BYTE_DLE,
-			Messages::HEADER_BYTE_STX,
-			0x00,
-			magic_enum::enum_integer(JandyMessageIds::AQUARITE_Percent),
-			m_Percent,
-			0x00,
-			Messages::HEADER_BYTE_DLE,
-			Messages::HEADER_BYTE_ETX
-		};
-
-		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 5));
-		message_bytes[5] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+		message_bytes.emplace_back(m_Percent);
 
 		return true;
 	}

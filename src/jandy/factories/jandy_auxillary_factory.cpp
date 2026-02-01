@@ -2,10 +2,10 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
-#include "jandy/errors/jandy_errors_auxillary_factory.h"
-#include "jandy/factories/jandy_auxillary_factory.h"
-#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
+#include "errors/jandy_errors_auxillary_factory.h"
+#include "factories/jandy_auxillary_factory.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"

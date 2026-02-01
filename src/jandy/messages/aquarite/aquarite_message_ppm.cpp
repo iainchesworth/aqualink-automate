@@ -1,11 +1,8 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
-#include "jandy/utility/jandy_checksum.h"
+#include "messages/aquarite/aquarite_message_ppm.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging; 
@@ -13,9 +10,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM> AquariteMessage_PPM::g_AquariteMessage_PPM_Registration(JandyMessageIds::AQUARITE_PPM);
-
-	AquariteMessage_PPM::AquariteMessage_PPM() : 
+	AquariteMessage_PPM::AquariteMessage_PPM() noexcept :
 		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
 		Interfaces::IMessageSignalRecv<AquariteMessage_PPM>(),
 		m_PPM(0),
@@ -44,21 +39,8 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_PPM::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		message_bytes =
-		{
-			Messages::HEADER_BYTE_DLE,
-			Messages::HEADER_BYTE_STX,
-			0x00,
-			magic_enum::enum_integer(JandyMessageIds::AQUARITE_PPM),
-			static_cast<uint8_t>(m_PPM / 100),
-			magic_enum::enum_integer(m_Status),
-			0x00,
-			Messages::HEADER_BYTE_DLE,
-			Messages::HEADER_BYTE_ETX
-		};
-
-		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
-		message_bytes[6] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+		message_bytes.emplace_back(static_cast<uint8_t>(m_PPM / 100));
+		message_bytes.emplace_back(magic_enum::enum_integer(m_Status));
 
 		return true;
 	}

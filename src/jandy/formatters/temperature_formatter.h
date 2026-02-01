@@ -6,8 +6,8 @@
 
 #include <tl/expected.hpp>
 
-#include "formatters/temperature_formatter.h"
-#include "jandy/utility/string_conversion/temperature_string_converter.h"
+#include "core/formatters/temperature_formatter.h"
+#include "utility/string_conversion/temperature_string_converter.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -28,8 +28,7 @@ namespace std
 template<>
 struct std::formatter<AqualinkAutomate::Utility::TemperatureStringConverter> : std::formatter<AqualinkAutomate::Kernel::Temperature>
 {
-	template<class ParseContext>
-	constexpr ParseContext::iterator parse(ParseContext& ctx)
+	constexpr auto parse(std::format_parse_context& ctx) -> std::format_parse_context::iterator
 	{
 		return std::formatter<AqualinkAutomate::Kernel::Temperature>::parse(ctx);
 	}

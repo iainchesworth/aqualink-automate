@@ -1,6 +1,6 @@
 #include <format>
 
-#include "jandy/messages/serial_adapter/serial_adapter_message.h"
+#include "messages/serial_adapter/serial_adapter_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

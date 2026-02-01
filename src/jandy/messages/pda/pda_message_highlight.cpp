@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/pda/pda_message_highlight.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> PDAMessage_Highlight::g_PDAMessage_Highlight_Registration(JandyMessageIds::PDA_Highlight);
-
-	PDAMessage_Highlight::PDAMessage_Highlight() :
+	PDAMessage_Highlight::PDAMessage_Highlight() noexcept :
 		PDAMessage_Highlight(0)
 	{
 	}

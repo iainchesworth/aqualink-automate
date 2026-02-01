@@ -1,4 +1,4 @@
-#include "jandy/errors/jandy_errors_scrapeable.h"
+#include "errors/jandy_errors_scrapeable.h"
 
 namespace AqualinkAutomate::ErrorCodes
 {

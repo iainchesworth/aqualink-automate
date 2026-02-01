@@ -1,0 +1,344 @@
+#------------------------------------------------------------------------------
+#
+#  CORE LIBRARY
+#  ============
+#
+#------------------------------------------------------------------------------
+
+add_library(libaqualink-automate)
+
+target_sources( 
+	libaqualink-automate
+	PRIVATE
+	application/application_defaults.cpp 	 
+	certificates/certificate_management.cpp 
+	certificates/certificate_verification.cpp 
+	concepts/is_c_array.cpp
+	concepts/is_one_of.cpp 
+	concepts/is_option_processor.cpp
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
+	developer/async_operation_tracker.cpp
+	developer/chrono_clocks.cpp
+	developer/coroutine_lifetime_tracker.cpp
+	developer/debug_tools.cpp
+	developer/firewall_manager.cpp
+	developer/mock_serial_port_impl.cpp
+	developer/serial_port_options.cpp
+	developer/signal_connection_tracker.cpp
+	devices/device_status.cpp 
+	equipment/equipment_status.cpp
+	errors/message_errors.cpp
+	errors/protocol_errors.cpp
+	exceptions/exception_certificate_invalidformat.cpp 
+	exceptions/exception_certificate_notfound.cpp 
+	exceptions/exception_developer_optionkeyhasnovalue.cpp
+	exceptions/exception_developer_optionkeyinvalidtype.cpp
+	exceptions/exception_developer_optionkeynotprovided.cpp
+	exceptions/exception_genericaqualinkexception.cpp
+	exceptions/exception_http_duplicateroute.cpp 
+	exceptions/exception_hubnotfound.cpp 
+	exceptions/exception_notimplemented.cpp
+	exceptions/exception_optionparsingfailed.cpp
+	exceptions/exception_optionshelporversion.cpp 
+	exceptions/exception_options_conflictingoptions.cpp 
+	exceptions/exception_options_missingdependency.cpp 	 
+	exceptions/exception_signallingstatscounter_badaccess.cpp 
+	exceptions/exception_traits_doesnotexist.cpp 
+	exceptions/exception_traits_failedtoset.cpp 
+	exceptions/exception_traits_invalidtraitvalue.cpp 
+	exceptions/exception_traits_notmutable.cpp 
+	exceptions/exception_webserver.cpp 
+	formatters/array_standard_formatter.cpp
+	formatters/asio_buffer_standard_formatter.cpp 
+	formatters/asio_endpoint_formatter.cpp
+	formatters/beast_stringview_formatter.cpp 
+	formatters/circular_buffer_standard_formatter.cpp
+	formatters/orp_formatter.cpp 
+	formatters/ph_formatter.cpp 
+	formatters/temperature_formatter.cpp 
+	formatters/units_dimensionless_formatter.cpp 
+	formatters/units_electric_potential_formatter.cpp 
+	formatters/url_segments_encoded_view_formatter.cpp 
+	http/webroute_equipment.cpp 
+	http/webroute_equipment_button.cpp 
+	http/webroute_equipment_buttons.cpp 
+	http/webroute_equipment_devices.cpp 
+	http/webroute_equipment_version.cpp 
+	http/webroute_page_index.cpp 
+	http/webroute_page_equipment.cpp 
+	http/webroute_page_version.cpp 
+	http/webroute_version.cpp 
+	http/websocket_event.cpp 
+	http/websocket_event_types.cpp 
+	http/websocket_equipment.cpp 
+	http/websocket_equipment_stats.cpp 
+	http/json/json_data_hub.cpp 
+	http/json/json_equipment.cpp 
+	http/server/http_server.cpp
+	http/server/parse_query_string.cpp 
+	http/server/server_fields.cpp 
+	http/server/server_types.cpp 
+	http/server/static_file_handler.cpp	 	
+	http/server/responses/response_staticfile.cpp
+	http/server/responses/response_400.cpp 
+	http/server/responses/response_404.cpp 
+	http/server/responses/response_405.cpp 
+	http/server/responses/response_500.cpp
+	http/server/responses/response_503.cpp 
+	http/server/routing/child_idx_vector.cpp 		
+	http/server/routing/matches.cpp 
+	http/server/routing/node.cpp 
+	http/server/routing/routing.cpp
+	http/server/routing/segment_template.cpp 		
+	http/support/support_generate_page_footer.cpp 
+	http/support/support_generate_page_header.cpp 	 
+	interfaces/idevice.cpp 
+	interfaces/ideviceidentifier.cpp 
+	interfaces/iequipment.cpp		 
+	interfaces/ihub.cpp 
+	interfaces/imessage.cpp
+	interfaces/imessagesignal_recv.cpp
+	interfaces/imessagesignal_send.cpp
+	interfaces/iprofiler.cpp
+	interfaces/iprofilingunit.cpp 	 
+	interfaces/iserializable.cpp
+	interfaces/iserialport.cpp	 
+	interfaces/iserialportimpl.cpp
+	interfaces/iserialportprotocol.cpp
+	interfaces/istatus.cpp
+	interfaces/istatuspublisher.cpp
+	interfaces/iwebpageroute.cpp
+	interfaces/iwebroute.cpp  
+	interfaces/iwebsocket.cpp
+	kernel/auxillary_devices/auxillary_device.cpp
+	kernel/auxillary_devices/auxillary_health_states.cpp
+	kernel/auxillary_devices/auxillary_status.cpp
+	kernel/auxillary_devices/chlorinator_status.cpp
+	kernel/auxillary_devices/heater_status.cpp
+	kernel/auxillary_devices/pump_speed.cpp
+	kernel/auxillary_devices/pump_status.cpp
+	kernel/auxillary_devices/pump_type.cpp
+	kernel/auxillary_traits/auxillary_traits.cpp 
+	kernel/auxillary_traits/auxillary_traits_base.cpp 
+	kernel/auxillary_traits/auxillary_traits_helpers.cpp
+	kernel/auxillary_traits/auxillary_traits_proxy.cpp 
+	kernel/auxillary_traits/auxillary_traits_types.cpp 
+	kernel/circulation.cpp
+	kernel/data_hub.cpp
+	kernel/data_hub_command.cpp
+	kernel/equipment_hub.cpp
+	kernel/equipment_versions.cpp
+	kernel/flow_rate.cpp 
+	kernel/hub_locator.cpp 
+	kernel/orp.cpp 
+	kernel/ph.cpp
+	kernel/pool_configurations.cpp
+	kernel/powercenter.cpp
+	kernel/preferences_hub.cpp 
+	kernel/statistics_hub.cpp	 
+	kernel/system_boards.cpp
+	kernel/temperature.cpp 
+	kernel/hub_events/data_hub_config_event.cpp
+	kernel/hub_events/data_hub_config_event_chemistry.cpp
+	kernel/hub_events/data_hub_config_event_temperature.cpp
+	kernel/hub_events/equipment_hub_system_event.cpp
+	kernel/hub_events/equipment_hub_system_event_status_change.cpp
+	kernel/hub_events/hub_event.cpp
+	kernel/hub_events/hub_eventtypes.cpp
+	kernel/device_graph/device_graph.cpp
+	kernel/device_graph/device_graph_filter_by_id.cpp 
+	kernel/device_graph/device_graph_filter_by_label.cpp 
+	kernel/device_graph/device_graph_filter_by_trait.cpp 
+	logging/formatters/logging_formatters.cpp
+	kernel/device_graph/device_graph_types.cpp
+	localisation/translations_and_units_formatter.cpp 
+	logging/global_logger.cpp
+	logging/logging.cpp
+	logging/logging_attributes.cpp
+	logging/logging_channels.cpp
+	logging/logging_formatter.cpp
+	logging/logging_initialise.cpp
+	logging/logging_severity_filter.cpp
+	logging/logging_severity_levels.cpp
+	mqtt/mqtt_client.cpp
+	mqtt/mqtt_hub.cpp
+	mqtt/mqtt_integration.cpp
+	options/options.cpp
+	options/options_app_options.cpp
+	options/options_developer_options.cpp
+	options/options_mqtt_options.cpp
+	options/options_option_type.cpp
+	options/options_registry.cpp
+	options/options_serial_options.cpp
+	options/options_settings.cpp
+	options/options_web_options.cpp
+	options/helpers/conflicting_options_helper.cpp 
+	options/helpers/option_dependency_helper.cpp 
+	options/validators/profiler_type_validator.cpp
+	options/validators/severity_level_validator.cpp
+	profiling/noop_profiler.cpp
+	profiling/profiling.cpp
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/tracy_profiler.cpp>	
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:profiling/uprof_profiler.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/vtune_profiler.cpp>
+	profiling/factories/profiler_factory.cpp
+	profiling/factories/profiler_factory_registration.cpp
+	profiling/factories/profiling_unit_factory.cpp 
+	profiling/factories/profiling_unit_factory_registration.cpp 
+	profiling/formatters/profiling_formatters.cpp
+	profiling/profiling_units/domain.cpp 
+	profiling/profiling_units/frame.cpp 
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_frame.cpp>	
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone.cpp>	
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone_datamap.cpp>	
+	profiling/profiling_units/timed_zone.cpp 
+	profiling/profiling_units/zone.cpp 
+	profiling/types/profiling_types.cpp
+	protocol/message_generator_registry.cpp
+	protocol/protocol_handler.cpp
+	protocol/protocol_handler_constants.cpp
+	protocol/protocol_message_types.cpp
+	protocol/protocol_handler_read_handler_errors.cpp
+	protocol/protocol_handler_read_handler_messages.cpp
+	protocol/protocol_handler_types.cpp
+	protocol/protocol_thread.cpp
+	serial/serial_initialise.cpp
+	serial/serial_port.cpp	
+	serial/serial_port_config.cpp	
+	serial/serial_types.cpp	
+	serial/port_types/network_serial_port_impl.cpp
+	serial/port_types/physical_serial_port_impl.cpp
+	serial/rfc2217/rfc2217_constants.cpp
+	serial/rfc2217/rfc2217_protocol_handler.cpp
+	serial/rfc2217/rfc2217_protocol_handler_byteprocessor.cpp
+	serial/rfc2217/rfc2217_types.cpp
+	types/units_electric_potential.cpp 
+	types/units_dimensionless.cpp 
+	types/units_electric_potential.cpp
+	types/units_flow_rate.cpp 
+	utility/bandwidth_utilisation.cpp 
+	utility/case_insensitive_comparision.cpp 
+	utility/circular_buffer_wrapping_iterator.cpp
+	utility/endpoint_parser.cpp
+	utility/enumerate.cpp 
+	utility/get_terminal_column_width.cpp
+	utility/is_in_variant.cpp 	
+	utility/overloaded_variant_visitor.cpp 
+	utility/signalling_stats_counter.cpp 
+	utility/singular_bytes_from_range.cpp
+	utility/timeout_duration_string_converter.cpp
+	utility/to_number.cpp
+	utility/to_string.cpp 
+	utility/value_debouncer.cpp 
+	version/version.cpp 
+	version/version_cmake.cpp 
+	version/version_git.cpp 
+	${CMAKE_CURRENT_BINARY_DIR}/version/version_cmake.constants.cpp # Generated by the configure_file command in the versioning section
+	${CMAKE_CURRENT_BINARY_DIR}/version/version_git.constants.cpp   # Generated by the GitWatcher.cmake in the versioning section
+)
+
+if(WIN32)
+target_sources(
+	libaqualink-automate 
+	PRIVATE
+	platform/windows/application_defaults.cpp
+	platform/windows/firewall_manager.cpp
+	platform/windows/get_terminal_column_width.cpp
+	platform/windows/uac_elevation.cpp
+	platform/windows/physical_serial_port_timeout.cpp
+	platform/windows/network_serial_port_timeout.cpp
+)
+
+target_compile_definitions(
+	libaqualink-automate 
+	PUBLIC 
+	-D_SCL_SECURE_NO_WARNINGS
+	-D_CRT_SECURE_NO_WARNINGS
+	-D_WIN32_WINNT=0x0A00 
+	-DWINVER=0x0A00 
+	-DNTDDI_VERSION=0x0A000000
+	-DWIN32_LEAN_AND_MEAN 
+	-DVC_EXTRALEAN
+	-DNOGDI
+	-DNOGDICAPMASKS
+	-DNOMINMAX
+)
+
+target_link_libraries(
+	libaqualink-automate
+	PUBLIC
+	comsuppw
+	ole32
+	oleaut32
+)
+endif(WIN32)
+
+if(LINUX)
+target_sources(
+	libaqualink-automate 
+	PRIVATE
+	platform/linux/application_defaults.cpp
+	platform/linux/firewall_manager.cpp
+	platform/linux/get_terminal_column_width.cpp
+	platform/linux/physical_serial_port_timeout.cpp
+	platform/linux/network_serial_port_timeout.cpp
+)
+endif(LINUX)
+
+target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
+
+target_compile_definitions(
+	libaqualink-automate 
+	PUBLIC 
+	-DBOOST_ASIO_NO_DEPRECATED
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
+	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:UProf_SUPPORT_ENABLED>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:VTUNE_SUPPORT_ENABLED>
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_CUSTOM_HANDLER_TRACKING=\"developer/asio_tracking.h\" > # Enable ASIO connection tracking to aid debug async operations
+)
+
+target_include_directories(
+	libaqualink-automate 
+	PUBLIC 
+	"${PROJECT_SOURCE_DIR}/src/core" 
+	"${CMAKE_CURRENT_BINARY_DIR}/src/core"
+)
+
+target_include_directories(
+	libaqualink-automate 
+	SYSTEM 
+	PUBLIC 
+	${asio_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS} 
+	${magic_enum_INCLUDE_DIRS}
+	${mstch_INCLUDE_DIRS}
+	${nlohmann_json_INCLUDE_DIRS}
+	${OpenSSL_INCLUDE_DIRS}
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_INCLUDE_DIRS}>
+	$<$<BOOL:${ENABLE_PROFILING}>:${Tracy_INCLUDE_DIRS}>
+)
+
+target_link_libraries(
+	libaqualink-automate
+	PUBLIC
+	Boost::boost
+	Boost::iostreams 
+	Boost::log 
+	Boost::log_setup 
+	Boost::program_options 
+	Boost::url
+	mstch::mstch
+	magic_enum::magic_enum
+	mstch::mstch
+	nlohmann_json::nlohmann_json
+	OpenSSL::SSL 
+	OpenSSL::Crypto
+	ZLIB::ZLIB
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
+	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>	
+)

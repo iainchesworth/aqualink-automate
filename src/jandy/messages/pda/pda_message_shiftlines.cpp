@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/pda/pda_message_shiftlines.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::PDAMessage_ShiftLines> PDAMessage_ShiftLines::g_PDAMessage_ShiftLines_Registration(JandyMessageIds::PDA_ShiftLines);
-
-	PDAMessage_ShiftLines::PDAMessage_ShiftLines() :
+	PDAMessage_ShiftLines::PDAMessage_ShiftLines() noexcept :
 		PDAMessage(JandyMessageIds::PDA_ShiftLines),
 		Interfaces::IMessageSignalRecv<PDAMessage_ShiftLines>(),
 		m_FirstLineId(0),

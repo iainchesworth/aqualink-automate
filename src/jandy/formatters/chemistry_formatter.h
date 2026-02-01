@@ -8,7 +8,7 @@
 
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
-#include "jandy/utility/string_conversion/chemistry_string_converter.h"
+#include "utility/string_conversion/chemistry_string_converter.h"
 
 namespace AqualinkAutomate::Formatters
 {

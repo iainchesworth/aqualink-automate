@@ -1,6 +1,6 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

@@ -1,7 +1,6 @@
-#include <boost/cobalt.hpp>
 #include <boost/system/error_code.hpp>
 
-#include "jandy/devices/capabilities/restartable.h"
+#include "devices/capabilities/restartable.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

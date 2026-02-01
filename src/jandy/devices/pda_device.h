@@ -3,21 +3,21 @@
 #include <chrono>
 #include <list>
 
-#include "jandy/devices/jandy_controller.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/emulated.h"
-#include "jandy/devices/capabilities/restartable.h"
-#include "jandy/devices/capabilities/scrapeable.h"
-#include "jandy/devices/capabilities/screen.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/pda/pda_message_clear.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
-#include "jandy/messages/pda/pda_message_highlight_chars.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "devices/jandy_controller.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/emulated.h"
+#include "devices/capabilities/restartable.h"
+#include "devices/capabilities/scrapeable.h"
+#include "devices/capabilities/screen.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_status.h"
+#include "messages/jandy_message_unknown.h"
+#include "messages/pda/pda_message_clear.h"
+#include "messages/pda/pda_message_highlight.h"
+#include "messages/pda/pda_message_highlight_chars.h"
+#include "messages/pda/pda_message_shiftlines.h"
 #include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Devices
 		inline static const Scrapeable::ScrapeId PDA_CONFIG_INIT_SCRAPER{ 1 };
 		inline static const std::chrono::seconds PDA_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		enum class KeyCommands
+		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
 			HotKey1 = 0x01,

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::Messages
 {
@@ -42,11 +42,16 @@ namespace AqualinkAutomate::Messages
 		IAQ_PageContinue = 0x40,
 		IAQ_MessageLong = 0x2C,
 
+		// Aqualink Touch
+		AqualinkTouch_DeviceStatus = 0x72,
+
 		// Unknown ids
 		Unknown_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
 		Unknown_IAQ_2D = 0x2D,
+		Unknown_IAQ_53 = 0x53,
 		Unknown_IAQ_70 = 0x70,
+		Unknown_IAQ_73 = 0x73,
 		Unknown_ReadyControl = 0x80,
 		Unknown = 0xFF
 	};

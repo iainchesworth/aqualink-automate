@@ -7,8 +7,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -46,7 +45,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_ButtonNameText = 8;
 
 	public:
-		IAQMessage_PageButton();
+		IAQMessage_PageButton() noexcept;
 		virtual ~IAQMessage_PageButton();
 
 	public:
@@ -65,9 +64,6 @@ namespace AqualinkAutomate::Messages
 		ButtonStatuses m_ButtonStatus;
 		ButtonTypes m_ButtonType;
 		std::string m_ButtonName;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton> g_IAQMessage_PageButton_Registration;
 	};
 
 }

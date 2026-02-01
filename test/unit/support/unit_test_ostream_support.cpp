@@ -1,6 +1,6 @@
 #include <iomanip>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "support/unit_test_ostream_support.h"
 

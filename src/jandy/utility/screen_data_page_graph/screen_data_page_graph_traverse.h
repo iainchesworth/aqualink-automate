@@ -7,9 +7,9 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/graph_utility.hpp>
 
-#include "jandy/utility/screen_data_page_graph.h"
-#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.h"
-#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_vertex.h"
+#include "utility/screen_data_page_graph.h"
+#include "utility/screen_data_page_graph/screen_data_page_graph_edge.h"
+#include "utility/screen_data_page_graph/screen_data_page_graph_vertex.h"
 
 namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
 {

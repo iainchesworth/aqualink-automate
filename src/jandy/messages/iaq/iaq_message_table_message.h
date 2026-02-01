@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -19,7 +18,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_LineText = 5;
 
 	public:
-		IAQMessage_TableMessage();
+		IAQMessage_TableMessage() noexcept;
 		virtual ~IAQMessage_TableMessage();
 
 	public:
@@ -36,9 +35,6 @@ namespace AqualinkAutomate::Messages
 	private:
 		uint8_t m_LineId;
 		std::string m_Line;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::IAQMessage_TableMessage> g_IAQMessage_TableMessage_Registration;
 	};
 
 }

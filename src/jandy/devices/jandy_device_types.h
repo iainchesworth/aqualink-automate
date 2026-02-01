@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "interfaces/ideviceidentifier.h"
-#include "jandy/devices/jandy_device_id.h"
+#include "devices/jandy_device_id.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -18,6 +18,7 @@ namespace AqualinkAutomate::Devices
 		SpaRemote,
 		OneTouch,
 		LX_Heater,
+		AqualinkTouch,
 		IAQ,
 		SerialAdapter,
 		SWG_Aquarite,
@@ -60,7 +61,8 @@ namespace AqualinkAutomate::Devices
 			{DeviceClasses::SpaRemote,		{0x20, 0x21, 0x22, 0x23}},
 			{DeviceClasses::OneTouch,		{0x40, 0x41, 0x42, 0x43}},
 			{DeviceClasses::LX_Heater,		{0x38, 0x39, 0x3A, 0x3B}},
-			{DeviceClasses::IAQ,			{0x30, 0x31, 0x32, 0x33}},
+			{DeviceClasses::AqualinkTouch,	{0x30, 0x31, 0x32, 0x33}},
+			{DeviceClasses::IAQ,			{0xA0, 0xA1, 0xA3, 0xA3}},
 			{DeviceClasses::SerialAdapter,	{0x48, 0x49}},
 			{DeviceClasses::SWG_Aquarite,	{0x50, 0x51, 0x52, 0x53}},
 			{DeviceClasses::PC_Dock,		{0x58, 0x59, 0x5A, 0x5B}},

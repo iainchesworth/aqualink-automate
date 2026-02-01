@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-#include "jandy/utility/screen_data_page.h"
+#include "utility/screen_data_page.h"
 
 namespace AqualinkAutomate::Formatters
 {

@@ -1,4 +1,4 @@
-#include "jandy/types/jandy_types.h"
+#include "types/jandy_types.h"
 
 namespace AqualinkAutomate::Types
 {

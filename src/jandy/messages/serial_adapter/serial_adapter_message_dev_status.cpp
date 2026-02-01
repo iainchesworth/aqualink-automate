@@ -1,14 +1,14 @@
 #include <format>
 
 #include <boost/units/io.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "formatters/temperature_formatter.h"
 #include "formatters/units_electric_potential_formatter.h"
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
-#include "jandy/utility/jandy_checksum.h"
+#include "messages/jandy_message_constants.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/serial_adapter/serial_adapter_message_dev_status.h"
+#include "utility/jandy_checksum.h"
 #include "logging/logging.h"
 #include "utility/overloaded_variant_visitor.h"
 
@@ -17,9 +17,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::SerialAdapterMessage_DevStatus> SerialAdapterMessage_DevStatus::g_SerialAdapterMessage_DevStatus_Registration(JandyMessageIds::RSSA_DevStatus);
-
-	SerialAdapterMessage_DevStatus::SerialAdapterMessage_DevStatus() : 
+	SerialAdapterMessage_DevStatus::SerialAdapterMessage_DevStatus() noexcept :
 		SerialAdapterMessage(JandyMessageIds::RSSA_DevStatus),
 		m_StatusType(SerialAdapter_UnknownCommands::Unknown)
 	{
@@ -187,7 +185,7 @@ namespace AqualinkAutomate::Messages
 		);
 
 		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 8));
-		message_bytes[8] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+		message_bytes[8] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend());
 
 		return true;
 	}

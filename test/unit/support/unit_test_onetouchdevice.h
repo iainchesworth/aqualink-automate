@@ -6,7 +6,6 @@
 #include <tuple>
 #include <vector>
 
-#include "coroutines/asynchronous_executor.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/equipment/jandy_equipment.h"

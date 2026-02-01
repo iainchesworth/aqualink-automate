@@ -1,4 +1,4 @@
-#include "jandy/devices/jandy_device_types.h"
+#include "devices/jandy_device_types.h"
 
 namespace AqualinkAutomate::Devices
 {

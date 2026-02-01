@@ -1,9 +1,9 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_status.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_status.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -12,9 +12,9 @@ namespace AqualinkAutomate::Messages
 {
 	const uint8_t JandyMessage_Status::STATUS_PAYLOAD_LENGTH{ 5 };
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
+	//const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
 
-	JandyMessage_Status::JandyMessage_Status() :
+	JandyMessage_Status::JandyMessage_Status() noexcept :
 		JandyMessage(JandyMessageIds::Status),
 		Interfaces::IMessageSignalRecv<JandyMessage_Status>(), 
 		m_Mode(ComboModes::Unknown),

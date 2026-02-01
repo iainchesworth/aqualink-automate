@@ -1,9 +1,9 @@
 #include <format>
 #include <functional>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/devices/aquarite_device.h"
+#include "devices/aquarite_device.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

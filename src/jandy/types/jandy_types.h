@@ -1,11 +1,11 @@
 #pragma once
 
+#include <expected>
 #include <memory>
 
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
-#include "jandy/messages/jandy_message.h"
+#include "messages/jandy_message.h"
 
 namespace AqualinkAutomate::Types
 {
@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Types
 	using JandyMessageType = AqualinkAutomate::Messages::JandyMessage;
 	using JandyMessageTypePtr = std::shared_ptr<JandyMessageType>;
 
-	using JandyExpectedMessageType = tl::expected<JandyMessageTypePtr, JandyErrorCode>;
+	using JandyExpectedMessageType = std::expected<JandyMessageTypePtr, JandyErrorCode>;
 
 }
 // namespace AqualinkAutomate::Types

@@ -1,4 +1,4 @@
-#include "jandy/utility/filtered_slot.h"
+#include "utility/filtered_slot.h"
 
 namespace AqualinkAutomate::Utility
 {

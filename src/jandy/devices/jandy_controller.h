@@ -1,7 +1,7 @@
 #pragma once
 
-#include "jandy/devices/jandy_device.h"
-#include "jandy/devices/jandy_device_types.h"
+#include "devices/jandy_device.h"
+#include "devices/jandy_device_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_locator.h"
 

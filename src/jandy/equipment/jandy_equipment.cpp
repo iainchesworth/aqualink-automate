@@ -5,45 +5,45 @@
 #include <type_traits>
 #include <utility>
 
-#include <magic_enum.hpp>
-#include <magic_enum_utility.hpp>
+#include <magic_enum/magic_enum.hpp>
+#include <magic_enum/magic_enum_utility.hpp>
 
 #include "equipment/equipment_status.h"
-#include "jandy/devices/aquarite_device.h"
-#include "jandy/devices/iaq_device.h"
-#include "jandy/devices/keypad_device.h"
-#include "jandy/devices/onetouch_device.h"
-#include "jandy/devices/pda_device.h"
-#include "jandy/devices/serial_adapter_device.h"
-#include "jandy/equipment/jandy_equipment.h"
-#include "jandy/formatters/jandy_device_formatters.h"
-#include "jandy/formatters/stats_counter_formatter.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_message.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/aquarite/aquarite_message_getid.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
-#include "jandy/messages/iaq/iaq_message_control_ready.h"
-#include "jandy/messages/iaq/iaq_message_message_long.h"
-#include "jandy/messages/iaq/iaq_message_page_button.h"
-#include "jandy/messages/iaq/iaq_message_page_continue.h"
-#include "jandy/messages/iaq/iaq_message_page_end.h"
-#include "jandy/messages/iaq/iaq_message_page_message.h"
-#include "jandy/messages/iaq/iaq_message_page_start.h"
-#include "jandy/messages/iaq/iaq_message_poll.h"
-#include "jandy/messages/iaq/iaq_message_startup.h"
-#include "jandy/messages/iaq/iaq_message_table_message.h"
-#include "jandy/messages/pda/pda_message_clear.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
-#include "jandy/messages/pda/pda_message_highlight_chars.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "jandy/messages/serial_adapter/serial_adapter_message_dev_ready.h"
-#include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
-#include "jandy/types/jandy_types.h"
+#include "devices/aquarite_device.h"
+#include "devices/iaq_device.h"
+#include "devices/keypad_device.h"
+#include "devices/onetouch_device.h"
+#include "devices/pda_device.h"
+#include "devices/serial_adapter_device.h"
+#include "equipment/jandy_equipment.h"
+#include "formatters/jandy_device_formatters.h"
+#include "formatters/stats_counter_formatter.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_message.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_status.h"
+#include "messages/jandy_message_unknown.h"
+#include "messages/aquarite/aquarite_message_getid.h"
+#include "messages/aquarite/aquarite_message_percent.h"
+#include "messages/aquarite/aquarite_message_ppm.h"
+#include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_message_long.h"
+#include "messages/iaq/iaq_message_page_button.h"
+#include "messages/iaq/iaq_message_page_continue.h"
+#include "messages/iaq/iaq_message_page_end.h"
+#include "messages/iaq/iaq_message_page_message.h"
+#include "messages/iaq/iaq_message_page_start.h"
+#include "messages/iaq/iaq_message_poll.h"
+#include "messages/iaq/iaq_message_startup.h"
+#include "messages/iaq/iaq_message_table_message.h"
+#include "messages/pda/pda_message_clear.h"
+#include "messages/pda/pda_message_highlight.h"
+#include "messages/pda/pda_message_highlight_chars.h"
+#include "messages/pda/pda_message_shiftlines.h"
+#include "messages/serial_adapter/serial_adapter_message_dev_ready.h"
+#include "messages/serial_adapter/serial_adapter_message_dev_status.h"
+#include "types/jandy_types.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -53,7 +53,6 @@ namespace AqualinkAutomate::Equipment
 	JandyEquipment::JandyEquipment(Kernel::HubLocator& hub_locator) :
 		IEquipment(),
 		IStatusPublisher(Equipment::EquipmentStatus_Unknown{}),
-		m_IdentifiedDeviceIds(),
 		m_MessageConnections(),
 		m_HubLocator(hub_locator)
 	{
@@ -63,7 +62,8 @@ namespace AqualinkAutomate::Equipment
 
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)
 			{
-				m_StatsHub->MessageCounts[id] = 0;
+				constexpr auto value = decltype(id)::value;
+				m_StatsHub->MessageCounts[value] = 0;
 			}
 		);
 
@@ -126,7 +126,7 @@ namespace AqualinkAutomate::Equipment
 		{
 			// A probe message is just the Aqualink master looking for a (potentially non-existant) device...do nothing.
 		}
-		else if (m_IdentifiedDeviceIds.contains(message.Destination().Id()))
+		else if (m_EquipmentHub->DeviceExists(message.Destination()))
 		{
 			// Already have this device in the devices list...do nothing.
 		}
@@ -170,9 +170,6 @@ namespace AqualinkAutomate::Equipment
 				LogDebug(Channel::Equipment, std::format("Device class ({}, {}) not supported.", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()));
 				break;
 			}
-
-			// So we've handled this device...no need to keep repeating ourselves...
-			m_IdentifiedDeviceIds.insert(message.Destination().Id());
 		}
 
 		// Capture statistics, given we are processing every message.
@@ -183,7 +180,7 @@ namespace AqualinkAutomate::Equipment
 	
 	void JandyEquipment::DisplayUnknownMessages(const Messages::JandyMessage& message)
 	{
-		LogWarning(
+		LogDebug(
 			Channel::Equipment,
 			std::format(
 				"Unknown message received -> cannot process: destination {} ({}), message id {} (0x{:02x}), length {} bytes, checksum 0x{:02x}",

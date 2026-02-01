@@ -1,9 +1,9 @@
 #include <format>
 
-#include <re2/re2.h>
+#include <boost/regex.hpp>
 
-#include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
+#include "utility/string_manipulation.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

@@ -1,4 +1,4 @@
-#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
 
 namespace AqualinkAutomate::Auxillaries
 {

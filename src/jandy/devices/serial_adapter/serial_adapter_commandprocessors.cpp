@@ -1,11 +1,11 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
-#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
-#include "jandy/devices/serial_adapter_device.h"
-#include "jandy/factories/jandy_auxillary_factory.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
+#include "devices/serial_adapter_device.h"
+#include "factories/jandy_auxillary_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -20,15 +20,15 @@ namespace AqualinkAutomate::Devices
 		switch (op_mode)
 		{
 		case Messages::SerialAdapter_SCS_OpModes::Auto:
-			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Normal;
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
 			break;
 
 		case Messages::SerialAdapter_SCS_OpModes::Service:
-			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::Service;
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Service;
 			break;
 
 		case Messages::SerialAdapter_SCS_OpModes::Timeout:
-			JandyController::m_DataHub->Mode = Equipment::JandyEquipmentModes::TimeOut;
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::TimeOut;
 			break; 
 
 		case Messages::SerialAdapter_SCS_OpModes::Unknown:

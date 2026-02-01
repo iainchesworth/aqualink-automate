@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_page_end.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_page_end.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageEnd> IAQMessage_PageEnd::g_IAQMessage_PageEnd_Registration(JandyMessageIds::IAQ_PageEnd);
-
-	IAQMessage_PageEnd::IAQMessage_PageEnd() : 
+	IAQMessage_PageEnd::IAQMessage_PageEnd() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageEnd),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageEnd>()
 	{

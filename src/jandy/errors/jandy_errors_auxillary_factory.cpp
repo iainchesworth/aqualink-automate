@@ -1,4 +1,4 @@
-#include "jandy/errors/jandy_errors_auxillary_factory.h"
+#include "errors/jandy_errors_auxillary_factory.h"
 
 namespace AqualinkAutomate::ErrorCodes
 {

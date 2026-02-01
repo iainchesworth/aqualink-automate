@@ -2,7 +2,7 @@
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/formatters/jandy_device_formatters.h"
@@ -47,9 +47,9 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_NE(message1.RawId(), message2.RawId()); // Deserialisation captures the message "raw" id...
     BOOST_CHECK_EQUAL(0x16, message2.RawId());
     BOOST_CHECK_NE(message1.MessageLength(), message2.MessageLength());  // Deserialisation captures the message length...
-    BOOST_CHECK_EQUAL(0x0D, message2.MessageLength());
+    BOOST_CHECK_EQUAL(9, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
-    BOOST_CHECK_EQUAL(0x10, message2.ChecksumValue());
+    BOOST_CHECK_EQUAL(0x26, message2.ChecksumValue());
 
     BOOST_CHECK_EQUAL(0x00, message1.SaltConcentrationPPM());
     BOOST_CHECK_EQUAL(0x00, message2.SaltConcentrationPPM());
@@ -70,8 +70,7 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     message_bytes[4] = 0x00;
     message_bytes[5] = magic_enum::enum_integer(AquariteStatuses::On);
     {
-        auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
-        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_bytes.begin(), message_bytes.begin() + 6);
         BOOST_REQUIRE(message2.Deserialize(std::as_bytes(std::span<uint8_t>(message_bytes))));
         BOOST_CHECK_EQUAL(0, message2.SaltConcentrationPPM());
         BOOST_CHECK_EQUAL(AquariteStatuses::On, message2.Status());
@@ -80,8 +79,7 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     message_bytes[4] = 0x1E;
     message_bytes[5] = magic_enum::enum_integer(AquariteStatuses::Warning_LowSalt);
     {
-        auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
-        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_bytes.begin(), message_bytes.begin() + 6);
         BOOST_REQUIRE(message2.Deserialize(std::as_bytes(std::span<uint8_t>(message_bytes))));
         BOOST_CHECK_EQUAL(3000, message2.SaltConcentrationPPM());
         BOOST_CHECK_EQUAL(AquariteStatuses::Warning_LowSalt, message2.Status());
@@ -90,8 +88,7 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     message_bytes[4] = 0x28;
     message_bytes[5] = magic_enum::enum_integer(AquariteStatuses::TurningOff);
     {
-        auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
-        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_bytes.begin(), message_bytes.begin() + 6);
         BOOST_REQUIRE(message2.Deserialize(std::as_bytes(std::span<uint8_t>(message_bytes))));
         BOOST_CHECK_EQUAL(4000, message2.SaltConcentrationPPM());
         BOOST_CHECK_EQUAL(AquariteStatuses::TurningOff, message2.Status());
@@ -100,8 +97,7 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     message_bytes[4] = 0xFF;
     message_bytes[5] = magic_enum::enum_integer(AquariteStatuses::Off);
     {
-        auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 6));
-        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_span_to_checksum);
+        message_bytes[6] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(message_bytes.begin(), message_bytes.begin() + 6);
         BOOST_REQUIRE(message2.Deserialize(std::as_bytes(std::span<uint8_t>(message_bytes))));
         BOOST_CHECK_EQUAL(25500, message2.SaltConcentrationPPM());
         BOOST_CHECK_EQUAL(AquariteStatuses::Off, message2.Status());

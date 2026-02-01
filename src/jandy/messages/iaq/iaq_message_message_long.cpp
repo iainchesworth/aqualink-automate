@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_message_long.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_message_long.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_MessageLong> IAQMessage_MessageLong::g_IAQMessage_MessageLong_Registration(JandyMessageIds::IAQ_MessageLong);
-
-	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
+	IAQMessage_MessageLong::IAQMessage_MessageLong() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_MessageLong),
 		Interfaces::IMessageSignalRecv<IAQMessage_MessageLong>()
 	{

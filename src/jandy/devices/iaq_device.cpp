@@ -2,7 +2,7 @@
 #include <functional>
 
 #include "logging/logging.h"
-#include "jandy/devices/iaq_device.h"
+#include "devices/iaq_device.h"
 
 using namespace AqualinkAutomate::Logging;
 

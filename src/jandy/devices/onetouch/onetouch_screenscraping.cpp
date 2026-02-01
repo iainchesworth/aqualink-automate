@@ -2,7 +2,7 @@
 #include <tuple>
 
 #include "devices/device_status.h"
-#include "jandy/devices/onetouch_device.h"
+#include "devices/onetouch_device.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -99,33 +99,39 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::Scraping_ProcessStep_StartUp()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping_ProcessStep_StartUp", BOOST_CURRENT_LOCATION);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping_ProcessStep_StartUp", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing StartUp scraping step", DeviceId()));
 
 		Status(Devices::DeviceStatus_Initializing{});
 
 		switch (DisplayedPageType())
 		{
 		case Utility::ScreenDataPageTypes::Page_OneTouch:
-			LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from OneTouch page)");
+			LogInfo(Channel::Devices, std::format("OneTouch({}) : Initiating COLD START: detected OneTouch page", DeviceId()));
 			m_OpState = OperatingStates::ColdStart;
 			ScrapingStart(ONETOUCH_AUX_LABELS_NAV_SCRAPER, ONETOUCH_COLD_START_SCRAPER_START_INDEX);
+			LogDebug(Channel::Devices, std::format("OneTouch({}) : Started scraping: scraper_id={}, start_index={}", DeviceId(), ONETOUCH_AUX_LABELS_NAV_SCRAPER, ONETOUCH_COLD_START_SCRAPER_START_INDEX));
 			break;
 
 		case Utility::ScreenDataPageTypes::Page_Home:
-			LogDebug(Channel::Devices, "Emulated OneTouch device: scrape starting - initialising config (from Home page)");
+			LogInfo(Channel::Devices, "Initiating WARM START: detected Home page");
 			m_OpState = OperatingStates::WarmStart;
 			ScrapingStart(ONETOUCH_AUX_LABELS_NAV_SCRAPER, ONETOUCH_WARM_START_SCRAPER_START_INDEX);
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Started scraping: scraper_id={}, start_index={}", DeviceId(), ONETOUCH_AUX_LABELS_NAV_SCRAPER, ONETOUCH_WARM_START_SCRAPER_START_INDEX));
 			break;
 
 		default:
-			// DO NOTHING HERE
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StartUp waiting for valid page: current_page={}", DeviceId(), magic_enum::enum_name(DisplayedPageType())));
 			break;
 		}
 	}
 
 	void OneTouchDevice::Scraping_ProcessStep_ColdAndWarmStart()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping_ProcessStep_ColdAndWarmStart", BOOST_CURRENT_LOCATION);
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping_ProcessStep_ColdAndWarmStart", std::source_location::current());
+
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing {}", DeviceId(), magic_enum::enum_name(m_OpState)));
 
 		auto step_through_start_up_scrape_graphs = [this]() -> void
 		{
@@ -161,17 +167,23 @@ namespace AqualinkAutomate::Devices
 			static std::list<Scrapeable::ScrapeId>::const_iterator start_up_scrape_graphs_it{ start_up_scrape_graphs.cbegin() };
 
 			// Iterate along the list of graphs (noting that the first element was actioned in the StartUp state.
-			++start_up_scrape_graphs_it;
-
 			if (start_up_scrape_graphs.cend() == start_up_scrape_graphs_it)
 			{
+				// Unexpectedly reached the end of the scrape graph...log an error.
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Unexpectedly reached the end of sequence for emulated OneTouch device initialisation.", DeviceId()));
+			}
+			else if (++start_up_scrape_graphs_it; start_up_scrape_graphs.cend() == start_up_scrape_graphs_it)
+			{
 				// NOTE: Flow was VERSION -> ONETOUCH/HOME -> [scraping] -> HOME
-				LogInfo(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) complete -> entering normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Emulated OneTouch device initialisation ({}) complete -> entering normal operation", DeviceId(), (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
 				m_OpState = OperatingStates::NormalOperation;
 				Status(Devices::DeviceStatus_Normal{});
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Configuration scraping completed successfully", DeviceId()));
 			}
 			else
 			{
+				const auto graph_position = std::distance(start_up_scrape_graphs.cbegin(), start_up_scrape_graphs_it);
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Starting next scrape graph: scraper_id={}, position={}/{}", DeviceId(), *start_up_scrape_graphs_it, graph_position, start_up_scrape_graphs.size()));
 				ScrapingStart(*start_up_scrape_graphs_it, 1);
 			}
 		};
@@ -182,24 +194,29 @@ namespace AqualinkAutomate::Devices
 			switch (scrape_step_outcome.error())
 			{
 			case ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage:
-				LogTrace(Channel::Devices, "Emulated OneTouch device: scrape in-progress -> waiting on page");
+				LogTrace(Channel::Devices, std::format("OneTouch ({}): Emulated OneTouch device: scrape in-progress -> waiting on page", DeviceId()));
 				break;
 
 			case ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage:
-				LogTrace(Channel::Devices, "Emulated OneTouch device: scrape in-progress -> waiting for message");
+				LogTrace(Channel::Devices, std::format("OneTouch ({}): Emulated OneTouch device: scrape in-progress -> waiting for message", DeviceId()));
 				break;
 
 			case ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible:
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Current scrape graph complete, moving to next", DeviceId()));
 				step_through_start_up_scrape_graphs();
 				break;
 
 			case ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped:
-				[[fallthrough]];
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): No active scrape during {} - forcing normal operation", DeviceId(), m_OpState == OperatingStates::ColdStart ? "ColdStart" : "WarmStart"));
+				m_OpState = OperatingStates::NormalOperation;
+				Status(Devices::DeviceStatus_Normal{});
+				break;
+
 			case ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError:
 				[[fallthrough]];
 			default:
 				// No scrape is active (or waiting) but it's a cold start...this is weird so force a transition to normal operation.
-				LogDebug(Channel::Devices, std::format("Emulated OneTouch device initialisation ({}) in an abnormal state -> forcing entry to normal operation", (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Emulated OneTouch device initialisation ({}) in an abnormal state -> forcing entry to normal operation", DeviceId(), (OperatingStates::ColdStart == m_OpState) ? "COLD START" : "WARM START"));
 				m_OpState = OperatingStates::NormalOperation;
 				Status(Devices::DeviceStatus_Normal{});
 				break;
@@ -210,11 +227,11 @@ namespace AqualinkAutomate::Devices
 			try
 			{
 				m_KeyCommand_ToSend = std::any_cast<KeyCommands>(scrape_step_outcome.value());
-				LogDebug(Channel::Devices, std::format("Emulated OneTouch device: scrape in-progress - sending next command: {}", magic_enum::enum_name(m_KeyCommand_ToSend)));
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Emulated OneTouch device: scrape in-progress - sending next command: {}", DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
 			}
 			catch (const std::bad_any_cast& eAC)
 			{
-				LogDebug(Channel::Devices, std::format("Failed trying to get key command for next step: error -> {}", eAC.what()));
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Failed trying to get key command for next step: error -> {}", DeviceId(), eAC.what()));
 			}
 		}
 	}

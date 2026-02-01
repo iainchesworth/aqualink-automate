@@ -7,9 +7,9 @@
 
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
-#include "jandy/auxillaries/jandy_auxillary_id.h"
-#include "jandy/auxillaries/jandy_auxillary_status.h"
-#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
+#include "auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_status.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
 
 namespace AqualinkAutomate::Factory
 {

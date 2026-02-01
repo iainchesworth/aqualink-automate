@@ -3,8 +3,6 @@
 #include <atomic>
 #include <chrono>
 
-#include <boost/asio/steady_timer.hpp>
-
 namespace AqualinkAutomate::Devices::Capabilities
 {
 

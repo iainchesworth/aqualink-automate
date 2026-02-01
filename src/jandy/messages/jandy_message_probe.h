@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/jandy_message.h"
+#include "messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -15,7 +14,7 @@ namespace AqualinkAutomate::Messages
 	class JandyMessage_Probe : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Probe>
 	{
 	public:
-		JandyMessage_Probe();
+		JandyMessage_Probe() noexcept;
 		virtual ~JandyMessage_Probe();
 
 	public:
@@ -24,9 +23,6 @@ namespace AqualinkAutomate::Messages
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
 		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Probe> g_JandyMessage_Probe_Registration;
 	};
 
 }

@@ -3,7 +3,7 @@
 #include <string>
 
 #include <boost/system/error_code.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::ErrorCodes
 {

@@ -1,17 +1,14 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_probe.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_probe.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
-
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_Probe> JandyMessage_Probe::g_JandyMessage_Probe_Registration(JandyMessageIds::Probe);
-
-	JandyMessage_Probe::JandyMessage_Probe() : 
+	JandyMessage_Probe::JandyMessage_Probe() noexcept :
 		JandyMessage(JandyMessageIds::Probe),
 		Interfaces::IMessageSignalRecv<JandyMessage_Probe>()
 	{

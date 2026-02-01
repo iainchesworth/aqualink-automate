@@ -1,10 +1,10 @@
 #include <algorithm>
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/iaq/iaq_message_page_button.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_page_button.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -12,9 +12,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton> IAQMessage_PageButton::g_IAQMessage_PageButton_Registration(JandyMessageIds::IAQ_PageButton);
-
-	IAQMessage_PageButton::IAQMessage_PageButton() : 
+	IAQMessage_PageButton::IAQMessage_PageButton() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageButton),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageButton>(),
 		m_ButtonStatus(ButtonStatuses::Unknown),

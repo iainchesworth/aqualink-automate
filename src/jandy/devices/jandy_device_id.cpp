@@ -1,9 +1,14 @@
-#include "jandy/devices/jandy_device_id.h"
+#include "devices/jandy_device_id.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	JandyDeviceId::JandyDeviceId(value_type device_id) : 
+	JandyDeviceId::JandyDeviceId() :
+		m_DeviceId(0)
+	{
+	}
+
+	JandyDeviceId::JandyDeviceId(value_type device_id) :
 		m_DeviceId(device_id)
 	{
 	}

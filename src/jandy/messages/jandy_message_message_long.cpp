@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_message_long.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_message_long.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> JandyMessage_MessageLong::g_JandyMessage_MessageLong_Registration(JandyMessageIds::MessageLong);
+	//const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> JandyMessage_MessageLong::g_JandyMessage_MessageLong_Registration(JandyMessageIds::MessageLong);
 
-	JandyMessage_MessageLong::JandyMessage_MessageLong() : 
+	JandyMessage_MessageLong::JandyMessage_MessageLong() noexcept :
 		JandyMessage_MessageLong(0, std::string())
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);

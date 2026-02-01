@@ -5,13 +5,12 @@
 #include <cstdint>
 #include <utility>
 
-#include "coroutines/asynchronous_executor.h"
-#include "jandy/devices/jandy_device.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/restartable.h"
-#include "jandy/messages/aquarite/aquarite_message_getid.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
+#include "devices/jandy_device.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/restartable.h"
+#include "messages/aquarite/aquarite_message_getid.h"
+#include "messages/aquarite/aquarite_message_percent.h"
+#include "messages/aquarite/aquarite_message_ppm.h"
 #include "utility/value_debouncer.h"
 
 namespace AqualinkAutomate::Devices

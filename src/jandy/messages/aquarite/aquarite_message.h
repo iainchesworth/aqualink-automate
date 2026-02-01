@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {

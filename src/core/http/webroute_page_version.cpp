@@ -1,0 +1,27 @@
+#include <mstch/mstch.hpp>
+
+#include "http/webroute_page_version.h"
+#include "http/support/support_generate_page_footer.h"
+#include "http/support/support_generate_page_header.h"
+#include "profiling/factories/profiling_unit_factory.h"
+
+namespace AqualinkAutomate::HTTP
+{
+
+	WebRoute_Page_Version::WebRoute_Page_Version() :
+		Interfaces::IWebPageRoute<PAGE_VERSION_ROUTE_URL, PAGE_VERSION_TEMPLATE>()
+	{
+	}
+
+	std::string WebRoute_Page_Version::GenerateBody(HTTP::Request req)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Page /version", std::source_location::current());
+
+		Support::GeneratePageHeader_Context(m_TemplateContext);
+		Support::GeneratePageFooter_Context(m_TemplateContext);
+
+		return mstch::render(m_TemplateContent.value(), m_TemplateContext);
+	}
+
+}
+// namespace AqualinkAutomate::HTTP

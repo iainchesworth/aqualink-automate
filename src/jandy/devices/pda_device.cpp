@@ -2,7 +2,7 @@
 #include <functional>
 
 #include "logging/logging.h"
-#include "jandy/devices/pda_device.h"
+#include "devices/pda_device.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;

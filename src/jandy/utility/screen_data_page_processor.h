@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-#include "jandy/utility/screen_data_page.h"
+#include "utility/screen_data_page.h"
 
 namespace AqualinkAutomate::Utility
 {

@@ -1,25 +1,27 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <list>
+#include <string_view>
 #include <vector>
 
-#include "jandy/devices/jandy_controller.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/emulated.h"
-#include "jandy/devices/capabilities/restartable.h"
-#include "jandy/devices/capabilities/scrapeable.h"
-#include "jandy/devices/capabilities/screen.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/pda/pda_message_clear.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
-#include "jandy/messages/pda/pda_message_highlight_chars.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "devices/jandy_controller.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/emulated.h"
+#include "devices/capabilities/restartable.h"
+#include "devices/capabilities/scrapeable.h"
+#include "devices/capabilities/screen.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_status.h"
+#include "messages/jandy_message_unknown.h"
+#include "messages/pda/pda_message_clear.h"
+#include "messages/pda/pda_message_highlight.h"
+#include "messages/pda/pda_message_highlight_chars.h"
+#include "messages/pda/pda_message_shiftlines.h"
 #include "kernel/hub_locator.h"
 #include "profiling/profiling.h"
 
@@ -49,7 +51,7 @@ namespace AqualinkAutomate::Devices
 			FaultHasOccurred
 		};
 
-		enum class KeyCommands
+		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
 			PageDown_Or_Select1 = 0x01,
@@ -106,6 +108,10 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_LabelAux(const Utility::ScreenDataPage& page);
 
 	private:
+		static const uint32_t HINT_COUNT{ 2 };
+		using HintArrayType = std::array<unsigned char, HINT_COUNT>;
+
+		bool StatusProcessor_ShouldSkipLineProcessing(const HintArrayType& hint_array, const std::string_view line_to_process) const;
 		void StatusProcessor_FilterPump(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_PoolHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_SpaHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);

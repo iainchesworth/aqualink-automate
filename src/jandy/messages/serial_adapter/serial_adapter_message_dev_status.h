@@ -9,10 +9,9 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/auxillaries/jandy_auxillary_id.h"
-#include "jandy/auxillaries/jandy_auxillary_status.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/serial_adapter/serial_adapter_message.h"
+#include "auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_status.h"
+#include "messages/serial_adapter/serial_adapter_message.h"
 #include "kernel/temperature.h"
 #include "types/units_electric_potential.h"
 
@@ -157,7 +156,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t SERIALADAPTER_AUX_ID_OFFSET = 0x14;
 
 	public:
-		SerialAdapterMessage_DevStatus();
+		SerialAdapterMessage_DevStatus() noexcept;
 		SerialAdapterMessage_DevStatus(const SerialAdapter_ConfigControlCommands  sa_ccc);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemConfigurationStatuses sa_scs);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemPumpCommands sa_spc);
@@ -218,9 +217,6 @@ namespace AqualinkAutomate::Messages
 	private:
 		std::optional<Auxillaries::JandyAuxillaryStatuses> m_Cleaner_State;
 		std::optional<Auxillaries::JandyAuxillaryStatuses> m_Spillover_State;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::SerialAdapterMessage_DevStatus> g_SerialAdapterMessage_DevStatus_Registration;
 	};
 
 }

@@ -1,20 +1,17 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include <boost/signals2.hpp>
 
 #include "interfaces/iequipment.h"
 #include "interfaces/istatuspublisher.h"
-#include "jandy/devices/jandy_device.h"
-#include "jandy/devices/jandy_device_id.h"
-#include "jandy/generator/jandy_message_generator.h"
-#include "jandy/generator/jandy_rawdata_generator.h"
-#include "jandy/messages/jandy_message.h"
+#include "devices/jandy_device.h"
+#include "devices/jandy_device_id.h"
+#include "generator/jandy_message_generator.h"
+#include "generator/jandy_rawdata_generator.h"
+#include "messages/jandy_message.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
@@ -35,9 +32,6 @@ namespace AqualinkAutomate::Equipment
 
 	private:
 		void DisplayUnknownMessages(const Messages::JandyMessage& message);
-
-	private:
-		std::unordered_set<Devices::JandyDeviceId> m_IdentifiedDeviceIds;
 
 	private:
 		std::vector<boost::signals2::connection> m_MessageConnections;

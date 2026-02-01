@@ -9,8 +9,8 @@
 #include "kernel/auxillary_devices/auxillary_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/jandy_message.h"
+//#include "factories/jandy_message_factory_registration.h"
+#include "messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t STATUS_PAYLOAD_LENGTH;
 
 	public:
-		JandyMessage_Status();
+		JandyMessage_Status() noexcept;
 		virtual ~JandyMessage_Status();
 
 	public:
@@ -66,7 +66,7 @@ namespace AqualinkAutomate::Messages
 		Kernel::HeaterStatuses m_SpaHeater;
 
 	private:
-		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;
+		//static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;
 	};
 
 }

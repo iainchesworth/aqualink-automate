@@ -10,7 +10,7 @@
 #include <tl/expected.hpp>
 
 #include "kernel/auxillary_devices/auxillary_status.h"
-#include "jandy/errors/string_conversion_errors.h"
+#include "errors/string_conversion_errors.h"
 
 using namespace AqualinkAutomate::Kernel;
 

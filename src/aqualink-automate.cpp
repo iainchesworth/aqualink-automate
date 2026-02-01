@@ -1,17 +1,21 @@
-﻿#include <thread>
+﻿#include <chrono>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <stacktrace>
+#include <thread>
 #include <vector>
 
 #include <boost/asio.hpp>
-#include <boost/cobalt.hpp>
 #include <boost/stacktrace.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "certificates/certificate_management.h"
-#include "coroutines/asynchronous_executor.h"
 #include "developer/firewall_manager.h"
-#include "developer/mock_serial_port.h"
+#include "developer/mock_serial_port_impl.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
+#include "http/server/http_server.h"
 #include "http/server/static_file_handler.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
@@ -24,44 +28,47 @@
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
-#include "http/server/listener.h"
 #include "http/server/routing/routing.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
 #include "kernel/preferences_hub.h"
 #include "kernel/statistics_hub.h"
-#include "jandy/devices/iaq_device.h"
-#include "jandy/devices/keypad_device.h"
-#include "jandy/devices/onetouch_device.h"
-#include "jandy/devices/pda_device.h"
-#include "jandy/devices/serial_adapter_device.h"
-#include "jandy/equipment/jandy_equipment.h"
-#include "jandy/messages/jandy_message_ack.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
 #include "logging/logging_severity_filter.h"
-#include "options/options_initialise.h"
-#include "options/options_settings.h"
+#include "options/options.h"
 #include "profiling/profiling.h"
-#include "protocol/protocol_handler.h"
+#include "mqtt/mqtt_integration.h"
+#include "protocol/message_generator_registry.h"
+#include "protocol/protocol_thread.h"
+#include "serial/port_types/network_serial_port_impl.h"
+#include "serial/port_types/physical_serial_port_impl.h"
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
+
+#include "jandy/options/options_jandy.h"
+#include "jandy/jandy.h"
+#include "jandy/messages/jandy_message_ack.h"
+#include "jandy/protocol/jandy_protocol_registration.h"
+
+#include "pentair/options/options_pentair.h"
+#include "pentair/pentair.h"
+
+#include "version/version.h"
+
 #include "aqualink-automate.h"
 
 using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Equipment;
 using namespace AqualinkAutomate::Logging;
-using namespace AqualinkAutomate::Messages;
 using namespace AqualinkAutomate::Profiling;
-using namespace AqualinkAutomate::Protocol;
-using namespace AqualinkAutomate::Serial;
 
-boost::cobalt::main co_main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
+	int return_value = EXIT_FAILURE;
+
 	try
 	{
-		boost::cobalt::wait_group server_tasks_wg;
 
 		//---------------------------------------------------------------------
 		// LOGGING
@@ -74,20 +81,64 @@ boost::cobalt::main co_main(int argc, char* argv[])
 		// PROFILING
 		//---------------------------------------------------------------------
 
-		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
-		{
-			profiler->StartProfiling();
-		}
+		auto& profiler = Factory::ProfilerFactory::Instance();
+		auto& profiler_units = Factory::ProfilingUnitFactory::Instance();
+
+		Profiling::RegisterAvailableProfilers(profiler, profiler_units);
+		profiler.Get()->StartProfiling();
+		profiler.Get()->AppInfo(Version::VersionDetails());
 
 		//---------------------------------------------------------------------
 		// OPTIONS
 		//---------------------------------------------------------------------
 
+		LogInfo(Channel::Options, "Configuring application options");
+
 		Options::Settings settings;
-		Options::Initialise(settings, argc, argv);
+
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Options Parsing", std::source_location::current());
+
+			LogDebug(Channel::Options, "Parsing application options provided via command line");
+
+			auto processed_options = Options::Initialise()
+				| Add(Options::App::OptionsProcessor{})
+				| Add(Options::Developer::OptionsProcessor{})
+				| Add(Options::Mqtt::OptionsProcessor{})
+				| Add(Options::Serial::OptionsProcessor{})
+				| Add(Options::Web::OptionsProcessor{})
+				| Add(Jandy::Options::OptionsProcessor{})
+				| Add(Pentair::Options::OptionsProcessor{})
+				| Parse(argc, argv)
+				| Validate()
+				| CheckHelpAndVersion()
+				| Process(
+					Options::App::OptionsProcessor{},
+					Options::Developer::OptionsProcessor{},
+					Options::Mqtt::OptionsProcessor{},
+					Options::Serial::OptionsProcessor{},
+					Options::Web::OptionsProcessor{},
+					Jandy::Options::OptionsProcessor{},
+					Pentair::Options::OptionsProcessor{})
+				| Finalise();
+
+			if (!processed_options)
+			{
+				LogFatal(Channel::Options, "Failed to process application options");
+				return EXIT_FAILURE;
+			}
+
+			settings = processed_options.value();
+		}
 
 		//---------------------------------------------------------------------
-		// INFORMATION DISTRIBUTION HUBS 
+		// IO CONTEXT
+		//---------------------------------------------------------------------
+
+		boost::asio::io_context io_context;
+
+		//---------------------------------------------------------------------
+		// INFORMATION DISTRIBUTION HUBS
 		//---------------------------------------------------------------------
 
 		Kernel::HubLocator hub_locator;
@@ -97,79 +148,76 @@ boost::cobalt::main co_main(int argc, char* argv[])
 		auto preferences_hub = std::make_shared<Kernel::PreferencesHub>();
 		auto statistics_hub = std::make_shared<Kernel::StatisticsHub>();
 
-		hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Hub Initialization", std::source_location::current());
+			hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
+		}
+
+		//---------------------------------------------------------------------
+		// SUPPORTED EQUIPMENT TYPES
+		//---------------------------------------------------------------------
+
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Equipment Initialization", std::source_location::current());
+			Jandy::Initialise(hub_locator);
+			Pentair::Initialise(hub_locator);
+		}
 
 		//---------------------------------------------------------------------
 		// SERIAL PORT
 		//---------------------------------------------------------------------
 
-		auto serial_port_executor = co_await boost::cobalt::this_coro::executor;
-		std::shared_ptr<Serial::SerialPort> serial_port;
+		std::shared_ptr<AqualinkAutomate::Serial::SerialPort> serial_port;
 
-		if (settings.developer.dev_mode_enabled)
 		{
-			LogInfo(Channel::Main, "Enabling developer mode");
+			auto serial_settings_result = settings.Get<Options::Serial::SerialSettings>();
+			auto developer_settings_result = settings.Get<Options::Developer::DeveloperSettings>();
 
-			if (!settings.developer.replay_file.empty())
+			if (!serial_settings_result)
 			{
-				serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Mock);
-				serial_port->open(settings.developer.replay_file);
+				LogFatal(Channel::Serial, std::format("Serial settings not available: {}", serial_settings_result.error()));
+				return EXIT_FAILURE;
+			}
+			else if (!developer_settings_result)
+			{
+				LogFatal(Channel::Main, std::format("Developer settings not available: {}", developer_settings_result.error()));
+				return EXIT_FAILURE;
 			}
 			else
 			{
-				// Normal mode as no developer mode options are enabled.
-				serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Real);
-				Serial::Initialise(settings, serial_port);
-			}
-		}
-		else
-		{
-			// Normal mode as no developer mode options are enabled.
-			serial_port = std::make_shared<Serial::SerialPort>(serial_port_executor, hub_locator, OperatingModes::Real);
-			Serial::Initialise(settings, serial_port);
-		}
+				const auto& developer_settings = developer_settings_result.value().get();
+				const auto& serial_settings = serial_settings_result.value().get();
 
-		//---------------------------------------------------------------------
-		// JANDY EQUIPMENT
-		//---------------------------------------------------------------------
+				auto executor = io_context.get_executor();
 
-		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
-
-		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator));
-
-		if (!settings.emulated_device.disable_emulation)
-		{
-			for (const auto& [controller_type, device_type] : settings.emulated_device.emulated_devices)
-			{
-				LogInfo(Channel::Main, std::format("Enabling controller emulation; type: {}, id: {}", magic_enum::enum_name(controller_type), device_type.Id()));
-
-				auto device_id = std::make_shared<Devices::JandyDeviceType>(device_type);
-
-				switch (controller_type)
+				if ((developer_settings.dev_mode_enabled) && (!developer_settings.replay_file.empty()))
 				{
-				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true)));
-					break;
+					LogInfo(Channel::Main, "Enabling developer mode");
 
-				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true)));
-					break;
+					auto serial_port_impl = std::make_unique<AqualinkAutomate::Developer::MockSerialPortImpl>();
+					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
+					serial_port->open(developer_settings.replay_file);
+				}
+				else if (serial_settings.UsingPhysicalSerialPort())
+				{
+					LogDebug(Channel::Main, std::format("Using a physical serial port ({})", serial_settings.serial_port));
 
-				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true)));
-					break;
+					auto serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::PhysicalSerialPortImpl>(executor);
+					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
+					AqualinkAutomate::Serial::Initialise(settings, serial_port);
+				}
+				else if (serial_settings.UsingRemoteSerialPort())
+				{
+					LogDebug(Channel::Main, std::format("Using a remote serial port ({})", serial_settings.remote_serial_port));
 
-				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true)));
-					break;
-
-				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true)));
-					break;
-
-				case Devices::JandyEmulatedDeviceTypes::Unknown:
-				default:
-					LogWarning(Channel::Main, "Unknown emulated device type; cannot create controller device");
+					auto serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
+					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
+					AqualinkAutomate::Serial::Initialise(settings, serial_port);
+				}
+				else
+				{
+					LogFatal(Channel::Serial, "No serial port configured (physical, remote, or developer mode)");
+					return EXIT_FAILURE;
 				}
 			}
 		}
@@ -180,8 +228,18 @@ boost::cobalt::main co_main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
 
-		server_tasks_wg.push_back(Protocol::ProtocolHandler_ReadOp(*serial_port));
-		server_tasks_wg.push_back(Protocol::ProtocolHandler_WriteOp<Messages::JandyMessage_Ack>(*serial_port));
+		// Register protocol-specific message generators before starting the handler
+		Jandy::Protocol::RegisterMessageGenerator();
+
+		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub);
+		protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
+
+		//---------------------------------------------------------------------
+		// SUPPORTED EQUIPMENT
+		//---------------------------------------------------------------------
+
+		Jandy::Configure(hub_locator, settings);
+		Pentair::Configure(hub_locator, settings);
 
 		//---------------------------------------------------------------------
 		// WEB SERVER
@@ -189,72 +247,140 @@ boost::cobalt::main co_main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::HttpServer...");
 
-		Developer::FirewallUtils::CheckAndConfigureExceptions();
+		AqualinkAutomate::Developer::FirewallUtils::CheckAndConfigureExceptions();
 
-		if (!settings.web.http_content_is_disabled)
-		{
-            HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator));
-			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator));
-			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Version>());
-		}
+		auto web_settings_result = settings.Get<Options::Web::WebSettings>();
 
-		// Routes are configured as follows
-		//
-		//     /api
-		//     /api/equipment
-		//     /api/equipment/buttons
-		//     /api/equipment/devices
-		//     /api/equipment/stats		<-- NOT IMPLEMENTED YET (but returned as part of "equipment" payload)
-		//     /api/equipment/version
-		//     
-		//     /ws
-		//     /ws/equipment
-		//     /ws/equipment/stats
-		//
-
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
-
-		HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
-		HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator));
-
-		HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", settings.web.doc_root));
-
+		std::unique_ptr<HTTP::HttpServer> http_server;
+		std::unique_ptr<HTTP::HttpServer> https_server;
 		boost::asio::ssl::context ssl_context(boost::asio::ssl::context::tls_server);
 
-		if (settings.web.https_server_is_enabled)
+		if (web_settings_result)
 		{
-			ssl_context.set_options(
-				boost::asio::ssl::context::default_workarounds |	// Implement various bug workarounds
-				boost::asio::ssl::context::no_sslv2 |				// Considered insecure
-				boost::asio::ssl::context::no_sslv3 |				// Supported but has a known issue ("POODLE bug")
-				boost::asio::ssl::context::no_tlsv1 |				// Considered insecure
-				boost::asio::ssl::context::no_tlsv1_1 |				// Considered insecure
-				boost::asio::ssl::context::single_dh_use |			// Always create a new key using the tmp_dh parameters
-				static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
-			);
+			const auto& web_settings = web_settings_result.value().get();
 
-			Certificates::LoadSslCertificates(settings.web, ssl_context);
+			if (!web_settings.http_content_is_disabled)
+			{
+				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator));
+				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator));
+				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Version>());
+			}
 
-			server_tasks_wg.push_back(HTTP::Listener(boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(settings.web.bind_address),settings.web.https_port }, ssl_context));
-		}
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
-		if (settings.web.http_server_is_enabled)
-		{
-			server_tasks_wg.push_back(HTTP::Listener(boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(settings.web.bind_address),settings.web.http_port }));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator));
+
+			HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", web_settings.doc_root));
+
+			if (web_settings.https_server_is_enabled)
+			{
+				ssl_context.set_options(
+					boost::asio::ssl::context::default_workarounds |
+					boost::asio::ssl::context::no_sslv2 |
+					boost::asio::ssl::context::no_sslv3 |
+					boost::asio::ssl::context::no_tlsv1 |
+					boost::asio::ssl::context::no_tlsv1_1 |
+					boost::asio::ssl::context::single_dh_use |
+					static_cast<long>(SSL_OP_CIPHER_SERVER_PREFERENCE)
+				);
+
+				Certificates::LoadSslCertificates(web_settings, ssl_context);
+
+				auto endpoint = boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(web_settings.bind_address), web_settings.https_port };
+				https_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint, std::ref(ssl_context));
+				https_server->Start();
+			}
+
+			if (web_settings.http_server_is_enabled)
+			{
+				auto endpoint = boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(web_settings.bind_address), web_settings.http_port };
+				http_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint);
+				http_server->Start();
+			}
 		}
 
 		//---------------------------------------------------------------------
-		// START APPLICATION
+		// MQTT SERVICE
+		//---------------------------------------------------------------------
+
+		std::shared_ptr<AqualinkAutomate::Mqtt::MqttIntegration> mqtt_integration;
+
+		auto mqtt_settings_result = settings.Get<Options::Mqtt::MqttSettings>();
+		if (mqtt_settings_result)
+		{
+			const auto& mqtt_settings = mqtt_settings_result.value().get();
+
+			if (mqtt_settings.enabled)
+			{
+				LogInfo(Channel::Main, "Starting AqualinkAutomate::MqttService...");
+
+				mqtt_integration = std::make_shared<AqualinkAutomate::Mqtt::MqttIntegration>(io_context, mqtt_settings);
+				mqtt_integration->ConnectHubs(data_hub, equipment_hub, statistics_hub);
+				mqtt_integration->Start();
+
+				LogInfo(Channel::Main, std::format("MQTT service enabled, publishing to {}:{}", mqtt_settings.broker_host, mqtt_settings.broker_port));
+			}
+			else
+			{
+				LogInfo(Channel::Main, "MQTT service is disabled");
+			}
+		}
+		else
+		{
+			LogInfo(Channel::Main, "MQTT service is disabled");
+		}
+
+		//---------------------------------------------------------------------
+		// FRAME LOOP
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
 
-		co_await server_tasks_wg.wait();
+		using clock = std::chrono::steady_clock;
+		constexpr auto FRAME_PERIOD = std::chrono::milliseconds(10);
+
+		bool shutdown = false;
+		boost::asio::signal_set shutdown_signals(io_context, SIGINT, SIGTERM);
+		shutdown_signals.async_wait([&shutdown](const boost::system::error_code&, int signum)
+		{
+			LogInfo(Channel::Main, std::format("Received shutdown signal ({})", signum));
+			shutdown = true;
+		});
+
+		while (!shutdown)
+		{
+			auto frame_start = clock::now();
+
+			// Process any pending Asio handlers (signal_set, etc.)
+			io_context.poll();
+
+			// Advance subsystems
+			protocol_task->Poll();
+
+			if (http_server)
+			{
+				http_server->Poll();
+			}
+
+			if (https_server)
+			{
+				https_server->Poll();
+			}
+
+			if (mqtt_integration)
+			{
+				mqtt_integration->Poll();
+			}
+
+			// Sleep until next frame
+			std::this_thread::sleep_until(frame_start + FRAME_PERIOD);
+		}
 
 		//---------------------------------------------------------------------
 		// STOP APPLICATION
@@ -262,24 +388,56 @@ boost::cobalt::main co_main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Stopping AqualinkAutomate...");
 
-		if (auto profiler = Factory::ProfilerFactory::Instance().Get(); nullptr != profiler)
+		// 1. Cancel serial port to unblock the protocol task read loop.
+		if (serial_port && serial_port->is_open())
 		{
-			profiler->StopProfiling();
+			boost::system::error_code cancel_ec;
+			serial_port->cancel(cancel_ec);
 		}
-		
-		co_return EXIT_SUCCESS;
+
+		// 2. Release protocol task resources.
+		protocol_task.reset();
+
+		// 3. Stop MQTT integration
+		if (mqtt_integration)
+		{
+			LogInfo(Channel::Main, "Stopping MQTT service...");
+			mqtt_integration->Stop();
+			mqtt_integration.reset();
+		}
+
+		// 4. Stop HTTP servers
+		if (https_server)
+		{
+			https_server->Stop();
+			https_server.reset();
+		}
+		if (http_server)
+		{
+			http_server->Stop();
+			http_server.reset();
+		}
+
+		// 5. Clear HTTP routing tables
+		LogInfo(Channel::Main, "Clearing HTTP routing tables...");
+		HTTP::Routing::Clear();
+
+		// 6. Clear message generator registry
+		LogInfo(Channel::Main, "Clearing message generator registry...");
+		Protocol::MessageGeneratorRegistry::Instance().Clear();
+
+		// 7. Stop profiling last
+		profiler.Get()->StopProfiling();
+
+		return_value = EXIT_SUCCESS;
 	}
 	catch (const Exceptions::OptionsHelpOrVersion&)
 	{
-		// Nothing happens since the user has been informed of the help/version information.
-		// Just terminate as if nothing had happened.
-		co_return EXIT_SUCCESS;
+		return_value = EXIT_SUCCESS;
 	}
 	catch (const Exceptions::OptionParsingFailed&)
 	{
-		// Nothing happens since the user has been informed of the option parsing error.
-		// Just terminate as if nothing had happened.
-		co_return EXIT_SUCCESS;
+		return_value = EXIT_SUCCESS;
 	}
 	catch (const Exceptions::GenericAqualinkException& ex_gae)
 	{
@@ -297,21 +455,26 @@ boost::cobalt::main co_main(int argc, char* argv[])
 			)
 		);
 
-		for (const boost::stacktrace::frame& frame : st)
+		for (const auto& frame : st)
 		{
-			LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+			LogDebug(Channel::Main, std::format("{}, {}({})", frame.description(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
 		}
-
-		co_return EXIT_FAILURE;
 	}
 	catch (const boost::system::system_error& err)
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-		co_return EXIT_FAILURE;
 	}
 	catch (const std::exception& err)
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
-		co_return EXIT_FAILURE;
+
+		const auto trace = std::stacktrace::current();
+		for (const auto& frame : trace)
+		{
+			LogDebug(Channel::Main, std::format("{}, {}({})", frame.description(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+		}
+
 	}
+
+	return return_value;
 }

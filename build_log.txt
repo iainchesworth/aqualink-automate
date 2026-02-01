@@ -1,0 +1,19 @@
+[1/251] Checking the git repository for changes...
+[2/250] Scanning R:\aqualink-automate\src\core\options\options_registry.cpp for CXX dependencies
+[3/250] Scanning R:\aqualink-automate\src\core\options\options_app_options.cpp for CXX dependencies
+[4/250] Scanning R:\aqualink-automate\src\core\options\options.cpp for CXX dependencies
+[5/250] Generating CXX dyndep file src\core\CMakeFiles\libaqualink-automate.dir\CXX.dd
+[6/15] Scanning R:\aqualink-automate\src\aqualink-automate.cpp for CXX dependencies
+[7/15] Generating CXX dyndep file src\CMakeFiles\aqualink-automate.dir\CXX.dd
+[8/15] Building CXX object src\core\CMakeFiles\libaqualink-automate.dir\options\options_app_options.cpp.obj
+[9/15] Building CXX object src\core\CMakeFiles\libaqualink-automate.dir\options\options_registry.cpp.obj
+[10/15] Building CXX object src\core\CMakeFiles\libaqualink-automate.dir\options\options.cpp.obj
+[11/15] Linking CXX static library src\core\libaqualink-automate.lib
+[12/15] Linking CXX executable test\perfaqualink-automate.exe
+[13/15] Linking CXX executable test\testaqualink-automate.exe
+Copying web assets to test folder...
+[14/15] Building CXX object src\CMakeFiles\aqualink-automate.dir\aqualink-automate.cpp.obj
+[15/15] Linking CXX executable src\aqualink-automate.exe
+Copying web assets to build folder...
+Copying SSL assets to build folder...
+BUILD_EXIT_CODE=0 

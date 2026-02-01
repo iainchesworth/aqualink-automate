@@ -1,6 +1,6 @@
 #include <format>
 
-#include "jandy/messages/aquarite/aquarite_message.h"
+#include "messages/aquarite/aquarite_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
