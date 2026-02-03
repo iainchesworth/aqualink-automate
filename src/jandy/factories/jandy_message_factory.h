@@ -234,7 +234,7 @@ namespace AqualinkAutomate::Factory
 			return hot_message_count;
 		}
 
-		[[nodiscard]] static void RegisteredMessages() noexcept
+		static void RegisteredMessages() noexcept
 		{
 			LogDebug(Channel::Messages, "Registering message types with message factory");
 

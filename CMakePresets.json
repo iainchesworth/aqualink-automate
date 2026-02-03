@@ -40,7 +40,9 @@
       "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_PROFILING": "ON"
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "SANITIZE_ADDRESS": "ON"
       }
     },
     {
@@ -50,14 +52,14 @@
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
+
     {
       "name": "config-windows-msvc",
       "inherits": [ "core", "release" ],
       "displayName": "Windows MSVC Release",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake",
-        "CMAKE_MAKE_PROGRAM": "${sourceDir}/deps/vcpkg/downloads/tools/ninja/1.12.1-windows/ninja.exe"
+        "VCPKG_TARGET_TRIPLET": "x64-windows-msvc",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake"
       },
       "condition": {
         "type": "equals",
@@ -70,9 +72,8 @@
       "inherits": [ "core", "debug" ],
       "displayName": "Windows MSVC Debug",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake",
-        "CMAKE_MAKE_PROGRAM": "${sourceDir}/deps/vcpkg/downloads/tools/ninja/1.12.1-windows/ninja.exe"
+        "VCPKG_TARGET_TRIPLET": "x64-windows-msvc",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake"
       },
       "condition": {
         "type": "equals",
@@ -80,6 +81,7 @@
         "rhs": "Windows"
       }
     },
+
     {
       "name": "config-windows-llvm",
       "inherits": [ "core", "release" ],
@@ -108,62 +110,7 @@
         "rhs": "Windows"
       }
     },
-    {
-      "name": "config-windows-gcc",
-      "inherits": [ "core", "release" ],
-      "displayName": "Windows GCC Release",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows-gcc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.gcc.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "config-windows-gcc-debug",
-      "inherits": [ "core", "debug" ],
-      "displayName": "Windows GCC Debug",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows-gcc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.gcc.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      }
-    },
-    {
-      "name": "config-linux-llvm",
-      "inherits": [ "core", "release" ],
-      "displayName": "Linux LLVM Release",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-linux-llvm",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
-    },
-    {
-      "name": "config-linux-llvm-debug",
-      "inherits": [ "core", "debug" ],
-      "displayName": "Linux LLVM Debug",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-linux-llvm",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
-    },
+
     {
       "name": "config-linux-gcc",
       "inherits": [ "core", "release" ],
@@ -208,6 +155,36 @@
         "rhs": "Linux"
       }
     },
+
+    {
+      "name": "config-linux-llvm",
+      "inherits": [ "core", "release" ],
+      "displayName": "Linux LLVM Release",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-llvm",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "config-linux-llvm-debug",
+      "inherits": [ "core", "debug" ],
+      "displayName": "Linux LLVM Debug",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-llvm",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+
     {
       "name": "config-macos-llvm",
       "inherits": [ "core", "release" ],
@@ -235,36 +212,9 @@
         "lhs": "${hostSystemName}",
         "rhs": "MacOS"
       }
-    },
-    {
-      "name": "config-macos-gcc",
-      "inherits": [ "core", "release" ],
-      "displayName": "macOS GCC Release",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-macos-gcc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.gcc.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "MacOS"
-      }
-    },
-    {
-      "name": "config-macos-gcc-debug",
-      "inherits": [ "core", "debug" ],
-      "displayName": "macOS GCC Debug",
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-macos-gcc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.gcc.toolchain.cmake"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "MacOS"
-      }
     }
   ],
+
   "buildPresets": [
     {
       "name": "build-windows-msvc",
@@ -291,30 +241,6 @@
       "configuration": "Debug"
     },
     {
-      "name": "build-windows-gcc",
-      "configurePreset": "config-windows-gcc",
-      "displayName": "Windows GCC Release",
-      "configuration": "Release"
-    },
-    {
-      "name": "build-windows-gcc-debug",
-      "configurePreset": "config-windows-gcc-debug",
-      "displayName": "Windows GCC Debug",
-      "configuration": "Debug"
-    },
-    {
-      "name": "build-linux-llvm",
-      "configurePreset": "config-linux-llvm",
-      "displayName": "Linux LLVM Release",
-      "configuration": "Release"
-    },
-    {
-      "name": "build-linux-llvm-debug",
-      "configurePreset": "config-linux-llvm-debug",
-      "displayName": "Linux LLVM Debug",
-      "configuration": "Debug"
-    },
-    {
       "name": "build-linux-gcc",
       "configurePreset": "config-linux-gcc",
       "displayName": "Linux GCC Release",
@@ -334,6 +260,18 @@
       "targets": [ "coverage-testaqualink-automate" ]
     },
     {
+      "name": "build-linux-llvm",
+      "configurePreset": "config-linux-llvm",
+      "displayName": "Linux LLVM Release",
+      "configuration": "Release"
+    },
+    {
+      "name": "build-linux-llvm-debug",
+      "configurePreset": "config-linux-llvm-debug",
+      "displayName": "Linux LLVM Debug",
+      "configuration": "Debug"
+    },
+    {
       "name": "build-macos-llvm",
       "configurePreset": "config-macos-llvm",
       "displayName": "macOS LLVM Release",
@@ -344,192 +282,102 @@
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug",
       "configuration": "Debug"
-    },
-    {
-      "name": "build-macos-gcc",
-      "configurePreset": "config-macos-gcc",
-      "displayName": "macOS GCC Release",
-      "configuration": "Release"
-    },
-    {
-      "name": "build-macos-gcc-debug",
-      "configurePreset": "config-macos-gcc-debug",
-      "displayName": "macOS GCC Debug",
-      "configuration": "Debug"
     }
   ],
+
   "testPresets": [
     {
       "name": "test-windows-msvc",
       "configurePreset": "config-windows-msvc",
       "displayName": "Windows MSVC Release Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-windows-msvc-debug",
       "configurePreset": "config-windows-msvc-debug",
       "displayName": "Windows MSVC Debug Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-windows-llvm",
       "configurePreset": "config-windows-llvm",
       "displayName": "Windows LLVM Release Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-windows-llvm-debug",
       "configurePreset": "config-windows-llvm-debug",
       "displayName": "Windows LLVM Debug Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-windows-gcc",
-      "configurePreset": "config-windows-gcc",
-      "displayName": "Windows GCC Release Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-windows-gcc-debug",
-      "configurePreset": "config-windows-gcc-debug",
-      "displayName": "Windows GCC Debug Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-linux-llvm",
-      "configurePreset": "config-linux-llvm",
-      "displayName": "Linux LLVM Release Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-linux-llvm-debug",
-      "configurePreset": "config-linux-llvm-debug",
-      "displayName": "Linux LLVM Debug Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-linux-gcc",
       "configurePreset": "config-linux-gcc",
       "displayName": "Linux GCC Release Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-linux-gcc-debug",
       "configurePreset": "config-linux-gcc-debug",
       "displayName": "Linux GCC Debug Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-linux-gcc-coverage",
       "configurePreset": "config-linux-gcc-coverage",
       "displayName": "Linux GCC Coverage Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-llvm",
+      "configurePreset": "config-linux-llvm",
+      "displayName": "Linux LLVM Release Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-llvm-debug",
+      "configurePreset": "config-linux-llvm-debug",
+      "displayName": "Linux LLVM Debug Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-macos-llvm",
       "configurePreset": "config-macos-llvm",
       "displayName": "macOS LLVM Release Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
       "name": "test-macos-llvm-debug",
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug Tests",
       "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-macos-gcc",
-      "configurePreset": "config-macos-gcc",
-      "displayName": "macOS GCC Release Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
-    },
-    {
-      "name": "test-macos-gcc-debug",
-      "configurePreset": "config-macos-gcc-debug",
-      "displayName": "macOS GCC Debug Tests",
-      "output": { "outputOnFailure": true },
-      "execution": {
-        "noTestsAction": "error",
-        "stopOnFailure": false
-      }
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
     }
   ],
+
   "packagePresets": [
     {
       "name": "pack-windows-msvc",
       "displayName": "Windows MSVC Package",
       "configurePreset": "config-windows-msvc",
-      "generators": [ "ZIP" ],
+      "generators": [ "ZIP", "NSIS" ],
       "packageDirectory": "packages"
     },
     {
       "name": "pack-windows-llvm",
       "displayName": "Windows LLVM Package",
       "configurePreset": "config-windows-llvm",
-      "generators": [ "ZIP" ],
-      "packageDirectory": "packages"
-    },
-    {
-      "name": "pack-windows-gcc",
-      "displayName": "Windows GCC Package",
-      "configurePreset": "config-windows-gcc",
-      "generators": [ "ZIP" ],
+      "generators": [ "ZIP", "NSIS" ],
       "packageDirectory": "packages"
     },
     {
@@ -550,188 +398,69 @@
       "name": "pack-macos-llvm",
       "displayName": "macOS LLVM Package",
       "configurePreset": "config-macos-llvm",
-      "generators": [ "TGZ" ],
-      "packageDirectory": "packages"
-    },
-    {
-      "name": "pack-macos-gcc",
-      "displayName": "macOS GCC Package",
-      "configurePreset": "config-macos-gcc",
-      "generators": [ "TGZ" ],
+      "generators": [ "TGZ", "DragNDrop" ],
       "packageDirectory": "packages"
     }
   ],
+
   "workflowPresets": [
     {
       "name": "ci-windows-msvc",
       "displayName": "Windows MSVC CI Workflow",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-windows-msvc"
-        },
-        {
-          "type": "build",
-          "name": "build-windows-msvc"
-        },
-        {
-          "type": "test",
-          "name": "test-windows-msvc"
-        },
-        {
-          "type": "package",
-          "name": "pack-windows-msvc"
-        }
+        { "type": "configure", "name": "config-windows-msvc" },
+        { "type": "build", "name": "build-windows-msvc" },
+        { "type": "test", "name": "test-windows-msvc" },
+        { "type": "package", "name": "pack-windows-msvc" }
       ]
     },
     {
       "name": "ci-windows-llvm",
       "displayName": "Windows LLVM CI Workflow",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-windows-llvm"
-        },
-        {
-          "type": "build",
-          "name": "build-windows-llvm"
-        },
-        {
-          "type": "test",
-          "name": "test-windows-llvm"
-        },
-        {
-          "type": "package",
-          "name": "pack-windows-llvm"
-        }
-      ]
-    },
-    {
-      "name": "ci-windows-gcc",
-      "displayName": "Windows GCC CI Workflow",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "config-windows-gcc"
-        },
-        {
-          "type": "build",
-          "name": "build-windows-gcc"
-        },
-        {
-          "type": "test",
-          "name": "test-windows-gcc"
-        },
-        {
-          "type": "package",
-          "name": "pack-windows-gcc"
-        }
+        { "type": "configure", "name": "config-windows-llvm" },
+        { "type": "build", "name": "build-windows-llvm" },
+        { "type": "test", "name": "test-windows-llvm" },
+        { "type": "package", "name": "pack-windows-llvm" }
       ]
     },
     {
       "name": "ci-linux-gcc",
       "displayName": "Linux GCC CI Workflow",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-linux-gcc"
-        },
-        {
-          "type": "build",
-          "name": "build-linux-gcc"
-        },
-        {
-          "type": "test",
-          "name": "test-linux-gcc"
-        },
-        {
-          "type": "package",
-          "name": "pack-linux-gcc"
-        }
+        { "type": "configure", "name": "config-linux-gcc" },
+        { "type": "build", "name": "build-linux-gcc" },
+        { "type": "test", "name": "test-linux-gcc" },
+        { "type": "package", "name": "pack-linux-gcc" }
       ]
     },
     {
       "name": "ci-linux-llvm",
       "displayName": "Linux LLVM CI Workflow",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-linux-llvm"
-        },
-        {
-          "type": "build",
-          "name": "build-linux-llvm"
-        },
-        {
-          "type": "test",
-          "name": "test-linux-llvm"
-        },
-        {
-          "type": "package",
-          "name": "pack-linux-llvm"
-        }
+        { "type": "configure", "name": "config-linux-llvm" },
+        { "type": "build", "name": "build-linux-llvm" },
+        { "type": "test", "name": "test-linux-llvm" },
+        { "type": "package", "name": "pack-linux-llvm" }
       ]
     },
     {
       "name": "ci-macos-llvm",
       "displayName": "macOS LLVM CI Workflow",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-macos-llvm"
-        },
-        {
-          "type": "build",
-          "name": "build-macos-llvm"
-        },
-        {
-          "type": "test",
-          "name": "test-macos-llvm"
-        },
-        {
-          "type": "package",
-          "name": "pack-macos-llvm"
-        }
-      ]
-    },
-    {
-      "name": "ci-macos-gcc",
-      "displayName": "macOS GCC CI Workflow",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "config-macos-gcc"
-        },
-        {
-          "type": "build",
-          "name": "build-macos-gcc"
-        },
-        {
-          "type": "test",
-          "name": "test-macos-gcc"
-        },
-        {
-          "type": "package",
-          "name": "pack-macos-gcc"
-        }
+        { "type": "configure", "name": "config-macos-llvm" },
+        { "type": "build", "name": "build-macos-llvm" },
+        { "type": "test", "name": "test-macos-llvm" },
+        { "type": "package", "name": "pack-macos-llvm" }
       ]
     },
     {
       "name": "ci-coverage",
       "displayName": "Linux Coverage Analysis",
       "steps": [
-        {
-          "type": "configure",
-          "name": "config-linux-gcc-coverage"
-        },
-        {
-          "type": "build",
-          "name": "build-linux-gcc-coverage"
-        },
-        {
-          "type": "test",
-          "name": "test-linux-gcc-coverage"
-        }
+        { "type": "configure", "name": "config-linux-gcc-coverage" },
+        { "type": "build", "name": "build-linux-gcc-coverage" },
+        { "type": "test", "name": "test-linux-gcc-coverage" }
       ]
     }
   ]

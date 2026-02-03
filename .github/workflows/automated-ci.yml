@@ -7,150 +7,108 @@ on:
     branches: [ "develop", "main" ]
 
 jobs:
-  Build:
-    name: Building ${{ matrix.cmake_preset }} (${{ matrix.os }} With ${{ matrix.compiler }})
+  build-and-test:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022]
         include:
-        - os: ubuntu-22.04
-          cmake_preset: ci-ninja-gcc-linux-x86_64-release
-          compiler: gcc-13
-        - os: windows-2022
-          cmake_preset: ci-ninja-msvc-windows-x64-release
-          compiler: msvc
-    outputs:
-      cmake_preset: ${{ matrix.cmake_preset }}
+          - name: "Linux GCC"
+            os: ubuntu-22.04
+            compiler: gcc-13
+            configure_preset: config-linux-gcc
+            build_preset: build-linux-gcc
+            test_preset: test-linux-gcc
+            package_preset: pack-linux-gcc
+          - name: "Windows MSVC"
+            os: windows-2022
+            compiler: msvc
+            configure_preset: config-windows-msvc
+            build_preset: build-windows-msvc
+            test_preset: test-windows-msvc
+            package_preset: pack-windows-msvc
+          - name: "macOS Clang"
+            os: macos-14
+            compiler: llvm
+            configure_preset: config-macos-llvm
+            build_preset: build-macos-llvm
+            test_preset: test-macos-llvm
+            package_preset: pack-macos-llvm
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'true'
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - uses: aminya/setup-cpp@v1
-      with:
-        compiler: ${{ matrix.compiler }}
-        vcvarsall: ${{ contains(matrix.os, 'windows') }}
-        cmake: true
-        ninja: true
+      - uses: aminya/setup-cpp@v1
+        with:
+          compiler: ${{ matrix.compiler }}
+          vcvarsall: ${{ contains(matrix.os, 'windows') }}
+          cmake: true
+          ninja: true
 
-    - uses: lukka/run-vcpkg@v11
-      with: 
-        vcpkgDirectory: '${{github.workspace}}/deps/vcpkg'
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: choco install nsis -y
 
-    - uses: lukka/run-cmake@v10
-      with:
-        configurePreset: '${{ matrix.cmake_preset }}'
-        buildPreset: '${{ matrix.cmake_preset }}'
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
 
-    - uses: actions/upload-artifact@v3
-      with:
-        name: build-artifacts-${{ matrix.cmake_preset }}
-        path: |
-          ${{github.workspace}}/build/${{ matrix.cmake_preset }}/
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.ilk
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.lib
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.pdb
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/**/*.a
-          # !${{github.workspace}}/build/${{ matrix.cmake_preset }}/CMakeFiles/ <-- Needed to ensure pack commands work...
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/deps/
-          !${{github.workspace}}/build/${{ matrix.cmake_preset }}/vcpkg_installed/
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.configure_preset }}
 
-  Test:
-    name: Running Unit Tests On ${{ matrix.os }}
-    needs: [Build]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, windows-2022]
-        include:
-        - os: ubuntu-22.04
-          cmake_preset: ci-ninja-gcc-linux-x86_64-release
-        - os: windows-2022
-          cmake_preset: ci-ninja-msvc-windows-x64-release
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.build_preset }}
 
-    steps: 
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'true' 
+      - name: Test
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: ${{ matrix.test_preset }}
 
-    - uses: aminya/setup-cpp@v1
-      with:
-        cmake: true
-        ninja: true
+      - name: Package
+        run: cpack --preset=${{ matrix.package_preset }}
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: build-artifacts-${{ matrix.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ matrix.cmake_preset }}
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.configure_preset }}
+          path: |
+            packages/*.deb
+            packages/*.rpm
+            packages/*.tgz
+            packages/*.zip
+            packages/*.exe
+            packages/*.dmg
+          retention-days: 7
 
-    - run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          chmod +x ${{github.workspace}}/build/${{ matrix.cmake_preset }}/test/testaqualink-automate
-          chmod +x ${{github.workspace}}/build/${{ matrix.cmake_preset }}/test/perfaqualink-automate
-        fi
-      shell: bash
-
-    - uses: lukka/run-cmake@v10
-      with:
-        testPreset: '${{ matrix.cmake_preset }}'
-
-  Package:
-    name: Packaging Build for ${{ matrix.os }}
-    needs: [Test]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, windows-2022]
-        include:
-        - os: ubuntu-22.04
-          cmake_preset: ci-ninja-gcc-linux-x86_64-release
-        - os: windows-2022
-          cmake_preset: ci-ninja-msvc-windows-x64-release
-
-    steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: build-artifacts-${{ matrix.cmake_preset }}
-        path: ${{github.workspace}}/build/${{ matrix.cmake_preset }}
-
-    - working-directory: ${{github.workspace}}/build
-      run: |
-        cmake --build ${{github.workspace}}/build/${{ matrix.cmake_preset }} --target pack-aqualink-automate 
-    
-    - name: Upload Binary Packages
-      uses: actions/upload-artifact@v3
-      with:
-        name: package-artifacts-${{ matrix.cmake_preset }}
-        path: |
-          ${{github.workspace}}/packages/*.deb
-          ${{github.workspace}}/packages/*.rpm
-          ${{github.workspace}}/packages/*.tgz
-          ${{github.workspace}}/packages/*.zip
-        retention-days: 1
-
-  Release:
+  release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [Build, Test, Package]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, windows-2022]
-        include:
-        - os: ubuntu-22.04
-          cmake_preset: ci-ninja-gcc-linux-x86_64-release
-        - os: windows-2022
-          cmake_preset: ci-ninja-msvc-windows-x64-release
-
+    needs: [ build-and-test ]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
-    - name: Download Binary Packages
-      uses: actions/download-artifact@v3
-      with: 
-        name: package-artifacts-${{ matrix.cmake_preset }}
-        path: ${{github.workspace}}/packages
+      - uses: actions/checkout@v4
+
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+          pattern: packages-*
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            packages/*

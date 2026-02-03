@@ -96,7 +96,9 @@
       "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/perfaqualink-automate.exe --benchmark_filter=\"ProcessMessages|ErrorHandler\")",
       "WebFetch(domain:www.claffeypools.com)",
       "WebFetch(domain:images.inyopools.com)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git submodule:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

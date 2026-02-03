@@ -27,7 +27,7 @@ namespace AqualinkAutomate::HTTP::Responses
         return hash;
     }
 
-    inline constexpr auto operator"" _sh(const char* str, std::size_t len) 
+    inline constexpr auto operator""_sh(const char* str, std::size_t len)
     {
         return hash_djb2a(std::string_view{ str, len });
     }

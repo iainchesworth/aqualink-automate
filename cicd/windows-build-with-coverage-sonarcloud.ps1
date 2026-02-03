@@ -3,7 +3,7 @@
 # Environment variables....
 #
 #    # SONAR_TOKEN -> the API key that enables access to the project
-#    # SONAR_URL   -> sets the URL for the SonarQube server 
+#    # SONAR_URL   -> sets the URL for the SonarQube server
 #    # SONAR_DEBUG -> adds the "--debug" flag for debug output during processing
 #
 # Use the following to set an environment variable in the console:
@@ -27,7 +27,10 @@ Function Write-ErrorAndExit {
 }
 
 # Accept preset name as the first argument or set to default
-$CMAKE_PRESET = If ($args[0]) { $args[0] } else { "ci-ninja-msvc-windows-x64-release" }
+$CMAKE_PRESET = If ($args[0]) { $args[0] } else { "config-windows-msvc" }
+
+# Derive the build preset from the configure preset
+$CMAKE_BUILD_PRESET = $CMAKE_PRESET -replace '^config-', 'build-'
 
 # Validate SONAR_TOKEN environment variable
 if (-Not $env:SONAR_TOKEN) {
@@ -69,16 +72,19 @@ Function Is64BitSystem {
 
 # Helper function to check if vcvars has been set in the current session
 Function IsVcvarsSet {
-    # Assuming vcvars sets a specific environment variable that can be checked
-    # Replace 'VSCMD_VER' with the actual environment variable set by vcvars
-    return [string]::IsNullOrWhiteSpace($env:VSCMD_VER)
+    return -not [string]::IsNullOrWhiteSpace($env:VSCMD_VER)
 }
 
 # Function to setup build environment
 Function SetupBuildEnvironment {
-    $vcvarsPath = "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\"
+    $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-Not (Test-Path $VsWhere)) {
+        Write-ErrorAndExit "vswhere.exe not found. Ensure Visual Studio is installed."
+    }
+
+    $VsInstall = & $VsWhere -latest -property installationPath
     $vcvarsFile = If (Is64BitSystem) { "vcvars64.bat" } else { "vcvars32.bat" }
-    $fullPath = Join-Path $vcvarsPath $vcvarsFile
+    $fullPath = Join-Path $VsInstall "VC\Auxiliary\Build\$vcvarsFile"
 
     if (-Not (Test-Path $fullPath)) {
         Write-ErrorAndExit "The vcvars file ($vcvarsFile) does not exist at the expected location."
@@ -103,11 +109,11 @@ SetupBuildEnvironment
 
 # Build configuration and execution
 cmake --fresh --preset=$CMAKE_PRESET .
-build-wrapper-win-x86-64 --out-dir build_wrapper_output_directory cmake --build . --preset=$CMAKE_PRESET
+build-wrapper-win-x86-64 --out-dir build_wrapper_output_directory cmake --build --preset=$CMAKE_BUILD_PRESET
 
 # Prepare and run sonar scanner
 $SONAR_DEBUG_CMD_ARG = If ($env:SONAR_DEBUG) { "--debug" } else { "" }
 $SONAR_URL_CMD_ARG = If ($SONAR_URL) { "-Dsonar.host.url=$SONAR_URL" }
-$SONAR_TOKEN_CMD_ARG = If ($SONAR_TOKEN) { "-Dsonar.login=$SONAR_TOKEN" }
+$SONAR_TOKEN_CMD_ARG = If ($env:SONAR_TOKEN) { "-Dsonar.login=$env:SONAR_TOKEN" }
 $SONAR_OTHER_ARGS = @("-Dsonar.sources=src", "-Dsonar.tests=test", "-Dsonar.cfamily.build-wrapper-output=build_wrapper_output_directory", "-Dsonar.sourceEncoding=UTF-8")
 sonar-scanner.bat $SONAR_DEBUG_CMD_ARG $SONAR_URL_CMD_ARG $SONAR_TOKEN_CMD_ARG $SONAR_OTHER_ARGS

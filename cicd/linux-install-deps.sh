@@ -58,4 +58,4 @@ sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-to
 #
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-/bin/bash ${SCRIPT_DIR}/../../../deps/vcpkg/bootstrap-vcpkg.sh
+/bin/bash ${SCRIPT_DIR}/../deps/vcpkg/bootstrap-vcpkg.sh

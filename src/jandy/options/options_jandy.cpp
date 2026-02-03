@@ -30,7 +30,7 @@ namespace AqualinkAutomate::Jandy::Options
 			options.add((*option)());
 		}
 
-		return std::move(options);
+		return options;
 	}
 
 	void OptionsProcessor::Validate(const boost::program_options::variables_map& vm) const

@@ -142,7 +142,7 @@ endif(USE_SONARQUBE)
 endif(ENABLE_COVERAGE)
 
 if(ENABLE_SANITIZERS)
-add_sanitizers(testaqualink-automate)
+target_enable_sanitizers(testaqualink-automate)
 endif(ENABLE_SANITIZERS)
 
 #------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ target_link_libraries(
 add_test(AqualinkAutomatePerfTests perfaqualink-automate)
 
 if(ENABLE_SANITIZERS)
-add_sanitizers(perfaqualink-automate)
+target_enable_sanitizers(perfaqualink-automate)
 endif(ENABLE_SANITIZERS)
 
 endif(ENABLE_BENCHMARKS)

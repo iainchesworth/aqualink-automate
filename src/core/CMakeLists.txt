@@ -206,9 +206,8 @@ target_sources(
 	serial/rfc2217/rfc2217_protocol_handler.cpp
 	serial/rfc2217/rfc2217_protocol_handler_byteprocessor.cpp
 	serial/rfc2217/rfc2217_types.cpp
-	types/units_electric_potential.cpp 
-	types/units_dimensionless.cpp 
 	types/units_electric_potential.cpp
+	types/units_dimensionless.cpp
 	types/units_flow_rate.cpp 
 	utility/bandwidth_utilisation.cpp 
 	utility/case_insensitive_comparision.cpp 

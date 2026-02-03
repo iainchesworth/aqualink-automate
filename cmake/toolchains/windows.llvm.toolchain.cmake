@@ -4,8 +4,6 @@
 
 message(STATUS "Configuring Windows Toolchain (LLVM/Clang Variant)")
 
-# include("${CMAKE_CURRENT_LIST_DIR}/windows.common.toolchain.cmake")
-
 # Find clang-cl.exe (MSVC-compatible clang frontend)
 find_program(CMAKE_C_COMPILER clang-cl.exe
     HINTS
@@ -25,13 +23,17 @@ find_program(CMAKE_CXX_COMPILER clang-cl.exe
     REQUIRED
 )
 
-# Use lld-link as linker (compatible with MSVC)
-find_program(CMAKE_LINKER lld-link.exe
-    HINTS
-        "C:/Program Files/LLVM/bin"
-        "$ENV{ProgramFiles}/LLVM/bin"
-        "C:/Program Files (x86)/LLVM/bin"
-        #"$ENV{ProgramFiles(x86)}/LLVM/bin"
+# Use MSVC's link.exe rather than lld-link. lld-link cannot resolve
+# compiler-synthesized DLL-exported members (e.g. implicit move constructors)
+# which causes link failures with dynamic Boost libraries. clang-cl is fully
+# ABI-compatible with MSVC so link.exe works without issues.
+#
+# Explicitly find MSVC's link.exe via VCToolsInstallDir to avoid picking up
+# Git's /usr/bin/link.exe which shadows it on many systems.
+find_program(CMAKE_LINKER NAMES link.exe
+    PATHS "$ENV{VCToolsInstallDir}/bin/Hostx64/x64"
+    NO_DEFAULT_PATH
+    REQUIRED
 )
 
 # Compiler flags for MSVC compatibility
@@ -39,21 +41,7 @@ add_compile_options("/utf-8")
 add_compile_options("/bigobj")
 
 # Link with MSVC runtime
-set(CMAKE_CXX_FLAGS_INIT "${_include_flags} /MD")
-set(CMAKE_C_FLAGS_INIT "${_include_flags} /MD")
-
-# Set up Ninja build tool path
-set(CMAKE_NINJA_PATH "${CMAKE_CURRENT_LIST_DIR}/../../deps/vcpkg/downloads/tools/cmake-3.30.1-windows/cmake-3.30.1-windows-i386/bin/ninja.exe")
-if(EXISTS "${CMAKE_NINJA_PATH}")
-    set(CMAKE_MAKE_PROGRAM "${CMAKE_NINJA_PATH}")
-    # Add Ninja to PATH for better availability
-    get_filename_component(NINJA_DIR "${CMAKE_NINJA_PATH}" DIRECTORY)
-    set(ENV{PATH} "${NINJA_DIR};$ENV{PATH}")
-    message(STATUS "Using integrated Ninja at: ${CMAKE_NINJA_PATH}")
-endif()
+set(CMAKE_CXX_FLAGS_INIT "/MD")
+set(CMAKE_C_FLAGS_INIT "/MD")
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
-message(STATUS "MSVC include directory: ${WIN_VC_INCLUDE_DIR}")
-message(STATUS "Windows SDK include version: ${WINSDK_INCLUDE_VER}")
-message("Windows LLVM toolchain CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
-message("Windows LLVM toolchain CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")

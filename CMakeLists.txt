@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_SOURCE_DIR}/deps/sanitizers-cmake/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps")
 
 project(
 	aqualink-automate 
@@ -26,10 +26,16 @@ option(ENABLE_BENCHMARKS "Enable performance tests" ON)
 option(ENABLE_COVERAGE "Enable coverage of unit tests" OFF)
 option(ENABLE_TESTS "Enable unit tests" ON)
 option(ENABLE_PROFILING "DevTools: Enable profiling tooling" ON)
-option(ENABLE_CLANG_TIDY "DevTools: Enable static analysis using clang-tidy" ON)
-option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" ON)
+option(ENABLE_CLANG_TIDY "DevTools: Enable static analysis using clang-tidy" OFF)
+option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" OFF)
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
-cmake_dependent_option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" ON "NOT ENABLE_PROFILING" OFF)
+option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" OFF)
+
+if(ENABLE_SANITIZERS AND ENABLE_PROFILING)
+  message(FATAL_ERROR "ENABLE_SANITIZERS and ENABLE_PROFILING cannot both be ON. "
+    "Profiling instrumentation (Tracy) is incompatible with sanitizer runtimes. "
+    "Disable one of them.")
+endif()
 
 option(USE_SONARQUBE "Use SonarQube for coverage of unit tests" OFF)
 
@@ -94,11 +100,10 @@ option(SANITIZE_MEMORY "DevTools: Sanitizers -> Use MemorySanitizer" OFF)
 option(SANITIZE_THREAD "DevTools: Sanitizers -> Use ThreadSanitizer" OFF)
 option(SANITIZE_UNDEFINED "DevTools: Sanitizers -> Use UndefinedBehaviourSanitizer" OFF)
 
-find_package(Sanitizers)
+include(Sanitizers)
 
 # Clang normally links using the static runtime library; this causes problems when building
 # so link with the shared library to avoid this.
-
 add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
 
 endif(ENABLE_SANITIZERS)
@@ -190,8 +195,8 @@ endif(ENABLE_TESTS)
 
 if(ENABLE_SANITIZERS)
 
-add_sanitizers(libaqualink-automate)
-add_sanitizers(aqualink-automate)
+target_enable_sanitizers(libaqualink-automate)
+target_enable_sanitizers(aqualink-automate)
 
 endif(ENABLE_SANITIZERS)
 

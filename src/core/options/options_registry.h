@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Options
 	using Validator = std::function<void(const boost::program_options::variables_map&)>;
 
 	using State = std::tuple<
-		boost::program_options::options_description,  // Options
+		std::shared_ptr<boost::program_options::options_description>,  // Options
 		boost::program_options::variables_map,        // Parsed values
 		Settings,									  // Results
 		std::vector<Validator>						  // Validators
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Options
 	{
 		return State
 		{
-			boost::program_options::options_description{},
+			std::make_shared<boost::program_options::options_description>(),
 			boost::program_options::variables_map{},
 			Settings{},
 			std::vector<Validator>{}
@@ -53,7 +53,7 @@ namespace AqualinkAutomate::Options
 			{
 				auto& [desc, vm, settings, validators] = state;
 
-				desc.add(p.Options());
+				desc->add(p.Options());
 
 				validators.push_back([p](const boost::program_options::variables_map& vm)
 					{
@@ -72,7 +72,7 @@ namespace AqualinkAutomate::Options
 
 				try
 				{
-					boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+					boost::program_options::store(boost::program_options::parse_command_line(argc, argv, *desc), vm);
 					boost::program_options::notify(vm);
 					return state;
 				}
@@ -120,7 +120,7 @@ namespace AqualinkAutomate::Options
 				auto& [desc, vm, settings, validators] = state;
 
 				// Throws OptionsHelpOrVersion if --help or --version was provided.
-				App::HandleHelpAndVersion(vm, desc);
+				App::HandleHelpAndVersion(vm, *desc);
 
 				return state;
 			};
