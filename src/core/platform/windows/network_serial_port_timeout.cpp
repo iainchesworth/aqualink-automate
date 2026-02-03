@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
     void NetworkSerialPortImpl::set_read_timeout(std::chrono::milliseconds timeout, boost::system::error_code& ec)
     {
-        auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_read_timeout", std::source_location::current());
+        auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_read_timeout", std::source_location::current());
 
         if (!is_open())
         {

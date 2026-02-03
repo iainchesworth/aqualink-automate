@@ -10,7 +10,7 @@ namespace AqualinkAutomate::HTTP
 
 	boost::beast::http::message_generator WebRoute_Version::OnRequest(const HTTP::Request& req)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("API /api/version", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Version::OnRequest", std::source_location::current());
 
 		nlohmann::json version_info;
 

@@ -9,28 +9,43 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Generators
 {
-	
-	void PacketProcessing_GetPacketLocations(boost::circular_buffer<uint8_t>& serial_data, boost::circular_buffer<uint8_t>::iterator& p1s, boost::circular_buffer<uint8_t>::iterator& p1e, boost::circular_buffer<uint8_t>::iterator& p2s)
+
+	PacketLocations PacketProcessing_FindAllPacketLocations(boost::circular_buffer<uint8_t>& serial_data)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Get Packet Location (Multiple)", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> find_all_locations", std::source_location::current());
 
-		p1e = serial_data.end();
-		p2s = serial_data.end();
+		PacketLocations loc;
+		loc.p1_start = serial_data.end();
+		loc.p1_end = serial_data.end();
+		loc.p2_start = serial_data.end();
+		loc.HasPacketStart = false;
+		loc.HasPacketEnd = false;
+		loc.HasSecondPacketStart = false;
 
-		if (p1s = std::search(serial_data.begin(), serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end()); serial_data.end() == p1s)
+		// Single pass: find p1_start, p1_end, and p2_start
+		loc.p1_start = std::search(serial_data.begin(), serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end());
+
+		if (serial_data.end() == loc.p1_start)
 		{
-			// Given there's no start of a packet...ignore any searching for the end or a second packet start.
+			return loc;
 		}
-		else
-		{
-			p1e = std::search(p1s + 1, serial_data.end(), PACKET_END_SEQUENCE.begin(), PACKET_END_SEQUENCE.end());
-			p2s = std::search(p1s + 1, serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end());
-		}
+
+		loc.HasPacketStart = true;
+
+		// Search for end sequence and second start sequence from p1_start + 1
+		auto search_from = loc.p1_start + 1;
+		loc.p1_end = std::search(search_from, serial_data.end(), PACKET_END_SEQUENCE.begin(), PACKET_END_SEQUENCE.end());
+		loc.p2_start = std::search(search_from, serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end());
+
+		loc.HasPacketEnd = (serial_data.end() != loc.p1_end);
+		loc.HasSecondPacketStart = (serial_data.end() != loc.p2_start);
+
+		return loc;
 	}
 
-	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& p1s, const boost::circular_buffer<uint8_t>::iterator& p1e, const boost::circular_buffer<uint8_t>::iterator& p2s)
+	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations)
 	{
-		auto zone1 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console", std::source_location::current());
+		auto zone1 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> output_to_console", std::source_location::current());
 
 		thread_local std::string output_message = []()
 			{
@@ -42,29 +57,29 @@ namespace AqualinkAutomate::Generators
 		output_message.clear();
 
 		{
-			auto zone2 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console -> Generate", std::source_location::current());
+			auto zone2 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> output_to_console -> generate", std::source_location::current());
 
 			std::size_t elem_position = 0;
 
-			auto packet_one_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p1s);
-			auto packet_one_end_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p1e) + 1; // Account for the length of the footer bytes.
-			auto packet_two_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), p2s);
+			auto packet_one_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), locations.p1_start);
+			auto packet_one_end_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), locations.p1_end) + 1; // Account for the length of the footer bytes.
+			auto packet_two_start_pos = std::distance<boost::circular_buffer<uint8_t>::const_iterator>(serial_data.cbegin(), locations.p2_start);
 
 			for (const auto& elem : serial_data)
 			{
-				if ((serial_data.end() != p1s) && (packet_one_start_pos == elem_position))
+				if ((locations.HasPacketStart) && (packet_one_start_pos == elem_position))
 				{
 					output_message.append("->");
 				}
 
-				if ((serial_data.end() != p2s) && (packet_two_start_pos == elem_position))
+				if ((locations.HasSecondPacketStart) && (packet_two_start_pos == elem_position))
 				{
 					output_message.append("|| =>");
 				}
 
 				output_message.append(std::format("{:02x}", elem));
 
-				if ((serial_data.end() != p1e) && (packet_one_end_pos == elem_position))
+				if ((locations.HasPacketEnd) && (packet_one_end_pos == elem_position))
 				{
 					output_message.append("<-");
 				}
@@ -74,11 +89,11 @@ namespace AqualinkAutomate::Generators
 			}
 
 			{
-				auto zone3 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Packet Processing -> Output To Console -> Logging", std::source_location::current());
+				auto zone3 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> output_to_console -> logging", std::source_location::current());
 				LogTrace(Channel::Messages, std::format("Serial Data: {}", output_message));
 			}
 		}
 	}
 
 }
-// namespace AqualinkAutomate::Generators`
+// namespace AqualinkAutomate::Generators

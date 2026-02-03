@@ -7,6 +7,7 @@
 #include <deque>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <vector>
 
 namespace AqualinkAutomate::Utility
@@ -68,6 +69,7 @@ namespace AqualinkAutomate::Utility
 
 			auto now = CLOCK_TYPE::now();
 			m_Samples.push_back(LatencySample{ now, latency });
+			m_SortedLatencies.insert(latency);
 
 			// Prune old samples
 			PruneOldSamples(now);
@@ -75,7 +77,7 @@ namespace AqualinkAutomate::Utility
 			// Enforce max sample limit
 			while (m_Samples.size() > m_MaxSamples)
 			{
-				m_Samples.pop_front();
+				RemoveOldest();
 			}
 
 			// Update running statistics
@@ -98,49 +100,28 @@ namespace AqualinkAutomate::Utility
 
 			PercentileSnapshot snapshot;
 
-			if (m_Samples.empty())
+			if (m_SortedLatencies.empty())
 			{
 				return snapshot;
 			}
 
-			// Get samples within the window
-			auto now = CLOCK_TYPE::now();
-			std::vector<Duration> valid_samples;
-			valid_samples.reserve(m_Samples.size());
+			snapshot.sample_count = m_SortedLatencies.size();
+			snapshot.min = *m_SortedLatencies.begin();
+			snapshot.max = *m_SortedLatencies.rbegin();
 
-			for (const auto& sample : m_Samples)
-			{
-				if ((now - sample.timestamp) <= m_WindowDuration)
-				{
-					valid_samples.push_back(sample.latency);
-				}
-			}
-
-			if (valid_samples.empty())
-			{
-				return snapshot;
-			}
-
-			// Sort for percentile computation
-			std::sort(valid_samples.begin(), valid_samples.end());
-
-			snapshot.sample_count = valid_samples.size();
-			snapshot.min = valid_samples.front();
-			snapshot.max = valid_samples.back();
-
-			// Compute percentiles
-			snapshot.p1 = ComputePercentile(valid_samples, 1);
-			snapshot.p50 = ComputePercentile(valid_samples, 50);
-			snapshot.p95 = ComputePercentile(valid_samples, 95);
-			snapshot.p99 = ComputePercentile(valid_samples, 99);
+			// Compute percentiles by advancing an iterator through the sorted multiset
+			snapshot.p1 = ComputePercentileFromSorted(1);
+			snapshot.p50 = ComputePercentileFromSorted(50);
+			snapshot.p95 = ComputePercentileFromSorted(95);
+			snapshot.p99 = ComputePercentileFromSorted(99);
 
 			// Compute mean
 			Duration sum{ 0 };
-			for (const auto& latency : valid_samples)
+			for (const auto& latency : m_SortedLatencies)
 			{
 				sum += latency;
 			}
-			snapshot.mean = sum / valid_samples.size();
+			snapshot.mean = sum / m_SortedLatencies.size();
 
 			return snapshot;
 		}
@@ -157,53 +138,67 @@ namespace AqualinkAutomate::Utility
 		{
 			std::lock_guard<std::mutex> lock(m_Mutex);
 			m_Samples.clear();
+			m_SortedLatencies.clear();
 			m_TotalSamples = 0;
 			m_TotalLatency = Duration{ 0 };
 		}
 
 	private:
+		void RemoveOldest()
+		{
+			auto it = m_SortedLatencies.find(m_Samples.front().latency);
+			if (it != m_SortedLatencies.end())
+			{
+				m_SortedLatencies.erase(it);
+			}
+			m_Samples.pop_front();
+		}
+
 		void PruneOldSamples(TimePoint now)
 		{
 			while (!m_Samples.empty() && (now - m_Samples.front().timestamp) > m_WindowDuration)
 			{
-				m_Samples.pop_front();
+				RemoveOldest();
 			}
 		}
 
-		static Duration ComputePercentile(const std::vector<Duration>& sorted_samples, double percentile)
+		Duration ComputePercentileFromSorted(double percentile) const
 		{
-			if (sorted_samples.empty())
+			if (m_SortedLatencies.empty())
 			{
 				return Duration{ 0 };
 			}
 
-			if (sorted_samples.size() == 1)
+			if (m_SortedLatencies.size() == 1)
 			{
-				return sorted_samples[0];
+				return *m_SortedLatencies.begin();
 			}
 
-			// Linear interpolation for percentile computation
-			double rank = (percentile / 100.0) * (sorted_samples.size() - 1);
+			double rank = (percentile / 100.0) * (m_SortedLatencies.size() - 1);
 			std::size_t lower_idx = static_cast<std::size_t>(std::floor(rank));
 			std::size_t upper_idx = static_cast<std::size_t>(std::ceil(rank));
 			double fraction = rank - lower_idx;
 
+			auto it = m_SortedLatencies.begin();
+			std::advance(it, lower_idx);
+			auto lower_val = it->count();
+
 			if (lower_idx == upper_idx)
 			{
-				return sorted_samples[lower_idx];
+				return Duration{ static_cast<Duration::rep>(lower_val) };
 			}
 
-			// Linear interpolation between the two nearest values
-			auto lower_val = sorted_samples[lower_idx].count();
-			auto upper_val = sorted_samples[upper_idx].count();
-			auto interpolated = lower_val + fraction * (upper_val - lower_val);
+			std::advance(it, upper_idx - lower_idx);
+			auto upper_val = it->count();
 
+			auto interpolated = lower_val + fraction * (upper_val - lower_val);
 			return Duration{ static_cast<Duration::rep>(interpolated) };
 		}
 
 	private:
 		mutable std::mutex m_Mutex;
 		std::deque<LatencySample> m_Samples;
+		std::multiset<Duration> m_SortedLatencies;
 		std::size_t m_MaxSamples;
 		std::chrono::seconds m_WindowDuration;
 

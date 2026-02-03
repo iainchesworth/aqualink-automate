@@ -18,7 +18,7 @@ namespace AqualinkAutomate::HTTP
 
 	Message WebRoute_Equipment::OnRequest(const HTTP::Request& req)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("API /api/equipment", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Equipment::OnRequest", std::source_location::current());
 
 		nlohmann::json jandy_equipment_json;
 
@@ -31,9 +31,9 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_DataHub->SpaTemp());
 		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_DataHub->AirTemp());
 
-		jandy_equipment_json["chemistry"]["ph"] = "";
-		jandy_equipment_json["chemisty"]["orp"] = "";
-		jandy_equipment_json["chemisty"]["salt_in_ppm"] = "";
+		jandy_equipment_json["chemistry"]["ph"] = static_cast<double>(m_DataHub->pH()());
+		jandy_equipment_json["chemistry"]["orp"] = static_cast<uint16_t>(m_DataHub->ORP()().value());
+		jandy_equipment_json["chemistry"]["salt_in_ppm"] = static_cast<uint16_t>(m_DataHub->SaltLevel().value());
 
 		jandy_equipment_json["buttons"] = JSON::GenerateJson_Equipment_Buttons(m_DataHub);
 		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub);

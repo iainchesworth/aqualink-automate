@@ -25,12 +25,12 @@ namespace AqualinkAutomate::Jandy
 
 	void Configure(Kernel::HubLocator& hub_locator, const AqualinkAutomate::Options::Settings& settings)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Jandy Configure", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Jandy::Initialise", std::source_location::current());
 
 		auto jandy_settings_result = settings.Get<Jandy::Options::JandySettings>();
 		if (!jandy_settings_result)
 		{
-			///FIXME
+			LogError(Channel::Main, "Failed to retrieve Jandy settings; Jandy equipment will not be configured");
 			return;
 		}
 
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Jandy
 		auto equipment_hub = hub_locator.Find<Kernel::EquipmentHub>();
 		if (nullptr == equipment_hub)
 		{
-			///FIXME
+			LogError(Channel::Main, "Failed to locate EquipmentHub; Jandy equipment will not be configured");
 			return;
 		}
 

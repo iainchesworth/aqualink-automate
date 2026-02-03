@@ -54,7 +54,7 @@ namespace AqualinkAutomate::HTTP
 
 			while (!co_await boost::cobalt::this_coro::cancelled)
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HTTP Accept", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Listener::on_accept", std::source_location::current());
 
 				auto [ec, sock] = co_await acceptor.async_accept(boost::asio::as_tuple(boost::cobalt::use_op));
 				if (ec)

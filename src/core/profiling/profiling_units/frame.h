@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Profiling
 	class Frame : public Interfaces::IProfilingUnit
 	{
 	public:
-		Frame(const std::string& name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
+		Frame(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
 		virtual ~Frame() = default;
 
 	public:

@@ -12,23 +12,38 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
-	void ProtocolHandler_ReadOp_ErrorHandler(ProtocolErrorCode error_code)
+	void ProtocolHandler_ReadOp_ErrorHandler(ProtocolErrorCode error_code, std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
 	{
 		switch (error_code.value())
 		{
 		case ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator:
-			// This means there was a packet that could not be deserialised while processing....
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> cannot find generator for message type");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.GeneratorFailures; }
 			break;
 
 		case ErrorCodes::Message_ErrorCodes::Error_GeneratorFailed:
-			// This means there was a packet that could not be deserialised while processing....
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> generator failed to create message");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.GeneratorFailures; }
 			break;
 
 		case ErrorCodes::Message_ErrorCodes::Error_FailedToDeserialize:
-			// This means there was a packet that could not be deserialised while processing....
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> failed to deserialize bytes");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.DeserializationFailures; }
+			break;
+
+		case ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat:
+			LogDebug(Channel::Protocol, "Protocol error while processing messages -> invalid packet format");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.InvalidPacketFormat; }
+			break;
+
+		case ErrorCodes::Protocol_ErrorCodes::ChecksumFailure:
+			LogDebug(Channel::Protocol, "Protocol error while processing messages -> checksum failure");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.ChecksumFailures; }
+			break;
+
+		case ErrorCodes::Protocol_ErrorCodes::OverlappingPackets:
+			LogDebug(Channel::Protocol, "Protocol error while processing messages -> overlapping packets detected");
+			if (statistics_hub) { ++statistics_hub->MessageErrors.OverlappingPackets; }
 			break;
 
 		case ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess:

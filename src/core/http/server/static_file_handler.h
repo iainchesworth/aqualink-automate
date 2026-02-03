@@ -20,7 +20,7 @@ namespace AqualinkAutomate::HTTP
 		bool match(boost::urls::url_view target, std::filesystem::path& result);
 
 	private:
-		bool match_prefix(boost::urls::segments_view target, boost::urls::segments_view prefix);
+		int match_prefix(boost::urls::segments_view target, boost::urls::segments_view prefix);
 
 	private:
 		boost::urls::url m_Prefix;

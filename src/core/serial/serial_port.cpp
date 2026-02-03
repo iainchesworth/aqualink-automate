@@ -136,7 +136,7 @@ namespace AqualinkAutomate::Serial
 
 	std::size_t SerialPort::read_some(const boost::asio::mutable_buffer& buffers, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> read_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort::read_some", std::source_location::current());
 
 		auto start_time = std::chrono::steady_clock::now();
 		std::size_t bytes_read = m_SerialPortImpl->read_some(buffers, ec);
@@ -160,7 +160,7 @@ namespace AqualinkAutomate::Serial
 
 	std::size_t SerialPort::write_some(const boost::asio::const_buffer& buffers, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort -> write_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialPort::write_some", std::source_location::current());
 
 		auto start_time = std::chrono::steady_clock::now();
 		std::size_t bytes_written = m_SerialPortImpl->write_some(buffers, ec);

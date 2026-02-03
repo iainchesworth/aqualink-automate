@@ -14,8 +14,11 @@ target_sources(
 	auxillaries/jandy_auxillary_status.cpp 
 	auxillaries/jandy_auxillary_traits_types.cpp 
 	concepts/jandy_message_type.cpp
-	devices/aquarite_device.cpp 
-	devices/iaq_device.cpp 
+	devices/aquarite_device.cpp
+	devices/chemlink_device.cpp
+	devices/epump_device.cpp
+	devices/heater_device.cpp
+	devices/iaq_device.cpp
 	devices/jandy_controller.cpp 
 	devices/jandy_device.cpp 
 	devices/jandy_device_id.cpp 
@@ -62,14 +65,26 @@ target_sources(
 	generator/jandy_message_generator_startendsequence.cpp
 	generator/jandy_rawdata_generator.cpp 
 	messages/aqualink_touch/aqualink_touch_message.cpp
-	messages/aqualink_touch/aqualink_touch_device_status.cpp
+	messages/chemlink/chemlink_message.cpp
+	messages/chemlink/chemlink_message_response.cpp
+	messages/epump/epump_message.cpp
+	messages/epump/epump_message_status.cpp
+	messages/epump/epump_message_rpm.cpp
+	messages/epump/epump_message_watts.cpp
+	messages/heater/heater_message.cpp
+	messages/heater/heater_message_request.cpp
+	messages/heater/heater_message_status.cpp
 	messages/aquarite/aquarite_message.cpp
 	messages/aquarite/aquarite_message_getid.cpp
 	messages/aquarite/aquarite_message_percent.cpp
 	messages/aquarite/aquarite_message_ppm.cpp
 	messages/iaq/iaq_message.cpp
+	messages/iaq/iaq_message_aux_status.cpp
+	messages/iaq/iaq_message_command_ready.cpp
 	messages/iaq/iaq_message_control_ready.cpp
+	messages/iaq/iaq_message_main_status.cpp
 	messages/iaq/iaq_message_message_long.cpp
+	messages/iaq/iaq_message_onetouch_status.cpp
 	messages/iaq/iaq_message_page_button.cpp
 	messages/iaq/iaq_message_page_continue.cpp
 	messages/iaq/iaq_message_page_end.cpp
@@ -78,6 +93,7 @@ target_sources(
 	messages/iaq/iaq_message_poll.cpp
 	messages/iaq/iaq_message_startup.cpp
 	messages/iaq/iaq_message_table_message.cpp
+	messages/iaq/iaq_message_title_message.cpp
 	messages/pda/pda_message.cpp 
 	messages/pda/pda_message_clear.cpp 
 	messages/pda/pda_message_highlight.cpp 

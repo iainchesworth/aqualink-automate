@@ -161,7 +161,7 @@ namespace AqualinkAutomate::Developer
 
 	std::size_t MockSerialPortImpl::read_some(const boost::asio::mutable_buffer& buffer, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> read_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::read_some", std::source_location::current());
 
 		ec = boost::system::error_code{};
 		auto bytes_transferred = std::size_t{ 0 };
@@ -209,7 +209,7 @@ namespace AqualinkAutomate::Developer
 
 	std::size_t MockSerialPortImpl::write_some(const boost::asio::const_buffer& buffer, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> write_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::write_some", std::source_location::current());
 
 		ec = boost::system::error_code{};
 		auto bytes_transferred = std::size_t{ 0 };
@@ -246,7 +246,7 @@ namespace AqualinkAutomate::Developer
 
 	std::expected<std::size_t, boost::system::error_code> MockSerialPortImpl::HandleMockRead(const boost::asio::mutable_buffer& buffer)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> HandleMockRead", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::HandleMockRead", std::source_location::current());
 
 		const auto length_to_copy = std::min<std::size_t>(buffer.size(), 16);
 
@@ -310,7 +310,7 @@ namespace AqualinkAutomate::Developer
 
 	std::expected<std::size_t, boost::system::error_code> MockSerialPortImpl::HandleFileRead(const boost::asio::mutable_buffer& buffer)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> HandleFileRead", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::HandleFileRead", std::source_location::current());
 
 		enum FileReadErrors : std::size_t
 		{
@@ -324,7 +324,7 @@ namespace AqualinkAutomate::Developer
 
 		auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> read_single_value_from_file", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::HandleFileRead -> read_single_value", std::source_location::current());
 
 				FileReadErrors return_value = NoDataWasRead;
 
@@ -343,8 +343,8 @@ namespace AqualinkAutomate::Developer
 					}
 					else if (4 != line.size())
 					{
-						/// TODO Didn't get a value in the format 0x##...
-						LogDebug(Channel::Serial, std::format("Read data from the source file however it was not in the expected forrmat; sequence -> {}", line));
+						// Expected format is 0x## (4 chars); skip malformed entries.
+						LogWarning(Channel::Serial, std::format("Read data from the source file however it was not in the expected format (0x##); sequence -> {}", line));
 					}
 					else
 					{
@@ -376,7 +376,7 @@ namespace AqualinkAutomate::Developer
 
 		auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl -> read_from_file", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::HandleFileRead -> read_block", std::source_location::current());
 
 				std::size_t elems_read = 0;
 				bool keep_reading = true;

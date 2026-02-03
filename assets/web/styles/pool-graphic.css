@@ -1,0 +1,110 @@
+/* === Pool SVG Animations and Styles === */
+
+.pool-graphic-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.pool-graphic-container svg {
+    width: 100%;
+    height: auto;
+}
+
+/* Water gradient fills */
+.pool-water-fill {
+    fill: url(#poolGradient);
+    transition: fill 0.5s ease;
+}
+
+.spa-water-fill {
+    fill: url(#spaGradient);
+    transition: fill 0.5s ease;
+}
+
+/* Wave animation */
+.pool-wave {
+    animation: waveMove 6s ease-in-out infinite;
+    opacity: 0.3;
+}
+
+.pool-wave-2 {
+    animation: waveMove 8s ease-in-out infinite reverse;
+    opacity: 0.2;
+}
+
+@keyframes waveMove {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-20px); }
+}
+
+/* Spa bubble animation */
+.spa-bubble {
+    animation: bubbleRise 3s ease-in infinite;
+    opacity: 0;
+}
+
+.spa-bubble:nth-child(2) { animation-delay: 0.8s; }
+.spa-bubble:nth-child(3) { animation-delay: 1.6s; }
+.spa-bubble:nth-child(4) { animation-delay: 2.4s; }
+
+@keyframes bubbleRise {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.5);
+    }
+    20% {
+        opacity: 0.6;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-40px) scale(1.2);
+    }
+}
+
+/* Temperature labels on SVG */
+.pool-temp-label {
+    font-family: var(--font-family);
+    font-weight: 700;
+    font-size: 22px;
+    fill: #ffffff;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.pool-temp-sublabel {
+    font-family: var(--font-family);
+    font-weight: 500;
+    font-size: 12px;
+    fill: rgba(255, 255, 255, 0.8);
+}
+
+/* Status indicators around pool edge */
+.pool-status-dot {
+    r: 6;
+    stroke: rgba(255, 255, 255, 0.8);
+    stroke-width: 2;
+    transition: fill 0.3s ease;
+}
+
+.pool-status-dot.active {
+    fill: #10b981;
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.8));
+}
+
+.pool-status-dot.inactive {
+    fill: #64748b;
+}
+
+.pool-status-label {
+    font-family: var(--font-family);
+    font-size: 10px;
+    fill: var(--text-secondary);
+    text-anchor: middle;
+}
+
+/* Pool deck area */
+.pool-deck {
+    fill: var(--bg-secondary);
+    rx: 20;
+    transition: fill 0.3s ease;
+}

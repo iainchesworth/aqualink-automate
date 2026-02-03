@@ -8,6 +8,7 @@
 #include <variant>
 
 #include <boost/signals2.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "exceptions/exception_signallingstatscounter_badaccess.h"
 #include "logging/logging.h"
@@ -61,12 +62,14 @@ namespace AqualinkAutomate::Utility
 				requires std::is_enum_v<STAT_TYPE>
 			AnyEnum(STAT_TYPE value) :
 				type_hash(typeid(STAT_TYPE).hash_code()),
-				value_hash(std::hash<std::underlying_type_t<STAT_TYPE>>{}(static_cast<std::underlying_type_t<STAT_TYPE>>(value)))
+				value_hash(std::hash<std::underlying_type_t<STAT_TYPE>>{}(static_cast<std::underlying_type_t<STAT_TYPE>>(value))),
+				name(magic_enum::enum_name(value))
 			{
 			}
 
 			std::size_t type_hash;
 			std::size_t value_hash;
+			std::string name;
 
 			bool operator==(const AnyEnum& other) const noexcept
 			{

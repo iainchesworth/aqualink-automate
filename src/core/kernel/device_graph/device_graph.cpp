@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Kernel
 
 	void DevicesGraph::Add(std::shared_ptr<AuxillaryDevice> device)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Add", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Add", std::source_location::current());
 
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Kernel
 
 	bool DevicesGraph::Contains(std::shared_ptr<AuxillaryDevice> device) const
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Contains", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Contains", std::source_location::current());
 
 		if (nullptr == device)
 		{
@@ -79,14 +79,14 @@ namespace AqualinkAutomate::Kernel
 
 	void DevicesGraph::Remove(std::shared_ptr<AuxillaryDevice> device)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> Remove", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Remove", std::source_location::current());
 
 		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 	}
 
 	uint32_t DevicesGraph::CountById(const boost::uuids::uuid& id) const
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountById", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
@@ -101,7 +101,7 @@ namespace AqualinkAutomate::Kernel
 
 	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindById", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
@@ -120,7 +120,7 @@ namespace AqualinkAutomate::Kernel
 
 	uint32_t DevicesGraph::CountByLabel(const std::string& device_label) const
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountByLabel", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
@@ -134,7 +134,7 @@ namespace AqualinkAutomate::Kernel
 
 	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(const std::string& device_label) const
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindByLabel", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 

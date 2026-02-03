@@ -16,6 +16,8 @@ namespace AqualinkAutomate::Messages
 	{
 	public:
 		static const uint8_t Index_Percent = 4;
+		static const uint8_t Value_Boost = 101;
+		static const uint8_t Value_ServiceMode = 0xFF;
 
 	public:
 		AquariteMessage_Percent() noexcept;
@@ -23,6 +25,8 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		uint8_t GeneratingPercentage() const;
+		bool IsBoostMode() const;
+		bool IsServiceMode() const;
 
 	public:
 		virtual std::string ToString() const override;

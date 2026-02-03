@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Protocol
 				co_yield std::unexpected(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
 			}
 
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Processing Message from Buffer", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolHandler::HandleRead -> process_message", std::source_location::current());
 
 			// Use the message generator registry to try all registered protocol generators
 			co_yield MessageGeneratorRegistry::Instance().GenerateMessage(serial_circular_data_buffer);

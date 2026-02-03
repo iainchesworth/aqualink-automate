@@ -186,13 +186,11 @@ BOOST_AUTO_TEST_CASE(FormatNormalCase)
     TemperatureStringConverter temp3("air 72`F");
     BOOST_CHECK_EQUAL(std::format("{:F}", temp3), "TEMP=72\u00B0F");
 
-    ///FIXME - Add precision support to the std::formatter<Kernel::Temperature>
-    
-    //TemperatureStringConverter temp4("air 72`F");
-    //BOOST_CHECK(std::format("{:.1C}", temp4) == "22.0\u00B0F");
+    TemperatureStringConverter temp4("air 72`F");
+    BOOST_CHECK(std::format("{:.1C}", temp4) == "TEMP=22.2\u00B0C");
 
-    //TemperatureStringConverter temp5("pool 22`C");
-    //BOOST_CHECK(std::format("{:.2C}", temp5) == "22.00\u00B0C");
+    TemperatureStringConverter temp5("pool 22`C");
+    BOOST_CHECK(std::format("{:.2C}", temp5) == "TEMP=22.00\u00B0C");
 }
 
 BOOST_AUTO_TEST_SUITE_END();

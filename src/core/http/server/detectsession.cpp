@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 
 	boost::cobalt::detached DetectSession(TcpStream stream, std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context, boost::asio::cancellation_slot cancellation_slot)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DetectSession", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DetectSession::on_detect", std::source_location::current());
 
 		try
 		{

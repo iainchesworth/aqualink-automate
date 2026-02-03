@@ -8,7 +8,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Ack(const Messages::JandyMessage_Ack& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_Ack", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_Ack", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a JandyMessage_Ack signal.");
 
 		// Kick the watchdog to indicate that this device is alive.
@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_DevReady(const Messages::SerialAdapterMessage_DevReady& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_DevReady", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_DevReady", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a SerialAdapterMessage_DevReady signal.");
 
 		ProcessControllerUpdates();
@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_DevStatus(const Messages::SerialAdapterMessage_DevStatus& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_DevStatus", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_DevStatus", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a SerialAdapterMessage_DevStatus signal.");
 
 		if (msg.Options().has_value() && msg.Options().value().HasCleaner)
@@ -140,7 +140,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Probe(const Messages::JandyMessage_Probe& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_Probe", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_Probe", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a JandyMessage_Probe signal.");
 
 		ProcessControllerUpdates();
@@ -151,7 +151,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Status(const Messages::JandyMessage_Status& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_Status", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_Status", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a JandyMessage_Status signal.");
 
 		m_StatusMessageReceived = true;
@@ -164,7 +164,7 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::Slot_SerialAdapter_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial Adapter MessageProcessors -> Slot_SerialAdapter_Unknown", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_Unknown", std::source_location::current());
 		LogDebug(Channel::Devices, std::format("Serial Adapter device received a JandyMessage_Unknown signal: type -> 0x{:02x}", static_cast<uint8_t>(msg.Id())));
 
 		ProcessControllerUpdates();

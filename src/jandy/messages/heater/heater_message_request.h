@@ -1,0 +1,63 @@
+#pragma once
+
+#include <cstdint>
+#include <cstddef>
+#include <string>
+#include <span>
+#include <vector>
+
+#include "interfaces/imessagesignal_recv.h"
+#include "messages/heater/heater_message.h"
+
+namespace AqualinkAutomate::Messages
+{
+
+	enum class HeaterOperatingModes : uint8_t
+	{
+		Off = 0x00,
+		HeatPumpPoolEnabled = 0x01,
+		HeatPumpSpaEnabled = 0x02,
+		HeatPumpHeatingPool = 0x09,
+		HeatPumpHeatingSpa = 0x0A,
+		PoolEnabled = 0x11,
+		SpaEnabled = 0x12,
+		HeatingPool = 0x19,
+		HeatingSpa = 0x1A,
+		Chiller = 0x29,
+		Unknown = 0xFF
+	};
+
+	class HeaterMessage_Request : public HeaterMessage, public Interfaces::IMessageSignalRecv<HeaterMessage_Request>
+	{
+	public:
+		static const uint8_t Index_OperatingMode = 4;
+		static const uint8_t Index_PoolSetpoint = 5;
+		static const uint8_t Index_SpaSetpoint = 6;
+		static const uint8_t Index_WaterTemperature = 7;
+
+	public:
+		HeaterMessage_Request() noexcept;
+		virtual ~HeaterMessage_Request();
+
+	public:
+		HeaterOperatingModes OperatingMode() const;
+		uint8_t PoolSetpoint() const;
+		uint8_t SpaSetpoint() const;
+		uint8_t WaterTemperature() const;
+
+	public:
+		virtual std::string ToString() const override;
+
+	public:
+		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+
+	private:
+		HeaterOperatingModes m_OperatingMode;
+		uint8_t m_PoolSetpoint;
+		uint8_t m_SpaSetpoint;
+		uint8_t m_WaterTemperature;
+	};
+
+}
+// namespace AqualinkAutomate::Messages

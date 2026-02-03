@@ -190,7 +190,7 @@ namespace AqualinkAutomate::HTTP
 			return;
 		}
 
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HTTP Request", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpServer::handle_request", std::source_location::current());
 
 		if (boost::beast::websocket::is_upgrade(m_Parser->get()))
 		{

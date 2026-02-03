@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <format>
 #include <memory>
@@ -21,7 +23,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_Home", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Home", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Home page.", DeviceId()));
 
@@ -42,7 +44,26 @@ namespace AqualinkAutomate::Devices
 
 		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
 
-		///FIXME - get pool / spa temperature if FP pump is running....
+		// When the filter pump is running, line 5 shows pool or spa water
+		// temperature (e.g. "Pool 82`F" or "Spa 100`F") instead of
+		// "Filter Pump OFF".  Try to parse it as a temperature.
+		if (auto water_temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[5].Text)); water_temp().has_value())
+		{
+			if (auto area = water_temp.TemperatureArea(); area.has_value())
+			{
+				auto area_lower = area.value();
+				std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+				if (area_lower.find("pool") != std::string::npos)
+				{
+					JandyController::m_DataHub->PoolTemp(water_temp().value());
+				}
+				else if (area_lower.find("spa") != std::string::npos)
+				{
+					JandyController::m_DataHub->SpaTemp(water_temp().value());
+				}
+			}
+		}
 
 		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
 		{
@@ -52,7 +73,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_Service", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Service", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Service page.", DeviceId()));
 
@@ -76,7 +97,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_TimeOut(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_TimeOut", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_TimeOut", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_TimeOut page.", DeviceId()));
 
@@ -101,7 +122,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_OneTouch(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_OneTouch", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_OneTouch", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_OneTouch page.", DeviceId()));
 
@@ -123,14 +144,14 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_System", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_System", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_System page.", DeviceId()));
 	}
 	
 	void OneTouchDevice::PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_EquipmentOnOff", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_EquipmentOnOff", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_EquipmentOnOff page.", DeviceId()));
 
@@ -166,7 +187,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_EquipmentStatus", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_EquipmentStatus", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_EquipmentStatus page.", DeviceId()));
 
@@ -187,10 +208,12 @@ namespace AqualinkAutomate::Devices
 
 		using ScreenLineProcessor = std::function<void(const Utility::ScreenDataPage&, const uint8_t)>;
 
-		static const std::vector<ScreenLineProcessor> line_processors
+		const std::vector<ScreenLineProcessor> line_processors
 		{
 			{ std::bind(&OneTouchDevice::StatusProcessor_FilterPump, this, std::placeholders::_1, std::placeholders::_2) },
 			{ std::bind(&OneTouchDevice::StatusProcessor_SolarHeat, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_HeatPump, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_Chiller, this, std::placeholders::_1, std::placeholders::_2) },
 			{ std::bind(&OneTouchDevice::StatusProcessor_PoolHeat, this, std::placeholders::_1, std::placeholders::_2) },
 			{ std::bind(&OneTouchDevice::StatusProcessor_SpaHeat, this, std::placeholders::_1, std::placeholders::_2) },
 			{ std::bind(&OneTouchDevice::StatusProcessor_AquaPurePercentage, this, std::placeholders::_1, std::placeholders::_2) },
@@ -218,21 +241,21 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_SelectSpeed", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SelectSpeed", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SelectSpeed page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_MenuHelp(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_MenuHelp", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_MenuHelp", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_MenuHelp page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SetTemperature(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_SetTemperature", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetTemperature", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetTemperature page.", DeviceId()));
 
@@ -253,12 +276,12 @@ namespace AqualinkAutomate::Devices
 
 		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
 		{
-			JandyController::m_DataHub->PoolTemp(temperature().value());
+			JandyController::m_DataHub->PoolTempSetpoint(temperature().value());
 		}
 
 		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
 		{
-			JandyController::m_DataHub->SpaTemp(temperature().value());
+			JandyController::m_DataHub->SpaTempSetpoint(temperature().value());
 		}
 
 		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
@@ -267,21 +290,21 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_SetTime(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_SetTime", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetTime", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetTime page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SystemSetup(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_SystemSetup", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SystemSetup", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SystemSetup page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_FreezeProtect(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_FreezeProtect", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_FreezeProtect", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_FreezeProtect page.", DeviceId()));
 
@@ -308,21 +331,21 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_Boost(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_Boost", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Boost", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Boost page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SetAquapure(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_SetAquapure", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetAquapure", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetAquapure page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_Version(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_Version", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Version", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Version page.", DeviceId()));
 
@@ -349,15 +372,16 @@ namespace AqualinkAutomate::Devices
 
 		JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
-		JandyController::m_DataHub->EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_DataHub->EquipmentVersions.FirmwareRevision = fw_revision;
+		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
+		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
+		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
 		
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
 	}
 
 	void OneTouchDevice::PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_DiagnosticsSensors", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsSensors", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsSensors page.", DeviceId()));
 
@@ -379,7 +403,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsRemotes(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_DiagnosticsRemotes", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsRemotes", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsRemotes page.", DeviceId()));
 
@@ -401,7 +425,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_DiagnosticsErrors", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsErrors", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsErrors page.", DeviceId()));
 
@@ -423,7 +447,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_LabelAuxList(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_LabelAuxList", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_LabelAuxList", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_LabelAuxList page.", DeviceId()));
 
@@ -445,7 +469,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_LabelAux(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PageProcessor_LabelAux", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_LabelAux", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_LabelAux page.", DeviceId()));
 
@@ -482,13 +506,13 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to generate the id for Auxillary Device given string {}", DeviceId(), matches[2].str()));
 		}
-		else 
+		else
 		{
 			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
 
 			if (auto aux_collection = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
 			{
-				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); temp_ptr.has_value())
+				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); !temp_ptr.has_value())
 				{
 					LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to create a new Auxillary Device for aux id: {}", DeviceId(), magic_enum::enum_name(aux_id.value())));
 				}

@@ -4,15 +4,13 @@
 #include <string>
 #include <string_view>
 
-#include <boost/uuid/uuid.hpp>
-
 namespace AqualinkAutomate::Interfaces
 {
 
 	class IProfilingUnit
 	{
 	public:
-		IProfilingUnit(std::string name);
+		IProfilingUnit(std::string_view name);
 		virtual ~IProfilingUnit() = default;
 
 	public:
@@ -25,12 +23,10 @@ namespace AqualinkAutomate::Interfaces
 		virtual void Value(uint64_t value) const;
 
 	public:
-		boost::uuids::uuid UUID() const;
-		const std::string& Name() const;
+		std::string_view Name() const;
 
 	private:
-		const std::string m_Name;
-		boost::uuids::uuid m_UUID;
+		const std::string_view m_Name;
 	};
 
 }

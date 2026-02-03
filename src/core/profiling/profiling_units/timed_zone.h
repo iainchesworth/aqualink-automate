@@ -20,7 +20,7 @@ namespace AqualinkAutomate::Profiling
 	class TimedZone : public Interfaces::IProfilingUnit
 	{
 	public:
-		TimedZone(const std::string& name, TimedZoneStates start_state = TimedZoneStates::Running);
+		TimedZone(std::string_view name, TimedZoneStates start_state = TimedZoneStates::Running);
 		virtual ~TimedZone() = default;
 
 	public:

@@ -40,7 +40,7 @@ namespace AqualinkAutomate::Protocol
 
 	ExpectedProtocolMessage MessageGeneratorRegistry::GenerateMessage(boost::circular_buffer<uint8_t>& buffer)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateMessage", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MessageGeneratorRegistry::GenerateMessage", std::source_location::current());
 		zone->Value(buffer.size());
 
 		std::lock_guard lock(m_Mutex);

@@ -22,8 +22,12 @@ namespace AqualinkAutomate::Devices
 		m_SM_PageUpdate.initiate();
 		m_SM_TableUpdate.initiate();
 
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_AuxStatus>(std::bind(&IAQDevice::Slot_IAQ_AuxStatus, this, std::placeholders::_1), DeviceId().Id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_CommandReady>(std::bind(&IAQDevice::Slot_IAQ_CommandReady, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_ControlReady>(std::bind(&IAQDevice::Slot_IAQ_ControlReady, this, std::placeholders::_1), DeviceId().Id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_MainStatus>(std::bind(&IAQDevice::Slot_IAQ_MainStatus, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_MessageLong>(std::bind(&IAQDevice::Slot_IAQ_MessageLong, this, std::placeholders::_1), DeviceId().Id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_OneTouchStatus>(std::bind(&IAQDevice::Slot_IAQ_OneTouchStatus, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageButton>(std::bind(&IAQDevice::Slot_IAQ_PageButton, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageContinue>(std::bind(&IAQDevice::Slot_IAQ_PageContinue, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageEnd>(std::bind(&IAQDevice::Slot_IAQ_PageEnd, this, std::placeholders::_1), DeviceId().Id());
@@ -32,6 +36,7 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_Poll>(std::bind(&IAQDevice::Slot_IAQ_Poll, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_StartUp>(std::bind(&IAQDevice::Slot_IAQ_StartUp, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TableMessage>(std::bind(&IAQDevice::Slot_IAQ_TableMessage, this, std::placeholders::_1), DeviceId().Id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TitleMessage>(std::bind(&IAQDevice::Slot_IAQ_TitleMessage, this, std::placeholders::_1), DeviceId().Id());
 	}
 
 	IAQDevice::~IAQDevice()
@@ -46,14 +51,34 @@ namespace AqualinkAutomate::Devices
 	{
 	}
 
+	void IAQDevice::Slot_IAQ_AuxStatus(const Messages::IAQMessage_AuxStatus& msg)
+	{
+		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_AuxStatus signal.");
+	}
+
+	void IAQDevice::Slot_IAQ_CommandReady(const Messages::IAQMessage_CommandReady& msg)
+	{
+		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_CommandReady signal.");
+	}
+
 	void IAQDevice::Slot_IAQ_ControlReady(const Messages::IAQMessage_ControlReady& msg)
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_ControlReady signal.");
 	}
 
+	void IAQDevice::Slot_IAQ_MainStatus(const Messages::IAQMessage_MainStatus& msg)
+	{
+		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_MainStatus signal.");
+	}
+
 	void IAQDevice::Slot_IAQ_MessageLong(const Messages::IAQMessage_MessageLong& msg)
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_MessageLong signal.");
+	}
+
+	void IAQDevice::Slot_IAQ_OneTouchStatus(const Messages::IAQMessage_OneTouchStatus& msg)
+	{
+		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_OneTouchStatus signal.");
 	}
 
 	void IAQDevice::Slot_IAQ_PageButton(const Messages::IAQMessage_PageButton& msg)
@@ -122,6 +147,11 @@ namespace AqualinkAutomate::Devices
 		{
 			m_TableInfo[msg.LineId()].Text = msg.Line();
 		}
+	}
+
+	void IAQDevice::Slot_IAQ_TitleMessage(const Messages::IAQMessage_TitleMessage& msg)
+	{
+		LogDebug(Channel::Devices, std::format("IAQ device received a IAQMessage_TitleMessage signal. Title: '{}'", msg.Title()));
 	}
 
 }

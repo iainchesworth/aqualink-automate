@@ -44,7 +44,7 @@ namespace AqualinkAutomate::Serial
 
 		if (serial_settings.UsingPhysicalSerialPort())
 		{
-			auto open_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> open_physical_serial_port", std::source_location::current());
+			auto open_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> open_physical_port", std::source_location::current());
 
 			LogDebug(Channel::Serial, std::format("Attempting to open serial device: {}", serial_settings.serial_port));
 			serial_port->open(serial_settings.serial_port, ec);
@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Serial
 		}
 		else if (serial_settings.UsingRemoteSerialPort())
 		{
-			auto open_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> open_remote_serial_port", std::source_location::current());
+			auto open_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> open_remote_port", std::source_location::current());
 
 			LogDebug(Channel::Serial, std::format("Attempting to open remote serial device: {}", serial_settings.remote_serial_port));
 			serial_port->open(serial_settings.remote_serial_port, ec);
@@ -69,7 +69,7 @@ namespace AqualinkAutomate::Serial
 			}
 		}
 
-		auto config_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> configure options", std::source_location::current());
+		auto config_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise -> configure_options", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Configuring serial port device: {}", serial_settings.serial_port));
 		serial_port->set_baud_rate(9600, ec);

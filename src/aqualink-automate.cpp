@@ -22,9 +22,6 @@
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_devices.h"
 #include "http/webroute_equipment_version.h"
-#include "http/webroute_page_index.h"
-#include "http/webroute_page_equipment.h"
-#include "http/webroute_page_version.h"
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
@@ -97,7 +94,7 @@ int main(int argc, char* argv[])
 		Options::Settings settings;
 
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Options Parsing", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> options_parsing", std::source_location::current());
 
 			LogDebug(Channel::Options, "Parsing application options provided via command line");
 
@@ -149,7 +146,7 @@ int main(int argc, char* argv[])
 		auto statistics_hub = std::make_shared<Kernel::StatisticsHub>();
 
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Hub Initialization", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> hub_initialisation", std::source_location::current());
 			hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
 		}
 
@@ -158,7 +155,7 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Equipment Initialization", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> equipment_initialisation", std::source_location::current());
 			Jandy::Initialise(hub_locator);
 			Pentair::Initialise(hub_locator);
 		}
@@ -258,13 +255,6 @@ int main(int argc, char* argv[])
 		if (web_settings_result)
 		{
 			const auto& web_settings = web_settings_result.value().get();
-
-			if (!web_settings.http_content_is_disabled)
-			{
-				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Index>(hub_locator));
-				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Equipment>(hub_locator));
-				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Page_Version>());
-			}
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));

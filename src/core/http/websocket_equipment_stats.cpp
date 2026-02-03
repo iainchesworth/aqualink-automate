@@ -23,24 +23,29 @@ namespace AqualinkAutomate::HTTP
 			m_StatsSlot = m_StatisticsHub->MessageCounts.Signal().connect(
 				[this](uint64_t)
 				{
-					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Stats Update", std::source_location::current());
-					auto payload = HTTP::WebSocket_Event(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub)).Payload();
-					zone->Value(payload.size());
-					m_MessageQueue.push_back(std::move(payload));
+					m_Dirty.store(true, std::memory_order_relaxed);
 				});
 		}
 	}
 
 	std::optional<std::string> WebSocket_Equipment_Stats::DequeueMessage()
 	{
-		if (m_MessageQueue.empty())
+		if (!m_MessageQueue.empty())
 		{
-			return std::nullopt;
+			auto msg = std::move(m_MessageQueue.front());
+			m_MessageQueue.pop_front();
+			return msg;
 		}
 
-		auto msg = std::move(m_MessageQueue.front());
-		m_MessageQueue.pop_front();
-		return msg;
+		if (m_Dirty.exchange(false, std::memory_order_relaxed))
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Stats Update", std::source_location::current());
+			auto payload = HTTP::WebSocket_Event(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub)).Payload();
+			zone->Value(payload.size());
+			return payload;
+		}
+
+		return std::nullopt;
 	}
 
 	void WebSocket_Equipment_Stats::OnOpen()

@@ -198,7 +198,6 @@ namespace AqualinkAutomate::Factory
 				auto type_it = first_it + static_cast<std::ptrdiff_t>(Messages::JandyMessage::Index_MessageType);
 				const uint8_t raw_message_type = *type_it;
 
-				//FIXME const uint8_t raw_message_type = static_cast<uint8_t>(message_bytes[Messages::JandyMessage::Index_MessageType]);
 				const Messages::JandyMessageIds message_type(magic_enum::enum_cast<Messages::JandyMessageIds>(raw_message_type)
 					.value_or(Messages::JandyMessageIds::Unknown));
 

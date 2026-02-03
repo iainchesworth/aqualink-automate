@@ -23,15 +23,15 @@ namespace AqualinkAutomate::Profiling
 		profiler.Register(Types::ProfilerTypes::Tracy, std::make_shared<Tracy_Profiler>());
 
 		profiler_units.Register(Types::ProfilerTypes::Tracy, std::make_tuple(
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Domain>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<TracyFrame>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<TracyZone>(name, src_loc, colour);
 			}
@@ -42,15 +42,15 @@ namespace AqualinkAutomate::Profiling
 		profiler.Register(Types::ProfilerTypes::UProf, std::make_shared<UProf_Profiler>());
 
 		profiler_units.Register(Types::ProfilerTypes::UProf, std::make_tuple(
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Domain>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Frame>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Zone>(name, src_loc, colour);
 			}
@@ -61,15 +61,15 @@ namespace AqualinkAutomate::Profiling
 		profiler.Register(Types::ProfilerTypes::VTune, std::make_shared<VTune_Profiler>());
 
 		profiler_units.Register(Types::ProfilerTypes::VTune, std::make_tuple(
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Domain>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Frame>(name, src_loc, colour);
 			},
-			[](const std::string& name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
+			[](std::string_view name, const std::source_location& src_loc, UnitColours colour) -> Types::ProfilingUnitTypePtr
 			{
 				return std::make_unique<Zone>(name, src_loc, colour);
 			}

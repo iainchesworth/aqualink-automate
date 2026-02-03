@@ -10,6 +10,9 @@
 
 #include "equipment/equipment_status.h"
 #include "devices/aquarite_device.h"
+#include "devices/chemlink_device.h"
+#include "devices/epump_device.h"
+#include "devices/heater_device.h"
 #include "devices/iaq_device.h"
 #include "devices/keypad_device.h"
 #include "devices/onetouch_device.h"
@@ -24,11 +27,21 @@
 #include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_status.h"
 #include "messages/jandy_message_unknown.h"
+#include "messages/chemlink/chemlink_message_response.h"
+#include "messages/epump/epump_message_status.h"
+#include "messages/epump/epump_message_rpm.h"
+#include "messages/epump/epump_message_watts.h"
+#include "messages/heater/heater_message_request.h"
+#include "messages/heater/heater_message_status.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
+#include "messages/iaq/iaq_message_aux_status.h"
+#include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
+#include "messages/iaq/iaq_message_onetouch_status.h"
 #include "messages/iaq/iaq_message_page_button.h"
 #include "messages/iaq/iaq_message_page_continue.h"
 #include "messages/iaq/iaq_message_page_end.h"
@@ -37,6 +50,7 @@
 #include "messages/iaq/iaq_message_poll.h"
 #include "messages/iaq/iaq_message_startup.h"
 #include "messages/iaq/iaq_message_table_message.h"
+#include "messages/iaq/iaq_message_title_message.h"
 #include "messages/pda/pda_message_clear.h"
 #include "messages/pda/pda_message_highlight.h"
 #include "messages/pda/pda_message_highlight_chars.h"
@@ -73,11 +87,21 @@ namespace AqualinkAutomate::Equipment
 		m_MessageConnections.push_back(Messages::JandyMessage_Probe::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::JandyMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::JandyMessage_Unknown::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::ChemlinkMessage_Response::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::EPumpMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::EPumpMessage_RPM::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::EPumpMessage_Watts::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::HeaterMessage_Request::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::HeaterMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_GetId::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_Percent::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_PPM::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_AuxStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_CommandReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_ControlReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_MainStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_OneTouchStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_PageButton::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_PageContinue::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_PageEnd::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
@@ -86,6 +110,7 @@ namespace AqualinkAutomate::Equipment
 		m_MessageConnections.push_back(Messages::IAQMessage_Poll::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_StartUp::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_TableMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_TitleMessage::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::PDAMessage_Clear::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::PDAMessage_Highlight::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::PDAMessage_HighlightChars::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
@@ -102,7 +127,7 @@ namespace AqualinkAutomate::Equipment
 		{
 			connection.disconnect();
 		}
-		
+
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](Messages::JandyMessageIds id)
 			{
 				LogInfo(Channel::Devices, std::format("Stats: processed {} messages of type {}", m_StatsHub->MessageCounts[id], magic_enum::enum_name(id)));
@@ -110,8 +135,8 @@ namespace AqualinkAutomate::Equipment
 		);
 
 		LogInfo(
-			Channel::Equipment, 
-			std::format("Stats: {} total messages received", 
+			Channel::Equipment,
+			std::format("Stats: {} total messages received",
 				std::accumulate(m_StatsHub->MessageCounts.cbegin(), m_StatsHub->MessageCounts.cend(), static_cast<uint64_t>(0), [](const uint64_t previous, const decltype(m_StatsHub->MessageCounts)::value_type& elem)
 				{
 					return previous + elem.second.Count();
@@ -161,9 +186,35 @@ namespace AqualinkAutomate::Equipment
 				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(std::move(device_id), m_HubLocator, false)));
 				break;
 
+			case Devices::DeviceClasses::LX_Heater:
+				LogInfo(Channel::Equipment, std::format("Adding new LX Heater device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				break;
+
+			case Devices::DeviceClasses::JXi_Heater:
+				LogInfo(Channel::Equipment, std::format("Adding new JXi Heater device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				break;
+
+			case Devices::DeviceClasses::HeatPump:
+				LogInfo(Channel::Equipment, std::format("Adding new Heat Pump device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				break;
+
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
 				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(std::move(device_id))));
+				break;
+
+			case Devices::DeviceClasses::Jandy_ePump:
+			case Devices::DeviceClasses::Jandy_ePump_Ext:
+				LogInfo(Channel::Equipment, std::format("Adding new ePump device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::EPumpDevice>(std::move(device_id))));
+				break;
+
+			case Devices::DeviceClasses::Chemlink:
+				LogInfo(Channel::Equipment, std::format("Adding new Chemlink device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::ChemlinkDevice>(std::move(device_id))));
 				break;
 
 			default:
@@ -177,7 +228,7 @@ namespace AqualinkAutomate::Equipment
 
 		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub->MessageCounts[message.Id()], magic_enum::enum_name(message.Id())));
 	}
-	
+
 	void JandyEquipment::DisplayUnknownMessages(const Messages::JandyMessage& message)
 	{
 		LogDebug(

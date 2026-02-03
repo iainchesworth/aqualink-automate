@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Protocol
 		}
 		else
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HandleRead -> Signalling Signals", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolHandler::HandleRead -> signalling", std::source_location::current());
 
 			// Process the message...as per protocol requirements
 			signal_base->Signal_MessageWasReceived();

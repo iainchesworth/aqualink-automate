@@ -69,7 +69,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_FilterPump(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_FilterPump", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_FilterPump", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_FilterPump status line.", DeviceId()));
 
@@ -100,7 +100,8 @@ namespace AqualinkAutomate::Devices
 
 			for (auto& pump : m_DataHub->FilterPumps())
 			{
-				///FIXME no support for multiple primary pumps added yet.
+				// AquaLink RS Equipment Status shows a single "Filter Pump" line;
+				// individual pump identification requires Intelliflo-specific messages.
 				LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_FilterPump setting filter pump status trait to '{}'", DeviceId(), magic_enum::enum_name(Kernel::PumpStatuses::Running)));
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::PumpStatuses::Running);
 			}
@@ -109,12 +110,12 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_PoolHeat(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_PoolHeat", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_PoolHeat", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_PoolHeat status line.", DeviceId()));
 
-		static const boost::regex re("pool heat", boost::regex_constants::icase);
-		static const HintArrayType hints{ 'p', 'h' };
+		static const boost::regex re("(pool heat)(?:\\s+(ena))?", boost::regex_constants::icase);
+		static const HintArrayType hints{ 'p', 'o' };
 		boost::smatch matches;
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
@@ -138,7 +139,7 @@ namespace AqualinkAutomate::Devices
 
 			if (0 == m_DataHub->Devices.FindByLabel(pool_heater_label).size())
 			{
-				// Check for installed solar heating.  If it doesn't exist, add it.
+				// Check for installed pool heating.  If it doesn't exist, add it.
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, pool_heater_label);
@@ -156,11 +157,11 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_SpaHeat(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_SpaHeat", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SpaHeat", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SpaHeat status line.", DeviceId()));
 
-		static const boost::regex re("(spa heat heat)(?:\\s+(ena))", boost::regex_constants::icase);
+		static const boost::regex re("(spa heat)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'p' };
 		boost::smatch matches;
 
@@ -203,11 +204,11 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_SolarHeat(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_SolarHeat", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SolarHeat", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SolarHeat status line.", DeviceId()));
 
-		static const boost::regex re("(solar heat)(?:\\s+(ena))", boost::regex_constants::icase);
+		static const boost::regex re("(solar heat)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'o' };
 		boost::smatch matches;
 
@@ -248,13 +249,107 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	void OneTouchDevice::StatusProcessor_HeatPump(const Utility::ScreenDataPage& page, const uint8_t line_id)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_HeatPump", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_HeatPump status line.", DeviceId()));
+
+		static const boost::regex re("(heat pump)(?:\\s+(ena))?", boost::regex_constants::icase);
+		static const HintArrayType hints{ 'h', 'e' };
+		boost::smatch matches;
+
+		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
+		{
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump skipping line processing; hints were not matched", DeviceId()));
+		}
+		else if (!boost::regex_match(line_to_process, matches, re))
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; failed to identify heat line", DeviceId()));
+		}
+		else if (false == matches[1].matched)
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; incorrect token count returned", DeviceId()));
+		}
+		else
+		{
+			// Match for at least HEAT PUMP
+			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
+
+			const std::string heat_pump_label{ "HeatPumpHeating" };
+
+			if (0 == m_DataHub->Devices.FindByLabel(heat_pump_label).size())
+			{
+				// Check for installed heat pump heating.  If it doesn't exist, add it.
+				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, heat_pump_label);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				m_DataHub->Devices.Add(std::move(ptr));
+			}
+
+			// The status is either going to be 'Heating' because only HEAT PUMP was matched or 'Enabled' because HEAT PUMP ENA was matched
+			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump setting Heat Pump Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			m_DataHub->Devices.FindByLabel(heat_pump_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+		}
+	}
+
+	void OneTouchDevice::StatusProcessor_Chiller(const Utility::ScreenDataPage& page, const uint8_t line_id)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_Chiller", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_Chiller status line.", DeviceId()));
+
+		static const boost::regex re("(chiller)(?:\\s+(ena))?", boost::regex_constants::icase);
+		static const HintArrayType hints{ 'c', 'h' };
+		boost::smatch matches;
+
+		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
+		{
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller skipping line processing; hints were not matched", DeviceId()));
+		}
+		else if (!boost::regex_match(line_to_process, matches, re))
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; failed to identify chiller line", DeviceId()));
+		}
+		else if (false == matches[1].matched)
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; incorrect token count returned", DeviceId()));
+		}
+		else
+		{
+			// Match for at least CHILLER
+			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
+
+			const std::string chiller_label{ "ChillerCooling" };
+
+			if (0 == m_DataHub->Devices.FindByLabel(chiller_label).size())
+			{
+				// Check for installed chiller cooling.  If it doesn't exist, add it.
+				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chiller_label);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				m_DataHub->Devices.Add(std::move(ptr));
+			}
+
+			// The status is either going to be 'Heating' because only CHILLER was matched or 'Enabled' because CHILLER ENA was matched
+			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller setting Chiller Cooling status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			m_DataHub->Devices.FindByLabel(chiller_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+		}
+	}
+
 	void OneTouchDevice::StatusProcessor_AquaPurePercentage(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_AquaPurePercentage", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_AquaPurePercentage", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_AquaPurePercentage status line.", DeviceId()));
 
-		static const boost::regex re("aquapure ([1-9][0-9]?|100)%", boost::regex_constants::icase);
+		static const boost::regex re("aquapure ([0-9]{1,2}|100)%", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'a', 'q' };
 		boost::smatch matches;
 
@@ -300,7 +395,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_SaltLevelPPM(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_SaltLevelPPM", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SaltLevelPPM", std::source_location::current());
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SaltLevelPPM status line.", DeviceId()));
 
 		static const boost::regex re("salt ([0-9]{1,4}) ppm", boost::regex_constants::icase);
@@ -335,7 +430,7 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::StatusProcessor_CheckAquaPure(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("StatusProcessor_CheckAquaPure", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_CheckAquaPure", std::source_location::current());
 
 		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_CheckAquaPure status line.", DeviceId()));
 
@@ -352,8 +447,6 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			using Kernel::AuxillaryTraitsTypes::ErrorCodesTrait;
-
 			const std::string chlorinator_label{"AquaPure"};
 
 			if (0 == m_DataHub->Devices.FindByLabel(chlorinator_label).size())
@@ -366,13 +459,12 @@ namespace AqualinkAutomate::Devices
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
-			if (auto chlorinators = m_DataHub->Devices.FindByLabel(chlorinator_label); chlorinators.front()->AuxillaryTraits.Has(ErrorCodesTrait{}))
-			{
-				ErrorCodesTrait::TraitValue& device_error_codes{*(chlorinators.front()->AuxillaryTraits.Get(ErrorCodesTrait{}))};
-
-				// Add any error codes that have been annunciated.
-				///FIXME
-			}			
+			// "Check AquaPure" on the Equipment Status page is a binary alert;
+			// specific error codes are decoded from AquaRite RS-485 messages.
+			// Flag the chlorinator status so consumers know there is a problem.
+			auto chlorinators = m_DataHub->Devices.FindByLabel(chlorinator_label);
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator status to Unknown (check system alert)", DeviceId()));
+			chlorinators.front()->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Unknown);
 		}
 	}
 

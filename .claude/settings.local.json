@@ -83,7 +83,20 @@
       "WebFetch(domain:devblogs.microsoft.com)",
       "WebFetch(domain:lewissbaker.github.io)",
       "Bash(taskkill:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(\"R:\\\\aqualink-automate\\\\build\\\\config-windows-msvc-debug\\\\test\\\\testaqualink-automate.exe\":*)",
+      "Bash(xcopy:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.troublefreepool.com)",
+      "Bash(cmd //c \"taskkill /IM aqualink-automate.exe /F\")",
+      "Bash(cmd //c \"handle64.exe aqualink-automate.exe\")",
+      "Bash(cmd //c \"dir R:\\\\aqualink-automate\\\\build\\\\config-windows-msvc-debug\\\\src\\\\aqualink-automate.exe\")",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/perfaqualink-automate.exe --benchmark_filter=\"ProcessMessages|ErrorHandler\")",
+      "WebFetch(domain:www.claffeypools.com)",
+      "WebFetch(domain:images.inyopools.com)",
+      "Bash(echo:*)"
     ]
   }
 }

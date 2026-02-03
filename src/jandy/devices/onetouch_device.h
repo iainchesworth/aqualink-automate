@@ -37,6 +37,7 @@ namespace AqualinkAutomate::Devices
 		inline static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX{ 1 };
 		inline static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX{ 3 };
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
+		inline static const uint32_t ONETOUCH_SCRAPING_STALL_LIMIT{ 10 };
 
 		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_NAV_SCRAPER_GRAPH;
 		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_TEXT_SCRAPER_GRAPH;
@@ -116,6 +117,8 @@ namespace AqualinkAutomate::Devices
 		void StatusProcessor_PoolHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_SpaHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_SolarHeat(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_HeatPump(const Utility::ScreenDataPage& page, const uint8_t line_id);
+		void StatusProcessor_Chiller(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_AquaPurePercentage(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_SaltLevelPPM(const Utility::ScreenDataPage& page, const uint8_t line_id);
 		void StatusProcessor_CheckAquaPure(const Utility::ScreenDataPage& page, const uint8_t line_id);
@@ -125,7 +128,12 @@ namespace AqualinkAutomate::Devices
 		void Scraping_ProcessStep_ColdAndWarmStart();
 
 	private:
+		static const std::list<Scrapeable::ScrapeId> STARTUP_SCRAPE_GRAPHS;
+		std::list<Scrapeable::ScrapeId>::const_iterator m_StartUpScrapeGraphsIt;
+
+	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
+		uint32_t m_ScrapingStallCounter{ 0 };
 
 	private:
 		Messages::AckTypes m_AckType_ToSend{ Messages::AckTypes::V1_Normal };

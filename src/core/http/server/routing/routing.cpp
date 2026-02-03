@@ -78,7 +78,7 @@ namespace AqualinkAutomate::HTTP::Routing
 
 	HTTP::Message HTTP_OnRequest(const HTTP::Request& req)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HTTP Route", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Routing::RouteRequest", std::source_location::current());
 		zone->Text(std::format("{} {}", magic_enum::enum_name(req.method()), std::string_view(req.target())));
 
 		try
@@ -122,7 +122,7 @@ namespace AqualinkAutomate::HTTP::Routing
 
 	Interfaces::IWebSocketBase* WS_OnAccept(const std::string_view target)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Route", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Routing::RouteWebSocket", std::source_location::current());
 		zone->Text(std::string(target));
 
 		try

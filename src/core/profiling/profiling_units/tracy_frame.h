@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Profiling
 	class TracyFrame : public Profiling::Frame
 	{
 	public:
-		TracyFrame(const std::string& name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
+		TracyFrame(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
 		virtual ~TracyFrame();
 
 	public:

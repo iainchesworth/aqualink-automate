@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Profiling
 {
 
-	TimedZone::TimedZone(const std::string& name, TimedZoneStates start_state) :
+	TimedZone::TimedZone(std::string_view name, TimedZoneStates start_state) :
 		Interfaces::IProfilingUnit(name),
 		m_StartTime(std::chrono::high_resolution_clock::now()),
 		m_EndTime(m_StartTime),

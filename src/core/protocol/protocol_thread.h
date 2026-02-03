@@ -52,7 +52,9 @@ namespace AqualinkAutomate::Protocol
 		}
 
 	private:
-		void ProcessMessages(ReadOps_SerialBufferType& circular_buffer);
+		void DrainWrites();
+		void DrainReads();
+		std::size_t ProcessMessages(ReadOps_SerialBufferType& circular_buffer);
 
 	private:
 		std::shared_ptr<Serial::SerialPort> m_SerialPort;

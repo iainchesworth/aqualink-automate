@@ -7,7 +7,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Scrapeable::ScrapingStart(ScrapeId scrape_graph_id, const uint32_t starting_index)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingStart", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingStart", std::source_location::current());
 
 		if (auto graph_map_it = m_ScraperGraphs.find(scrape_graph_id); m_ScraperGraphs.end() == graph_map_it)
 		{
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scraping Capability -> ScrapingNext", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingNext", std::source_location::current());
 
 		if (!m_Stack_WaitingForPage.empty())
 		{

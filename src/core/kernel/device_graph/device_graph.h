@@ -73,7 +73,7 @@ namespace AqualinkAutomate::Kernel
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> CountByTraitImpl", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByTraitImpl", std::source_location::current());
 
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
@@ -87,7 +87,7 @@ namespace AqualinkAutomate::Kernel
 		template<typename TRAIT_TYPE>
 		std::vector<std::shared_ptr<AuxillaryDevice>> FindByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph -> FindByTraitImpl", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByTraitImpl", std::source_location::current());
 
 			std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
 

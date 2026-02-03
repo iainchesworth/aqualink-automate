@@ -23,7 +23,7 @@ namespace AqualinkAutomate::HTTP
 			m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect(
 				[this](std::shared_ptr<Kernel::DataHub_ConfigEvent> event)
 				{
-					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Equipment Config Event", std::source_location::current());
+					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment::on_config_event", std::source_location::current());
 					auto payload = HTTP::WebSocket_Event(event).Payload();
 					zone->Value(payload.size());
 					m_MessageQueue.push_back(std::move(payload));
@@ -35,7 +35,7 @@ namespace AqualinkAutomate::HTTP
 			m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(
 				[this](std::shared_ptr<Kernel::EquipmentHub_SystemEvent> event)
 				{
-					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Equipment Status Event", std::source_location::current());
+					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment::on_status_event", std::source_location::current());
 					auto payload = HTTP::WebSocket_Event(event).Payload();
 					zone->Value(payload.size());
 					m_MessageQueue.push_back(std::move(payload));

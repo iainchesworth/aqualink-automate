@@ -70,6 +70,28 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
+	Kernel::Temperature DataHub::PoolTempSetpoint() const
+	{
+		return m_PoolTempSetpoint;
+	}
+
+	Kernel::Temperature DataHub::SpaTempSetpoint() const
+	{
+		return m_SpaTempSetpoint;
+	}
+
+	void DataHub::PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint)
+	{
+		m_PoolTempSetpoint = pool_temp_setpoint;
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", m_PoolTempSetpoint.InCelsius().value());
+	}
+
+	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
+	{
+		m_SpaTempSetpoint = spa_temp_setpoint;
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", m_SpaTempSetpoint.InCelsius().value());
+	}
+
 	void DataHub::FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point)
 	{
 		m_FreezeProtectPoint = freeze_protect_point;

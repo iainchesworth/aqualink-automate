@@ -64,10 +64,7 @@ target_sources(
 	http/webroute_equipment_buttons.cpp 
 	http/webroute_equipment_devices.cpp 
 	http/webroute_equipment_version.cpp 
-	http/webroute_page_index.cpp 
-	http/webroute_page_equipment.cpp 
-	http/webroute_page_version.cpp 
-	http/webroute_version.cpp 
+	http/webroute_version.cpp
 	http/websocket_event.cpp 
 	http/websocket_event_types.cpp 
 	http/websocket_equipment.cpp 
@@ -90,9 +87,7 @@ target_sources(
 	http/server/routing/node.cpp 
 	http/server/routing/routing.cpp
 	http/server/routing/segment_template.cpp 		
-	http/support/support_generate_page_footer.cpp 
-	http/support/support_generate_page_header.cpp 	 
-	interfaces/idevice.cpp 
+	interfaces/idevice.cpp
 	interfaces/ideviceidentifier.cpp 
 	interfaces/iequipment.cpp		 
 	interfaces/ihub.cpp 
@@ -107,8 +102,7 @@ target_sources(
 	interfaces/iserialportprotocol.cpp
 	interfaces/istatus.cpp
 	interfaces/istatuspublisher.cpp
-	interfaces/iwebpageroute.cpp
-	interfaces/iwebroute.cpp  
+	interfaces/iwebroute.cpp
 	interfaces/iwebsocket.cpp
 	kernel/auxillary_devices/auxillary_device.cpp
 	kernel/auxillary_devices/auxillary_health_states.cpp
@@ -314,7 +308,6 @@ target_include_directories(
 	${asio_INCLUDE_DIRS}
 	${Boost_INCLUDE_DIRS} 
 	${magic_enum_INCLUDE_DIRS}
-	${mstch_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_INCLUDE_DIRS}>
@@ -331,9 +324,7 @@ target_link_libraries(
 	Boost::log_setup 
 	Boost::program_options 
 	Boost::url
-	mstch::mstch
 	magic_enum::magic_enum
-	mstch::mstch
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto

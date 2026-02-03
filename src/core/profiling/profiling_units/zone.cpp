@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Profiling
 {
 
-	Zone::Zone(const std::string& name, const std::source_location& src_loc, UnitColours colour) :
+	Zone::Zone(std::string_view name, const std::source_location& src_loc, UnitColours colour) :
 		Interfaces::IProfilingUnit(name)
 	{
 	}

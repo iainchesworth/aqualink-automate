@@ -40,6 +40,24 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature>
 			return it;
 		}
 
+		// Parse optional precision: .N
+		if (*it == '.')
+		{
+			++it;
+			uint32_t precision = 0;
+			while (it != ctx.end() && *it >= '0' && *it <= '9')
+			{
+				precision = precision * 10 + static_cast<uint32_t>(*it - '0');
+				++it;
+			}
+			display_precision = precision;
+		}
+
+		if (it == ctx.end() || *it == '}')
+		{
+			return it;
+		}
+
 		if (*it == 'C')
 		{
 			display_units = AqualinkAutomate::Kernel::TemperatureUnits::Celsius;

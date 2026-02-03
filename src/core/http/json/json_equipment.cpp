@@ -14,7 +14,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Buttons(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON Buttons", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Buttons", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment buttons JSON");
 		nlohmann::json je_buttons;
 		return je_buttons;
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Devices(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON Devices", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Devices", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment devices JSON");
 		nlohmann::json je_devices;
 
@@ -101,7 +101,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Stats(std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON Stats", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Stats", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment statistics JSON");
 		nlohmann::json je_stats, message_counts;
 
@@ -110,12 +110,13 @@ namespace AqualinkAutomate::HTTP::JSON
 		{
 			nlohmann::json stat;
 			stat["id"] = msg_count_entries;
+			stat["name"] = msg_id.name;
 			stat["count"] = msg_count.Count();
 			message_counts.push_back(stat);
 			++msg_count_entries;
 		}
 
-		LogDebug(Channel::Web, std::format("Processed {} message count statistics", msg_count_entries));
+		LogTrace(Channel::Web, std::format("Processed {} message count statistics", msg_count_entries));
 
 		je_stats["message_counts"] = message_counts;
 
@@ -126,7 +127,7 @@ namespace AqualinkAutomate::HTTP::JSON
 		bandwidth_util_read["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation();
 		je_stats["bandwidth_read"] = bandwidth_util_read;
 
-		LogDebug(Channel::Web, std::format("Read bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Read.TotalBytes, statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()));
+		LogTrace(Channel::Web, std::format("Read bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Read.TotalBytes, statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()));
 
 		nlohmann::json bandwidth_util_write;
 		bandwidth_util_write["total_bytes"] = statistics_hub->BandwidthMetrics.Write.TotalBytes;
@@ -135,18 +136,18 @@ namespace AqualinkAutomate::HTTP::JSON
 		bandwidth_util_write["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation();
 		je_stats["bandwidth_write"] = bandwidth_util_write;
 
-		LogDebug(Channel::Web, std::format("Write bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Write.TotalBytes, statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()));
+		LogTrace(Channel::Web, std::format("Write bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Write.TotalBytes, statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()));
 
 		// Latency percentiles
 		nlohmann::json latency_metrics;
-		latency_metrics["serial_read"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot());
+		auto read_snapshot = statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot();
+		latency_metrics["serial_read"] = SerializeLatencySnapshot(read_snapshot);
 		latency_metrics["serial_write"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot());
 		latency_metrics["message_processing"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot());
 		latency_metrics["round_trip"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.RoundTripLatency.GetSnapshot());
 		je_stats["latency"] = latency_metrics;
 
-		auto read_snapshot = statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot();
-		LogDebug(Channel::Web, std::format("Serial read latency: p50={:.2f}us, p99={:.2f}us ({} samples)",
+		LogTrace(Channel::Web, std::format("Serial read latency: p50={:.2f}us, p99={:.2f}us ({} samples)",
 			NanosToMicros(read_snapshot.p50), NanosToMicros(read_snapshot.p99), read_snapshot.sample_count));
 
 		// Serial metrics
@@ -158,21 +159,40 @@ namespace AqualinkAutomate::HTTP::JSON
 		serial_metrics["write_queue_depth"] = statistics_hub->Serial.SerialWriteQueueDepth;
 		je_stats["serial"] = serial_metrics;
 
+		// Message error metrics
+		nlohmann::json message_errors;
+		message_errors["checksum_failures"] = statistics_hub->MessageErrors.ChecksumFailures;
+		message_errors["deserialization_failures"] = statistics_hub->MessageErrors.DeserializationFailures;
+		message_errors["invalid_packet_format"] = statistics_hub->MessageErrors.InvalidPacketFormat;
+		message_errors["generator_failures"] = statistics_hub->MessageErrors.GeneratorFailures;
+		message_errors["overlapping_packets"] = statistics_hub->MessageErrors.OverlappingPackets;
+		message_errors["buffer_overflows"] = statistics_hub->MessageErrors.BufferOverflows;
+		je_stats["message_errors"] = message_errors;
+
 		return je_stats;
 	}
 
 	nlohmann::json GenerateJson_Equipment_Version(std::shared_ptr<Kernel::DataHub> data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON Version", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Version", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment version JSON");
 		const auto& versions = data_hub->EquipmentVersions;
 
 		nlohmann::json version_info;
 
-		version_info["model_number"] = versions.ModelNumber;
-		version_info["fw_revision"] = versions.FirmwareRevision;
+		// Emit ordered fields array for generic display
+		nlohmann::json fields = nlohmann::json::array();
+		for (const auto& field : versions.Fields)
+		{
+			fields.push_back({ {"label", field.label}, {"value", field.value} });
+		}
+		version_info["fields"] = fields;
 
-		LogDebug(Channel::Web, std::format("Equipment version: Model '{}' -> FW '{}'", versions.ModelNumber, versions.FirmwareRevision));
+		// Back-compat flat keys
+		version_info["model_number"] = versions.ModelNumber();
+		version_info["fw_revision"] = versions.FirmwareRevision();
+
+		LogDebug(Channel::Web, std::format("Equipment version: {} field(s)", versions.Fields.size()));
 
 		return version_info;
 	}

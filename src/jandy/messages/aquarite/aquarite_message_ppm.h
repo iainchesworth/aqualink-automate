@@ -25,6 +25,7 @@ namespace AqualinkAutomate::Messages
 		Warning_LowVoltage = 0x20,
 		Warning_LowTemperature = 0x40,
 		Error_CheckPCB = 0x80,
+		GeneralFault = 0xFD,
 		Unknown = 0xFE
 	};
 

@@ -13,12 +13,21 @@
 #include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_status.h"
 #include "messages/jandy_message_unknown.h"
-#include "messages/aqualink_touch/aqualink_touch_device_status.h"
+#include "messages/chemlink/chemlink_message_response.h"
+#include "messages/epump/epump_message_status.h"
+#include "messages/epump/epump_message_rpm.h"
+#include "messages/epump/epump_message_watts.h"
+#include "messages/heater/heater_message_request.h"
+#include "messages/heater/heater_message_status.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
+#include "messages/iaq/iaq_message_aux_status.h"
+#include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
+#include "messages/iaq/iaq_message_onetouch_status.h"
 #include "messages/iaq/iaq_message_page_button.h"
 #include "messages/iaq/iaq_message_page_continue.h"
 #include "messages/iaq/iaq_message_page_end.h"
@@ -27,6 +36,7 @@
 #include "messages/iaq/iaq_message_poll.h"
 #include "messages/iaq/iaq_message_startup.h"
 #include "messages/iaq/iaq_message_table_message.h"
+#include "messages/iaq/iaq_message_title_message.h"
 #include "messages/pda/pda_message_clear.h"
 #include "messages/pda/pda_message_highlight.h"
 #include "messages/pda/pda_message_highlight_chars.h"
@@ -37,7 +47,7 @@
 
 namespace AqualinkAutomate::Factory
 {
-    
+
 #define REGISTER_HOT_MESSAGE(MessageType, MessageId) \
     Factory::MessageRegistration<MessageType, MessageId, true>
 
@@ -55,15 +65,21 @@ namespace AqualinkAutomate::Factory
 		// Register the UNKNOWN type for all "seen-but-unknown" message types
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_05),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_PDA_1B),
-		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_IAQ_2D),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_IAQ_53),
-		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_IAQ_70),
-		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_IAQ_73),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_ReadyControl),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown),
 
-		// Register the Aqualink Touch message types
-		REGISTER_MESSAGE(Messages::AqualinkTouch_DeviceStatus, Messages::JandyMessageIds::AqualinkTouch_DeviceStatus),
+		// Register the ePump message types
+		REGISTER_MESSAGE(Messages::EPumpMessage_Status, Messages::JandyMessageIds::EPUMP_Status),
+		REGISTER_MESSAGE(Messages::EPumpMessage_RPM, Messages::JandyMessageIds::EPUMP_RPM),
+		REGISTER_MESSAGE(Messages::EPumpMessage_Watts, Messages::JandyMessageIds::EPUMP_Watts),
+
+		// Register the Chemlink message types
+		REGISTER_MESSAGE(Messages::ChemlinkMessage_Response, Messages::JandyMessageIds::Chemlink_Response),
+
+		// Register the Heater message types
+		REGISTER_MESSAGE(Messages::HeaterMessage_Request, Messages::JandyMessageIds::Heater_Request),
+		REGISTER_MESSAGE(Messages::HeaterMessage_Status, Messages::JandyMessageIds::Heater_Status),
 
 		// Register the Aquarite message types
 		REGISTER_MESSAGE(Messages::AquariteMessage_GetId, Messages::JandyMessageIds::AQUARITE_GetId),
@@ -81,6 +97,11 @@ namespace AqualinkAutomate::Factory
 		REGISTER_MESSAGE(Messages::IAQMessage_Poll, Messages::JandyMessageIds::IAQ_Poll),
 		REGISTER_MESSAGE(Messages::IAQMessage_StartUp, Messages::JandyMessageIds::IAQ_StartUp),
 		REGISTER_MESSAGE(Messages::IAQMessage_TableMessage, Messages::JandyMessageIds::IAQ_TableMessage),
+		REGISTER_MESSAGE(Messages::IAQMessage_TitleMessage, Messages::JandyMessageIds::IAQ_TitleMessage),
+		REGISTER_MESSAGE(Messages::IAQMessage_MainStatus, Messages::JandyMessageIds::IAQ_MainStatus),
+		REGISTER_MESSAGE(Messages::IAQMessage_OneTouchStatus, Messages::JandyMessageIds::IAQ_OneTouchStatus),
+		REGISTER_MESSAGE(Messages::IAQMessage_AuxStatus, Messages::JandyMessageIds::IAQ_AuxStatus),
+		REGISTER_MESSAGE(Messages::IAQMessage_CommandReady, Messages::JandyMessageIds::IAQ_CommandReady),
 
 		// Register the PDA message types
 		REGISTER_MESSAGE(Messages::PDAMessage_Clear, Messages::JandyMessageIds::PDA_Clear),
@@ -88,7 +109,7 @@ namespace AqualinkAutomate::Factory
 		REGISTER_MESSAGE(Messages::PDAMessage_HighlightChars, Messages::JandyMessageIds::PDA_HighlightChars),
 		REGISTER_MESSAGE(Messages::PDAMessage_ShiftLines, Messages::JandyMessageIds::PDA_ShiftLines),
 
-		// Register the RSSA Seria Adapter message types
+		// Register the RSSA Serial Adapter message types
 		REGISTER_MESSAGE(Messages::SerialAdapterMessage_DevReady, Messages::JandyMessageIds::RSSA_DevReady),
 		REGISTER_MESSAGE(Messages::SerialAdapterMessage_DevStatus, Messages::JandyMessageIds::RSSA_DevStatus)
 	>;

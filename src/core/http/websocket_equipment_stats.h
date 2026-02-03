@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -34,6 +35,7 @@ namespace AqualinkAutomate::HTTP
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };
 		boost::signals2::connection m_StatsSlot;
 		std::deque<std::string> m_MessageQueue;
+		std::atomic<bool> m_Dirty{ false };
 	};
 
 }

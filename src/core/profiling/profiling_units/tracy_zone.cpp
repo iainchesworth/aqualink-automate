@@ -9,10 +9,11 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Profiling
 {
 
-	TracyZone::TracyZone(const std::string name, const std::source_location& src_loc, UnitColours colour) :
+	TracyZone::TracyZone(std::string_view name, const std::source_location& src_loc, UnitColours colour) :
 		Zone(name)
 	{
-		if (auto iter = TracyZone_DataMap::Instance().find(name); TracyZone_DataMap::Instance().end() != iter)
+		std::string name_str(name);
+		if (auto iter = TracyZone_DataMap::Instance().find(name_str); TracyZone_DataMap::Instance().end() != iter)
 		{
 			m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(iter->second)));
 		}
@@ -20,7 +21,7 @@ namespace AqualinkAutomate::Profiling
 		{
 			TracyZone_DataMap::DataTuple tracy_data;
 
-			std::get<std::string>(tracy_data) = name;
+			std::get<std::string>(tracy_data) = name_str;
 
 			std::get<char*>(tracy_data) = new char[name.size()+1];
 			auto name_ptr = std::get<char*>(tracy_data);
@@ -37,7 +38,7 @@ namespace AqualinkAutomate::Profiling
 				static_cast<uint32_t>(colour)
 			};
 
-			if (auto [it, was_inserted] = TracyZone_DataMap::Instance().emplace(name, tracy_data); was_inserted)
+			if (auto [it, was_inserted] = TracyZone_DataMap::Instance().emplace(name_str, tracy_data); was_inserted)
 			{
 				m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(it->second)));
 			}

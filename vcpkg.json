@@ -24,7 +24,6 @@
     "boost-uuid",
     "boost-url",
     "magic-enum",
-    "mstch",
     "nlohmann-json",
     "openssl",
     "tracy",

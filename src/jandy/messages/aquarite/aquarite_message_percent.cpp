@@ -24,6 +24,16 @@ namespace AqualinkAutomate::Messages
 		return m_Percent;
 	}
 
+	bool AquariteMessage_Percent::IsBoostMode() const
+	{
+		return m_Percent == Value_Boost;
+	}
+
+	bool AquariteMessage_Percent::IsServiceMode() const
+	{
+		return m_Percent == Value_ServiceMode;
+	}
+
 	std::string AquariteMessage_Percent::ToString() const
 	{
 		return std::format("Packet: {} || Payload: Percent: {}", AquariteMessage::ToString(), m_Percent);

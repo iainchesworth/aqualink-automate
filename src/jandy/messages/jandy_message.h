@@ -73,12 +73,11 @@ namespace AqualinkAutomate::Messages
 			std::vector<uint8_t> contiguous_raw_data;
 			contiguous_raw_data.reserve(std::ranges::size(raw_message));
 			std::ranges::copy(raw_message, std::back_inserter(contiguous_raw_data));
-			auto* raw_data_ptr = reinterpret_cast<const std::byte*>(contiguous_raw_data.data());
-			const auto raw_data_span = std::span<const std::byte>{ raw_data_ptr, contiguous_raw_data.size() };
-			auto result = Deserialize(raw_data_span);
-
-			return result;
+			return DeserializeFromContiguousData(std::move(contiguous_raw_data));
 		}
+
+	private:
+		[[nodiscard]] bool DeserializeFromContiguousData(std::vector<uint8_t>&& contiguous_data);
 
 	protected:
 		bool PacketSizeIsValid(const std::span<const std::byte>& message_bytes) const;

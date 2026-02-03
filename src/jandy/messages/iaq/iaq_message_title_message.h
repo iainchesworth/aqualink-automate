@@ -1,0 +1,39 @@
+#pragma once
+
+#include <cstdint>
+#include <cstddef>
+#include <string>
+#include <span>
+#include <vector>
+
+#include "interfaces/imessagesignal_recv.h"
+#include "messages/iaq/iaq_message.h"
+
+namespace AqualinkAutomate::Messages
+{
+
+	class IAQMessage_TitleMessage : public IAQMessage, public Interfaces::IMessageSignalRecv<IAQMessage_TitleMessage>
+	{
+	public:
+		static const uint8_t Index_TitleText = 4;
+
+	public:
+		IAQMessage_TitleMessage() noexcept;
+		virtual ~IAQMessage_TitleMessage();
+
+	public:
+		std::string Title() const;
+
+	public:
+		virtual std::string ToString() const override;
+
+	public:
+		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+
+	private:
+		std::string m_Title;
+	};
+
+}
+// namespace AqualinkAutomate::Messages

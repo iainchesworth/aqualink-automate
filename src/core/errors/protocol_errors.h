@@ -13,7 +13,9 @@ namespace AqualinkAutomate::ErrorCodes
 		DataAvailableToProcess = 2000,
 		WaitingForMoreData,
 		InvalidPacketFormat,
-		UnknownFailure
+		UnknownFailure,
+		ChecksumFailure,
+		OverlappingPackets
 	};
 
 	class Protocol_ErrorCategory : public boost::system::error_category

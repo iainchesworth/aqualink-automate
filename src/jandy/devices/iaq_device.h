@@ -8,8 +8,12 @@
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/scrapeable.h"
 #include "devices/capabilities/screen.h"
+#include "messages/iaq/iaq_message_aux_status.h"
+#include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
+#include "messages/iaq/iaq_message_onetouch_status.h"
 #include "messages/iaq/iaq_message_page_button.h"
 #include "messages/iaq/iaq_message_page_continue.h"
 #include "messages/iaq/iaq_message_page_end.h"
@@ -18,6 +22,7 @@
 #include "messages/iaq/iaq_message_poll.h"
 #include "messages/iaq/iaq_message_startup.h"
 #include "messages/iaq/iaq_message_table_message.h"
+#include "messages/iaq/iaq_message_title_message.h"
 #include "utility/screen_data_page.h"
 #include "utility/screen_data_page_updater.h"
 #include "kernel/hub_locator.h"
@@ -42,8 +47,12 @@ namespace AqualinkAutomate::Devices
 		virtual void WatchdogTimeoutOccurred() override;
 
 	private:
+		void Slot_IAQ_AuxStatus(const Messages::IAQMessage_AuxStatus& msg);
+		void Slot_IAQ_CommandReady(const Messages::IAQMessage_CommandReady& msg);
 		void Slot_IAQ_ControlReady(const Messages::IAQMessage_ControlReady& msg);
+		void Slot_IAQ_MainStatus(const Messages::IAQMessage_MainStatus& msg);
 		void Slot_IAQ_MessageLong(const Messages::IAQMessage_MessageLong& msg);
+		void Slot_IAQ_OneTouchStatus(const Messages::IAQMessage_OneTouchStatus& msg);
 		void Slot_IAQ_PageButton(const Messages::IAQMessage_PageButton& msg);
 		void Slot_IAQ_PageContinue(const Messages::IAQMessage_PageContinue& msg);
 		void Slot_IAQ_PageEnd(const Messages::IAQMessage_PageEnd& msg);
@@ -52,6 +61,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_IAQ_Poll(const Messages::IAQMessage_Poll& msg);
 		void Slot_IAQ_StartUp(const Messages::IAQMessage_StartUp& msg);
 		void Slot_IAQ_TableMessage(const Messages::IAQMessage_TableMessage& msg);
+		void Slot_IAQ_TitleMessage(const Messages::IAQMessage_TitleMessage& msg);
 
 	private:
 		Utility::ScreenDataPage m_StatusPage;

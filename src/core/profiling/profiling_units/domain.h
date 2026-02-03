@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Profiling
 	class Domain : public Interfaces::IProfilingUnit
 	{
 	public:
-		Domain(const std::string& name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
+		Domain(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
 		virtual ~Domain() = default;
 
 	public:

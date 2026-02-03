@@ -2,7 +2,6 @@
 #include <format>
 
 #include "generator/jandy_message_generator_buffercleanup.h"
-#include "generator/jandy_message_generator_buffervalidation.h"
 #include "generator/jandy_message_generator_startendsequence.h"
 #include "messages/jandy_message.h"
 #include "logging/logging.h"
@@ -15,7 +14,7 @@ namespace AqualinkAutomate::Generators
 
 	void BufferCleanUp_ClearBytesFromBeginToPos(boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& position)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Clearing Bytes", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::BufferCleanUp -> clearing_bytes", std::source_location::current());
 
 		// Erase all bytes to the end of this packet.
 		auto packet_one_end_index = std::distance(serial_data.begin(), position);
@@ -24,39 +23,33 @@ namespace AqualinkAutomate::Generators
 		serial_data.erase(serial_data.begin(), serial_data.begin() + packet_one_end_index);
 	}
 
-	void BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& p1s, const boost::circular_buffer<uint8_t>::iterator& p1e, const boost::circular_buffer<uint8_t>::iterator& p2s)
+	void BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator -> Buffer CleanUp -> Has End Of Packet", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::BufferCleanUp -> has_end_of_packet", std::source_location::current());
 
 		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= serial_data.size())
 		{
 			// Not enough data in the buffer to do anything at this point in time...ignore.
 		}
-		else if (!BufferValidation_HasStartOfPacket(serial_data))
+		else if (!locations.HasPacketStart)
 		{
 			// There doesn't appear to be a packet in this data...ignore.
 		}
 		else
 		{
 			// Do a bunch of sense checks...
-			const auto distance_between_start_and_end = std::distance(p1s, p1e);
+			const auto distance_between_start_and_end = std::distance(locations.p1_start, locations.p1_end);
 			if (0 == distance_between_start_and_end)
 			{
 				LogDebug(Channel::Messages, "Attempted to action a clean-up here the start and end location were the same...ignoring");
 			}
-			/* FIXME else if (0 > distance_between_start_and_end)
-			{
-				// The end is before the start...erase everything up to the start iterator.
-				auto serial_data_begin = serial_data.cbegin();
-				serial_data.erase(serial_data_begin, p1s);
-			}*/
 			else if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH < (distance_between_start_and_end + PACKET_END_SEQUENCE.size()))
 			{
 				LogDebug(Channel::Messages, std::format("Packet end sequence not present within {} bytes of start sequence; ignoring this particular packet", Messages::JandyMessage::MAXIMUM_PACKET_LENGTH));
 
 				// The distance between the start and the end is larger than the maximum packet size...erase everything up to the end iterator (plus end bytes).
 				auto serial_data_begin = serial_data.begin();
-				serial_data.erase(serial_data_begin, p1e + PACKET_END_SEQUENCE.size());
+				serial_data.erase(serial_data_begin, locations.p1_end + PACKET_END_SEQUENCE.size());
 			}
 			else
 			{
@@ -66,4 +59,4 @@ namespace AqualinkAutomate::Generators
 	}
 
 }
-// namespace AqualinkAutomate::Generators`
+// namespace AqualinkAutomate::Generators

@@ -44,7 +44,6 @@ add_subdirectory(deps)
 
 find_package(benchmark REQUIRED)
 find_package(Boost REQUIRED COMPONENTS graph iostreams log log_setup program_options regex system unit_test_framework url)
-find_package(mstch REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)

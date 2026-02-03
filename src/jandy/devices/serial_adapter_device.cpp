@@ -55,57 +55,57 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::ProcessControllerUpdates()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Handle Operating State", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::ProcessControllerUpdates", std::source_location::current());
 
 		uint8_t ack_type{ 0x00 };
 		uint8_t ack_data_value{ 0x00 };
 
 		if (m_StatusMessageReceived)
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProcessControllerUpdates -> Query for Status", std::source_location::current());
-			
-			LogDebug(Channel::Messages, "ProcessControllerUpdates -> Query for Status");
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::ProcessControllerUpdates -> query_status", std::source_location::current());
+
+			LogDebug(Channel::Devices, "ProcessControllerUpdates -> Query for Status");
 
 			std::visit(
 				Utility::OverloadedVisitor
 				{
 					[](std::monostate)
 					{
-						LogWarning(Channel::Messages, "SerialAdapterDevice: Cannot select next StatusType; invalid variant content");
+						LogWarning(Channel::Devices, "SerialAdapterDevice: Cannot select next StatusType; invalid variant content");
 					},
 					[&ack_type, &ack_data_value](SerialAdapter_ConfigControlCommands sa_ccc)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} ({:02x})", magic_enum::enum_name(sa_ccc), magic_enum::enum_integer(sa_ccc)));
+						LogTrace(Channel::Devices, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} ({:02x})", magic_enum::enum_name(sa_ccc), magic_enum::enum_integer(sa_ccc)));
 						ack_type = magic_enum::enum_integer(sa_ccc);
 						ack_data_value = static_cast<uint8_t>(Messages::SerialAdapter_CommandTypes::Query);
 					},
 					[&ack_type, &ack_data_value](SerialAdapter_SystemConfigurationStatuses sa_scs)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_scs), magic_enum::enum_integer(sa_scs)));
+						LogTrace(Channel::Devices, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_scs), magic_enum::enum_integer(sa_scs)));
 						ack_type = magic_enum::enum_integer(sa_scs);
 						ack_data_value = static_cast<uint8_t>(Messages::SerialAdapter_CommandTypes::Query);
 					},
 					[&ack_type, &ack_data_value](SerialAdapter_SystemPumpCommands sa_spc)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_spc), magic_enum::enum_integer(sa_spc)));
+						LogTrace(Channel::Devices, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_spc), magic_enum::enum_integer(sa_spc)));
 						ack_type = magic_enum::enum_integer(sa_spc);
 						ack_data_value = static_cast<uint8_t>(Messages::SerialAdapter_CommandTypes::Query);
 					},
 					[&ack_type, &ack_data_value](SerialAdapter_SystemTemperatureCommands sa_stc)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_stc), magic_enum::enum_integer(sa_stc)));
+						LogTrace(Channel::Devices, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_stc), magic_enum::enum_integer(sa_stc)));
 						ack_type = magic_enum::enum_integer(sa_stc);
 						ack_data_value = static_cast<uint8_t>(Messages::SerialAdapter_CommandTypes::Query);
 					},
 					[&ack_type, &ack_data_value](Auxillaries::JandyAuxillaryIds sa_jai)
 					{
-						LogTrace(Channel::Messages, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_jai), magic_enum::enum_integer(sa_jai) + SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET));
+						LogTrace(Channel::Devices, std::format("SerialAdapterDevice: Selecting Next StatusType -> {} (0x{:02x})", magic_enum::enum_name(sa_jai), magic_enum::enum_integer(sa_jai) + SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET));
 						ack_type = 0x00;
 						ack_data_value = magic_enum::enum_integer(sa_jai) + SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET;
 					},
 					[](SerialAdapter_UnknownCommands sa_uc)
 					{
-						LogWarning(Channel::Messages, "SerialAdapterDevice: Cannot select next StatusType; unknown command type");
+						LogWarning(Channel::Devices, "SerialAdapterDevice: Cannot select next StatusType; unknown command type");
 					}
 				},
 				*m_StatusTypesCollectionIter

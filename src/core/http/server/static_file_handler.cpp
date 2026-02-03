@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <format>
 #include <system_error>
 
@@ -34,7 +35,7 @@ namespace AqualinkAutomate::HTTP
         {
             LogDebug(Channel::Web, std::format("Failed to parse target URL as a static asset; error was {}", parsed_target.error().message()));
         }
-        else if (match_prefix(parsed_target.value().normalize_path().segments(), static_cast<boost::urls::url_view>(m_Prefix).segments()))
+        else if (auto prefix_len = match_prefix(parsed_target.value().normalize_path().segments(), static_cast<boost::urls::url_view>(m_Prefix).segments()); prefix_len >= 0)
         {
             result = m_DocRoot;
 
@@ -42,13 +43,23 @@ namespace AqualinkAutomate::HTTP
             auto it = segs.begin();
             auto end = segs.end();
 
-            std::advance(it, m_Prefix.segments().size());
+            // Skip only the non-empty prefix segments that were actually matched
+            std::advance(it, prefix_len);
 
             while (it != end)
             {
                 auto seg = *it;
-                result.append(seg.begin(), seg.end());
+                if (!seg.empty())
+                {
+                    result.append(seg.begin(), seg.end());
+                }
                 ++it;
+            }
+
+            // If result points to a directory, serve index.html
+            if (std::filesystem::is_directory(result))
+            {
+                result /= "index.html";
             }
 
             return true;
@@ -57,27 +68,74 @@ namespace AqualinkAutomate::HTTP
         return false;
     }
 
-    bool StaticFileHandler::match_prefix(boost::urls::segments_view target, boost::urls::segments_view prefix)
+    int StaticFileHandler::match_prefix(boost::urls::segments_view target, boost::urls::segments_view prefix)
     {
+        // Count the non-empty segments in the prefix (root "/" has one empty segment which we skip)
+        std::size_t non_empty_prefix_count = 0;
+        for (const auto& seg : prefix)
+        {
+            if (!seg.empty())
+            {
+                ++non_empty_prefix_count;
+            }
+        }
+
+        // A root prefix "/" matches everything
+        if (non_empty_prefix_count == 0)
+        {
+            return 0;
+        }
+
         // Trivially reject target that cannot contain the prefix
-        if (target.size() < prefix.size())
+        auto target_size = target.size();
+        if (target_size < non_empty_prefix_count)
         {
-            return false;
+            return -1;
         }
 
-        // Match the prefix segments
-        auto it0 = target.begin();
-        auto end0 = target.end();
-        auto it1 = prefix.begin();
-        auto end1 = prefix.end();
+        // Match the non-empty prefix segments against target segments
+        auto it_target = target.begin();
+        auto end_target = target.end();
+        auto it_prefix = prefix.begin();
+        auto end_prefix = prefix.end();
+        int matched = 0;
 
-        while (it0 != end0 && it1 != end1 && *it0 == *it1)
+        while (it_target != end_target && it_prefix != end_prefix)
         {
-            ++it0;
-            ++it1;
+            // Skip empty segments in both
+            if ((*it_prefix).empty())
+            {
+                ++it_prefix;
+                continue;
+            }
+            if ((*it_target).empty())
+            {
+                ++it_target;
+                ++matched;
+                continue;
+            }
+
+            if (*it_target != *it_prefix)
+            {
+                return -1;
+            }
+
+            ++it_target;
+            ++it_prefix;
+            ++matched;
         }
 
-        return it1 == end1;
+        // Check all non-empty prefix segments were consumed
+        while (it_prefix != end_prefix)
+        {
+            if (!(*it_prefix).empty())
+            {
+                return -1;
+            }
+            ++it_prefix;
+        }
+
+        return matched;
     }
 
 }

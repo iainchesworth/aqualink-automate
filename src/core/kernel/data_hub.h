@@ -98,18 +98,24 @@ namespace AqualinkAutomate::Kernel
 		Kernel::Temperature AirTemp() const;
 		Kernel::Temperature PoolTemp() const;
 		Kernel::Temperature SpaTemp() const;
+		Kernel::Temperature PoolTempSetpoint() const;
+		Kernel::Temperature SpaTempSetpoint() const;
 		Kernel::Temperature FreezeProtectPoint() const;
 
 	public:
 		void AirTemp(const Kernel::Temperature& air_temp);
 		void PoolTemp(const Kernel::Temperature& pool_temp);
 		void SpaTemp(const Kernel::Temperature& spa_temp);
+		void PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint);
+		void SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint);
 		void FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point);
 
 	private:
 		Kernel::Temperature m_AirTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
 		Kernel::Temperature m_PoolTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
 		Kernel::Temperature m_SpaTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		Kernel::Temperature m_PoolTempSetpoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		Kernel::Temperature m_SpaTempSetpoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
 		Kernel::Temperature m_FreezeProtectPoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
 
 	//---------------------------------------------------------------------

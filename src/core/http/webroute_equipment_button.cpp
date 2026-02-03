@@ -27,7 +27,7 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP::Message WebRoute_Equipment_Button::OnRequest(const HTTP::Request& req)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("API /api/equipment/button", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_EquipmentButton::OnRequest", std::source_location::current());
 
 		switch (req.method())
 		{
@@ -117,14 +117,19 @@ namespace AqualinkAutomate::HTTP
 				}
 				else
 				{
-					// Trigger the device...then get its updated status and report that back.
+					// Device triggering is not yet implemented; return 501 until
+					// a command-dispatch mechanism is available to send key
+					// sequences to the protocol thread.
+					LogInfo(Channel::Web, std::format("Received button trigger request for '{}' but device triggering is not yet implemented", button_id.value()));
 
-					{
-						///FIXME -> Trigger the device...
-						///button_device -> ...
-					}
+					HTTP::Response resp{ HTTP::Status::not_implemented, req.version() };
+					resp.set(boost::beast::http::field::server, ServerFields::Server());
+					resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+					resp.keep_alive(req.keep_alive());
+					resp.body() = "Device triggering is not yet implemented";
+					resp.prepare_payload();
 
-					return ButtonIndividual_GetHandler(req);
+					return resp;
 				}
 			}
 			catch (const std::runtime_error& ex_re)
@@ -153,8 +158,17 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP::Message WebRoute_Equipment_Button::Report_ButtonIsInactive(const HTTP::Request& req, const std::string& button_id)
 	{
-		///FIXME
-		throw;
+		LogInfo(Channel::Web, std::format("Button '{}' is currently inactive; rejecting button request", button_id));
+
+		HTTP::Response resp{ HTTP::Status::conflict, req.version() };
+
+		resp.set(boost::beast::http::field::server, ServerFields::Server());
+		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+		resp.keep_alive(req.keep_alive());
+		resp.body() = std::format("Button '{}' is currently inactive", button_id);
+		resp.prepare_payload();
+
+		return resp;
 	}
 
 	HTTP::Message WebRoute_Equipment_Button::Report_SystemIsInactive(const HTTP::Request& req)

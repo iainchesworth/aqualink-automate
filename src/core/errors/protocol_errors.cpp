@@ -28,6 +28,12 @@ namespace AqualinkAutomate::ErrorCodes
 		case Protocol_ErrorCodes::UnknownFailure:
 			return "Protocol_ErrorCodes::UnknownFailure";
 
+		case Protocol_ErrorCodes::ChecksumFailure:
+			return "Protocol_ErrorCodes::ChecksumFailure";
+
+		case Protocol_ErrorCodes::OverlappingPackets:
+			return "Protocol_ErrorCodes::OverlappingPackets";
+
 		default:
 			return "Protocol_ErrorCodes - Unknown Error Code";
 		}

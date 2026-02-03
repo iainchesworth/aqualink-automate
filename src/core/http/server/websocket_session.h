@@ -10,6 +10,7 @@
 #include <boost/cobalt/join.hpp>
 
 #include "http/server/routing/routing.h"
+#include "http/server/server_fields.h"
 #include "http/server/server_types.h"
 #include "interfaces/iwebsocket.h"
 #include "logging/logging.h"
@@ -28,7 +29,7 @@ namespace AqualinkAutomate::HTTP
 
         while (!co_await boost::cobalt::this_coro::cancelled)
         {
-            auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Read", std::source_location::current());
+            auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocketSession::on_read", std::source_location::current());
 
             auto [ec, bytes_transferred] = co_await ws.async_read(buffer, boost::asio::as_tuple(boost::cobalt::use_op));
             if (boost::beast::websocket::error::closed == ec)
@@ -64,7 +65,7 @@ namespace AqualinkAutomate::HTTP
 
         while (!co_await boost::cobalt::this_coro::cancelled)
         {
-            auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Write", std::source_location::current());
+            auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocketSession::on_write", std::source_location::current());
 
             auto msg = co_await msg_generator;
 
@@ -114,13 +115,13 @@ namespace AqualinkAutomate::HTTP
                 {
                     res.set(
                         boost::beast::http::field::server,
-                        std::string(BOOST_BEAST_VERSION_STRING) + " advanced-server-flex" ///FIXME
+                        HTTP::ServerFields::Server()
                     );
                 }
             )
         );
 
-        auto ws_accept_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Accept", std::source_location::current());
+        auto ws_accept_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocketSession::on_accept", std::source_location::current());
         ws_accept_zone->Text(std::string(req.target()));
 
         if (auto ws_route_handler = Routing::WS_OnAccept(req.target()); nullptr == ws_route_handler)

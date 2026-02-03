@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	std::unique_ptr<Interfaces::ISerialPortProtocol> NetworkSerialPortImpl::CreateProtocolHandler()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> CreateProtocolHandler", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::CreateProtocolHandler", std::source_location::current());
 
 		LogTrace(Channel::Serial, "Creating RFC2217 protocol handler");
 		return std::make_unique<Serial::RFC2217::ProtocolHandler>(m_Socket);
@@ -53,7 +53,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::open(const std::string& endpoint_name)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> open", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::open", std::source_location::current());
 
 		boost::system::error_code ec;
 
@@ -66,7 +66,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::open(const std::string& endpoint_name, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> open", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::open", std::source_location::current());
 
 		LogInfo(Channel::Serial, std::format("Opening network serial port: {}", endpoint_name));
 
@@ -84,7 +84,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 		}
 		else
 		{
-			auto resolve_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> resolve", std::source_location::current());
+			auto resolve_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::open -> resolve", std::source_location::current());
 
 			LogDebug(Channel::Serial, std::format("Resolving endpoint: {}:{}", host, service));
 			boost::asio::ip::tcp::resolver resolver(m_Executor);
@@ -95,7 +95,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 			}
 			else
 			{
-				auto connect_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> connect", std::source_location::current());
+				auto connect_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::open -> connect", std::source_location::current());
 
 				if (boost::asio::connect(m_Socket, results, ec); ec)
 				{
@@ -103,7 +103,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 				}
 				else
 				{
-					auto init_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> initialize protocol", std::source_location::current());
+					auto init_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::open -> initialise_protocol", std::source_location::current());
 
 					m_EndpointName = endpoint_name;
 					m_IsOpen = true;
@@ -135,7 +135,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::close()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> close", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::close", std::source_location::current());
 
 		boost::system::error_code ec;
 
@@ -148,7 +148,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::close(boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> close", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::close", std::source_location::current());
 
 		if (is_open())
 		{
@@ -166,7 +166,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 		if (m_ProtocolHandler)
 		{
-			auto shutdown_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> shutdown protocol", std::source_location::current());
+			auto shutdown_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::close -> shutdown_protocol", std::source_location::current());
 			LogTrace(Channel::Serial, "Shutting down protocol handler");
 			m_ProtocolHandler->Shutdown();
 		}
@@ -174,7 +174,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 		boost::system::error_code ignored;
 		if (m_Socket.is_open())
 		{
-			auto socket_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> shutdown socket", std::source_location::current());
+			auto socket_zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::close -> shutdown_socket", std::source_location::current());
 			LogTrace(Channel::Serial, "Shutting down TCP socket");
 			m_Socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored);
 			m_Socket.close(ignored);
@@ -185,7 +185,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::cancel()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> cancel", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::cancel", std::source_location::current());
 
 		boost::system::error_code ec;
 
@@ -198,7 +198,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::cancel(boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> cancel", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::cancel", std::source_location::current());
 
 		if (!is_open())
 		{
@@ -221,7 +221,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::set_baud_rate(uint32_t rate, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_baud_rate", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_baud_rate", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Setting baud rate: {}", rate));
 		m_Options.baud_rate = rate;
@@ -240,7 +240,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::set_character_size(uint8_t bits, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_character_size", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_character_size", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Setting character size: {}", bits));
 		m_Options.character_size = bits;
@@ -259,7 +259,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::set_flow_control(Serial::FlowControl fc, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_flow_control", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_flow_control", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Setting flow control: {}", static_cast<int>(fc)));
 		m_Options.flow_control = fc;
@@ -278,7 +278,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::set_parity(Serial::Parity p, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_parity", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_parity", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Setting parity: {}", static_cast<int>(p)));
 		m_Options.parity = p;
@@ -297,7 +297,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	void NetworkSerialPortImpl::set_stop_bits(Serial::StopBits sb, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> set_stop_bits", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::set_stop_bits", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("Setting stop bits: {}", static_cast<int>(sb)));
 		m_Options.stop_bits = sb;
@@ -316,7 +316,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	std::size_t NetworkSerialPortImpl::read_some(const boost::asio::mutable_buffer& b)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> read_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::read_some", std::source_location::current());
 
 		boost::system::error_code ec;
 		auto bytes = read_some(b, ec);
@@ -330,7 +330,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	std::size_t NetworkSerialPortImpl::read_some(const boost::asio::mutable_buffer& b, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> read_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::read_some", std::source_location::current());
 
 		if (!is_open())
 		{
@@ -357,7 +357,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	std::size_t NetworkSerialPortImpl::write_some(const boost::asio::const_buffer& b)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> write_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::write_some", std::source_location::current());
 
 		boost::system::error_code ec;
 		auto bytes = write_some(b, ec);
@@ -371,7 +371,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 	std::size_t NetworkSerialPortImpl::write_some(const boost::asio::const_buffer& b, boost::system::error_code& ec)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl -> write_some", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::write_some", std::source_location::current());
 
 		if (!is_open())
 		{

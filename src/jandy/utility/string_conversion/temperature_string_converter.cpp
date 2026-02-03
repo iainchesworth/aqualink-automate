@@ -13,7 +13,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string TemperatureStringConverter::REGEX_PATTERN{ R"(^([A-Za-z]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
+	const std::string TemperatureStringConverter::REGEX_PATTERN{ R"(^([A-Za-z0-9]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
 	const boost::regex TemperatureStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
 	TemperatureStringConverter::TemperatureStringConverter() noexcept :

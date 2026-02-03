@@ -14,7 +14,7 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP::Message WebRoute_Equipment_Version::OnRequest(const HTTP::Request& req)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("API /api/equipment/version", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_EquipmentVersion::OnRequest", std::source_location::current());
 
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 

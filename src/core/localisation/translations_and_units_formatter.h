@@ -6,6 +6,7 @@
 
 #include "formatters/temperature_formatter.h"
 #include "kernel/temperature.h"
+#include "logging/logging.h"
 
 namespace AqualinkAutomate::Localisation
 {
@@ -48,8 +49,8 @@ namespace AqualinkAutomate::Localisation
 				return std::format("{:F}", object);
 
 			default:
-				///FIXME - add a specific-to-localisation exception here.
-				throw;
+				LogWarning(Logging::Channel::Main, "Unsupported temperature unit in localisation formatter; falling back to Celsius");
+				return std::format("{:C}", object);
 			}
 		}
 	};

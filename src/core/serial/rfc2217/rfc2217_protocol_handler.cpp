@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::Initialize()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> Initialize", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::Initialize", std::source_location::current());
 
 		LogInfo(Channel::Serial, "Starting RFC2217 protocol initialization");
 
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::Shutdown()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> Shutdown", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::Shutdown", std::source_location::current());
 
 		LogInfo(Channel::Serial, "Shutting down RFC2217 protocol handler");
 
@@ -48,7 +48,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::InitiateNegotiation()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> InitiateNegotiation", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::InitiateNegotiation", std::source_location::current());
 
 		if (!m_Socket.is_open())
 		{
@@ -83,7 +83,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::set_baud_rate(uint32_t baud_rate)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> set_baud_rate", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::set_baud_rate", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("RFC2217: Setting baud rate to {}", baud_rate));
 
@@ -99,7 +99,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::set_character_size(uint8_t size)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> set_character_size", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::set_character_size", std::source_location::current());
 
 		LogDebug(Channel::Serial, std::format("RFC2217: Setting character size to {}", size));
 
@@ -114,7 +114,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::set_parity(Serial::Parity parity)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> set_parity", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::set_parity", std::source_location::current());
 
 		constexpr auto to_rfc2217_parity = [](Serial::Parity p) -> uint8_t
 			{
@@ -141,7 +141,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::set_stop_bits(Serial::StopBits stop_bits)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> set_stop_bits", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::set_stop_bits", std::source_location::current());
 
 		constexpr auto to_rfc2217_stop = [](Serial::StopBits s) -> uint8_t
 			{
@@ -168,7 +168,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::set_flow_control(Serial::FlowControl flow_control)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> set_flow_control", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::set_flow_control", std::source_location::current());
 
 		constexpr auto to_rfc2217_flow = [](Serial::FlowControl f) -> uint8_t
 			{
@@ -195,7 +195,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::SendCommand(uint8_t command, std::span<const uint8_t> data)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> SendCommand", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::SendCommand", std::source_location::current());
 
 		if (!m_Socket.is_open())
 		{
@@ -243,7 +243,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	void ProtocolHandler::HandleCommand(uint8_t command, std::span<const uint8_t> params)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> HandleCommand", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::HandleCommand", std::source_location::current());
 
 		LogTrace(Channel::Serial, std::format("Handling RFC2217 command 0x{:02X} with {} parameters", command, params.size()));
 
@@ -286,7 +286,7 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 	std::vector<uint8_t> ProtocolHandler::EscapeIACBytes(std::span<const uint8_t> data_to_escape)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217::ProtocolHandler -> EscapeIACBytes", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::EscapeIACBytes", std::source_location::current());
 
 		std::vector<uint8_t> escaped_data;
 		escaped_data.reserve(data_to_escape.size());

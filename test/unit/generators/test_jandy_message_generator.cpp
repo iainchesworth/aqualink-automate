@@ -62,6 +62,30 @@ public:
 				BOOST_TEST(!result.has_value());
 			}
 		};
+
+		Test_ChecksumFailure = [&](const TestReturnType& result) -> void
+		{
+			if (!result.has_value())
+			{
+				BOOST_TEST(make_error_code(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure) == result.error());
+			}
+			else
+			{
+				BOOST_TEST(!result.has_value());
+			}
+		};
+
+		Test_OverlappingPackets = [&](const TestReturnType& result) -> void
+		{
+			if (!result.has_value())
+			{
+				BOOST_TEST(make_error_code(ErrorCodes::Protocol_ErrorCodes::OverlappingPackets) == result.error());
+			}
+			else
+			{
+				BOOST_TEST(!result.has_value());
+			}
+		};
 	};
 
 	~JandyMessageGenerator_TestFixture()
@@ -94,6 +118,8 @@ public:
 	std::function<void(const TestReturnType& result)> Test_DataAvailableToProcess;
 	std::function<void(const TestReturnType& result)> Test_ValidMessageOfAnyType;
 	std::function<void(const TestReturnType& result)> Test_WaitingForMoreData;
+	std::function<void(const TestReturnType& result)> Test_ChecksumFailure;
+	std::function<void(const TestReturnType& result)> Test_OverlappingPackets;
 };
 
 BOOST_FIXTURE_TEST_SUITE(JandyMessageGenerator, JandyMessageGenerator_TestFixture);
@@ -155,14 +181,14 @@ BOOST_AUTO_TEST_CASE(InvalidPacketChecksumsInSerialData)
 		0x10, 0x02, 0xa3, 0x53, 0x00, 0x10, 0x03
 	});
 
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
 	StopTests(test_data, 0, "STOPPING TEST");
 
 	RunTests();
@@ -181,10 +207,10 @@ BOOST_AUTO_TEST_CASE(PacketStartsButIsIncomplete)
 		0x10, 0x02, 0x80, 0x00, 0x92, 0x10, 0x03
 	});
 
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - DATA AVAILABLE");
+	QueueTest(test_data, Test_OverlappingPackets, "Test Iteration - OVERLAPPING PACKETS");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 02");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 02");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - DATA AVAILABLE");
+	QueueTest(test_data, Test_OverlappingPackets, "Test Iteration - OVERLAPPING PACKETS");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 03");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 04");
 	StopTests(test_data, 0, "STOPPING TEST");

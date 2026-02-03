@@ -4,6 +4,7 @@
 #include <optional>
 #include <source_location>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 
@@ -12,7 +13,7 @@
 
 namespace AqualinkAutomate::Factory
 {
-    using ProfilingUnitGeneratorFunc = std::function<Types::ProfilingUnitTypePtr(const std::string&, const std::source_location&, Profiling::UnitColours)>;
+    using ProfilingUnitGeneratorFunc = std::function<Types::ProfilingUnitTypePtr(std::string_view, const std::source_location&, Profiling::UnitColours)>;
     using ProfilingUnitGenerators = std::tuple<ProfilingUnitGeneratorFunc, ProfilingUnitGeneratorFunc, ProfilingUnitGeneratorFunc>;
 
 	class ProfilingUnitFactory
@@ -35,9 +36,9 @@ namespace AqualinkAutomate::Factory
         void SetDesired(Types::ProfilerTypes type);
 
     public:
-        Types::ProfilingUnitTypePtr CreateDomain(const std::string& name, const std::source_location& src_loc = std::source_location::current(), Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
-        Types::ProfilingUnitTypePtr CreateFrame(const std::string& name, const std::source_location& src_loc = std::source_location::current(), Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
-        Types::ProfilingUnitTypePtr CreateZone(const std::string& name, const std::source_location& src_loc, Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
+        Types::ProfilingUnitTypePtr CreateDomain(std::string_view name, const std::source_location& src_loc = std::source_location::current(), Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
+        Types::ProfilingUnitTypePtr CreateFrame(std::string_view name, const std::source_location& src_loc = std::source_location::current(), Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
+        Types::ProfilingUnitTypePtr CreateZone(std::string_view name, const std::source_location& src_loc, Profiling::UnitColours colour = Profiling::UnitColours::NotSpecified);
 
     private:
         const ProfilingUnitGenerators& Get();

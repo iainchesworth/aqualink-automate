@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Pentair
 		auto pentair_settings_result = settings.Get<Pentair::Options::PentairSettings>();
 		if (!pentair_settings_result)
 		{
-			///FIXME
+			LogError(Channel::Main, "Failed to retrieve Pentair settings; Pentair equipment will not be configured");
 			return;
 		}
 
@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Pentair
 		auto equipment_hub = hub_locator.Find<Kernel::EquipmentHub>();
 		if (nullptr == equipment_hub)
 		{
-			///FIXME
+			LogError(Channel::Main, "Failed to locate EquipmentHub; Pentair equipment will not be configured");
 			return;
 		}
 

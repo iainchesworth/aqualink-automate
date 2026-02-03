@@ -8,8 +8,21 @@
 namespace AqualinkAutomate::Generators
 {
 
-	void PacketProcessing_GetPacketLocations(boost::circular_buffer<uint8_t>& serial_data, boost::circular_buffer<uint8_t>::iterator& p1s, boost::circular_buffer<uint8_t>::iterator& p1e, boost::circular_buffer<uint8_t>::iterator& p2s);
-	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& p1s, const boost::circular_buffer<uint8_t>::iterator& p1e, const boost::circular_buffer<uint8_t>::iterator& p2s);
+	struct PacketLocations
+	{
+		using Iterator = boost::circular_buffer<uint8_t>::iterator;
+
+		Iterator p1_start;
+		Iterator p1_end;
+		Iterator p2_start;
+
+		bool HasPacketStart;
+		bool HasPacketEnd;
+		bool HasSecondPacketStart;
+	};
+
+	PacketLocations PacketProcessing_FindAllPacketLocations(boost::circular_buffer<uint8_t>& serial_data);
+	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations);
 
 }
 // namespace AqualinkAutomate::Generators

@@ -21,7 +21,16 @@ BOOST_AUTO_TEST_CASE(TestAckTypes)
 {
     BOOST_CHECK(static_cast<uint8_t>(AckTypes::ACK_IAQTouch) == 0x00);
     BOOST_CHECK(static_cast<uint8_t>(AckTypes::ACK_PDA) == 0x40);
-    ///FIXME add cases for other enum values
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_Normal) == 0x00);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_ScreenBusy_Scroll) == 0x01);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_ScreenBusy_Block) == 0x03);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_Normal) == 0x80);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_ScreenBusy_Scroll) == 0x81);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_ScreenBusy_Block) == 0x83);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_3F) == 0x3F);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_70) == 0x70);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_72) == 0x72);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown) == 0xFF);
 }
 
 BOOST_AUTO_TEST_CASE(TestJandyMessage_AckConstruction)

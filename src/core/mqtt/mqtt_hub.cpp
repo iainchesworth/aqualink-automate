@@ -233,7 +233,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::PublishSystemStatus()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT Publish System", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishSystemStatus", std::source_location::current());
 
 		try
 		{
@@ -251,7 +251,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::PublishPoolStatus()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT Publish Pool", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishPoolStatus", std::source_location::current());
 
 		try
 		{
@@ -269,7 +269,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::PublishDeviceStatus()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT Publish Devices", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishDeviceStatus", std::source_location::current());
 
 		try
 		{
@@ -287,7 +287,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::PublishStatistics()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT Publish Stats", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishStatistics", std::source_location::current());
 
 		try
 		{
@@ -305,7 +305,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::HandleMessage(const std::string& topic, const std::string& payload)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT HandleMessage", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::HandleMessage", std::source_location::current());
 		zone->Text(topic);
 		zone->Value(payload.size());
 
@@ -337,7 +337,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::ProcessCommand(const std::string& topic, const nlohmann::json& payload)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MQTT ProcessCommand", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::ProcessCommand", std::source_location::current());
 		zone->Text(topic);
 
 		std::string command = ExtractCommand(topic);
@@ -377,8 +377,8 @@ namespace AqualinkAutomate::Mqtt
 		if (auto data_hub = m_DataHub.lock())
 		{
 			info["equipment"] = {
-				{"model_number", data_hub->EquipmentVersions.ModelNumber},
-				{"firmware_revision", data_hub->EquipmentVersions.FirmwareRevision}
+				{"model_number", data_hub->EquipmentVersions.ModelNumber()},
+				{"firmware_revision", data_hub->EquipmentVersions.FirmwareRevision()}
 			};
 		}
 

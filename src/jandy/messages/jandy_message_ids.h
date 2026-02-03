@@ -15,6 +15,10 @@ namespace AqualinkAutomate::Messages
 		Message = 0x03,
 		MessageLong = 0x04,
 
+		// Heater commands
+		Heater_Request = 0x0C,
+		Heater_Status = 0x0D,
+
 		// Serial Adapter commands
 		RSSA_DevStatus = 0x13,
 		RSSA_DevReady = 0x07,
@@ -30,28 +34,35 @@ namespace AqualinkAutomate::Messages
 		PDA_ShiftLines = 0x0F,
 		PDA_HighlightChars = 0x10,
 
+		// ePump commands
+		EPUMP_Status = 0x1F,
+		EPUMP_RPM = 0x44,
+		EPUMP_Watts = 0x45,
+
+		// Chemlink commands
+		Chemlink_Response = 0x21,
+
 		// IAQ commands
+		IAQ_PageStart = 0x23,
+		IAQ_PageButton = 0x24,
 		IAQ_PageMessage = 0x25,
 		IAQ_TableMessage = 0x26,
-		IAQ_PageButton = 0x24,
-		IAQ_PageStart = 0x23,
 		IAQ_PageEnd = 0x28,
 		IAQ_StartUp = 0x29,
+		IAQ_MessageLong = 0x2C,
+		IAQ_TitleMessage = 0x2D,
 		IAQ_Poll = 0x30,
 		IAQ_ControlReady = 0x31,
 		IAQ_PageContinue = 0x40,
-		IAQ_MessageLong = 0x2C,
-
-		// Aqualink Touch
-		AqualinkTouch_DeviceStatus = 0x72,
+		IAQ_MainStatus = 0x70,
+		IAQ_OneTouchStatus = 0x71,
+		IAQ_AuxStatus = 0x72,
+		IAQ_CommandReady = 0x73,
 
 		// Unknown ids
 		Unknown_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
-		Unknown_IAQ_2D = 0x2D,
 		Unknown_IAQ_53 = 0x53,
-		Unknown_IAQ_70 = 0x70,
-		Unknown_IAQ_73 = 0x73,
 		Unknown_ReadyControl = 0x80,
 		Unknown = 0xFF
 	};

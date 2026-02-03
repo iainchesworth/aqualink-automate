@@ -28,7 +28,7 @@ namespace AqualinkAutomate::HTTP
 
     HTTP::Message WebRoute_Equipment_Buttons::OnRequest(const HTTP::Request& req)
     {
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("API /api/equipment/buttons", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_EquipmentButtons::OnRequest", std::source_location::current());
 
 		switch (req.method())
 		{

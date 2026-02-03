@@ -44,6 +44,19 @@ namespace AqualinkAutomate::Kernel
 		};
 
 		SerialMetrics Serial;
+
+	public:
+		struct MessageErrorMetrics
+		{
+			uint64_t ChecksumFailures{ 0 };
+			uint64_t DeserializationFailures{ 0 };
+			uint64_t InvalidPacketFormat{ 0 };
+			uint64_t GeneratorFailures{ 0 };
+			uint64_t OverlappingPackets{ 0 };
+			uint64_t BufferOverflows{ 0 };
+		};
+
+		MessageErrorMetrics MessageErrors;
 	};
 
 }

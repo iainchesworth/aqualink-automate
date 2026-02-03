@@ -7,7 +7,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 
     void PhysicalSerialPortImpl::set_read_timeout(std::chrono::milliseconds timeout, boost::system::error_code& ec)
     {
-        auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PhysicalSerialPortImpl -> set_read_timeout", std::source_location::current());
+        auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PhysicalSerialPortImpl::set_read_timeout", std::source_location::current());
 
         auto native_handle = m_SerialPort.native_handle();
         auto timeout_ms = static_cast<unsigned long>(timeout.count());

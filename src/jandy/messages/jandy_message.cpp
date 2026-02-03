@@ -106,36 +106,40 @@ namespace AqualinkAutomate::Messages
 		if (!PacketSizeIsValid(message_bytes))
 		{
 			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet size is not valid");
+			return false;
+		}
+
+		std::vector<uint8_t> filtered_data(message_bytes.size());
+		std::transform(message_bytes.begin(), message_bytes.end(), filtered_data.begin(),
+			[](std::byte b)
+			{
+				return static_cast<uint8_t>(b);
+			}
+		);
+
+		return DeserializeFromContiguousData(std::move(filtered_data));
+	}
+
+	bool JandyMessage::DeserializeFromContiguousData(std::vector<uint8_t>&& contiguous_data)
+	{
+		Utility::JandyPacket_NullCharHandler_Deserialization(contiguous_data);
+
+		if (!PacketFramingIsValid(contiguous_data))
+		{
+			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet framing is not valid");
+		}
+		else if (!PacketChecksumIsValid(contiguous_data))
+		{
+			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet checksum is not valid");
 		}
 		else
 		{
-			std::vector<uint8_t> filtered_data(message_bytes.size());
-			std::transform(message_bytes.begin(), message_bytes.end(), filtered_data.begin(),
-				[](std::byte b)
-				{
-					return static_cast<uint8_t>(b);
-				}
-			);
+			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(contiguous_data[Index_DestinationId])));
+			m_RawId = static_cast<uint8_t>(contiguous_data[Index_MessageType]);
+			m_MessageLength = contiguous_data.size();
+			m_ChecksumValue = static_cast<uint8_t>(contiguous_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
 
-			Utility::JandyPacket_NullCharHandler_Deserialization(filtered_data);
-
-			if (!PacketFramingIsValid(filtered_data))
-			{
-				LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet framing is not valid");
-			}
-			else if (!PacketChecksumIsValid(filtered_data))
-			{
-				LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet checksum is not valid");
-			}
-			else 
-			{
-				m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(filtered_data[Index_DestinationId])));
-				m_RawId = static_cast<uint8_t>(filtered_data[Index_MessageType]);
-				m_MessageLength = filtered_data.size();
-				m_ChecksumValue = static_cast<uint8_t>(filtered_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
-
-				return DeserializeContents(filtered_data);
-			}
+			return DeserializeContents(contiguous_data);
 		}
 
 		return false;

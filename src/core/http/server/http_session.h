@@ -13,6 +13,7 @@
 #include <boost/cobalt/promise.hpp>
 #include <boost/system/error_code.hpp>
 
+#include "formatters/asio_endpoint_formatter.h"
 #include "http/server/websocket_session.h"
 #include "http/server/server_types.h"
 #include "logging/logging.h"
@@ -54,7 +55,7 @@ namespace AqualinkAutomate::HTTP
 
 			while (!co_await boost::cobalt::this_coro::cancelled)
 			{
-				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HTTP Request", std::source_location::current());
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpSession::on_read", std::source_location::current());
 
 				if (boost::beast::websocket::is_upgrade(parser->get()))
 				{
@@ -69,7 +70,10 @@ namespace AqualinkAutomate::HTTP
 				else
 				{
 					zone->Text(std::string(parser->get().target()));
-					LogTrace(Channel::Web, "HTTP request from client; handling request...");
+					LogDebug(Channel::Web, std::format("HTTP {} {} from {}",
+						std::string(parser->get().method_string()),
+						std::string(parser->get().target()),
+						boost::beast::get_lowest_layer(stream).socket().remote_endpoint()));
 
 					auto msg = Routing::HTTP_OnRequest(parser->release());
 					bool wants_keep_alive = msg.keep_alive();

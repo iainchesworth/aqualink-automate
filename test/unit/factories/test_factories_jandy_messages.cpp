@@ -19,6 +19,8 @@
 #include "jandy/messages/jandy_message_unknown.h"
 #include "jandy/messages/jandy_message_ids.h"
 
+#include "support/unit_test_ostream_support.h"
+
 using namespace AqualinkAutomate::Factory;
 using namespace AqualinkAutomate::Messages;
 using namespace AqualinkAutomate::Types;
@@ -29,7 +31,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryRegistrationCount)
 {
     // Verify the factory has registered the expected number of message types
     BOOST_CHECK_GT(JandyMessageFactoryT::RegisteredCount(), 0);
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 33); // Based on registration file
+    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 40); // Based on registration file
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryHotPathCount)
@@ -142,7 +144,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_SerializationRoundTrip_Ack)
     BOOST_REQUIRE(ack_message != nullptr);
 
     // Verify contents
-    ///FIXME missing formatter BOOST_CHECK_EQUAL(ack_message->AckType(), AckTypes::ACK_IAQTouch);
+    BOOST_CHECK_EQUAL(ack_message->AckType(), AckTypes::ACK_IAQTouch);
     BOOST_CHECK_EQUAL(ack_message->Command(), 0x10);
 }
 

@@ -61,6 +61,24 @@ namespace AqualinkAutomate::HTTP::Responses
                 case ".js"_sh:
                     return "application/javascript";
 
+                case ".svg"_sh:
+                    return "image/svg+xml";
+
+                case ".json"_sh:
+                    return "application/json";
+
+                case ".png"_sh:
+                    return "image/png";
+
+                case ".ico"_sh:
+                    return "image/x-icon";
+
+                case ".woff"_sh:
+                    return "font/woff";
+
+                case ".woff2"_sh:
+                    return "font/woff2";
+
                 default:
                     return "application/text";
                 }
