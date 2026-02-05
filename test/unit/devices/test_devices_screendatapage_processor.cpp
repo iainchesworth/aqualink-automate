@@ -11,13 +11,13 @@ BOOST_AUTO_TEST_SUITE(ScreenDataPageProcessor_TestSuite)
 
 BOOST_AUTO_TEST_CASE(TestPageType)
 {
-    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_Home, { 0, "Home" }, [](const ScreenDataPage&) {});
-    BOOST_CHECK_EQUAL(processor.PageType(), ScreenDataPageTypes::Page_Home);
+    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_System, { 0, "Home" }, [](const ScreenDataPage&) {});
+    BOOST_CHECK_EQUAL(processor.PageType(), ScreenDataPageTypes::Page_System);
 }
 
 BOOST_AUTO_TEST_CASE(TestCanProcess)
 {
-    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_Home, { 0, "Home" }, [](const ScreenDataPage&) {});
+    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_System, { 0, "Home" }, [](const ScreenDataPage&) {});
     ScreenDataPage page(5);
     
     page[0].Text = "The Home Page";
@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(TestProcess)
 {
     bool processed = false;
 
-    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_Home, { 0, "Home" }, [&processed](const ScreenDataPage&) { processed = true; });
+    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_System, { 0, "Home" }, [&processed](const ScreenDataPage&) { processed = true; });
     ScreenDataPage page(5);
     
     page[0].Text = "The Home Page";
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(TestProcess)
 
 BOOST_AUTO_TEST_CASE(TestPageProcessorOutOfRangeLineId)
 {
-    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_Home, { 10, "Home" }, [](const ScreenDataPage&) {});
+    ScreenDataPage_Processor processor(ScreenDataPageTypes::Page_System, { 10, "Home" }, [](const ScreenDataPage&) {});
 
     ScreenDataPage page(5);
     page[0].Text = "Home";

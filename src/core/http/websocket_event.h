@@ -8,6 +8,7 @@
 
 #include "http/websocket_event_types.h"
 #include "kernel/hub_events/data_hub_config_event.h"
+#include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/hub_events/equipment_hub_system_event.h"
@@ -26,12 +27,14 @@ namespace AqualinkAutomate::HTTP
 
 	public:
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_event);
+		WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event);
 		WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_event);
 		WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event);
 
 	public:
+		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event);
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event);
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event);
 		WebSocket_Event& operator=(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event);

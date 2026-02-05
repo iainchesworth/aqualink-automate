@@ -73,7 +73,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
                 m_Visited.insert(target_id);
 
                 const auto& vertex_desc = m_Graph.m_VertexMap.at(target_id);
-                m_CurrentStep = { { target_id, m_Graph.m_Graph[vertex_desc] }, edge_data };
+                m_CurrentStep = { m_Graph.m_Graph[vertex_desc], edge_data };
                 return *this;
             }
         }

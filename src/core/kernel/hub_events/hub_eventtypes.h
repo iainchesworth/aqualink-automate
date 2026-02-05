@@ -7,7 +7,8 @@ namespace AqualinkAutomate::Kernel
 	{
 		Chemistry,
 		Temperature,
-		ServiceStatus
+		ServiceStatus,
+		ButtonStateChange
 	};
 
 }

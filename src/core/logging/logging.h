@@ -49,6 +49,9 @@ namespace AqualinkAutomate::Logging
 			case Channel::Mqtt:
 				return GlobalLogger_Mqtt::get();
 
+			case Channel::Navigation:
+				return GlobalLogger_Navigation::get();
+
 			case Channel::Options:
 				return GlobalLogger_Options::get();
 
@@ -61,7 +64,10 @@ namespace AqualinkAutomate::Logging
 			case Channel::Protocol:
 				return GlobalLogger_Protocol::get();
 
-			case Channel::Serial: 
+			case Channel::Scraping:
+				return GlobalLogger_Scraping::get();
+
+			case Channel::Serial:
 				return GlobalLogger_Serial::get();
 
 			case Channel::Signals:

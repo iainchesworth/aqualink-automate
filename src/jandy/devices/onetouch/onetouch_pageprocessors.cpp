@@ -21,11 +21,11 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	void OneTouchDevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
+	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Home", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_System", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Home page.", DeviceId()));
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_System page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 = Paddock Pools
@@ -142,13 +142,6 @@ namespace AqualinkAutomate::Devices
 		*/
 	}
 
-	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_System", std::source_location::current());
-
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_System page.", DeviceId()));
-	}
-	
 	void OneTouchDevice::PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_EquipmentOnOff", std::source_location::current());

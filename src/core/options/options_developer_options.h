@@ -36,6 +36,7 @@ namespace AqualinkAutomate::Options::Developer
 		bool trace_logging_enabled;
 		bool dev_mode_enabled;
 		std::string replay_file;
+		std::string recording_file;
 	}
 	DeveloperSettings;
 
@@ -44,6 +45,7 @@ namespace AqualinkAutomate::Options::Developer
 	private:
 		AppOptionPtr OPTION_DEVMODE{ make_appoption("dev-mode", "Enable developer mode", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_DEVREPLAYFILE{ make_appoption("replay-filename", "Developer replay file from which to source test data", boost::program_options::value<std::string>()) };
+		AppOptionPtr OPTION_DEVRECORDFILE{ make_appoption("record-serial", "Record serial port data to file for later replay", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_LOGLEVEL_MAIN{ make_appoption("loglevel-main", "Set the logging level for Channel::Main", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_CERTIFICATES{ make_appoption("loglevel-certificates", "Set the logging level for Channel::Certificates", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_COROUTINES{ make_appoption("loglevel-coroutines", "Set the logging level for Channel::Coroutines", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -51,10 +53,12 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_LOGLEVEL_EQUIPMENT{ make_appoption("loglevel-equipment", "Set the logging level for Channel::Equipment", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_EXCEPTIONS{ make_appoption("loglevel-exceptions", "Set the logging level for Channel::Exceptions", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_MESSAGES{ make_appoption("loglevel-messages", "Set the logging level for Channel::Messages", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+		AppOptionPtr OPTION_LOGLEVEL_NAVIGATION{ make_appoption("loglevel-navigation", "Set the logging level for Channel::Navigation", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_OPTIONS{ make_appoption("loglevel-options", "Set the logging level for Channel::Options", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PLATFORM{ make_appoption("loglevel-platform", "Set the logging level for Channel::Platform", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PROFILING{ make_appoption("loglevel-profiling", "Set the logging level for Channel::Profiling", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PROTCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+		AppOptionPtr OPTION_LOGLEVEL_SCRAPING{ make_appoption("loglevel-scraping", "Set the logging level for Channel::Scraping", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_SERIAL{ make_appoption("loglevel-serial", "Set the logging level for Channel::Serial", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_SIGNALS{ make_appoption("loglevel-signals", "Set the logging level for Channel::Signals", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_WEB{ make_appoption("loglevel-web", "Set the logging level for Channel::Web", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -64,6 +68,7 @@ namespace AqualinkAutomate::Options::Developer
 		{
 			OPTION_DEVMODE,
 			OPTION_DEVREPLAYFILE,
+			OPTION_DEVRECORDFILE,
 			OPTION_LOGLEVEL_MAIN,
 			OPTION_LOGLEVEL_CERTIFICATES,
 			OPTION_LOGLEVEL_COROUTINES,
@@ -71,10 +76,12 @@ namespace AqualinkAutomate::Options::Developer
 			OPTION_LOGLEVEL_EQUIPMENT,
 			OPTION_LOGLEVEL_EXCEPTIONS,
 			OPTION_LOGLEVEL_MESSAGES,
+			OPTION_LOGLEVEL_NAVIGATION,
 			OPTION_LOGLEVEL_OPTIONS,
 			OPTION_LOGLEVEL_PLATFORM,
 			OPTION_LOGLEVEL_PROFILING,
 			OPTION_LOGLEVEL_PROTCOL,
+			OPTION_LOGLEVEL_SCRAPING,
 			OPTION_LOGLEVEL_SERIAL,
 			OPTION_LOGLEVEL_SIGNALS,
 			OPTION_LOGLEVEL_WEB,

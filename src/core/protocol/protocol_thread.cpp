@@ -134,14 +134,19 @@ namespace AqualinkAutomate::Protocol
 
 			total_bytes_read += bytes_read;
 
+			std::size_t bytes_discarded = 0;
 			for (std::size_t i = 0; i < bytes_read; ++i)
 			{
 				if (m_SerialBuffer.full())
 				{
-					LogWarning(Channel::Protocol, "Serial circular buffer overflow — oldest byte discarded");
+					++bytes_discarded;
 					if (m_StatisticsHub) { ++m_StatisticsHub->MessageErrors.BufferOverflows; }
 				}
 				m_SerialBuffer.push_back(m_ReadBuffer[i]);
+			}
+			if (bytes_discarded > 0)
+			{
+				LogWarning(Channel::Protocol, std::format("Serial circular buffer overflow - {} bytes discarded", bytes_discarded));
 			}
 		}
 

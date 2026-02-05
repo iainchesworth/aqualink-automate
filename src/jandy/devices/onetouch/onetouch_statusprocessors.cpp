@@ -7,7 +7,9 @@
 #include "logging/logging.h"
 #include "devices/onetouch_device.h"
 #include "utility/string_manipulation.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 #include "utility/to_number.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -104,6 +106,11 @@ namespace AqualinkAutomate::Devices
 				// individual pump identification requires Intelliflo-specific messages.
 				LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_FilterPump setting filter pump status trait to '{}'", DeviceId(), magic_enum::enum_name(Kernel::PumpStatuses::Running)));
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::PumpStatuses::Running);
+
+				// Signal that a button state change has occurred.
+				auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(pump);
+				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string);
+				m_DataHub->ConfigUpdateSignal(update_event);
 			}
 		}
 	}
@@ -151,7 +158,13 @@ namespace AqualinkAutomate::Devices
 			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_PoolHeat setting Pool Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
-			m_DataHub->Devices.FindByLabel(pool_heater_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+			auto heater = m_DataHub->Devices.FindByLabel(pool_heater_label).front();
+			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 
@@ -198,7 +211,13 @@ namespace AqualinkAutomate::Devices
 			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SpaHeat setting Spa Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
-			m_DataHub->Devices.FindByLabel(spa_heater_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+			auto heater = m_DataHub->Devices.FindByLabel(spa_heater_label).front();
+			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 
@@ -245,7 +264,13 @@ namespace AqualinkAutomate::Devices
 			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SolarHeat setting Solar Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
-			m_DataHub->Devices.FindByLabel(solar_heater_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+			auto heater = m_DataHub->Devices.FindByLabel(solar_heater_label).front();
+			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 
@@ -292,7 +317,13 @@ namespace AqualinkAutomate::Devices
 			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump setting Heat Pump Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
-			m_DataHub->Devices.FindByLabel(heat_pump_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+			auto heater = m_DataHub->Devices.FindByLabel(heat_pump_label).front();
+			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 
@@ -339,7 +370,13 @@ namespace AqualinkAutomate::Devices
 			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller setting Chiller Cooling status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
-			m_DataHub->Devices.FindByLabel(chiller_label).front()->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+			auto chiller = m_DataHub->Devices.FindByLabel(chiller_label).front();
+			chiller->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(chiller);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chiller->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 
@@ -462,9 +499,14 @@ namespace AqualinkAutomate::Devices
 			// "Check AquaPure" on the Equipment Status page is a binary alert;
 			// specific error codes are decoded from AquaRite RS-485 messages.
 			// Flag the chlorinator status so consumers know there is a problem.
-			auto chlorinators = m_DataHub->Devices.FindByLabel(chlorinator_label);
+			auto chlorinator = m_DataHub->Devices.FindByLabel(chlorinator_label).front();
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator status to Unknown (check system alert)", DeviceId()));
-			chlorinators.front()->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Unknown);
+			chlorinator->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Unknown);
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(chlorinator);
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chlorinator->Id(), status_string);
+			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
 

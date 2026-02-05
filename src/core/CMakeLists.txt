@@ -23,6 +23,7 @@ target_sources(
 	developer/debug_tools.cpp
 	developer/firewall_manager.cpp
 	developer/mock_serial_port_impl.cpp
+	developer/recording_serial_port_impl.cpp
 	developer/serial_port_options.cpp
 	developer/signal_connection_tracker.cpp
 	devices/device_status.cpp 
@@ -133,6 +134,7 @@ target_sources(
 	kernel/system_boards.cpp
 	kernel/temperature.cpp 
 	kernel/hub_events/data_hub_config_event.cpp
+	kernel/hub_events/data_hub_config_event_button_state_change.cpp
 	kernel/hub_events/data_hub_config_event_chemistry.cpp
 	kernel/hub_events/data_hub_config_event_temperature.cpp
 	kernel/hub_events/equipment_hub_system_event.cpp

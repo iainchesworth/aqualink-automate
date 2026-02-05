@@ -13,6 +13,8 @@
 #include "certificates/certificate_management.h"
 #include "developer/firewall_manager.h"
 #include "developer/mock_serial_port_impl.h"
+#include "developer/recording_serial_port_impl.h"
+#include "interfaces/iserialportimpl.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "http/server/http_server.h"
@@ -199,7 +201,14 @@ int main(int argc, char* argv[])
 				{
 					LogDebug(Channel::Main, std::format("Using a physical serial port ({})", serial_settings.serial_port));
 
-					auto serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::PhysicalSerialPortImpl>(executor);
+					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::PhysicalSerialPortImpl>(executor);
+
+					if (!developer_settings.recording_file.empty())
+					{
+						LogInfo(Channel::Serial, std::format("Enabling serial recording to: {}", developer_settings.recording_file));
+						serial_port_impl = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(serial_port_impl), developer_settings.recording_file);
+					}
+
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
 					AqualinkAutomate::Serial::Initialise(settings, serial_port);
 				}
@@ -207,7 +216,14 @@ int main(int argc, char* argv[])
 				{
 					LogDebug(Channel::Main, std::format("Using a remote serial port ({})", serial_settings.remote_serial_port));
 
-					auto serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
+					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
+
+					if (!developer_settings.recording_file.empty())
+					{
+						LogInfo(Channel::Serial, std::format("Enabling serial recording to: {}", developer_settings.recording_file));
+						serial_port_impl = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(serial_port_impl), developer_settings.recording_file);
+					}
+
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
 					AqualinkAutomate::Serial::Initialise(settings, serial_port);
 				}

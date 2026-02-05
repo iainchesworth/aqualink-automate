@@ -9,9 +9,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	void PDADevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
+	void PDADevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "PDA device is processing a PageProcessor_Home page.");
+		LogDebug(Channel::Devices, "PDA device is processing a PageProcessor_System page.");
 
 		/*
 			Info:   PDA Menu Line 00 =

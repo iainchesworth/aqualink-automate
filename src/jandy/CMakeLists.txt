@@ -24,9 +24,9 @@ target_sources(
 	devices/jandy_device_id.cpp 
 	devices/jandy_device_types.cpp
 	devices/jandy_emulated_device_types.cpp 
-	devices/capabilities/emulated.cpp 
+	devices/capabilities/emulated.cpp
 	devices/capabilities/restartable.cpp
-	devices/capabilities/scrapeable.cpp 
+	devices/capabilities/scrapeable.cpp
 	devices/capabilities/screen.cpp 
 	devices/keypad_device.cpp 
 	devices/onetouch_device.cpp 
@@ -34,10 +34,13 @@ target_sources(
 	devices/serial_adapter_device.cpp 
 	devices/keypad/keypad_messageprocessors.cpp 
 	devices/keypad/keypad_pageprocessors.cpp 
-	devices/onetouch/onetouch_messageprocessors.cpp 
-	devices/onetouch/onetouch_pageprocessors.cpp 
-	devices/onetouch/onetouch_screenscraping.cpp 
-	devices/onetouch/onetouch_statusprocessors.cpp 
+	devices/onetouch/onetouch_messageprocessors.cpp
+	devices/onetouch/onetouch_pageprocessors.cpp
+	devices/onetouch/onetouch_statusprocessors.cpp
+	navigation/menu_model.cpp
+	navigation/navigator.cpp
+	navigation/onetouch_menu_model.cpp
+	navigation/scrape_tasks.cpp 
 	devices/pda/pda_messageprocessors.cpp 	 
 	devices/pda/pda_pageprocessors.cpp 
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 

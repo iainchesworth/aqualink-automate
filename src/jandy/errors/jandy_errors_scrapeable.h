@@ -14,7 +14,12 @@ namespace AqualinkAutomate::ErrorCodes
 		WaitingForMessage,
 		NoStepPossible,
 		NoGraphBeingScraped,
-		UnknownScrapeError
+		UnknownScrapeError,
+		PreCommandValidationFailed,
+		PostCommandValidationFailed,
+		RecoveryInProgress,
+		RecoveryComplete,
+		MaxRecoveryAttemptsExceeded
 	};
 
 	class Scrapeable_ErrorCategory : public boost::system::error_category

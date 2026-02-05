@@ -19,10 +19,13 @@ namespace AqualinkAutomate::Logging
 			{Channel::Exceptions, DEFAULT_SEVERITY},
 			{Channel::Main, DEFAULT_SEVERITY},
 			{Channel::Messages, DEFAULT_SEVERITY},
+			{Channel::Mqtt, DEFAULT_SEVERITY},
+			{Channel::Navigation, DEFAULT_SEVERITY},
 			{Channel::Options, DEFAULT_SEVERITY},
 			{Channel::Platform, DEFAULT_SEVERITY},
 			{Channel::Profiling, DEFAULT_SEVERITY},
 			{Channel::Protocol, DEFAULT_SEVERITY},
+			{Channel::Scraping, DEFAULT_SEVERITY},
 			{Channel::Serial, DEFAULT_SEVERITY},
 			{Channel::Signals, DEFAULT_SEVERITY},
 			{Channel::Web, DEFAULT_SEVERITY}

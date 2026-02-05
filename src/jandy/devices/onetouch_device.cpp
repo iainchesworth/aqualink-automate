@@ -6,6 +6,7 @@
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
 #include "formatters/jandy_device_formatters.h"
+#include "navigation/onetouch_menu_model.h"
 #include "utility/screen_data_page_processor.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -19,18 +20,9 @@ namespace AqualinkAutomate::Devices
 		JandyController(device_id, hub_locator),
 		Capabilities::Restartable(ONETOUCH_TIMEOUT_DURATION),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),
-		Capabilities::Scrapeable
-		(
-			*device_id,
-			{
-				{ ONETOUCH_AUX_LABELS_NAV_SCRAPER, ONETOUCH_AUX_LABELS_NAV_SCRAPER_GRAPH },
-				{ ONETOUCH_AUX_LABELS_TEXT_SCRAPER, ONETOUCH_AUX_LABELS_TEXT_SCRAPER_GRAPH },
-				{ ONETOUCH_CONFIG_INIT_SCRAPER, ONETOUCH_CONFIG_INIT_SCRAPER_GRAPH }
-			},
-			JandyMessage_Status{}
-		),
 		Capabilities::Emulated(is_emulated),
-		m_StartUpScrapeGraphsIt(STARTUP_SCRAPE_GRAPHS.cbegin()),
+		m_MenuModel(Navigation::CreateOneTouchMenuModel()),
+		m_Navigator(std::make_unique<Navigation::Navigator>(m_MenuModel)),
 		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("OneTouchDevice")))
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::OneTouchDevice", std::source_location::current());
@@ -41,16 +33,16 @@ namespace AqualinkAutomate::Devices
 
 		PageProcessors(
 			{
-				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Home, { 9, "Equipment ON/OFF" }, std::bind(&OneTouchDevice::PageProcessor_Home, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_System, { 9, "Equipment ON/OFF" }, std::bind(&OneTouchDevice::PageProcessor_System, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Service, { 3, "Service Mode" }, std::bind(&OneTouchDevice::PageProcessor_Service, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_TimeOut, { 3, "Timeout Mode" }, std::bind(&OneTouchDevice::PageProcessor_TimeOut, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_OneTouch, { 11, "SYSTEM" }, std::bind(&OneTouchDevice::PageProcessor_OneTouch, this, std::placeholders::_1)),
-				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_System, { 4, "Jandy AquaLinkRS" }, std::bind(&OneTouchDevice::PageProcessor_System, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 11, "More" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
-			Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 0, "Filter Pump" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 0, "Filter Pump" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentStatus, { 0, "EQUIPMENT STATUS" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentStatus, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SelectSpeed, { 0, "Select Speed" }, std::bind(&OneTouchDevice::PageProcessor_SelectSpeed, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_MenuHelp, { 0, "Menu" }, std::bind(&OneTouchDevice::PageProcessor_MenuHelp, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_HelpSubmenu, { 1, "Keys" }, std::bind(&OneTouchDevice::PageProcessor_HelpSubmenu, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetTemperature, { 0, "Set Temp" }, std::bind(&OneTouchDevice::PageProcessor_SetTemperature, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetTime, { 0, "Set Time" }, std::bind(&OneTouchDevice::PageProcessor_SetTime, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SystemSetup, { 0, "System Setup" }, std::bind(&OneTouchDevice::PageProcessor_SystemSetup, this, std::placeholders::_1)),
@@ -99,11 +91,20 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::ProcessControllerUpdates()
 	{
+		// Non-Status message variant - don't send key commands
+		ProcessControllerUpdates(false);
+	}
+
+	void OneTouchDevice::ProcessControllerUpdates(bool is_status_message)
+	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates", std::source_location::current());
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): ProcessControllerUpdates called: state={}", DeviceId(), magic_enum::enum_name(m_OpState)));
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): ProcessControllerUpdates called: state={}, is_status={}, pending_cmd={}",
+			DeviceId(), magic_enum::enum_name(m_OpState), is_status_message, magic_enum::enum_name(m_KeyCommand_ToSend)));
 
-		m_KeyCommand_ToSend = KeyCommands::NoKeyCommand;
+		// NOTE: Do NOT reset m_KeyCommand_ToSend here. Commands can only be sent in
+		// response to Status messages. If a command is set during a non-Status message
+		// (e.g., MessageLong/Highlight), it must persist until the next Status message.
 
 		// Non-emulated devices should not run the scraping state machine; they
 		// passively observe screens driven by the physical device.  Skip straight
@@ -125,13 +126,11 @@ namespace AqualinkAutomate::Devices
 			break;
 		}
 
-		case OperatingStates::ColdStart:
-			[[fallthrough]];
-		case OperatingStates::WarmStart:
+		case OperatingStates::Scraping:
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> cold_warm_start", std::source_location::current());
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing {} state", DeviceId(), magic_enum::enum_name(m_OpState)));
-			Scraping_ProcessStep_ColdAndWarmStart();
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> scraping", std::source_location::current());
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing Scraping state", DeviceId()));
+			Scraping_ProcessStep();
 			break;
 		}
 
@@ -139,6 +138,14 @@ namespace AqualinkAutomate::Devices
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> normal_operation", std::source_location::current());
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing NormalOperation state", DeviceId()));
+			break;
+		}
+
+		case OperatingStates::ScrapingFaulted:
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> scraping_faulted", std::source_location::current());
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): ScrapingFaulted state - device in unknown state, no commands will be sent", DeviceId()));
+			// Do not send any commands - device state is unknown
 			break;
 		}
 
@@ -150,12 +157,25 @@ namespace AqualinkAutomate::Devices
 		}
 		}
 
-		if (m_KeyCommand_ToSend != KeyCommands::NoKeyCommand)
+		// Key commands can ONLY be sent in response to Status messages.
+		// The controller ignores key commands in ACKs for other message types.
+		if (is_status_message && m_KeyCommand_ToSend != KeyCommands::NoKeyCommand)
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch({}) : Sending key command: {}", DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
+			LogTrace(Channel::Devices, std::format("OneTouch({}) : Sending key command in Status ACK: {}", DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
+			// Key commands must be sent with V1_Normal ACK type - the controller ignores
+			// key commands in V2_Normal (0x80) ACKs.
+			Signal_AckMessage(AckTypes::V1_Normal, m_KeyCommand_ToSend);
+			// Clear the command after sending to prevent repeated sends
+			m_KeyCommand_ToSend = KeyCommands::NoKeyCommand;
 		}
-
-		Signal_AckMessage(m_AckType_ToSend, m_KeyCommand_ToSend);
+		else
+		{
+			if (m_KeyCommand_ToSend != KeyCommands::NoKeyCommand)
+			{
+				LogDebug(Channel::Devices, std::format("OneTouch({}) : Key command {} pending - will send on next Status message", DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
+			}
+			Signal_AckMessage(m_AckType_ToSend, KeyCommands::NoKeyCommand);
+		}
 	}
 
 	void OneTouchDevice::WatchdogTimeoutOccurred()
@@ -164,12 +184,12 @@ namespace AqualinkAutomate::Devices
 
 		LogWarning(Channel::Devices, std::format("OneTouch({}) : Watchdog timeout occurred: state={}, timeout_duration={}s", DeviceId(), magic_enum::enum_name(m_OpState), ONETOUCH_TIMEOUT_DURATION.count()));
 
-		if (m_OpState == OperatingStates::ColdStart || m_OpState == OperatingStates::WarmStart)
+		if (m_OpState == OperatingStates::Scraping)
 		{
 			// Scraping was in progress when the watchdog fired.  Abandon the
 			// scraping sequence and fall through to normal (passive) operation
 			// so the device is at least partially functional.
-			LogWarning(Channel::Devices, std::format("OneTouch({}) : Abandoning {} scraping due to watchdog timeout -> entering NormalOperation", DeviceId(), magic_enum::enum_name(m_OpState)));
+			LogWarning(Channel::Devices, std::format("OneTouch({}) : Abandoning scraping due to watchdog timeout -> entering NormalOperation", DeviceId()));
 			m_OpState = OperatingStates::NormalOperation;
 			m_ScrapingStallCounter = 0;
 			Status(Devices::DeviceStatus_Normal{});
@@ -181,6 +201,182 @@ namespace AqualinkAutomate::Devices
 			m_OpState = OperatingStates::FaultHasOccurred;
 			Status(Devices::DeviceStatus_FaultOccurred{});
 		}
+	}
+
+	OneTouchDevice::KeyCommands OneTouchDevice::ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd)
+	{
+		switch (nav_cmd)
+		{
+		case Navigation::NavKeyCommand::NoCommand:
+			return KeyCommands::NoKeyCommand;
+		case Navigation::NavKeyCommand::PageDown_Or_Select1:
+			return KeyCommands::PageDown_Or_Select1;
+		case Navigation::NavKeyCommand::Back:
+			return KeyCommands::Back_Or_Select2;
+		case Navigation::NavKeyCommand::PageUp_Or_Select3:
+			return KeyCommands::PageUp_Or_Select3;
+		case Navigation::NavKeyCommand::Select:
+			return KeyCommands::Select;
+		case Navigation::NavKeyCommand::LineDown:
+			return KeyCommands::LineDown;
+		case Navigation::NavKeyCommand::LineUp:
+			return KeyCommands::LineUp;
+		default:
+			return KeyCommands::NoKeyCommand;
+		}
+	}
+
+	void OneTouchDevice::OnAuxLabelScraped(uint8_t aux_index, const std::string& label)
+	{
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): AUX {} label scraped: '{}'",
+			DeviceId(), aux_index + 1, label));
+		// TODO: Store the label in equipment configuration
+	}
+
+	void OneTouchDevice::OnEquipmentStatusScraped(const Utility::ScreenDataPage& status_page)
+	{
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Equipment status scraped", DeviceId()));
+		// TODO: Process equipment status
+	}
+
+	void OneTouchDevice::OnDiagnosticsScraped(
+		const Utility::ScreenDataPage& sensors_page,
+		const Utility::ScreenDataPage& remotes_page,
+		const Utility::ScreenDataPage& errors_page)
+	{
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Diagnostics scraped (sensors, remotes, errors)", DeviceId()));
+		// TODO: Process diagnostics data
+	}
+
+	void OneTouchDevice::Scraping_ProcessStep_StartUp()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Scraping_ProcessStep_StartUp", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing StartUp scraping step", DeviceId()));
+
+		Status(Devices::DeviceStatus_Initializing{});
+
+		// Wait for a recognizable starting page
+		auto page_type = DisplayedPageType();
+
+		if (page_type == Utility::ScreenDataPageTypes::Page_OneTouch ||
+			page_type == Utility::ScreenDataPageTypes::Page_System)
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): Detected starting page {} - beginning scrape sequence",
+				DeviceId(), magic_enum::enum_name(page_type)));
+
+			// Set the Navigator's current page based on the detected page type
+			auto page_id = m_MenuModel.FindPageIdByType(page_type);
+			if (page_id != Navigation::PageId::Unknown)
+			{
+				m_Navigator->SetCurrentPage(page_id);
+				LogDebug(Channel::Scraping, std::format("OneTouch ({}): Set navigator current page to {}",
+					DeviceId(), static_cast<uint32_t>(page_id)));
+			}
+
+			// Create the startup scrape task
+			m_CurrentTask = std::make_unique<Navigation::StartupScrapeTask>(
+				std::bind(&OneTouchDevice::OnAuxLabelScraped, this, std::placeholders::_1, std::placeholders::_2),
+				std::bind(&OneTouchDevice::OnEquipmentStatusScraped, this, std::placeholders::_1),
+				std::bind(&OneTouchDevice::OnDiagnosticsScraped, this,
+					std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+			);
+
+			m_OpState = OperatingStates::Scraping;
+			m_ScrapingStallCounter = 0;
+
+			// Process the first step immediately
+			Scraping_ProcessStep();
+		}
+		else
+		{
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StartUp waiting for valid page: current_page={}",
+				DeviceId(), magic_enum::enum_name(page_type)));
+		}
+	}
+
+	void OneTouchDevice::Scraping_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Scraping_ProcessStep", std::source_location::current());
+
+		if (!m_CurrentTask || !m_Navigator)
+		{
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): No active task or navigator", DeviceId()));
+			m_OpState = OperatingStates::NormalOperation;
+			Status(Devices::DeviceStatus_Normal{});
+			return;
+		}
+
+		// Keep the Navigator's current page synchronized with page processor detection
+		auto page_type = DisplayedPageType();
+		if (page_type != Utility::ScreenDataPageTypes::Page_Unknown)
+		{
+			auto page_id = m_MenuModel.FindPageIdByType(page_type);
+			if (page_id != Navigation::PageId::Unknown)
+			{
+				m_Navigator->SetCurrentPage(page_id);
+			}
+		}
+
+		// Execute the current task
+		auto nav_cmd = m_CurrentTask->Execute(*m_Navigator, DisplayedPage(), m_HighlightedLine);
+
+		// Check task state
+		if (m_CurrentTask->GetState() == Navigation::ScrapeTask::State::Completed)
+		{
+			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete - entering NormalOperation", DeviceId()));
+			m_CurrentTask.reset();
+			m_Navigator->Reset();
+			m_OpState = OperatingStates::NormalOperation;
+			Status(Devices::DeviceStatus_Normal{});
+			return;
+		}
+
+		if (m_CurrentTask->GetState() == Navigation::ScrapeTask::State::Failed)
+		{
+			LogError(Channel::Scraping, std::format("OneTouch ({}): Startup scrape failed - entering ScrapingFaulted", DeviceId()));
+			m_CurrentTask.reset();
+			m_OpState = OperatingStates::ScrapingFaulted;
+			Status(Devices::DeviceStatus_FaultOccurred{});
+			return;
+		}
+
+		// Check navigator state
+		if (m_Navigator->GetState() == Navigation::Navigator::State::Failed)
+		{
+			LogError(Channel::Scraping, std::format("OneTouch ({}): Navigator failed - entering ScrapingFaulted", DeviceId()));
+			m_CurrentTask.reset();
+			m_OpState = OperatingStates::ScrapingFaulted;
+			Status(Devices::DeviceStatus_FaultOccurred{});
+			return;
+		}
+
+		// If we got a command, convert and queue it
+		if (nav_cmd.has_value())
+		{
+			m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			m_ScrapingStallCounter = 0;
+			LogDebug(Channel::Scraping, std::format("OneTouch ({}): Sending navigation command: {}",
+				DeviceId(), magic_enum::enum_name(m_KeyCommand_ToSend)));
+		}
+		else
+		{
+			// No command - we're waiting
+			m_ScrapingStallCounter++;
+
+			if (m_ScrapingStallCounter >= ONETOUCH_SCRAPING_STALL_LIMIT)
+			{
+				LogWarning(Channel::Scraping, std::format("OneTouch ({}): Scraping stalled for {} iterations",
+					DeviceId(), m_ScrapingStallCounter));
+				// Reset stall counter and let the task/navigator handle recovery
+				m_ScrapingStallCounter = 0;
+			}
+		}
+	}
+
+	void OneTouchDevice::PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpSubmenu invoked", DeviceId()));
 	}
 
 }

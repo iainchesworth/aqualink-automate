@@ -63,7 +63,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_PDA_Unknown_PDA_1B(const Messages::JandyMessage_Unknown& msg);
 
 	private:
-		void PageProcessor_Home(const Utility::ScreenDataPage& page);
+		void PageProcessor_System(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTemperature(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTime(const Utility::ScreenDataPage& page);
 		void PageProcessor_PoolHeat(const Utility::ScreenDataPage& page);

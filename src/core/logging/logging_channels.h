@@ -13,10 +13,12 @@ namespace AqualinkAutomate::Logging
 		Main,
 		Messages,
 		Mqtt,
+		Navigation,
 		Options,
 		Platform,
 		Profiling,
 		Protocol,
+		Scraping,
 		Serial,
 		Signals,
 		Web

@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <list>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -10,7 +11,6 @@
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
-#include "devices/capabilities/scrapeable.h"
 #include "devices/capabilities/screen.h"
 #include "messages/jandy_message_ack.h"
 #include "messages/jandy_message_ids.h"
@@ -22,36 +22,31 @@
 #include "messages/pda/pda_message_highlight.h"
 #include "messages/pda/pda_message_highlight_chars.h"
 #include "messages/pda/pda_message_shiftlines.h"
+#include "navigation/menu_model.h"
+#include "navigation/navigator.h"
+#include "navigation/scrape_task.h"
 #include "kernel/hub_locator.h"
 #include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
-		inline static const Scrapeable::ScrapeId ONETOUCH_AUX_LABELS_NAV_SCRAPER{ 1 };
-		inline static const Scrapeable::ScrapeId ONETOUCH_AUX_LABELS_TEXT_SCRAPER{ 2 };
-		inline static const Scrapeable::ScrapeId ONETOUCH_CONFIG_INIT_SCRAPER{ 3 };
-		inline static const uint32_t ONETOUCH_COLD_START_SCRAPER_START_INDEX{ 1 };
-		inline static const uint32_t ONETOUCH_WARM_START_SCRAPER_START_INDEX{ 3 };
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t ONETOUCH_SCRAPING_STALL_LIMIT{ 10 };
-
-		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_NAV_SCRAPER_GRAPH;
-		static const Scrapeable::ScraperGraph ONETOUCH_AUX_LABELS_TEXT_SCRAPER_GRAPH;
-		static const Scrapeable::ScraperGraph ONETOUCH_CONFIG_INIT_SCRAPER_GRAPH;
 
 		enum class OperatingStates
 		{
 			StartUp,
-			ColdStart,
-			WarmStart,
+			Scraping,           // Navigator and tasks are running
 			NormalOperation,
+			ScrapingFaulted,    // Scraping failed unrecoverably, device state unknown
 			FaultHasOccurred
 		};
 
+	public:
 		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
@@ -70,6 +65,7 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates(bool is_status_message);
 
 	private:
 		virtual void WatchdogTimeoutOccurred() override;
@@ -86,15 +82,15 @@ namespace AqualinkAutomate::Devices
 		void Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg);
 
 	private:
-		void PageProcessor_Home(const Utility::ScreenDataPage& page);
+		void PageProcessor_System(const Utility::ScreenDataPage& page);
 		void PageProcessor_Service(const Utility::ScreenDataPage& page);
 		void PageProcessor_TimeOut(const Utility::ScreenDataPage& page);
 		void PageProcessor_OneTouch(const Utility::ScreenDataPage& page);
-		void PageProcessor_System(const Utility::ScreenDataPage& page);
 		void PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page);
 		void PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page);
 		void PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page);
 		void PageProcessor_MenuHelp(const Utility::ScreenDataPage& page);
+		void PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTemperature(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTime(const Utility::ScreenDataPage& page);
 		void PageProcessor_SystemSetup(const Utility::ScreenDataPage& page);
@@ -124,19 +120,36 @@ namespace AqualinkAutomate::Devices
 		void StatusProcessor_CheckAquaPure(const Utility::ScreenDataPage& page, const uint8_t line_id);
 
 	private:
+		// Navigation-based scraping
 		void Scraping_ProcessStep_StartUp();
-		void Scraping_ProcessStep_ColdAndWarmStart();
+		void Scraping_ProcessStep();
+
+		// Convert Navigator key command to device KeyCommand
+		static KeyCommands ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd);
+
+		// Callbacks for scraping tasks
+		void OnAuxLabelScraped(uint8_t aux_index, const std::string& label);
+		void OnEquipmentStatusScraped(const Utility::ScreenDataPage& status_page);
+		void OnDiagnosticsScraped(
+			const Utility::ScreenDataPage& sensors_page,
+			const Utility::ScreenDataPage& remotes_page,
+			const Utility::ScreenDataPage& errors_page);
 
 	private:
-		static const std::list<Scrapeable::ScrapeId> STARTUP_SCRAPE_GRAPHS;
-		std::list<Scrapeable::ScrapeId>::const_iterator m_StartUpScrapeGraphsIt;
+		// Navigation system
+		Navigation::MenuModel m_MenuModel;
+		std::unique_ptr<Navigation::Navigator> m_Navigator;
+		std::unique_ptr<Navigation::ScrapeTask> m_CurrentTask;
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
 		uint32_t m_ScrapingStallCounter{ 0 };
+		uint8_t m_HighlightedLine{ 0 };
 
 	private:
-		Messages::AckTypes m_AckType_ToSend{ Messages::AckTypes::V1_Normal };
+		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore
+	// 0x00 responses and fail to register the device, so start with V2_Normal.
+	Messages::AckTypes m_AckType_ToSend{ Messages::AckTypes::V2_Normal };
 		KeyCommands m_KeyCommand_ToSend{ KeyCommands::NoKeyCommand };
 
 	private:

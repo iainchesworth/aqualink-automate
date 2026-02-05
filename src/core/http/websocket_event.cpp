@@ -33,6 +33,10 @@ namespace AqualinkAutomate::HTTP
 		{
 			switch (config_event->Type())
 			{
+			case Kernel::Hub_EventTypes::ButtonStateChange:
+				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_ButtonStateChange>(config_event));
+				break;
+
 			case Kernel::Hub_EventTypes::Chemistry:
 				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Chemistry>(config_event));
 				break;
@@ -45,6 +49,12 @@ namespace AqualinkAutomate::HTTP
 				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_ConfigEvent type and payload.");
 			}
 		}
+	}
+
+	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event) :
+		m_EventType(WebSocket_EventTypes::Unknown)
+	{
+		this->operator=(button_config_event);
 	}
 
 	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event) :
@@ -84,6 +94,22 @@ namespace AqualinkAutomate::HTTP
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(status_system_event);
+	}
+
+	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event)
+	{
+		if (nullptr == button_config_event)
+		{
+			LogDebug(Channel::Web, "Invalid DataHub_ConfigEvent_ButtonStateChange; cannot process type and payload.");
+		}
+		else
+		{
+			m_EventType = WebSocket_EventTypes::ButtonStateChange;
+			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = button_config_event->ToJSON();
+		}
+
+		return *this;
 	}
 
 	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event)

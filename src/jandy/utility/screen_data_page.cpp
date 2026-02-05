@@ -53,6 +53,14 @@ namespace AqualinkAutomate::Utility
 		}
 		else
 		{
+			// Clear all existing highlights first - there can only be one highlighted line at a time
+			// (the cursor position). Without this, highlights accumulate as new ones are set.
+			for (auto& row : m_Rows)
+			{
+				row.HighlightState = HighlightStates::Normal;
+				row.HighlightRange = std::nullopt;
+			}
+
 			m_Rows[line_id].HighlightState = HighlightStates::Highlighted;
 			m_Rows[line_id].HighlightRange = std::nullopt;
 		}

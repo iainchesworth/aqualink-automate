@@ -94,9 +94,24 @@ namespace AqualinkAutomate::Devices
 		}
 
 		ProcessScreenUpdates();
-		ProcessControllerUpdates();
 
-		// All start-up messages up to (and including) the first status message have a 
+		// Notify navigator and current task that a Status message was received.
+		// This must happen BEFORE ProcessControllerUpdates so the navigator knows
+		// to proceed with its state machine.
+		if (m_Navigator)
+		{
+			m_Navigator->OnStatusMessageReceived();
+		}
+		if (m_CurrentTask)
+		{
+			m_CurrentTask->OnStatusReceived();
+		}
+
+		// Status messages are the ONLY message type where key commands can be sent.
+		// The controller only processes key commands in ACKs to Status messages.
+		ProcessControllerUpdates(true);
+
+		// All start-up messages up to (and including) the first status message have a
 		// different ACKnowledgement type so now the first status message has been
 		// ACKed, switch to the next type.
 		if (Messages::AckTypes::V1_Normal == m_AckType_ToSend)
@@ -133,6 +148,11 @@ namespace AqualinkAutomate::Devices
 		if (msg.LineId() >= ONETOUCH_PAGE_LINES)
 		{
 			LogWarning(Channel::Devices, std::format("OneTouch ({}): Highlight for invalid line: line_id={} (max={})", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1));
+		}
+		else
+		{
+			// Track the highlighted line for navigation
+			m_HighlightedLine = msg.LineId();
 		}
 
 		ScreenMode(Capabilities::ScreenModes::Updating);

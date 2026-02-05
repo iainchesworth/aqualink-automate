@@ -1,0 +1,136 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <vector>
+
+#include "navigation/menu_model.h"
+#include "utility/screen_data_page.h"
+#include "utility/screen_data_page_processor.h"
+
+namespace AqualinkAutomate::Navigation
+{
+
+	// Key commands that can be sent to the device
+	// These mirror the OneTouch KeyCommands but are defined here for independence
+	enum class NavKeyCommand : uint8_t
+	{
+		NoCommand = 0x00,
+		PageDown_Or_Select1 = 0x01,
+		Back = 0x02,
+		PageUp_Or_Select3 = 0x03,
+		Select = 0x04,
+		LineDown = 0x05,
+		LineUp = 0x06
+	};
+
+	class Navigator
+	{
+	public:
+		enum class State
+		{
+			Idle,               // No active navigation
+			Navigating,         // Executing path steps
+			WaitingForPage,     // Sent command, waiting for page update
+			MovingCursor,       // Moving cursor to target line
+			Reorienting,        // Lost position, trying to recover
+			AtDestination,      // Reached target page
+			Failed              // Unrecoverable error
+		};
+
+		static constexpr uint32_t MAX_RECOVERY_ATTEMPTS = 3;
+		static constexpr uint32_t MAX_BACK_PRESSES = 10;
+
+	public:
+		explicit Navigator(const MenuModel& model);
+
+		// Start navigation to a specific page
+		void NavigateTo(PageId target);
+
+		// Start navigation to a specific menu item on a page
+		void NavigateToItem(PageId page, uint8_t menu_item_line);
+
+		// Called when Status message is received to decrement wait counter
+		void OnStatusMessageReceived();
+
+		// Called on each screen update with current page info
+		// Returns the next command to send (or nullopt if waiting/done)
+		std::optional<NavKeyCommand> OnPageUpdate(
+			const Utility::ScreenDataPage& content,
+			uint8_t highlighted_line);
+
+		// Get current state
+		State GetState() const { return m_State; }
+
+		// Get current detected page
+		PageId GetCurrentPage() const { return m_CurrentPage; }
+
+		// Get target page
+		PageId GetTargetPage() const { return m_TargetPage; }
+
+		// Get the current cursor/highlight line
+		uint8_t GetCursorLine() const { return m_CursorLine; }
+
+		// Set the current page (used when page is detected externally)
+		void SetCurrentPage(PageId page) { m_CurrentPage = page; }
+
+		// Check if navigation is complete (success or failure)
+		bool IsComplete() const;
+
+		// Check if navigation succeeded
+		bool IsSuccess() const { return m_State == State::AtDestination; }
+
+		// Reset navigator to idle state
+		void Reset();
+
+	private:
+		// Compute navigation path from current to target
+		void ComputePath();
+
+		// Execute the next step in the path
+		std::optional<NavKeyCommand> ExecuteNextStep();
+
+		// Handle waiting for page state
+		std::optional<NavKeyCommand> HandleWaitingForPage();
+
+		// Handle arrival at an unexpected page
+		void HandleUnexpectedPage(PageId actual);
+
+		// Start recovery process (back to home)
+		void InitiateRecovery();
+
+		// Execute next recovery step
+		std::optional<NavKeyCommand> RecoveryNext();
+
+		// Move cursor to the target line for the current step
+		std::optional<NavKeyCommand> MoveCursorToTarget();
+
+		// Find the line that is currently highlighted
+		std::optional<uint8_t> FindHighlightedLine(const Utility::ScreenDataPage& content) const;
+
+	private:
+		const MenuModel& m_Model;
+		State m_State{ State::Idle };
+
+		PageId m_CurrentPage{ PageId::Unknown };
+		PageId m_TargetPage{ PageId::Unknown };
+		uint8_t m_CursorLine{ 0 };
+		uint8_t m_TargetCursorLine{ 0 };
+
+		std::vector<NavStep> m_Path;
+		size_t m_PathIndex{ 0 };
+
+		// Status message tracking
+		uint32_t m_PendingStatusMessages{ 0 };
+
+		// Recovery state
+		uint32_t m_RecoveryAttempts{ 0 };
+		uint32_t m_RecoveryBackPresses{ 0 };
+
+		// For item navigation
+		bool m_NavigatingToItem{ false };
+		uint8_t m_TargetItemLine{ 0 };
+	};
+
+}
+// namespace AqualinkAutomate::Navigation

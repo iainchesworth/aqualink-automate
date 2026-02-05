@@ -98,7 +98,20 @@
       "WebFetch(domain:images.inyopools.com)",
       "Bash(echo:*)",
       "Bash(git submodule:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(ninja:*)",
+      "Bash(./test/testaqualink-automate.exe:*)",
+      "WebFetch(domain:www.manualslib.com)",
+      "Bash(tasklist:*)",
+      "Bash(./aqualink-automate.exe:*)",
+      "Bash(./testaqualink-automate.exe:*)",
+      "Bash(.\\\\build\\\\config-windows-llvm-debug\\\\test\\\\testaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm-debug/test/testaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm-debug/test/testaqualink-automate.exe:*)",
+      "Bash(test:*)",
+      "Bash(tee:*)",
+      "Bash(./bin/aqualink-automate.exe:*)",
+      "Bash(./src/aqualink-automate.exe:*)"
     ]
   }
 }

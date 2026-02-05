@@ -104,6 +104,11 @@
 
                             <circle class="pool-status-dot" :class="heaterActive ? 'active' : 'inactive'" cx="130" cy="365"/>
                             <text class="pool-status-label" x="130" y="385">Heater</text>
+
+                            <g x-show="hasChlorinator" x-cloak>
+                                <circle class="pool-status-dot" :class="chlorinatorActive ? 'active' : 'inactive'" cx="200" cy="365"/>
+                                <text class="pool-status-label" x="200" y="385">Chlor</text>
+                            </g>
                         </svg>
                     </div>
                 </div>

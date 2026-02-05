@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Devices
 	{
 		PageProcessors(
 			{
-				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Home, {0, "   MAIN MENU    "}, std::bind(&PDADevice::PageProcessor_Home, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_System, {0, "   MAIN MENU    "}, std::bind(&PDADevice::PageProcessor_System, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentStatus, { 0, "EQUIPMENT STATUS" }, std::bind(&PDADevice::PageProcessor_EquipmentStatus, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetPoolHeat, { 0, "   POOL HEAT    " }, std::bind(&PDADevice::PageProcessor_PoolHeat, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetSpaHeat, { 0, "    SPA HEAT    " }, std::bind(&PDADevice::PageProcessor_SpaHeat, this, std::placeholders::_1)),
