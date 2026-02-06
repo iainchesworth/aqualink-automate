@@ -234,8 +234,7 @@
                 <template x-for="cat in [
                     { key: 'serial_read', label: 'Serial Read' },
                     { key: 'serial_write', label: 'Serial Write' },
-                    { key: 'message_processing', label: 'Message Processing' },
-                    { key: 'round_trip', label: 'Round Trip' }
+                    { key: 'message_processing', label: 'Message Processing' }
                 ]" :key="cat.key">
                     <div class="card mb-1" x-show="$store.stats.latency?.[cat.key]">
                         <div class="card-header" x-text="cat.label"></div>

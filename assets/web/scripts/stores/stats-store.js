@@ -5,7 +5,7 @@
  *   message_counts: [{ id, name, count }]
  *   bandwidth_read: { total_bytes, average_utilisation_1sec, average_utilisation_30sec, average_utilisation_5mins }
  *   bandwidth_write: { total_bytes, average_utilisation_1sec, average_utilisation_30sec, average_utilisation_5mins }
- *   latency: { serial_read, serial_write, message_processing, round_trip } — each has p1/p50/p95/p99/min/max/mean_us, sample_count
+ *   latency: { serial_read, serial_write, message_processing } — each has p1/p50/p95/p99/min/max/mean_us, sample_count
  *   serial: { message_error_rate, overflow_count, underflow_count, transmission_failures, write_queue_depth }
  *   message_errors: { checksum_failures, deserialization_failures, invalid_packet_format, generator_failures, overlapping_packets, buffer_overflows }
  */

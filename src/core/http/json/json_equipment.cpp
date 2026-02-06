@@ -144,7 +144,6 @@ namespace AqualinkAutomate::HTTP::JSON
 		latency_metrics["serial_read"] = SerializeLatencySnapshot(read_snapshot);
 		latency_metrics["serial_write"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot());
 		latency_metrics["message_processing"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot());
-		latency_metrics["round_trip"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.RoundTripLatency.GetSnapshot());
 		je_stats["latency"] = latency_metrics;
 
 		LogTrace(Channel::Web, std::format("Serial read latency: p50={:.2f}us, p99={:.2f}us ({} samples)",

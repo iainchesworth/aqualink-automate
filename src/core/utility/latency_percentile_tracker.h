@@ -267,9 +267,6 @@ namespace AqualinkAutomate::Utility
 
 		/// Latency for complete message processing (from receiving bytes to signaling handlers).
 		LatencyPercentileTracker<> MessageProcessingLatency{ 1000, std::chrono::seconds(60) };
-
-		/// Round-trip latency for command-response pairs.
-		LatencyPercentileTracker<> RoundTripLatency{ 500, std::chrono::seconds(60) };
 	};
 
 }

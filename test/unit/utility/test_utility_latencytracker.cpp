@@ -280,13 +280,11 @@ BOOST_AUTO_TEST_CASE(Test_SerialLatencyMetrics_HasAllTrackers)
 	metrics.ReadLatency.Record(1000ns);
 	metrics.WriteLatency.Record(2000ns);
 	metrics.MessageProcessingLatency.Record(3000ns);
-	metrics.RoundTripLatency.Record(4000ns);
 
 	// Verify each tracker has data
 	BOOST_CHECK_EQUAL(metrics.ReadLatency.GetSnapshot().sample_count, 1);
 	BOOST_CHECK_EQUAL(metrics.WriteLatency.GetSnapshot().sample_count, 1);
 	BOOST_CHECK_EQUAL(metrics.MessageProcessingLatency.GetSnapshot().sample_count, 1);
-	BOOST_CHECK_EQUAL(metrics.RoundTripLatency.GetSnapshot().sample_count, 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

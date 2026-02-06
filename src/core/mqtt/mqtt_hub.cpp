@@ -586,8 +586,7 @@ namespace AqualinkAutomate::Mqtt
 			stats["latency"] = {
 				{"serial_read", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot())},
 				{"serial_write", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot())},
-				{"message_processing", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot())},
-				{"round_trip", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.RoundTripLatency.GetSnapshot())}
+				{"message_processing", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot())}
 			};
 
 			// Serial metrics
