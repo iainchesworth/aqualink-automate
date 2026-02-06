@@ -87,18 +87,11 @@ namespace AqualinkAutomate::Devices
 
 		auto aux_has_id = [&aux_id](auto& potential_match) -> bool
 		{
-			if (nullptr == potential_match)
+			if (nullptr == potential_match || !potential_match->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
 			{
 				return false;
 			}
-			else if (!potential_match->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
-			{
-				return false;
-			}
-			else
-			{
-				return (*(potential_match->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]) == aux_id);
-			}
+			return (*(potential_match->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]) == aux_id);
 		};
 
 		if (auto auxillary_it = std::find_if(auxillaries.begin(), auxillaries.end(), aux_has_id); auxillaries.end() != auxillary_it)

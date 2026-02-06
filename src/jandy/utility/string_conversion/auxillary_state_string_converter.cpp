@@ -28,12 +28,7 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToStatus(auxillary_status_string);
 	}
 
-	AuxillaryStateStringConverter::AuxillaryStateStringConverter(const AuxillaryStateStringConverter& other) noexcept :
-		m_Label(other.m_Label),
-		m_State(other.m_State),
-		m_ErrorOccurred(other.m_ErrorOccurred)
-	{
-	}
+	AuxillaryStateStringConverter::AuxillaryStateStringConverter(const AuxillaryStateStringConverter& other) noexcept = default;
 
 	AuxillaryStateStringConverter::AuxillaryStateStringConverter(AuxillaryStateStringConverter&& other) noexcept :
 		m_Label(std::move(other.m_Label)),
@@ -136,27 +131,18 @@ namespace AqualinkAutomate::Utility
 	{
 		boost::smatch match_results;
 
-		if (MINIMUM_STRING_LENGTH > auxillary_status_string.size() || MAXIMUM_STRING_LENGTH < auxillary_status_string.size())
+		if (MINIMUM_STRING_LENGTH > auxillary_status_string.size() || MAXIMUM_STRING_LENGTH < auxillary_status_string.size() ||
+			!boost::regex_search(auxillary_status_string, match_results, REGEX_PARSER) ||
+			2 > match_results.size())
 		{
-			// Invalid string length...do nothing.
-		}
-		else if (!boost::regex_search(auxillary_status_string, match_results, REGEX_PARSER))
-		{
-			// Invalid pattern match...do nothing.	
-		}
-		else if (2 > match_results.size())
-		{
-			// Insufficent resultset to pull groups from.
-		}
-		else
-		{
-			return std::make_tuple<>(
-				std::optional<std::string>(match_results[1]),
-				std::optional<std::string>(match_results[2])
-			);
+			// Invalid string length, pattern match, or insufficient resultset...do nothing.
+			return std::make_tuple(std::nullopt, std::nullopt);
 		}
 
-		return std::make_tuple(std::nullopt, std::nullopt);
+		return std::make_tuple<>(
+			std::optional<std::string>(match_results[1]),
+			std::optional<std::string>(match_results[2])
+		);
 	}
 
 }

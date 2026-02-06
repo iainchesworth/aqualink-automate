@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageStart::~IAQMessage_PageStart()
-	{
-	}
+	IAQMessage_PageStart::~IAQMessage_PageStart() = default;
 
 	std::string IAQMessage_PageStart::ToString() const
 	{

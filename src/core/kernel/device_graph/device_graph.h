@@ -30,7 +30,7 @@ namespace AqualinkAutomate::Kernel
 	public:
 		void Add(std::shared_ptr<AuxillaryDevice> device);
 		bool Contains(std::shared_ptr<AuxillaryDevice> device) const;
-		void Remove(std::shared_ptr<AuxillaryDevice> device);
+		void Remove(const std::shared_ptr<AuxillaryDevice>& device);
 
 	public:
 		uint32_t CountByLabel(const std::string& device_label) const;

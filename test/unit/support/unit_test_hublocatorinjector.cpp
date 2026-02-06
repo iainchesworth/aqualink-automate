@@ -18,9 +18,7 @@ namespace AqualinkAutomate::Test
 		Register(std::make_shared<Kernel::StatisticsHub>());
 	}
 
-	HubLocatorInjector::~HubLocatorInjector()
-	{
-	}
+	HubLocatorInjector::~HubLocatorInjector() = default;
 
 }
 // namespace AqualinkAutomate::Test

@@ -42,7 +42,9 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "ON",
-        "SANITIZE_ADDRESS": "ON"
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       }
     },
     {
@@ -69,11 +71,17 @@
     },
     {
       "name": "config-windows-msvc-debug",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "Windows MSVC Debug",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-windows-msvc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake"
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       },
       "condition": {
         "type": "equals",
@@ -98,11 +106,17 @@
     },
     {
       "name": "config-windows-llvm-debug",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "Windows LLVM Debug",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-windows-llvm",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.llvm.toolchain.cmake"
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.llvm.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       },
       "condition": {
         "type": "equals",
@@ -127,11 +141,17 @@
     },
     {
       "name": "config-linux-gcc-debug",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "Linux GCC Debug",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-linux-gcc",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake"
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       },
       "condition": {
         "type": "equals",
@@ -141,13 +161,16 @@
     },
     {
       "name": "config-linux-gcc-coverage",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "Linux GCC Coverage",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-linux-gcc",
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
         "ENABLE_BENCHMARKS": "OFF",
-        "ENABLE_COVERAGE": "ON"
+        "ENABLE_COVERAGE": "ON",
+        "ENABLE_SANITIZERS": "OFF"
       },
       "condition": {
         "type": "equals",
@@ -172,11 +195,17 @@
     },
     {
       "name": "config-linux-llvm-debug",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "Linux LLVM Debug",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-linux-llvm",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake"
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.llvm.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       },
       "condition": {
         "type": "equals",
@@ -201,11 +230,17 @@
     },
     {
       "name": "config-macos-llvm-debug",
-      "inherits": [ "core", "debug" ],
+      "inherits": [ "core" ],
       "displayName": "macOS LLVM Debug",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-macos-llvm",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.llvm.toolchain.cmake"
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.llvm.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_CLANG_TIDY": "ON",
+        "SANITIZE_ADDRESS": "ON",
+        "SANITIZE_UNDEFINED": "ON"
       },
       "condition": {
         "type": "equals",

@@ -3,15 +3,13 @@
 namespace AqualinkAutomate::Devices
 {
 
-	JandyController::JandyController(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator) :
+	JandyController::JandyController(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator) :
 		JandyDevice(device_id)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
-	JandyController::~JandyController()
-	{
-	}
+	JandyController::~JandyController() = default;
 
 }
 // namespace AqualinkAutomate::Devices

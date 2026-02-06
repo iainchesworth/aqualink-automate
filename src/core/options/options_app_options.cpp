@@ -64,7 +64,7 @@ namespace AqualinkAutomate::Options::App
 		if (option_help->IsPresent(vm))
 		{
 			// Display the help information to the user.
-			std::cout << options << std::endl;
+			std::cout << options << '\n';
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
@@ -83,7 +83,7 @@ namespace AqualinkAutomate::Options::App
 		if (option_versiondetails->IsPresent(vm))
 		{
 			// Display the version information to the user.
-			std::cout << Version::VersionDetails() << std::endl << Version::GitCommitDetails() << std::endl;
+			std::cout << Version::VersionDetails() << '\n' << Version::GitCommitDetails() << '\n';
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
@@ -99,7 +99,7 @@ namespace AqualinkAutomate::Options::App
 			);
 
 			// Display the version information to the user.
-			std::cout << version_info << std::endl;
+			std::cout << version_info << '\n';
 
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();

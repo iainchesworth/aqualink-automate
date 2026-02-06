@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Devices
 	class JandyController : public JandyDevice
 	{
 	public:
-		JandyController(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator);
+		JandyController(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);
 		virtual ~JandyController();
 
 	protected:

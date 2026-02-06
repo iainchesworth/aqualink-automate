@@ -57,18 +57,14 @@ namespace AqualinkAutomate::Factory
 
 	const ProfilingUnitGenerators& ProfilingUnitFactory::Get()
 	{
-		if (!m_DesiredProfiler.has_value())
+		if (m_DesiredProfiler.has_value())
 		{
-			// No selected profiler (via the CLI) so it's NoOp...
+			if (auto it = m_Generators.find(m_DesiredProfiler.value()); m_Generators.end() != it)
+			{
+				return it->second;
+			}
 		}
-		else  if (auto it = m_Generators.find(m_DesiredProfiler.value()); m_Generators.end() == it)
-		{
-			// Selected profiler (via the CLI) not found so it's NoOp...
-		}
-		else
-		{
-			return it->second;
-		}
+		// No selected profiler or not found so it's NoOp...
 
 		static ProfilingUnitGenerators noop_generators = std::make_tuple
 		(

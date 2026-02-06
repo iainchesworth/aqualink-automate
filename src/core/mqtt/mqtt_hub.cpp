@@ -134,14 +134,14 @@ namespace AqualinkAutomate::Mqtt
 		return m_Running && m_Client && m_Client->IsConnected();
 	}
 
-	void MqttHub::ConnectDataHub(std::shared_ptr<Kernel::DataHub> data_hub)
+	void MqttHub::ConnectDataHub(const std::shared_ptr<Kernel::DataHub>& data_hub)
 	{
 		m_DataHub = data_hub;
 
-		if (data_hub)
+		if (auto locked_hub = m_DataHub.lock())
 		{
-			m_DataHubConnection = data_hub->ConfigUpdateSignal.connect(
-				[this](std::shared_ptr<Kernel::DataHub_ConfigEvent> event)
+			m_DataHubConnection = locked_hub->ConfigUpdateSignal.connect(
+				[this](const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event)
 				{
 					OnDataHubConfigChanged(event);
 				});
@@ -150,14 +150,14 @@ namespace AqualinkAutomate::Mqtt
 		}
 	}
 
-	void MqttHub::ConnectEquipmentHub(std::shared_ptr<Kernel::EquipmentHub> equipment_hub)
+	void MqttHub::ConnectEquipmentHub(const std::shared_ptr<Kernel::EquipmentHub>& equipment_hub)
 	{
 		m_EquipmentHub = equipment_hub;
 
-		if (equipment_hub)
+		if (auto locked_hub = m_EquipmentHub.lock())
 		{
-			m_EquipmentHubConnection = equipment_hub->EquipmentStatusChangeSignal.connect(
-				[this](std::shared_ptr<Kernel::EquipmentHub_SystemEvent> event)
+			m_EquipmentHubConnection = locked_hub->EquipmentStatusChangeSignal.connect(
+				[this](const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event)
 				{
 					OnEquipmentStatusChanged(event);
 				});
@@ -166,7 +166,7 @@ namespace AqualinkAutomate::Mqtt
 		}
 	}
 
-	void MqttHub::ConnectStatisticsHub(std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
+	void MqttHub::ConnectStatisticsHub(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
 		m_StatisticsHub = statistics_hub;
 		LogInfo(Channel::Mqtt, "MQTT Hub connected to Statistics Hub");
@@ -211,7 +211,7 @@ namespace AqualinkAutomate::Mqtt
 		m_Client->Publish(StatusTopic(subtopic), payload.dump());
 	}
 
-	void MqttHub::OnDataHubConfigChanged(std::shared_ptr<Kernel::DataHub_ConfigEvent> event)
+	void MqttHub::OnDataHubConfigChanged(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event)
 	{
 		if (!IsRunning() || !event || !m_Settings.publish_on_change)
 		{
@@ -221,7 +221,7 @@ namespace AqualinkAutomate::Mqtt
 		LogTrace(Channel::Mqtt, "Data Hub config changed, publishing update");
 	}
 
-	void MqttHub::OnEquipmentStatusChanged(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> event)
+	void MqttHub::OnEquipmentStatusChanged(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event)
 	{
 		if (!IsRunning() || !event || !m_Settings.publish_on_change)
 		{

@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_MessageLong::~IAQMessage_MessageLong()
-	{
-	}
+	IAQMessage_MessageLong::~IAQMessage_MessageLong() = default;
 
 	std::string IAQMessage_MessageLong::ToString() const
 	{

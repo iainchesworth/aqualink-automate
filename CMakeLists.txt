@@ -3,6 +3,10 @@
 if(POLICY CMP0053)
   cmake_policy(SET CMP0053 NEW)
 endif()
+if(POLICY CMP0077)
+  # Allow preset/command-line variables to override option() defaults
+  cmake_policy(SET CMP0077 NEW)
+endif()
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
 endif()
@@ -13,15 +17,11 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Generate compile_commands.json for clang-tidy
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps")
 
-project(
-	aqualink-automate 
-	VERSION 0.0.1 
-	DESCRIPTION "Control Jandy Aqualink RS pool equipment via common IoT integrations" 
-	HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
-	LANGUAGES C CXX)
-
+# Define options BEFORE project() to ensure preset values take precedence
+# over any vcpkg toolchain cache interference
 option(ENABLE_BENCHMARKS "Enable performance tests" ON)
 option(ENABLE_COVERAGE "Enable coverage of unit tests" OFF)
 option(ENABLE_TESTS "Enable unit tests" ON)
@@ -30,6 +30,13 @@ option(ENABLE_CLANG_TIDY "DevTools: Enable static analysis using clang-tidy" OFF
 option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" OFF)
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" OFF)
+
+project(
+	aqualink-automate
+	VERSION 0.0.1
+	DESCRIPTION "Control Jandy Aqualink RS pool equipment via common IoT integrations"
+	HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
+	LANGUAGES C CXX)
 
 if(ENABLE_SANITIZERS AND ENABLE_PROFILING)
   message(FATAL_ERROR "ENABLE_SANITIZERS and ENABLE_PROFILING cannot both be ON. "
@@ -102,9 +109,11 @@ option(SANITIZE_UNDEFINED "DevTools: Sanitizers -> Use UndefinedBehaviourSanitiz
 
 include(Sanitizers)
 
-# Clang normally links using the static runtime library; this causes problems when building
-# so link with the shared library to avoid this.
-add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
+# On non-Windows platforms, Clang uses static ASan by default which can cause linking issues.
+# Use shared ASan runtime instead. This flag is not valid on Windows (clang-cl).
+if(NOT WIN32)
+    add_compile_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
+endif()
 
 endif(ENABLE_SANITIZERS)
 
@@ -150,6 +159,8 @@ if(ENABLE_CLANG_TIDY)
 
 find_package(ClangTidy)
 
+# Apply clang-tidy to both the library and executable
+set_target_properties(libaqualink-automate PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
 set_target_properties(aqualink-automate PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
 
 endif(ENABLE_CLANG_TIDY)

@@ -17,8 +17,8 @@ namespace AqualinkAutomate::Kernel
 	class Temperature
 	{
 	public:
-		Temperature(boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> degrees_celsius);
-		Temperature(boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>> degrees_fahrenheit);
+		Temperature(const boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>& degrees_celsius);
+		Temperature(const boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>& degrees_fahrenheit);
 
 	public:
 		boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> InCelsius() const;

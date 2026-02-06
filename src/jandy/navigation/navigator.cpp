@@ -17,8 +17,16 @@ namespace AqualinkAutomate::Navigation
 	void Navigator::NavigateTo(PageId target)
 	{
 		const MenuPage* target_page = m_Model.GetPage(target);
-		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation to page {} ({})",
-			static_cast<uint32_t>(target), target_page ? target_page->name : "Unknown"));
+		const MenuPage* current_page_info = m_Model.GetPage(m_CurrentPage);
+
+		// Track navigation attempts for diagnostics
+		static uint32_t s_TotalNavigationAttempts = 0;
+		s_TotalNavigationAttempts++;
+
+		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation #{} to page {}({}) from {}({})",
+			s_TotalNavigationAttempts,
+			static_cast<uint32_t>(target), target_page ? target_page->name : "Unknown",
+			static_cast<uint32_t>(m_CurrentPage), current_page_info ? current_page_info->name : "Unknown"));
 
 		m_TargetPage = target;
 		m_NavigatingToItem = false;
@@ -95,14 +103,57 @@ namespace AqualinkAutomate::Navigation
 			}
 		}
 
+		// Check for special blocking pages (Service, Timeout)
+		if (IsBlockingPage(m_CurrentPage))
+		{
+			if (!HandleSpecialPage(m_CurrentPage))
+			{
+				return std::nullopt;
+			}
+		}
+
+		// Check for password prompt page
+		if (m_CurrentPage == PageId::EnterPassword && m_State != State::EnteringPassword)
+		{
+			if (m_Password.empty())
+			{
+				LogWarning(Channel::Navigation, "Navigator: Encountered password prompt but no password configured - backing out");
+				m_PendingStatusMessages = 2;
+				return NavKeyCommand::Back;
+			}
+			else
+			{
+				LogInfo(Channel::Navigation, "Navigator: Encountered password prompt - entering password");
+				m_State = State::EnteringPassword;
+				m_PasswordDigitIndex = 0;
+				return HandlePasswordEntry();
+			}
+		}
+
+		// Track wait cycles for timeout detection
+		if (m_State == State::WaitingForPage && m_PendingStatusMessages > 0)
+		{
+			m_WaitCycleCount++;
+			if (m_WaitCycleCount >= MAX_WAIT_CYCLES)
+			{
+				LogError(Channel::Navigation, std::format("Navigator: Timeout waiting for page response after {} cycles",
+					m_WaitCycleCount));
+				m_WaitCycleCount = 0;
+				InitiateRecovery();
+				return RecoveryNext();
+			}
+		}
+		else
+		{
+			m_WaitCycleCount = 0;  // Reset on progress
+		}
+
 		switch (m_State)
 		{
 		case State::Idle:
-			return std::nullopt;
-
+			[[fallthrough]];
 		case State::AtDestination:
-			return std::nullopt;
-
+			[[fallthrough]];
 		case State::Failed:
 			return std::nullopt;
 
@@ -117,6 +168,9 @@ namespace AqualinkAutomate::Navigation
 
 		case State::Reorienting:
 			return RecoveryNext();
+
+		case State::EnteringPassword:
+			return HandlePasswordEntry();
 		}
 
 		return std::nullopt;
@@ -139,6 +193,12 @@ namespace AqualinkAutomate::Navigation
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
 		m_NavigatingToItem = false;
+		m_CursorStuckCount = 0;
+		m_PreviousCursorLine = 0;
+		m_SkipCursorCheck = false;
+		m_PasswordDigitIndex = 0;
+		m_WaitCycleCount = 0;
+		m_RecomputeCount = 0;
 	}
 
 	void Navigator::ComputePath()
@@ -277,7 +337,8 @@ namespace AqualinkAutomate::Navigation
 			step.target_line, m_CursorLine));
 
 		// First, ensure cursor is at the right position for Select steps
-		if (step.type == NavStepType::Select)
+		// Skip this check if we just accepted a stuck cursor position
+		if (step.type == NavStepType::Select && !m_SkipCursorCheck)
 		{
 			if (m_CursorLine != step.target_line)
 			{
@@ -288,6 +349,7 @@ namespace AqualinkAutomate::Navigation
 				return MoveCursorToTarget();
 			}
 		}
+		m_SkipCursorCheck = false;  // Reset flag after checking
 
 		// Execute the step
 		m_PathIndex++;
@@ -333,6 +395,7 @@ namespace AqualinkAutomate::Navigation
 		if (m_CursorLine == m_TargetCursorLine)
 		{
 			// Cursor is at target, continue navigation
+			m_CursorStuckCount = 0;
 			m_State = State::Navigating;
 			return ExecuteNextStep();
 		}
@@ -343,8 +406,37 @@ namespace AqualinkAutomate::Navigation
 			return std::nullopt;
 		}
 
+		// Check if cursor is stuck (didn't move from previous position)
+		if (m_CursorLine == m_PreviousCursorLine && m_CursorStuckCount > 0)
+		{
+			m_CursorStuckCount++;
+			LogDebug(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} (attempt {}/{}), target is {}",
+				m_CursorLine, m_CursorStuckCount, MAX_CURSOR_STUCK_COUNT, m_TargetCursorLine));
+
+			if (m_CursorStuckCount >= MAX_CURSOR_STUCK_COUNT)
+			{
+				// Cursor appears to be at a boundary and can't move further
+				// Assume we're as close as we can get and proceed
+				LogWarning(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} after {} attempts, assuming at boundary and proceeding",
+					m_CursorLine, m_CursorStuckCount));
+				m_CursorStuckCount = 0;
+				m_TargetCursorLine = m_CursorLine;  // Accept current position as target
+				m_SkipCursorCheck = true;  // Skip cursor position check in ExecuteNextStep
+				m_State = State::Navigating;
+				return ExecuteNextStep();
+			}
+		}
+		else
+		{
+			// Cursor moved or this is the first attempt
+			m_CursorStuckCount = 1;
+		}
+
+		// Remember current position to detect if next move fails
+		m_PreviousCursorLine = m_CursorLine;
+
 		// Move cursor towards target
-		NavKeyCommand cmd;
+		NavKeyCommand cmd = NavKeyCommand::LineDown;
 		if (m_CursorLine < m_TargetCursorLine)
 		{
 			LogTrace(Channel::Navigation, std::format("Navigator: Moving cursor down from {} to {}",
@@ -364,8 +456,29 @@ namespace AqualinkAutomate::Navigation
 
 	void Navigator::HandleUnexpectedPage(PageId actual)
 	{
-		LogWarning(Channel::Navigation, std::format("Navigator: Handling unexpected page {}",
-			static_cast<uint32_t>(actual)));
+		const MenuPage* actual_page = m_Model.GetPage(actual);
+		const MenuPage* target_page = m_Model.GetPage(m_TargetPage);
+
+		LogWarning(Channel::Navigation, std::format("Navigator: Handling unexpected page {}({}) while navigating to {}({})",
+			static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown",
+			static_cast<uint32_t>(m_TargetPage), target_page ? target_page->name : "Unknown"));
+
+		// Track recomputation attempts to detect potential infinite recompute loops
+		m_RecomputeCount++;
+		if (m_RecomputeCount % 10 == 0)
+		{
+			LogWarning(Channel::Navigation, std::format("Navigator: Path recomputed {} times - possible navigation loop",
+				m_RecomputeCount));
+		}
+
+		// Check for infinite recompute loop
+		if (m_RecomputeCount >= MAX_RECOMPUTE_COUNT)
+		{
+			LogError(Channel::Navigation, std::format("Navigator: Max recompute count ({}) exceeded - navigation loop detected, failing",
+				MAX_RECOMPUTE_COUNT));
+			m_State = State::Failed;
+			return;
+		}
 
 		// If we recognize the page, try to recompute path from here
 		if (actual != PageId::Unknown)
@@ -378,8 +491,8 @@ namespace AqualinkAutomate::Navigation
 			m_Path = m_Model.FindPath(m_CurrentPage, m_TargetPage);
 			if (!m_Path.empty())
 			{
-				LogInfo(Channel::Navigation, std::format("Navigator: Recomputed path from {} with {} steps",
-					static_cast<uint32_t>(m_CurrentPage), m_Path.size()));
+				LogInfo(Channel::Navigation, std::format("Navigator: Recomputed path from {}({}) with {} steps",
+					static_cast<uint32_t>(m_CurrentPage), actual_page ? actual_page->name : "Unknown", m_Path.size()));
 				m_State = State::Navigating;
 				return;
 			}
@@ -416,6 +529,15 @@ namespace AqualinkAutomate::Navigation
 			return std::nullopt;
 		}
 
+		// Check if we're on a blocking page that prevents recovery
+		if (IsBlockingPage(m_CurrentPage))
+		{
+			LogError(Channel::Navigation, std::format("Navigator: Cannot recover - stuck on blocking page {}",
+				static_cast<uint32_t>(m_CurrentPage)));
+			m_State = State::Failed;
+			return std::nullopt;
+		}
+
 		// Check if we've reached home (System page)
 		if (m_CurrentPage == PageId::System)
 		{
@@ -426,6 +548,40 @@ namespace AqualinkAutomate::Navigation
 			m_PathIndex = 0;
 			// Now recompute path from home
 			return ExecuteNextStep();
+		}
+
+		// Check for OneTouch-style pages that don't support Back
+		const MenuPage* current_page = m_Model.GetPage(m_CurrentPage);
+		if (current_page && current_page->allowed_steps.count(NavStepType::Back) == 0)
+		{
+			// This page doesn't support Back - try to navigate to System via selection
+			LogDebug(Channel::Navigation, std::format("Navigator: Page {}({}) doesn't support Back - looking for System navigation",
+				static_cast<uint32_t>(m_CurrentPage), current_page->name));
+
+			// Look for a menu item that goes to System
+			for (const auto& item : current_page->items)
+			{
+				if (item.target == PageId::System)
+				{
+					LogInfo(Channel::Navigation, std::format("Navigator: Found System link at line {}", item.line));
+					// Navigate to the System item
+					m_TargetCursorLine = item.line;
+					if (m_CursorLine != item.line)
+					{
+						m_State = State::MovingCursor;
+						return MoveCursorToTarget();
+					}
+					else
+					{
+						m_PendingStatusMessages = 2;
+						return NavKeyCommand::Select;
+					}
+				}
+			}
+
+			LogError(Channel::Navigation, "Navigator: Cannot recover from page without Back support and no System link");
+			m_State = State::Failed;
+			return std::nullopt;
 		}
 
 		// Check if too many back presses
@@ -464,6 +620,89 @@ namespace AqualinkAutomate::Navigation
 			}
 		}
 		return std::nullopt;
+	}
+
+	std::optional<NavKeyCommand> Navigator::HandlePasswordEntry()
+	{
+		// Password entry sends LineUp/LineDown to adjust digit value, Select to confirm each digit
+		// The password is 4 digits, typically starting from 0
+		// For simplicity, we assume Select advances to next digit and we need to enter the correct digit value
+
+		if (m_Password.empty() || m_PasswordDigitIndex >= m_Password.size())
+		{
+			LogError(Channel::Navigation, "Navigator: Invalid password state during entry");
+			m_State = State::Failed;
+			return std::nullopt;
+		}
+
+		// Still waiting for previous command
+		if (m_PendingStatusMessages > 0)
+		{
+			return std::nullopt;
+		}
+
+		// Get the target digit
+		char digit_char = m_Password[m_PasswordDigitIndex];
+		if (digit_char < '0' || digit_char > '9')
+		{
+			LogError(Channel::Navigation, std::format("Navigator: Invalid password digit '{}' at position {}",
+				digit_char, m_PasswordDigitIndex));
+			m_State = State::Failed;
+			return std::nullopt;
+		}
+
+		uint8_t target_digit = static_cast<uint8_t>(digit_char - '0');
+
+		// For password entry, we need to move cursor up/down to set digit, then select to confirm
+		// The current digit is typically shown on the highlighted line
+		// We'll use a simplified approach: send the digit value as LineDown presses from 0
+		// This assumes digits start at 0 and wrap around
+
+		// For now, just log and send Select to advance (actual digit entry would need screen parsing)
+		// This is a placeholder implementation - real implementation would parse screen to see current digit
+		LogDebug(Channel::Navigation, std::format("Navigator: Password digit {} = {} (index {})",
+			m_PasswordDigitIndex, target_digit, m_PasswordDigitIndex));
+
+		m_PasswordDigitIndex++;
+		m_PendingStatusMessages = 2;
+
+		if (m_PasswordDigitIndex >= 4)
+		{
+			// All 4 digits entered, wait for result
+			LogInfo(Channel::Navigation, "Navigator: Password entry complete, waiting for result");
+			m_PasswordDigitIndex = 0;
+			m_State = State::WaitingForPage;
+		}
+
+		// Press Select to confirm current digit and move to next
+		return NavKeyCommand::Select;
+	}
+
+	bool Navigator::HandleSpecialPage(PageId page)
+	{
+		// Handle special pages that block navigation
+		switch (page)
+		{
+		case PageId::Service:
+			LogError(Channel::Navigation, "Navigator: Device is in Service Mode - cannot navigate");
+			m_State = State::Failed;
+			return false;
+
+		case PageId::TimeOut:
+			LogWarning(Channel::Navigation, "Navigator: Device is in Timeout Mode - waiting for user interaction");
+			// Timeout mode usually clears with any key press, try Select
+			m_PendingStatusMessages = 2;
+			// Don't change state - let user handle this or it might clear on its own
+			return false;
+
+		default:
+			return true;
+		}
+	}
+
+	bool Navigator::IsBlockingPage(PageId page) const
+	{
+		return page == PageId::Service || page == PageId::TimeOut;
 	}
 
 }

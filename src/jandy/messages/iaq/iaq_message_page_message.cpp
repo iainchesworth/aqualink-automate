@@ -17,9 +17,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageMessage::~IAQMessage_PageMessage()
-	{
-	}
+	IAQMessage_PageMessage::~IAQMessage_PageMessage() = default;
 
 	uint8_t IAQMessage_PageMessage::LineId() const
 	{
@@ -56,6 +54,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short for content extraction");
 		}
 		else
 		{

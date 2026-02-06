@@ -14,17 +14,13 @@ namespace AqualinkAutomate::HTTP
         {
             LogDebug(Channel::Web, std::format("URL was malformed and could not be parsed; error was -> {}", url.error().message()));
         }
-        else if (auto pv = url->params(); !pv.contains(query_parameter, boost::urls::ignore_case))
-        {
-            LogDebug(Channel::Web, "URL was malformed and was missing expected query parameters");
-        }
-        else if (auto pv_it = pv.find(query_parameter, boost::urls::ignore_case); pv.end() == pv_it)
+        else if (auto pv = url->params(); !pv.contains(query_parameter, boost::urls::ignore_case) || pv.end() == pv.find(query_parameter, boost::urls::ignore_case))
         {
             LogDebug(Channel::Web, "URL was malformed and was missing expected query parameters");
         }
         else
         {
-            return (*pv_it).value;
+            return (*pv.find(query_parameter, boost::urls::ignore_case)).value;
         }
 
         return tl::unexpected(false);

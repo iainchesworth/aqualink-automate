@@ -77,27 +77,17 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 
 		for (const auto& device : device_vec)
 		{
-			if (!device.contains("label"))
+			// Skip devices that don't have required fields or don't match
+			if (!device.contains("label") || !device.contains("state"))
 			{
-				// No label...ignore.
+				continue;
 			}
-			else if (!device.contains("state"))
+			if (label != device.at("label") || state != device.at("state"))
 			{
-				// No state...ignore.
+				continue;
 			}
-			else if (label != device.at("label"))
-			{
-				// Label doesn't match...ignore.
-			}
-			else if (state != device.at("state"))
-			{
-				// State doesn't match...ignore.
-			}
-			else
-			{
-				was_found = true;
-				break;
-			}
+			was_found = true;
+			break;
 		}
 
 		return was_found;

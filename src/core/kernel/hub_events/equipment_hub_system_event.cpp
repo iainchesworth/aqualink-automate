@@ -8,9 +8,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	EquipmentHub_SystemEvent::~EquipmentHub_SystemEvent()
-	{
-	}
+	EquipmentHub_SystemEvent::~EquipmentHub_SystemEvent() = default;
 
 }
 // namespace AqualinkAutomate::Kernel

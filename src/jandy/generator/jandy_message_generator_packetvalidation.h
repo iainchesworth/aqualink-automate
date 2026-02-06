@@ -6,7 +6,7 @@
 
 namespace AqualinkAutomate::Generators
 {
-	bool PacketValidation_ChecksumIsValid(boost::circular_buffer<uint8_t>::iterator start_it, boost::circular_buffer<uint8_t>::iterator end_it);
+	bool PacketValidation_ChecksumIsValid(const boost::circular_buffer<uint8_t>::iterator& start_it, const boost::circular_buffer<uint8_t>::iterator& end_it);
 
 }
 // namespace AqualinkAutomate::Generators

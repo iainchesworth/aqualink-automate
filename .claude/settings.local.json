@@ -111,7 +111,8 @@
       "Bash(test:*)",
       "Bash(tee:*)",
       "Bash(./bin/aqualink-automate.exe:*)",
-      "Bash(./src/aqualink-automate.exe:*)"
+      "Bash(./src/aqualink-automate.exe:*)",
+      "Bash(./build/config-windows-llvm/src/aqualink-automate.exe:*)"
     ]
   }
 }

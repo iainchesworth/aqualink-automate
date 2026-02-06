@@ -8,10 +8,10 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Utility
 {
 
-	ScreenDataPage_Processor::ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails menu_matcher, MenuMatcherProcessor menu_processor) :
+	ScreenDataPage_Processor::ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails& menu_matcher, MenuMatcherProcessor menu_processor) :
 		m_PageType(page_type),
 		m_MenuMatcher(menu_matcher),
-		m_MenuProcessor(menu_processor)
+		m_MenuProcessor(std::move(menu_processor))
 	{
 	}
 

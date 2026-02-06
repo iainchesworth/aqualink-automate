@@ -59,7 +59,8 @@ namespace AqualinkAutomate::Options::Web
 	class OptionsProcessor
 	{
 	private:
-		AppOptionPtr OPTION_INTERFACE{ make_appoption("address", "Specific network interface to which to bind", boost::program_options::value<std::string>()->default_value("0.0.0.0")) };
+		// Default to localhost for security - use --address 0.0.0.0 to expose on all interfaces
+		AppOptionPtr OPTION_INTERFACE{ make_appoption("address", "Specific network interface to which to bind", boost::program_options::value<std::string>()->default_value("127.0.0.1")) };
 		AppOptionPtr OPTION_HTTPPORT{ make_appoption("http-port", "Specific HTTP port number on which to listen", boost::program_options::value<uint16_t>()) };
 		AppOptionPtr OPTION_HTTPSPORT{ make_appoption("https-port", "Specific HTTPS port number on which to listen", boost::program_options::value<uint16_t>()) };
 		AppOptionPtr OPTION_NOCONTENT{ make_appoption("disable-content", "Disable serving of rendered content; only enable APIs", boost::program_options::bool_switch()->default_value(false)) };

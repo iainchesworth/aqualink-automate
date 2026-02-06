@@ -31,12 +31,7 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToChemistry(TrimWhitespace(chemistry_string));
 	}
 
-	ChemistryStringConverter::ChemistryStringConverter(const ChemistryStringConverter& other) noexcept :
-		m_ORP(other.m_ORP),
-		m_PH(other.m_PH),
-		m_ErrorOccurred(other.m_ErrorOccurred)
-	{
-	}
+	ChemistryStringConverter::ChemistryStringConverter(const ChemistryStringConverter& other) noexcept = default;
 
 	ChemistryStringConverter::ChemistryStringConverter(ChemistryStringConverter&& other) noexcept :
 		m_ORP(std::move(other.m_ORP)),
@@ -104,8 +99,8 @@ namespace AqualinkAutomate::Utility
 
 		if (orp && ph)
 		{
-			boost::float64_t converted_orp;
-			boost::float32_t converted_ph;
+			boost::float64_t converted_orp = 0.0;
+			boost::float32_t converted_ph = 0.0f;
 
 			if (auto [_, ec] = std::from_chars((*orp).data(), (*orp).data() + (*orp).size(), converted_orp); std::errc() != ec)
 			{
@@ -134,35 +129,26 @@ namespace AqualinkAutomate::Utility
 	{
 		boost::smatch match_results;
 
-		if (MINIMUM_STRING_LENGTH > chemistry_string.size() || MAXIMUM_STRING_LENGTH < chemistry_string.size())
+		if (MINIMUM_STRING_LENGTH > chemistry_string.size() || MAXIMUM_STRING_LENGTH < chemistry_string.size() ||
+			!boost::regex_search(chemistry_string, match_results, REGEX_PARSER) ||
+			4 > match_results.size())
 		{
-			// Invalid string length...do nothing.
-		}
-		else if (!boost::regex_search(chemistry_string, match_results, REGEX_PARSER))
-		{
-			// Invalid pattern match...do nothing.
-		}
-		else if (4 > match_results.size())
-		{
-			// Insufficent resultset to pull groups from.
-		}
-		else
-		{
-			// NOTE: This regex will capture the following groups:
-			//
-			//    Group 1 -> ORP/###
-			//    Group 2 -> ###
-			//    Group 3 -> PH/#.#
-			//    Group 4 -> #.#
-			//
-
-			return std::make_tuple<>(
-				std::optional<std::string>(match_results[2]),
-				std::optional<std::string>(match_results[4])
-			);
+			// Invalid string length, pattern match, or insufficient resultset...do nothing.
+			return std::make_tuple(std::nullopt, std::nullopt);
 		}
 
-		return std::make_tuple(std::nullopt, std::nullopt);
+		// NOTE: This regex will capture the following groups:
+		//
+		//    Group 1 -> ORP/###
+		//    Group 2 -> ###
+		//    Group 3 -> PH/#.#
+		//    Group 4 -> #.#
+		//
+
+		return std::make_tuple<>(
+			std::optional<std::string>(match_results[2]),
+			std::optional<std::string>(match_results[4])
+		);
 	}
 
 }

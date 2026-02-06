@@ -5,12 +5,12 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	Temperature::Temperature(boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> degrees_celsius) :
+	Temperature::Temperature(const boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>& degrees_celsius) :
 		m_TempInKelvin(degrees_celsius)
 	{
 	}
 
-	Temperature::Temperature(boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>> degrees_fahrenheit) :
+	Temperature::Temperature(const boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>& degrees_fahrenheit) :
 		m_TempInKelvin(degrees_fahrenheit)
 	{
 	}

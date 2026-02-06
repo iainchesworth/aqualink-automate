@@ -14,9 +14,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Probe::~JandyMessage_Probe()
-	{
-	}
+	JandyMessage_Probe::~JandyMessage_Probe() = default;
 
 	std::string JandyMessage_Probe::ToString() const
 	{

@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_OneTouchStatus::~IAQMessage_OneTouchStatus()
-	{
-	}
+	IAQMessage_OneTouchStatus::~IAQMessage_OneTouchStatus() = default;
 
 	const std::vector<uint8_t>& IAQMessage_OneTouchStatus::RawPayload() const
 	{

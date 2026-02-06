@@ -8,7 +8,7 @@
 namespace AqualinkAutomate::Serial
 {
 
-	void Initialise(Options::Settings& settings, const std::shared_ptr<Serial::SerialPort> serial_port);
+	void Initialise(Options::Settings& settings, const std::shared_ptr<Serial::SerialPort>& serial_port);
 
 }
 // namespace AqualinkAutomate::Serial

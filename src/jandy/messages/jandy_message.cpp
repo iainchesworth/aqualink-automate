@@ -34,9 +34,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage::~JandyMessage()
-	{
-	}
+	JandyMessage::~JandyMessage() = default;
 
 	const Devices::JandyDeviceType JandyMessage::Destination() const
 	{

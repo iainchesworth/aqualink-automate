@@ -3,12 +3,12 @@
 namespace AqualinkAutomate::Kernel
 {
 	
-	FlowRate::FlowRate(Units::gallons_per_minute rate_in_gpm) :
+	FlowRate::FlowRate(const Units::gallons_per_minute& rate_in_gpm) :
 		m_FlowRateInLPM(rate_in_gpm)
 	{
 	}
 
-	FlowRate::FlowRate(Units::liters_per_minute rate_in_lpm) :
+	FlowRate::FlowRate(const Units::liters_per_minute& rate_in_lpm) :
 		m_FlowRateInLPM(rate_in_lpm)
 	{
 	}

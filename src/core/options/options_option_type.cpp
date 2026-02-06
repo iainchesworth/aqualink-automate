@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Options
 	AppOption::AppOption(const std::string& long_name, const std::string& description, const boost::program_options::value_semantic* s) :
 		boost::program_options::option_description(long_name.c_str(), s, description.c_str()),
 		m_LongName(long_name),
-		m_ShortName(""),
+		m_ShortName(),
 		m_Description(description)
 	{
 	}
@@ -35,12 +35,12 @@ namespace AqualinkAutomate::Options
 
 	bool AppOption::IsPresent(boost::program_options::variables_map& vm) const
 	{
-		return (0 < vm.count(m_LongName.c_str()));
+		return (0 < vm.count(m_LongName));
 	}
 
 	bool AppOption::IsPresentAndNotJustDefaulted(boost::program_options::variables_map& vm) const
 	{
-		return (IsPresent(vm) && !(vm[m_LongName.c_str()].defaulted()));
+		return (IsPresent(vm) && !(vm[m_LongName].defaulted()));
 	}
 
 }

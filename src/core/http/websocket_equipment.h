@@ -39,6 +39,9 @@ namespace AqualinkAutomate::HTTP
 		boost::signals2::connection m_ConfigChangeSlot;
 		boost::signals2::connection m_StatusChangeSlot;
 		std::deque<std::string> m_MessageQueue;
+
+		// Security: Maximum queue size to prevent memory exhaustion
+		static constexpr std::size_t MAX_MESSAGE_QUEUE_SIZE = 100;
 	};
 
 }

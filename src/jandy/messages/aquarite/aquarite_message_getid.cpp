@@ -22,9 +22,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AquariteMessage_GetId::~AquariteMessage_GetId()
-	{
-	}
+	AquariteMessage_GetId::~AquariteMessage_GetId() = default;
 
 	PanelDataTypes AquariteMessage_GetId::RequestedPanelData() const
 	{

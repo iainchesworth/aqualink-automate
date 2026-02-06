@@ -147,13 +147,10 @@ namespace AqualinkAutomate::Equipment
 
 	void JandyEquipment::IdentifyAndAddDevice(const Messages::JandyMessage& message)
 	{
-		if (Messages::JandyMessageIds::Probe == message.Id())
+		if (Messages::JandyMessageIds::Probe == message.Id() || m_EquipmentHub->DeviceExists(message.Destination()))
 		{
-			// A probe message is just the Aqualink master looking for a (potentially non-existant) device...do nothing.
-		}
-		else if (m_EquipmentHub->DeviceExists(message.Destination()))
-		{
-			// Already have this device in the devices list...do nothing.
+			// A probe message is just the Aqualink master looking for a (potentially non-existant) device,
+			// or we already have this device in the devices list...do nothing.
 		}
 		else
 		{

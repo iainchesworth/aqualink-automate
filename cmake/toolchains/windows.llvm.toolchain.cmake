@@ -41,7 +41,15 @@ add_compile_options("/utf-8")
 add_compile_options("/bigobj")
 
 # Link with MSVC runtime
+# Note: ASan requires /MD (not /MDd) even for debug builds, so we use /MD for all configs
 set(CMAKE_CXX_FLAGS_INIT "/MD")
 set(CMAKE_C_FLAGS_INIT "/MD")
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "/MD /Zi /Ob0 /Od")
+set(CMAKE_C_FLAGS_DEBUG_INIT "/MD /Zi /Ob0 /Od")
+set(CMAKE_CXX_FLAGS_RELEASE_INIT "/MD /O2 /Ob2 /DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE_INIT "/MD /O2 /Ob2 /DNDEBUG")
+
+# Prevent CMake from adding /MDd or /MTd
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")

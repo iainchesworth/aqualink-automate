@@ -3,9 +3,7 @@
 namespace AqualinkAutomate::Localisation
 {
 
-	TranslationsAndUnitsFormatter::TranslationsAndUnitsFormatter()
-	{
-	}
+	TranslationsAndUnitsFormatter::TranslationsAndUnitsFormatter() = default;
 
 	TranslationsAndUnitsFormatter& TranslationsAndUnitsFormatter::Instance()
 	{

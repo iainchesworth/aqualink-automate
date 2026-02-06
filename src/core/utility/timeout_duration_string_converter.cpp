@@ -23,10 +23,7 @@ namespace AqualinkAutomate::Utility
 		ConvertStringToTimeoutDuration(timeout_string);
 	}
 
-	TimeoutDurationStringConverter::TimeoutDurationStringConverter(const TimeoutDurationStringConverter& other) noexcept :
-		m_TimeoutDuration(other.m_TimeoutDuration)
-	{
-	}
+	TimeoutDurationStringConverter::TimeoutDurationStringConverter(const TimeoutDurationStringConverter& other) noexcept = default;
 
 	TimeoutDurationStringConverter::TimeoutDurationStringConverter(TimeoutDurationStringConverter&& other) noexcept :
 		m_TimeoutDuration(std::move(other.m_TimeoutDuration))

@@ -51,7 +51,7 @@ namespace AqualinkAutomate::HTTP
 		void DoWrite(Message msg);
 		void OnWrite(boost::system::error_code ec, std::size_t bytes_transferred, bool keep_alive);
 
-		void DoWsAccept(Request req);
+		void DoWsAccept(const Request& req);
 		void OnWsAccept(boost::system::error_code ec);
 
 		void DoWsRead();
@@ -117,6 +117,9 @@ namespace AqualinkAutomate::HTTP
 
 		std::vector<std::shared_ptr<HttpSessionState>> m_Sessions;
 		bool m_Running{ false };
+
+		// Security: Maximum concurrent connections to prevent resource exhaustion
+		static constexpr std::size_t MAX_CONCURRENT_CONNECTIONS = 1000;
 	};
 
 }

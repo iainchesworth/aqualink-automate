@@ -29,11 +29,10 @@ BOOST_AUTO_TEST_CASE(Test_ScopedOp_AutoComplete)
 	auto& tracker = AsyncOperationTracker::Instance();
 
 	auto pending_before = tracker.PendingCount();
-	uint64_t op_id = 0;
 
 	{
 		ScopedOp op(AsyncOperationType::TimerWait, "ScopedTimerTest");
-		op_id = op.Id();
+		BOOST_TEST(op.Id() > 0u);
 		BOOST_TEST(tracker.PendingCount() == pending_before + 1);
 	}
 

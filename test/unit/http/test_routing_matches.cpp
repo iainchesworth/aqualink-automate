@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 		auto p1 = test_routes.find_impl(*var1, matches_it, ids_it);
 		BOOST_CHECK_NE(nullptr, p1);
 
-		std::string var1_msg{ "" };
+		std::string var1_msg;
 		boost::urls::pct_string_view(m[0]).decode({}, boost::urls::string_token::append_to(var1_msg));
 		BOOST_CHECK_EQUAL("one", var1_msg);
 
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 		auto p2 = test_routes.find_impl(*var2, matches_it, ids_it);
 		BOOST_CHECK_NE(nullptr, p2);
 
-		std::string var2_msg{ "" };
+		std::string var2_msg;
 		boost::urls::pct_string_view(m[1]).decode({}, boost::urls::string_token::append_to(var2_msg));
 		BOOST_CHECK_EQUAL("two", var2_msg);
 	}
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 		auto p0 = test_routes.find_impl(*star0, matches_it, ids_it);
 		BOOST_CHECK_NE(nullptr, p0);
 
-		std::string star0_msg{ "" };
+		std::string star0_msg;
 		boost::urls::pct_string_view(m[0]).decode({}, boost::urls::string_token::append_to(star0_msg));
 		BOOST_CHECK_EQUAL("", star0_msg);
 
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 		auto p1 = test_routes.find_impl(*star1, matches_it, ids_it);
 		BOOST_CHECK_NE(nullptr, p1);
 
-		std::string star1_msg{ "" };
+		std::string star1_msg;
 		boost::urls::pct_string_view(m[1]).decode({}, boost::urls::string_token::append_to(star1_msg));
 		BOOST_CHECK_EQUAL("this", star1_msg);
 
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 		auto p2 = test_routes.find_impl(*star2, matches_it, ids_it);
 		BOOST_CHECK_NE(nullptr, p2);
 
-		std::string star2_msg{ "" };
+		std::string star2_msg;
 		boost::urls::pct_string_view(m[2]).decode({}, boost::urls::string_token::append_to(star2_msg));
 		BOOST_CHECK_EQUAL("this/is", star2_msg);
 	}

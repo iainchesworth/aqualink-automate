@@ -16,9 +16,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	EPumpMessage_Status::~EPumpMessage_Status()
-	{
-	}
+	EPumpMessage_Status::~EPumpMessage_Status() = default;
 
 	uint8_t EPumpMessage_Status::SubCommand() const
 	{

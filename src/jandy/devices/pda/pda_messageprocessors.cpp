@@ -77,18 +77,7 @@ namespace AqualinkAutomate::Devices
 		
 		if (PDA_PAGE_LINES <= msg.LineId())
 		{
-			switch (msg.LineId())
-			{
-			case PDA_MESSAGE_LONG_AIRWATER:
-				break;
-
-			case PDA_MESSAGE_LONG_TEMPERATURE:
-				break;
-
-			default:
-				break;
-			}
-
+			// PDA_MESSAGE_LONG_AIRWATER, PDA_MESSAGE_LONG_TEMPERATURE, and other unsupported line types are handled the same way
 			LogDebug(Channel::Devices, std::format("PDA device received a MessageLong update for an unsupported line; line id -> {}, content -> '{}'", msg.LineId(), msg.Line()));
 			Signal_AckMessage(Messages::AckTypes::V1_Normal, KeyCommands::NoKeyCommand);
 		}

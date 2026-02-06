@@ -13,9 +13,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	DataHub_ConfigEvent_ButtonStateChange::~DataHub_ConfigEvent_ButtonStateChange()
-	{
-	}
+	DataHub_ConfigEvent_ButtonStateChange::~DataHub_ConfigEvent_ButtonStateChange() = default;
 
 	boost::uuids::uuid DataHub_ConfigEvent_ButtonStateChange::ButtonId() const
 	{

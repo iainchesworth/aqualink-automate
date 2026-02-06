@@ -49,9 +49,7 @@ struct UnitTestGlobalFixture
 		}
 	}
 
-	~UnitTestGlobalFixture()
-	{
-	}
+	~UnitTestGlobalFixture() = default;
 };
 
 BOOST_TEST_GLOBAL_FIXTURE(UnitTestGlobalFixture);

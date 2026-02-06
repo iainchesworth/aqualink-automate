@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AquariteMessage_Percent::~AquariteMessage_Percent()
-	{
-	}
+	AquariteMessage_Percent::~AquariteMessage_Percent() = default;
 
 	uint8_t AquariteMessage_Percent::GeneratingPercentage() const
 	{

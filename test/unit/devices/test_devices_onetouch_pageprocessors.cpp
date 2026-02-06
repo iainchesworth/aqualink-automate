@@ -13,15 +13,15 @@ BOOST_AUTO_TEST_CASE(TestAuxillariesHeatersPumpsAreRegistered)
 	{
 		for (const auto& device : device_vec)
 		{
+			// Skip null devices and non-matching labels
 			if (nullptr == device)
 			{
-				// Not a valid device...ignore
+				continue;
 			}
-			else if (label != *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]))
+			if (label != *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]))
 			{
-				// Label doesn't match...ignore.
+				continue;
 			}
-			else 
 			{
 				switch(*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}]))
 				{

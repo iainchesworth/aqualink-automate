@@ -23,10 +23,10 @@ namespace AqualinkAutomate::Logging
 
 	void validate(boost::any& v, std::vector<std::string> const& values, Severity* target_type, int)
 	{
-		auto capitalize = [](std::string_view word) 
+		auto capitalize = [](std::string_view word)
 		{
-			auto first = std::toupper(word[0]);
-			auto rest = std::views::drop(word, 1) | std::views::transform([](char c) { return std::tolower(c); });
+			auto first = static_cast<char>(std::toupper(word[0]));
+			auto rest = std::views::drop(word, 1) | std::views::transform([](char c) { return static_cast<char>(std::tolower(c)); });
 			return std::string(1, first) + std::string(rest.begin(), rest.end());
 		};
 

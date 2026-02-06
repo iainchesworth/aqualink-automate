@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(ValidProfilerCaseInsensitive)
     for (int i = 0; i < profiler_types.size(); ++i) 
     {
         boost::any val;
-        ProfilerTypes target;
+        ProfilerTypes target{};
         std::vector<std::string> values { profiler_types[i] };
 
         validate(val, values, &target, 0);
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(InvalidProfiler)
 
     boost::any val;
     std::vector<std::string> values;
-    ProfilerTypes target;
+    ProfilerTypes target{};
 
     // Test invalid profiler
     values.push_back("invalid_profiler");

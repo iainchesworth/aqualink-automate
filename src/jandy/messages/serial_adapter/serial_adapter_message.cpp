@@ -12,9 +12,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	SerialAdapterMessage::~SerialAdapterMessage()
-	{
-	}
+	SerialAdapterMessage::~SerialAdapterMessage() = default;
 
 	std::string SerialAdapterMessage::ToString() const
 	{

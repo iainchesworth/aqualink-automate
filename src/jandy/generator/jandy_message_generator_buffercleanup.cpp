@@ -27,13 +27,9 @@ namespace AqualinkAutomate::Generators
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::BufferCleanUp -> has_end_of_packet", std::source_location::current());
 
-		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= serial_data.size())
+		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= serial_data.size() || !locations.HasPacketStart)
 		{
-			// Not enough data in the buffer to do anything at this point in time...ignore.
-		}
-		else if (!locations.HasPacketStart)
-		{
-			// There doesn't appear to be a packet in this data...ignore.
+			// Not enough data in the buffer or there doesn't appear to be a packet in this data...ignore.
 		}
 		else
 		{

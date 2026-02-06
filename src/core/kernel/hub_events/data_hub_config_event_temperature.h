@@ -23,9 +23,9 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> AirTemp() const;
 
 	public:
-		void PoolTemp(Kernel::Temperature pool);
-		void SpaTemp(Kernel::Temperature spa);
-		void AirTemp(Kernel::Temperature air);
+		void PoolTemp(const Kernel::Temperature& pool);
+		void SpaTemp(const Kernel::Temperature& spa);
+		void AirTemp(const Kernel::Temperature& air);
 
 	public:
 		virtual boost::uuids::uuid Id() const override;

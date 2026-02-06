@@ -23,7 +23,7 @@ namespace AqualinkAutomate::Devices
 		using TimestampedWatts = std::pair<uint16_t, std::chrono::time_point<std::chrono::system_clock>>;
 
 	public:
-		EPumpDevice(std::shared_ptr<Devices::JandyDeviceType> device_id);
+		EPumpDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
 		virtual ~EPumpDevice() = default;
 
 	private:

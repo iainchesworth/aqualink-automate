@@ -38,8 +38,8 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id);
-		AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
+		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
+		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice() = default;
 
 	private:

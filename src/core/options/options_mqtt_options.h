@@ -73,6 +73,12 @@ namespace AqualinkAutomate::Options::Mqtt
 		/// Client identifier (auto-generated if empty)
 		std::string client_id;
 
+		/// Username for broker authentication (optional)
+		std::string username;
+
+		/// Password for broker authentication (optional)
+		std::string password;
+
 		//---------------------------------------------------------------------
 		// TOPIC CONFIGURATION
 		//---------------------------------------------------------------------
@@ -124,6 +130,8 @@ namespace AqualinkAutomate::Options::Mqtt
 
 		// Authentication
 		AppOptionPtr OPTION_CLIENT_ID{ make_appoption("mqtt-client-id", "MQTT client identifier (auto-generated if not specified)", boost::program_options::value<std::string>()) };
+		AppOptionPtr OPTION_USERNAME{ make_appoption("mqtt-username", "Username for MQTT broker authentication", boost::program_options::value<std::string>()) };
+		AppOptionPtr OPTION_PASSWORD{ make_appoption("mqtt-password", "Password for MQTT broker authentication", boost::program_options::value<std::string>()) };
 
 		// Topic configuration
 		AppOptionPtr OPTION_TOPIC_PREFIX{ make_appoption("mqtt-prefix", "Base topic prefix for all MQTT messages", boost::program_options::value<std::string>()->default_value("aqualink")) };
@@ -144,6 +152,8 @@ namespace AqualinkAutomate::Options::Mqtt
 			OPTION_TLS_CLIENT_KEY,
 			OPTION_TLS_SKIP_VERIFY,
 			OPTION_CLIENT_ID,
+			OPTION_USERNAME,
+			OPTION_PASSWORD,
 			OPTION_TOPIC_PREFIX,
 			OPTION_STATUS_INTERVAL,
 			OPTION_STATS_INTERVAL,

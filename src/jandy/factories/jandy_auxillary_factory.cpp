@@ -18,9 +18,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Factory
 {
 
-	JandyAuxillaryFactory::JandyAuxillaryFactory()
-	{
-	}
+	JandyAuxillaryFactory::JandyAuxillaryFactory() = default;
 
 	JandyAuxillaryFactory& JandyAuxillaryFactory::Instance()
 	{
@@ -36,7 +34,7 @@ namespace AqualinkAutomate::Factory
 
 	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status)
 	{
-		Kernel::AuxillaryStatuses aux_status;
+		Kernel::AuxillaryStatuses aux_status = Kernel::AuxillaryStatuses::Unknown;
 
 		switch (status)
 		{
@@ -199,14 +197,14 @@ namespace AqualinkAutomate::Factory
 			std::visit(
 				Utility::OverloadedVisitor
 				{
-					[&aux_ptr](AuxillaryDevice_Data data) 
+					[&aux_ptr](const AuxillaryDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(std::string{ magic_enum::enum_name(data.Id) }));
 						aux_ptr->AuxillaryTraits.Set(Auxillaries::JandyAuxillaryId{}, data.Id);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, data.Status.value_or(Kernel::AuxillaryStatuses::Unknown));
 					},
-					[&aux_ptr](ChlorinatorDevice_Data data)
+					[&aux_ptr](const ChlorinatorDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(CHLORINATOR));
@@ -216,12 +214,12 @@ namespace AqualinkAutomate::Factory
 							aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ConvertToChlorinatorStatus(data.Status.value()));
 						}
 					},
-					[&aux_ptr](CleanerDevice_Data data)
+					[&aux_ptr](const CleanerDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Cleaner);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(CLEANER));
 					},
-					[&aux_ptr](HeaterDevice_Data data)
+					[&aux_ptr](const HeaterDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(HEATER));
@@ -231,7 +229,7 @@ namespace AqualinkAutomate::Factory
 							aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::ConvertToHeaterStatus(data.Status.value()));
 						}
 					},
-					[&aux_ptr](PumpDevice_Data data)
+					[&aux_ptr](const PumpDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(PUMP));
@@ -241,17 +239,17 @@ namespace AqualinkAutomate::Factory
 							aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::ConvertToPumpStatus(data.Status.value()));
 						}
 					},
-					[&aux_ptr](SpilloverDevice_Data data)
+					[&aux_ptr](const SpilloverDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Spillover);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(SPILLOVER));
 					},
-					[&aux_ptr](SprinklerDevice_Data data)
+					[&aux_ptr](const SprinklerDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Sprinkler);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(SPRINKLER));
 					},
-					[&aux_ptr](UnknownDevice_Data data)
+					[&aux_ptr](const UnknownDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Unknown);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(UNKNOWN));

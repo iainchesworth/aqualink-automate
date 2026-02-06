@@ -265,7 +265,7 @@ namespace AqualinkAutomate::Developer
 
 	std::expected<std::size_t, boost::system::error_code> MockSerialPortImpl::HandleMockWrite(const boost::asio::const_buffer& buffer)
 	{
-		auto bytes_transferred = 0;
+		std::size_t bytes_transferred = 0;
 
 		auto convert_stop_bits_to_number = [](Serial::StopBits stop_bits)
 			{
@@ -297,10 +297,10 @@ namespace AqualinkAutomate::Developer
 			};
 
 		// The total bits transmitted per character is: start_bit + data_bits + optional_parity_bit + stop_bits
-		const auto bits_per_sent_byte = 1 + m_Options.character_size + convert_parity_bits_to_number(m_Options.parity) + convert_stop_bits_to_number(m_Options.stop_bits);
-		const auto number_of_bits_to_send = bits_per_sent_byte * buffer.size();
-		const auto bits_per_msec = std::div(static_cast<long long>(m_Options.baud_rate), std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(1)).count()).quot;
-		const auto send_duration = std::chrono::milliseconds(std::div(number_of_bits_to_send, bits_per_msec).quot);
+		const double bits_per_sent_byte = 1.0 + static_cast<double>(m_Options.character_size) + static_cast<double>(convert_parity_bits_to_number(m_Options.parity)) + convert_stop_bits_to_number(m_Options.stop_bits);
+		const double number_of_bits_to_send = bits_per_sent_byte * static_cast<double>(buffer.size());
+		const auto bits_per_msec = static_cast<double>(m_Options.baud_rate) / 1000.0;
+		const auto send_duration = std::chrono::milliseconds(static_cast<long long>(number_of_bits_to_send / bits_per_msec));
 
 		std::this_thread::sleep_for(send_duration);
 		bytes_transferred = buffer.size();
@@ -348,7 +348,7 @@ namespace AqualinkAutomate::Developer
 					}
 					else
 					{
-						uint8_t converted_value;
+						uint8_t converted_value = 0;
 
 						auto [p, ec] = std::from_chars(line.data() + 2, line.data() + 4, converted_value, 16);
 						if (std::errc() == ec)

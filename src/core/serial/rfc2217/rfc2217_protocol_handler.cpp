@@ -254,6 +254,39 @@ namespace AqualinkAutomate::Serial::RFC2217
 			return;
 		}
 
+		// Security: Validate parameter lengths for known commands
+		const uint8_t base_command = command - Constants::SERVER_OFFSET;
+		switch (base_command)
+		{
+		case Constants::SET_BAUDRATE:
+			if (params.size() != 4)
+			{
+				LogWarning(Channel::Serial, std::format("RFC2217: Invalid baud rate parameter length: {} (expected 4)", params.size()));
+				return;
+			}
+			break;
+		case Constants::SET_DATASIZE:
+		case Constants::SET_PARITY:
+		case Constants::SET_STOPSIZE:
+		case Constants::SET_CONTROL:
+		case Constants::NOTIFY_LINESTATE:
+		case Constants::NOTIFY_MODEMSTATE:
+			if (params.size() != 1)
+			{
+				LogWarning(Channel::Serial, std::format("RFC2217: Invalid parameter length for command 0x{:02X}: {} (expected 1)", command, params.size()));
+				return;
+			}
+			break;
+		default:
+			// Unknown commands - limit parameter size as defense in depth
+			if (params.size() > 256)
+			{
+				LogWarning(Channel::Serial, std::format("RFC2217: Excessive parameter length for unknown command 0x{:02X}: {}", command, params.size()));
+				return;
+			}
+			break;
+		}
+
 		// Server acknowledgment - log based on specific command
 		switch (command)
 		{

@@ -10,13 +10,9 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	{
 		static const std::string UNKNOWN_STATUS{"Unknown"};
 
-		if (!device.AuxillaryTraits.Has(AuxillaryTypeTrait{}))
+		if (!device.AuxillaryTraits.Has(AuxillaryTypeTrait{}) || !device.AuxillaryTraits.Has(StatusTrait{}))
 		{
-			// Cannot determine what type of device this is...
-		}
-		else if (!device.AuxillaryTraits.Has(StatusTrait{}))
-		{
-			// Cannot determine what the status of device this is...
+			// Cannot determine what type of device this is or what the status is...
 		}
 		else
 		{
@@ -51,7 +47,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		return UNKNOWN_STATUS;
 	}
 
-	std::string_view ConvertStatusToString(std::shared_ptr<AuxillaryDevice> device)
+	std::string_view ConvertStatusToString(const std::shared_ptr<AuxillaryDevice>& device)
 	{
 		static const std::string UNKNOWN_STATUS{"Unknown"};
 		if (nullptr == device)

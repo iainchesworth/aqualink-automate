@@ -16,7 +16,7 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Devices
 {
 
-	OneTouchDevice::OneTouchDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+	OneTouchDevice::OneTouchDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
 		Capabilities::Restartable(ONETOUCH_TIMEOUT_DURATION),
 		Capabilities::Screen(ONETOUCH_PAGE_LINES),

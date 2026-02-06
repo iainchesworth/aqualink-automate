@@ -4,16 +4,14 @@
 namespace AqualinkAutomate::Devices
 {
 
-	JandyDevice::JandyDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+	JandyDevice::JandyDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
 		IDevice(device_id),
 		IStatusPublisher(DeviceStatus_Unknown{}),
 		m_SlotManager()
 	{
 	}
 
-	JandyDevice::~JandyDevice()
-	{
-	}
+	JandyDevice::~JandyDevice() = default;
 
 	const Devices::JandyDeviceType& JandyDevice::DeviceId() const
 	{

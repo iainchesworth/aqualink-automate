@@ -10,7 +10,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	HeaterDevice::HeaterDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+	HeaterDevice::HeaterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
 		JandyDevice(device_id),
 		Capabilities::Restartable(HEATER_TIMEOUT_DURATION),
 		m_OperatingMode(std::make_pair(Messages::HeaterOperatingModes::Unknown, std::chrono::system_clock::now())),

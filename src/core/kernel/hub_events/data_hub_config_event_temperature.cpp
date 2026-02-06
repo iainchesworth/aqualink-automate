@@ -18,9 +18,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	DataHub_ConfigEvent_Temperature::~DataHub_ConfigEvent_Temperature()
-	{
-	}
+	DataHub_ConfigEvent_Temperature::~DataHub_ConfigEvent_Temperature() = default;
 
 	std::optional<Kernel::Temperature> DataHub_ConfigEvent_Temperature::PoolTemp() const
 	{
@@ -37,17 +35,17 @@ namespace AqualinkAutomate::Kernel
 		return m_AirTemp;
 	}
 
-	void DataHub_ConfigEvent_Temperature::PoolTemp(Kernel::Temperature pool)
+	void DataHub_ConfigEvent_Temperature::PoolTemp(const Kernel::Temperature& pool)
 	{
 		m_PoolTemp = pool;
 	}
 
-	void DataHub_ConfigEvent_Temperature::SpaTemp(Kernel::Temperature spa)
+	void DataHub_ConfigEvent_Temperature::SpaTemp(const Kernel::Temperature& spa)
 	{
 		m_SpaTemp = spa;
 	}
 
-	void DataHub_ConfigEvent_Temperature::AirTemp(Kernel::Temperature air)
+	void DataHub_ConfigEvent_Temperature::AirTemp(const Kernel::Temperature& air)
 	{
 		m_AirTemp = air;
 	}

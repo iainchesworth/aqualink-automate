@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_MainStatus::~IAQMessage_MainStatus()
-	{
-	}
+	IAQMessage_MainStatus::~IAQMessage_MainStatus() = default;
 
 	const std::vector<uint8_t>& IAQMessage_MainStatus::RawPayload() const
 	{

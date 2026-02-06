@@ -8,7 +8,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	EPumpDevice::EPumpDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+	EPumpDevice::EPumpDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
 		JandyDevice(device_id),
 		Capabilities::Restartable(EPUMP_TIMEOUT_DURATION),
 		m_RPM(std::make_pair(0, std::chrono::system_clock::now())),

@@ -19,9 +19,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	DataHub_ConfigEvent_Chemistry::~DataHub_ConfigEvent_Chemistry()
-	{
-	}
+	DataHub_ConfigEvent_Chemistry::~DataHub_ConfigEvent_Chemistry() = default;
 
 	std::optional<Kernel::ORP> DataHub_ConfigEvent_Chemistry::ORP() const
 	{

@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE(Test_MutableTraits_Simple)
     class TestTypesTrait_Simple : public MutableTraitType<TestTypes_Simple>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Mutable_Simple"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Mutable_Simple"}; }
     };
 
     Traits traits;
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(Test_ImmutableTraits_Simple)
     class TestTypesTrait_Simple : public ImmutableTraitType<TestTypes_Simple>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Immutable_Simple"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Immutable_Simple"}; }
     }; 
     
     Traits traits;
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(Test_MutableTraits_Complex)
     class TestTypesTrait_Complex : public MutableTraitType<TestTypes_Complex>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Mutable_Complex"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Mutable_Complex"}; }
     };
 
     Traits traits;    
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(Test_ImmutableTraits_Complex)
     class TestTypesTrait_Complex : public ImmutableTraitType<TestTypes_Complex>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Immutable_Complex"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Immutable_Complex"}; }
     };
 
     Traits traits;
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(Test_Traits_Get_Exceptions)
     class TestTypesTrait_Simple : public MutableTraitType<TestTypes_Simple>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Simple"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Simple"}; }
     }; 
     
     Traits traits;
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(Test_Traits_Get_Exceptions)
     class TestTypesTrait_Complex : public MutableTraitType<TestTypes_Complex>
     {
     public:
-        virtual TraitKey Name() const final { return std::string{"TestTypesTrait_Complex"}; }
+        TraitKey Name() const final { return std::string{"TestTypesTrait_Complex"}; }
     };
 
     std::vector<uint32_t>::const_iterator cit;

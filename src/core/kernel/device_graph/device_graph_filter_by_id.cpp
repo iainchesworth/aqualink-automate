@@ -16,20 +16,10 @@ namespace AqualinkAutomate::Kernel
 
 	bool DeviceIdFilter::operator()(const DevicesGraphType::vertex_descriptor vd) const
 	{
-		if (auto device = m_Graph[vd]; nullptr == device)
-		{
-			// Invalid device pointer
-		}
-		else if (device->Id() != m_DeviceId)
-		{
-			// Id does not match.
-		}
-		else
-		{
-			return true;
-		}
+		auto device = m_Graph[vd];
 
-		return false;
+		// Valid device pointer and Id matches.
+		return nullptr != device && device->Id() == m_DeviceId;
 	}
 
 }

@@ -23,7 +23,7 @@ namespace AqualinkAutomate::Test
 		req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
 		// Use the routing system directly to process the request synchronously
-		auto msg = HTTP::Routing::HTTP_OnRequest(std::move(req));
+		auto msg = HTTP::Routing::HTTP_OnRequest(req);
 
 		// Extract the response from the message_generator
 		// Since message_generator wraps the response, we need to serialize and deserialize

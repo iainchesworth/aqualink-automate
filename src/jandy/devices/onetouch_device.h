@@ -60,7 +60,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		OneTouchDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		OneTouchDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~OneTouchDevice();
 
 	private:

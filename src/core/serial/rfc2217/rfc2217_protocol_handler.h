@@ -55,6 +55,9 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 		RFC2217::State m_State{ State::DATA };
 		std::vector<uint8_t> m_CommandBuffer;
+
+		// Security: Maximum command buffer size to prevent memory exhaustion from malicious input
+		static constexpr std::size_t MAX_COMMAND_BUFFER_SIZE = 4096;
 	};
 
 }

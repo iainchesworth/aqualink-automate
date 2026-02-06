@@ -12,12 +12,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-    StaticFileHandler::StaticFileHandler(std::string_view prefix, std::filesystem::path doc_root) :
-        StaticFileHandler(boost::urls::parse_uri_reference(prefix).value(), std::move(doc_root))
+    StaticFileHandler::StaticFileHandler(std::string_view prefix, const std::filesystem::path& doc_root) :
+        StaticFileHandler(boost::urls::parse_uri_reference(prefix).value(), doc_root)
     {
     }
 
-    StaticFileHandler::StaticFileHandler(boost::urls::url prefix, std::filesystem::path doc_root) :
+    StaticFileHandler::StaticFileHandler(boost::urls::url prefix, const std::filesystem::path& doc_root) :
         m_Prefix(std::move(prefix)),
         m_DocRoot(std::filesystem::absolute(doc_root))
     {
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::HTTP
         }
     }
 
-    bool StaticFileHandler::match(boost::urls::url_view target, std::filesystem::path& result)
+    bool StaticFileHandler::match(const boost::urls::url_view& target, std::filesystem::path& result)
     {
         if (boost::system::result<boost::urls::url> parsed_target = boost::urls::parse_uri_reference(target); parsed_target.has_error())
         {
@@ -60,6 +60,27 @@ namespace AqualinkAutomate::HTTP
             if (std::filesystem::is_directory(result))
             {
                 result /= "index.html";
+            }
+
+            // Security: Verify resolved path is within document root (path jail)
+            std::error_code canon_ec;
+            auto canonical_result = std::filesystem::weakly_canonical(result, canon_ec);
+            auto canonical_root = std::filesystem::weakly_canonical(m_DocRoot, canon_ec);
+
+            if (canon_ec)
+            {
+                LogWarning(Channel::Web, std::format("Path canonicalization failed: {}", canon_ec.message()));
+                return false;
+            }
+
+            // Ensure the resolved path starts with the document root
+            auto result_str = canonical_result.string();
+            auto root_str = canonical_root.string();
+            if (result_str.size() < root_str.size() ||
+                result_str.compare(0, root_str.size(), root_str) != 0)
+            {
+                LogWarning(Channel::Web, std::format("Path traversal attempt blocked: {} escapes {}", result_str, root_str));
+                return false;
             }
 
             return true;

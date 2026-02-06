@@ -181,7 +181,7 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			for (auto base_ptr : Devices.FindByLabel(Kernel::AuxillaryTraitsTypes::LabelTrait::COMMON_LABEL_FILTER_PUMP))
+			for (const auto& base_ptr : Devices.FindByLabel(Kernel::AuxillaryTraitsTypes::LabelTrait::COMMON_LABEL_FILTER_PUMP))
 			{
 				if (nullptr != base_ptr)
 				{

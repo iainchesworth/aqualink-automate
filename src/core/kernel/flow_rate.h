@@ -8,8 +8,8 @@ namespace AqualinkAutomate::Kernel
 	class FlowRate
 	{
 	public:
-		FlowRate(Units::gallons_per_minute rate_in_gpm);
-		FlowRate(Units::liters_per_minute rate_in_lpm);
+		FlowRate(const Units::gallons_per_minute& rate_in_gpm);
+		FlowRate(const Units::liters_per_minute& rate_in_lpm);
 
 	public:
 		Units::gallons_per_minute InGPM() const;

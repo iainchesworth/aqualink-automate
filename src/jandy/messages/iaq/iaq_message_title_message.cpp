@@ -16,9 +16,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_TitleMessage::~IAQMessage_TitleMessage()
-	{
-	}
+	IAQMessage_TitleMessage::~IAQMessage_TitleMessage() = default;
 
 	std::string IAQMessage_TitleMessage::Title() const
 	{
@@ -46,6 +44,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short to deserialise content of Title");
+		}
+		else if (message_bytes.size() < Index_TitleText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short for content extraction");
 		}
 		else
 		{

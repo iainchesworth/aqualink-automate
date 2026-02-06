@@ -57,7 +57,7 @@ static void BM_MqttClient_ConnectionEstablishment(benchmark::State& state)
 		co_await broker.start(1883);
 	});
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		
@@ -117,7 +117,7 @@ static void BM_MqttClient_PublishThroughput(benchmark::State& state)
 	
 	int64_t message_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 		
@@ -177,7 +177,7 @@ static void BM_MqttClient_PublishPayloadSize(benchmark::State& state)
 	
 	int64_t message_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 		
@@ -234,7 +234,7 @@ static void BM_MqttClient_SubscriptionPerformance(benchmark::State& state)
 	
 	int64_t subscription_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		std::string topic_filter = "test/perf/topic" + std::to_string(subscription_count);
 		
@@ -291,7 +291,7 @@ static void BM_MqttHub_StatusPublishing(benchmark::State& state)
 	
 	int64_t publish_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		broker.clear_published_messages();
 		
@@ -364,7 +364,7 @@ static void BM_MqttHub_CommandProcessing(benchmark::State& state)
 	
 	int64_t message_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 		
@@ -410,7 +410,7 @@ static void BM_MqttHub_JsonSerialization(benchmark::State& state)
 	int64_t serialization_count = 0;
 	int64_t total_bytes = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 		
@@ -476,7 +476,7 @@ static void BM_MqttIntegration_EndToEnd(benchmark::State& state)
 	
 	int64_t operation_count = 0;
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		
@@ -538,7 +538,7 @@ static void BM_MqttClient_MemoryUsage(benchmark::State& state)
 		co_await broker.start(1883);
 	});
 	
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		

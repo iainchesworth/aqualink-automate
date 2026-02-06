@@ -34,7 +34,7 @@ public:
 // Benchmark message factory lookup and creation
 BENCHMARK_DEFINE_F(MessageFactory_Fixture, CreateMessage_Ack)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto message = Factory::JandyMessageFactoryT::CreateMessageFromRaw(Messages::JandyMessageIds::Ack);
 		benchmark::DoNotOptimize(message);
@@ -47,7 +47,7 @@ BENCHMARK_REGISTER_F(MessageFactory_Fixture, CreateMessage_Ack)->Unit(benchmark:
 
 BENCHMARK_DEFINE_F(MessageFactory_Fixture, CreateMessage_Probe)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto message = Factory::JandyMessageFactoryT::CreateMessageFromRaw(Messages::JandyMessageIds::Probe);
 		benchmark::DoNotOptimize(message);
@@ -60,7 +60,7 @@ BENCHMARK_REGISTER_F(MessageFactory_Fixture, CreateMessage_Probe)->Unit(benchmar
 
 BENCHMARK_DEFINE_F(MessageFactory_Fixture, CreateMessage_Status)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto message = Factory::JandyMessageFactoryT::CreateMessageFromRaw(Messages::JandyMessageIds::Status);
 		benchmark::DoNotOptimize(message);
@@ -73,7 +73,7 @@ BENCHMARK_REGISTER_F(MessageFactory_Fixture, CreateMessage_Status)->Unit(benchma
 
 BENCHMARK_DEFINE_F(MessageFactory_Fixture, CreateMessage_MessageLong)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto message = Factory::JandyMessageFactoryT::CreateMessageFromRaw(Messages::JandyMessageIds::MessageLong);
 		benchmark::DoNotOptimize(message);
@@ -94,7 +94,7 @@ public:
 	void SetUp(const ::benchmark::State& state) override
 	{
 		buffer.set_capacity(1024);
-		BuildTestMessage(state.range(0));
+		BuildTestMessage(static_cast<int>(state.range(0)));
 	}
 
 	void TearDown(const ::benchmark::State&) override
@@ -184,7 +184,7 @@ public:
 		// 128 bytes of text data
 		for (int i = 0; i < 128; ++i)
 		{
-			char c = 'A' + (i % 26);
+			char c = static_cast<char>('A' + (i % 26));
 			buffer.push_back(static_cast<uint8_t>(c));
 		}
 		buffer.push_back(0x00); // Checksum placeholder
@@ -207,7 +207,7 @@ public:
 // Benchmark parsing ACK message (minimal)
 BENCHMARK_DEFINE_F(MessageGenerator_Fixture, ParseMessage_Ack)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		// Restore buffer state for next iteration
 		state.PauseTiming();
@@ -227,7 +227,7 @@ BENCHMARK_REGISTER_F(MessageGenerator_Fixture, ParseMessage_Ack)->Arg(0)->Unit(b
 // Benchmark parsing Status message (medium)
 BENCHMARK_DEFINE_F(MessageGenerator_Fixture, ParseMessage_Status)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		BuildStatusMessage();
@@ -246,7 +246,7 @@ BENCHMARK_REGISTER_F(MessageGenerator_Fixture, ParseMessage_Status)->Arg(2)->Uni
 // Benchmark parsing MessageLong (large payload)
 BENCHMARK_DEFINE_F(MessageGenerator_Fixture, ParseMessage_Long)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		BuildMessageLong();
@@ -299,7 +299,7 @@ public:
 BENCHMARK_DEFINE_F(CircularBuffer_Fixture, PushBack)(benchmark::State& state)
 {
 	size_t index = 0;
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		buffer.push_back(test_data[index % test_data.size()]);
 		index++;
@@ -320,7 +320,7 @@ BENCHMARK_DEFINE_F(CircularBuffer_Fixture, BulkPush)(benchmark::State& state)
 {
 	size_t chunk_size = state.range(1);
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		for (size_t i = 0; i < chunk_size; ++i)
 		{
@@ -329,7 +329,7 @@ BENCHMARK_DEFINE_F(CircularBuffer_Fixture, BulkPush)(benchmark::State& state)
 		benchmark::ClobberMemory();
 	}
 
-	state.SetItemsProcessed(state.iterations() * chunk_size);
+	state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * chunk_size));
 }
 BENCHMARK_REGISTER_F(CircularBuffer_Fixture, BulkPush)
 	->Args({1024, 32})   // Buffer size, chunk size
@@ -372,7 +372,7 @@ public:
 // Benchmark the message generator registry lookup and dispatch
 BENCHMARK_DEFINE_F(GeneratorRegistry_Fixture, RegistryGenerateMessage)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		buffer.clear();
@@ -559,7 +559,7 @@ BENCHMARK_DEFINE_F(ProcessMessages_Fixture, ConsecutiveValid_Ack)(benchmark::Sta
 		AppendAckPacket(stream);
 	}
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		FillBuffer(buffer, stream);
@@ -588,7 +588,7 @@ BENCHMARK_DEFINE_F(ProcessMessages_Fixture, ConsecutiveValid_Status)(benchmark::
 		AppendStatusPacket(stream);
 	}
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		FillBuffer(buffer, stream);
@@ -624,7 +624,7 @@ BENCHMARK_DEFINE_F(ProcessMessages_Fixture, ChecksumRecovery)(benchmark::State& 
 	}
 	AppendAckPacket(stream);
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		FillBuffer(buffer, stream);
@@ -650,7 +650,7 @@ BENCHMARK_DEFINE_F(ProcessMessages_Fixture, OverlappingRecovery)(benchmark::Stat
 	std::vector<uint8_t> stream;
 	AppendOverlappingPackets(stream);
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		FillBuffer(buffer, stream);
@@ -692,7 +692,7 @@ BENCHMARK_DEFINE_F(ProcessMessages_Fixture, MixedWorkload)(benchmark::State& sta
 		AppendStatusPacket(stream);
 	}
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		state.PauseTiming();
 		FillBuffer(buffer, stream);
@@ -737,7 +737,7 @@ public:
 BENCHMARK_DEFINE_F(ErrorHandler_Fixture, ChecksumFailure)(benchmark::State& state)
 {
 	auto ec = make_error_code(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure);
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		Protocol::ProtocolHandler_ReadOp_ErrorHandler(ec, stats_hub);
 		benchmark::ClobberMemory();
@@ -749,7 +749,7 @@ BENCHMARK_REGISTER_F(ErrorHandler_Fixture, ChecksumFailure)->Unit(benchmark::kNa
 BENCHMARK_DEFINE_F(ErrorHandler_Fixture, InvalidPacketFormat)(benchmark::State& state)
 {
 	auto ec = make_error_code(ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat);
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		Protocol::ProtocolHandler_ReadOp_ErrorHandler(ec, stats_hub);
 		benchmark::ClobberMemory();
@@ -761,7 +761,7 @@ BENCHMARK_REGISTER_F(ErrorHandler_Fixture, InvalidPacketFormat)->Unit(benchmark:
 BENCHMARK_DEFINE_F(ErrorHandler_Fixture, OverlappingPackets)(benchmark::State& state)
 {
 	auto ec = make_error_code(ErrorCodes::Protocol_ErrorCodes::OverlappingPackets);
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		Protocol::ProtocolHandler_ReadOp_ErrorHandler(ec, stats_hub);
 		benchmark::ClobberMemory();
@@ -773,7 +773,7 @@ BENCHMARK_REGISTER_F(ErrorHandler_Fixture, OverlappingPackets)->Unit(benchmark::
 BENCHMARK_DEFINE_F(ErrorHandler_Fixture, WaitingForMoreData)(benchmark::State& state)
 {
 	auto ec = make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData);
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		Protocol::ProtocolHandler_ReadOp_ErrorHandler(ec, stats_hub);
 		benchmark::ClobberMemory();
@@ -785,7 +785,7 @@ BENCHMARK_REGISTER_F(ErrorHandler_Fixture, WaitingForMoreData)->Unit(benchmark::
 BENCHMARK_DEFINE_F(ErrorHandler_Fixture, WithoutStatistics)(benchmark::State& state)
 {
 	auto ec = make_error_code(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure);
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		Protocol::ProtocolHandler_ReadOp_ErrorHandler(ec, nullptr);
 		benchmark::ClobberMemory();

@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
-		SerialAdapterDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~SerialAdapterDevice();
 
 	private:

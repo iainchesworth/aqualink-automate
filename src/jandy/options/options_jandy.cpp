@@ -51,13 +51,18 @@ namespace AqualinkAutomate::Jandy::Options
 			settings.disable_emulation = OPTION_DISABLEEMULATION->As<bool>(vm);
 		}
 
-		if (!OPTION_EMULATEDDEVICETYPE->IsPresent(vm))
+		if (OPTION_NAVPASSWORD->IsPresent(vm))
 		{
-			// No emulated devices....ignore.
+			settings.navigation_password = OPTION_NAVPASSWORD->As<std::string>(vm);
+			if (!settings.navigation_password.empty())
+			{
+				LogInfo(Channel::Options, "Navigation password configured for menu access");
+			}
 		}
-		else if (!OPTION_EMULATEDDEVICEID->IsPresent(vm))
+
+		if (!OPTION_EMULATEDDEVICETYPE->IsPresent(vm) || !OPTION_EMULATEDDEVICEID->IsPresent(vm))
 		{
-			// No emulated device ids....raise an error.
+			// No emulated devices or device ids....ignore.
 		}
 		else
 		{

@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Devices
 		static const uint8_t DEVICE_ID_OFFSET_IN_VALUE = 2;
 
 		std::string device_id_string;
-		uint32_t temporary_device_id;
+		uint32_t temporary_device_id = 0;
 
 		boost::program_options::validators::check_first_occurrence(v);
 		device_id_string = boost::program_options::validators::get_single_string(values);
@@ -57,12 +57,7 @@ namespace AqualinkAutomate::Devices
 			const auto device_id_from_offset = device_id_string.substr(DEVICE_ID_OFFSET_IN_VALUE);
 			auto [ptr, ec] = std::from_chars(device_id_from_offset.data(), device_id_from_offset.data() + device_id_from_offset.size(), temporary_device_id, 16);
 
-			if (std::errc() != ec)
-			{
-				LogDebug(Channel::Main, std::format("Invalid conversion of emulated device id: provided string was invalid -> {}", device_id_string));
-				throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-			}
-			else if ((device_id_from_offset.data() + device_id_from_offset.size()) != ptr)
+			if (std::errc() != ec || (device_id_from_offset.data() + device_id_from_offset.size()) != ptr)
 			{
 				LogDebug(Channel::Main, std::format("Invalid conversion of emulated device id: provided string was invalid -> {}", device_id_string));
 				throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);

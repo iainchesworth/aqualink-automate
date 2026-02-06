@@ -42,7 +42,7 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		PDADevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		PDADevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~PDADevice();
 
 	private:

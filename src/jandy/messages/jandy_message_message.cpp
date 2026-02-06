@@ -26,9 +26,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Message::~JandyMessage_Message()
-	{
-	}
+	JandyMessage_Message::~JandyMessage_Message() = default;
 
 	std::string JandyMessage_Message::Line() const
 	{
@@ -63,6 +61,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Message is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "JandyMessage_Message is too short for content extraction");
 		}
 		else
 		{

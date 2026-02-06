@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 		m_EventPayload[WS_JSON_PAYLOAD_FIELD] = payload;
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent> config_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		if (nullptr == config_event)
@@ -51,25 +51,25 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange>& button_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(button_config_event);
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry>& chem_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(chem_config_event);
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(temp_config_event);
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> system_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& system_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		if (nullptr == system_event)
@@ -90,13 +90,13 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	WebSocket_Event::WebSocket_Event(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event) :
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		this->operator=(status_system_event);
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange> button_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange>& button_config_event)
 	{
 		if (nullptr == button_config_event)
 		{
@@ -112,7 +112,7 @@ namespace AqualinkAutomate::HTTP
 		return *this;
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry> chem_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry>& chem_config_event)
 	{
 		if (nullptr == chem_config_event)
 		{
@@ -128,7 +128,7 @@ namespace AqualinkAutomate::HTTP
 		return *this;
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature> temp_config_event)
+	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event)
 	{
 		if (nullptr == temp_config_event)
 		{
@@ -144,7 +144,7 @@ namespace AqualinkAutomate::HTTP
 		return *this;
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange> status_system_event)
+	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event)
 	{
 		if (nullptr == status_system_event)
 		{

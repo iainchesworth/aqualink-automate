@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_Clear::~PDAMessage_Clear()
-	{
-	}
+	PDAMessage_Clear::~PDAMessage_Clear() = default;
 
 	std::string PDAMessage_Clear::ToString() const
 	{

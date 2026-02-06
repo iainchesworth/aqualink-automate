@@ -77,7 +77,7 @@ namespace AqualinkAutomate::Kernel
 		}
 	}
 
-	void DevicesGraph::Remove(std::shared_ptr<AuxillaryDevice> device)
+	void DevicesGraph::Remove(const std::shared_ptr<AuxillaryDevice>& device)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Remove", std::source_location::current());
 

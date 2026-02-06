@@ -44,7 +44,7 @@ namespace AqualinkAutomate::Utility
 		using MenuMatcherProcessor = std::function<void(const ScreenDataPage&)>;
 
 	public:
-		ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails menu_matcher, MenuMatcherProcessor menu_processor);
+		ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails& menu_matcher, MenuMatcherProcessor menu_processor);
 
 	public:
 		ScreenDataPageTypes PageType() const;

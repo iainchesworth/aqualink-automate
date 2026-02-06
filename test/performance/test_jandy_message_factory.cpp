@@ -24,7 +24,7 @@ using namespace AqualinkAutomate::Types;
 
 static void BM_Factory_CreateMessage_Ack(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Ack);
         benchmark::DoNotOptimize(message);
@@ -37,7 +37,7 @@ BENCHMARK(BM_Factory_CreateMessage_Ack);
 
 static void BM_Factory_CreateMessage_Status(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Status);
         benchmark::DoNotOptimize(message);
@@ -50,7 +50,7 @@ BENCHMARK(BM_Factory_CreateMessage_Status);
 
 static void BM_Factory_CreateMessage_Probe(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Probe);
         benchmark::DoNotOptimize(message);
@@ -63,7 +63,7 @@ BENCHMARK(BM_Factory_CreateMessage_Probe);
 
 static void BM_Factory_CreateMessage_Message(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Message);
         benchmark::DoNotOptimize(message);
@@ -76,7 +76,7 @@ BENCHMARK(BM_Factory_CreateMessage_Message);
 
 static void BM_Factory_CreateMessage_Unknown(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Unknown);
         benchmark::DoNotOptimize(message);
@@ -89,7 +89,7 @@ BENCHMARK(BM_Factory_CreateMessage_Unknown);
 
 static void BM_Factory_CreateMessage_IAQPoll(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::IAQ_Poll);
         benchmark::DoNotOptimize(message);
@@ -129,7 +129,7 @@ public:
 BENCHMARK_DEFINE_F(Factory_HotVsCold_Fixture, HotPath_Sequential)(benchmark::State& state)
 {
     size_t idx = 0;
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(hot_ids[idx % hot_ids.size()]);
         benchmark::DoNotOptimize(message);
@@ -144,7 +144,7 @@ BENCHMARK_REGISTER_F(Factory_HotVsCold_Fixture, HotPath_Sequential);
 BENCHMARK_DEFINE_F(Factory_HotVsCold_Fixture, ColdPath_Sequential)(benchmark::State& state)
 {
     size_t idx = 0;
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(cold_ids[idx % cold_ids.size()]);
         benchmark::DoNotOptimize(message);
@@ -183,25 +183,25 @@ public:
 
 BENCHMARK_DEFINE_F(Factory_RoundTrip_Fixed_Fixture, RoundTrip_Ack)(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(ack_data.begin(), ack_data.end()));
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
-    state.SetBytesProcessed(state.iterations() * ack_data.size());
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations() * ack_data.size()));
 }
 BENCHMARK_REGISTER_F(Factory_RoundTrip_Fixed_Fixture, RoundTrip_Ack);
 
 BENCHMARK_DEFINE_F(Factory_RoundTrip_Fixed_Fixture, RoundTrip_Status)(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(status_data.begin(), status_data.end()));
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
-    state.SetBytesProcessed(state.iterations() * status_data.size());
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations() * status_data.size()));
 }
 BENCHMARK_REGISTER_F(Factory_RoundTrip_Fixed_Fixture, RoundTrip_Status);
 
@@ -236,13 +236,13 @@ public:
 
 BENCHMARK_DEFINE_F(Factory_RoundTrip_Message_Fixture, RoundTrip_Message)(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(message_data.begin(), message_data.end()));
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
-    state.SetBytesProcessed(state.iterations() * message_data.size());
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations() * message_data.size()));
 }
 BENCHMARK_REGISTER_F(Factory_RoundTrip_Message_Fixture, RoundTrip_Message)
 ->DenseRange(1, 120, 20)
@@ -250,14 +250,14 @@ BENCHMARK_REGISTER_F(Factory_RoundTrip_Message_Fixture, RoundTrip_Message)
 
 static void BM_Factory_BatchCreate_HotPath(benchmark::State& state)
 {
-    const int batch_size = state.range(0);
+    const auto batch_size = static_cast<int>(state.range(0));
     const std::array<JandyMessageIds, 3> hot_ids = {
         JandyMessageIds::Ack,
         JandyMessageIds::Status,
         JandyMessageIds::Probe
     };
 
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         for (int i = 0; i < batch_size; ++i)
         {
@@ -277,7 +277,7 @@ BENCHMARK(BM_Factory_BatchCreate_HotPath)
 
 static void BM_Factory_BatchCreate_Mixed(benchmark::State& state)
 {
-    const int batch_size = state.range(0);
+    const auto batch_size = static_cast<int>(state.range(0));
     const std::array<JandyMessageIds, 6> mixed_ids = {
         JandyMessageIds::Ack,         // Hot
         JandyMessageIds::Status,      // Hot
@@ -287,7 +287,7 @@ static void BM_Factory_BatchCreate_Mixed(benchmark::State& state)
         JandyMessageIds::IAQ_Poll     // Cold
     };
 
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         for (int i = 0; i < batch_size; ++i)
         {
@@ -352,7 +352,7 @@ public:
 
 BENCHMARK_DEFINE_F(Factory_RealisticWorkload_Fixture, RealisticWorkload)(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         for (const auto& id : message_stream)
         {
@@ -362,7 +362,7 @@ BENCHMARK_DEFINE_F(Factory_RealisticWorkload_Fixture, RealisticWorkload)(benchma
         benchmark::ClobberMemory();
     }
 
-    state.SetItemsProcessed(state.iterations() * message_stream.size());
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * message_stream.size()));
 }
 BENCHMARK_REGISTER_F(Factory_RealisticWorkload_Fixture, RealisticWorkload)
 ->Arg(100)
@@ -373,7 +373,7 @@ BENCHMARK_REGISTER_F(Factory_RealisticWorkload_Fixture, RealisticWorkload)
 static void BM_Factory_CacheEfficiency_HotOnly(benchmark::State& state)
 {
     // Repeatedly create the same hot path message to test cache efficiency
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::Ack);
         benchmark::DoNotOptimize(message);
@@ -388,7 +388,7 @@ static void BM_Factory_CacheEfficiency_Alternating(benchmark::State& state)
 {
     // Alternate between hot and cold to test cache thrashing
     bool use_hot = true;
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto id = use_hot ? JandyMessageIds::Ack : JandyMessageIds::Message;
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(id);
@@ -403,7 +403,7 @@ BENCHMARK(BM_Factory_CacheEfficiency_Alternating)->Threads(1)->Threads(4)->Threa
 
 static void BM_Factory_ErrorPath_InvalidMessageId(benchmark::State& state)
 {
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto message = JandyMessageFactoryT::CreateMessageFromRaw(static_cast<JandyMessageIds>(0xFF));
         benchmark::DoNotOptimize(message);
@@ -418,7 +418,7 @@ static void BM_Factory_ErrorPath_TooShort(benchmark::State& state)
 {
     std::vector<uint8_t> short_data = { 0x10 };
 
-    for (auto _ : state)
+    for ([[maybe_unused]] auto _ : state)
     {
         auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(short_data.begin(), short_data.end()));
         benchmark::DoNotOptimize(result);

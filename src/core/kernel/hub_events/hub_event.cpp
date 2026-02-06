@@ -8,9 +8,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	Hub_Event::~Hub_Event()
-	{
-	}
+	Hub_Event::~Hub_Event() = default;
 
 	Hub_EventTypes Hub_Event::Type() const
 	{

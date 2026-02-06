@@ -14,9 +14,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Unknown::~JandyMessage_Unknown() 
-	{
-	}
+	JandyMessage_Unknown::~JandyMessage_Unknown() = default;
 
 	std::string JandyMessage_Unknown::ToString() const
 	{

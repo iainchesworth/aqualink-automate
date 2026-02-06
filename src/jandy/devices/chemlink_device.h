@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Devices
 		using TimestampedFeederState = std::pair<bool, std::chrono::time_point<std::chrono::system_clock>>;
 
 	public:
-		ChemlinkDevice(std::shared_ptr<Devices::JandyDeviceType> device_id);
+		ChemlinkDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
 		virtual ~ChemlinkDevice() = default;
 
 	private:

@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Devices
 	class JandyDevice : public Interfaces::IDevice, public Interfaces::IStatusPublisher
 	{
 	public:
-		JandyDevice(std::shared_ptr<Devices::JandyDeviceType> device_id);
+		JandyDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
 		virtual ~JandyDevice();
 
 	public:

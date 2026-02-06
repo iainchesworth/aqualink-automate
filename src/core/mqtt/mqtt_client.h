@@ -5,6 +5,7 @@
 #include <deque>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -86,6 +87,15 @@ namespace AqualinkAutomate::Mqtt
 		std::chrono::seconds CalculateReconnectDelay() const;
 
 	private:
+		void InitializeSslContext();
+
+		// I/O helpers that work with both plain and TLS sockets
+		std::size_t WriteSocket(const std::vector<uint8_t>& data, boost::system::error_code& ec);
+		std::size_t ReadSocket(std::span<uint8_t> buffer, boost::system::error_code& ec);
+		void CloseSocket();
+		bool IsSocketOpen() const;
+
+	private:
 		boost::asio::io_context& m_IoContext;
 		const Options::Mqtt::MqttSettings m_Settings;
 
@@ -96,6 +106,10 @@ namespace AqualinkAutomate::Mqtt
 		// TCP socket (non-blocking)
 		std::optional<boost::asio::ip::tcp::socket> m_Socket;
 
+		// TLS support
+		std::optional<boost::asio::ssl::context> m_SslContext;
+		std::optional<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> m_SslStream;
+
 		// Pending publishes
 		struct PendingPublish
 		{
@@ -104,9 +118,15 @@ namespace AqualinkAutomate::Mqtt
 		};
 		std::deque<PendingPublish> m_PublishQueue;
 
+		// Security: Maximum publish queue size to prevent memory exhaustion
+		static constexpr std::size_t MAX_PUBLISH_QUEUE_SIZE = 1000;
+
 		// Read buffer
 		std::vector<uint8_t> m_ReadBuffer;
 		static constexpr std::size_t READ_CHUNK_SIZE = 4096;
+
+		// Security: Maximum read buffer size to prevent memory exhaustion from malicious brokers
+		static constexpr std::size_t MAX_READ_BUFFER_SIZE = 1024 * 1024;  // 1MB
 
 		// Keepalive
 		std::chrono::steady_clock::time_point m_LastPingSent;

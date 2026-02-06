@@ -10,12 +10,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	AquariteDevice::AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+	AquariteDevice::AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
 		AquariteDevice(device_id, 0, 0, 0)
 	{
 	}
 
-	AquariteDevice::AquariteDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
+	AquariteDevice::AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm) :
 		JandyDevice(device_id),
 		Capabilities::Restartable(AQUARITE_TIMEOUT_DURATION),
 		m_Requested(AQUARITE_PERCENT_DEBOUNCE_THRESHOLD),
@@ -25,9 +25,9 @@ namespace AqualinkAutomate::Devices
 		// Note that this is a debounced value so is initialised differently.
 		m_Requested = std::make_pair(requested_percentage, std::chrono::system_clock::now());
 
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>([this](auto&& PH1) { Slot_Aquarite_GetId(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>([this](auto&& PH1) { Slot_Aquarite_Percent(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>([this](auto&& PH1) { Slot_Aquarite_PPM(std::forward<decltype(PH1)>(PH1)); }, (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_GetId>([this](auto&& PH1) { Slot_Aquarite_GetId(std::forward<decltype(PH1)>(PH1)); }, DeviceId()());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_Percent>([this](auto&& PH1) { Slot_Aquarite_Percent(std::forward<decltype(PH1)>(PH1)); }, DeviceId()());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::AquariteMessage_PPM>([this](auto&& PH1) { Slot_Aquarite_PPM(std::forward<decltype(PH1)>(PH1)); }, DeviceId()());
 	}
 
 	void AquariteDevice::WatchdogTimeoutOccurred()

@@ -15,7 +15,7 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Serial
 {
 
-	void Initialise(Options::Settings& settings, const std::shared_ptr<Serial::SerialPort> serial_port)
+	void Initialise(Options::Settings& settings, const std::shared_ptr<Serial::SerialPort>& serial_port)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Serial::Initialise", std::source_location::current());
 

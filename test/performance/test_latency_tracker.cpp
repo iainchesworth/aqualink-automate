@@ -45,7 +45,7 @@ public:
 BENCHMARK_DEFINE_F(LatencyTracker_Record_Fixture, Record_SingleSample)(benchmark::State& state)
 {
 	size_t index = 0;
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		tracker->Record(random_latencies[index % random_latencies.size()]);
 		index++;
@@ -61,7 +61,7 @@ BENCHMARK_DEFINE_F(LatencyTracker_Record_Fixture, Record_HighLoad)(benchmark::St
 {
 	size_t samples_per_iteration = state.range(0);
 
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		for (size_t i = 0; i < samples_per_iteration; ++i)
 		{
@@ -70,7 +70,7 @@ BENCHMARK_DEFINE_F(LatencyTracker_Record_Fixture, Record_HighLoad)(benchmark::St
 		benchmark::ClobberMemory();
 	}
 
-	state.SetItemsProcessed(state.iterations() * samples_per_iteration);
+	state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * samples_per_iteration));
 }
 BENCHMARK_REGISTER_F(LatencyTracker_Record_Fixture, Record_HighLoad)
 	->Arg(100)
@@ -113,7 +113,7 @@ public:
 // Benchmark the cost of computing a percentile snapshot
 BENCHMARK_DEFINE_F(LatencyTracker_Snapshot_Fixture, GetSnapshot)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		auto snapshot = tracker->GetSnapshot();
 		benchmark::DoNotOptimize(snapshot);
@@ -152,7 +152,7 @@ public:
 // Benchmark the overhead of scoped measurement (RAII pattern)
 BENCHMARK_DEFINE_F(ScopedMeasurement_Fixture, ScopedMeasurement_Overhead)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		ScopedLatencyMeasurement measurement(*tracker);
 		benchmark::ClobberMemory();
@@ -165,7 +165,7 @@ BENCHMARK_REGISTER_F(ScopedMeasurement_Fixture, ScopedMeasurement_Overhead)->Uni
 // Benchmark scoped measurement with cancelled operation (no recording)
 BENCHMARK_DEFINE_F(ScopedMeasurement_Fixture, ScopedMeasurement_Cancelled)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		ScopedLatencyMeasurement measurement(*tracker);
 		measurement.Cancel();
@@ -215,7 +215,7 @@ public:
 BENCHMARK_DEFINE_F(LatencyTracker_Concurrent_Fixture, InterleavedOperations)(benchmark::State& state)
 {
 	size_t index = 0;
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		// 10 records for every snapshot
 		for (int i = 0; i < 10; ++i)
@@ -272,7 +272,7 @@ public:
 BENCHMARK_DEFINE_F(LatencyTracker_Pruning_Fixture, RecordWithPruning)(benchmark::State& state)
 {
 	size_t index = 0;
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		tracker->Record(random_latencies[index % random_latencies.size()]);
 		index++;

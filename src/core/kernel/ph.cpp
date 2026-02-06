@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Kernel
 		value = std::clamp(value, MINIMUM_PH_VALUE, MAXIMUM_PH_VALUE);
 
 		// Round to 1 decimal place
-		value = std::roundf(value * 10.0) / 10.0;
+		value = std::roundf(value * 10.0f) / 10.0f;
 
 		return value;
 	}

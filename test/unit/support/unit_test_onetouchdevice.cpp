@@ -18,9 +18,7 @@ namespace AqualinkAutomate::Test
 		m_OneTouch = std::make_shared<AqualinkAutomate::Devices::OneTouchDevice>(std::make_shared<Devices::JandyDeviceType>(m_DeviceId), *this, m_IsEmulated);
 	}
 
-	OneTouchDevice::~OneTouchDevice()
-	{
-	}
+	OneTouchDevice::~OneTouchDevice() = default;
 
 	Kernel::DataHub& OneTouchDevice::DataHub()
 	{

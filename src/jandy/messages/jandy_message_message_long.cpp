@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Messages
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
 	}
 
-	JandyMessage_MessageLong::JandyMessage_MessageLong(const uint8_t line_id, const std::string line) :
+	JandyMessage_MessageLong::JandyMessage_MessageLong(const uint8_t line_id, const std::string& line) :
 		JandyMessage(JandyMessageIds::MessageLong),
 		Interfaces::IMessageSignalRecv<JandyMessage_MessageLong>(),
 		m_LineId(line_id),
@@ -26,9 +26,7 @@ namespace AqualinkAutomate::Messages
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
 	}
 
-	JandyMessage_MessageLong::~JandyMessage_MessageLong()
-	{
-	}
+	JandyMessage_MessageLong::~JandyMessage_MessageLong() = default;
 
 	uint8_t JandyMessage_MessageLong::LineId() const
 	{
@@ -74,6 +72,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "JandyMessage_MessageLong is too short for content extraction");
 		}
 		else
 		{

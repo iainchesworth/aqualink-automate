@@ -32,35 +32,20 @@ namespace AqualinkAutomate::Devices
 
 		for (auto ch : line_to_process)
 		{
-			if (line_to_process.size() <= first_char_position)
+			if (line_to_process.size() <= first_char_position || hint_array[0] != std::tolower(static_cast<unsigned char>(ch)))
 			{
-				// At the end of the line...do nothing.
+				// At the end of the line or first hint didn't match...don't bother checking the rest
 				break;
 			}
-			else if (hint_array[0] != std::tolower(static_cast<unsigned char>(ch)))
-			{
-				// It's not whitespace and the first hint didn't match...don't bother checking the rest
-				break;
-			}
-			else
-			{
-				if (line_to_process.size() <= (first_char_position + 1))
-				{
-					// At the end of the line...do nothing.
-				}
-				else if (hint_array[1] != std::tolower(static_cast<unsigned char>(line_to_process[first_char_position + 1])))
-				{
-					// Next hint didn't match...do nothing.
-				}
-				else
-				{
-					// It is worth processing the entire line.
-					skip_line_processing = false;
-				}
 
-				// No matter the outcome, there's no need to check the rest of the line.
-				break;
+			if (line_to_process.size() > (first_char_position + 1) && hint_array[1] == std::tolower(static_cast<unsigned char>(line_to_process[first_char_position + 1])))
+			{
+				// It is worth processing the entire line.
+				skip_line_processing = false;
 			}
+
+			// No matter the outcome, there's no need to check the rest of the line.
+			break;
 
 			// Increment the index of the character we're looking at
 			++first_char_position;

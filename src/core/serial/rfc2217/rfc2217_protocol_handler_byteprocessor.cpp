@@ -79,12 +79,28 @@ namespace AqualinkAutomate::Serial::RFC2217
 
 		if (byte == Constants::IAC)
 		{
+			// Security: Check buffer size before appending
+			if (m_CommandBuffer.size() >= MAX_COMMAND_BUFFER_SIZE)
+			{
+				LogWarning(Channel::Serial, "RFC2217 command buffer overflow attempt blocked");
+				m_CommandBuffer.clear();
+				m_State = State::DATA;
+				return std::nullopt;
+			}
 			m_CommandBuffer.push_back(byte);
 			m_State = State::SUBNEG;
 			return std::nullopt;
 		}
 
 		LogWarning(Channel::Serial, std::format("Unexpected byte in subnegotiation IAC: 0x{:02X}", byte));
+		// Security: Check buffer size before appending
+		if (m_CommandBuffer.size() >= MAX_COMMAND_BUFFER_SIZE)
+		{
+			LogWarning(Channel::Serial, "RFC2217 command buffer overflow attempt blocked");
+			m_CommandBuffer.clear();
+			m_State = State::DATA;
+			return std::nullopt;
+		}
 		m_CommandBuffer.push_back(byte);
 		m_State = State::SUBNEG;
 		return std::nullopt;
@@ -115,6 +131,14 @@ namespace AqualinkAutomate::Serial::RFC2217
 			}
 			else
 			{
+				// Security: Check buffer size before appending
+				if (m_CommandBuffer.size() >= MAX_COMMAND_BUFFER_SIZE)
+				{
+					LogWarning(Channel::Serial, "RFC2217 command buffer overflow attempt blocked");
+					m_CommandBuffer.clear();
+					m_State = State::DATA;
+					return std::nullopt;
+				}
 				m_CommandBuffer.push_back(byte);
 			}
 			return std::nullopt;

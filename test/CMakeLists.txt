@@ -79,7 +79,8 @@ target_sources(
 	unit/utility/test_utility_jandychecksum.cpp
 	unit/utility/test_utility_latencytracker.cpp
 	unit/utility/test_utility_signallingstatscounter.cpp
-	unit/utility/test_utility_temperature.cpp 
+	unit/utility/test_utility_temperature.cpp
+	unit/navigation/test_navigation_menu_model.cpp
 )
 
 target_compile_definitions(

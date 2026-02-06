@@ -16,9 +16,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	EPumpMessage_Watts::~EPumpMessage_Watts()
-	{
-	}
+	EPumpMessage_Watts::~EPumpMessage_Watts() = default;
 
 	uint16_t EPumpMessage_Watts::Watts() const
 	{

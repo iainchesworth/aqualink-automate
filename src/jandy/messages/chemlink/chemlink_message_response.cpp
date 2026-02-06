@@ -19,9 +19,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	ChemlinkMessage_Response::~ChemlinkMessage_Response()
-	{
-	}
+	ChemlinkMessage_Response::~ChemlinkMessage_Response() = default;
 
 	ChemlinkDataTag ChemlinkMessage_Response::DataTag() const
 	{

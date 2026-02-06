@@ -33,6 +33,7 @@ namespace AqualinkAutomate::Navigation
 			Navigating,         // Executing path steps
 			WaitingForPage,     // Sent command, waiting for page update
 			MovingCursor,       // Moving cursor to target line
+			EnteringPassword,   // Entering password digits
 			Reorienting,        // Lost position, trying to recover
 			AtDestination,      // Reached target page
 			Failed              // Unrecoverable error
@@ -40,9 +41,14 @@ namespace AqualinkAutomate::Navigation
 
 		static constexpr uint32_t MAX_RECOVERY_ATTEMPTS = 3;
 		static constexpr uint32_t MAX_BACK_PRESSES = 10;
+		static constexpr uint32_t MAX_RECOMPUTE_COUNT = 50;      // Prevent infinite recompute loops
+		static constexpr uint32_t MAX_WAIT_CYCLES = 100;         // Timeout after this many page updates with no progress
 
 	public:
 		explicit Navigator(const MenuModel& model);
+
+		// Set password for menu navigation (4-digit numeric)
+		void SetPassword(const std::string& password) { m_Password = password; }
 
 		// Start navigation to a specific page
 		void NavigateTo(PageId target);
@@ -108,6 +114,15 @@ namespace AqualinkAutomate::Navigation
 		// Find the line that is currently highlighted
 		std::optional<uint8_t> FindHighlightedLine(const Utility::ScreenDataPage& content) const;
 
+		// Handle password entry page
+		std::optional<NavKeyCommand> HandlePasswordEntry();
+
+		// Handle special pages (Service, Timeout) that block normal navigation
+		bool HandleSpecialPage(PageId page);
+
+		// Check if current page is a blocking special page
+		bool IsBlockingPage(PageId page) const;
+
 	private:
 		const MenuModel& m_Model;
 		State m_State{ State::Idle };
@@ -130,6 +145,22 @@ namespace AqualinkAutomate::Navigation
 		// For item navigation
 		bool m_NavigatingToItem{ false };
 		uint8_t m_TargetItemLine{ 0 };
+
+		// Cursor movement tracking (to detect stuck cursors at screen boundaries)
+		uint8_t m_PreviousCursorLine{ 0 };
+		uint32_t m_CursorStuckCount{ 0 };
+		static constexpr uint32_t MAX_CURSOR_STUCK_COUNT{ 5 };
+		bool m_SkipCursorCheck{ false };  // Skip cursor check after accepting stuck position
+
+		// Password entry support
+		std::string m_Password;           // 4-digit password for protected menus
+		uint8_t m_PasswordDigitIndex{ 0 };  // Current digit being entered
+
+		// Timeout tracking
+		uint32_t m_WaitCycleCount{ 0 };   // Cycles waiting in same state
+
+		// Recompute tracking (to prevent infinite loops)
+		uint32_t m_RecomputeCount{ 0 };
 	};
 
 }

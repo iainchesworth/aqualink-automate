@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
         "Aux11         ON"
     };
 
-    for (auto bad_device_and_status : invalid_aux_label_and_status)
+    for (const auto& bad_device_and_status : invalid_aux_label_and_status)
     {
         BOOST_TEST(!factory.OneTouchDevice_CreateDevice(Utility::AuxillaryStateStringConverter(bad_device_and_status)).has_value());
     }

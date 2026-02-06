@@ -68,13 +68,13 @@ namespace AqualinkAutomate::Mqtt
 		//---------------------------------------------------------------------
 
 		/// Connect to the data hub to receive pool configuration data.
-		void ConnectDataHub(std::shared_ptr<Kernel::DataHub> data_hub);
+		void ConnectDataHub(const std::shared_ptr<Kernel::DataHub>& data_hub);
 
 		/// Connect to the equipment hub to receive equipment status updates.
-		void ConnectEquipmentHub(std::shared_ptr<Kernel::EquipmentHub> equipment_hub);
+		void ConnectEquipmentHub(const std::shared_ptr<Kernel::EquipmentHub>& equipment_hub);
 
 		/// Connect to the statistics hub to receive message and bandwidth stats.
-		void ConnectStatisticsHub(std::shared_ptr<Kernel::StatisticsHub> statistics_hub);
+		void ConnectStatisticsHub(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub);
 
 		//---------------------------------------------------------------------
 		// COMMAND HANDLING
@@ -101,8 +101,8 @@ namespace AqualinkAutomate::Mqtt
 		// SIGNAL HANDLERS
 		//---------------------------------------------------------------------
 
-		void OnDataHubConfigChanged(std::shared_ptr<Kernel::DataHub_ConfigEvent> event);
-		void OnEquipmentStatusChanged(std::shared_ptr<Kernel::EquipmentHub_SystemEvent> event);
+		void OnDataHubConfigChanged(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event);
+		void OnEquipmentStatusChanged(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event);
 
 		//---------------------------------------------------------------------
 		// PUBLISHING METHODS

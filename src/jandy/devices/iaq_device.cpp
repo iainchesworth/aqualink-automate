@@ -9,8 +9,8 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
-	IAQDevice::IAQDevice(std::shared_ptr<Devices::JandyDeviceType> device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
-		JandyController(std::move(device_id), hub_locator),
+	IAQDevice::IAQDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
+		JandyController(device_id, hub_locator),
 		Capabilities::Restartable(IAQ_TIMEOUT_DURATION),
 		Capabilities::Screen(IAQ_STATUS_PAGE_LINES),
 		Capabilities::Emulated(is_emulated),
@@ -39,9 +39,7 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TitleMessage>(std::bind(&IAQDevice::Slot_IAQ_TitleMessage, this, std::placeholders::_1), DeviceId().Id());
 	}
 
-	IAQDevice::~IAQDevice()
-	{
-	}
+	IAQDevice::~IAQDevice() = default;
 
 	void IAQDevice::ProcessControllerUpdates()
 	{
@@ -101,11 +99,7 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, "IAQ device received a IAQMessage_PageMessage signal.");
 
-		if (false)
-		{
-			LogDebug(Channel::Devices, "Received a PageMessage update out-of-band of a PageStart/PageEnd sequence.");
-		}
-		else if (IAQ_STATUS_PAGE_LINES <= msg.LineId())
+		if (IAQ_STATUS_PAGE_LINES <= msg.LineId())
 		{
 			LogDebug(Channel::Devices, std::format("Received a PageMessage update for an unsupported line; line id -> {}, content -> '{}'", msg.LineId(), msg.Line()));
 		}

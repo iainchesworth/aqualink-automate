@@ -38,23 +38,17 @@ namespace AqualinkAutomate::Factory
 
 	Types::ProfilerTypePtr AqualinkAutomate::Factory::ProfilerFactory::Get()
 	{
-		if (!m_DesiredProfiler.has_value())
+		if (m_DesiredProfiler.has_value())
 		{
-			// No selected profiler (via the CLI) so it's NoOp...
+			if (auto it = m_Profilers.find(m_DesiredProfiler.value()); m_Profilers.end() != it)
+			{
+				if (auto instance = it->second; nullptr != instance)
+				{
+					return instance;
+				}
+			}
 		}
-		else  if (auto it = m_Profilers.find(m_DesiredProfiler.value()); m_Profilers.end() == it)
-		{
-			// Selected profiler (via the CLI) not found so it's NoOp...
-		}
-		else if (auto instance = it->second; nullptr == instance)
-		{
-			// Selected profiler (via the CLI) could not be instantiated so it's NoOp...
-		}
-		else
-		{
-			return instance;
-		}
-
+		// No selected profiler, not found, or could not be instantiated so it's NoOp...
 		return std::make_shared<Profiling::NoOp_Profiler>();
 	}
 

@@ -18,9 +18,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	SerialAdapterMessage_DevReady::~SerialAdapterMessage_DevReady()
-	{
-	}
+	SerialAdapterMessage_DevReady::~SerialAdapterMessage_DevReady() = default;
 
 	std::string SerialAdapterMessage_DevReady::ToString() const
 	{

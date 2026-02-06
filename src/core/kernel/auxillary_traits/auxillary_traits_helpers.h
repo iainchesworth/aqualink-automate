@@ -9,7 +9,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
 
 	std::string_view ConvertStatusToString(const AuxillaryDevice& device);
-	std::string_view ConvertStatusToString(std::shared_ptr<AuxillaryDevice> device);
+	std::string_view ConvertStatusToString(const std::shared_ptr<AuxillaryDevice>& device);
 
 }
 // namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes

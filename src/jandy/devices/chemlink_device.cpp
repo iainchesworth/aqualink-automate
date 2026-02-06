@@ -10,7 +10,7 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
-	ChemlinkDevice::ChemlinkDevice(std::shared_ptr<Devices::JandyDeviceType> device_id) :
+	ChemlinkDevice::ChemlinkDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
 		JandyDevice(device_id),
 		Capabilities::Restartable(CHEMLINK_TIMEOUT_DURATION),
 		m_ORPMillivolts(std::make_pair(0, std::chrono::system_clock::now())),

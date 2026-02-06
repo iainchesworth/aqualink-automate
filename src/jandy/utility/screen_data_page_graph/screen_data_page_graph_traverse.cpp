@@ -18,12 +18,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
         }
     }
 
-    ForwardIterator::ForwardIterator(const ForwardIterator& other) :
-        m_Graph(other.m_Graph),
-        m_CurrentStep(other.m_CurrentStep),
-        m_Visited(other.m_Visited)
-    {
-    }
+    ForwardIterator::ForwardIterator(const ForwardIterator& other) = default;
 
     ForwardIterator::ForwardIterator(ForwardIterator&& other) noexcept :
         m_Graph(other.m_Graph),

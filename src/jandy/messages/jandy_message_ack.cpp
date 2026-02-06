@@ -31,9 +31,7 @@ namespace AqualinkAutomate::Messages
 		m_Destination = Devices::JandyDeviceType(AQUALINK_MASTER_ID);
 	}
 
-	JandyMessage_Ack::~JandyMessage_Ack()
-	{
-	}
+	JandyMessage_Ack::~JandyMessage_Ack() = default;
 
 	AckTypes JandyMessage_Ack::AckType() const
 	{

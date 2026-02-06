@@ -67,7 +67,7 @@ namespace AqualinkAutomate::Utility
 
 		if (temperature_area && temperature && temperature_units)
 		{
-			int32_t converted_temperature;
+			int32_t converted_temperature = 0;
 
 			auto [_, ec] = std::from_chars((*temperature).data(), (*temperature).data() + (*temperature).size(), converted_temperature);
 			if (std::errc() != ec)
@@ -104,28 +104,19 @@ namespace AqualinkAutomate::Utility
 	{
 		boost::smatch match_results;
 
-		if (MINIMUM_STRING_LENGTH > temperature_string.size() || MAXIMUM_STRING_LENGTH < temperature_string.size())
+		if (MINIMUM_STRING_LENGTH > temperature_string.size() || MAXIMUM_STRING_LENGTH < temperature_string.size() ||
+			!boost::regex_search(temperature_string, match_results, REGEX_PARSER) ||
+			3 > match_results.size())
 		{
-			// Invalid string length...do nothing.
-		}
-		else if (!boost::regex_search(temperature_string, match_results, REGEX_PARSER))
-		{
-			// Invalid pattern match...do nothing.	
-		}
-		else if (3 > match_results.size())
-		{
-			// Insufficent resultset to pull groups from.
-		}
-		else 
-		{
-			return std::make_tuple<>(
-				std::optional<std::string>(match_results[1]),
-				std::optional<std::string>(match_results[2]),
-				std::optional<std::string>(match_results[3])
-			);
+			// Invalid string length, pattern match, or insufficient resultset...do nothing.
+			return std::make_tuple(std::nullopt, std::nullopt, std::nullopt);
 		}
 
-		return std::make_tuple(std::nullopt, std::nullopt, std::nullopt);
+		return std::make_tuple<>(
+			std::optional<std::string>(match_results[1]),
+			std::optional<std::string>(match_results[2]),
+			std::optional<std::string>(match_results[3])
+		);
 	}
 
 }

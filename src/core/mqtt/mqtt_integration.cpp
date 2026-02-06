@@ -106,9 +106,9 @@ namespace AqualinkAutomate::Mqtt
 	}
 
 	void MqttIntegration::ConnectHubs(
-		std::shared_ptr<Kernel::DataHub> data_hub,
-		std::shared_ptr<Kernel::EquipmentHub> equipment_hub,
-		std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
+		const std::shared_ptr<Kernel::DataHub>& data_hub,
+		const std::shared_ptr<Kernel::EquipmentHub>& equipment_hub,
+		const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
 		m_DataHub = data_hub;
 		m_EquipmentHub = equipment_hub;

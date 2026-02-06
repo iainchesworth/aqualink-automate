@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_StartUp::~IAQMessage_StartUp()
-	{
-	}
+	IAQMessage_StartUp::~IAQMessage_StartUp() = default;
 
 	std::string IAQMessage_StartUp::ToString() const
 	{

@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Developer
 		TOKEN_ELEVATION te = { 0 };
 		DWORD dwReturnLength = 0;
 
-		if (HANDLE hToken = NULL; !::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &hToken))
+		if (HANDLE hToken = nullptr; !::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &hToken))
 		{
 			LogWarning(Channel::Platform, "Failed to get access token associated with the current process");
 			return tl::unexpected(E_FAIL);

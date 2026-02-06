@@ -12,9 +12,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	EPumpMessage::~EPumpMessage()
-	{
-	}
+	EPumpMessage::~EPumpMessage() = default;
 
 	std::string EPumpMessage::ToString() const
 	{

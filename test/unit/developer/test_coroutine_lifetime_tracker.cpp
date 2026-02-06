@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(Test_ThreadSafety)
 		{
 			for (int i = 0; i < OPS_PER_THREAD; ++i)
 			{
-				uintptr_t handle = static_cast<uintptr_t>(0xF0000000 + t * OPS_PER_THREAD + i);
+				uintptr_t handle = 0xF0000000ULL + static_cast<uintptr_t>(t * OPS_PER_THREAD + i);
 				tracker.OnCreated(handle, "ThreadSafetyTest");
 				tracker.OnSuspended(handle);
 				tracker.OnResumed(handle);

@@ -77,7 +77,7 @@ BOOST_FIXTURE_TEST_CASE(MockSerialPort_ReadError, ProtocolHandlerTestFixture)
 
 	std::array<uint8_t, 16> buffer{};
 	boost::system::error_code ec;
-	auto bytes_read = serial_port.read_some(boost::asio::buffer(buffer.data(), buffer.size()), ec);
+	[[maybe_unused]] auto bytes_read = serial_port.read_some(boost::asio::buffer(buffer.data(), buffer.size()), ec);
 
 	BOOST_TEST(ec == boost::asio::error::eof);
 	BOOST_TEST(test_serial_port_impl.GetReadErrorCount() == 1);
@@ -116,7 +116,7 @@ BOOST_FIXTURE_TEST_CASE(MockSerialPort_WriteError, ProtocolHandlerTestFixture)
 	test_serial_port_impl.QueueWriteError(boost::asio::error::broken_pipe);
 
 	boost::system::error_code ec;
-	auto bytes_written = serial_port.write_some(boost::asio::buffer(test_data.data(), test_data.size()), ec);
+	[[maybe_unused]] auto bytes_written = serial_port.write_some(boost::asio::buffer(test_data.data(), test_data.size()), ec);
 
 	BOOST_TEST(ec == boost::asio::error::broken_pipe);
 	BOOST_TEST(test_serial_port_impl.GetWriteErrorCount() == 1);

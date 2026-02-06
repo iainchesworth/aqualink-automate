@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Kernel
         return m_ORP;
     }
 
-    ORP& ORP::operator=(Units::millivolt_quantity value_in_mV)
+    ORP& ORP::operator=(const Units::millivolt_quantity& value_in_mV)
     {
         m_ORP = value_in_mV;
         return *this;
@@ -35,7 +35,7 @@ namespace AqualinkAutomate::Kernel
         return (m_ORP == (value_in_mV * Units::millivolts));
     }
 
-    bool ORP::operator==(const Units::millivolt_quantity value_in_mV) const
+    bool ORP::operator==(const Units::millivolt_quantity& value_in_mV) const
     {
         return (m_ORP == value_in_mV);
     }

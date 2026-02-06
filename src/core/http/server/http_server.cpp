@@ -280,7 +280,7 @@ namespace AqualinkAutomate::HTTP
 
 	//--- WebSocket Accept -------------------------------------------------
 
-	void HttpSessionState::DoWsAccept(Request req)
+	void HttpSessionState::DoWsAccept(const Request& req)
 	{
 		if (m_Done) return;
 
@@ -585,6 +585,19 @@ namespace AqualinkAutomate::HTTP
 			{
 				DoAccept();
 			}
+			return;
+		}
+
+		// Security: Enforce connection limit to prevent resource exhaustion
+		// Clean up completed sessions first
+		std::erase_if(m_Sessions, [](const auto& s) { return !s || s->IsDone(); });
+
+		if (m_Sessions.size() >= MAX_CONCURRENT_CONNECTIONS)
+		{
+			LogWarning(Channel::Web, std::format("Connection limit ({}) reached, rejecting new connection", MAX_CONCURRENT_CONNECTIONS));
+			boost::system::error_code close_ec;
+			socket.close(close_ec);
+			DoAccept();
 			return;
 		}
 

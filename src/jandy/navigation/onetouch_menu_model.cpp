@@ -93,12 +93,13 @@ namespace AqualinkAutomate::Navigation
 			}
 		});
 
-		// Help -> Keys page
+		// Help -> Keys page (shows key button descriptions)
+		// Detection: Title "Keys" at line 0 and key descriptions like "SELECT" or "Up/Down"
 		model.RegisterPage({
 			.id = PageId::HelpKeys,
 			.name = "HelpKeys",
 			.page_type = ScreenDataPageTypes::Page_Unknown,  // No specific page type
-			.detectors = {},  // TODO: Capture actual detection patterns
+			.detectors = {{ 0, "Keys" }, { 1, "SELECT" }},   // Title + first key description
 			.parent = PageId::HelpSubmenu,
 			.items = {}
 		});
@@ -161,6 +162,8 @@ namespace AqualinkAutomate::Navigation
 		// =========================================================================
 
 		// System Setup menu
+		// Note: Line 0 is "System Setup" title, line 1 appears to be blank/unselectable
+		// First selectable item "Label Aux" is at line 2
 		model.RegisterPage({
 			.id = PageId::SystemSetup,
 			.name = "SystemSetup",
@@ -168,12 +171,14 @@ namespace AqualinkAutomate::Navigation
 			.detectors = {{ 0, "System Setup" }},
 			.parent = PageId::MenuHelp,
 			.items = {
-				{ "Label Aux", 1, PageId::LabelAuxList }
+				{ "Label Aux", 2, PageId::LabelAuxList }
 				// Other items not implemented
 			}
 		});
 
 		// Label Aux List
+		// Note: Line 0 is "Label Aux" title, line 1 appears to be blank/unselectable
+		// First selectable item "AUX 1" is at line 2
 		model.RegisterPage({
 			.id = PageId::LabelAuxList,
 			.name = "LabelAuxList",
@@ -182,13 +187,13 @@ namespace AqualinkAutomate::Navigation
 			.parent = PageId::SystemSetup,
 			.items = {
 				// Individual AUX items - selecting any goes to LabelAux detail page
-				{ "AUX 1", 1, PageId::LabelAux },
-				{ "AUX 2", 2, PageId::LabelAux },
-				{ "AUX 3", 3, PageId::LabelAux },
-				{ "AUX 4", 4, PageId::LabelAux },
-				{ "AUX 5", 5, PageId::LabelAux },
-				{ "AUX 6", 6, PageId::LabelAux },
-				{ "AUX 7", 7, PageId::LabelAux }
+				{ "AUX 1", 2, PageId::LabelAux },
+				{ "AUX 2", 3, PageId::LabelAux },
+				{ "AUX 3", 4, PageId::LabelAux },
+				{ "AUX 4", 5, PageId::LabelAux },
+				{ "AUX 5", 6, PageId::LabelAux },
+				{ "AUX 6", 7, PageId::LabelAux },
+				{ "AUX 7", 8, PageId::LabelAux }
 				// AUX B1-B8 would be further down the list
 			}
 		});

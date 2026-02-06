@@ -384,11 +384,16 @@ namespace AqualinkAutomate::Navigation
 				m_Callback(page);
 			}
 
+			// EquipmentOnOff doesn't support Back - must navigate back via System selection
+			// Use the navigator to return to System page
+			LogDebug(Channel::Scraping, "ScrapeEquipmentStatusTask: Navigating back to System");
+			nav.NavigateTo(PageId::System);
+			m_WaitingForNav = true;
 			m_Phase = Phase::Returning;
-			m_PendingStatus = 2;
-			return NavKeyCommand::Back;
+			return nav.OnPageUpdate(page, highlighted_line);
 
 		case Phase::Returning:
+			// Should only reach here after navigation completes (m_WaitingForNav handled above)
 			LogInfo(Channel::Scraping, "ScrapeEquipmentStatusTask: Complete");
 			m_Phase = Phase::Complete;
 			m_State = State::Completed;

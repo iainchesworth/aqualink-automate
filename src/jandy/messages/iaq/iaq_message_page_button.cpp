@@ -21,9 +21,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageButton::~IAQMessage_PageButton()
-	{
-	}
+	IAQMessage_PageButton::~IAQMessage_PageButton() = default;
 
 	ButtonStatuses IAQMessage_PageButton::ButtonStatus() const
 	{
@@ -69,6 +67,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_ButtonNameText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short for content extraction");
 		}
 		else
 		{

@@ -17,9 +17,7 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_TableMessage::~IAQMessage_TableMessage()
-	{
-	}
+	IAQMessage_TableMessage::~IAQMessage_TableMessage() = default;
 
 	uint8_t IAQMessage_TableMessage::LineId() const
 	{
@@ -56,6 +54,11 @@ namespace AqualinkAutomate::Messages
 		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "IAQMessage_TableMessage is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "IAQMessage_TableMessage is too short for content extraction");
 		}
 		else
 		{

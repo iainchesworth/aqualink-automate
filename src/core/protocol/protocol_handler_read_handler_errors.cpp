@@ -12,7 +12,7 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
-	void ProtocolHandler_ReadOp_ErrorHandler(ProtocolErrorCode error_code, std::shared_ptr<Kernel::StatisticsHub> statistics_hub)
+	void ProtocolHandler_ReadOp_ErrorHandler(ProtocolErrorCode error_code, const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
 		switch (error_code.value())
 		{

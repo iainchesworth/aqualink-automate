@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatusPublisher)
     Devices::DeviceStatus_Initializing device_status_initializing;
     Devices::DeviceStatus_Normal device_status_normal;
 
-    Interfaces::IStatusPublisher status_publisher(std::move(device_status_initializing));
+    Interfaces::IStatusPublisher status_publisher(device_status_initializing);
 
     BOOST_CHECK_EQUAL(status_publisher.Status().lock()->StatusType(), "Initializing");
 
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatusPublisher)
 
     auto connection = status_publisher.StatusSignal.connect
     (
-        [&signal_received, &received_status_name](Interfaces::IStatusPublisher::StatusType status)
+        [&signal_received, &received_status_name](const Interfaces::IStatusPublisher::StatusType& status)
         {
             if (auto status_ptr = status.lock(); nullptr != status_ptr)
             {
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatusPublisher)
         }
     );
 
-    status_publisher.Status(std::move(device_status_normal));
+    status_publisher.Status(device_status_normal);
 
     BOOST_CHECK(signal_received);
     BOOST_CHECK_EQUAL(received_status_name, "Normal");

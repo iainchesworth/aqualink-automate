@@ -92,6 +92,16 @@ namespace AqualinkAutomate::Options::Mqtt
 			settings.client_id = OPTION_CLIENT_ID->As<std::string>(vm);
 		}
 
+		if (OPTION_USERNAME->IsPresent(vm))
+		{
+			settings.username = OPTION_USERNAME->As<std::string>(vm);
+		}
+
+		if (OPTION_PASSWORD->IsPresent(vm))
+		{
+			settings.password = OPTION_PASSWORD->As<std::string>(vm);
+		}
+
 		// Topic configuration
 		if (OPTION_TOPIC_PREFIX->IsPresent(vm))
 		{

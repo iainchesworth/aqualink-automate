@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Test
 {
 	
-	MockBeastBasicStreamWithTimeout::MockBeastBasicStreamWithTimeout(boost::asio::any_io_executor exec) :
+	MockBeastBasicStreamWithTimeout::MockBeastBasicStreamWithTimeout(const boost::asio::any_io_executor& exec) :
 		boost::beast::test::stream(exec),
 		m_Timeout(exec)
 	{

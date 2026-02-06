@@ -76,13 +76,14 @@ namespace AqualinkAutomate::Devices::Capabilities
 				auto& id = std::get<ScrapeId>(active_scrape);
 				auto& it = std::get<ScraperIter>(active_scrape);
 
-				if (ScraperIter::end(m_ScraperGraphs.at(id)) == it)
+					// Check if at end before advancing, then check again after advancing
+				bool at_end = (ScraperIter::end(m_ScraperGraphs.at(id)) == it);
+				if (!at_end)
 				{
-					LogTrace(Channel::Devices, "Scrape -> is complete");
-					m_ActiveScrape = std::nullopt;
-					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+					++it;
+					at_end = (ScraperIter::end(m_ScraperGraphs.at(id)) == it);
 				}
-				else if (++it; ScraperIter::end(m_ScraperGraphs.at(id)) == it)
+				if (at_end)
 				{
 					LogTrace(Channel::Devices, "Scrape -> is complete");
 					m_ActiveScrape = std::nullopt;

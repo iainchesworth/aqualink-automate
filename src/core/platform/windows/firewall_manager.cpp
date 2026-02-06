@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Developer::FirewallUtils
     {
         ComPolicyPtr policy;
       
-        if (FAILED(::CoCreateInstance(__uuidof(NetFwPolicy2), NULL, CLSCTX_INPROC_SERVER, __uuidof(INetFwPolicy2), (void**)&policy)))
+        if (FAILED(::CoCreateInstance(__uuidof(NetFwPolicy2), nullptr, CLSCTX_INPROC_SERVER, __uuidof(INetFwPolicy2), reinterpret_cast<void**>(&policy))))
         {
             return std::nullopt;
         }
@@ -84,7 +84,7 @@ namespace AqualinkAutomate::Developer::FirewallUtils
 
 	void CheckAndConfigureExceptions()
 	{
-        if (auto com_init = ::CoInitializeEx(0, COINIT_APARTMENTTHREADED); RPC_E_CHANGED_MODE != com_init && FAILED(com_init))
+        if (auto com_init = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED); RPC_E_CHANGED_MODE != com_init && FAILED(com_init))
         {
             LogDebug(Channel::Platform, std::format("Firewall utilities failed to initialise COM; error was: {}", ::_com_error(com_init).ErrorMessage()));
         }
@@ -169,7 +169,7 @@ namespace AqualinkAutomate::Developer::FirewallUtils
                 {
                     ComRulePtr pNetFwRule;
 
-                    if (auto hr = ::CoCreateInstance(__uuidof(NetFwRule), NULL, CLSCTX_INPROC_SERVER, __uuidof(INetFwRule), (void**)&pNetFwRule); FAILED(hr))
+                    if (auto hr = ::CoCreateInstance(__uuidof(NetFwRule), nullptr, CLSCTX_INPROC_SERVER, __uuidof(INetFwRule), reinterpret_cast<void**>(&pNetFwRule)); FAILED(hr))
                     {
                         LogWarning(Channel::Platform, std::format("Firewall utilities failed to instantiate rule; error was -> {}", ::_com_error(hr).ErrorMessage()));
                     }

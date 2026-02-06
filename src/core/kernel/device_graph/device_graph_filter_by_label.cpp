@@ -19,24 +19,10 @@ namespace AqualinkAutomate::Kernel
 	{
 		using AuxillaryTraitsTypes::LabelTrait;
 
-		if (auto device = m_Graph[vd]; nullptr == device)
-		{
-			// Invalid device pointer
-		}
-		else if (!(device->AuxillaryTraits.Has(LabelTrait{})))
-		{
-			// No label...does not match.
-		}
-		else if (m_DeviceLabel != LabelTrait::TraitValue{device->AuxillaryTraits[LabelTrait{}]})
-		{
-			// Label does not match.
-		}
-		else
-		{
-			return true;
-		}
+		auto device = m_Graph[vd];
 
-		return false;
+		// Valid device pointer, has label, and label matches.
+		return nullptr != device && device->AuxillaryTraits.Has(LabelTrait{}) && m_DeviceLabel == LabelTrait::TraitValue{device->AuxillaryTraits[LabelTrait{}]};
 	}
 
 }
