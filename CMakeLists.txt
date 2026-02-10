@@ -72,8 +72,13 @@ find_package(ZLIB REQUIRED)
 
 if(ENABLE_COVERAGE)
 
-include(CodeCoverage)
-append_coverage_compiler_flags()
+if(MSVC)
+  include(OpenCppCoverage)
+  # No compiler flags needed - OpenCppCoverage uses PDB debug information
+else()
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+endif()
 
 endif(ENABLE_COVERAGE)
 

@@ -330,7 +330,8 @@ target_link_libraries(
 	OpenSSL::SSL 
 	OpenSSL::Crypto
 	ZLIB::ZLIB
+	$<$<CXX_COMPILER_ID:GNU>:stdc++exp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
-	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>	
+	$<$<BOOL:${ENABLE_PROFILING}>:Tracy::TracyClient>
 )

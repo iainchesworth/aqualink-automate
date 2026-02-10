@@ -111,13 +111,29 @@ add_test(NAME AqualinkAutomateUnitTests COMMAND testaqualink-automate WORKING_DI
 
 if(ENABLE_COVERAGE)
 
-if(USE_SONARQUBE)
+if(MSVC)
+
+setup_target_for_coverage_opencppcoverage(
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+	DEPENDENCIES testaqualink-automate
+	SOURCES
+		"${PROJECT_SOURCE_DIR}/src"
+	MODULES
+		"${PROJECT_BINARY_DIR}"
+	EXCLUDE
+		"${PROJECT_SOURCE_DIR}/deps"
+		"${CMAKE_BINARY_DIR}/vcpkg_installed"
+	OUTPUT_FORMAT $<IF:$<BOOL:${USE_SONARQUBE}>,cobertura,html>
+)
+
+elseif(USE_SONARQUBE)
 
 setup_target_for_coverage_gcovr_xml(
-	NAME coverage-testaqualink-automate 
-	EXECUTABLE ctest -j ${PROCESSOR_COUNT} 
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
 	DEPENDENCIES testaqualink-automate
-	EXCLUDE 
+	EXCLUDE
 		"${PROJECT_SOURCE_DIR}/deps"
 		"${CMAKE_BINARY_DIR}/vcpkg_installed"
 		"/usr/include"
@@ -125,20 +141,20 @@ setup_target_for_coverage_gcovr_xml(
 	OUTPUT_FORMAT sonarqube
 )
 
-else(USE_SONARQUBE)
+else()
 
 setup_target_for_coverage_gcovr_html(
-	NAME coverage-testaqualink-automate 
-	EXECUTABLE ctest -j ${PROCESSOR_COUNT} 
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
 	DEPENDENCIES testaqualink-automate
-	EXCLUDE 
+	EXCLUDE
 		"${PROJECT_SOURCE_DIR}/deps"
 		"${CMAKE_BINARY_DIR}/vcpkg_installed"
 		"/usr/include"
 		"include"
 )
 
-endif(USE_SONARQUBE)
+endif()
 
 endif(ENABLE_COVERAGE)
 

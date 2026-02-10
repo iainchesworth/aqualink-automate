@@ -132,14 +132,14 @@ namespace AqualinkAutomate::Options
 		return [... ps = std::move(processors)](State state) -> Result
 			{
 				auto& [desc, vm, settings, validators] = state;
-				(..., [&]()
+				(..., [&](auto& p)
 					{
-						auto result = ps.Process(vm);
+						auto result = p.Process(vm);
 						if (result)
 						{
-							settings.Set(ps.Name(), std::any{ std::move(*result) });
+							settings.Set(p.Name(), std::any{ std::move(*result) });
 						}
-					}());
+					}(ps));
 
 				return state;
 			};

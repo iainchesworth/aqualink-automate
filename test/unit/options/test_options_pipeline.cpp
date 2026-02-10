@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_WebDefaults)
 	BOOST_CHECK(s.http_server_is_enabled);
 	BOOST_CHECK(s.https_server_is_enabled);
 	BOOST_CHECK(!s.http_content_is_disabled);
-	BOOST_CHECK_EQUAL(s.bind_address, "0.0.0.0");
+	BOOST_CHECK_EQUAL(s.bind_address, "127.0.0.1");
 	BOOST_CHECK_EQUAL(s.http_port, 80);
 	BOOST_CHECK_EQUAL(s.https_port, 443);
 }
@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_DeveloperArgs_DevMode)
 
 BOOST_AUTO_TEST_CASE(Test_Pipeline_JandyArgs_DisableEmulation)
 {
-	auto result = RunFullPipeline({ "program", "--disable-emulation" });
+	auto result = RunFullPipeline({ "program", "--jandy-disable-emulation" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -361,7 +361,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_MultipleProcessorsSimultaneously)
 		"--disable-https",
 		"--mqtt", "--mqtt-host=pool-broker",
 		"--serial-port=COM3", "--baudrate=19200",
-		"--disable-emulation"
+		"--jandy-disable-emulation"
 	});
 	BOOST_REQUIRE(result.has_value());
 

@@ -112,7 +112,31 @@
       "Bash(tee:*)",
       "Bash(./bin/aqualink-automate.exe:*)",
       "Bash(./src/aqualink-automate.exe:*)",
-      "Bash(./build/config-windows-llvm/src/aqualink-automate.exe:*)"
+      "Bash(./build/config-windows-llvm/src/aqualink-automate.exe:*)",
+      "Bash(apt list:*)",
+      "Bash(snap list:*)",
+      "Bash(pip3 show:*)",
+      "Bash(pip3 install:*)",
+      "Bash(mount:*)",
+      "Bash(dpkg:*)",
+      "Bash(git -C /mnt/r/aqualink-automate submodule status)",
+      "Bash(git -C /mnt/r/aqualink-automate/deps/vcpkg status)",
+      "Bash(/mnt/r/aqualink-automate/deps/vcpkg/vcpkg version:*)",
+      "Bash(./bootstrap-vcpkg.sh:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(git -C /mnt/r/aqualink-automate/deps/vcpkg diff --stat HEAD)",
+      "Bash(git -C /mnt/r/aqualink-automate/deps/vcpkg status --short)",
+      "Bash(autoconf:*)",
+      "Bash(automake:*)",
+      "Bash(VCPKG_FORCE_DOWNLOADED_BINARIES=1 cmake:*)",
+      "Bash(flock:*)",
+      "Bash(/mnt/r/aqualink-automate/deps/vcpkg/vcpkg:*)",
+      "Bash(gcovr:*)",
+      "Bash(pip install:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(/home/iain/.local/bin/gcovr:*)",
+      "Bash(git -C R:/aqualink-automate mv:*)",
+      "Bash(git -C R:/aqualink-automate status:*)"
     ]
   }
 }

@@ -91,6 +91,26 @@
     },
 
     {
+      "name": "config-windows-msvc-coverage",
+      "inherits": [ "core" ],
+      "displayName": "Windows MSVC Coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-msvc",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/windows.msvc.toolchain.cmake",
+        "ENABLE_PROFILING": "OFF",
+        "ENABLE_BENCHMARKS": "OFF",
+        "ENABLE_COVERAGE": "ON",
+        "ENABLE_SANITIZERS": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+
+    {
       "name": "config-windows-llvm",
       "inherits": [ "core", "release" ],
       "displayName": "Windows LLVM Release",
@@ -264,6 +284,13 @@
       "configuration": "Debug"
     },
     {
+      "name": "build-windows-msvc-coverage",
+      "configurePreset": "config-windows-msvc-coverage",
+      "displayName": "Windows MSVC Coverage",
+      "configuration": "Debug",
+      "targets": [ "coverage-testaqualink-automate" ]
+    },
+    {
       "name": "build-windows-llvm",
       "configurePreset": "config-windows-llvm",
       "displayName": "Windows LLVM Release",
@@ -332,6 +359,13 @@
       "name": "test-windows-msvc-debug",
       "configurePreset": "config-windows-msvc-debug",
       "displayName": "Windows MSVC Debug Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-msvc-coverage",
+      "configurePreset": "config-windows-msvc-coverage",
+      "displayName": "Windows MSVC Coverage Tests",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
@@ -487,6 +521,15 @@
         { "type": "build", "name": "build-macos-llvm" },
         { "type": "test", "name": "test-macos-llvm" },
         { "type": "package", "name": "pack-macos-llvm" }
+      ]
+    },
+    {
+      "name": "ci-windows-coverage",
+      "displayName": "Windows MSVC Coverage Analysis",
+      "steps": [
+        { "type": "configure", "name": "config-windows-msvc-coverage" },
+        { "type": "build", "name": "build-windows-msvc-coverage" },
+        { "type": "test", "name": "test-windows-msvc-coverage" }
       ]
     },
     {

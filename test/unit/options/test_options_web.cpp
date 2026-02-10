@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_DefaultSettings)
 	BOOST_CHECK(settings.http_server_is_enabled);
 	BOOST_CHECK(settings.https_server_is_enabled);
 	BOOST_CHECK(!settings.http_content_is_disabled);
-	BOOST_CHECK_EQUAL(settings.bind_address, "0.0.0.0");
+	BOOST_CHECK_EQUAL(settings.bind_address, "127.0.0.1");
 	BOOST_CHECK_EQUAL(settings.http_port, 80);
 	BOOST_CHECK_EQUAL(settings.https_port, 443);
 }
