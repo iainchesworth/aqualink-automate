@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool PDAMessage_ShiftLines::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_ShiftLines::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
 

@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool AquariteMessage_PPM::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool AquariteMessage_PPM::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
 

@@ -15,6 +15,7 @@ target_sources(
 	unit/developer/test_async_operation_tracker.cpp
 	unit/developer/test_coroutine_lifetime_tracker.cpp
 	unit/developer/test_signal_connection_tracker.cpp
+	unit/errors/test_error_categories.cpp
 	unit/devices/test_devices_id.cpp
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
 	unit/devices/test_devices_screendatapage.cpp 
@@ -80,6 +81,9 @@ target_sources(
 	unit/utility/test_utility_latencytracker.cpp
 	unit/utility/test_utility_signallingstatscounter.cpp
 	unit/utility/test_utility_temperature.cpp
+	unit/utility/test_utility_timeoutdurationstringconverter.cpp
+	unit/utility/test_utility_tonumber.cpp
+	unit/utility/test_utility_valuedebouncer.cpp
 	unit/navigation/test_navigation_menu_model.cpp
 )
 

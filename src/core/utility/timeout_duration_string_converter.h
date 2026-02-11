@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Utility
 		static const uint8_t HOURS_INDEX_END = 2;
 		static const uint8_t MINS_INDEX_START = 3;
 		static const uint8_t MINS_INDEX_END = 5;
-		static const uint8_t SECS_INDEX_START = 7;
+		static const uint8_t SECS_INDEX_START = 6;
 		static const uint8_t SECS_INDEX_END = 8;
 
 	public:

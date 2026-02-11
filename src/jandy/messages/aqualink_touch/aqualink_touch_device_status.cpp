@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool AqualinkTouch_DeviceStatus::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool AqualinkTouch_DeviceStatus::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AqualinkTouch_DeviceStatus type", message_bytes.size()));
 

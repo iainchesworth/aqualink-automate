@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override = 0;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override = 0;
+		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override = 0;
 	};
 
 }

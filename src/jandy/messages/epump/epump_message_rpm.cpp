@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool EPumpMessage_RPM::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool EPumpMessage_RPM::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into EPumpMessage_RPM type", message_bytes.size()));
 

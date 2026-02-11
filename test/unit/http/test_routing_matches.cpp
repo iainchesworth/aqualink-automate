@@ -211,4 +211,83 @@ BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_CustomRouteMatches)
 	}
 }
 
+// --- matches_base direct API tests ---
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_AtIndex_Valid)
+{
+	Routing::matches m;
+	std::string_view* matches_it = m.matches();
+	std::string_view* ids_it = m.ids();
+
+	matches_it[0] = "value0";
+	ids_it[0] = "id0";
+
+	BOOST_CHECK_EQUAL(m.at(0), "value0");
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_AtIndex_OutOfBounds)
+{
+	Routing::matches m;
+	BOOST_CHECK_THROW(m.at(20), std::out_of_range);
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_AtString_Found)
+{
+	Routing::matches m;
+	std::string_view* matches_it = m.matches();
+	std::string_view* ids_it = m.ids();
+
+	matches_it[0] = "match_value";
+	ids_it[0] = "my_id";
+
+	BOOST_CHECK_EQUAL(m.at(std::string_view("my_id")), "match_value");
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_AtString_NotFound)
+{
+	Routing::matches m;
+	BOOST_CHECK_THROW(m.at(std::string_view("nonexistent")), std::out_of_range);
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_Find_Found)
+{
+	Routing::matches m;
+	std::string_view* matches_it = m.matches();
+	std::string_view* ids_it = m.ids();
+
+	matches_it[0] = "found_value";
+	ids_it[0] = "search_id";
+
+	auto it = m.find("search_id");
+	BOOST_CHECK(it != m.end());
+	BOOST_CHECK_EQUAL(*it, "found_value");
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_Find_NotFound)
+{
+	Routing::matches m;
+	auto it = m.find("missing_id");
+	BOOST_CHECK(it == m.end());
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_BeginEndIteration)
+{
+	Routing::matches m;
+	auto begin = m.begin();
+	auto end = m.end();
+	BOOST_CHECK(begin != end);
+	BOOST_CHECK_EQUAL(static_cast<std::size_t>(end - begin), m.size());
+}
+
+BOOST_AUTO_TEST_CASE(TestSuite_HTTPServer_RoutingMatches_Empty)
+{
+	// matches_storage<20> has a fixed size of 20, so empty() returns false
+	Routing::matches m;
+	BOOST_CHECK(!m.empty());
+
+	// But a zero-size storage should be empty
+	Routing::matches_storage<0> empty_m;
+	BOOST_CHECK(empty_m.empty());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

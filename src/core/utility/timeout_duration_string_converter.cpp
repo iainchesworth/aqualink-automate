@@ -94,10 +94,10 @@ namespace AqualinkAutomate::Utility
 		else
 		{
 			// Check 2 - validate if stream has reached end - extra validation for format correctness
-			bool duration_is_not_valid = true;
-			duration_is_not_valid &= (hours < 0 || hours > 99);
-			duration_is_not_valid &= (minutes < 0 || minutes > 59);
-			duration_is_not_valid &= (seconds < 0 || seconds > 59);
+			bool duration_is_not_valid = false;
+			duration_is_not_valid |= (hours < 0 || hours > 99);
+			duration_is_not_valid |= (minutes < 0 || minutes > 59);
+			duration_is_not_valid |= (seconds < 0 || seconds > 59);
 
 			if (duration_is_not_valid)
 			{

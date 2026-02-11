@@ -144,4 +144,85 @@ BOOST_AUTO_TEST_CASE(FormatNormalCase)
     BOOST_CHECK_EQUAL("10", std::format("{}", counter));
 }
 
+BOOST_AUTO_TEST_CASE(StatsCounter_CopyConstructor)
+{
+    AqualinkAutomate::Utility::StatsSignal signal;
+    AqualinkAutomate::Utility::StatsCounter original(signal);
+    original = 42;
+
+    AqualinkAutomate::Utility::StatsCounter copy(original);
+    BOOST_CHECK_EQUAL(copy.Count(), 42);
+}
+
+BOOST_AUTO_TEST_CASE(StatsCounter_MoveConstructor)
+{
+    AqualinkAutomate::Utility::StatsSignal signal;
+    AqualinkAutomate::Utility::StatsCounter original(signal);
+    original = 99;
+
+    AqualinkAutomate::Utility::StatsCounter moved(std::move(original));
+    BOOST_CHECK_EQUAL(moved.Count(), 99);
+}
+
+BOOST_AUTO_TEST_CASE(StatsCounter_CopyAssignment)
+{
+    AqualinkAutomate::Utility::StatsSignal signal;
+    AqualinkAutomate::Utility::StatsCounter original(signal);
+    original = 55;
+
+    AqualinkAutomate::Utility::StatsCounter other(signal);
+    other = original;
+    BOOST_CHECK_EQUAL(other.Count(), 55);
+}
+
+BOOST_AUTO_TEST_CASE(StatsCounter_MoveAssignment)
+{
+    AqualinkAutomate::Utility::StatsSignal signal;
+    AqualinkAutomate::Utility::StatsCounter original(signal);
+    original = 77;
+
+    AqualinkAutomate::Utility::StatsCounter other(signal);
+    other = std::move(original);
+    BOOST_CHECK_EQUAL(other.Count(), 77);
+}
+
+BOOST_AUTO_TEST_CASE(StatsCounter_OperatorCallConst)
+{
+    AqualinkAutomate::Utility::StatsSignal signal;
+    AqualinkAutomate::Utility::StatsCounter counter(signal);
+    counter = 123;
+
+    const auto& const_counter = counter;
+    BOOST_CHECK_EQUAL(const_counter(), 123);
+}
+
+BOOST_AUTO_TEST_CASE(SignallingStatsCounter_BeginEnd)
+{
+    AqualinkAutomate::Utility::SignallingStatsCounter counter;
+
+    counter[TestStatA::Stat1] = 10;
+    counter[TestStatA::Stat2] = 20;
+
+    int count = 0;
+    for (auto it = counter.begin(); it != counter.end(); ++it)
+    {
+        ++count;
+    }
+    BOOST_CHECK_EQUAL(count, 2);
+}
+
+BOOST_AUTO_TEST_CASE(SignallingStatsCounter_CBeginCEnd)
+{
+    AqualinkAutomate::Utility::SignallingStatsCounter counter;
+
+    counter[TestStatB::Alpha] = 5;
+
+    int count = 0;
+    for (auto it = counter.cbegin(); it != counter.cend(); ++it)
+    {
+        ++count;
+    }
+    BOOST_CHECK_EQUAL(count, 1);
+}
+
 BOOST_AUTO_TEST_SUITE_END();

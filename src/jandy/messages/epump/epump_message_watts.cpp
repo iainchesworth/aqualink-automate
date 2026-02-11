@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool EPumpMessage_Watts::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool EPumpMessage_Watts::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into EPumpMessage_Watts type", message_bytes.size()));
 

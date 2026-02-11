@@ -349,7 +349,7 @@ int main(int argc, char* argv[])
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
 
 		using clock = std::chrono::steady_clock;
-		constexpr auto FRAME_PERIOD = std::chrono::milliseconds(10);
+		constexpr auto FRAME_PERIOD = std::chrono::milliseconds(1);
 
 		bool shutdown = false;
 		boost::asio::signal_set shutdown_signals(io_context, SIGINT, SIGTERM);
@@ -367,7 +367,7 @@ int main(int argc, char* argv[])
 			io_context.poll();
 
 			// Advance subsystems
-			protocol_task->Poll();
+			bool had_work = protocol_task->Poll();
 
 			if (http_server)
 			{
@@ -384,8 +384,14 @@ int main(int argc, char* argv[])
 				mqtt_integration->Poll();
 			}
 
-			// Sleep until next frame
-			std::this_thread::sleep_until(frame_start + FRAME_PERIOD);
+			// Adaptive sleep: skip the sleep when the protocol task had
+			// work to do so that the next read/process/write cycle starts
+			// immediately — giving near-zero response latency under load.
+			// When idle, sleep to avoid busy-spinning.
+			if (!had_work)
+			{
+				std::this_thread::sleep_until(frame_start + FRAME_PERIOD);
+			}
 		}
 
 		//---------------------------------------------------------------------

@@ -1,3 +1,4 @@
+#include <array>
 #include <format>
 #include <span>
 #include <vector>
@@ -107,37 +108,54 @@ namespace AqualinkAutomate::Messages
 			return false;
 		}
 
-		std::vector<uint8_t> filtered_data(message_bytes.size());
-		std::transform(message_bytes.begin(), message_bytes.end(), filtered_data.begin(),
+		// Convert std::byte span to uint8_t span via a stack buffer (this
+		// path is only used by the ISerializable interface, not the hot path).
+		std::array<uint8_t, 128> byte_buffer;
+		std::transform(message_bytes.begin(), message_bytes.end(), byte_buffer.begin(),
 			[](std::byte b)
 			{
 				return static_cast<uint8_t>(b);
 			}
 		);
 
-		return DeserializeFromContiguousData(std::move(filtered_data));
+		return DeserializeFromContiguousData(std::span<const uint8_t>(byte_buffer.data(), message_bytes.size()));
 	}
 
-	bool JandyMessage::DeserializeFromContiguousData(std::vector<uint8_t>&& contiguous_data)
+	bool JandyMessage::DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data)
 	{
-		Utility::JandyPacket_NullCharHandler_Deserialization(contiguous_data);
+		// Fast path: if no DLE-null escaping is present, deserialize directly
+		// from the caller's memory with zero copies.
+		if (contiguous_data.size() > MAXIMUM_PACKET_LENGTH)
+		{
+			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet exceeds maximum permitted length");
+			return false;
+		}
 
-		if (!PacketFramingIsValid(contiguous_data))
+		std::array<uint8_t, MAXIMUM_PACKET_LENGTH> unescape_buffer;
+		std::span<const uint8_t> packet_data = contiguous_data;
+
+		if (Utility::JandyPacket_NeedsNullCharHandling(contiguous_data))
+		{
+			auto filtered_size = Utility::JandyPacket_NullCharHandler_DeserializationToSpan(contiguous_data, std::span<uint8_t>(unescape_buffer));
+			packet_data = std::span<const uint8_t>(unescape_buffer.data(), filtered_size);
+		}
+
+		if (!PacketFramingIsValid(packet_data))
 		{
 			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet framing is not valid");
 		}
-		else if (!PacketChecksumIsValid(contiguous_data))
+		else if (!PacketChecksumIsValid(packet_data))
 		{
 			LogDebug(Channel::Messages, "Cannot deserialise JandyMessage packet; packet checksum is not valid");
 		}
 		else
 		{
-			m_Destination = std::move(Devices::JandyDeviceType(static_cast<uint8_t>(contiguous_data[Index_DestinationId])));
-			m_RawId = static_cast<uint8_t>(contiguous_data[Index_MessageType]);
-			m_MessageLength = contiguous_data.size();
-			m_ChecksumValue = static_cast<uint8_t>(contiguous_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
+			m_Destination = Devices::JandyDeviceType(static_cast<uint8_t>(packet_data[Index_DestinationId]));
+			m_RawId = static_cast<uint8_t>(packet_data[Index_MessageType]);
+			m_MessageLength = static_cast<uint8_t>(packet_data.size());
+			m_ChecksumValue = static_cast<uint8_t>(packet_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
 
-			return DeserializeContents(contiguous_data);
+			return DeserializeContents(packet_data);
 		}
 
 		return false;
@@ -155,7 +173,7 @@ namespace AqualinkAutomate::Messages
 		return packet_is_valid;
 	}
 
-	bool JandyMessage::PacketFramingIsValid(const std::vector<uint8_t>& message_bytes) const
+	bool JandyMessage::PacketFramingIsValid(std::span<const uint8_t> message_bytes) const
 	{
 		if (MINIMUM_PACKET_LENGTH > message_bytes.size())
 		{
@@ -175,7 +193,7 @@ namespace AqualinkAutomate::Messages
 		return packet_is_valid;
 	}
 
-	bool JandyMessage::PacketChecksumIsValid(const std::vector<uint8_t>& message_bytes) const
+	bool JandyMessage::PacketChecksumIsValid(std::span<const uint8_t> message_bytes) const
 	{
 		if (MINIMUM_PACKET_LENGTH > message_bytes.size())
 		{

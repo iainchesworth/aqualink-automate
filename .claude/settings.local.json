@@ -136,7 +136,32 @@
       "Bash(sudo apt install:*)",
       "Bash(/home/iain/.local/bin/gcovr:*)",
       "Bash(git -C R:/aqualink-automate mv:*)",
-      "Bash(git -C R:/aqualink-automate status:*)"
+      "Bash(git -C R:/aqualink-automate status:*)",
+      "WebFetch(domain:)",
+      "Bash(R:\\\\aqualink-automate\\\\build\\\\config-windows-msvc\\\\test\\\\perfaqualink-automate.exe:*)",
+      "Bash(git -C R:/aqualink-automate log --oneline -10)",
+      "Bash(git -C R:/aqualink-automate show:*)",
+      "Bash(git -C R:/aqualink-automate log --oneline --follow -5 test/performance/test_jandy_message_factory.cpp)",
+      "Bash(git -C R:/aqualink-automate log --oneline --follow -5 test/performance/test_protocol_handler.cpp)",
+      "Bash(git -C R:/aqualink-automate diff edfa7d4 HEAD -- test/performance/test_jandy_message_factory.cpp)",
+      "Bash(git -C R:/aqualink-automate log --oneline bug/fix-coverage-on-linux-and-windows..HEAD)",
+      "Bash(git -C R:/aqualink-automate merge-base main bug/fix-coverage-on-linux-and-windows)",
+      "Bash(git -C R:/aqualink-automate log --oneline e9f2f28..bug/fix-coverage-on-linux-and-windows)",
+      "Bash(git -C R:/aqualink-automate diff HEAD -- src/jandy/messages/jandy_message.h src/jandy/messages/jandy_message.cpp)",
+      "Bash(git -C R:/aqualink-automate stash)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc/test/testaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/testaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/testaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc/test/perfaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/perfaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/perfaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/perfaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm-debug/test/perfaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc/test/testaqualink-automate.exe)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/testaqualink-automate.exe)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/testaqualink-automate.exe)"
     ]
   }
 }

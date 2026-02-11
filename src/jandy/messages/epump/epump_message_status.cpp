@@ -35,7 +35,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool EPumpMessage_Status::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool EPumpMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into EPumpMessage_Status type", message_bytes.size()));
 

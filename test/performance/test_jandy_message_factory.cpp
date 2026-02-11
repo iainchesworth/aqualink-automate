@@ -167,12 +167,14 @@ public:
 
     void SetupAckMessage()
     {
+        ack_data.clear();
         JandyMessage_Ack ack(AckTypes::ACK_IAQTouch, 0x10);
         ack.Serialize(ack_data);
     }
 
     void SetupStatusMessage()
     {
+        status_data.clear();
         JandyMessage_Status status;
         status.Serialize(status_data);
     }
@@ -216,6 +218,8 @@ public:
 
     void SetupMessageMessage(int64_t content_size)
     {
+        message_data.clear();
+
         std::string content;
         content.reserve(static_cast<size_t>(content_size));
 

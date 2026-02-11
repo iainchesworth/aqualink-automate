@@ -114,4 +114,77 @@ BOOST_AUTO_TEST_CASE(Test_ThreadSafety)
 	BOOST_TEST(true);
 }
 
+BOOST_AUTO_TEST_CASE(Test_SuspendNonexistentHandle_Safe)
+{
+	auto& tracker = CoroutineLifetimeTracker::Instance();
+
+	// Suspending a handle that was never created should not crash
+	tracker.OnSuspended(0xBADBAD01);
+	BOOST_TEST(true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ResumeNonexistentHandle_Safe)
+{
+	auto& tracker = CoroutineLifetimeTracker::Instance();
+
+	// Resuming a handle that was never created should not crash
+	tracker.OnResumed(0xBADBAD02);
+	BOOST_TEST(true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MultipleSuspendResume_AccumulateCounts)
+{
+	auto& tracker = CoroutineLifetimeTracker::Instance();
+
+	uintptr_t handle = 0xDEAD0010;
+	tracker.OnCreated(handle, "MultiCycleCoroutine");
+
+	for (int i = 0; i < 5; ++i)
+	{
+		tracker.OnSuspended(handle);
+		tracker.OnResumed(handle);
+	}
+
+	auto active = tracker.GetActive();
+	auto it = std::find_if(active.begin(), active.end(),
+		[handle](const CoroutineInfo& info) { return info.handle_address == handle; });
+	BOOST_REQUIRE(it != active.end());
+	BOOST_TEST(it->suspend_count == 5u);
+	BOOST_TEST(it->resume_count == 5u);
+	BOOST_TEST(it->is_suspended == false);
+
+	tracker.OnDestroyed(handle);
+}
+
+BOOST_AUTO_TEST_CASE(Test_GetActive_ReturnsOnlyNonDestroyed)
+{
+	auto& tracker = CoroutineLifetimeTracker::Instance();
+
+	uintptr_t handle1 = 0xDEAD0020;
+	uintptr_t handle2 = 0xDEAD0021;
+	uintptr_t handle3 = 0xDEAD0022;
+
+	tracker.OnCreated(handle1, "ActiveTest1");
+	tracker.OnCreated(handle2, "ActiveTest2");
+	tracker.OnCreated(handle3, "ActiveTest3");
+
+	tracker.OnDestroyed(handle2);
+
+	auto active = tracker.GetActive();
+
+	bool found_h1 = std::any_of(active.begin(), active.end(),
+		[handle1](const CoroutineInfo& info) { return info.handle_address == handle1; });
+	bool found_h2 = std::any_of(active.begin(), active.end(),
+		[handle2](const CoroutineInfo& info) { return info.handle_address == handle2; });
+	bool found_h3 = std::any_of(active.begin(), active.end(),
+		[handle3](const CoroutineInfo& info) { return info.handle_address == handle3; });
+
+	BOOST_TEST(found_h1);
+	BOOST_TEST(!found_h2);
+	BOOST_TEST(found_h3);
+
+	tracker.OnDestroyed(handle1);
+	tracker.OnDestroyed(handle3);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

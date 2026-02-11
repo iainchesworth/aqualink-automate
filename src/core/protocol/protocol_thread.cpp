@@ -41,14 +41,13 @@ namespace AqualinkAutomate::Protocol
 			auto& buffer = m_WriteQueue.front();
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolThread::write_some", std::source_location::current());
 
-			const std::size_t original_size = buffer.size();
-			std::size_t total_bytes_written = 0;
+			std::size_t bytes_written_this_call = 0;
 
-			while (!buffer.empty())
+			while (m_WriteOffset < buffer.size())
 			{
 				boost::system::error_code ec;
 				auto bytes_written = m_SerialPort->write_some(
-					boost::asio::buffer(buffer.data(), buffer.size()), ec);
+					boost::asio::buffer(buffer.data() + m_WriteOffset, buffer.size() - m_WriteOffset), ec);
 
 				if (ec)
 				{
@@ -61,29 +60,22 @@ namespace AqualinkAutomate::Protocol
 					break;
 				}
 
-				total_bytes_written += bytes_written;
-
-				if (bytes_written >= buffer.size())
-				{
-					buffer.clear();
-				}
-				else
-				{
-					buffer.erase(buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(bytes_written));
-				}
+				bytes_written_this_call += bytes_written;
+				m_WriteOffset += bytes_written;
 			}
 
-			zone->Value(total_bytes_written);
-			Factory::ProfilerFactory::Instance().Get()->PlotValue("Serial Bytes Written", static_cast<int64_t>(total_bytes_written));
+			zone->Value(bytes_written_this_call);
+			Factory::ProfilerFactory::Instance().Get()->PlotValue("Serial Bytes Written", static_cast<int64_t>(bytes_written_this_call));
 
-			if (original_size == total_bytes_written)
+			if (m_WriteOffset >= buffer.size())
 			{
-				LogTrace(Channel::Protocol, std::format("Successfully wrote all {} bytes to serial port", total_bytes_written));
+				LogTrace(Channel::Protocol, std::format("Successfully wrote all {} bytes to serial port", buffer.size()));
 				m_WriteQueue.pop_front();
+				m_WriteOffset = 0;
 			}
-			else if (total_bytes_written > 0)
+			else if (bytes_written_this_call > 0)
 			{
-				LogDebug(Channel::Protocol, std::format("Write incomplete: wrote {} of {} bytes", total_bytes_written, original_size));
+				LogDebug(Channel::Protocol, std::format("Write incomplete: wrote {} of {} bytes", m_WriteOffset, buffer.size()));
 				break;  // Partial write; retry remainder next iteration
 			}
 			else
@@ -134,20 +126,15 @@ namespace AqualinkAutomate::Protocol
 
 			total_bytes_read += bytes_read;
 
-			std::size_t bytes_discarded = 0;
-			for (std::size_t i = 0; i < bytes_read; ++i)
+			const auto space_available = m_SerialBuffer.capacity() - m_SerialBuffer.size();
+			if (bytes_read > space_available)
 			{
-				if (m_SerialBuffer.full())
-				{
-					++bytes_discarded;
-					if (m_StatisticsHub) { ++m_StatisticsHub->MessageErrors.BufferOverflows; }
-				}
-				m_SerialBuffer.push_back(m_ReadBuffer[i]);
-			}
-			if (bytes_discarded > 0)
-			{
+				const auto bytes_discarded = bytes_read - space_available;
+				if (m_StatisticsHub) { m_StatisticsHub->MessageErrors.BufferOverflows += bytes_discarded; }
 				LogWarning(Channel::Protocol, std::format("Serial circular buffer overflow - {} bytes discarded", bytes_discarded));
 			}
+			m_SerialBuffer.insert(m_SerialBuffer.end(),
+				m_ReadBuffer.begin(), m_ReadBuffer.begin() + bytes_read);
 		}
 
 		if (total_bytes_read > 0)
@@ -162,7 +149,7 @@ namespace AqualinkAutomate::Protocol
 		}
 	}
 
-	void ProtocolTask::Poll()
+	bool ProtocolTask::Poll()
 	{
 		// Tight loop: read → process → write, so responses are sent in
 		// the same frame as the message that triggered them.
@@ -176,6 +163,10 @@ namespace AqualinkAutomate::Protocol
 		std::size_t messages_parsed = 0;
 		if (!m_SerialBuffer.empty())
 		{
+			// Linearize so that packet subranges are contiguous in memory,
+			// enabling zero-copy deserialization via span.
+			m_SerialBuffer.linearize();
+
 			messages_parsed = ProcessMessages(m_SerialBuffer);
 
 			// Immediately drain any responses that were queued by message handlers.
@@ -199,6 +190,8 @@ namespace AqualinkAutomate::Protocol
 			profiler->PlotValue("Overlapping Packets", static_cast<int64_t>(m_StatisticsHub->MessageErrors.OverlappingPackets));
 			profiler->PlotValue("Buffer Overflows", static_cast<int64_t>(m_StatisticsHub->MessageErrors.BufferOverflows));
 		}
+
+		return (messages_parsed > 0) || !m_WriteQueue.empty();
 	}
 
 	void ProtocolTask::EnqueueWrite(std::vector<uint8_t> buffer)

@@ -26,7 +26,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool JandyMessage_Probe::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool JandyMessage_Probe::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Probe type", message_bytes.size()));
 

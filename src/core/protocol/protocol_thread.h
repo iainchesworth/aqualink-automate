@@ -29,7 +29,10 @@ namespace AqualinkAutomate::Protocol
 		ProtocolTask(ProtocolTask&&) = delete;
 		ProtocolTask& operator=(ProtocolTask&&) = delete;
 
-		void Poll();
+		/// Advance the protocol task.  Returns true if work was performed
+		/// (messages parsed or writes pending), signalling the caller that
+		/// sleeping can be skipped for tighter response latency.
+		bool Poll();
 
 		void EnqueueWrite(std::vector<uint8_t> buffer);
 
@@ -64,6 +67,7 @@ namespace AqualinkAutomate::Protocol
 
 		ReadOps_SerialBufferType m_SerialBuffer;
 		std::array<uint8_t, Constants::SERIAL_READ_CHUNK_SIZE> m_ReadBuffer{};
+		std::size_t m_WriteOffset{0};
 
 	private:
 		boost::signals2::scoped_connection m_WriteSignalConnection;

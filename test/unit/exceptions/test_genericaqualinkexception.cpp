@@ -4,40 +4,35 @@
 
 BOOST_AUTO_TEST_SUITE(TestSuite_Exceptions)
 
-BOOST_AUTO_TEST_CASE(Test_Exceptions_Properties)
+BOOST_AUTO_TEST_CASE(Test_Exceptions_MessageProperty)
+{
+	using AqualinkAutomate::Exceptions::GenericAqualinkException;
+
+	const std::string exception_message{ "This is a test message" };
+	GenericAqualinkException ex(exception_message);
+
+	BOOST_CHECK_EQUAL(exception_message, ex.What());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_SourceLocationProperty)
+{
+	using AqualinkAutomate::Exceptions::GenericAqualinkException;
+
+	GenericAqualinkException ex("test");
+	auto& source_location = ex.Where();
+
+	BOOST_CHECK_GT(source_location.line(), 0u);
+	BOOST_CHECK_GE(source_location.column(), 0u);
+	BOOST_CHECK_NE(std::string::npos, std::string(source_location.file_name()).find("test_genericaqualinkexception.cpp"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_ThrowAndCatch)
 {
 	using AqualinkAutomate::Exceptions::GenericAqualinkException;
 
 	const std::string exception_message{ "This is a test message" };
 
-	auto raise_exception = [&exception_message]()
-		{
-			throw GenericAqualinkException(exception_message);
-		};
-
-	auto check_exception_message = [&exception_message](const auto& ex) -> auto
-		{
-			return (exception_message == ex.What());
-		};
-
-	auto check_exception_sourcelocation = [](const auto& ex) -> auto
-		{
-			auto& source_location = ex.Where();
-
-			bool all_checks_successful = true;
-			// Verify line number is captured (exact value depends on formatting/compiler)
-			all_checks_successful &= (source_location.line() > 0);
-			// Verify column is captured (exact value varies by compiler/formatting)
-			all_checks_successful &= (source_location.column() >= 0);
-			// Verify file name contains expected test file
-			all_checks_successful &= (std::string::npos != std::string(source_location.file_name()).find("test_genericaqualinkexception.cpp"));
-
-			return all_checks_successful;
-		};
-
-	BOOST_CHECK_EXCEPTION(raise_exception(), GenericAqualinkException, check_exception_message);
-	BOOST_CHECK_EXCEPTION(raise_exception(), GenericAqualinkException, check_exception_sourcelocation);
-
+	BOOST_CHECK_THROW(throw GenericAqualinkException(exception_message), GenericAqualinkException);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

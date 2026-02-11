@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool ChemlinkMessage_Response::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool ChemlinkMessage_Response::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into ChemlinkMessage_Response type", message_bytes.size()));
 

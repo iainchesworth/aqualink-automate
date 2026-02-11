@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool HeaterMessage_Request::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool HeaterMessage_Request::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into HeaterMessage_Request type", message_bytes.size()));
 

@@ -143,4 +143,57 @@ BOOST_AUTO_TEST_CASE(Test_ToString)
 	BOOST_TEST(std::string(to_string(AsyncOperationType::Other)) == "Other");
 }
 
+BOOST_AUTO_TEST_CASE(Test_GetPending_ReturnsOnlyIncomplete)
+{
+	auto& tracker = AsyncOperationTracker::Instance();
+
+	auto id1 = tracker.OnStarted(AsyncOperationType::SerialRead, "PendingTest1");
+	auto id2 = tracker.OnStarted(AsyncOperationType::SerialWrite, "PendingTest2");
+	auto id3 = tracker.OnStarted(AsyncOperationType::TimerWait, "PendingTest3");
+
+	tracker.OnCompleted(id2);
+
+	auto pending = tracker.GetPending();
+
+	bool found_id1 = std::any_of(pending.begin(), pending.end(),
+		[id1](const AsyncOperationInfo& info) { return info.id == id1; });
+	bool found_id2 = std::any_of(pending.begin(), pending.end(),
+		[id2](const AsyncOperationInfo& info) { return info.id == id2; });
+	bool found_id3 = std::any_of(pending.begin(), pending.end(),
+		[id3](const AsyncOperationInfo& info) { return info.id == id3; });
+
+	BOOST_TEST(found_id1);
+	BOOST_TEST(!found_id2);
+	BOOST_TEST(found_id3);
+
+	tracker.OnCompleted(id1);
+	tracker.OnCompleted(id3);
+}
+
+BOOST_AUTO_TEST_CASE(Test_DoubleComplete_Idempotent)
+{
+	auto& tracker = AsyncOperationTracker::Instance();
+
+	auto pending_before = tracker.PendingCount();
+
+	auto id = tracker.OnStarted(AsyncOperationType::Other, "DoubleCompleteTest");
+	BOOST_TEST(tracker.PendingCount() == pending_before + 1);
+
+	tracker.OnCompleted(id);
+	BOOST_TEST(tracker.PendingCount() == pending_before);
+
+	// Second completion should be a no-op
+	tracker.OnCompleted(id);
+	BOOST_TEST(tracker.PendingCount() == pending_before);
+}
+
+BOOST_AUTO_TEST_CASE(Test_CompleteNonexistentId_Safe)
+{
+	auto& tracker = AsyncOperationTracker::Instance();
+
+	// Completing a nonexistent high ID should be safe
+	tracker.OnCompleted(999999999);
+	BOOST_TEST(true);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

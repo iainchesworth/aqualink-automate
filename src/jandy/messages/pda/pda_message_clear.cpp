@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool PDAMessage_Clear::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_Clear::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Clear type", message_bytes.size()));
 

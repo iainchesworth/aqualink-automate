@@ -44,7 +44,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool PDAMessage_Highlight::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_Highlight::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Highlight type", message_bytes.size()));
 

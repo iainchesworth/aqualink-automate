@@ -54,7 +54,7 @@ namespace AqualinkAutomate::Messages
 		virtual bool Serialize(std::vector<uint8_t>& message_bytes) const final;
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const = 0;
 		virtual bool Deserialize(const std::span<const std::byte>& message_bytes) final;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) = 0;
+		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) = 0;
 
 	public:
 		template <MutableJandyRawMessageRange RAW_MESSAGE_RANGE>
@@ -68,22 +68,25 @@ namespace AqualinkAutomate::Messages
 			return result;
 		}
 
+		/// Deserialize from a contiguous range of uint8_t (e.g. a linearized
+		/// circular-buffer subrange).  After circular_buffer::linearize() the
+		/// iterators address contiguous storage, so we form a span directly
+		/// over the caller's memory — no heap copy required.
 		template <JandyRawMessageRange RAW_MESSAGE_RANGE>
 		[[nodiscard]] bool Deserialize(const RAW_MESSAGE_RANGE& raw_message)
 		{
-			std::vector<uint8_t> contiguous_raw_data;
-			contiguous_raw_data.reserve(std::ranges::size(raw_message));
-			std::ranges::copy(raw_message, std::back_inserter(contiguous_raw_data));
-			return DeserializeFromContiguousData(std::move(contiguous_raw_data));
+			const auto size = std::ranges::size(raw_message);
+			std::span<const uint8_t> raw_span(&*std::ranges::begin(raw_message), size);
+			return DeserializeFromContiguousData(raw_span);
 		}
 
 	private:
-		[[nodiscard]] bool DeserializeFromContiguousData(std::vector<uint8_t>&& contiguous_data);
+		[[nodiscard]] bool DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data);
 
 	protected:
 		bool PacketSizeIsValid(const std::span<const std::byte>& message_bytes) const;
-		bool PacketFramingIsValid(const std::vector<uint8_t>& message_bytes) const;
-		bool PacketChecksumIsValid(const std::vector<uint8_t>& message_bytes) const;
+		bool PacketFramingIsValid(std::span<const uint8_t> message_bytes) const;
+		bool PacketChecksumIsValid(std::span<const uint8_t> message_bytes) const;
 
 	protected:
 		Devices::JandyDeviceType m_Destination;

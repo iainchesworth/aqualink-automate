@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool IAQMessage_MainStatus::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool IAQMessage_MainStatus::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_MainStatus type", message_bytes.size()));
 

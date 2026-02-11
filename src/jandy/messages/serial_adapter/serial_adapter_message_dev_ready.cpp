@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool SerialAdapterMessage_DevReady::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool SerialAdapterMessage_DevReady::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into SerialAdapterMessage_DevReady type", message_bytes.size()));
 

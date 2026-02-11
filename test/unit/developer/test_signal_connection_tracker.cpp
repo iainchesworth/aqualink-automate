@@ -90,4 +90,31 @@ BOOST_AUTO_TEST_CASE(Test_ZeroId_Disconnect_Safe)
 	BOOST_TEST(true);
 }
 
+BOOST_AUTO_TEST_CASE(Test_GetActive_ReturnsOnlyNonDisconnected)
+{
+	auto& tracker = SignalConnectionTracker::Instance();
+
+	auto id1 = tracker.OnConnected("ActiveTest1");
+	auto id2 = tracker.OnConnected("ActiveTest2");
+	auto id3 = tracker.OnConnected("ActiveTest3");
+
+	tracker.OnDisconnected(id2);
+
+	auto active = tracker.GetActive();
+
+	bool found_id1 = std::any_of(active.begin(), active.end(),
+		[id1](const SignalConnectionInfo& info) { return info.id == id1; });
+	bool found_id2 = std::any_of(active.begin(), active.end(),
+		[id2](const SignalConnectionInfo& info) { return info.id == id2; });
+	bool found_id3 = std::any_of(active.begin(), active.end(),
+		[id3](const SignalConnectionInfo& info) { return info.id == id3; });
+
+	BOOST_TEST(found_id1);
+	BOOST_TEST(!found_id2);
+	BOOST_TEST(found_id3);
+
+	tracker.OnDisconnected(id1);
+	tracker.OnDisconnected(id3);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
