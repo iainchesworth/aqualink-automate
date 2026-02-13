@@ -12,6 +12,11 @@
 #include "logging/global_logger.h"
 #include "logging/logging_attributes.h"
 
+#if defined(TRACY_ENABLE) || defined(VTUNE_SUPPORT_ENABLED) || defined(UProf_SUPPORT_ENABLED)
+#include "profiling/factories/profiler_factory.h"
+#include "profiling/profiling_units/unit_colours.h"
+#endif
+
 namespace AqualinkAutomate::Logging
 {
 
@@ -84,10 +89,32 @@ namespace AqualinkAutomate::Logging
 		};
 
 		Logger& lg = GetGlobalLogger(channel);
-		BOOST_LOG_SEV(lg, severity) 
+		BOOST_LOG_SEV(lg, severity)
 			<< boost::log::add_value(source_file, std::filesystem::path(location.file_name()).filename().string())
 			<< boost::log::add_value(source_line, location.line())
 			<< log_message;
+
+#if defined(TRACY_ENABLE) || defined(VTUNE_SUPPORT_ENABLED) || defined(UProf_SUPPORT_ENABLED)
+		if (severity >= Severity::Warning)
+		{
+			uint32_t colour = 0;
+			switch (severity)
+			{
+			case Severity::Warning: colour = static_cast<uint32_t>(Profiling::UnitColours::Orange); break;
+			case Severity::Error:   colour = static_cast<uint32_t>(Profiling::UnitColours::Red); break;
+			case Severity::Fatal:   colour = static_cast<uint32_t>(Profiling::UnitColours::Magenta); break;
+			default: break;
+			}
+
+			if (colour != 0)
+			{
+				if constexpr (std::is_convertible_v<MESSAGE, std::string_view>)
+				{
+					Factory::ProfilerFactory::Instance().Get()->Message(std::string_view(log_message), colour);
+				}
+			}
+		}
+#endif
 	}
 
 }

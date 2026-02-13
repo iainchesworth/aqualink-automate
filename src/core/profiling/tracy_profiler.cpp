@@ -37,13 +37,13 @@ namespace AqualinkAutomate::Profiling
 
 	void Tracy_Profiler::PlotValue(const std::string& name, int64_t value)
 	{
-		const char* name_ptr = GetOrCachePlotName(name);
+		const char* name_ptr = GetOrCacheName(m_PlotNameCache, m_CacheMutex, name);
 		TracyPlot(name_ptr, value);
 	}
 
 	void Tracy_Profiler::PlotValue(const std::string& name, double value)
 	{
-		const char* name_ptr = GetOrCachePlotName(name);
+		const char* name_ptr = GetOrCacheName(m_PlotNameCache, m_CacheMutex, name);
 		TracyPlot(name_ptr, value);
 	}
 
@@ -57,9 +57,17 @@ namespace AqualinkAutomate::Profiling
 		TracyAppInfo(text.data(), text.size());
 	}
 
-	const char* Tracy_Profiler::GetOrCachePlotName(const std::string& name)
+	void Tracy_Profiler::EmitFrameMark(const char* name) const
 	{
-		if (auto it = m_PlotNameCache.find(name); it != m_PlotNameCache.end())
+		const char* name_ptr = GetOrCacheName(m_FrameNameCache, m_CacheMutex, name);
+		FrameMarkNamed(name_ptr);
+	}
+
+	const char* Tracy_Profiler::GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, std::mutex& mutex, const std::string& name) // static
+	{
+		std::lock_guard lock(mutex);
+
+		if (auto it = cache.find(name); it != cache.end())
 		{
 			return it->second.get();
 		}
@@ -67,7 +75,7 @@ namespace AqualinkAutomate::Profiling
 		auto buffer = std::make_unique<char[]>(name.size() + 1);
 		std::memcpy(buffer.get(), name.c_str(), name.size() + 1);
 		const char* ptr = buffer.get();
-		m_PlotNameCache.emplace(name, std::move(buffer));
+		cache.emplace(name, std::move(buffer));
 		return ptr;
 	}
 

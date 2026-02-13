@@ -4,6 +4,7 @@
 #include "errors/protocol_errors.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
+#include "profiling/factories/profiler_factory.h"
 #include "protocol/protocol_handler_read.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -28,16 +29,19 @@ namespace AqualinkAutomate::Protocol
 
 		case ErrorCodes::Message_ErrorCodes::Error_FailedToDeserialize:
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> failed to deserialize bytes");
+			Factory::ProfilerFactory::Instance().Get()->Message("Protocol: Deserialization failure", static_cast<uint32_t>(UnitColours::Red));
 			if (statistics_hub) { ++statistics_hub->MessageErrors.DeserializationFailures; }
 			break;
 
 		case ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat:
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> invalid packet format");
+			Factory::ProfilerFactory::Instance().Get()->Message("Protocol: Invalid packet format", static_cast<uint32_t>(UnitColours::Red));
 			if (statistics_hub) { ++statistics_hub->MessageErrors.InvalidPacketFormat; }
 			break;
 
 		case ErrorCodes::Protocol_ErrorCodes::ChecksumFailure:
 			LogDebug(Channel::Protocol, "Protocol error while processing messages -> checksum failure");
+			Factory::ProfilerFactory::Instance().Get()->Message("Protocol: Checksum failure", static_cast<uint32_t>(UnitColours::Red));
 			if (statistics_hub) { ++statistics_hub->MessageErrors.ChecksumFailures; }
 			break;
 

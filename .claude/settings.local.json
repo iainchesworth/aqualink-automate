@@ -161,7 +161,15 @@
       "Bash(R:/aqualink-automate/build/config-windows-msvc/test/testaqualink-automate.exe)",
       "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe)",
       "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/testaqualink-automate.exe)",
-      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/testaqualink-automate.exe)"
+      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/testaqualink-automate.exe)",
+      "Bash(if not exist \"R:\\\\aqualink-automate\\\\src\\\\core\\\\profiling\\\\memory\" mkdir \"R:\\\\aqualink-automate\\\\src\\\\core\\\\profiling\\\\memory\")",
+      "Bash(git status:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm/test/testaqualink-automate.exe --gtest_brief=1)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc/test/testaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --gtest_brief=1)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/testaqualink-automate.exe --gtest_brief=1)",
+      "WebFetch(domain:release-assets.githubusercontent.com)",
+      "Bash(cmp:*)"
     ]
   }
 }

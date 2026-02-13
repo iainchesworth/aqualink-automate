@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <source_location>
 #include <string_view>
 
@@ -16,7 +17,7 @@ namespace AqualinkAutomate::Profiling
 	{
 	public:
 		TracyZone(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
-		virtual ~TracyZone();
+		virtual ~TracyZone() = default;
 
 	public:
 		virtual void Start() const override;
@@ -28,7 +29,7 @@ namespace AqualinkAutomate::Profiling
 		void Value(uint64_t value) const override;
 
 	private:
-		volatile tracy::ScopedZone* m_TSZ{ nullptr };
+		std::unique_ptr<tracy::ScopedZone> m_TSZ;
 	};
 
 }

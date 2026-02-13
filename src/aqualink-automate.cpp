@@ -347,6 +347,7 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
+		profiler.Get()->Message("Application starting", static_cast<uint32_t>(Profiling::UnitColours::Green));
 
 		using clock = std::chrono::steady_clock;
 		constexpr auto FRAME_PERIOD = std::chrono::milliseconds(1);
@@ -361,6 +362,8 @@ int main(int argc, char* argv[])
 
 		while (!shutdown)
 		{
+			profiler.Get()->EmitFrameMark("MainLoop");
+
 			auto frame_start = clock::now();
 
 			// Process any pending Asio handlers (signal_set, etc.)
@@ -399,6 +402,7 @@ int main(int argc, char* argv[])
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Stopping AqualinkAutomate...");
+		profiler.Get()->Message("Application shutting down", static_cast<uint32_t>(Profiling::UnitColours::Orange));
 
 		// 1. Cancel serial port to unblock the protocol task read loop.
 		if (serial_port && serial_port->is_open())

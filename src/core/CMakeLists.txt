@@ -184,9 +184,14 @@ target_sources(
 	profiling/formatters/profiling_formatters.cpp
 	profiling/profiling_units/domain.cpp 
 	profiling/profiling_units/frame.cpp 
-	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_frame.cpp>	
-	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone.cpp>	
-	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone_datamap.cpp>	
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/memory/tracy_memory.cpp>
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_frame.cpp>
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone.cpp>
+	$<$<BOOL:${ENABLE_PROFILING}>:profiling/profiling_units/tracy_zone_datamap.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/profiling_units/vtune_zone.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/profiling_units/vtune_frame.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_zone.cpp>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_frame.cpp>
 	profiling/profiling_units/timed_zone.cpp 
 	profiling/profiling_units/zone.cpp 
 	profiling/types/profiling_types.cpp
@@ -290,6 +295,7 @@ target_compile_definitions(
 	-DMAGIC_ENUM_RANGE_MAX=255
 	$<$<BOOL:${ENABLE_PROFILING}>:TRACY_ENABLE>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:UProf_SUPPORT_ENABLED>
+	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:UProf_ACTIVITY_LOGGER_ENABLED>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:VTUNE_SUPPORT_ENABLED>
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_CUSTOM_HANDLER_TRACKING=\"developer/asio_tracking.h\" > # Enable ASIO connection tracking to aid debug async operations

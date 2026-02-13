@@ -45,5 +45,9 @@ namespace AqualinkAutomate::Interfaces
 	{
 	}
 
+	void IProfiler::EmitFrameMark(const char*) const
+	{
+	}
+
 }
 // namespace AqualinkAutomate::Interfaces

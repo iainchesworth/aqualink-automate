@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -30,12 +31,15 @@ namespace AqualinkAutomate::Profiling
 		void PlotValue(const std::string& name, double value) override;
 		void SetThreadName(const char* name) const override;
 		void AppInfo(std::string_view text) const override;
+		void EmitFrameMark(const char* name) const override;
 
 	private:
-		const char* GetOrCachePlotName(const std::string& name);
+		static const char* GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, std::mutex& mutex, const std::string& name);
 
 	private:
 		std::unordered_map<std::string, std::unique_ptr<char[]>> m_PlotNameCache;
+		mutable std::unordered_map<std::string, std::unique_ptr<char[]>> m_FrameNameCache;
+		mutable std::mutex m_CacheMutex;
 	};
 
 }

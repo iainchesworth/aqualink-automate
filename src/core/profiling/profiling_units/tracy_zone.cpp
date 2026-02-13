@@ -1,10 +1,5 @@
-#include <algorithm>
-
-#include "logging/logging.h"
 #include "profiling/profiling_units/tracy_zone.h"
 #include "profiling/profiling_units/tracy_zone_datamap.h"
-
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Profiling
 {
@@ -13,48 +8,10 @@ namespace AqualinkAutomate::Profiling
 		Zone(name)
 	{
 		std::string name_str(name);
-		if (auto iter = TracyZone_DataMap::Instance().find(name_str); TracyZone_DataMap::Instance().end() != iter)
+		const auto* src_loc_data = TracyZone_DataMap::Instance().FindOrInsert(name_str, src_loc, colour);
+		if (src_loc_data)
 		{
-			m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(iter->second)));
-		}
-		else
-		{
-			TracyZone_DataMap::DataTuple tracy_data;
-
-			std::get<std::string>(tracy_data) = name_str;
-
-			std::get<char*>(tracy_data) = new char[name.size()+1];
-			auto name_ptr = std::get<char*>(tracy_data);
-			std::fill(&name_ptr[0], &name_ptr[name.size()+1], 0);
-			std::copy(name.cbegin(), name.cend(), name_ptr);
-
-			std::get<std::source_location>(tracy_data) = src_loc;
-			std::get<tracy::SourceLocationData>(tracy_data) =
-			{
-				std::get<char*>(tracy_data),
-				std::get<std::source_location>(tracy_data).function_name(),
-				std::get<std::source_location>(tracy_data).file_name(),
-				std::get<std::source_location>(tracy_data).line(),
-				static_cast<uint32_t>(colour)
-			};
-
-			if (auto [it, was_inserted] = TracyZone_DataMap::Instance().emplace(name_str, tracy_data); was_inserted)
-			{
-				m_TSZ = new tracy::ScopedZone(&(std::get<tracy::SourceLocationData>(it->second)));
-			}
-			else
-			{
-				LogWarning(Channel::Profiling, "Failed to insert Tracy profiling zone into the zone data map");
-			}
-		}
-	}
-
-	TracyZone::~TracyZone()
-	{
-		if (nullptr != m_TSZ)
-		{
-			delete m_TSZ;
-			m_TSZ = nullptr;
+			m_TSZ = std::make_unique<tracy::ScopedZone>(src_loc_data);
 		}
 	}
 
@@ -72,17 +29,17 @@ namespace AqualinkAutomate::Profiling
 
 	void TracyZone::Text(std::string_view text) const
 	{
-		if (nullptr != m_TSZ)
+		if (m_TSZ)
 		{
-			const_cast<tracy::ScopedZone*>(m_TSZ)->Text(text.data(), text.size());
+			m_TSZ->Text(text.data(), text.size());
 		}
 	}
 
 	void TracyZone::Value(uint64_t value) const
 	{
-		if (nullptr != m_TSZ)
+		if (m_TSZ)
 		{
-			const_cast<tracy::ScopedZone*>(m_TSZ)->Value(value);
+			m_TSZ->Value(value);
 		}
 	}
 

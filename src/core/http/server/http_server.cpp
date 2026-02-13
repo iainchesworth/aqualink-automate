@@ -10,6 +10,7 @@
 #include "logging/logging.h"
 #include "profiling/factories/profiler_factory.h"
 #include "profiling/factories/profiling_unit_factory.h"
+#include "profiling/profiling_units/unit_colours.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -192,6 +193,14 @@ namespace AqualinkAutomate::HTTP
 
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpServer::handle_request", std::source_location::current());
 
+		{
+			auto method = std::string(m_Parser->get().method_string());
+			auto target = std::string(m_Parser->get().target());
+			Factory::ProfilerFactory::Instance().Get()->Message(
+				std::format("HTTP: {} {}", method, target),
+				static_cast<uint32_t>(Profiling::UnitColours::Cyan));
+		}
+
 		if (boost::beast::websocket::is_upgrade(m_Parser->get()))
 		{
 			zone->Text("WebSocket Upgrade");
@@ -333,6 +342,7 @@ namespace AqualinkAutomate::HTTP
 			return;
 		}
 
+		Factory::ProfilerFactory::Instance().Get()->Message("WebSocket: Upgrade accepted", static_cast<uint32_t>(Profiling::UnitColours::Cyan));
 		m_WsHandler->OnOpen();
 		m_WsActive = true;
 
@@ -393,6 +403,7 @@ namespace AqualinkAutomate::HTTP
 
 		if (bytes > 0 && m_WsHandler)
 		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpServer::ws_message", std::source_location::current());
 			m_WsHandler->OnMessage(m_WsReadBuffer);
 		}
 
@@ -624,6 +635,9 @@ namespace AqualinkAutomate::HTTP
 	void HttpServer::Poll()
 	{
 		if (!m_Running) return;
+
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpServer::Poll", std::source_location::current());
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Active HTTP Sessions", static_cast<int64_t>(m_Sessions.size()));
 
 		// Kick WebSocket outbound writes
 		for (auto& session : m_Sessions)

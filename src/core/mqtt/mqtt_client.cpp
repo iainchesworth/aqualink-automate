@@ -9,8 +9,11 @@
 
 #include "logging/logging.h"
 #include "mqtt/mqtt_client.h"
+#include "profiling/factories/profiler_factory.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
+using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Mqtt
 {
@@ -162,6 +165,8 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttClient::Poll", std::source_location::current());
+
 		switch (m_State)
 		{
 		case State::Disconnected:   break;
@@ -277,6 +282,8 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttClient::PollConnecting()
 	{
+		Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Connecting to broker", static_cast<uint32_t>(UnitColours::Cyan));
+
 		// Create a non-blocking TCP socket and attempt synchronous connect
 		boost::system::error_code ec;
 
@@ -460,6 +467,7 @@ namespace AqualinkAutomate::Mqtt
 
 				LogInfo(Channel::Mqtt, std::format("Connected to MQTT broker at {}:{}{}",
 					m_Settings.broker_host, m_Settings.broker_port, m_Settings.use_tls ? " (TLS)" : ""));
+				Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Connected", static_cast<uint32_t>(UnitColours::Green));
 				OnConnected();
 			}
 			else
@@ -479,12 +487,15 @@ namespace AqualinkAutomate::Mqtt
 		if (!IsSocketOpen())
 		{
 			LogWarning(Channel::Mqtt, "Socket closed unexpectedly");
+			Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Disconnected - Socket closed", static_cast<uint32_t>(UnitColours::Orange));
 			m_State = State::Reconnecting;
 			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
 			++m_ReconnectAttempts;
 			OnDisconnected("Socket closed");
 			return;
 		}
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("MQTT Publish Queue", static_cast<int64_t>(m_PublishQueue.size()));
 
 		SendPendingPublishes();
 		ReadIncoming();
@@ -496,6 +507,8 @@ namespace AqualinkAutomate::Mqtt
 		auto now = std::chrono::steady_clock::now();
 		if (now >= m_ReconnectTime)
 		{
+			auto msg = std::format("MQTT: Reconnecting (attempt {})", m_ReconnectAttempts + 1);
+			Factory::ProfilerFactory::Instance().Get()->Message(msg, static_cast<uint32_t>(UnitColours::Yellow));
 			LogDebug(Channel::Mqtt, std::format("Attempting reconnection (attempt {})", m_ReconnectAttempts + 1));
 			m_State = State::Connecting;
 		}

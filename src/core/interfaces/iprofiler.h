@@ -38,6 +38,7 @@ namespace AqualinkAutomate::Interfaces
 		virtual void PlotValue(const std::string& name, double value);
 		virtual void SetThreadName(const char* name) const;
 		virtual void AppInfo(std::string_view text) const;
+		virtual void EmitFrameMark(const char* name) const;
 
 	private:
 		mutable std::unordered_map<boost::uuids::uuid, Profiling::DomainPtr, boost::hash<boost::uuids::uuid>> m_Domains;
