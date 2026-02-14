@@ -44,6 +44,7 @@ namespace AqualinkAutomate::Options::Developer
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EQUIPMENT);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EXCEPTIONS);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MESSAGES);
+		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MQTT);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_NAVIGATION);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_OPTIONS);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PLATFORM);
@@ -71,10 +72,11 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_LOGLEVEL_EQUIPMENT->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Equipment, OPTION_LOGLEVEL_EQUIPMENT->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_EXCEPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Exceptions, OPTION_LOGLEVEL_EXCEPTIONS->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_MESSAGES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Messages, OPTION_LOGLEVEL_MESSAGES->As<Severity>(vm)); }
+		if (OPTION_LOGLEVEL_MQTT->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Mqtt, OPTION_LOGLEVEL_MQTT->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_NAVIGATION->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Navigation, OPTION_LOGLEVEL_NAVIGATION->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_OPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Options, OPTION_LOGLEVEL_OPTIONS->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_PLATFORM->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Platform, OPTION_LOGLEVEL_PLATFORM->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_PROFILING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROFILING->As<Severity>(vm)); }
+		if (OPTION_LOGLEVEL_PROFILING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Profiling, OPTION_LOGLEVEL_PROFILING->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_PROTCOL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROTCOL->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SCRAPING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Scraping, OPTION_LOGLEVEL_SCRAPING->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_SERIAL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Serial, OPTION_LOGLEVEL_SERIAL->As<Severity>(vm)); }

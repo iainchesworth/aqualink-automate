@@ -53,6 +53,7 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_LOGLEVEL_EQUIPMENT{ make_appoption("loglevel-equipment", "Set the logging level for Channel::Equipment", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_EXCEPTIONS{ make_appoption("loglevel-exceptions", "Set the logging level for Channel::Exceptions", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_MESSAGES{ make_appoption("loglevel-messages", "Set the logging level for Channel::Messages", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+		AppOptionPtr OPTION_LOGLEVEL_MQTT{ make_appoption("loglevel-mqtt", "Set the logging level for Channel::Mqtt", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_NAVIGATION{ make_appoption("loglevel-navigation", "Set the logging level for Channel::Navigation", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_OPTIONS{ make_appoption("loglevel-options", "Set the logging level for Channel::Options", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PLATFORM{ make_appoption("loglevel-platform", "Set the logging level for Channel::Platform", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -76,6 +77,7 @@ namespace AqualinkAutomate::Options::Developer
 			OPTION_LOGLEVEL_EQUIPMENT,
 			OPTION_LOGLEVEL_EXCEPTIONS,
 			OPTION_LOGLEVEL_MESSAGES,
+			OPTION_LOGLEVEL_MQTT,
 			OPTION_LOGLEVEL_NAVIGATION,
 			OPTION_LOGLEVEL_OPTIONS,
 			OPTION_LOGLEVEL_PLATFORM,

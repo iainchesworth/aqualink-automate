@@ -9,7 +9,7 @@ namespace AqualinkAutomate::ErrorCodes
 {
 	enum Options_ErrorCodes
 	{
-		OptionsAreaAlreadyRegistered = 1,
+		OptionsAreaAlreadyRegistered = 101,
 		OptionsValidationFailed,
 		OptionsParsingFailed,
 		OptionsHandlingFailed,

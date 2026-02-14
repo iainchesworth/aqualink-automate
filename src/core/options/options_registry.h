@@ -76,8 +76,14 @@ namespace AqualinkAutomate::Options
 					boost::program_options::notify(vm);
 					return state;
 				}
+				catch (const std::exception& e)
+				{
+					LogError(Channel::Options, std::format("Failed to parse command line options: {}", e.what()));
+					return std::unexpected(Error::OptionsParsingFailed);
+				}
 				catch (...)
 				{
+					LogError(Channel::Options, "Failed to parse command line options: unknown error");
 					return std::unexpected(Error::OptionsParsingFailed);
 				}
 			};

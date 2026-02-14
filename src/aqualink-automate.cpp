@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
 
 			if (!processed_options)
 			{
-				LogFatal(Channel::Options, "Failed to process application options");
+				LogFatal(Channel::Options, std::format("Failed to process application options: {}", magic_enum::enum_name(processed_options.error())));
 				return EXIT_FAILURE;
 			}
 
