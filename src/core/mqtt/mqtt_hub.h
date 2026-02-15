@@ -17,6 +17,7 @@
 #include "mqtt/mqtt_client.h"
 #include "options/options_mqtt_options.h"
 
+
 namespace AqualinkAutomate::Mqtt
 {
 
@@ -86,6 +87,12 @@ namespace AqualinkAutomate::Mqtt
 		/// Unregister a command handler.
 		void UnregisterCommand(const std::string& command);
 
+		/// Check if a handler is registered for a specific command.
+		bool HasCommand(const std::string& command) const;
+
+		/// Get the number of registered command handlers.
+		std::size_t CommandCount() const noexcept;
+
 		//---------------------------------------------------------------------
 		// MANUAL PUBLISHING
 		//---------------------------------------------------------------------
@@ -95,6 +102,22 @@ namespace AqualinkAutomate::Mqtt
 
 		/// Publish a custom JSON payload to a subtopic.
 		void PublishCustom(const std::string& subtopic, const nlohmann::json& payload);
+
+		/// Get the underlying MQTT client (for use by HA discovery and similar layers).
+		std::shared_ptr<MqttClient> GetMqttClient() const { return m_Client; }
+
+		/// Signal fired after device status is published. Used by HA discovery to update device states.
+		boost::signals2::signal<void()> OnDevicesPublished;
+
+		//---------------------------------------------------------------------
+		// TOPIC UTILITIES
+		//---------------------------------------------------------------------
+
+		std::string StatusTopic(const std::string& subtopic) const;
+		std::string EventTopic(const std::string& event_type) const;
+		std::string CommandTopic(const std::string& action) const;
+		bool IsCommandTopic(const std::string& topic) const;
+		std::string ExtractCommand(const std::string& topic) const;
 
 	private:
 		//---------------------------------------------------------------------
@@ -130,16 +153,6 @@ namespace AqualinkAutomate::Mqtt
 		nlohmann::json SerializeStatistics() const;
 		nlohmann::json SerializeTemperature(const Kernel::Temperature& temp) const;
 		nlohmann::json SerializeDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const;
-
-		//---------------------------------------------------------------------
-		// TOPIC UTILITIES
-		//---------------------------------------------------------------------
-
-		std::string StatusTopic(const std::string& subtopic) const;
-		std::string EventTopic(const std::string& event_type) const;
-		std::string CommandTopic(const std::string& action) const;
-		bool IsCommandTopic(const std::string& topic) const;
-		std::string ExtractCommand(const std::string& topic) const;
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;

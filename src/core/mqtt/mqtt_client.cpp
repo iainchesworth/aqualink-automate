@@ -116,6 +116,12 @@ namespace AqualinkAutomate::Mqtt
 		Stop();
 	}
 
+	void MqttClient::SetWill(const std::string& topic, const std::string& payload, bool retain)
+	{
+		m_WillConfig = WillConfig{ topic, payload, retain };
+		LogDebug(Channel::Mqtt, std::format("LWT configured: topic='{}', retain={}", topic, retain));
+	}
+
 	void MqttClient::Start()
 	{
 		if (m_Running)
@@ -188,7 +194,22 @@ namespace AqualinkAutomate::Mqtt
 		return m_Running;
 	}
 
-	void MqttClient::Publish(const std::string& topic, const std::string& payload)
+	MqttClient::State MqttClient::GetState() const noexcept
+	{
+		return m_State;
+	}
+
+	const std::string& MqttClient::ClientId() const noexcept
+	{
+		return m_ClientId;
+	}
+
+	const std::optional<MqttClient::WillConfig>& MqttClient::GetWill() const noexcept
+	{
+		return m_WillConfig;
+	}
+
+	void MqttClient::Publish(const std::string& topic, const std::string& payload, bool retain)
 	{
 		// Security: Limit queue size to prevent memory exhaustion
 		if (m_PublishQueue.size() >= MAX_PUBLISH_QUEUE_SIZE)
@@ -196,7 +217,7 @@ namespace AqualinkAutomate::Mqtt
 			LogWarning(Channel::Mqtt, "MQTT publish queue full, dropping oldest message");
 			m_PublishQueue.pop_front();
 		}
-		m_PublishQueue.push_back({ topic, payload });
+		m_PublishQueue.push_back({ topic, payload, retain });
 	}
 
 	std::string MqttClient::BuildTopic(const std::string& subtopic) const
@@ -523,7 +544,7 @@ namespace AqualinkAutomate::Mqtt
 		while (!m_PublishQueue.empty())
 		{
 			auto& front = m_PublishQueue.front();
-			auto pkt = EncodePublish(front.topic, front.payload);
+			auto pkt = EncodePublish(front.topic, front.payload, front.retain);
 
 			boost::system::error_code ec;
 			WriteSocket(pkt, ec);
@@ -685,6 +706,7 @@ namespace AqualinkAutomate::Mqtt
 
 		bool has_username = !m_Settings.username.empty();
 		bool has_password = !m_Settings.password.empty();
+		bool has_will = m_WillConfig.has_value();
 
 		if (has_username)
 		{
@@ -694,6 +716,15 @@ namespace AqualinkAutomate::Mqtt
 		{
 			flags |= 0x40; // Password Flag (bit 6)
 		}
+		if (has_will)
+		{
+			flags |= 0x04; // Will Flag (bit 2)
+			if (m_WillConfig->retain)
+			{
+				flags |= 0x20; // Will Retain (bit 5)
+			}
+			// Will QoS = 0 (bits 4-3 remain 0)
+		}
 
 		var_payload.push_back(flags);
 
@@ -701,8 +732,15 @@ namespace AqualinkAutomate::Mqtt
 		var_payload.push_back(static_cast<uint8_t>((KEEPALIVE_SECONDS >> 8) & 0xFF));
 		var_payload.push_back(static_cast<uint8_t>(KEEPALIVE_SECONDS & 0xFF));
 
-		// Payload (in order): Client Identifier, Username, Password
+		// Payload (in order per MQTT 3.1.1 section 3.1.3):
+		// Client Identifier, Will Topic, Will Message, Username, Password
 		EncodeUtf8String(var_payload, m_ClientId);
+
+		if (has_will)
+		{
+			EncodeUtf8String(var_payload, m_WillConfig->topic);
+			EncodeUtf8String(var_payload, m_WillConfig->payload);
+		}
 
 		if (has_username)
 		{
@@ -727,7 +765,7 @@ namespace AqualinkAutomate::Mqtt
 		return packet;
 	}
 
-	std::vector<uint8_t> MqttClient::EncodePublish(const std::string& topic, const std::string& payload)
+	std::vector<uint8_t> MqttClient::EncodePublish(const std::string& topic, const std::string& payload, bool retain)
 	{
 		// Variable header: topic name
 		std::vector<uint8_t> var_payload;
@@ -737,9 +775,9 @@ namespace AqualinkAutomate::Mqtt
 		// Payload
 		var_payload.insert(var_payload.end(), payload.begin(), payload.end());
 
-		// Fixed header: PUBLISH, DUP=0, QoS=0, RETAIN=0
+		// Fixed header: PUBLISH, DUP=0, QoS=0, RETAIN per flag (MQTT 3.1.1 section 3.3.1.3)
 		std::vector<uint8_t> packet;
-		packet.push_back(0x30);
+		packet.push_back(static_cast<uint8_t>(0x30 | (retain ? 0x01 : 0x00)));
 		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
 		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
 

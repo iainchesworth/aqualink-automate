@@ -5,10 +5,13 @@
 #include <boost/asio/io_context.hpp>
 #include <nlohmann/json.hpp>
 
+#include <boost/signals2.hpp>
+
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
+#include "mqtt/ha_discovery.h"
 #include "mqtt/mqtt_hub.h"
 #include "options/options_mqtt_options.h"
 
@@ -80,6 +83,11 @@ namespace AqualinkAutomate::Mqtt
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;
 		std::shared_ptr<MqttHub> m_Hub;
+
+		// Home Assistant discovery
+		std::shared_ptr<HomeAssistantDiscovery> m_HaDiscovery;
+		boost::signals2::scoped_connection m_HaConnectedConnection;
+		boost::signals2::scoped_connection m_HaDevicesConnection;
 
 		// Weak references to connected hubs
 		std::weak_ptr<Kernel::DataHub> m_DataHub;

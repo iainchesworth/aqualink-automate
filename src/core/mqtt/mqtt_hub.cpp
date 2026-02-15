@@ -186,6 +186,16 @@ namespace AqualinkAutomate::Mqtt
 		}
 	}
 
+	bool MqttHub::HasCommand(const std::string& command) const
+	{
+		return m_CommandHandlers.find(command) != m_CommandHandlers.end();
+	}
+
+	std::size_t MqttHub::CommandCount() const noexcept
+	{
+		return m_CommandHandlers.size();
+	}
+
 	void MqttHub::PublishAllStatus()
 	{
 		if (!IsRunning())
@@ -278,6 +288,8 @@ namespace AqualinkAutomate::Mqtt
 			zone->Value(payload.size());
 			m_Client->Publish(StatusTopic("devices"), payload);
 			LogTrace(Channel::Mqtt, "Published device status");
+
+			OnDevicesPublished();
 		}
 		catch (const std::exception& ex)
 		{
@@ -400,7 +412,9 @@ namespace AqualinkAutomate::Mqtt
 				{"air", SerializeTemperature(data_hub->AirTemp())},
 				{"pool", SerializeTemperature(data_hub->PoolTemp())},
 				{"spa", SerializeTemperature(data_hub->SpaTemp())},
-				{"freeze_protect", SerializeTemperature(data_hub->FreezeProtectPoint())}
+				{"freeze_protect", SerializeTemperature(data_hub->FreezeProtectPoint())},
+				{"pool_setpoint", SerializeTemperature(data_hub->PoolTempSetpoint())},
+				{"spa_setpoint", SerializeTemperature(data_hub->SpaTempSetpoint())}
 			};
 
 			// Chemistry

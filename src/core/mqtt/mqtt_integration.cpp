@@ -16,7 +16,23 @@ namespace AqualinkAutomate::Mqtt
 		{
 			m_Hub = std::make_shared<MqttHub>(io_context, settings);
 			RegisterDefaultCommands();
-			LogInfo(Channel::Mqtt, "MQTT Integration initialized (enabled)");
+
+			if (m_Settings.home_assistant_enabled)
+			{
+				auto client = m_Hub->GetMqttClient();
+
+				// Configure LWT so the broker publishes "offline" on ungraceful disconnect
+				auto availability_topic = client->BuildTopic("status/availability");
+				client->SetWill(availability_topic, "offline", /*retain=*/true);
+
+				m_HaDiscovery = std::make_shared<HomeAssistantDiscovery>(client, settings);
+
+				LogInfo(Channel::Mqtt, "MQTT Integration initialized with Home Assistant Discovery (enabled)");
+			}
+			else
+			{
+				LogInfo(Channel::Mqtt, "MQTT Integration initialized (enabled)");
+			}
 		}
 		else
 		{
@@ -42,6 +58,25 @@ namespace AqualinkAutomate::Mqtt
 
 		try
 		{
+			// Connect HA discovery signals before starting the hub (so we catch the first OnConnected)
+			if (m_HaDiscovery)
+			{
+				auto ha = m_HaDiscovery;
+
+				m_HaConnectedConnection = m_Hub->GetMqttClient()->OnConnected.connect([ha]()
+				{
+					ha->PublishOnline();
+					ha->PublishDiscoveryConfigs();
+					ha->PublishDeviceStates();
+				});
+
+				m_HaDevicesConnection = m_Hub->OnDevicesPublished.connect([ha]()
+				{
+					ha->PublishDiscoveryConfigs();
+					ha->PublishDeviceStates();
+				});
+			}
+
 			m_Hub->Start();
 			LogInfo(Channel::Mqtt, "MQTT Integration started successfully");
 		}
@@ -62,6 +97,9 @@ namespace AqualinkAutomate::Mqtt
 
 		try
 		{
+			m_HaConnectedConnection.disconnect();
+			m_HaDevicesConnection.disconnect();
+
 			m_Hub->Stop();
 			LogInfo(Channel::Mqtt, "MQTT Integration stopped");
 		}
@@ -129,6 +167,11 @@ namespace AqualinkAutomate::Mqtt
 			if (statistics_hub)
 			{
 				m_Hub->ConnectStatisticsHub(statistics_hub);
+			}
+
+			if (m_HaDiscovery && data_hub)
+			{
+				m_HaDiscovery->ConnectDataHub(data_hub);
 			}
 
 			LogInfo(Channel::Mqtt, "MQTT Integration connected to system hubs");

@@ -110,6 +110,19 @@ namespace AqualinkAutomate::Options::Mqtt
 		/// Publish on change (in addition to periodic)
 		bool publish_on_change{ true };
 
+		//---------------------------------------------------------------------
+		// HOME ASSISTANT DISCOVERY
+		//---------------------------------------------------------------------
+
+		/// Enable Home Assistant MQTT Discovery
+		bool home_assistant_enabled{ false };
+
+		/// Home Assistant discovery topic prefix
+		std::string ha_discovery_prefix{ "homeassistant" };
+
+		/// Device identifier for HA discovery (derived from topic_prefix if empty)
+		std::string ha_device_id;
+
 	}
 	MqttSettings;
 
@@ -141,6 +154,11 @@ namespace AqualinkAutomate::Options::Mqtt
 		AppOptionPtr OPTION_STATS_INTERVAL{ make_appoption("mqtt-stats-interval", "Statistics publish interval in seconds", boost::program_options::value<uint32_t>()->default_value(60)) };
 		AppOptionPtr OPTION_PUBLISH_ON_CHANGE{ make_appoption("mqtt-on-change", "Publish immediately on data changes", boost::program_options::bool_switch()->default_value(true)) };
 
+		// Home Assistant
+		AppOptionPtr OPTION_HOME_ASSISTANT{ make_appoption("home-assistant", "Enable Home Assistant MQTT Discovery", boost::program_options::bool_switch()->default_value(false)) };
+		AppOptionPtr OPTION_HA_DISCOVERY_PREFIX{ make_appoption("ha-discovery-prefix", "Home Assistant discovery topic prefix", boost::program_options::value<std::string>()->default_value("homeassistant")) };
+		AppOptionPtr OPTION_HA_DEVICE_ID{ make_appoption("ha-device-id", "Home Assistant device identifier (default: aqualink_{topic_prefix})", boost::program_options::value<std::string>()) };
+
 		std::vector<AppOptionPtr> MqttOptionsCollection
 		{
 			OPTION_ENABLE,
@@ -157,7 +175,10 @@ namespace AqualinkAutomate::Options::Mqtt
 			OPTION_TOPIC_PREFIX,
 			OPTION_STATUS_INTERVAL,
 			OPTION_STATS_INTERVAL,
-			OPTION_PUBLISH_ON_CHANGE
+			OPTION_PUBLISH_ON_CHANGE,
+			OPTION_HOME_ASSISTANT,
+			OPTION_HA_DISCOVERY_PREFIX,
+			OPTION_HA_DEVICE_ID
 		};
 
 	public:

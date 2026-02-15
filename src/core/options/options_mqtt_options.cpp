@@ -1,3 +1,4 @@
+#include <cctype>
 #include <format>
 #include <string>
 
@@ -32,6 +33,12 @@ namespace AqualinkAutomate::Options::Mqtt
 		// TLS certificate dependencies
 		Helper_ValidateOptionDependencies(vm, OPTION_TLS_CLIENT_CERT, OPTION_TLS_CLIENT_KEY);
 		Helper_ValidateOptionDependencies(vm, OPTION_TLS_CLIENT_KEY, OPTION_TLS_CLIENT_CERT);
+
+		// Home Assistant requires MQTT to be enabled
+		Helper_ValidateOptionDependencies(vm, OPTION_HOME_ASSISTANT, OPTION_ENABLE);
+
+		// HA device ID requires Home Assistant to be enabled
+		Helper_ValidateOptionDependencies(vm, OPTION_HA_DEVICE_ID, OPTION_HOME_ASSISTANT);
 	}
 
 	std::expected<OptionsProcessor::SettingsType, ErrorCodes::Options_ErrorCodes> OptionsProcessor::Process(boost::program_options::variables_map& vm) const
@@ -124,8 +131,50 @@ namespace AqualinkAutomate::Options::Mqtt
 			settings.publish_on_change = OPTION_PUBLISH_ON_CHANGE->As<bool>(vm);
 		}
 
-		LogInfo(Channel::Options, std::format("MQTT settings: enabled={}, broker={}:{}, tls={}",
-			settings.enabled, settings.broker_host, settings.broker_port, settings.use_tls));
+		// Home Assistant
+		if (OPTION_HOME_ASSISTANT->IsPresent(vm))
+		{
+			settings.home_assistant_enabled = OPTION_HOME_ASSISTANT->As<bool>(vm);
+		}
+
+		if (OPTION_HA_DISCOVERY_PREFIX->IsPresent(vm))
+		{
+			settings.ha_discovery_prefix = OPTION_HA_DISCOVERY_PREFIX->As<std::string>(vm);
+		}
+
+		if (OPTION_HA_DEVICE_ID->IsPresent(vm))
+		{
+			settings.ha_device_id = OPTION_HA_DEVICE_ID->As<std::string>(vm);
+		}
+
+		// Derive ha_device_id from topic_prefix if not explicitly set
+		if (settings.ha_device_id.empty())
+		{
+			std::string slug;
+			slug.reserve(settings.topic_prefix.size());
+			for (char c : settings.topic_prefix)
+			{
+				if (std::isalnum(static_cast<unsigned char>(c)) || c == '_')
+				{
+					slug += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+				}
+				else if (c == ' ' || c == '-' || c == '.' || c == '/')
+				{
+					if (!slug.empty() && slug.back() != '_')
+					{
+						slug += '_';
+					}
+				}
+			}
+			if (!slug.empty() && slug.back() == '_')
+			{
+				slug.pop_back();
+			}
+			settings.ha_device_id = std::format("aqualink_{}", slug);
+		}
+
+		LogInfo(Channel::Options, std::format("MQTT settings: enabled={}, broker={}:{}, tls={}, ha={}",
+			settings.enabled, settings.broker_host, settings.broker_port, settings.use_tls, settings.home_assistant_enabled));
 
 		return settings;
 	}

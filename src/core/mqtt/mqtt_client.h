@@ -16,6 +16,8 @@
 
 #include "options/options_mqtt_options.h"
 
+namespace AqualinkAutomate::Test { class MqttClientPacketTest; }
+
 namespace AqualinkAutomate::Mqtt
 {
 
@@ -46,6 +48,16 @@ namespace AqualinkAutomate::Mqtt
 		MqttClient& operator=(const MqttClient&) = delete;
 
 	public:
+		struct WillConfig
+		{
+			std::string topic;
+			std::string payload;
+			bool retain{ true };
+		};
+
+		void SetWill(const std::string& topic, const std::string& payload, bool retain = true);
+
+	public:
 		void Start();
 		void Stop();
 		void Poll();
@@ -53,7 +65,11 @@ namespace AqualinkAutomate::Mqtt
 		bool IsConnected() const noexcept;
 		bool IsRunning() const noexcept;
 
-		void Publish(const std::string& topic, const std::string& payload);
+		State GetState() const noexcept;
+		const std::string& ClientId() const noexcept;
+		const std::optional<WillConfig>& GetWill() const noexcept;
+
+		void Publish(const std::string& topic, const std::string& payload, bool retain = false);
 		std::string BuildTopic(const std::string& subtopic) const;
 		const std::string& TopicPrefix() const noexcept;
 
@@ -76,7 +92,7 @@ namespace AqualinkAutomate::Mqtt
 
 		// MQTT 3.1.1 packet encoding
 		std::vector<uint8_t> EncodeConnect();
-		std::vector<uint8_t> EncodePublish(const std::string& topic, const std::string& payload);
+		std::vector<uint8_t> EncodePublish(const std::string& topic, const std::string& payload, bool retain = false);
 		std::vector<uint8_t> EncodePingreq();
 		std::vector<uint8_t> EncodeDisconnect();
 
@@ -94,6 +110,9 @@ namespace AqualinkAutomate::Mqtt
 		std::size_t ReadSocket(std::span<uint8_t> buffer, boost::system::error_code& ec);
 		void CloseSocket();
 		bool IsSocketOpen() const;
+
+		// Test access
+		friend class AqualinkAutomate::Test::MqttClientPacketTest;
 
 	private:
 		boost::asio::io_context& m_IoContext;
@@ -115,6 +134,7 @@ namespace AqualinkAutomate::Mqtt
 		{
 			std::string topic;
 			std::string payload;
+			bool retain{ false };
 		};
 		std::deque<PendingPublish> m_PublishQueue;
 
@@ -137,6 +157,9 @@ namespace AqualinkAutomate::Mqtt
 		// Reconnection
 		uint16_t m_ReconnectAttempts{ 0 };
 		std::chrono::steady_clock::time_point m_ReconnectTime;
+
+		// Last Will and Testament
+		std::optional<WillConfig> m_WillConfig;
 	};
 
 }
