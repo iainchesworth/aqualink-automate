@@ -1,7 +1,9 @@
 #include <chrono>
+#include <string>
 #include <thread>
 
 #include <boost/test/unit_test.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "developer/async_operation_tracker.h"
 
@@ -130,17 +132,17 @@ BOOST_AUTO_TEST_CASE(Test_ZeroId_Complete_Safe)
 	BOOST_TEST(true);
 }
 
-BOOST_AUTO_TEST_CASE(Test_ToString)
+BOOST_AUTO_TEST_CASE(Test_EnumName)
 {
-	BOOST_TEST(std::string(to_string(AsyncOperationType::SerialRead)) == "SerialRead");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::SerialWrite)) == "SerialWrite");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::TimerWait)) == "TimerWait");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::SignalAwait)) == "SignalAwait");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::WebSocketRead)) == "WebSocketRead");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::WebSocketWrite)) == "WebSocketWrite");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::HttpAccept)) == "HttpAccept");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::MqttPublish)) == "MqttPublish");
-	BOOST_TEST(std::string(to_string(AsyncOperationType::Other)) == "Other");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::SerialRead)) == "SerialRead");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::SerialWrite)) == "SerialWrite");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::TimerWait)) == "TimerWait");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::SignalAwait)) == "SignalAwait");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::WebSocketRead)) == "WebSocketRead");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::WebSocketWrite)) == "WebSocketWrite");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::HttpAccept)) == "HttpAccept");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::MqttPublish)) == "MqttPublish");
+	BOOST_TEST(std::string(magic_enum::enum_name(AsyncOperationType::Other)) == "Other");
 }
 
 BOOST_AUTO_TEST_CASE(Test_GetPending_ReturnsOnlyIncomplete)

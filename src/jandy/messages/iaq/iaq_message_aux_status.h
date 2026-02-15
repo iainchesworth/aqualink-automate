@@ -12,6 +12,14 @@
 namespace AqualinkAutomate::Messages
 {
 
+	struct AuxDeviceInfo
+	{
+		uint8_t device_index{0};
+		bool is_on{false};
+		uint8_t type{0};
+		std::string name;
+	};
+
 	class IAQMessage_AuxStatus : public IAQMessage, public Interfaces::IMessageSignalRecv<IAQMessage_AuxStatus>
 	{
 	public:
@@ -20,6 +28,8 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		const std::vector<uint8_t>& RawPayload() const;
+		const std::vector<AuxDeviceInfo>& Devices() const;
+		uint8_t DeviceCount() const;
 
 	public:
 		virtual std::string ToString() const override;
@@ -30,6 +40,7 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		std::vector<uint8_t> m_RawPayload;
+		std::vector<AuxDeviceInfo> m_Devices;
 	};
 
 }

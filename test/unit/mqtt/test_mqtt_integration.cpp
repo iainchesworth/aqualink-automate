@@ -1,484 +1,442 @@
 #include <boost/test/unit_test.hpp>
 
-#include <chrono>
-#include <future>
 #include <memory>
+#include <string>
 
 #include <boost/asio.hpp>
 #include <nlohmann/json.hpp>
 
 #include "mqtt/mqtt_integration.h"
+#include "mqtt/mqtt_hub.h"
+#include "mqtt/mqtt_client.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
+#include "kernel/hub_locator.h"
+#include "kernel/statistics_hub.h"
 #include "options/options_mqtt_options.h"
-//#include "mocks/mock_mqtt_broker.h"
+#include "support/unit_test_mqtt_support.h"
 
 using namespace AqualinkAutomate;
-//using namespace AqualinkAutomate::Test::Mocks;
-using namespace std::chrono_literals;
-/*
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration)
 
-struct MqttIntegrationFixture
+namespace
 {
-	MqttIntegrationFixture() : ioc(), broker(ioc), data_hub(std::make_shared<Kernel::DataHub>()), 
-							  equipment_hub(std::make_shared<Kernel::EquipmentHub>())
+	Options::Mqtt::MqttSettings MakeEnabledSettings()
 	{
-		settings.is_enabled = true;
-		settings.broker_host = "localhost";
-		settings.broker_port = 1883;
-		settings.client_id = "test-integration";
-		settings.topic_prefix = "test";
-		settings.auto_reconnect = false;
+		return Test::MakeMqttSettings();
 	}
 
-	~MqttIntegrationFixture()
+	Options::Mqtt::MqttSettings MakeDisabledSettings()
 	{
-		if (broker.is_running())
-		{
-			run_sync([this]() -> boost::cobalt::task<void> {
-				co_await broker.stop();
-			});
-		}
+		Options::Mqtt::MqttSettings s;
+		s.enabled = false;
+		return s;
 	}
 
-	template<typename F>
-	auto run_sync(F&& f) -> decltype(f().result())
+	Options::Mqtt::MqttSettings MakeHaEnabledSettings()
 	{
-		auto future = std::async(std::launch::async, [&]() {
-			return boost::asio::co_spawn(ioc, std::forward<F>(f), boost::asio::use_future);
-		});
-		
-		ioc.restart();
-		ioc.run();
-		
-		return future.get().get();
+		auto s = Test::MakeMqttSettings();
+		s.home_assistant_enabled = true;
+		s.ha_discovery_prefix = "homeassistant";
+		s.ha_device_id = "aqualink_test";
+		return s;
 	}
+}
 
+//=============================================================================
+// MqttIntegration construction tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_Construction)
+
+BOOST_AUTO_TEST_CASE(Test_Construction_WhenEnabled_Succeeds)
+{
 	boost::asio::io_context ioc;
-	MockMqttBroker broker;
-	Options::Mqtt::Settings settings;
-	std::shared_ptr<Kernel::DataHub> data_hub;
-	std::shared_ptr<Kernel::EquipmentHub> equipment_hub;
-};
+	auto settings = MakeEnabledSettings();
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_ConstructionEnabled, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration construction when enabled");
-	
-	BOOST_CHECK_NO_THROW({
-		Mqtt::MqttIntegration integration(ioc, settings);
-		BOOST_CHECK(integration.is_enabled());
-	});
+	BOOST_CHECK_NO_THROW(Mqtt::MqttIntegration integration(ioc, settings));
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_ConstructionDisabled, MqttIntegrationFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_WhenDisabled_Succeeds)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT integration construction when disabled");
-	
-	settings.is_enabled = false;
-	
-	BOOST_CHECK_NO_THROW({
-		Mqtt::MqttIntegration integration(ioc, settings);
-		BOOST_CHECK(!integration.is_enabled());
-	});
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+
+	BOOST_CHECK_NO_THROW(Mqtt::MqttIntegration integration(ioc, settings));
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_StartStopEnabled, MqttIntegrationFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_WhenEnabled_CreatesHub)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT integration start/stop when enabled");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
 	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	// Should have connected to broker
-	auto connected_clients = broker.get_connected_clients();
-	BOOST_CHECK_EQUAL(connected_clients.size(), 1);
-	BOOST_CHECK_EQUAL(connected_clients[0], "test-integration");
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.stop();
-	});
+
+	BOOST_CHECK(integration.GetMqttHub() != nullptr);
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_StartStopDisabled, MqttIntegrationFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_WhenDisabled_NoHub)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT integration start/stop when disabled");
-	
-	settings.is_enabled = false;
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
 	Mqtt::MqttIntegration integration(ioc, settings);
-	
-	// Should complete without error but do nothing
-	BOOST_CHECK_NO_THROW({
-		run_sync([&integration]() -> boost::cobalt::task<void> {
-			co_await integration.start();
-		});
-		
-		run_sync([&integration]() -> boost::cobalt::task<void> {
-			co_await integration.stop();
-		});
-	});
-	
-	// Should not have connected to any broker
-	BOOST_CHECK(!integration.is_enabled());
+
+	BOOST_CHECK(integration.GetMqttHub() == nullptr);
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_HubConnection, MqttIntegrationFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_WithHomeAssistant_ConfiguresLWT)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT integration hub connection");
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeHaEnabledSettings();
 	Mqtt::MqttIntegration integration(ioc, settings);
-	
-	// Should not throw when connecting hubs
-	BOOST_CHECK_NO_THROW({
-		integration.connect_hubs(data_hub, equipment_hub);
-	});
-	
-	// Should be able to get MQTT hub reference
-	auto mqtt_hub = integration.get_mqtt_hub();
-	BOOST_CHECK(mqtt_hub != nullptr);
+
+	auto hub = integration.GetMqttHub();
+	BOOST_REQUIRE(hub != nullptr);
+
+	auto client = hub->GetMqttClient();
+	BOOST_REQUIRE(client != nullptr);
+
+	// When HA is enabled, LWT should be configured on the client
+	auto& will = client->GetWill();
+	BOOST_REQUIRE(will.has_value());
+	BOOST_CHECK_EQUAL(will->topic, "test/status/availability");
+	BOOST_CHECK_EQUAL(will->payload, "offline");
+	BOOST_CHECK(will->retain);
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_DefaultStatusCommand, MqttIntegrationFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_WithoutHomeAssistant_NoLWT)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT integration default status command");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
 	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	broker.clear_published_messages();
-	
-	// Send status command
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message("test/command/status", "{}");
-		
-		// Give time for command processing
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(100ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	// Should have published status updates
-	auto messages = broker.get_published_messages();
-	BOOST_CHECK_GT(messages.size(), 0);
-	
-	// Should find status messages
-	bool found_status_message = false;
-	for (const auto& message : messages)
-	{
-		if (message.topic.find("test/status/") == 0)
-		{
-			found_status_message = true;
-			break;
-		}
-	}
-	
-	BOOST_CHECK(found_status_message);
-}
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_DefaultDeviceCommand, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration default device command");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	broker.clear_published_messages();
-	
-	// Send device command
-	nlohmann::json device_command = {
-		{"device_id", "pump1"},
-		{"action", "on"}
-	};
-	
-	run_sync([this, &device_command]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message("test/command/device", device_command.dump());
-		
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(100ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	// Should have published command response
-	auto messages = broker.get_published_messages();
-	bool found_response = false;
-	
-	for (const auto& message : messages)
-	{
-		if (message.topic == "test/status/command/response")
-		{
-			nlohmann::json response = nlohmann::json::parse(message.payload);
-			BOOST_CHECK_EQUAL(response["command"], "device");
-			BOOST_CHECK_EQUAL(response["device_id"], "pump1");
-			BOOST_CHECK_EQUAL(response["action"], "on");
-			BOOST_CHECK_EQUAL(response["status"], "acknowledged");
-			found_response = true;
-			break;
-		}
-	}
-	
-	BOOST_CHECK(found_response);
-}
+	auto client = integration.GetMqttHub()->GetMqttClient();
+	BOOST_REQUIRE(client != nullptr);
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_DeviceCommandMissingParameters, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration device command with missing parameters");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	broker.clear_published_messages();
-	
-	// Send device command without required parameters
-	nlohmann::json incomplete_command = {{"device_id", "pump1"}};  // Missing action
-	
-	// Should not throw - should handle gracefully
-	BOOST_CHECK_NO_THROW({
-		run_sync([this, &incomplete_command]() -> boost::cobalt::task<void> {
-			co_await broker.inject_message("test/command/device", incomplete_command.dump());
-			
-			boost::asio::steady_timer timer(ioc);
-			timer.expires_after(50ms);
-			co_await timer.async_wait(boost::asio::use_awaitable);
-		});
-	});
-	
-	// Should not have published a response
-	auto messages = broker.get_published_messages();
-	bool found_response = false;
-	
-	for (const auto& message : messages)
-	{
-		if (message.topic == "test/status/command/response")
-		{
-			found_response = true;
-			break;
-		}
-	}
-	
-	BOOST_CHECK(!found_response);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_DefaultTemperatureCommand, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration default temperature command");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	broker.clear_published_messages();
-	
-	// Send temperature command
-	nlohmann::json temp_command = {
-		{"target", "pool"},
-		{"temperature", 28.5},
-		{"unit", "celsius"}
-	};
-	
-	run_sync([this, &temp_command]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message("test/command/temperature", temp_command.dump());
-		
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(100ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	// Should have published command response
-	auto messages = broker.get_published_messages();
-	bool found_response = false;
-	
-	for (const auto& message : messages)
-	{
-		if (message.topic == "test/status/command/response")
-		{
-			nlohmann::json response = nlohmann::json::parse(message.payload);
-			BOOST_CHECK_EQUAL(response["command"], "temperature");
-			BOOST_CHECK_EQUAL(response["target"], "pool");
-			BOOST_CHECK_EQUAL(response["temperature"], 28.5);
-			BOOST_CHECK_EQUAL(response["unit"], "celsius");
-			BOOST_CHECK_EQUAL(response["status"], "acknowledged");
-			found_response = true;
-			break;
-		}
-	}
-	
-	BOOST_CHECK(found_response);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_TemperatureCommandDefaultUnit, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration temperature command with default unit");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	broker.clear_published_messages();
-	
-	// Send temperature command without unit (should default to celsius)
-	nlohmann::json temp_command = {
-		{"target", "spa"},
-		{"temperature", 40.0}
-	};
-	
-	run_sync([this, &temp_command]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message("test/command/temperature", temp_command.dump());
-		
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(100ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	// Should have published command response with default unit
-	auto messages = broker.get_published_messages();
-	bool found_response = false;
-	
-	for (const auto& message : messages)
-	{
-		if (message.topic == "test/status/command/response")
-		{
-			nlohmann::json response = nlohmann::json::parse(message.payload);
-			BOOST_CHECK_EQUAL(response["command"], "temperature");
-			BOOST_CHECK_EQUAL(response["target"], "spa");
-			BOOST_CHECK_EQUAL(response["temperature"], 40.0);
-			BOOST_CHECK_EQUAL(response["unit"], "celsius");
-			found_response = true;
-			break;
-		}
-	}
-	
-	BOOST_CHECK(found_response);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_CustomCommandHandler, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration custom command handler");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	// Add custom command handler
-	bool custom_handler_called = false;
-	std::string received_topic;
-	nlohmann::json received_payload;
-	
-	auto mqtt_hub = integration.get_mqtt_hub();
-	mqtt_hub->register_command_handler("custom",
-		[&custom_handler_called, &received_topic, &received_payload](const std::string& topic, const nlohmann::json& payload) -> boost::cobalt::task<void> {
-			custom_handler_called = true;
-			received_topic = topic;
-			received_payload = payload;
-			co_return;
-		});
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	// Send custom command
-	nlohmann::json custom_command = {{"data", "test_value"}};
-	
-	run_sync([this, &custom_command]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message("test/command/custom", custom_command.dump());
-		
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(50ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	BOOST_CHECK(custom_handler_called);
-	BOOST_CHECK_EQUAL(received_topic, "test/command/custom");
-	BOOST_CHECK_EQUAL(received_payload["data"], "test_value");
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_ConnectionFailureHandling, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT integration connection failure handling");
-	
-	// Don't start the broker - connection should fail
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	// Should throw when trying to start without broker
-	BOOST_CHECK_THROW({
-		run_sync([&integration]() -> boost::cobalt::task<void> {
-			co_await integration.start();
-		});
-	}, std::exception);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttIntegration_DisabledIntegrationDoesNotConnect, MqttIntegrationFixture)
-{
-	BOOST_TEST_MESSAGE("Testing disabled MQTT integration does not connect");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	settings.is_enabled = false;
-	Mqtt::MqttIntegration integration(ioc, settings);
-	integration.connect_hubs(data_hub, equipment_hub);
-	
-	run_sync([&integration]() -> boost::cobalt::task<void> {
-		co_await integration.start();
-	});
-	
-	// Should not have connected to broker
-	auto connected_clients = broker.get_connected_clients();
-	BOOST_CHECK_EQUAL(connected_clients.size(), 0);
+	auto& will = client->GetWill();
+	BOOST_CHECK(!will.has_value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-*/
+
+//=============================================================================
+// MqttIntegration lifecycle tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_Lifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_IsEnabled_WhenEnabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK(integration.IsEnabled());
+}
+
+BOOST_AUTO_TEST_CASE(Test_IsEnabled_WhenDisabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK(!integration.IsEnabled());
+}
+
+BOOST_AUTO_TEST_CASE(Test_IsRunning_WhenNotStarted)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	// Not started, not connected -> not running
+	BOOST_CHECK(!integration.IsRunning());
+}
+
+BOOST_AUTO_TEST_CASE(Test_IsRunning_WhenDisabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK(!integration.IsRunning());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Start_WhenEnabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Start());
+
+	integration.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Start_WhenDisabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Start());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Stop_WhenNotStarted_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Stop_WhenDisabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Poll_WhenEnabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Poll());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Poll_WhenDisabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Poll());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration hub connection tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_HubConnections)
+
+BOOST_AUTO_TEST_CASE(Test_ConnectHubs_Individual_Succeeds)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+
+	BOOST_CHECK_NO_THROW(integration.ConnectHubs(data_hub, equip_hub, stats_hub));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ConnectHubs_WithNullHubs_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.ConnectHubs(nullptr, nullptr, nullptr));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ConnectHubs_WhenDisabled_NoCrash)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+
+	BOOST_CHECK_NO_THROW(integration.ConnectHubs(data_hub, equip_hub, stats_hub));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ConnectHubs_ViaHubLocator_Succeeds)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+
+	Kernel::HubLocator locator;
+	locator.Register(data_hub).Register(equip_hub).Register(stats_hub);
+
+	BOOST_CHECK_NO_THROW(integration.ConnectHubs(locator));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ConnectHubs_WithHomeAssistant_ConnectsDataHub)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHaEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+
+	// Should not throw — HA discovery should get the data hub too
+	BOOST_CHECK_NO_THROW(integration.ConnectHubs(data_hub, equip_hub, stats_hub));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration default command handler tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_DefaultCommands)
+
+BOOST_AUTO_TEST_CASE(Test_DefaultCommands_RegisteredWhenEnabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto hub = integration.GetMqttHub();
+	BOOST_REQUIRE(hub != nullptr);
+
+	// Should have "status", "device", and "refresh" default commands
+	BOOST_CHECK(hub->HasCommand("status"));
+	BOOST_CHECK(hub->HasCommand("device"));
+	BOOST_CHECK(hub->HasCommand("refresh"));
+	BOOST_CHECK_GE(hub->CommandCount(), 3u);
+}
+
+BOOST_AUTO_TEST_CASE(Test_DefaultCommands_NotRegisteredWhenDisabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	// No hub means no commands
+	BOOST_CHECK(integration.GetMqttHub() == nullptr);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration access tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_Access)
+
+BOOST_AUTO_TEST_CASE(Test_GetMqttHub_WhenEnabled_ReturnsHub)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto hub = integration.GetMqttHub();
+	BOOST_CHECK(hub != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Test_GetMqttHub_WhenDisabled_ReturnsNull)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK(integration.GetMqttHub() == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Test_GetMqttHub_ReturnsSameInstance)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto hub1 = integration.GetMqttHub();
+	auto hub2 = integration.GetMqttHub();
+	BOOST_CHECK_EQUAL(hub1.get(), hub2.get());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration factory function tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_Factory)
+
+BOOST_AUTO_TEST_CASE(Test_CreateMqttIntegration_WhenEnabled_ReturnsInstance)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+
+	auto integration = Mqtt::CreateMqttIntegration(ioc, settings);
+	BOOST_CHECK(integration != nullptr);
+	BOOST_CHECK(integration->IsEnabled());
+}
+
+BOOST_AUTO_TEST_CASE(Test_CreateMqttIntegration_WhenDisabled_ReturnsNull)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+
+	auto integration = Mqtt::CreateMqttIntegration(ioc, settings);
+	BOOST_CHECK(integration == nullptr);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration full lifecycle (no-crash) tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttIntegration_FullLifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_FullLifecycle_StartPollStop_WhenEnabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+	integration.ConnectHubs(data_hub, equip_hub, stats_hub);
+
+	BOOST_CHECK_NO_THROW(integration.Start());
+	BOOST_CHECK_NO_THROW(integration.Poll());
+	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_CASE(Test_FullLifecycle_StartPollStop_WhenDisabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeDisabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(integration.Start());
+	BOOST_CHECK_NO_THROW(integration.Poll());
+	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_CASE(Test_FullLifecycle_WithHomeAssistant)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHaEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+	integration.ConnectHubs(data_hub, equip_hub, stats_hub);
+
+	BOOST_CHECK_NO_THROW(integration.Start());
+	BOOST_CHECK_NO_THROW(integration.Poll());
+	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_SUITE_END()

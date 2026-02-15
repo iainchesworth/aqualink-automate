@@ -2,11 +2,14 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <span>
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
+#include "kernel/auxillary_devices/heater_status.h"
+#include "kernel/temperature.h"
 #include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
@@ -20,6 +23,16 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		const std::vector<uint8_t>& RawPayload() const;
+		bool PumpOn() const;
+		bool SpaMode() const;
+		Kernel::Temperature PoolTemperature() const;
+		Kernel::Temperature SpaTemperature() const;
+		Kernel::Temperature AirTemperature() const;
+		std::optional<Kernel::Temperature> HeaterSetpoint() const;
+		Kernel::HeaterStatuses PoolHeaterStatus() const;
+		Kernel::HeaterStatuses SpaHeaterStatus() const;
+		Kernel::HeaterStatuses SolarHeaterStatus() const;
+		const std::vector<uint8_t>& DeviceIds() const;
 
 	public:
 		virtual std::string ToString() const override;
@@ -30,6 +43,16 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		std::vector<uint8_t> m_RawPayload;
+		bool m_PumpOn{false};
+		bool m_SpaMode{false};
+		Kernel::Temperature m_PoolTemp{Kernel::Temperature::ConvertToTemperatureInCelsius(0.0)};
+		Kernel::Temperature m_SpaTemp{Kernel::Temperature::ConvertToTemperatureInCelsius(0.0)};
+		Kernel::Temperature m_AirTemp{Kernel::Temperature::ConvertToTemperatureInCelsius(0.0)};
+		std::optional<Kernel::Temperature> m_HeaterSetpoint;
+		Kernel::HeaterStatuses m_PoolHeaterStatus{Kernel::HeaterStatuses::Unknown};
+		Kernel::HeaterStatuses m_SpaHeaterStatus{Kernel::HeaterStatuses::Unknown};
+		Kernel::HeaterStatuses m_SolarHeaterStatus{Kernel::HeaterStatuses::Unknown};
+		std::vector<uint8_t> m_DeviceIds;
 	};
 
 }

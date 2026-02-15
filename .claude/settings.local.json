@@ -169,7 +169,28 @@
       "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --gtest_brief=1)",
       "Bash(R:/aqualink-automate/build/config-windows-msvc-coverage/test/testaqualink-automate.exe --gtest_brief=1)",
       "WebFetch(domain:release-assets.githubusercontent.com)",
-      "Bash(cmp:*)"
+      "Bash(cmp:*)",
+      "WebFetch(domain:www.home-assistant.io)",
+      "Bash(build/config-windows-llvm-debug/test/testaqualink-automate.exe:*)",
+      "Bash(cut:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-llvm-debug/src/aqualink-automate.exe -r brainboxes-es-420.90-highett-road.com:9001 --disable-https --http-port 8081 --jandy-disable-emulation --loglevel-serial trace)",
+      "Bash(export PATH:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/src/aqualink-automate.exe -r brainboxes-es-420.90-highett-road.com:9001 --disable-https --http-port 8081 --jandy-disable-emulation --loglevel-serial trace)",
+      "WebFetch(domain:s3-ap-southeast-2.amazonaws.com)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/src/aqualink-automate.exe:*)",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\i_che\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\R--aqualink-automate\\\\tasks\\\\b74c40c.output\" -Pattern \"PageMessage|PageButton|PageStart|PageEnd|TitleMessage|TableMessage|MessageLong|Ack Type\")",
+      "Bash(Select-Object -Last 100)",
+      "Bash(ForEach-Object { $_Line })",
+      "Bash(sort:*)",
+      "Bash(build/config-windows-msvc-debug/test/testaqualink-automate.exe)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --run_test=AsyncOperationTrackerTests/Test_EnumName)",
+      "Bash(R:\\\\aqualink-automate\\\\build\\\\config-windows-msvc-debug\\\\test\\\\testaqualink-automate.exe:*)",
+      "Bash(\"R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe\" --log_level=error)",
+      "Bash(\"R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe\" --log_level=message)",
+      "Bash(\"R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe\" --run_test=FormatterTests --log_level=all)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --run_test=TestSuite_OptionsJandy --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe --run_test=TestSuite_OptionsJandy --log_level=all)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/testaqualink-automate.exe:*)"
     ]
   }
 }

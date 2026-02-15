@@ -95,7 +95,7 @@ namespace AqualinkAutomate::Messages
 		
 		Utility::JandyPacket_NullCharHandler_Serialization(message_bytes);
 
-		LogTrace(Channel::Messages, std::format("{} Message (Raw): {:.{}}", magic_enum::enum_name(IMessage::Id()), message_bytes, message_bytes.size()));
+		LogTrace(Channel::Messages, std::format("{} Message (Raw): {}", magic_enum::enum_name(IMessage::Id()), message_bytes));
 
 		return true;
 	}

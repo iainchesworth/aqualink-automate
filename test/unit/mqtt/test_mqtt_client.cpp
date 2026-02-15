@@ -1,447 +1,585 @@
 #include <boost/test/unit_test.hpp>
 
-#include <chrono>
-#include <future>
+#include <string>
 
 #include <boost/asio.hpp>
 
 #include "mqtt/mqtt_client.h"
 #include "options/options_mqtt_options.h"
-#include "mocks/mock_mqtt_broker.h"
+#include "support/unit_test_mqtt_support.h"
 
 using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Test::Mocks;
-using namespace std::chrono_literals;
-/*
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient)
 
-// Test fixture for MQTT client tests
-struct MqttClientFixture
+namespace
 {
-	MqttClientFixture() : ioc(), broker(ioc)
+	Options::Mqtt::MqttSettings MakeClientTestSettings()
 	{
-		// Configure basic MQTT settings
-		settings.is_enabled = true;
-		settings.broker_host = "localhost";
-		settings.broker_port = 1883;
-		settings.client_id = "test-client";
-		settings.keep_alive_seconds = 60;
-		settings.clean_session = true;
-		settings.qos = 1;
-		settings.retain = false;
-		settings.topic_prefix = "test";
-		settings.use_tls = false;
-		settings.auto_reconnect = true;
-		settings.reconnect_delay_seconds = 1;
-		settings.max_reconnect_attempts = 3;
+		return Test::MakeMqttSettings();
 	}
+}
 
-	~MqttClientFixture()
-	{
-		// Clean up any running operations
-		if (broker.is_running())
-		{
-			run_sync([this]() -> boost::cobalt::task<void> {
-				co_await broker.stop();
-			});
-		}
-	}
+//=============================================================================
+// MqttClient construction tests
+//=============================================================================
 
-	// Helper to run async operations synchronously in tests
-	template<typename F>
-	auto run_sync(F&& f) -> decltype(f().result())
-	{
-		auto future = std::async(std::launch::async, [&]() {
-			return boost::asio::co_spawn(ioc, std::forward<F>(f), boost::asio::use_future);
-		});
-		
-		ioc.restart();
-		ioc.run();
-		
-		return future.get().get();
-	}
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Construction)
 
+BOOST_AUTO_TEST_CASE(Test_Construction_Succeeds)
+{
 	boost::asio::io_context ioc;
-	MockMqttBroker broker;
-	Options::Mqtt::Settings settings;
-};
+	auto settings = MakeClientTestSettings();
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_Construction, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client construction");
-	
-	// Should construct without throwing
-	BOOST_CHECK_NO_THROW({
-		Mqtt::MqttClient client(ioc, settings);
-		BOOST_CHECK(!client.is_connected());
-	});
+	BOOST_CHECK_NO_THROW(Mqtt::MqttClient client(ioc, settings));
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_TopicBuilding, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_InitialStateDisconnected)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client topic building");
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
 	Mqtt::MqttClient client(ioc, settings);
-	
-	// Test topic prefix handling
-	BOOST_CHECK_EQUAL(client.build_topic("status/pool"), "test/status/pool");
-	BOOST_CHECK_EQUAL(client.build_topic("command/device"), "test/command/device");
-	
-	// Test with empty prefix
-	settings.topic_prefix = "";
-	Mqtt::MqttClient client_no_prefix(ioc, settings);
-	BOOST_CHECK_EQUAL(client_no_prefix.build_topic("status/pool"), "status/pool");
+
+	BOOST_CHECK_EQUAL(static_cast<int>(client.GetState()),
+		static_cast<int>(Mqtt::MqttClient::State::Disconnected));
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_ConnectionSuccess, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_NotConnected)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client successful connection");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
 	Mqtt::MqttClient client(ioc, settings);
-	
-	// Track connection events
-	bool connected = false;
-	bool disconnected = false;
-	client.ConnectedSignal.connect([&connected]() { connected = true; });
-	client.DisconnectedSignal.connect([&disconnected]() { disconnected = true; });
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-	});
-	
-	BOOST_CHECK(client.is_connected());
-	BOOST_CHECK(connected);
-	BOOST_CHECK(!disconnected);
-	
-	// Check broker received the connection
-	auto connected_clients = broker.get_connected_clients();
-	BOOST_CHECK_EQUAL(connected_clients.size(), 1);
-	BOOST_CHECK_EQUAL(connected_clients[0], "test-client");
+
+	BOOST_CHECK(!client.IsConnected());
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_ConnectionFailure, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_NotRunning)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client connection failure");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	broker.set_connection_should_fail(true);
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
 	Mqtt::MqttClient client(ioc, settings);
-	
-	// Track error events
-	std::string error_message;
-	client.ErrorSignal.connect([&error_message](const std::string& error) {
-		error_message = error;
-	});
-	
-	// Connection should fail
-	BOOST_CHECK_THROW({
-		run_sync([&client]() -> boost::cobalt::task<void> {
-			co_await client.connect();
-		});
-	}, std::exception);
-	
-	BOOST_CHECK(!client.is_connected());
-	BOOST_CHECK(!error_message.empty());
+
+	BOOST_CHECK(!client.IsRunning());
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_Authentication, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_UsesProvidedClientId)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client authentication");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	broker.set_authentication_required(true);
-	broker.add_user("testuser", "testpass");
-	
-	// Test with correct credentials
-	settings.username = "testuser";
-	settings.password = "testpass";
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "my-test-client";
 	Mqtt::MqttClient client(ioc, settings);
-	
-	BOOST_CHECK_NO_THROW({
-		run_sync([&client]() -> boost::cobalt::task<void> {
-			co_await client.connect();
-		});
-	});
-	
-	BOOST_CHECK(client.is_connected());
+
+	BOOST_CHECK_EQUAL(client.ClientId(), "my-test-client");
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_AuthenticationFailure, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_AutoGeneratesClientId)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client authentication failure");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	broker.set_authentication_required(true);
-	broker.add_user("testuser", "testpass");
-	
-	// Test with incorrect credentials
-	settings.username = "wronguser";
-	settings.password = "wrongpass";
-	
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "";
 	Mqtt::MqttClient client(ioc, settings);
-	
-	BOOST_CHECK_THROW({
-		run_sync([&client]() -> boost::cobalt::task<void> {
-			co_await client.connect();
-		});
-	}, std::exception);
-	
-	BOOST_CHECK(!client.is_connected());
+
+	auto client_id = client.ClientId();
+	BOOST_CHECK(!client_id.empty());
+	BOOST_CHECK_MESSAGE(client_id.find("aqualink-") == 0,
+		"Auto-generated client ID should start with 'aqualink-': " + client_id);
 }
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_PublishMessage, MqttClientFixture)
+BOOST_AUTO_TEST_CASE(Test_Construction_AutoGeneratedClientIdsAreUnique)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT client message publishing");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-	});
-	
-	BOOST_REQUIRE(client.is_connected());
-	
-	// Publish a message
-	const std::string topic = "test/status/pool";
-	const std::string payload = R"({"temperature": 25.5})";
-	
-	run_sync([&client, &topic, &payload]() -> boost::cobalt::task<void> {
-		co_await client.publish(topic, payload);
-	});
-	
-	// Check that broker received the message
-	auto messages = broker.get_published_messages();
-	BOOST_CHECK_EQUAL(messages.size(), 1);
-	BOOST_CHECK_EQUAL(messages[0].topic, topic);
-	BOOST_CHECK_EQUAL(messages[0].payload, payload);
-	BOOST_CHECK_EQUAL(messages[0].qos, 1);
-	BOOST_CHECK_EQUAL(messages[0].retain, false);
-}
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "";
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_PublishWithCustomQoSRetain, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client publishing with custom QoS and retain");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-	});
-	
-	// Publish with custom settings
-	const std::string topic = "test/status/device";
-	const std::string payload = R"({"status": "online"})";
-	
-	run_sync([&client, &topic, &payload]() -> boost::cobalt::task<void> {
-		co_await client.publish(topic, payload, 2, true);
-	});
-	
-	auto messages = broker.get_published_messages();
-	BOOST_CHECK_EQUAL(messages.size(), 1);
-	BOOST_CHECK_EQUAL(messages[0].qos, 2);
-	BOOST_CHECK_EQUAL(messages[0].retain, true);
-}
+	Mqtt::MqttClient client1(ioc, settings);
+	Mqtt::MqttClient client2(ioc, settings);
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_PublishWithoutConnection, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client publishing without connection");
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	// Should throw when not connected
-	BOOST_CHECK_THROW({
-		run_sync([&client]() -> boost::cobalt::task<void> {
-			co_await client.publish("test/topic", "payload");
-		});
-	}, std::runtime_error);
-}
+	auto id1 = client1.ClientId();
+	auto id2 = client2.ClientId();
 
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_Subscribe, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client subscription");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-	});
-	
-	const std::string topic_filter = "test/command/+";
-	
-	run_sync([&client, &topic_filter]() -> boost::cobalt::task<void> {
-		co_await client.subscribe(topic_filter);
-	});
-	
-	// Check that broker registered the subscription
-	auto subscriptions = broker.get_subscriptions("test-client");
-	BOOST_CHECK_EQUAL(subscriptions.size(), 1);
-	BOOST_CHECK_EQUAL(subscriptions[0], topic_filter);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_ReceiveMessage, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client message reception");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	// Track received messages
-	std::string received_topic;
-	std::string received_payload;
-	client.MessageReceivedSignal.connect([&received_topic, &received_payload](const std::string& topic, const std::string& payload) {
-		received_topic = topic;
-		received_payload = payload;
-	});
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-		co_await client.subscribe("test/command/+");
-	});
-	
-	// Inject a message from the broker
-	const std::string test_topic = "test/command/status";
-	const std::string test_payload = R"({"request": "status"})";
-	
-	run_sync([this, &test_topic, &test_payload]() -> boost::cobalt::task<void> {
-		co_await broker.inject_message(test_topic, test_payload);
-		
-		// Give some time for message processing
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(10ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	BOOST_CHECK_EQUAL(received_topic, test_topic);
-	BOOST_CHECK_EQUAL(received_payload, test_payload);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_Unsubscribe, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client unsubscription");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-		co_await client.subscribe("test/command/+");
-	});
-	
-	// Verify subscription exists
-	auto subscriptions = broker.get_subscriptions("test-client");
-	BOOST_CHECK_EQUAL(subscriptions.size(), 1);
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.unsubscribe("test/command/+");
-	});
-	
-	// Note: Mock broker doesn't actually remove subscriptions for simplicity
-	// In a real test, you'd verify the unsubscribe was sent to the broker
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_Disconnect, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client disconnection");
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	bool disconnected = false;
-	client.DisconnectedSignal.connect([&disconnected]() { disconnected = true; });
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-		BOOST_CHECK(client.is_connected());
-		
-		co_await client.disconnect();
-	});
-	
-	BOOST_CHECK(!client.is_connected());
-	BOOST_CHECK(disconnected);
-}
-
-BOOST_FIXTURE_TEST_CASE(Test_MqttClient_AutoReconnect, MqttClientFixture)
-{
-	BOOST_TEST_MESSAGE("Testing MQTT client auto-reconnection");
-	
-	// Configure for fast reconnection in test
-	settings.reconnect_delay_seconds = 0; // Reconnect immediately for testing
-	settings.max_reconnect_attempts = 2;
-	
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.start(1883);
-	});
-	
-	Mqtt::MqttClient client(ioc, settings);
-	
-	int connection_count = 0;
-	int disconnection_count = 0;
-	client.ConnectedSignal.connect([&connection_count]() { connection_count++; });
-	client.DisconnectedSignal.connect([&disconnection_count]() { disconnection_count++; });
-	
-	run_sync([&client]() -> boost::cobalt::task<void> {
-		co_await client.connect();
-	});
-	
-	BOOST_CHECK_EQUAL(connection_count, 1);
-	BOOST_CHECK_EQUAL(disconnection_count, 0);
-	
-	// Simulate connection loss by stopping and restarting broker
-	run_sync([this]() -> boost::cobalt::task<void> {
-		co_await broker.stop();
-		
-		// Give some time for disconnection to be detected
-		boost::asio::steady_timer timer(ioc);
-		timer.expires_after(50ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-		
-		co_await broker.start(1883);
-		
-		// Give some time for reconnection
-		timer.expires_after(100ms);
-		co_await timer.async_wait(boost::asio::use_awaitable);
-	});
-	
-	// Should have attempted reconnection
-	// Note: Exact behavior depends on implementation details
-	// This test mainly ensures no crashes occur during reconnection
+	BOOST_CHECK_NE(id1, id2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-*/
+
+//=============================================================================
+// MqttClient lifecycle tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Lifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_Start_SetsRunningState)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.Start();
+
+	BOOST_CHECK(client.IsRunning());
+	BOOST_CHECK(!client.IsConnected()); // Not yet connected, just started
+	BOOST_CHECK_EQUAL(static_cast<int>(client.GetState()),
+		static_cast<int>(Mqtt::MqttClient::State::Connecting));
+
+	client.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Start_TwiceIsHarmless)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.Start();
+	BOOST_CHECK_NO_THROW(client.Start()); // Should not throw
+	BOOST_CHECK(client.IsRunning());
+
+	client.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Stop_ClearsState)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.Start();
+	client.Publish("test/topic", "payload");
+	client.Stop();
+
+	BOOST_CHECK(!client.IsRunning());
+	BOOST_CHECK(!client.IsConnected());
+	BOOST_CHECK_EQUAL(static_cast<int>(client.GetState()),
+		static_cast<int>(Mqtt::MqttClient::State::Disconnected));
+
+	// Publish queue should be cleared on stop
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(client);
+	BOOST_CHECK(queue.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Stop_WhenNotRunningIsHarmless)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_NO_THROW(client.Stop());
+	BOOST_CHECK(!client.IsRunning());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Stop_EmitsDisconnectedSignal)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	std::string disconnect_reason;
+	client.OnDisconnected.connect([&disconnect_reason](const std::string& reason) {
+		disconnect_reason = reason;
+	});
+
+	client.Start();
+	client.Stop();
+
+	BOOST_CHECK(!disconnect_reason.empty());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient topic building tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Topics)
+
+BOOST_AUTO_TEST_CASE(Test_TopicPrefix_ReturnsConfiguredPrefix)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.topic_prefix = "mypool";
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.TopicPrefix(), "mypool");
+}
+
+BOOST_AUTO_TEST_CASE(Test_BuildTopic_WithPrefix)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.topic_prefix = "test";
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.BuildTopic("status/pool"), "test/status/pool");
+	BOOST_CHECK_EQUAL(client.BuildTopic("command/device"), "test/command/device");
+}
+
+BOOST_AUTO_TEST_CASE(Test_BuildTopic_EmptyPrefix)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.topic_prefix = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.BuildTopic("status/pool"), "status/pool");
+}
+
+BOOST_AUTO_TEST_CASE(Test_BuildTopic_ComplexSubtopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.topic_prefix = "home/pool";
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.BuildTopic("ha/pump_filter"), "home/pool/ha/pump_filter");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient publish queue tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_PublishQueue)
+
+BOOST_AUTO_TEST_CASE(Test_Publish_QueuesToDeque)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	client->Publish("topic/a", "payload_a");
+	client->Publish("topic/b", "payload_b");
+	client->Publish("topic/c", "payload_c");
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_REQUIRE_EQUAL(queue.size(), 3);
+
+	// Verify FIFO ordering
+	BOOST_CHECK_EQUAL(queue[0].topic, "topic/a");
+	BOOST_CHECK_EQUAL(queue[0].payload, "payload_a");
+	BOOST_CHECK_EQUAL(queue[1].topic, "topic/b");
+	BOOST_CHECK_EQUAL(queue[2].topic, "topic/c");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Publish_RetainFlagPreserved)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	client->Publish("topic/a", "payload_a", false);
+	client->Publish("topic/b", "payload_b", true);
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_REQUIRE_EQUAL(queue.size(), 2);
+	BOOST_CHECK_EQUAL(queue[0].retain, false);
+	BOOST_CHECK_EQUAL(queue[1].retain, true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Publish_QueueOverflow_DropsOldest)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	// Fill queue to capacity (MAX_PUBLISH_QUEUE_SIZE = 1000)
+	for (int i = 0; i < 1000; ++i)
+	{
+		client->Publish("topic/" + std::to_string(i), "payload");
+	}
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_CHECK_EQUAL(queue.size(), 1000);
+	BOOST_CHECK_EQUAL(queue.front().topic, "topic/0");
+
+	// One more should drop the oldest
+	client->Publish("topic/overflow", "overflow_payload");
+
+	BOOST_CHECK_EQUAL(queue.size(), 1000);
+	BOOST_CHECK_EQUAL(queue.front().topic, "topic/1"); // topic/0 was dropped
+	BOOST_CHECK_EQUAL(queue.back().topic, "topic/overflow");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient packet encoding tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_PacketEncoding)
+
+BOOST_AUTO_TEST_CASE(Test_EncodePublish_FixedHeaderFormat)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "a/b", "hello", false);
+
+	// Fixed header byte: 0x30 (PUBLISH, QoS 0, no retain)
+	BOOST_REQUIRE_GT(packet.size(), 2);
+	BOOST_CHECK_EQUAL(packet[0], 0x30);
+
+	// Remaining length should be: topic_len(2) + topic(3) + payload(5) = 10
+	BOOST_CHECK_EQUAL(packet[1], 10);
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodePublish_ContainsTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "test/topic", "data", false);
+
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("test/topic") != std::string::npos,
+		"Packet should contain the topic string");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodePublish_ContainsPayload)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "t", "my_payload_data", false);
+
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("my_payload_data") != std::string::npos,
+		"Packet should contain the payload string");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodeDisconnect_Format)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeDisconnect(client);
+
+	BOOST_REQUIRE_EQUAL(packet.size(), 2);
+	BOOST_CHECK_EQUAL(packet[0], 0xE0);
+	BOOST_CHECK_EQUAL(packet[1], 0x00);
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodePingreq_Format)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodePingreq(client);
+
+	BOOST_REQUIRE_EQUAL(packet.size(), 2);
+	BOOST_CHECK_EQUAL(packet[0], 0xC0);
+	BOOST_CHECK_EQUAL(packet[1], 0x00);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient CONNACK parsing tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Connack)
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_SuccessfulConnection)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// Valid CONNACK: type=0x20, remaining_len=2, flags=0, return_code=0 (success)
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x00 };
+	BOOST_CHECK(Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedBadCredentials)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// CONNACK with return code 0x04 (bad username or password)
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x04 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedNotAuthorized)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// CONNACK with return code 0x05 (not authorized)
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x05 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedServerUnavailable)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// CONNACK with return code 0x03 (server unavailable)
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x03 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_TooShort)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// Too few bytes
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_WrongPacketType)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// Wrong packet type (0x30 = PUBLISH, not CONNACK)
+	std::vector<uint8_t> connack = { 0x30, 0x02, 0x00, 0x00 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_WrongRemainingLength)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// Wrong remaining length (should be 2)
+	std::vector<uint8_t> connack = { 0x20, 0x03, 0x00, 0x00 };
+	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_CASE(Test_ParseConnack_SessionPresent)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	// Session Present flag set but return code 0 (success)
+	std::vector<uint8_t> connack = { 0x20, 0x02, 0x01, 0x00 };
+	BOOST_CHECK(Test::MqttClientPacketTest::ParseConnack(client, connack));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient CONNECT encoding tests (authentication)
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_ConnectEncoding)
+
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ContainsProtocolName)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "test";
+	settings.username = "";
+	settings.password = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	// Packet type: 0x10 (CONNECT)
+	BOOST_REQUIRE_GT(packet.size(), 2);
+	BOOST_CHECK_EQUAL(packet[0], 0x10);
+
+	// Should contain "MQTT" protocol name
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("MQTT") != std::string::npos,
+		"CONNECT packet should contain 'MQTT' protocol name");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ContainsClientId)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "my-special-id";
+	settings.username = "";
+	settings.password = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("my-special-id") != std::string::npos,
+		"CONNECT packet should contain the client ID");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_WithUsernamePassword_SetsFlags)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "cid";
+	settings.username = "user1";
+	settings.password = "pass1";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	BOOST_REQUIRE_GT(packet.size(), 9);
+
+	uint8_t flags = packet[9]; // Connect flags byte
+
+	// Username Flag (bit 7) should be set
+	BOOST_CHECK_EQUAL(flags & 0x80, 0x80);
+	// Password Flag (bit 6) should be set
+	BOOST_CHECK_EQUAL(flags & 0x40, 0x40);
+	// Clean Session (bit 1) should be set
+	BOOST_CHECK_EQUAL(flags & 0x02, 0x02);
+
+	// Packet should contain the username and password strings
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("user1") != std::string::npos,
+		"CONNECT packet should contain the username");
+	BOOST_CHECK_MESSAGE(packet_str.find("pass1") != std::string::npos,
+		"CONNECT packet should contain the password");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_WithoutAuth_NoAuthFlags)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "cid";
+	settings.username = "";
+	settings.password = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	BOOST_REQUIRE_GT(packet.size(), 9);
+
+	uint8_t flags = packet[9];
+
+	// Username Flag (bit 7) should NOT be set
+	BOOST_CHECK_EQUAL(flags & 0x80, 0x00);
+	// Password Flag (bit 6) should NOT be set
+	BOOST_CHECK_EQUAL(flags & 0x40, 0x00);
+}
+
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ProtocolLevel4)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "cid";
+	settings.username = "";
+	settings.password = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	// Protocol level byte: after fixed header(2) + protocol name length(2) + "MQTT"(4) = offset 8
+	BOOST_REQUIRE_GT(packet.size(), 8);
+	BOOST_CHECK_EQUAL(packet[8], 0x04); // MQTT 3.1.1 = protocol level 4
+}
+
+BOOST_AUTO_TEST_SUITE_END()

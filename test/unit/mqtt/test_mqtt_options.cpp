@@ -3,441 +3,432 @@
 #include <boost/program_options.hpp>
 
 #include "options/options_mqtt_options.h"
-#include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_options_missingdependency.h"
 
 using namespace AqualinkAutomate;
 namespace po = boost::program_options;
-/*
+
+namespace AqualinkAutomate::Test
+{
+	/// Helper to create a variables_map from simulated command line arguments using
+	/// the MQTT OptionsProcessor's options description.
+	po::variables_map ParseMqttOptions(Options::Mqtt::OptionsProcessor& processor, const std::vector<const char*>& args)
+	{
+		po::options_description desc;
+		desc.add(processor.Options());
+
+		po::variables_map vm;
+		po::store(po::parse_command_line(static_cast<int>(args.size()), args.data(), desc), vm);
+		po::notify(vm);
+
+		return vm;
+	}
+}
+// namespace AqualinkAutomate::Test
+
 BOOST_AUTO_TEST_SUITE(TestSuite_MqttOptions)
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_DefaultValues)
+//-----------------------------------------------------------------------------
+// DEFAULT VALUES
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_DefaultSettings)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options default values");
-	
-	Options::Mqtt::Settings settings;
-	
+	Options::Mqtt::MqttSettings settings;
+
+	BOOST_CHECK_EQUAL(settings.enabled, false);
 	BOOST_CHECK_EQUAL(settings.broker_host, "localhost");
 	BOOST_CHECK_EQUAL(settings.broker_port, 1883);
-	BOOST_CHECK_EQUAL(settings.keep_alive_seconds, 60);
-	BOOST_CHECK_EQUAL(settings.clean_session, true);
-	BOOST_CHECK_EQUAL(settings.qos, 1);
-	BOOST_CHECK_EQUAL(settings.retain, false);
-	BOOST_CHECK_EQUAL(settings.is_enabled, false);
 	BOOST_CHECK_EQUAL(settings.use_tls, false);
-	BOOST_CHECK_EQUAL(settings.auto_reconnect, true);
-	BOOST_CHECK_EQUAL(settings.reconnect_delay_seconds, 5);
-	BOOST_CHECK_EQUAL(settings.max_reconnect_attempts, 0);
-	BOOST_CHECK_EQUAL(settings.verify_hostname, true);
+	BOOST_CHECK(settings.tls_ca_cert.empty());
+	BOOST_CHECK(settings.tls_client_cert.empty());
+	BOOST_CHECK(settings.tls_client_key.empty());
+	BOOST_CHECK_EQUAL(settings.tls_skip_verify, false);
+	BOOST_CHECK(settings.client_id.empty());
+	BOOST_CHECK(settings.username.empty());
+	BOOST_CHECK(settings.password.empty());
+	BOOST_CHECK_EQUAL(settings.topic_prefix, "aqualink");
+	BOOST_CHECK_EQUAL(settings.status_publish_interval.count(), 30);
+	BOOST_CHECK_EQUAL(settings.statistics_publish_interval.count(), 60);
+	BOOST_CHECK_EQUAL(settings.publish_on_change, true);
+	BOOST_CHECK_EQUAL(settings.home_assistant_enabled, false);
+	BOOST_CHECK_EQUAL(settings.ha_discovery_prefix, "homeassistant");
+	BOOST_CHECK(settings.ha_device_id.empty());
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_BasicConfiguration)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProcessDefaults)
 {
-	BOOST_TEST_MESSAGE("Testing basic MQTT options configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	// Simulate command line arguments
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.broker-host=broker.example.com",
-		"--mqtt.broker-port=8883",
-		"--mqtt.client-id=my-client"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK_EQUAL(settings.is_enabled, true);
-	BOOST_CHECK_EQUAL(settings.broker_host, "broker.example.com");
-	BOOST_CHECK_EQUAL(settings.broker_port, 8883);
-	BOOST_CHECK_EQUAL(settings.client_id, "my-client");
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	const auto& settings = result.value();
+
+	BOOST_CHECK_EQUAL(settings.enabled, false);
+	BOOST_CHECK_EQUAL(settings.broker_host, "localhost");
+	BOOST_CHECK_EQUAL(settings.broker_port, 1883);
+	BOOST_CHECK_EQUAL(settings.use_tls, false);
+	BOOST_CHECK_EQUAL(settings.topic_prefix, "aqualink");
+	BOOST_CHECK_EQUAL(settings.home_assistant_enabled, false);
+	BOOST_CHECK_EQUAL(settings.ha_discovery_prefix, "homeassistant");
+	BOOST_CHECK_EQUAL(settings.ha_device_id, "aqualink_aqualink");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_AuthenticationConfiguration)
+//-----------------------------------------------------------------------------
+// ENABLE MQTT
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_EnableMqtt)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT authentication configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.username=testuser",
-		"--mqtt.password=testpass"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK(settings.username.has_value());
-	BOOST_CHECK(settings.password.has_value());
-	BOOST_CHECK_EQUAL(*settings.username, "testuser");
-	BOOST_CHECK_EQUAL(*settings.password, "testpass");
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().enabled, true);
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsConfiguration)
+//-----------------------------------------------------------------------------
+// BROKER CONFIGURATION
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_BrokerHost)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT TLS configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.use-tls",
-		"--mqtt.ca-file=/path/to/ca.pem",
-		"--mqtt.cert-file=/path/to/cert.pem",
-		"--mqtt.key-file=/path/to/key.pem",
-		"--mqtt.verify-hostname=false"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK_EQUAL(settings.use_tls, true);
-	BOOST_CHECK(settings.ca_file.has_value());
-	BOOST_CHECK(settings.cert_file.has_value());
-	BOOST_CHECK(settings.key_file.has_value());
-	BOOST_CHECK_EQUAL(*settings.ca_file, "/path/to/ca.pem");
-	BOOST_CHECK_EQUAL(*settings.cert_file, "/path/to/cert.pem");
-	BOOST_CHECK_EQUAL(*settings.key_file, "/path/to/key.pem");
-	BOOST_CHECK_EQUAL(settings.verify_hostname, false);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-host=broker.example.com" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().broker_host, "broker.example.com");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_QualityOfServiceConfiguration)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_BrokerPort)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT QoS configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.qos=2",
-		"--mqtt.retain",
-		"--mqtt.clean-session=false"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK_EQUAL(settings.qos, 2);
-	BOOST_CHECK_EQUAL(settings.retain, true);
-	BOOST_CHECK_EQUAL(settings.clean_session, false);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-port=8883" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().broker_port, 8883);
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_TopicConfiguration)
+//-----------------------------------------------------------------------------
+// TOPIC CONFIGURATION
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TopicPrefix)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT topic configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.topic-prefix=mypool"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK_EQUAL(settings.topic_prefix, "mypool");
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-prefix=mypool" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().topic_prefix, "mypool");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_ReconnectionConfiguration)
+//-----------------------------------------------------------------------------
+// AUTHENTICATION
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_Authentication)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT reconnection configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.auto-reconnect=false",
-		"--mqtt.reconnect-delay=10",
-		"--mqtt.max-reconnect-attempts=5"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	BOOST_CHECK_EQUAL(settings.auto_reconnect, false);
-	BOOST_CHECK_EQUAL(settings.reconnect_delay_seconds, 10);
-	BOOST_CHECK_EQUAL(settings.max_reconnect_attempts, 5);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-username=testuser", "--mqtt-password=testpass" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().username, "testuser");
+	BOOST_CHECK_EQUAL(result.value().password, "testpass");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_InvalidQoSLevel)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ClientId)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with invalid QoS level");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.qos=3"  // Invalid QoS level
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	// Should throw validation error
-	BOOST_CHECK_THROW(Options::Mqtt::ValidateOptions(vm), Exceptions::OptionParsingFailed);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-client-id=pool-ctrl-001" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().client_id, "pool-ctrl-001");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsCertificateWithoutKey)
+//-----------------------------------------------------------------------------
+// TLS CONFIGURATION
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsEnabled)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with certificate but no key");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.use-tls",
-		"--mqtt.cert-file=/path/to/cert.pem"
-		// Missing --mqtt.key-file
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	// Should throw validation error
-	BOOST_CHECK_THROW(Options::Mqtt::ValidateOptions(vm), Exceptions::Options_MissingDependency);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-tls" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().use_tls, true);
+	// When TLS is enabled and port is not explicitly set, should auto-switch to 8883
+	BOOST_CHECK_EQUAL(result.value().broker_port, 8883);
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsKeyWithoutCertificate)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsWithExplicitPort)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with key but no certificate");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.use-tls",
-		"--mqtt.key-file=/path/to/key.pem"
-		// Missing --mqtt.cert-file
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	// Should throw validation error
-	BOOST_CHECK_THROW(Options::Mqtt::ValidateOptions(vm), Exceptions::Options_MissingDependency);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-tls", "--mqtt-port=9883" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().use_tls, true);
+	// Explicitly set port should be kept
+	BOOST_CHECK_EQUAL(result.value().broker_port, 9883);
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_PasswordWithoutUsername)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsCertificates)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with password but no username");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.password=secret"
-		// Missing --mqtt.username
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	// Should throw validation error
-	BOOST_CHECK_THROW(Options::Mqtt::ValidateOptions(vm), Exceptions::Options_MissingDependency);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-tls",
+		"--mqtt-ca-cert=/path/to/ca.pem",
+		"--mqtt-client-cert=/path/to/cert.pem",
+		"--mqtt-client-key=/path/to/key.pem" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().tls_ca_cert, "/path/to/ca.pem");
+	BOOST_CHECK_EQUAL(result.value().tls_client_cert, "/path/to/cert.pem");
+	BOOST_CHECK_EQUAL(result.value().tls_client_key, "/path/to/key.pem");
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_UsernameWithoutPassword)
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsSkipVerify)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with username but no password");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.username=testuser"
-		// Missing --mqtt.password is allowed
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	// Should not throw - username without password is valid
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	BOOST_CHECK(settings.username.has_value());
-	BOOST_CHECK(!settings.password.has_value());
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-tls", "--mqtt-tls-skip-verify" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().tls_skip_verify, true);
 }
 
-BOOST_AUTO_TEST_CASE(Test_MqttOptions_ValidQoSLevels)
+//-----------------------------------------------------------------------------
+// TLS VALIDATION - CLIENT CERT REQUIRES KEY
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsCertWithoutKey)
 {
-	BOOST_TEST_MESSAGE("Testing MQTT options validation with valid QoS levels");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	// Test QoS 0
-	{
-		po::variables_map vm;
-		const char* argv[] = {"program", "--mqtt.enable", "--mqtt.qos=0"};
-		int argc = sizeof(argv) / sizeof(argv[0]);
-		
-		po::store(po::parse_command_line(argc, argv, options_desc), vm);
-		po::notify(vm);
-		
-		BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-		auto settings = Options::Mqtt::HandleOptions(vm);
-		BOOST_CHECK_EQUAL(settings.qos, 0);
-	}
-	
-	// Test QoS 1
-	{
-		po::variables_map vm;
-		const char* argv[] = {"program", "--mqtt.enable", "--mqtt.qos=1"};
-		int argc = sizeof(argv) / sizeof(argv[0]);
-		
-		po::store(po::parse_command_line(argc, argv, options_desc), vm);
-		po::notify(vm);
-		
-		BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-		auto settings = Options::Mqtt::HandleOptions(vm);
-		BOOST_CHECK_EQUAL(settings.qos, 1);
-	}
-	
-	// Test QoS 2
-	{
-		po::variables_map vm;
-		const char* argv[] = {"program", "--mqtt.enable", "--mqtt.qos=2"};
-		int argc = sizeof(argv) / sizeof(argv[0]);
-		
-		po::store(po::parse_command_line(argc, argv, options_desc), vm);
-		po::notify(vm);
-		
-		BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-		auto settings = Options::Mqtt::HandleOptions(vm);
-		BOOST_CHECK_EQUAL(settings.qos, 2);
-	}
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-client-cert=/path/to/cert.pem" });
+
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
 }
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsKeyWithoutCert)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-client-key=/path/to/key.pem" });
+
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_TlsCertAndKeyTogether)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt",
+		"--mqtt-client-cert=/path/to/cert.pem",
+		"--mqtt-client-key=/path/to/key.pem" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+}
+
+//-----------------------------------------------------------------------------
+// PUBLISHING INTERVALS
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_StatusInterval)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-status-interval=15" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().status_publish_interval.count(), 15);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_StatsInterval)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--mqtt-stats-interval=120" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().statistics_publish_interval.count(), 120);
+}
+
+//-----------------------------------------------------------------------------
+// HOME ASSISTANT OPTIONS
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaEnabled)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--home-assistant" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().home_assistant_enabled, true);
+	BOOST_CHECK_EQUAL(result.value().ha_discovery_prefix, "homeassistant");
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaCustomPrefix)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--home-assistant", "--ha-discovery-prefix=ha_test" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().ha_discovery_prefix, "ha_test");
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaRequiresMqtt)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	// --home-assistant without --mqtt should fail validation
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--home-assistant" });
+
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaDeviceId)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--home-assistant", "--ha-device-id=custom_id" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().ha_device_id, "custom_id");
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaDeviceIdDefaultDerivation)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--home-assistant", "--mqtt-prefix=mypool" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	// Empty ha_device_id should be derived from topic_prefix
+	BOOST_CHECK_EQUAL(result.value().ha_device_id, "aqualink_mypool");
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_HaDeviceIdRequiresHa)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	// --ha-device-id without --home-assistant should fail validation
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt", "--ha-device-id=test_id" });
+
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
+}
+
+//-----------------------------------------------------------------------------
+// COMPLETE CONFIGURATION
+//-----------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(Test_MqttOptions_CompleteConfiguration)
 {
-	BOOST_TEST_MESSAGE("Testing complete MQTT options configuration");
-	
-	auto options_desc = Options::Mqtt::Options();
-	
-	po::variables_map vm;
-	
-	const char* argv[] = {
-		"program",
-		"--mqtt.enable",
-		"--mqtt.broker-host=secure.broker.com",
-		"--mqtt.broker-port=8883",
-		"--mqtt.client-id=pool-controller-001",
-		"--mqtt.username=pool_user",
-		"--mqtt.password=secure_password",
-		"--mqtt.keep-alive=120",
-		"--mqtt.clean-session=false",
-		"--mqtt.qos=1",
-		"--mqtt.retain",
-		"--mqtt.topic-prefix=home/pool",
-		"--mqtt.use-tls",
-		"--mqtt.ca-file=/etc/ssl/certs/ca.pem",
-		"--mqtt.cert-file=/etc/ssl/certs/client.pem",
-		"--mqtt.key-file=/etc/ssl/private/client.key",
-		"--mqtt.verify-hostname=true",
-		"--mqtt.auto-reconnect=true",
-		"--mqtt.reconnect-delay=30",
-		"--mqtt.max-reconnect-attempts=10"
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]);
-	
-	po::store(po::parse_command_line(argc, argv, options_desc), vm);
-	po::notify(vm);
-	
-	BOOST_CHECK_NO_THROW(Options::Mqtt::ValidateOptions(vm));
-	
-	auto settings = Options::Mqtt::HandleOptions(vm);
-	
-	// Verify all settings
-	BOOST_CHECK_EQUAL(settings.is_enabled, true);
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program",
+		"--mqtt",
+		"--mqtt-host=secure.broker.com",
+		"--mqtt-port=8883",
+		"--mqtt-tls",
+		"--mqtt-ca-cert=/etc/ssl/certs/ca.pem",
+		"--mqtt-client-cert=/etc/ssl/certs/client.pem",
+		"--mqtt-client-key=/etc/ssl/private/client.key",
+		"--mqtt-client-id=pool-controller-001",
+		"--mqtt-username=pool_user",
+		"--mqtt-password=secure_password",
+		"--mqtt-prefix=home/pool",
+		"--mqtt-status-interval=15",
+		"--mqtt-stats-interval=120",
+		"--home-assistant",
+		"--ha-discovery-prefix=ha_custom",
+		"--ha-device-id=pool-controller-001"
+	});
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	const auto& settings = result.value();
+
+	BOOST_CHECK_EQUAL(settings.enabled, true);
 	BOOST_CHECK_EQUAL(settings.broker_host, "secure.broker.com");
 	BOOST_CHECK_EQUAL(settings.broker_port, 8883);
-	BOOST_CHECK_EQUAL(settings.client_id, "pool-controller-001");
-	BOOST_CHECK_EQUAL(*settings.username, "pool_user");
-	BOOST_CHECK_EQUAL(*settings.password, "secure_password");
-	BOOST_CHECK_EQUAL(settings.keep_alive_seconds, 120);
-	BOOST_CHECK_EQUAL(settings.clean_session, false);
-	BOOST_CHECK_EQUAL(settings.qos, 1);
-	BOOST_CHECK_EQUAL(settings.retain, true);
-	BOOST_CHECK_EQUAL(settings.topic_prefix, "home/pool");
 	BOOST_CHECK_EQUAL(settings.use_tls, true);
-	BOOST_CHECK_EQUAL(*settings.ca_file, "/etc/ssl/certs/ca.pem");
-	BOOST_CHECK_EQUAL(*settings.cert_file, "/etc/ssl/certs/client.pem");
-	BOOST_CHECK_EQUAL(*settings.key_file, "/etc/ssl/private/client.key");
-	BOOST_CHECK_EQUAL(settings.verify_hostname, true);
-	BOOST_CHECK_EQUAL(settings.auto_reconnect, true);
-	BOOST_CHECK_EQUAL(settings.reconnect_delay_seconds, 30);
-	BOOST_CHECK_EQUAL(settings.max_reconnect_attempts, 10);
+	BOOST_CHECK_EQUAL(settings.tls_ca_cert, "/etc/ssl/certs/ca.pem");
+	BOOST_CHECK_EQUAL(settings.tls_client_cert, "/etc/ssl/certs/client.pem");
+	BOOST_CHECK_EQUAL(settings.tls_client_key, "/etc/ssl/private/client.key");
+	BOOST_CHECK_EQUAL(settings.client_id, "pool-controller-001");
+	BOOST_CHECK_EQUAL(settings.username, "pool_user");
+	BOOST_CHECK_EQUAL(settings.password, "secure_password");
+	BOOST_CHECK_EQUAL(settings.topic_prefix, "home/pool");
+	BOOST_CHECK_EQUAL(settings.status_publish_interval.count(), 15);
+	BOOST_CHECK_EQUAL(settings.statistics_publish_interval.count(), 120);
+	BOOST_CHECK_EQUAL(settings.home_assistant_enabled, true);
+	BOOST_CHECK_EQUAL(settings.ha_discovery_prefix, "ha_custom");
+	BOOST_CHECK_EQUAL(settings.ha_device_id, "pool-controller-001");
 }
 
-BOOST_AUTO_TEST_SUITE_END()*/
+//-----------------------------------------------------------------------------
+// FULL PIPELINE
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_FullPipeline_Defaults)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().enabled, false);
+	BOOST_CHECK_EQUAL(result.value().broker_host, "localhost");
+	BOOST_CHECK_EQUAL(result.value().broker_port, 1883);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_FullPipeline_HaDependencyFails)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--home-assistant" });
+
+	// HA requires MQTT - this should fail validation
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

@@ -23,6 +23,7 @@ target_sources(
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
 	unit/exceptions/test_genericaqualinkexception.cpp 
+	unit/formatters/test_formatters.cpp
 	unit/factories/test_factories_jandy_auxillary.cpp	 	
 	unit/factories/test_factories_jandy_messages.cpp
 	unit/generators/test_jandy_message_generator.cpp 
@@ -37,6 +38,7 @@ target_sources(
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
 	unit/options/test_options_web.cpp
 	unit/messages/test_aquarite_message_getid.cpp
@@ -58,6 +60,7 @@ target_sources(
 	unit/mocks/mock_mqtt_broker.cpp
 	unit/mocks/mock_testserialportimpl.cpp 
 	unit/mqtt/test_mqtt_client.cpp
+	unit/mqtt/test_mqtt_ha_discovery.cpp
 	unit/mqtt/test_mqtt_hub.cpp
 	unit/mqtt/test_mqtt_integration.cpp
 	unit/mqtt/test_mqtt_options.cpp

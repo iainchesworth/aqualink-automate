@@ -1,12 +1,12 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
-#include "devices/capabilities/scrapeable.h"
 #include "devices/capabilities/screen.h"
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
@@ -26,6 +26,7 @@
 #include "utility/screen_data_page.h"
 #include "utility/screen_data_page_updater.h"
 #include "kernel/hub_locator.h"
+#include "profiling/profiling.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -36,12 +37,23 @@ namespace AqualinkAutomate::Devices
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
 		inline static const std::chrono::seconds IAQ_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
+		enum class OperatingStates
+		{
+			StartUp,
+			NormalOperation,
+			FaultHasOccurred
+		};
+
 	public:
 		IAQDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~IAQDevice();
 
+	public:
+		void QueueCommand(uint8_t command);
+
 	private:
 		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates(bool is_poll_message);
 
 	private:
 		virtual void WatchdogTimeoutOccurred() override;
@@ -64,12 +76,23 @@ namespace AqualinkAutomate::Devices
 		void Slot_IAQ_TitleMessage(const Messages::IAQMessage_TitleMessage& msg);
 
 	private:
+		void ProcessMainStatus(const Messages::IAQMessage_MainStatus& msg);
+		void ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg);
+
+	private:
 		Utility::ScreenDataPage m_StatusPage;
 		Utility::ScreenDataPage m_TableInfo;
 
 	private:
 		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage> m_SM_PageUpdate;
 		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage> m_SM_TableUpdate;
+
+	private:
+		OperatingStates m_OpState{ OperatingStates::StartUp };
+		uint8_t m_PendingCommand{ 0x00 };
+
+	private:
+		Types::ProfilingUnitTypePtr m_ProfilingDomain;
 	};
 
 }
