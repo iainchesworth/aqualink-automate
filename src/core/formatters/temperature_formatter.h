@@ -76,7 +76,7 @@ struct std::formatter<AqualinkAutomate::Kernel::Temperature>
 	template<class FmtContext>
 	auto format(const AqualinkAutomate::Kernel::Temperature& temperature, FmtContext& ctx) const -> FmtContext::iterator
 	{
-		double temp_value = 0.0f;
+		double temp_value = 0.0;
 		std::string temp_units = "?";
 
 		switch (display_units)

@@ -28,18 +28,30 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<const std::array<uint8_t, 16>> : std::formatter<std::string>
+struct std::formatter<const std::array<uint8_t, 16>>
 {
-	template<typename Context>
-	auto format(const std::array<uint8_t, 16>& arr, Context& context) const
+	constexpr auto parse(std::format_parse_context& ctx)
 	{
-		std::for_each_n(arr.begin(), 16, [&context](auto& elem)
-			{
-				std::format_to(context.out(), "0x{:02x} ", elem);
-			}
-		);
+		return ctx.begin();
+	}
 
-		return context.out();
+	template<typename Context>
+	auto format(const std::array<uint8_t, 16>& arr, Context& ctx) const
+	{
+		auto out = ctx.out();
+		bool first = true;
+
+		for (const auto& elem : arr)
+		{
+			if (!first)
+			{
+				*out++ = ' ';
+			}
+			first = false;
+			out = std::format_to(out, "0x{:02x}", elem);
+		}
+
+		return out;
 	}
 };
 
@@ -54,18 +66,30 @@ struct std::formatter<std::array<uint8_t, 16>> : std::formatter<const std::array
 };
 
 template<>
-struct std::formatter<const std::span<uint8_t>> : std::formatter<std::string>
+struct std::formatter<const std::span<uint8_t>>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename Context>
 	auto format(const std::span<uint8_t>& span, Context& ctx) const
 	{
-		std::for_each_n(span.begin(), span.size(), [&ctx](auto& elem)
-			{
-				std::format_to(ctx.out(), "0x{:02x} ", elem);
-			}
-		);
+		auto out = ctx.out();
+		bool first = true;
 
-		return ctx.out();
+		for (const auto& elem : span)
+		{
+			if (!first)
+			{
+				*out++ = ' ';
+			}
+			first = false;
+			out = std::format_to(out, "0x{:02x}", elem);
+		}
+
+		return out;
 	}
 };
 
@@ -80,18 +104,30 @@ struct std::formatter<std::span<uint8_t>> : std::formatter<const std::span<uint8
 };
 
 template<>
-struct std::formatter<const std::vector<uint8_t>> : std::formatter<std::string>
+struct std::formatter<const std::vector<uint8_t>>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename Context>
 	auto format(const std::vector<uint8_t>& vec, Context& ctx) const
 	{
-		std::for_each_n(vec.begin(), vec.size(), [&ctx](auto& elem)
-			{
-				std::format_to(ctx.out(), "0x{:02x} ", elem);
-			}
-		);
+		auto out = ctx.out();
+		bool first = true;
 
-		return ctx.out();
+		for (const auto& elem : vec)
+		{
+			if (!first)
+			{
+				*out++ = ' ';
+			}
+			first = false;
+			out = std::format_to(out, "0x{:02x}", elem);
+		}
+
+		return out;
 	}
 };
 

@@ -25,8 +25,6 @@ namespace AqualinkAutomate::Developer
 		Other
 	};
 
-	const char* to_string(AsyncOperationType type);
-
 	struct AsyncOperationInfo
 	{
 		uint64_t id{0};

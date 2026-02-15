@@ -23,11 +23,19 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Units::ppm_quantity> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Units::ppm_quantity>
 {
+	std::formatter<double> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return m_Base.parse(ctx);
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Units::ppm_quantity& value_in_ppm, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{} ppm", std::make_format_args(value_in_ppm.value()));
+		m_Base.format(value_in_ppm.value(), ctx);
+		return std::format_to(ctx.out(), " ppm");
 	}
 };

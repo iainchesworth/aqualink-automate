@@ -1,5 +1,7 @@
 #include <format>
 
+#include <magic_enum/magic_enum.hpp>
+
 #include "developer/async_operation_tracker.h"
 #include "logging/logging.h"
 
@@ -7,23 +9,6 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Developer
 {
-
-	const char* to_string(AsyncOperationType type)
-	{
-		switch (type)
-		{
-		case AsyncOperationType::SerialRead:     return "SerialRead";
-		case AsyncOperationType::SerialWrite:    return "SerialWrite";
-		case AsyncOperationType::TimerWait:      return "TimerWait";
-		case AsyncOperationType::SignalAwait:    return "SignalAwait";
-		case AsyncOperationType::WebSocketRead:  return "WebSocketRead";
-		case AsyncOperationType::WebSocketWrite: return "WebSocketWrite";
-		case AsyncOperationType::HttpAccept:     return "HttpAccept";
-		case AsyncOperationType::MqttPublish:    return "MqttPublish";
-		case AsyncOperationType::Other:          return "Other";
-		default:                                 return "Unknown";
-		}
-	}
 
 	AsyncOperationTracker& AsyncOperationTracker::Instance()
 	{
@@ -52,7 +37,7 @@ namespace AqualinkAutomate::Developer
 			});
 		}
 
-		LogTrace(Channel::Developer, std::format("Async op started: id={} type={} '{}'", id, to_string(type), description));
+		LogTrace(Channel::Developer, std::format("Async op started: id={} type={} '{}'", id, magic_enum::enum_name(type), description));
 
 		return id;
 	}
@@ -144,7 +129,7 @@ namespace AqualinkAutomate::Developer
 			LogInfo(Channel::Developer, std::format(
 				"  [id={}] type={} '{}' | pending for {}ms | from {}",
 				info.id,
-				to_string(info.type),
+				magic_enum::enum_name(info.type),
 				info.description,
 				age_ms,
 				info.creation_location
@@ -164,7 +149,7 @@ namespace AqualinkAutomate::Developer
 			LogInfo(Channel::Developer, std::format(
 				"  [id={}] type={} '{}' | stuck for {}ms | from {}",
 				info.id,
-				to_string(info.type),
+				magic_enum::enum_name(info.type),
 				info.description,
 				age_ms,
 				info.creation_location

@@ -24,13 +24,18 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<boost::beast::string_view> : std::formatter<std::string>
+struct std::formatter<boost::beast::string_view>
 {
+	std::formatter<std::string_view> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return m_Base.parse(ctx);
+	}
+
 	template<typename FormatContext>
 	auto format(const boost::beast::string_view& sv, FormatContext& ctx) const
 	{
-		const std::string_view v{ sv.data(), sv.size() };
-
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(v));
+		return m_Base.format(std::string_view{ sv.data(), sv.size() }, ctx);
 	}
 };

@@ -24,13 +24,18 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Kernel::ORP> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Kernel::ORP>
 {
+	std::formatter<AqualinkAutomate::Units::millivolt_quantity> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return m_Base.parse(ctx);
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Kernel::ORP& orp, FormatContext& ctx) const
 	{
-		const auto v{ orp() };
-
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(v));
+		return m_Base.format(orp(), ctx);
 	}
 };

@@ -156,6 +156,7 @@ target_sources(
 	logging/logging_initialise.cpp
 	logging/logging_severity_filter.cpp
 	logging/logging_severity_levels.cpp
+	mqtt/ha_discovery.cpp
 	mqtt/mqtt_client.cpp
 	mqtt/mqtt_hub.cpp
 	mqtt/mqtt_integration.cpp

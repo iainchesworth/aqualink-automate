@@ -24,21 +24,37 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Units::millivolt_quantity> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Units::millivolt_quantity>
 {
+	std::formatter<double> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return m_Base.parse(ctx);
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Units::millivolt_quantity& value_in_mV, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}mV", std::make_format_args(value_in_mV.value()));
+		m_Base.format(value_in_mV.value(), ctx);
+		return std::format_to(ctx.out(), "mV");
 	}
 };
 
 template<>
-struct std::formatter<AqualinkAutomate::Units::volt_quantity> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Units::volt_quantity>
 {
+	std::formatter<double> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return m_Base.parse(ctx);
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Units::volt_quantity& value_in_V, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}V", std::make_format_args(value_in_V.value()));
+		m_Base.format(value_in_V.value(), ctx);
+		return std::format_to(ctx.out(), "V");
 	}
 };

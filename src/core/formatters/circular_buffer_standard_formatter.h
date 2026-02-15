@@ -24,7 +24,7 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<boost::circular_buffer<uint8_t>> : std::formatter<std::string>
+struct std::formatter<boost::circular_buffer<uint8_t>>
 {
 	enum class Mode
 	{

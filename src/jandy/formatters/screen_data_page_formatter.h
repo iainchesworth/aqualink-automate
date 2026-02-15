@@ -15,43 +15,33 @@ namespace AqualinkAutomate::Formatters
 // AqualinkAutomate::Formatters
 
 template<>
-struct std::formatter<AqualinkAutomate::Utility::ScreenDataPage> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Utility::ScreenDataPage>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Utility::ScreenDataPage& page, FormatContext& ctx) const
 	{
 		using AqualinkAutomate::Utility::ScreenDataPage::HighlightStates::Highlighted;
 
-		// +------------------+
-		// | Equipment Status |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// |                  |
-		// +------------------+
-
 		static const std::string_view HEADER_FOOTER{ "+------------------+\n" };
 		static const std::string_view PAGE_ROW{ "| {:^16} | {}\n" };
-		
-		auto ctx_it = ctx.out();
 
-		std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), ctx_it);
+		auto out = ctx.out();
+
+		out = std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), out);
 
 		for (const auto& row : page.m_Rows)
 		{
 			const auto highlight_arrow = (Highlighted == row.HighlightState) ? "<--" : "";
-			std::vformat_to(ctx_it, PAGE_ROW, std::make_format_args(row.Text, highlight_arrow));
+			out = std::vformat_to(out, PAGE_ROW, std::make_format_args(row.Text, highlight_arrow));
 		}
 
-		std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), ctx_it);
+		out = std::copy(HEADER_FOOTER.begin(), HEADER_FOOTER.end(), out);
 
-		return ctx_it;
+		return out;
 	}
 };

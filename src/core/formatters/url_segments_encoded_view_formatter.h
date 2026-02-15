@@ -25,11 +25,11 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<boost::urls::segments_encoded_view> : std::formatter<std::string>
+struct std::formatter<boost::urls::segments_encoded_view>
 {
-	constexpr auto parse(format_parse_context& ctx) 
-	{ 
-		return ctx.begin(); 
+	constexpr auto parse(format_parse_context& ctx)
+	{
+		return ctx.begin();
 	}
 
 	template<typename FormatContext>
@@ -38,9 +38,8 @@ struct std::formatter<boost::urls::segments_encoded_view> : std::formatter<std::
 		auto out = ctx.out();
 
 		for (const auto& sev_elem : sev)
-		{ 
-			const std::string_view v{ sev_elem.data(), sev_elem.size() };
-			std::vformat_to(out, "/{}", std::make_format_args(v));
+		{
+			out = std::format_to(out, "/{}", std::string_view{ sev_elem.data(), sev_elem.size() });
 		}
 
 		return out;

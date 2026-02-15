@@ -19,7 +19,9 @@ target_sources(
 	devices/epump_device.cpp
 	devices/heater_device.cpp
 	devices/iaq_device.cpp
-	devices/jandy_controller.cpp 
+	devices/iaq/iaq_messageprocessors.cpp
+	devices/iaq/iaq_statusprocessors.cpp
+	devices/jandy_controller.cpp
 	devices/jandy_device.cpp 
 	devices/jandy_device_id.cpp 
 	devices/jandy_device_types.cpp
