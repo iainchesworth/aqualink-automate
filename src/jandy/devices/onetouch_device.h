@@ -24,7 +24,7 @@
 #include "messages/pda/pda_message_shiftlines.h"
 #include "navigation/menu_model.h"
 #include "navigation/navigator.h"
-#include "navigation/scrape_task.h"
+#include "navigation/spider_engine.h"
 #include "kernel/hub_locator.h"
 #include "profiling/profiling.h"
 
@@ -39,7 +39,8 @@ namespace AqualinkAutomate::Devices
 
 		enum class OperatingStates
 		{
-			StartUp,
+			ColdStart,          // Waiting for initial splash screen from controller
+			StartUp,            // Spider engine initialisation
 			Scraping,           // Navigator and tasks are running
 			NormalOperation,
 			ScrapingFaulted,    // Scraping failed unrecoverably, device state unknown
@@ -103,6 +104,21 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page);
 		void PageProcessor_LabelAuxList(const Utility::ScreenDataPage& page);
 		void PageProcessor_LabelAux(const Utility::ScreenDataPage& page);
+		void PageProcessor_MoreOneTouch(const Utility::ScreenDataPage& page);
+		void PageProcessor_SetPoolHeat(const Utility::ScreenDataPage& page);
+		void PageProcessor_SetSpaHeat(const Utility::ScreenDataPage& page);
+		void PageProcessor_Program(const Utility::ScreenDataPage& page);
+		void PageProcessor_DisplayLight(const Utility::ScreenDataPage& page);
+		void PageProcessor_Lockouts(const Utility::ScreenDataPage& page);
+		void PageProcessor_PasswordSettings(const Utility::ScreenDataPage& page);
+		void PageProcessor_ProgramGroup(const Utility::ScreenDataPage& page);
+		void PageProcessor_GeneralLabels(const Utility::ScreenDataPage& page);
+		void PageProcessor_LightLabels(const Utility::ScreenDataPage& page);
+		void PageProcessor_WaterfallLabels(const Utility::ScreenDataPage& page);
+		void PageProcessor_CustomLabel(const Utility::ScreenDataPage& page);
+		void PageProcessor_EnterPassword(const Utility::ScreenDataPage& page);
+		void PageProcessor_HelpKeys(const Utility::ScreenDataPage& page);
+		void PageProcessor_StartUp(const Utility::ScreenDataPage& page);
 
 	private:
 		static const uint32_t HINT_COUNT{ 2 };
@@ -127,22 +143,14 @@ namespace AqualinkAutomate::Devices
 		// Convert Navigator key command to device KeyCommand
 		static KeyCommands ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd);
 
-		// Callbacks for scraping tasks
-		void OnAuxLabelScraped(uint8_t aux_index, const std::string& label);
-		void OnEquipmentStatusScraped(const Utility::ScreenDataPage& status_page);
-		void OnDiagnosticsScraped(
-			const Utility::ScreenDataPage& sensors_page,
-			const Utility::ScreenDataPage& remotes_page,
-			const Utility::ScreenDataPage& errors_page);
-
 	private:
 		// Navigation system
 		Navigation::MenuModel m_MenuModel;
 		std::unique_ptr<Navigation::Navigator> m_Navigator;
-		std::unique_ptr<Navigation::ScrapeTask> m_CurrentTask;
+		std::unique_ptr<Navigation::SpiderEngine> m_SpiderEngine;
 
 	private:
-		OperatingStates m_OpState{ OperatingStates::StartUp };
+		OperatingStates m_OpState{ OperatingStates::ColdStart };
 		uint32_t m_ScrapingStallCounter{ 0 };
 		uint8_t m_HighlightedLine{ 0 };
 

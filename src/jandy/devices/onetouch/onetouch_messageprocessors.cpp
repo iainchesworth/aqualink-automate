@@ -102,9 +102,9 @@ namespace AqualinkAutomate::Devices
 		{
 			m_Navigator->OnStatusMessageReceived();
 		}
-		if (m_CurrentTask)
+		if (m_SpiderEngine)
 		{
-			m_CurrentTask->OnStatusReceived();
+			m_SpiderEngine->OnStatusReceived();
 		}
 
 		// Status messages are the ONLY message type where key commands can be sent.

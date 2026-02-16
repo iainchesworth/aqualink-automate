@@ -1,0 +1,88 @@
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <set>
+
+#include "navigation/menu_model.h"
+#include "navigation/navigator.h"
+#include "utility/screen_data_page.h"
+
+namespace AqualinkAutomate::Navigation
+{
+
+	// Policy interface for controlling which pages the SpiderEngine visits
+	class VisitPolicy
+	{
+	public:
+		virtual ~VisitPolicy() = default;
+
+		// Should this page be visited during the crawl?
+		virtual bool ShouldVisit(PageId page, const MenuPage& info) const = 0;
+
+		// Called when the spider reaches a page and captures its content
+		virtual void OnPageReached(PageId page, const Utility::ScreenDataPage& content) = 0;
+
+		// Called when all target pages have been visited
+		virtual void OnCrawlComplete() = 0;
+	};
+
+	// Policy-driven graph crawler that systematically visits menu pages
+	class SpiderEngine
+	{
+	public:
+		enum class State
+		{
+			Idle,               // Not crawling
+			Syncing,            // Waiting for Navigator to sync
+			NavigatingToNext,   // Navigator is moving to the next target page
+			CapturingPage,      // Arrived at target, capturing page data
+			Complete,           // All desired pages visited
+			Failed              // Unrecoverable error
+		};
+
+		static constexpr uint32_t MAX_NAVIGATION_FAILURES = 3;
+
+	public:
+		SpiderEngine(const MenuModel& model, Navigator& navigator);
+
+		// Start a crawl with the given visit policy
+		void StartCrawl(std::unique_ptr<VisitPolicy> policy);
+
+		// Process one step of the crawl
+		// Returns the next key command to send (or nullopt if waiting/done)
+		std::optional<NavKeyCommand> ProcessStep(
+			const Utility::ScreenDataPage& content,
+			uint8_t highlighted_line);
+
+		// Called when a Status message is received
+		void OnStatusReceived();
+
+		// Get current engine state
+		State GetState() const { return m_State; }
+
+		// Get the set of visited pages
+		const std::set<PageId>& GetVisitedPages() const { return m_Visited; }
+
+		// Get current navigation target
+		PageId GetCurrentTarget() const { return m_CurrentTarget; }
+
+	private:
+		// Choose the next unvisited page to navigate to (nearest by BFS)
+		std::optional<PageId> ChooseNextTarget() const;
+
+		// Begin navigation to the next target
+		void NavigateToNextTarget();
+
+		const MenuModel& m_Model;
+		Navigator& m_Navigator;
+		std::unique_ptr<VisitPolicy> m_Policy;
+		State m_State{ State::Idle };
+		std::set<PageId> m_Visited;
+		PageId m_CurrentTarget{ PageId::Unknown };
+		uint32_t m_NavigationFailures{ 0 };
+	};
+
+}
+// namespace AqualinkAutomate::Navigation

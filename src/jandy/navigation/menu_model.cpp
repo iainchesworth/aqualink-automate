@@ -10,11 +10,50 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Navigation
 {
 
+	// =========================================================================
+	// MenuPage convenience methods
+	// =========================================================================
+
+	std::optional<PageId> MenuPage::BackTarget() const
+	{
+		for (const auto& edge : edges)
+		{
+			if (edge.trigger == EdgeTrigger::Back)
+			{
+				return edge.target;
+			}
+		}
+		return std::nullopt;
+	}
+
+	bool MenuPage::SupportsKey(EdgeTrigger trigger) const
+	{
+		for (const auto& edge : edges)
+		{
+			if (edge.trigger == trigger)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// =========================================================================
+	// MenuModel
+	// =========================================================================
+
 	void MenuModel::RegisterPage(MenuPage page)
 	{
 		LogTrace(Channel::Navigation, std::format("MenuModel: Registering page '{}' (id={})",
 			page.name, static_cast<uint32_t>(page.id)));
 		m_Pages[page.id] = std::move(page);
+	}
+
+	void MenuModel::RegisterGlobalEdge(MenuEdge edge)
+	{
+		LogTrace(Channel::Navigation, std::format("MenuModel: Registering global edge '{}' -> page {}",
+			edge.label, static_cast<uint32_t>(edge.target)));
+		m_GlobalEdges.push_back(std::move(edge));
 	}
 
 	const MenuPage* MenuModel::GetPage(PageId id) const
@@ -43,6 +82,7 @@ namespace AqualinkAutomate::Navigation
 		// All detectors for a page must match for it to be identified
 		PageId best_match = PageId::Unknown;
 		size_t best_detector_count = 0;
+		size_t best_pattern_length = 0;
 
 		for (const auto& [id, page] : m_Pages)
 		{
@@ -70,14 +110,40 @@ namespace AqualinkAutomate::Navigation
 
 			if (all_match)
 			{
-				LogTrace(Channel::Navigation, std::format("MenuModel: Page '{}' matched with {} detectors",
-					page.name, page.detectors.size()));
+				// Check max_content_lines constraint if set
+				if (page.max_content_lines.has_value())
+				{
+					uint8_t non_empty_count = 0;
+					for (size_t i = 0; i < content.Size(); ++i)
+					{
+						if (!content[i].Text.empty())
+						{
+							non_empty_count++;
+						}
+					}
+					if (non_empty_count > page.max_content_lines.value())
+					{
+						continue;  // Reject this page match
+					}
+				}
 
-				// Prefer matches with more detectors (more specific)
-				if (page.detectors.size() > best_detector_count)
+				// Calculate total pattern length for specificity tiebreaking
+				size_t total_pattern_length = 0;
+				for (const auto& d : page.detectors)
+				{
+					total_pattern_length += d.pattern.length();
+				}
+
+				LogTrace(Channel::Navigation, std::format("MenuModel: Page '{}' matched with {} detectors (pattern_len={})",
+					page.name, page.detectors.size(), total_pattern_length));
+
+				// Prefer matches with more detectors, then longer patterns as tiebreaker
+				if (page.detectors.size() > best_detector_count ||
+					(page.detectors.size() == best_detector_count && total_pattern_length > best_pattern_length))
 				{
 					best_match = id;
 					best_detector_count = page.detectors.size();
+					best_pattern_length = total_pattern_length;
 				}
 			}
 		}
@@ -126,14 +192,14 @@ namespace AqualinkAutomate::Navigation
 		return PageId::Unknown;
 	}
 
-	std::vector<NavStep> MenuModel::FindPath(PageId from, PageId to) const
+	std::vector<const MenuEdge*> MenuModel::FindPath(PageId from, PageId to) const
 	{
 		if (from == to)
 		{
 			return {}; // Already at destination
 		}
 
-		// BFS to find shortest path
+		// BFS to find shortest path using edges
 		std::queue<PathNode> queue;
 		std::unordered_map<PageId, bool> visited;
 
@@ -151,64 +217,31 @@ namespace AqualinkAutomate::Navigation
 				continue;
 			}
 
-			// Try going to child pages via menu items (Select)
-			// Only if Select is allowed on this page
-			if (page->allowed_steps.contains(NavStepType::Select))
+			// Iterate all edges from this page, considering only page transitions
+			for (const auto& edge : page->edges)
 			{
-				for (const auto& item : page->items)
+				if (!edge.IsPageTransition())
 				{
-					if (visited.count(item.target))
-					{
-						continue;
-					}
-
-					std::vector<NavStep> new_path = current.path;
-					new_path.push_back({
-						.type = NavStepType::Select,
-						.from_page = current.page_id,
-						.to_page = item.target,
-						.target_line = item.line,
-						.cursor_moves = 0  // Will be calculated by Navigator based on current cursor
-					});
-
-					if (item.target == to)
-					{
-						LogDebug(Channel::Navigation, std::format("MenuModel: Found path from {} to {} with {} steps",
-							static_cast<uint32_t>(from), static_cast<uint32_t>(to), new_path.size()));
-						return new_path;
-					}
-
-					visited[item.target] = true;
-					queue.push({ item.target, std::move(new_path) });
+					continue; // Skip self-loops (LineUp, LineDown, PageUp, PageDown)
 				}
-			}
 
-			// Try going to parent page (Back)
-			// Only if Back is allowed on this page
-			if (page->allowed_steps.contains(NavStepType::Back) && page->parent.has_value())
-			{
-				PageId parent_id = page->parent.value();
-				if (!visited.count(parent_id))
+				if (visited.count(edge.target))
 				{
-					std::vector<NavStep> new_path = current.path;
-					new_path.push_back({
-						.type = NavStepType::Back,
-						.from_page = current.page_id,
-						.to_page = parent_id,
-						.target_line = 0,
-						.cursor_moves = 0
-					});
-
-					if (parent_id == to)
-					{
-						LogDebug(Channel::Navigation, std::format("MenuModel: Found path from {} to {} with {} steps",
-							static_cast<uint32_t>(from), static_cast<uint32_t>(to), new_path.size()));
-						return new_path;
-					}
-
-					visited[parent_id] = true;
-					queue.push({ parent_id, std::move(new_path) });
+					continue;
 				}
+
+				std::vector<const MenuEdge*> new_path = current.path;
+				new_path.push_back(&edge);
+
+				if (edge.target == to)
+				{
+					LogDebug(Channel::Navigation, std::format("MenuModel: Found path from {} to {} with {} steps",
+						static_cast<uint32_t>(from), static_cast<uint32_t>(to), new_path.size()));
+					return new_path;
+				}
+
+				visited[edge.target] = true;
+				queue.push({ edge.target, std::move(new_path) });
 			}
 		}
 
@@ -217,16 +250,23 @@ namespace AqualinkAutomate::Navigation
 		return {}; // No path found
 	}
 
-	std::vector<NavStep> MenuModel::FindPathToItem(PageId from, PageId target_page, uint8_t menu_line) const
+	std::vector<const MenuEdge*> MenuModel::FindPathToItem(PageId from, PageId target_page, uint8_t menu_line) const
 	{
 		// First find path to the target page
-		std::vector<NavStep> path = FindPath(from, target_page);
+		// The Navigator will handle cursor positioning once we arrive at the page.
+		return FindPath(from, target_page);
+	}
 
-		// The path already ends at the target page, but we may need to adjust
-		// the cursor to the specific menu line. The Navigator will handle
-		// cursor positioning once we arrive at the page.
-
-		return path;
+	std::optional<MenuEdge> MenuModel::FindSystemEvent(PageId detected_page) const
+	{
+		for (const auto& edge : m_GlobalEdges)
+		{
+			if (edge.target == detected_page)
+			{
+				return edge;
+			}
+		}
+		return std::nullopt;
 	}
 
 }

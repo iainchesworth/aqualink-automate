@@ -42,7 +42,8 @@ target_sources(
 	navigation/menu_model.cpp
 	navigation/navigator.cpp
 	navigation/onetouch_menu_model.cpp
-	navigation/scrape_tasks.cpp 
+	navigation/spider_engine.cpp
+	navigation/visit_policies.cpp
 	devices/pda/pda_messageprocessors.cpp 	 
 	devices/pda/pda_pageprocessors.cpp 
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 

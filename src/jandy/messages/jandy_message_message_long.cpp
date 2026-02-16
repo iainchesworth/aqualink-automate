@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <format>
 
 #include "messages/jandy_message_ids.h"
@@ -82,9 +83,10 @@ namespace AqualinkAutomate::Messages
 		{
 			m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
 
-			const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
+			const auto payload_length = message_bytes.size() - Index_LineText - 3;
+			const auto length_to_copy = std::min<std::size_t>(payload_length, DISPLAY_LINE_LENGTH);
 			const auto start_index = message_bytes.begin() + Index_LineText;
-			const auto end_index = start_index + length_to_copy;;
+			const auto end_index = start_index + length_to_copy;
 
 			std::transform(start_index, end_index, std::back_inserter(m_Line),
 				[](const auto& elem)

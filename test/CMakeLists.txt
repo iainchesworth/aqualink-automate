@@ -88,6 +88,7 @@ target_sources(
 	unit/utility/test_utility_tonumber.cpp
 	unit/utility/test_utility_valuedebouncer.cpp
 	unit/navigation/test_navigation_menu_model.cpp
+	unit/navigation/test_spider_engine.cpp
 )
 
 target_compile_definitions(

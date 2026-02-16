@@ -7,7 +7,10 @@
 #include "devices/onetouch_device.h"
 #include "formatters/jandy_device_formatters.h"
 #include "navigation/onetouch_menu_model.h"
+#include "navigation/visit_policies.h"
+#include "utility/jandy_pool_configuration_decoder.h"
 #include "utility/screen_data_page_processor.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
@@ -23,6 +26,7 @@ namespace AqualinkAutomate::Devices
 		Capabilities::Emulated(is_emulated),
 		m_MenuModel(Navigation::CreateOneTouchMenuModel()),
 		m_Navigator(std::make_unique<Navigation::Navigator>(m_MenuModel)),
+		m_SpiderEngine(std::make_unique<Navigation::SpiderEngine>(m_MenuModel, *m_Navigator)),
 		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("OneTouchDevice")))
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::OneTouchDevice", std::source_location::current());
@@ -36,7 +40,7 @@ namespace AqualinkAutomate::Devices
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_System, { 9, "Equipment ON/OFF" }, std::bind(&OneTouchDevice::PageProcessor_System, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Service, { 3, "Service Mode" }, std::bind(&OneTouchDevice::PageProcessor_Service, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_TimeOut, { 3, "Timeout Mode" }, std::bind(&OneTouchDevice::PageProcessor_TimeOut, this, std::placeholders::_1)),
-				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_OneTouch, { 11, "SYSTEM" }, std::bind(&OneTouchDevice::PageProcessor_OneTouch, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_OneTouch, { 11, "System" }, std::bind(&OneTouchDevice::PageProcessor_OneTouch, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 11, "More" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentOnOff, { 0, "Filter Pump" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentOnOff, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EquipmentStatus, { 0, "EQUIPMENT STATUS" }, std::bind(&OneTouchDevice::PageProcessor_EquipmentStatus, this, std::placeholders::_1)),
@@ -54,7 +58,22 @@ namespace AqualinkAutomate::Devices
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_DiagnosticsRemotes, { 0, "Remotes" }, std::bind(&OneTouchDevice::PageProcessor_DiagnosticsRemotes, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_DiagnosticsErrors, { 0, "Errors" }, std::bind(&OneTouchDevice::PageProcessor_DiagnosticsErrors, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LabelAuxList, { 0, "Label Aux" }, std::bind(&OneTouchDevice::PageProcessor_LabelAuxList, this, std::placeholders::_1)),
-				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LabelAux, { 2, "Current Label" }, std::bind(&OneTouchDevice::PageProcessor_LabelAux, this, std::placeholders::_1))
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LabelAux, { 2, "Current Label" }, std::bind(&OneTouchDevice::PageProcessor_LabelAux, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetPoolHeat, { 0, "Pool Heat" }, std::bind(&OneTouchDevice::PageProcessor_SetPoolHeat, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetSpaHeat, { 0, "Spa Heat" }, std::bind(&OneTouchDevice::PageProcessor_SetSpaHeat, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_MoreOneTouch, { 10, "OneTouch ON/OFF" }, std::bind(&OneTouchDevice::PageProcessor_MoreOneTouch, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Program, { 0, "Program" }, std::bind(&OneTouchDevice::PageProcessor_Program, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_DisplayLight, { 0, "Display Light" }, std::bind(&OneTouchDevice::PageProcessor_DisplayLight, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Lockouts, { 0, "Lockout" }, std::bind(&OneTouchDevice::PageProcessor_Lockouts, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_PasswordSettings, { 0, "Password" }, std::bind(&OneTouchDevice::PageProcessor_PasswordSettings, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_ProgramGroup, { 0, "Program Group" }, std::bind(&OneTouchDevice::PageProcessor_ProgramGroup, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_GeneralLabels, { 0, "General" }, std::bind(&OneTouchDevice::PageProcessor_GeneralLabels, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LightLabels, { 0, "Light" }, std::bind(&OneTouchDevice::PageProcessor_LightLabels, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_WaterfallLabels, { 0, "Wtrfall" }, std::bind(&OneTouchDevice::PageProcessor_WaterfallLabels, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_CustomLabel, { 0, "Custom" }, std::bind(&OneTouchDevice::PageProcessor_CustomLabel, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_EnterPassword, { 0, "Enter Password" }, std::bind(&OneTouchDevice::PageProcessor_EnterPassword, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_HelpKeys, { 0, "Key Help" }, std::bind(&OneTouchDevice::PageProcessor_HelpKeys, this, std::placeholders::_1)),
+			Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_StartUp, { 5, "-" }, std::bind(&OneTouchDevice::PageProcessor_StartUp, this, std::placeholders::_1))
 			}
 		);
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): Registered {} page processors for OneTouchDevice", DeviceId(), PageProcessors().size()));
@@ -109,7 +128,7 @@ namespace AqualinkAutomate::Devices
 		// Non-emulated devices should not run the scraping state machine; they
 		// passively observe screens driven by the physical device.  Skip straight
 		// to NormalOperation on the first update.
-		if (!IsEmulated() && m_OpState == OperatingStates::StartUp)
+		if (!IsEmulated() && (m_OpState == OperatingStates::ColdStart || m_OpState == OperatingStates::StartUp))
 		{
 			LogInfo(Channel::Devices, std::format("OneTouch ({}): Non-emulated device detected - skipping scraping, entering NormalOperation", DeviceId()));
 			m_OpState = OperatingStates::NormalOperation;
@@ -118,6 +137,27 @@ namespace AqualinkAutomate::Devices
 
 		switch (m_OpState)
 		{
+		case OperatingStates::ColdStart:
+		{
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> cold_start", std::source_location::current());
+			auto detected = m_MenuModel.DetectPage(DisplayedPage());
+			if (detected == Navigation::PageId::StartUp)
+			{
+				// Splash is still showing - stay in ColdStart and wait.
+				// Page processor has already extracted model/type/revision.
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Cold start splash active - waiting for controller to transition", DeviceId()));
+			}
+			else if (detected != Navigation::PageId::Unknown)
+			{
+				// Controller has moved past splash to a real page - start spider
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Controller ready - proceeding to StartUp", DeviceId()));
+				m_OpState = OperatingStates::StartUp;
+				Scraping_ProcessStep_StartUp();
+			}
+			// else: Unknown page - stay in ColdStart, waiting for recognisable screen
+			break;
+		}
+
 		case OperatingStates::StartUp:
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> start_up", std::source_location::current());
@@ -194,10 +234,10 @@ namespace AqualinkAutomate::Devices
 			m_ScrapingStallCounter = 0;
 			Status(Devices::DeviceStatus_Normal{});
 		}
-		else if (m_OpState == OperatingStates::StartUp)
+		else if (m_OpState == OperatingStates::StartUp || m_OpState == OperatingStates::ColdStart)
 		{
 			// Never received a recognisable page during start-up.
-			LogWarning(Channel::Devices, std::format("OneTouch({}) : No valid page received during StartUp -> entering FaultHasOccurred", DeviceId()));
+			LogWarning(Channel::Devices, std::format("OneTouch({}) : No valid page received during startup -> entering FaultHasOccurred", DeviceId()));
 			m_OpState = OperatingStates::FaultHasOccurred;
 			Status(Devices::DeviceStatus_FaultOccurred{});
 		}
@@ -226,28 +266,6 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
-	void OneTouchDevice::OnAuxLabelScraped(uint8_t aux_index, const std::string& label)
-	{
-		LogInfo(Channel::Scraping, std::format("OneTouch ({}): AUX {} label scraped: '{}'",
-			DeviceId(), aux_index + 1, label));
-		// TODO: Store the label in equipment configuration
-	}
-
-	void OneTouchDevice::OnEquipmentStatusScraped(const Utility::ScreenDataPage& status_page)
-	{
-		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Equipment status scraped", DeviceId()));
-		// TODO: Process equipment status
-	}
-
-	void OneTouchDevice::OnDiagnosticsScraped(
-		const Utility::ScreenDataPage& sensors_page,
-		const Utility::ScreenDataPage& remotes_page,
-		const Utility::ScreenDataPage& errors_page)
-	{
-		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Diagnostics scraped (sensors, remotes, errors)", DeviceId()));
-		// TODO: Process diagnostics data
-	}
-
 	void OneTouchDevice::Scraping_ProcessStep_StartUp()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Scraping_ProcessStep_StartUp", std::source_location::current());
@@ -256,96 +274,61 @@ namespace AqualinkAutomate::Devices
 
 		Status(Devices::DeviceStatus_Initializing{});
 
-		// Wait for a recognizable starting page
-		auto page_type = DisplayedPageType();
-
-		if (page_type == Utility::ScreenDataPageTypes::Page_OneTouch ||
-			page_type == Utility::ScreenDataPageTypes::Page_System)
+		// Start the SpiderEngine crawl if not already active
+		if (m_SpiderEngine->GetState() == Navigation::SpiderEngine::State::Idle)
 		{
-			LogInfo(Channel::Devices, std::format("OneTouch ({}): Detected starting page {} - beginning scrape sequence",
-				DeviceId(), magic_enum::enum_name(page_type)));
-
-			// Set the Navigator's current page based on the detected page type
-			auto page_id = m_MenuModel.FindPageIdByType(page_type);
-			if (page_id != Navigation::PageId::Unknown)
-			{
-				m_Navigator->SetCurrentPage(page_id);
-				LogDebug(Channel::Scraping, std::format("OneTouch ({}): Set navigator current page to {}",
-					DeviceId(), static_cast<uint32_t>(page_id)));
-			}
-
-			// Create the startup scrape task
-			m_CurrentTask = std::make_unique<Navigation::StartupScrapeTask>(
-				std::bind(&OneTouchDevice::OnAuxLabelScraped, this, std::placeholders::_1, std::placeholders::_2),
-				std::bind(&OneTouchDevice::OnEquipmentStatusScraped, this, std::placeholders::_1),
-				std::bind(&OneTouchDevice::OnDiagnosticsScraped, this,
-					std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+			// Use FullDiscoveryVisitPolicy for startup - visits all navigable pages
+			auto policy = std::make_unique<Navigation::FullDiscoveryVisitPolicy>(
+				[this](Navigation::PageId page, const Utility::ScreenDataPage& content)
+				{
+					LogDebug(Channel::Scraping, std::format("OneTouch ({}): SpiderEngine visited page {}",
+						DeviceId(), static_cast<uint32_t>(page)));
+				},
+				[this]()
+				{
+					LogInfo(Channel::Scraping, std::format("OneTouch ({}): SpiderEngine startup crawl complete", DeviceId()));
+				}
 			);
-
-			m_OpState = OperatingStates::Scraping;
-			m_ScrapingStallCounter = 0;
-
-			// Process the first step immediately
-			Scraping_ProcessStep();
+			m_SpiderEngine->StartCrawl(std::move(policy));
 		}
-		else
-		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StartUp waiting for valid page: current_page={}",
-				DeviceId(), magic_enum::enum_name(page_type)));
-		}
+
+		// Transition to Scraping state - the SpiderEngine handles sync internally
+		m_OpState = OperatingStates::Scraping;
+		m_ScrapingStallCounter = 0;
+
+		// Process the first step immediately
+		Scraping_ProcessStep();
 	}
 
 	void OneTouchDevice::Scraping_ProcessStep()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Scraping_ProcessStep", std::source_location::current());
 
-		if (!m_CurrentTask || !m_Navigator)
+		if (!m_SpiderEngine || !m_Navigator)
 		{
-			LogWarning(Channel::Scraping, std::format("OneTouch ({}): No active task or navigator", DeviceId()));
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): No active spider engine or navigator", DeviceId()));
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
 			return;
 		}
 
-		// Keep the Navigator's current page synchronized with page processor detection
-		auto page_type = DisplayedPageType();
-		if (page_type != Utility::ScreenDataPageTypes::Page_Unknown)
-		{
-			auto page_id = m_MenuModel.FindPageIdByType(page_type);
-			if (page_id != Navigation::PageId::Unknown)
-			{
-				m_Navigator->SetCurrentPage(page_id);
-			}
-		}
+		// Delegate to SpiderEngine
+		auto nav_cmd = m_SpiderEngine->ProcessStep(DisplayedPage(), m_HighlightedLine);
 
-		// Execute the current task
-		auto nav_cmd = m_CurrentTask->Execute(*m_Navigator, DisplayedPage(), m_HighlightedLine);
-
-		// Check task state
-		if (m_CurrentTask->GetState() == Navigation::ScrapeTask::State::Completed)
+		// Check engine state
+		if (m_SpiderEngine->GetState() == Navigation::SpiderEngine::State::Complete)
 		{
-			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete - entering NormalOperation", DeviceId()));
-			m_CurrentTask.reset();
+			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete ({} pages visited) - entering NormalOperation",
+				DeviceId(), m_SpiderEngine->GetVisitedPages().size()));
 			m_Navigator->Reset();
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
 			return;
 		}
 
-		if (m_CurrentTask->GetState() == Navigation::ScrapeTask::State::Failed)
+		if (m_SpiderEngine->GetState() == Navigation::SpiderEngine::State::Failed)
 		{
-			LogError(Channel::Scraping, std::format("OneTouch ({}): Startup scrape failed - entering ScrapingFaulted", DeviceId()));
-			m_CurrentTask.reset();
-			m_OpState = OperatingStates::ScrapingFaulted;
-			Status(Devices::DeviceStatus_FaultOccurred{});
-			return;
-		}
-
-		// Check navigator state
-		if (m_Navigator->GetState() == Navigation::Navigator::State::Failed)
-		{
-			LogError(Channel::Scraping, std::format("OneTouch ({}): Navigator failed - entering ScrapingFaulted", DeviceId()));
-			m_CurrentTask.reset();
+			LogError(Channel::Scraping, std::format("OneTouch ({}): SpiderEngine failed - entering ScrapingFaulted", DeviceId()));
 			m_OpState = OperatingStates::ScrapingFaulted;
 			Status(Devices::DeviceStatus_FaultOccurred{});
 			return;
@@ -361,15 +344,29 @@ namespace AqualinkAutomate::Devices
 		}
 		else
 		{
-			// No command - we're waiting
-			m_ScrapingStallCounter++;
+			// No command - check if we're on a transient page (no edges = controller auto-transitions)
+			auto detected = m_MenuModel.DetectPage(DisplayedPage());
+			const auto* page_info = (detected != Navigation::PageId::Unknown)
+				? m_MenuModel.GetPage(detected) : nullptr;
 
-			if (m_ScrapingStallCounter >= ONETOUCH_SCRAPING_STALL_LIMIT)
+			if (page_info && page_info->edges.empty())
 			{
-				LogWarning(Channel::Scraping, std::format("OneTouch ({}): Scraping stalled for {} iterations",
-					DeviceId(), m_ScrapingStallCounter));
-				// Reset stall counter and let the task/navigator handle recovery
+				// On a transient page - don't count as stall, controller will auto-transition
+				LogDebug(Channel::Scraping, std::format("OneTouch ({}): On transient page '{}' - waiting for controller to transition",
+					DeviceId(), page_info->name));
 				m_ScrapingStallCounter = 0;
+			}
+			else
+			{
+				m_ScrapingStallCounter++;
+
+				if (m_ScrapingStallCounter >= ONETOUCH_SCRAPING_STALL_LIMIT)
+				{
+					LogWarning(Channel::Scraping, std::format("OneTouch ({}): Scraping stalled for {} iterations",
+						DeviceId(), m_ScrapingStallCounter));
+					// Reset stall counter and let the spider engine handle recovery
+					m_ScrapingStallCounter = 0;
+				}
 			}
 		}
 	}
@@ -377,6 +374,27 @@ namespace AqualinkAutomate::Devices
 	void OneTouchDevice::PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page)
 	{
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpSubmenu invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_StartUp(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_StartUp", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing cold start splash screen", DeviceId()));
+
+		const auto model_number = Utility::TrimWhitespace(page[4].Text);
+		const auto panel_type = Utility::TrimWhitespace(page[5].Text);
+		const auto fw_revision = Utility::TrimWhitespace(page[7].Text);
+
+		Utility::PoolConfigurationDecoder pool_config_decoder(panel_type);
+
+		JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
+		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
+		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
+		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
+
+		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
 	}
 
 }

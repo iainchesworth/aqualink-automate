@@ -30,6 +30,7 @@ namespace AqualinkAutomate::Navigation
 		enum class State
 		{
 			Idle,               // No active navigation
+			Syncing,            // Determining current page via consecutive detections
 			Navigating,         // Executing path steps
 			WaitingForPage,     // Sent command, waiting for page update
 			MovingCursor,       // Moving cursor to target line
@@ -43,12 +44,17 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_BACK_PRESSES = 10;
 		static constexpr uint32_t MAX_RECOMPUTE_COUNT = 50;      // Prevent infinite recompute loops
 		static constexpr uint32_t MAX_WAIT_CYCLES = 100;         // Timeout after this many page updates with no progress
+		static constexpr uint32_t MAX_CURSOR_MOVES = 15;         // Max cursor moves before declaring wrap
+		static constexpr uint32_t SYNC_REQUIRED_CONSISTENT_COUNT = 3; // Consecutive consistent detections needed for sync
 
 	public:
 		explicit Navigator(const MenuModel& model);
 
 		// Set password for menu navigation (4-digit numeric)
 		void SetPassword(const std::string& password) { m_Password = password; }
+
+		// Begin startup synchronization: detect current page via repeated detection
+		void StartSync();
 
 		// Start navigation to a specific page
 		void NavigateTo(PageId target);
@@ -77,8 +83,8 @@ namespace AqualinkAutomate::Navigation
 		// Get the current cursor/highlight line
 		uint8_t GetCursorLine() const { return m_CursorLine; }
 
-		// Set the current page (used when page is detected externally)
-		void SetCurrentPage(PageId page) { m_CurrentPage = page; }
+		// Check if sync is complete (navigator knows its position)
+		bool IsSynced() const { return m_CurrentPage != PageId::Unknown; }
 
 		// Check if navigation is complete (success or failure)
 		bool IsComplete() const;
@@ -90,6 +96,10 @@ namespace AqualinkAutomate::Navigation
 		void Reset();
 
 	private:
+		// Handle the Syncing state: detect page with consistency requirement
+		std::optional<NavKeyCommand> HandleSyncing(
+			const Utility::ScreenDataPage& content);
+
 		// Compute navigation path from current to target
 		void ComputePath();
 
@@ -114,6 +124,9 @@ namespace AqualinkAutomate::Navigation
 		// Find the line that is currently highlighted
 		std::optional<uint8_t> FindHighlightedLine(const Utility::ScreenDataPage& content) const;
 
+		// Content-based line resolution: find the screen line whose text starts with the given label
+		std::optional<uint8_t> FindLineByLabel(const std::string& label) const;
+
 		// Handle password entry page
 		std::optional<NavKeyCommand> HandlePasswordEntry();
 
@@ -132,7 +145,7 @@ namespace AqualinkAutomate::Navigation
 		uint8_t m_CursorLine{ 0 };
 		uint8_t m_TargetCursorLine{ 0 };
 
-		std::vector<NavStep> m_Path;
+		std::vector<const MenuEdge*> m_Path;
 		size_t m_PathIndex{ 0 };
 
 		// Status message tracking
@@ -152,6 +165,11 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_CURSOR_STUCK_COUNT{ 5 };
 		bool m_SkipCursorCheck{ false };  // Skip cursor check after accepting stuck position
 
+		// Content-based cursor targeting
+		const Utility::ScreenDataPage* m_pCurrentContent{ nullptr };  // Screen content during OnPageUpdate
+		const MenuEdge* m_CurrentEdge{ nullptr };                      // Edge being navigated (for recovery)
+		uint32_t m_CursorMoveCount{ 0 };                               // Wrap detection counter
+
 		// Password entry support
 		std::string m_Password;           // 4-digit password for protected menus
 		uint8_t m_PasswordDigitIndex{ 0 };  // Current digit being entered
@@ -161,6 +179,10 @@ namespace AqualinkAutomate::Navigation
 
 		// Recompute tracking (to prevent infinite loops)
 		uint32_t m_RecomputeCount{ 0 };
+
+		// Sync state tracking
+		PageId m_SyncDetectedPage{ PageId::Unknown };
+		uint32_t m_SyncConsistentCount{ 0 };
 	};
 
 }

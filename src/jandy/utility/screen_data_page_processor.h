@@ -32,8 +32,23 @@ namespace AqualinkAutomate::Utility
 		Page_DiagnosticsSensors,
 		Page_DiagnosticsRemotes,
 		Page_DiagnosticsErrors,
+		Page_DiagnosticsIAQStatus,
+		Page_DiagnosticsIAQRSSI,
 		Page_LabelAuxList,
 		Page_LabelAux,
+		Page_MoreOneTouch,
+		Page_Program,
+		Page_DisplayLight,
+		Page_Lockouts,
+		Page_PasswordSettings,
+		Page_ProgramGroup,
+		Page_GeneralLabels,
+		Page_LightLabels,
+		Page_WaterfallLabels,
+		Page_CustomLabel,
+		Page_EnterPassword,
+		Page_HelpKeys,
+		Page_StartUp,
 		Page_Unknown
 	};
 

@@ -534,5 +534,75 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	void OneTouchDevice::PageProcessor_MoreOneTouch(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_MoreOneTouch invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_SetPoolHeat(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_SetPoolHeat invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_SetSpaHeat(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_SetSpaHeat invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_Program(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_Program invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_DisplayLight(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_DisplayLight invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_Lockouts(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_Lockouts invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_PasswordSettings(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_PasswordSettings invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_ProgramGroup(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_ProgramGroup invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_GeneralLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_GeneralLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_LightLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_LightLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_WaterfallLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_WaterfallLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_CustomLabel(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_CustomLabel invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_EnterPassword(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_EnterPassword invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_HelpKeys(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpKeys invoked", DeviceId()));
+	}
+
 }
 // namespace AqualinkAutomate::Devices

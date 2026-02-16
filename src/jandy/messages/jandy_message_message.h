@@ -13,7 +13,8 @@ namespace AqualinkAutomate::Messages
 
 	class JandyMessage_Message : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Message>
 	{
-		static const uint8_t MAXIMUM_MESSAGE_LENGTH = 16 + 1; // 16 characters and a NUL terminator character.
+		static const uint8_t DISPLAY_LINE_LENGTH = 16;        // Visible characters per display line.
+	static const uint8_t MAXIMUM_MESSAGE_LENGTH = DISPLAY_LINE_LENGTH + 1; // Plus a NUL terminator character.
 
 		static const uint8_t Index_LineText = 4;
 
