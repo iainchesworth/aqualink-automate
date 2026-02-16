@@ -154,7 +154,10 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_JandyDefaults)
 
 	const auto& s = jandy.value().get();
 	BOOST_CHECK(!s.disable_emulation);
-	BOOST_CHECK(s.emulated_devices.empty());
+	BOOST_REQUIRE_EQUAL(s.emulated_devices.size(), 3u);
+	BOOST_CHECK(s.emulated_devices[0].first == Devices::JandyEmulatedDeviceTypes::OneTouch);
+	BOOST_CHECK(s.emulated_devices[1].first == Devices::JandyEmulatedDeviceTypes::IAQ);
+	BOOST_CHECK(s.emulated_devices[2].first == Devices::JandyEmulatedDeviceTypes::SerialAdapter);
 }
 
 //=============================================================================

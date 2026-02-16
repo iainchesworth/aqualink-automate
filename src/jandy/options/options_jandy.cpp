@@ -167,7 +167,21 @@ namespace AqualinkAutomate::Jandy::Options
 
 		if (!OPTION_EMULATEDDEVICETYPE->IsPresent(vm))
 		{
-			// No emulated device types specified....ignore.
+			// No explicit device types specified — use default set.
+			// OneTouch for menu scraping, IAQ for status data, SerialAdapter for commands.
+			static const std::vector<JandyEmulatedDeviceTypes> DEFAULT_DEVICE_TYPES
+			{
+				JandyEmulatedDeviceTypes::OneTouch,
+				JandyEmulatedDeviceTypes::IAQ,
+				JandyEmulatedDeviceTypes::SerialAdapter
+			};
+
+			for (auto type : DEFAULT_DEVICE_TYPES)
+			{
+				settings.emulated_devices.emplace_back(type, DefaultDeviceId(type));
+			}
+
+			LogInfo(Channel::Options, "No emulated device types specified; using defaults: OneTouch, IAQ, SerialAdapter");
 		}
 		else
 		{
