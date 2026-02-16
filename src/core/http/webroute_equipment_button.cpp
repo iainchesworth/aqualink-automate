@@ -12,6 +12,7 @@
 #include "http/server/responses/response_405.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
+#include "interfaces/icommanddispatcher.h"
 #include "logging/logging.h"
 #include "profiling/factories/profiling_unit_factory.h"
 
@@ -23,6 +24,7 @@ namespace AqualinkAutomate::HTTP
 	WebRoute_Equipment_Button::WebRoute_Equipment_Button(Kernel::HubLocator& hub_locator)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+		m_CommandDispatcher = hub_locator.TryFind<Interfaces::ICommandDispatcher>();
 	}
 
 	HTTP::Message WebRoute_Equipment_Button::OnRequest(const HTTP::Request& req)
@@ -117,19 +119,64 @@ namespace AqualinkAutomate::HTTP
 				}
 				else
 				{
-					// Device triggering is not yet implemented; return 501 until
-					// a command-dispatch mechanism is available to send key
-					// sequences to the protocol thread.
-					LogInfo(Channel::Web, std::format("Received button trigger request for '{}' but device triggering is not yet implemented", button_id.value()));
+					if (!m_CommandDispatcher)
+					{
+						return Report_SystemIsInactive(req);
+					}
 
-					HTTP::Response resp{ HTTP::Status::not_implemented, req.version() };
-					resp.set(boost::beast::http::field::server, ServerFields::Server());
-					resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
-					resp.keep_alive(req.keep_alive());
-					resp.body() = "Device triggering is not yet implemented";
-					resp.prepare_payload();
+					auto parsed_uuid = boost::uuids::string_generator()(button_id.value());
+					auto result = m_CommandDispatcher->ToggleByUuid(parsed_uuid);
 
-					return resp;
+					switch (result)
+					{
+					case Interfaces::ICommandDispatcher::CommandResult::Success:
+					{
+						nlohmann::json button;
+						button["id"] = button_id.value();
+
+						if (button_device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
+						{
+							button["label"] = *(button_device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
+						}
+
+						if (button_device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::StatusTrait{}))
+						{
+							button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(button_device);
+						}
+
+						button["command"] = "toggled";
+
+						HTTP::Response resp{ HTTP::Status::ok, req.version() };
+						resp.set(boost::beast::http::field::server, ServerFields::Server());
+						resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
+						resp.keep_alive(req.keep_alive());
+						resp.body() = button.dump();
+						resp.prepare_payload();
+						return resp;
+					}
+
+					case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
+						return Report_SystemIsInactive(req);
+
+					case Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound:
+						return Report_ButtonDoesntExist(req, button_id.value());
+
+					case Interfaces::ICommandDispatcher::CommandResult::UnknownEquipmentType:
+					{
+						LogWarning(Channel::Web, std::format("Cannot toggle device '{}': unknown equipment type", button_id.value()));
+
+						HTTP::Response resp{ HTTP::Status::unprocessable_entity, req.version() };
+						resp.set(boost::beast::http::field::server, ServerFields::Server());
+						resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+						resp.keep_alive(req.keep_alive());
+						resp.body() = "Device type cannot be mapped to a control command";
+						resp.prepare_payload();
+						return resp;
+					}
+					}
+
+					// Fallback (should not be reached).
+					return Report_SystemIsInactive(req);
 				}
 			}
 			catch (const std::runtime_error& ex_re)

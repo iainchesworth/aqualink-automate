@@ -8,7 +8,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-    tl::expected<std::string, bool> ParseQueryString(const Request& req, const std::string& query_parameter)
+    std::expected<std::string, bool> ParseQueryString(const Request& req, const std::string& query_parameter)
     {
         if (auto url = boost::urls::parse_origin_form(req.target()); url.has_error())
         {
@@ -23,7 +23,7 @@ namespace AqualinkAutomate::HTTP
             return (*pv.find(query_parameter, boost::urls::ignore_case)).value;
         }
 
-        return tl::unexpected(false);
+        return std::unexpected(false);
     }
 
 }

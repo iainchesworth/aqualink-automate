@@ -5,9 +5,9 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include "utility/string_manipulation.h"
-#include "utility/string_conversion/temperature_string_converter.h"
 #include "logging/logging.h"
+#include "utility/string_conversion/temperature_string_converter.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -37,21 +37,21 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	tl::expected<Kernel::Temperature, boost::system::error_code> TemperatureStringConverter::operator()() const noexcept
+	std::expected<Kernel::Temperature, boost::system::error_code> TemperatureStringConverter::operator()() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_Temperature;
 	}
 
-	tl::expected<std::string, boost::system::error_code> TemperatureStringConverter::TemperatureArea() const noexcept
+	std::expected<std::string, boost::system::error_code> TemperatureStringConverter::TemperatureArea() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_TemperatureArea;

@@ -1,10 +1,9 @@
 #pragma once
 
+#include <expected>
 #include <format>
 #include <iostream>
 #include <string>
-
-#include <tl/expected.hpp>
 
 #include "core/formatters/temperature_formatter.h"
 #include "utility/string_conversion/temperature_string_converter.h"
@@ -42,7 +41,7 @@ struct std::formatter<AqualinkAutomate::Utility::TemperatureStringConverter> : s
 		{
 			return std::formatter<AqualinkAutomate::Kernel::Temperature>::format(temperature().value(), ctx);
 		}
-		catch (const tl::bad_expected_access<boost::system::error_code>& ex_bea)
+		catch (const std::bad_expected_access<boost::system::error_code>& ex_bea)
 		{
 			return std::ranges::copy(std::string_view{ "??" }, ctx.out()).out;
 		}

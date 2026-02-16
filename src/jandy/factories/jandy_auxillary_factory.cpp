@@ -5,13 +5,13 @@
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "errors/jandy_errors_auxillary_factory.h"
 #include "factories/jandy_auxillary_factory.h"
-#include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 #include "utility/overloaded_variant_visitor.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -26,13 +26,13 @@ namespace AqualinkAutomate::Factory
 		return instance;
 	}
 
-	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id)
+	std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id)
 	{
 		DeviceData data{ AuxillaryDevice_Data{ std::nullopt, aux_id, std::nullopt } };
 		return CreateDevice_Impl(data);
 	}
 
-	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status)
+	std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status)
 	{
 		Kernel::AuxillaryStatuses aux_status = Kernel::AuxillaryStatuses::Unknown;
 
@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Factory
 		return CreateDevice_Impl(data);
 	}
 
-	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state)
+	std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state)
 	{
 		auto ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_UnknownFactoryError);
 
@@ -122,7 +122,7 @@ namespace AqualinkAutomate::Factory
 			ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_UnknownDeviceLabel);
 		}
 
-		return tl::unexpected(ec);
+		return std::unexpected(ec);
 	}
 
 	bool JandyAuxillaryFactory::IsAuxillaryDevice(const std::string& label) const
@@ -186,11 +186,11 @@ namespace AqualinkAutomate::Factory
 		return false;
 	}
 
-	tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::CreateDevice_Impl(DeviceData& device_data)
+	std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> JandyAuxillaryFactory::CreateDevice_Impl(DeviceData& device_data)
 	{
 		if (auto aux_ptr = std::make_shared<Kernel::AuxillaryDevice>(); nullptr == aux_ptr)
 		{
-			return tl::unexpected(make_error_code(ErrorCodes::Factory_ErrorCodes::Error_FailedToCreateAuxillaryPtr));
+			return std::unexpected(make_error_code(ErrorCodes::Factory_ErrorCodes::Error_FailedToCreateAuxillaryPtr));
 		}
 		else
 		{

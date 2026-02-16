@@ -92,5 +92,18 @@ namespace AqualinkAutomate::Kernel
 		return added_device_successfully;
 	}
 
+	Interfaces::IDevice* EquipmentHub::FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const
+	{
+		for (const auto& device : m_ActiveDevices)
+		{
+			if (predicate(*device))
+			{
+				return device.get();
+			}
+		}
+
+		return nullptr;
+	}
+
 }
 // namespace AqualinkAutomate::Equipment

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <any>
+#include <expected>
 #include <format>
 #include <optional>
 #include <unordered_map>
 
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
 #include "exceptions/exception_traits_doesnotexist.h"
 #include "exceptions/exception_traits_failedtoset.h"
@@ -140,7 +140,7 @@ namespace AqualinkAutomate::Kernel
 
     public:
         template<typename TRAIT_TYPE>
-        tl::expected<std::reference_wrapper<Traits>, boost::system::error_code> TrySet(const TRAIT_TYPE& trait_type, TRAIT_TYPE::TraitValue trait_value)
+        std::expected<std::reference_wrapper<Traits>, boost::system::error_code> TrySet(const TRAIT_TYPE& trait_type, TRAIT_TYPE::TraitValue trait_value)
         {
             if (!m_Traits.contains(trait_type.Name()))
             {
@@ -149,7 +149,7 @@ namespace AqualinkAutomate::Kernel
                 if (!was_inserted)
                 {
                     /// FAILED -> Could not add the trait for some unspecified reason.
-                    return tl::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
+                    return std::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
                 }
             }
             else if (trait_type.IsMutable())
@@ -160,7 +160,7 @@ namespace AqualinkAutomate::Kernel
             else
             {
                 // NOT PERMITTED -> immutable trait (which exists) so the value is fixed.
-                return tl::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
+                return std::unexpected(boost::system::errc::make_error_code(boost::system::errc::operation_not_permitted));
             }
 
             return *this;

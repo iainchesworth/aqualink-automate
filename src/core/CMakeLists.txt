@@ -88,6 +88,7 @@ target_sources(
 	http/server/routing/node.cpp 
 	http/server/routing/routing.cpp
 	http/server/routing/segment_template.cpp 		
+	interfaces/icommanddispatcher.cpp
 	interfaces/idevice.cpp
 	interfaces/ideviceidentifier.cpp 
 	interfaces/iequipment.cpp		 

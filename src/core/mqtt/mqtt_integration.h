@@ -7,6 +7,7 @@
 
 #include <boost/signals2.hpp>
 
+#include "interfaces/icommanddispatcher.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
@@ -79,6 +80,7 @@ namespace AqualinkAutomate::Mqtt
 		//---------------------------------------------------------------------
 
 		void RegisterDefaultCommands();
+		void RegisterDeviceCommand();
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;
@@ -93,6 +95,7 @@ namespace AqualinkAutomate::Mqtt
 		std::weak_ptr<Kernel::DataHub> m_DataHub;
 		std::weak_ptr<Kernel::EquipmentHub> m_EquipmentHub;
 		std::weak_ptr<Kernel::StatisticsHub> m_StatisticsHub;
+		std::weak_ptr<Interfaces::ICommandDispatcher> m_CommandDispatcher;
 	};
 
 	/// Factory function to create MqttIntegration from settings.

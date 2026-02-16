@@ -1,16 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
-#include "kernel/auxillary_devices/auxillary_status.h"
 #include "errors/string_conversion_errors.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 
 using namespace AqualinkAutomate::Kernel;
 
@@ -37,8 +37,8 @@ namespace AqualinkAutomate::Utility
 		AuxillaryStateStringConverter& operator=(const std::string& auxillary_status_string) noexcept;
 
 	public:
-		tl::expected<std::string, boost::system::error_code> Label() const noexcept;
-		tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> State() const noexcept;
+		std::expected<std::string, boost::system::error_code> Label() const noexcept;
+		std::expected<Kernel::AuxillaryStatuses, boost::system::error_code> State() const noexcept;
 
 	private:
 		void ConvertStringToStatus(const std::string& auxillary_status_string) noexcept;

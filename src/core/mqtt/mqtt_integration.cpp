@@ -1,6 +1,9 @@
 #include <chrono>
 #include <format>
 
+#include <boost/uuid/string_generator.hpp>
+
+#include "interfaces/icommanddispatcher.h"
 #include "logging/logging.h"
 #include "mqtt/mqtt_integration.h"
 
@@ -135,6 +138,8 @@ namespace AqualinkAutomate::Mqtt
 			auto equipment_hub = hub_locator.Find<Kernel::EquipmentHub>();
 			auto statistics_hub = hub_locator.Find<Kernel::StatisticsHub>();
 
+			m_CommandDispatcher = hub_locator.TryFind<Interfaces::ICommandDispatcher>();
+
 			ConnectHubs(data_hub, equipment_hub, statistics_hub);
 		}
 		catch (const std::exception& ex)
@@ -174,6 +179,9 @@ namespace AqualinkAutomate::Mqtt
 				m_HaDiscovery->ConnectDataHub(data_hub);
 			}
 
+			// Re-register the device command now that the command dispatcher is available
+			RegisterDeviceCommand();
+
 			LogInfo(Channel::Mqtt, "MQTT Integration connected to system hubs");
 		}
 	}
@@ -207,27 +215,15 @@ namespace AqualinkAutomate::Mqtt
 				}
 			});
 
-		// Register device control command
+		// Register device control command (placeholder; upgraded in RegisterDeviceCommand after hubs connect)
 		m_Hub->RegisterCommand("device",
 			[hub](const std::string& topic, const nlohmann::json& payload)
 			{
 				LogInfo(Channel::Mqtt, "Received device command");
 				try
 				{
-					if (!payload.contains("device_id"))
-					{
-						LogWarning(Channel::Mqtt, "Device command missing 'device_id'");
-						return;
-					}
-					if (!payload.contains("action"))
-					{
-						LogWarning(Channel::Mqtt, "Device command missing 'action'");
-						return;
-					}
-
-					std::string device_id = payload["device_id"];
-					std::string action = payload["action"];
-					LogInfo(Channel::Mqtt, std::format("Device command: device={}, action={}", device_id, action));
+					std::string device_id = payload.value("device_id", "unknown");
+					std::string action = payload.value("action", "toggle");
 
 					auto now = std::chrono::system_clock::now();
 					nlohmann::json response = {
@@ -271,6 +267,101 @@ namespace AqualinkAutomate::Mqtt
 			});
 
 		LogDebug(Channel::Mqtt, "Registered default MQTT command handlers");
+	}
+
+	void MqttIntegration::RegisterDeviceCommand()
+	{
+		if (!m_Hub)
+		{
+			return;
+		}
+
+		auto hub = m_Hub;
+		std::weak_ptr<Interfaces::ICommandDispatcher> weak_dispatcher = m_CommandDispatcher;
+
+		m_Hub->RegisterCommand("device",
+			[hub, weak_dispatcher](const std::string& topic, const nlohmann::json& payload)
+			{
+				LogInfo(Channel::Mqtt, "Received device command");
+				try
+				{
+					auto dispatcher = weak_dispatcher.lock();
+					if (!dispatcher)
+					{
+						LogWarning(Channel::Mqtt, "Command dispatcher not available");
+
+						auto now = std::chrono::system_clock::now();
+						nlohmann::json response = {
+							{"command", "device"},
+							{"status", "error"},
+							{"error", "command dispatcher not available"},
+							{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
+						};
+
+						if (hub) { hub->PublishCustom("response/device", response); }
+						return;
+					}
+
+					std::string device_id = payload.value("device_id", "");
+					std::string action = payload.value("action", "toggle");
+
+					if (device_id.empty())
+					{
+						LogWarning(Channel::Mqtt, "Device command missing device_id");
+						return;
+					}
+
+					Interfaces::ICommandDispatcher::CommandResult result = Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound;
+
+					// Try parsing as UUID first, fall back to label
+					try
+					{
+						boost::uuids::string_generator gen;
+						auto uuid = gen(device_id);
+						result = dispatcher->ToggleByUuid(uuid);
+					}
+					catch (const std::runtime_error&)
+					{
+						// Not a valid UUID, try as label
+						result = dispatcher->ToggleByLabel(device_id);
+					}
+
+					auto now = std::chrono::system_clock::now();
+					std::string status_str;
+
+					switch (result)
+					{
+					case Interfaces::ICommandDispatcher::CommandResult::Success:
+						status_str = "success";
+						break;
+					case Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound:
+						status_str = "device_not_found";
+						break;
+					case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
+						status_str = "no_serial_adapter";
+						break;
+					case Interfaces::ICommandDispatcher::CommandResult::UnknownEquipmentType:
+						status_str = "unknown_equipment_type";
+						break;
+					}
+
+					nlohmann::json response = {
+						{"command", "device"},
+						{"device_id", device_id},
+						{"action", action},
+						{"status", status_str},
+						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
+					};
+
+					if (hub) { hub->PublishCustom("response/device", response); }
+				}
+				catch (const std::exception& ex)
+				{
+					LogError(Channel::Mqtt, std::format("Error handling device command: {}", ex.what()));
+				}
+			});
+
+		LogDebug(Channel::Mqtt, "Registered device command handler with dispatcher");
 	}
 
 	std::shared_ptr<MqttIntegration> CreateMqttIntegration(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)

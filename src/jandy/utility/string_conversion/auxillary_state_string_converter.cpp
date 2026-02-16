@@ -2,9 +2,9 @@
 
 #include <boost/regex.hpp>
 
-#include "utility/string_manipulation.h"
-#include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "logging/logging.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -67,21 +67,21 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	tl::expected<std::string, boost::system::error_code> AuxillaryStateStringConverter::Label() const noexcept
+	std::expected<std::string, boost::system::error_code> AuxillaryStateStringConverter::Label() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_Label;
 	}
 
-	tl::expected<Kernel::AuxillaryStatuses, boost::system::error_code> AuxillaryStateStringConverter::State() const noexcept
+	std::expected<Kernel::AuxillaryStatuses, boost::system::error_code> AuxillaryStateStringConverter::State() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_State;

@@ -7,6 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "interfaces/icommanddispatcher.h"
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_locator.h"
@@ -34,6 +35,7 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+		std::shared_ptr<Interfaces::ICommandDispatcher> m_CommandDispatcher{ nullptr };
 	};
 
 }

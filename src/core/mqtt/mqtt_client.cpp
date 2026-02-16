@@ -220,6 +220,28 @@ namespace AqualinkAutomate::Mqtt
 		m_PublishQueue.push_back({ topic, payload, retain });
 	}
 
+	void MqttClient::Subscribe(const std::string& topic_filter, uint8_t qos)
+	{
+		if (m_State != State::Connected)
+		{
+			LogWarning(Channel::Mqtt, std::format("Cannot subscribe to '{}': not connected", topic_filter));
+			return;
+		}
+
+		auto pkt = EncodeSubscribe(topic_filter, qos);
+		boost::system::error_code ec;
+		WriteSocket(pkt, ec);
+
+		if (ec && ec != boost::asio::error::would_block)
+		{
+			LogWarning(Channel::Mqtt, std::format("Failed to send SUBSCRIBE for '{}': {}", topic_filter, ec.message()));
+		}
+		else if (!ec)
+		{
+			LogInfo(Channel::Mqtt, std::format("Sent SUBSCRIBE for '{}' (QoS {})", topic_filter, qos));
+		}
+	}
+
 	std::string MqttClient::BuildTopic(const std::string& subtopic) const
 	{
 		if (m_Settings.topic_prefix.empty())
@@ -596,33 +618,98 @@ namespace AqualinkAutomate::Mqtt
 		{
 			m_LastActivity = std::chrono::steady_clock::now();
 
-			// Process incoming packets - for QoS 0 publish-only we mainly
-			// just need to handle PINGRESP and unexpected disconnects.
-			// We could parse PUBLISH packets from the broker here if we
-			// add subscription support, but for now just consume the data.
-			for (std::size_t i = 0; i < bytes_read; ++i)
+			// Security: Check read buffer size before appending
+			if (m_ReadBuffer.size() + bytes_read > MAX_READ_BUFFER_SIZE)
 			{
-				uint8_t packet_type = (buf[i] >> 4) & 0x0F;
+				LogWarning(Channel::Mqtt, "MQTT read buffer overflow in Connected state, clearing buffer");
+				m_ReadBuffer.clear();
+				return;
+			}
+
+			m_ReadBuffer.insert(m_ReadBuffer.end(), buf.begin(), buf.begin() + static_cast<std::ptrdiff_t>(bytes_read));
+
+			// Process complete packets from the read buffer.
+			while (m_ReadBuffer.size() >= 2)
+			{
+				uint8_t first_byte = m_ReadBuffer[0];
+				uint8_t packet_type = (first_byte >> 4) & 0x0F;
+
+				// Decode the remaining length (variable-length encoding, up to 4 bytes).
+				uint32_t remaining_length = 0;
+				uint32_t multiplier = 1;
+				std::size_t length_bytes = 0;
+				bool length_complete = false;
+
+				for (std::size_t j = 1; j < m_ReadBuffer.size() && j <= 4; ++j)
+				{
+					remaining_length += (m_ReadBuffer[j] & 0x7F) * multiplier;
+					multiplier *= 128;
+					++length_bytes;
+
+					if ((m_ReadBuffer[j] & 0x80) == 0)
+					{
+						length_complete = true;
+						break;
+					}
+				}
+
+				if (!length_complete)
+				{
+					break; // Need more data to decode the remaining length
+				}
+
+				std::size_t total_packet_size = 1 + length_bytes + remaining_length;
+
+				if (m_ReadBuffer.size() < total_packet_size)
+				{
+					break; // Need more data for the complete packet
+				}
+
+				// We have a complete packet. Process it.
+				std::size_t payload_offset = 1 + length_bytes;
 
 				if (packet_type == 13) // PINGRESP
 				{
 					LogTrace(Channel::Mqtt, "Received PINGRESP");
-					// PINGRESP is 2 bytes: 0xD0 0x00
-					if (i + 1 < bytes_read)
-					{
-						++i; // skip remaining length byte
-					}
 				}
-				else if (packet_type == 3) // PUBLISH from broker
+				else if (packet_type == 9) // SUBACK
 				{
-					// Simple PUBLISH parsing for QoS 0
-					// For now, just skip the packet
-					if (i + 1 < bytes_read)
+					LogDebug(Channel::Mqtt, "Received SUBACK");
+				}
+				else if (packet_type == 3) // PUBLISH
+				{
+					// Parse QoS-0 PUBLISH: topic length (2 bytes BE) + topic + payload
+					if (remaining_length >= 2)
 					{
-						uint8_t remaining_len = buf[i + 1];
-						i += 1 + remaining_len; // skip remaining length + payload
+						std::size_t pos = payload_offset;
+						uint16_t topic_len = (static_cast<uint16_t>(m_ReadBuffer[pos]) << 8) | m_ReadBuffer[pos + 1];
+						pos += 2;
+
+						if (pos + topic_len <= payload_offset + remaining_length)
+						{
+							auto pos_signed = static_cast<std::ptrdiff_t>(pos);
+							auto topic_len_signed = static_cast<std::ptrdiff_t>(topic_len);
+
+							std::string topic(m_ReadBuffer.begin() + pos_signed, m_ReadBuffer.begin() + pos_signed + topic_len_signed);
+							pos += topic_len;
+
+							auto payload_end = static_cast<std::ptrdiff_t>(payload_offset + remaining_length);
+							pos_signed = static_cast<std::ptrdiff_t>(pos);
+
+							std::string payload(m_ReadBuffer.begin() + pos_signed, m_ReadBuffer.begin() + payload_end);
+
+							LogDebug(Channel::Mqtt, std::format("Received PUBLISH: topic='{}', payload_size={}", topic, payload.size()));
+							OnMessageReceived(topic, payload);
+						}
 					}
 				}
+				else
+				{
+					LogTrace(Channel::Mqtt, std::format("Received MQTT packet type {} (skipping)", packet_type));
+				}
+
+				// Remove the processed packet from the buffer.
+				m_ReadBuffer.erase(m_ReadBuffer.begin(), m_ReadBuffer.begin() + static_cast<std::ptrdiff_t>(total_packet_size));
 			}
 		}
 	}
@@ -778,6 +865,28 @@ namespace AqualinkAutomate::Mqtt
 		// Fixed header: PUBLISH, DUP=0, QoS=0, RETAIN per flag (MQTT 3.1.1 section 3.3.1.3)
 		std::vector<uint8_t> packet;
 		packet.push_back(static_cast<uint8_t>(0x30 | (retain ? 0x01 : 0x00)));
+		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
+		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
+
+		return packet;
+	}
+
+	std::vector<uint8_t> MqttClient::EncodeSubscribe(const std::string& topic_filter, uint8_t qos)
+	{
+		// Variable header: packet identifier (2 bytes)
+		std::vector<uint8_t> var_payload;
+		uint16_t packet_id = m_NextPacketId++;
+		if (m_NextPacketId == 0) { m_NextPacketId = 1; } // Packet IDs must be non-zero
+		var_payload.push_back(static_cast<uint8_t>((packet_id >> 8) & 0xFF));
+		var_payload.push_back(static_cast<uint8_t>(packet_id & 0xFF));
+
+		// Payload: UTF-8 topic filter + requested QoS byte
+		EncodeUtf8String(var_payload, topic_filter);
+		var_payload.push_back(qos & 0x03); // QoS is bits 0-1
+
+		// Fixed header: SUBSCRIBE = 0x82 (type 8, reserved bits = 0010)
+		std::vector<uint8_t> packet;
+		packet.push_back(0x82);
 		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
 		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
 

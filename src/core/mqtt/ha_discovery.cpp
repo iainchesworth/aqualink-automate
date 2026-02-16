@@ -2,10 +2,10 @@
 #include <cctype>
 #include <format>
 
-#include "logging/logging.h"
-#include "mqtt/ha_discovery.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "logging/logging.h"
+#include "mqtt/ha_discovery.h"
 #include "version/version_cmake.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -113,7 +113,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void HomeAssistantDiscovery::AddTemperatureSensorComponents(nlohmann::json& cmps)
 	{
-		auto pool_topic = PoolStatusTopic();
+		auto temperatures_topic = TemperaturesTopic();
 
 		struct TempSensor
 		{
@@ -123,12 +123,12 @@ namespace AqualinkAutomate::Mqtt
 		};
 
 		const TempSensor sensors[] = {
-			{ "Pool Temperature",           "pool_temp",           "{{ value_json.temperatures.pool.celsius }}" },
-			{ "Spa Temperature",            "spa_temp",            "{{ value_json.temperatures.spa.celsius }}" },
-			{ "Air Temperature",            "air_temp",            "{{ value_json.temperatures.air.celsius }}" },
-			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.temperatures.freeze_protect.celsius }}" },
-			{ "Pool Setpoint Temperature",  "pool_setpoint_temp",  "{{ value_json.temperatures.pool_setpoint.celsius }}" },
-			{ "Spa Setpoint Temperature",   "spa_setpoint_temp",   "{{ value_json.temperatures.spa_setpoint.celsius }}" },
+			{ "Pool Temperature",           "pool_temp",           "{{ value_json.pool.celsius }}" },
+			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius }}" },
+			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius }}" },
+			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius }}" },
+			{ "Pool Setpoint Temperature",  "pool_setpoint_temp",  "{{ value_json.pool_setpoint.celsius }}" },
+			{ "Spa Setpoint Temperature",   "spa_setpoint_temp",   "{{ value_json.spa_setpoint.celsius }}" },
 		};
 
 		for (const auto& sensor : sensors)
@@ -137,7 +137,7 @@ namespace AqualinkAutomate::Mqtt
 				{"p", "sensor"},
 				{"name", sensor.name},
 				{"unique_id", UniqueId(sensor.key)},
-				{"state_topic", pool_topic},
+				{"state_topic", temperatures_topic},
 				{"value_template", sensor.value_template},
 				{"device_class", "temperature"},
 				{"unit_of_measurement", "\u00B0C"},
@@ -148,14 +148,14 @@ namespace AqualinkAutomate::Mqtt
 
 	void HomeAssistantDiscovery::AddChemistrySensorComponents(nlohmann::json& cmps)
 	{
-		auto pool_topic = PoolStatusTopic();
+		auto chemistry_topic = ChemistryTopic();
 
 		cmps["orp"] = {
 			{"p", "sensor"},
 			{"name", "ORP"},
 			{"unique_id", UniqueId("orp")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.chemistry.orp.value_mv }}"},
+			{"state_topic", chemistry_topic},
+			{"value_template", "{{ value_json.orp.value_mv }}"},
 			{"device_class", "voltage"},
 			{"unit_of_measurement", "mV"},
 			{"state_class", "measurement"}
@@ -165,8 +165,8 @@ namespace AqualinkAutomate::Mqtt
 			{"p", "sensor"},
 			{"name", "pH"},
 			{"unique_id", UniqueId("ph")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.chemistry.ph.value }}"},
+			{"state_topic", chemistry_topic},
+			{"value_template", "{{ value_json.ph.value }}"},
 			{"device_class", "ph"},
 			{"state_class", "measurement"}
 		};
@@ -175,8 +175,8 @@ namespace AqualinkAutomate::Mqtt
 			{"p", "sensor"},
 			{"name", "Salt Level"},
 			{"unique_id", UniqueId("salt_level")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.chemistry.salt.value_ppm }}"},
+			{"state_topic", chemistry_topic},
+			{"value_template", "{{ value_json.salt.value_ppm }}"},
 			{"unit_of_measurement", "ppm"},
 			{"state_class", "measurement"}
 		};
@@ -184,22 +184,22 @@ namespace AqualinkAutomate::Mqtt
 
 	void HomeAssistantDiscovery::AddCirculationComponents(nlohmann::json& cmps)
 	{
-		auto pool_topic = PoolStatusTopic();
+		auto circulation_topic = CirculationTopic();
 
 		cmps["circulation_mode"] = {
 			{"p", "sensor"},
 			{"name", "Circulation Mode"},
 			{"unique_id", UniqueId("circulation_mode")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.circulation.mode }}"}
+			{"state_topic", circulation_topic},
+			{"value_template", "{{ value_json.mode }}"}
 		};
 
 		cmps["spa_mode"] = {
 			{"p", "binary_sensor"},
 			{"name", "Spa Mode"},
 			{"unique_id", UniqueId("spa_mode")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.circulation.spa_mode }}"},
+			{"state_topic", circulation_topic},
+			{"value_template", "{{ value_json.spa_mode }}"},
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};
@@ -208,8 +208,8 @@ namespace AqualinkAutomate::Mqtt
 			{"p", "binary_sensor"},
 			{"name", "Clean Mode"},
 			{"unique_id", UniqueId("clean_mode")},
-			{"state_topic", pool_topic},
-			{"value_template", "{{ value_json.circulation.clean_mode }}"},
+			{"state_topic", circulation_topic},
+			{"value_template", "{{ value_json.clean_mode }}"},
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};
@@ -404,14 +404,24 @@ namespace AqualinkAutomate::Mqtt
 		return m_Client->BuildTopic("status/availability");
 	}
 
-	std::string HomeAssistantDiscovery::PoolStatusTopic() const
+	std::string HomeAssistantDiscovery::TemperaturesTopic() const
 	{
-		return m_Client->BuildTopic("status/pool");
+		return m_Client->BuildTopic("pool/temperatures");
+	}
+
+	std::string HomeAssistantDiscovery::ChemistryTopic() const
+	{
+		return m_Client->BuildTopic("pool/chemistry");
+	}
+
+	std::string HomeAssistantDiscovery::CirculationTopic() const
+	{
+		return m_Client->BuildTopic("pool/circulation");
 	}
 
 	std::string HomeAssistantDiscovery::SystemStatusTopic() const
 	{
-		return m_Client->BuildTopic("status/system");
+		return m_Client->BuildTopic("system/status");
 	}
 
 }

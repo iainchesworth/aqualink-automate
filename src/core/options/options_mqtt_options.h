@@ -102,10 +102,10 @@ namespace AqualinkAutomate::Options::Mqtt
 		//---------------------------------------------------------------------
 
 		/// Interval for periodic status publishing
-		std::chrono::seconds status_publish_interval{ 30 };
+		std::chrono::seconds status_publish_interval{ 5 };
 
 		/// Interval for statistics publishing
-		std::chrono::seconds statistics_publish_interval{ 60 };
+		std::chrono::seconds statistics_publish_interval{ 10 };
 
 		/// Publish on change (in addition to periodic)
 		bool publish_on_change{ true };
@@ -150,8 +150,8 @@ namespace AqualinkAutomate::Options::Mqtt
 		AppOptionPtr OPTION_TOPIC_PREFIX{ make_appoption("mqtt-prefix", "Base topic prefix for all MQTT messages", boost::program_options::value<std::string>()->default_value("aqualink")) };
 
 		// Publishing intervals
-		AppOptionPtr OPTION_STATUS_INTERVAL{ make_appoption("mqtt-status-interval", "Status publish interval in seconds", boost::program_options::value<uint32_t>()->default_value(30)) };
-		AppOptionPtr OPTION_STATS_INTERVAL{ make_appoption("mqtt-stats-interval", "Statistics publish interval in seconds", boost::program_options::value<uint32_t>()->default_value(60)) };
+		AppOptionPtr OPTION_STATUS_INTERVAL{ make_appoption("mqtt-status-interval", "Status publish interval in seconds", boost::program_options::value<uint32_t>()->default_value(5)) };
+		AppOptionPtr OPTION_STATS_INTERVAL{ make_appoption("mqtt-stats-interval", "Statistics publish interval in seconds", boost::program_options::value<uint32_t>()->default_value(10)) };
 		AppOptionPtr OPTION_PUBLISH_ON_CHANGE{ make_appoption("mqtt-on-change", "Publish immediately on data changes", boost::program_options::bool_switch()->default_value(true)) };
 
 		// Home Assistant

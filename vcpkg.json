@@ -30,7 +30,6 @@
       "name": "tracy",
       "features": ["on-demand"]
     },
-    "tl-expected",
     "zlib"
   ]
 }

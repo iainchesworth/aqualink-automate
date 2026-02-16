@@ -70,6 +70,7 @@ namespace AqualinkAutomate::Mqtt
 		const std::optional<WillConfig>& GetWill() const noexcept;
 
 		void Publish(const std::string& topic, const std::string& payload, bool retain = false);
+		void Subscribe(const std::string& topic_filter, uint8_t qos = 0);
 		std::string BuildTopic(const std::string& subtopic) const;
 		const std::string& TopicPrefix() const noexcept;
 
@@ -93,6 +94,7 @@ namespace AqualinkAutomate::Mqtt
 		// MQTT 3.1.1 packet encoding
 		std::vector<uint8_t> EncodeConnect();
 		std::vector<uint8_t> EncodePublish(const std::string& topic, const std::string& payload, bool retain = false);
+		std::vector<uint8_t> EncodeSubscribe(const std::string& topic_filter, uint8_t qos);
 		std::vector<uint8_t> EncodePingreq();
 		std::vector<uint8_t> EncodeDisconnect();
 
@@ -153,6 +155,9 @@ namespace AqualinkAutomate::Mqtt
 		std::chrono::steady_clock::time_point m_LastActivity;
 		static constexpr auto KEEPALIVE_INTERVAL = std::chrono::seconds(60);
 		static constexpr uint16_t KEEPALIVE_SECONDS = 60;
+
+		// Packet ID for Subscribe
+		uint16_t m_NextPacketId{ 1 };
 
 		// Reconnection
 		uint16_t m_ReconnectAttempts{ 0 };

@@ -225,14 +225,34 @@ BOOST_AUTO_TEST_CASE(Test_AvailabilityTopic)
 	BOOST_CHECK_EQUAL(ha.AvailabilityTopic(), "aqualink/status/availability");
 }
 
-BOOST_AUTO_TEST_CASE(Test_PoolStatusTopic)
+BOOST_AUTO_TEST_CASE(Test_TemperaturesTopic)
 {
 	boost::asio::io_context ioc;
 	auto settings = MakeTestSettings();
 	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 	Mqtt::HomeAssistantDiscovery ha(client, settings);
 
-	BOOST_CHECK_EQUAL(ha.PoolStatusTopic(), "aqualink/status/pool");
+	BOOST_CHECK_EQUAL(ha.TemperaturesTopic(), "aqualink/pool/temperatures");
+}
+
+BOOST_AUTO_TEST_CASE(Test_ChemistryTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	BOOST_CHECK_EQUAL(ha.ChemistryTopic(), "aqualink/pool/chemistry");
+}
+
+BOOST_AUTO_TEST_CASE(Test_CirculationTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	BOOST_CHECK_EQUAL(ha.CirculationTopic(), "aqualink/pool/circulation");
 }
 
 BOOST_AUTO_TEST_CASE(Test_SystemStatusTopic)
@@ -242,7 +262,7 @@ BOOST_AUTO_TEST_CASE(Test_SystemStatusTopic)
 	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 	Mqtt::HomeAssistantDiscovery ha(client, settings);
 
-	BOOST_CHECK_EQUAL(ha.SystemStatusTopic(), "aqualink/status/system");
+	BOOST_CHECK_EQUAL(ha.SystemStatusTopic(), "aqualink/system/status");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -326,7 +346,7 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_TemperatureSensorsHaveCorrectC
 			++temp_sensor_count;
 			BOOST_CHECK_EQUAL(cmp["unit_of_measurement"], "\u00B0C");
 			BOOST_CHECK_EQUAL(cmp["state_class"], "measurement");
-			BOOST_CHECK_EQUAL(cmp["state_topic"], "aqualink/status/pool");
+			BOOST_CHECK_EQUAL(cmp["state_topic"], "aqualink/pool/temperatures");
 		}
 	}
 

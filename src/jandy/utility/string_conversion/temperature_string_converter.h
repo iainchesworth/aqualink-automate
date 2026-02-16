@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
 #include "errors/string_conversion_errors.h"
 #include "kernel/temperature.h"
@@ -33,8 +33,8 @@ namespace AqualinkAutomate::Utility
 		TemperatureStringConverter& operator=(const std::string& temperature_string) noexcept;
 
 	public:
-		tl::expected<Kernel::Temperature, boost::system::error_code> operator()() const noexcept;
-		tl::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
+		std::expected<Kernel::Temperature, boost::system::error_code> operator()() const noexcept;
+		std::expected<std::string, boost::system::error_code> TemperatureArea() const noexcept;
 
 	private:
 		void ConvertStringToTemperature(const std::string& temperature_string) noexcept;

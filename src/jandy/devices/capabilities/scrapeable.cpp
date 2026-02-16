@@ -49,24 +49,24 @@ namespace AqualinkAutomate::Devices::Capabilities
 		m_Stack_WaitingForMessage.pop();
 	}
 
-	tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
+	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingNext", std::source_location::current());
 
 		if (!m_Stack_WaitingForPage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for screen page");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForPage);
 		}
 		if (!m_Stack_WaitingForMessage.empty())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is active; cannot step forward - waiting for message");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
 		}
 		else if (!m_ActiveScrape.has_value())
 		{
 			LogTrace(Channel::Devices, "Scrape -> is not active; cannot step forward");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 		}
 		else
 		{
@@ -87,12 +87,12 @@ namespace AqualinkAutomate::Devices::Capabilities
 				{
 					LogTrace(Channel::Devices, "Scrape -> is complete");
 					m_ActiveScrape = std::nullopt;
-					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+					return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
 				}
 				else if (auto key_command = std::get<Utility::ScreenDataPageGraphImpl::Edge>(*it).key_command; !key_command.has_value())
 				{
 					LogDebug(Channel::Devices, "Attempted to retrieve the next key command; key command had no value");
-					return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
+					return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
 				}
 				else
 				{
@@ -107,12 +107,12 @@ namespace AqualinkAutomate::Devices::Capabilities
 			catch (const std::bad_optional_access& eBOA)
 			{
 				LogTrace(Channel::Devices, std::format("Scrape -> was active but could not access graph (exception was -> {})", eBOA.what()));
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 			}
 		}
 	}
 
-	tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
 		Scrapeable::ScrapingNextWithValidation(Utility::ScreenDataPageTypes current_page)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingNextWithValidation", std::source_location::current());
@@ -121,7 +121,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		if (ScrapeState::Faulted == m_ScrapeState)
 		{
 			LogError(Channel::Scraping, "Scraping is in Faulted state - cannot proceed");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded);
 		}
 
 		// 2. If RecoveryInProgress -> delegate to RecoveryNext
@@ -138,7 +138,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		if (!m_Stack_WaitingForMessage.empty())
 		{
 			LogTrace(Channel::Scraping, std::format("Scrape -> waiting for {} more message(s)", m_Stack_WaitingForMessage.size()));
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
 		}
 
 		// 4. If AwaitingPostValidation -> validate we arrived at expected destination
@@ -150,7 +150,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 				LogError(Channel::Scraping, std::format("Post-command validation failed: expected={}, actual={}",
 					magic_enum::enum_name(m_ExpectedDestination), magic_enum::enum_name(current_page)));
 				InitiateRecovery();
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::PostCommandValidationFailed);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::PostCommandValidationFailed);
 			}
 			LogDebug(Channel::Scraping, std::format("Post-command validation passed: page={}", magic_enum::enum_name(current_page)));
 			m_ScrapeState = ScrapeState::Idle;
@@ -160,7 +160,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		if (!m_ActiveScrape.has_value())
 		{
 			LogTrace(Channel::Scraping, "Scrape -> is not active; cannot step forward");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 		}
 
 		try
@@ -174,7 +174,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			{
 				LogInfo(Channel::Scraping, "Scrape -> is complete");
 				m_ActiveScrape = std::nullopt;
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
 			}
 
 			// 6. Get current vertex's expected page (the source vertex)
@@ -193,7 +193,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			{
 				LogInfo(Channel::Scraping, "Scrape -> is complete");
 				m_ActiveScrape = std::nullopt;
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
 			}
 
 			// Get the edge's key command and the target vertex
@@ -203,7 +203,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			if (!edge.key_command.has_value())
 			{
 				LogDebug(Channel::Scraping, "Attempted to retrieve the next key command; key command had no value");
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
 			}
 
 			// 7. PRE-COMMAND VALIDATION
@@ -212,7 +212,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 				LogError(Channel::Scraping, std::format("Pre-command validation failed: expected={}, actual={}",
 					magic_enum::enum_name(m_ExpectedSource), magic_enum::enum_name(current_page)));
 				InitiateRecovery();
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::PreCommandValidationFailed);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::PreCommandValidationFailed);
 			}
 			LogDebug(Channel::Scraping, std::format("Pre-command validation passed: page={}", magic_enum::enum_name(current_page)));
 
@@ -270,7 +270,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		catch (const std::bad_optional_access& eBOA)
 		{
 			LogTrace(Channel::Scraping, std::format("Scrape -> was active but could not access graph (exception was -> {})", eBOA.what()));
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoGraphBeingScraped);
 		}
 	}
 
@@ -311,7 +311,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		m_RecoveryBackPresses = 0;
 	}
 
-	tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
 		Scrapeable::RecoveryNext(Utility::ScreenDataPageTypes current_page)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::RecoveryNext", std::source_location::current());
@@ -320,7 +320,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		if (!m_Stack_WaitingForMessage.empty())
 		{
 			LogTrace(Channel::Scraping, "Recovery -> waiting for message response");
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::WaitingForMessage);
 		}
 
 		// 1. If we've reached Home, recovery is complete
@@ -329,7 +329,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			LogInfo(Channel::Scraping, "Recovery successful, reached Home screen");
 			m_ScrapeState = ScrapeState::Idle;
 			m_RecoveryBackPresses = 0;
-			return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::RecoveryComplete);
+			return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::RecoveryComplete);
 		}
 
 		// 2. If too many back presses in this attempt, increment attempt counter
@@ -343,7 +343,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			{
 				LogError(Channel::Scraping, std::format("Max recovery attempts ({}) exceeded - entering Faulted state", MAX_RECOVERY_ATTEMPTS));
 				m_ScrapeState = ScrapeState::Faulted;
-				return tl::unexpected(ErrorCodes::Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded);
+				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded);
 			}
 		}
 

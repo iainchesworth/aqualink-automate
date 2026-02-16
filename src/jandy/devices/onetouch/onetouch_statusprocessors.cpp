@@ -2,14 +2,13 @@
 #include <cctype>
 
 #include <boost/regex.hpp>
-#include <tl/expected.hpp>
 
-#include "logging/logging.h"
 #include "devices/onetouch_device.h"
-#include "utility/string_manipulation.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
+#include "logging/logging.h"
+#include "utility/string_manipulation.h"
 #include "utility/to_number.h"
 
 using namespace AqualinkAutomate::Logging;

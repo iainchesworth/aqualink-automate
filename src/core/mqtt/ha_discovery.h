@@ -18,8 +18,9 @@ namespace AqualinkAutomate::Mqtt
 	/// Publishes Home Assistant MQTT Discovery configuration payloads so that
 	/// HA auto-discovers sensors and binary_sensors for the pool controller.
 	///
-	/// Fixed sensors (temperatures, chemistry) point HA at the existing
-	/// {prefix}/status/pool and {prefix}/status/system topics via value_template.
+	/// Fixed sensors point HA at granular topics:
+	///   {prefix}/pool/temperatures, {prefix}/pool/chemistry,
+	///   {prefix}/pool/circulation, {prefix}/system/status.
 	/// Dynamic devices (pumps, heaters, etc.) get per-device state topics at
 	/// {prefix}/ha/{slug}.
 	class HomeAssistantDiscovery
@@ -61,8 +62,14 @@ namespace AqualinkAutomate::Mqtt
 		/// Get the availability topic.
 		std::string AvailabilityTopic() const;
 
-		/// Get the pool status topic.
-		std::string PoolStatusTopic() const;
+		/// Get the pool temperatures topic.
+		std::string TemperaturesTopic() const;
+
+		/// Get the pool chemistry topic.
+		std::string ChemistryTopic() const;
+
+		/// Get the pool circulation topic.
+		std::string CirculationTopic() const;
 
 		/// Get the system status topic.
 		std::string SystemStatusTopic() const;

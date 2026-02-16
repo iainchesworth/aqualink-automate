@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <vector>
 
 #include "auxillaries/jandy_auxillary_id.h"
@@ -28,8 +29,20 @@ namespace AqualinkAutomate::Devices
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
 
 	public:
+		struct PendingCommand
+		{
+			uint8_t ack_type;
+			uint8_t ack_data_value;
+		};
+
+	public:
 		SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		virtual ~SerialAdapterDevice();
+
+	public:
+		void QueueCommand(uint8_t ack_type, uint8_t ack_data_value);
+		void QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action);
+		void QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action);
 
 	private:
 		virtual void ProcessControllerUpdates() override;
@@ -62,6 +75,9 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		bool m_StatusMessageReceived;
+
+	private:
+		std::optional<PendingCommand> m_PendingCommand;
 
 	private:
 		Types::ProfilingUnitTypePtr m_ProfilingDomain;

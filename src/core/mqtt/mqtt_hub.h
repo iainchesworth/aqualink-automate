@@ -25,13 +25,21 @@ namespace AqualinkAutomate::Mqtt
 	/// it to MQTT topics. It also handles incoming command messages.
 	///
 	/// Topic structure:
-	/// - {prefix}/status/availability - Online/offline status (LWT)
-	/// - {prefix}/status/system - System information
-	/// - {prefix}/status/pool - Pool data (temperatures, chemistry, circulation)
-	/// - {prefix}/status/devices - Device list with status
-	/// - {prefix}/status/statistics - Message counts and bandwidth
-	/// - {prefix}/event/{type} - Real-time events
-	/// - {prefix}/command/{action} - Command topics for control
+	/// - {prefix}/status/availability     - Online/offline status (LWT, retained)
+	/// - {prefix}/system/status           - System online + uptime (retained)
+	/// - {prefix}/system/version          - Application version info (retained, static)
+	/// - {prefix}/system/equipment        - Equipment model/firmware (retained, static)
+	/// - {prefix}/pool/temperatures       - Temperature readings and setpoints (retained)
+	/// - {prefix}/pool/chemistry          - ORP, pH, salt (retained)
+	/// - {prefix}/pool/circulation        - Circulation mode, spa mode (retained)
+	/// - {prefix}/pool/configuration      - Pool type, system board, date/time (retained)
+	/// - {prefix}/device/{slug}           - Per-device state (retained)
+	/// - {prefix}/statistics/messages     - Message counts (not retained)
+	/// - {prefix}/statistics/bandwidth    - Bandwidth metrics (not retained)
+	/// - {prefix}/statistics/latency      - Latency percentiles (not retained)
+	/// - {prefix}/statistics/serial       - Serial error metrics (not retained)
+	/// - {prefix}/event/{type}            - Real-time events
+	/// - {prefix}/command/{action}        - Command topics for control
 	class MqttHub : public std::enable_shared_from_this<MqttHub>
 	{
 	public:
@@ -131,6 +139,7 @@ namespace AqualinkAutomate::Mqtt
 		// PUBLISHING METHODS
 		//---------------------------------------------------------------------
 
+		void PublishStaticTopics();
 		void PublishSystemStatus();
 		void PublishPoolStatus();
 		void PublishDeviceStatus();
@@ -147,12 +156,18 @@ namespace AqualinkAutomate::Mqtt
 		// SERIALIZATION HELPERS
 		//---------------------------------------------------------------------
 
-		nlohmann::json SerializeSystemInfo() const;
-		nlohmann::json SerializePoolStatus() const;
-		nlohmann::json SerializeDeviceList() const;
-		nlohmann::json SerializeStatistics() const;
+		nlohmann::json SerializeSystemStatus() const;
+		nlohmann::json SerializeSystemVersion() const;
+		nlohmann::json SerializeSystemEquipment() const;
+		nlohmann::json SerializeTemperatures() const;
+		nlohmann::json SerializeChemistry() const;
+		nlohmann::json SerializeCirculation() const;
+		nlohmann::json SerializeConfiguration() const;
+		nlohmann::json SerializeStatisticsMessages() const;
+		nlohmann::json SerializeStatisticsBandwidth() const;
+		nlohmann::json SerializeStatisticsLatency() const;
+		nlohmann::json SerializeStatisticsSerial() const;
 		nlohmann::json SerializeTemperature(const Kernel::Temperature& temp) const;
-		nlohmann::json SerializeDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const;
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;
@@ -174,6 +189,7 @@ namespace AqualinkAutomate::Mqtt
 
 		// State
 		bool m_Running{ false };
+		bool m_StaticPublished{ false };
 		std::chrono::steady_clock::time_point m_StartTime;
 
 		// Periodic publish timers (using steady_clock comparisons)

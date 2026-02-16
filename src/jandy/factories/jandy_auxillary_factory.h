@@ -1,14 +1,14 @@
+#include <expected>
 #include <memory>
 #include <string>
 #include <variant>
 
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
-#include "kernel/auxillary_devices/auxillary_device.h"
-#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "auxillaries/jandy_auxillary_id.h"
 #include "auxillaries/jandy_auxillary_status.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "utility/string_conversion/auxillary_state_string_converter.h"
 
 namespace AqualinkAutomate::Factory
@@ -87,9 +87,9 @@ namespace AqualinkAutomate::Factory
 		static JandyAuxillaryFactory& Instance();
 
 	public:
-		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id);
-		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status);
-		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state);
+		std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id);
+		std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> SerialAdapterDevice_CreateDevice(const Auxillaries::JandyAuxillaryIds aux_id, const Auxillaries::JandyAuxillaryStatuses status);
+		std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> OneTouchDevice_CreateDevice(const Utility::AuxillaryStateStringConverter& aux_state);
 
 	private:
 		bool IsAuxillaryDevice(const std::string& label) const;
@@ -101,7 +101,7 @@ namespace AqualinkAutomate::Factory
 		bool IsSprinklerDevice(const std::string& label) const;
 
 	private:
-		tl::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> CreateDevice_Impl(DeviceData& device_data);
+		std::expected<std::shared_ptr<Kernel::AuxillaryDevice>, boost::system::error_code> CreateDevice_Impl(DeviceData& device_data);
 	};
 
 }

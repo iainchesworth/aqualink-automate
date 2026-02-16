@@ -1,13 +1,13 @@
 #pragma once
 
-#include <Windows.h>
+#include <expected>
 
-#include <tl/expected.hpp>
+#include <Windows.h>
 
 namespace AqualinkAutomate::Developer
 {
 
-	tl::expected<bool, HRESULT> IsElevated();
+	std::expected<bool, HRESULT> IsElevated();
 
 }
 // namespace AqualinkAutomate::Developer

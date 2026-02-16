@@ -2,6 +2,7 @@
 
 #include <any>
 #include <cstdint>
+#include <expected>
 #include <format>
 #include <optional>
 #include <stack>
@@ -9,17 +10,16 @@
 #include <unordered_map>
 
 #include <magic_enum/magic_enum.hpp>
-#include <tl/expected.hpp>
 
 #include "devices/jandy_device_types.h"
 #include "errors/jandy_errors_scrapeable.h"
 #include "formatters/jandy_device_formatters.h"
-#include "messages/jandy_message_ids.h"
-#include "utility/screen_data_page_graph.h"
-#include "utility/screen_data_page_processor.h"
-#include "utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
 #include "logging/logging.h"
+#include "messages/jandy_message_ids.h"
 #include "profiling/profiling.h"
+#include "utility/screen_data_page_graph.h"
+#include "utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
+#include "utility/screen_data_page_processor.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -81,11 +81,11 @@ namespace AqualinkAutomate::Devices::Capabilities
 		void OnStatusMessageReceived();
 
 	public:
-		tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> ScrapingNext();
+		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> ScrapingNext();
 
 	public:
 		// Main validation-aware scraping method
-		tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
 			ScrapingNextWithValidation(Utility::ScreenDataPageTypes current_page);
 
 		// Validation helpers
@@ -94,7 +94,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 		// Recovery
 		void InitiateRecovery();
-		tl::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
 			RecoveryNext(Utility::ScreenDataPageTypes current_page);
 
 		// State accessors

@@ -5,9 +5,9 @@
 #include <boost/cstdfloat.hpp>
 #include <magic_enum/magic_enum.hpp>
 
-#include "utility/string_manipulation.h"
-#include "utility/string_conversion/chemistry_string_converter.h"
 #include "logging/logging.h"
+#include "utility/string_conversion/chemistry_string_converter.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -70,21 +70,21 @@ namespace AqualinkAutomate::Utility
 		return *this;
 	}
 
-	tl::expected<Kernel::ORP, boost::system::error_code> ChemistryStringConverter::ORP() const noexcept
+	std::expected<Kernel::ORP, boost::system::error_code> ChemistryStringConverter::ORP() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_ORP;
 	}
 
-	tl::expected<Kernel::pH, boost::system::error_code> ChemistryStringConverter::PH() const noexcept
+	std::expected<Kernel::pH, boost::system::error_code> ChemistryStringConverter::PH() const noexcept
 	{
 		if (m_ErrorOccurred.has_value())
 		{
-			return tl::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
+			return std::unexpected<boost::system::error_code>(make_error_code(m_ErrorOccurred.value()));
 		}
 
 		return m_PH;

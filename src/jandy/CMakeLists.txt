@@ -15,6 +15,7 @@ target_sources(
 	auxillaries/jandy_auxillary_traits_types.cpp 
 	concepts/jandy_message_type.cpp
 	devices/aquarite_device.cpp
+	devices/command_dispatcher.cpp
 	devices/chemlink_device.cpp
 	devices/epump_device.cpp
 	devices/heater_device.cpp

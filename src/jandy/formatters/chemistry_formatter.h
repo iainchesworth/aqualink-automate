@@ -1,10 +1,9 @@
 #pragma once
 
+#include <expected>
 #include <format>
 #include <iostream>
 #include <string>
-
-#include <tl/expected.hpp>
 
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
@@ -44,7 +43,7 @@ struct std::formatter<AqualinkAutomate::Utility::ChemistryStringConverter>
 
 			return std::format_to(ctx.out(), "ORP={} PH={}", orp, ph);
 		}
-		catch (const tl::bad_expected_access<boost::system::error_code>&)
+		catch (const std::bad_expected_access<boost::system::error_code>&)
 		{
 			return std::format_to(ctx.out(), "CHEM=??");
 		}

@@ -60,7 +60,6 @@ find_package(Boost REQUIRED COMPONENTS graph iostreams log log_setup program_opt
 find_package(magic_enum REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(tl-expected REQUIRED)
 find_package(ZLIB REQUIRED)
 
 #------------------------------------------------------------------------------

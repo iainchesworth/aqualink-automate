@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <format>
 
@@ -5,9 +7,9 @@
 
 #include "http/json/json_data_hub.h"
 #include "logging/logging.h"
+#include "mqtt/mqtt_hub.h"
 #include "profiling/factories/profiler_factory.h"
 #include "profiling/factories/profiling_unit_factory.h"
-#include "mqtt/mqtt_hub.h"
 #include "utility/latency_percentile_tracker.h"
 #include "version/version.h"
 
@@ -15,6 +17,56 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Mqtt
 {
+
+	namespace
+	{
+		std::string Slugify(const std::string& input)
+		{
+			std::string result;
+			result.reserve(input.size());
+
+			for (char c : input)
+			{
+				if (std::isalnum(static_cast<unsigned char>(c)) || c == '_')
+				{
+					result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+				}
+				else if (c == ' ' || c == '-' || c == '.')
+				{
+					if (!result.empty() && result.back() != '_')
+					{
+						result += '_';
+					}
+				}
+			}
+
+			if (!result.empty() && result.back() == '_')
+			{
+				result.pop_back();
+			}
+
+			return result;
+		}
+
+		double NanosToMicros(std::chrono::nanoseconds ns)
+		{
+			return static_cast<double>(ns.count()) / 1000.0;
+		}
+
+		nlohmann::json SerializeLatencySnapshot(const Utility::LatencyPercentileTracker<>::PercentileSnapshot& snapshot)
+		{
+			return {
+				{"p1_us", NanosToMicros(snapshot.p1)},
+				{"p50_us", NanosToMicros(snapshot.p50)},
+				{"p95_us", NanosToMicros(snapshot.p95)},
+				{"p99_us", NanosToMicros(snapshot.p99)},
+				{"min_us", NanosToMicros(snapshot.min)},
+				{"max_us", NanosToMicros(snapshot.max)},
+				{"mean_us", NanosToMicros(snapshot.mean)},
+				{"sample_count", snapshot.sample_count}
+			};
+		}
+	}
 
 	MqttHub::MqttHub(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)
 		: m_Settings(settings)
@@ -50,6 +102,13 @@ namespace AqualinkAutomate::Mqtt
 		{
 			Factory::ProfilerFactory::Instance().Get()->Message("MQTT connected to broker");
 			LogInfo(Channel::Mqtt, "MQTT Hub: Client connected to broker");
+
+			// Reset static-published flag so version/equipment republish on reconnect
+			m_StaticPublished = false;
+
+			// Subscribe to command topics so we receive inbound commands from the broker
+			auto command_wildcard = m_Client->BuildTopic("command/#");
+			m_Client->Subscribe(command_wildcard, 0);
 
 			// Publish initial status on connect
 			PublishAllStatus();
@@ -116,6 +175,7 @@ namespace AqualinkAutomate::Mqtt
 		// Periodic status publish
 		if (now >= m_NextStatusPublish)
 		{
+			PublishSystemStatus();
 			PublishPoolStatus();
 			PublishDeviceStatus();
 			m_NextStatusPublish = now + m_Settings.status_publish_interval;
@@ -205,6 +265,7 @@ namespace AqualinkAutomate::Mqtt
 
 		LogDebug(Channel::Mqtt, "Publishing all status to MQTT");
 
+		PublishStaticTopics();
 		PublishSystemStatus();
 		PublishPoolStatus();
 		PublishDeviceStatus();
@@ -218,7 +279,7 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
-		m_Client->Publish(StatusTopic(subtopic), payload.dump());
+		m_Client->Publish(m_Client->BuildTopic(subtopic), payload.dump());
 	}
 
 	void MqttHub::OnDataHubConfigChanged(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event)
@@ -241,16 +302,41 @@ namespace AqualinkAutomate::Mqtt
 		LogTrace(Channel::Mqtt, "Equipment status changed, publishing update");
 	}
 
+	void MqttHub::PublishStaticTopics()
+	{
+		if (m_StaticPublished)
+		{
+			return;
+		}
+
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishStaticTopics", std::source_location::current());
+
+		try
+		{
+			auto version_payload = SerializeSystemVersion().dump();
+			m_Client->Publish(m_Client->BuildTopic("system/version"), version_payload, /*retain=*/true);
+
+			auto equipment_payload = SerializeSystemEquipment().dump();
+			m_Client->Publish(m_Client->BuildTopic("system/equipment"), equipment_payload, /*retain=*/true);
+
+			m_StaticPublished = true;
+			LogTrace(Channel::Mqtt, "Published static topics (version, equipment)");
+		}
+		catch (const std::exception& ex)
+		{
+			LogError(Channel::Mqtt, std::format("Failed to publish static topics: {}", ex.what()));
+		}
+	}
+
 	void MqttHub::PublishSystemStatus()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::PublishSystemStatus", std::source_location::current());
 
 		try
 		{
-			nlohmann::json status = SerializeSystemInfo();
-			auto payload = status.dump();
+			auto payload = SerializeSystemStatus().dump();
 			zone->Value(payload.size());
-			m_Client->Publish(StatusTopic("system"), payload);
+			m_Client->Publish(m_Client->BuildTopic("system/status"), payload, /*retain=*/true);
 			LogTrace(Channel::Mqtt, "Published system status");
 		}
 		catch (const std::exception& ex)
@@ -265,11 +351,20 @@ namespace AqualinkAutomate::Mqtt
 
 		try
 		{
-			nlohmann::json status = SerializePoolStatus();
-			auto payload = status.dump();
-			zone->Value(payload.size());
-			m_Client->Publish(StatusTopic("pool"), payload);
-			LogTrace(Channel::Mqtt, "Published pool status");
+			auto temperatures_payload = SerializeTemperatures().dump();
+			m_Client->Publish(m_Client->BuildTopic("pool/temperatures"), temperatures_payload, /*retain=*/true);
+
+			auto chemistry_payload = SerializeChemistry().dump();
+			m_Client->Publish(m_Client->BuildTopic("pool/chemistry"), chemistry_payload, /*retain=*/true);
+
+			auto circulation_payload = SerializeCirculation().dump();
+			m_Client->Publish(m_Client->BuildTopic("pool/circulation"), circulation_payload, /*retain=*/true);
+
+			auto configuration_payload = SerializeConfiguration().dump();
+			m_Client->Publish(m_Client->BuildTopic("pool/configuration"), configuration_payload, /*retain=*/true);
+
+			zone->Value(temperatures_payload.size() + chemistry_payload.size() + circulation_payload.size() + configuration_payload.size());
+			LogTrace(Channel::Mqtt, "Published pool status (temperatures, chemistry, circulation, configuration)");
 		}
 		catch (const std::exception& ex)
 		{
@@ -283,10 +378,56 @@ namespace AqualinkAutomate::Mqtt
 
 		try
 		{
-			nlohmann::json devices = SerializeDeviceList();
-			auto payload = devices.dump();
-			zone->Value(payload.size());
-			m_Client->Publish(StatusTopic("devices"), payload);
+			std::size_t total_size = 0;
+
+			if (auto data_hub = m_DataHub.lock())
+			{
+				auto publish_device = [&](const std::string& type, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+				{
+					if (!device)
+					{
+						return;
+					}
+
+					auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+					if (!label.has_value())
+					{
+						return;
+					}
+
+					auto slug = Slugify(label.value());
+
+					nlohmann::json j;
+					Kernel::to_json(j, *device);
+					j["type"] = type;
+
+					auto payload = j.dump();
+					total_size += payload.size();
+					m_Client->Publish(m_Client->BuildTopic(std::format("device/{}", slug)), payload, /*retain=*/true);
+				};
+
+				for (const auto& device : data_hub->Auxillaries())
+				{
+					publish_device("auxillary", device);
+				}
+
+				for (const auto& device : data_hub->Heaters())
+				{
+					publish_device("heater", device);
+				}
+
+				for (const auto& device : data_hub->Pumps())
+				{
+					publish_device("pump", device);
+				}
+
+				for (const auto& device : data_hub->Chlorinators())
+				{
+					publish_device("chlorinator", device);
+				}
+			}
+
+			zone->Value(total_size);
 			LogTrace(Channel::Mqtt, "Published device status");
 
 			OnDevicesPublished();
@@ -303,10 +444,19 @@ namespace AqualinkAutomate::Mqtt
 
 		try
 		{
-			nlohmann::json stats = SerializeStatistics();
-			auto payload = stats.dump();
-			zone->Value(payload.size());
-			m_Client->Publish(StatusTopic("statistics"), payload);
+			auto messages_payload = SerializeStatisticsMessages().dump();
+			m_Client->Publish(m_Client->BuildTopic("statistics/messages"), messages_payload);
+
+			auto bandwidth_payload = SerializeStatisticsBandwidth().dump();
+			m_Client->Publish(m_Client->BuildTopic("statistics/bandwidth"), bandwidth_payload);
+
+			auto latency_payload = SerializeStatisticsLatency().dump();
+			m_Client->Publish(m_Client->BuildTopic("statistics/latency"), latency_payload);
+
+			auto serial_payload = SerializeStatisticsSerial().dump();
+			m_Client->Publish(m_Client->BuildTopic("statistics/serial"), serial_payload);
+
+			zone->Value(messages_payload.size() + bandwidth_payload.size() + latency_payload.size() + serial_payload.size());
 			LogTrace(Channel::Mqtt, "Published statistics");
 		}
 		catch (const std::exception& ex)
@@ -366,258 +516,182 @@ namespace AqualinkAutomate::Mqtt
 		}
 	}
 
-	nlohmann::json MqttHub::SerializeSystemInfo() const
+	//=========================================================================
+	// Serialization helpers
+	//=========================================================================
+
+	nlohmann::json MqttHub::SerializeSystemStatus() const
 	{
-		auto now = std::chrono::system_clock::now();
 		auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
 			std::chrono::steady_clock::now() - m_StartTime);
 
-		nlohmann::json info = {
-			{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()},
+		return {
 			{"online", true},
-			{"uptime_seconds", uptime.count()},
-			{"version", {
-				{"application", Version::VersionInfo::ProjectVersion()},
-				{"build_date", Version::GitMetadata::CommitDate()}
-			}},
-			{"mqtt", {
-				{"client_id", m_Client ? m_Client->TopicPrefix() : ""},
-				{"connected", m_Client ? m_Client->IsConnected() : false}
-			}}
+			{"uptime_seconds", uptime.count()}
 		};
+	}
+
+	nlohmann::json MqttHub::SerializeSystemVersion() const
+	{
+		return {
+			{"application", Version::VersionInfo::ProjectVersion()},
+			{"build_date", Version::GitMetadata::CommitDate()}
+		};
+	}
+
+	nlohmann::json MqttHub::SerializeSystemEquipment() const
+	{
+		nlohmann::json equipment;
 
 		if (auto data_hub = m_DataHub.lock())
 		{
-			info["equipment"] = {
-				{"model_number", data_hub->EquipmentVersions.ModelNumber()},
-				{"firmware_revision", data_hub->EquipmentVersions.FirmwareRevision()}
+			equipment["model_number"] = data_hub->EquipmentVersions.ModelNumber();
+			equipment["firmware_revision"] = data_hub->EquipmentVersions.FirmwareRevision();
+		}
+
+		return equipment;
+	}
+
+	nlohmann::json MqttHub::SerializeTemperatures() const
+	{
+		nlohmann::json temps;
+
+		if (auto data_hub = m_DataHub.lock())
+		{
+			temps["air"] = SerializeTemperature(data_hub->AirTemp());
+			temps["pool"] = SerializeTemperature(data_hub->PoolTemp());
+			temps["spa"] = SerializeTemperature(data_hub->SpaTemp());
+			temps["freeze_protect"] = SerializeTemperature(data_hub->FreezeProtectPoint());
+			temps["pool_setpoint"] = SerializeTemperature(data_hub->PoolTempSetpoint());
+			temps["spa_setpoint"] = SerializeTemperature(data_hub->SpaTempSetpoint());
+		}
+
+		return temps;
+	}
+
+	nlohmann::json MqttHub::SerializeChemistry() const
+	{
+		nlohmann::json chemistry;
+
+		if (auto data_hub = m_DataHub.lock())
+		{
+			chemistry["orp"] = {
+				{"value_mv", data_hub->ORP()().value()}
+			};
+			chemistry["ph"] = {
+				{"value", data_hub->pH()()}
+			};
+			chemistry["salt"] = {
+				{"value_ppm", data_hub->SaltLevel().value()}
 			};
 		}
 
-		return info;
+		return chemistry;
 	}
 
-	nlohmann::json MqttHub::SerializePoolStatus() const
+	nlohmann::json MqttHub::SerializeCirculation() const
 	{
-		auto now = std::chrono::system_clock::now();
-
-		nlohmann::json status = {
-			{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-		};
+		nlohmann::json circulation;
 
 		if (auto data_hub = m_DataHub.lock())
 		{
-			// Temperatures
-			status["temperatures"] = {
-				{"air", SerializeTemperature(data_hub->AirTemp())},
-				{"pool", SerializeTemperature(data_hub->PoolTemp())},
-				{"spa", SerializeTemperature(data_hub->SpaTemp())},
-				{"freeze_protect", SerializeTemperature(data_hub->FreezeProtectPoint())},
-				{"pool_setpoint", SerializeTemperature(data_hub->PoolTempSetpoint())},
-				{"spa_setpoint", SerializeTemperature(data_hub->SpaTempSetpoint())}
-			};
+			circulation["mode"] = magic_enum::enum_name(data_hub->CirculationMode);
+			circulation["spa_mode"] = data_hub->SpaMode();
+			circulation["clean_mode"] = data_hub->InCleanMode;
 
-			// Chemistry
-			status["chemistry"] = {
-				{"orp", {
-					{"value_mv", data_hub->ORP()().value()}
-				}},
-				{"ph", {
-					{"value", data_hub->pH()()}
-				}},
-				{"salt", {
-					{"value_ppm", data_hub->SaltLevel().value()}
-				}}
-			};
-
-			// Circulation mode
-			status["circulation"] = {
-				{"mode", magic_enum::enum_name(data_hub->CirculationMode)},
-				{"spa_mode", data_hub->SpaMode()},
-				{"clean_mode", data_hub->InCleanMode}
-			};
-
-			// Pool configuration
-			status["configuration"] = {
-				{"pool_type", magic_enum::enum_name(data_hub->PoolConfiguration)},
-				{"system_board", magic_enum::enum_name(data_hub->SystemBoard)}
-			};
-
-			// Date/time from controller
-			status["controller_time"] = {
-				{"date", std::format("{:%Y-%m-%d}", data_hub->Date)},
-				{"time", std::format("{:%H:%M:%S}", data_hub->Time)}
-			};
-
-			// Timeout remaining
 			auto timeout_seconds = data_hub->TimeoutRemaining().count();
 			if (timeout_seconds > 0)
 			{
-				status["timeout_remaining_seconds"] = timeout_seconds;
+				circulation["timeout_remaining_seconds"] = timeout_seconds;
 			}
 		}
-		else
-		{
-			status["error"] = "Data hub not available";
-		}
 
-		return status;
+		return circulation;
 	}
 
-	nlohmann::json MqttHub::SerializeDeviceList() const
+	nlohmann::json MqttHub::SerializeConfiguration() const
 	{
-		auto now = std::chrono::system_clock::now();
-
-		nlohmann::json result = {
-			{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()},
-			{"devices", nlohmann::json::object()}
-		};
+		nlohmann::json config;
 
 		if (auto data_hub = m_DataHub.lock())
 		{
-			// Auxiliaries
-			nlohmann::json auxillaries = nlohmann::json::array();
-			for (const auto& device : data_hub->Auxillaries())
-			{
-				if (device)
-				{
-					auxillaries.push_back(SerializeDevice(device));
-				}
-			}
-			result["devices"]["auxillaries"] = auxillaries;
-
-			// Heaters
-			nlohmann::json heaters = nlohmann::json::array();
-			for (const auto& device : data_hub->Heaters())
-			{
-				if (device)
-				{
-					heaters.push_back(SerializeDevice(device));
-				}
-			}
-			result["devices"]["heaters"] = heaters;
-
-			// Pumps
-			nlohmann::json pumps = nlohmann::json::array();
-			for (const auto& device : data_hub->Pumps())
-			{
-				if (device)
-				{
-					pumps.push_back(SerializeDevice(device));
-				}
-			}
-			result["devices"]["pumps"] = pumps;
-
-			// Chlorinators
-			nlohmann::json chlorinators = nlohmann::json::array();
-			for (const auto& device : data_hub->Chlorinators())
-			{
-				if (device)
-				{
-					chlorinators.push_back(SerializeDevice(device));
-				}
-			}
-			result["devices"]["chlorinators"] = chlorinators;
-
-			// Filter pumps
-			nlohmann::json filter_pumps = nlohmann::json::array();
-			for (const auto& device : data_hub->FilterPumps())
-			{
-				if (device)
-				{
-					filter_pumps.push_back(SerializeDevice(device));
-				}
-			}
-			result["devices"]["filter_pumps"] = filter_pumps;
-		}
-		else
-		{
-			result["error"] = "Data hub not available";
+			config["pool_type"] = magic_enum::enum_name(data_hub->PoolConfiguration);
+			config["system_board"] = magic_enum::enum_name(data_hub->SystemBoard);
+			config["date"] = std::format("{:%Y-%m-%d}", data_hub->Date);
+			config["time"] = std::format("{:%H:%M:%S}", data_hub->Time);
 		}
 
-		return result;
+		return config;
 	}
 
-	namespace
+	nlohmann::json MqttHub::SerializeStatisticsMessages() const
 	{
-		double NanosToMicros(std::chrono::nanoseconds ns)
-		{
-			return static_cast<double>(ns.count()) / 1000.0;
-		}
-
-		nlohmann::json SerializeLatencySnapshot(const Utility::LatencyPercentileTracker<>::PercentileSnapshot& snapshot)
-		{
-			return {
-				{"p1_us", NanosToMicros(snapshot.p1)},
-				{"p50_us", NanosToMicros(snapshot.p50)},
-				{"p95_us", NanosToMicros(snapshot.p95)},
-				{"p99_us", NanosToMicros(snapshot.p99)},
-				{"min_us", NanosToMicros(snapshot.min)},
-				{"max_us", NanosToMicros(snapshot.max)},
-				{"mean_us", NanosToMicros(snapshot.mean)},
-				{"sample_count", snapshot.sample_count}
-			};
-		}
-	}
-
-	nlohmann::json MqttHub::SerializeStatistics() const
-	{
-		auto now = std::chrono::system_clock::now();
-
-		nlohmann::json stats = {
-			{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-		};
+		nlohmann::json messages = nlohmann::json::array();
 
 		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
-			// Message counts
-			nlohmann::json message_counts = nlohmann::json::array();
 			for (const auto& [msg_id, counter] : statistics_hub->MessageCounts)
 			{
-				message_counts.push_back({
+				messages.push_back({
 					{"count", counter.Count()}
 				});
 			}
-			stats["message_counts"] = message_counts;
-
-			// Bandwidth metrics
-			stats["bandwidth"] = {
-				{"read", {
-					{"total_bytes", statistics_hub->BandwidthMetrics.Read.TotalBytes},
-					{"utilisation_1sec", statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()},
-					{"utilisation_30sec", statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation()},
-					{"utilisation_5min", statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation()}
-				}},
-				{"write", {
-					{"total_bytes", statistics_hub->BandwidthMetrics.Write.TotalBytes},
-					{"utilisation_1sec", statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()},
-					{"utilisation_30sec", statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation()},
-					{"utilisation_5min", statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation()}
-				}}
-			};
-
-			// Latency metrics
-			stats["latency"] = {
-				{"serial_read", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot())},
-				{"serial_write", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot())},
-				{"message_processing", SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot())}
-			};
-
-			// Serial metrics
-			stats["serial"] = {
-				{"message_error_rate", statistics_hub->Serial.MessageErrorRate},
-				{"overflow_count", statistics_hub->Serial.SerialOverflowCount},
-				{"underflow_count", statistics_hub->Serial.SerialUnderflowCount},
-				{"transmission_failures", statistics_hub->Serial.TransmissionFailures},
-				{"write_queue_depth", statistics_hub->Serial.SerialWriteQueueDepth}
-			};
 		}
-		else
+
+		return messages;
+	}
+
+	nlohmann::json MqttHub::SerializeStatisticsBandwidth() const
+	{
+		nlohmann::json bandwidth;
+
+		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
-			stats["error"] = "Statistics hub not available";
+			bandwidth["read"] = {
+				{"total_bytes", statistics_hub->BandwidthMetrics.Read.TotalBytes},
+				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()},
+				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation()},
+				{"utilisation_5min", statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation()}
+			};
+			bandwidth["write"] = {
+				{"total_bytes", statistics_hub->BandwidthMetrics.Write.TotalBytes},
+				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()},
+				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation()},
+				{"utilisation_5min", statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation()}
+			};
 		}
 
-		return stats;
+		return bandwidth;
+	}
+
+	nlohmann::json MqttHub::SerializeStatisticsLatency() const
+	{
+		nlohmann::json latency;
+
+		if (auto statistics_hub = m_StatisticsHub.lock())
+		{
+			latency["serial_read"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot());
+			latency["serial_write"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot());
+			latency["message_processing"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot());
+		}
+
+		return latency;
+	}
+
+	nlohmann::json MqttHub::SerializeStatisticsSerial() const
+	{
+		nlohmann::json serial;
+
+		if (auto statistics_hub = m_StatisticsHub.lock())
+		{
+			serial["message_error_rate"] = statistics_hub->Serial.MessageErrorRate;
+			serial["overflow_count"] = statistics_hub->Serial.SerialOverflowCount;
+			serial["underflow_count"] = statistics_hub->Serial.SerialUnderflowCount;
+			serial["transmission_failures"] = statistics_hub->Serial.TransmissionFailures;
+			serial["write_queue_depth"] = statistics_hub->Serial.SerialWriteQueueDepth;
+		}
+
+		return serial;
 	}
 
 	nlohmann::json MqttHub::SerializeTemperature(const Kernel::Temperature& temp) const
@@ -626,18 +700,6 @@ namespace AqualinkAutomate::Mqtt
 			{"celsius", temp.InCelsius().value()},
 			{"fahrenheit", temp.InFahrenheit().value()}
 		};
-	}
-
-	nlohmann::json MqttHub::SerializeDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const
-	{
-		if (!device)
-		{
-			return nullptr;
-		}
-
-		nlohmann::json j;
-		Kernel::to_json(j, *device);
-		return j;
 	}
 
 	std::string MqttHub::StatusTopic(const std::string& subtopic) const

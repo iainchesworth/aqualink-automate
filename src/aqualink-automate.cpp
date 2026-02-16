@@ -14,6 +14,7 @@
 #include "developer/firewall_manager.h"
 #include "developer/mock_serial_port_impl.h"
 #include "developer/recording_serial_port_impl.h"
+#include "interfaces/icommanddispatcher.h"
 #include "interfaces/iserialportimpl.h"
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
@@ -46,6 +47,7 @@
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
 
+#include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
 #include "jandy/messages/jandy_message_ack.h"
@@ -150,6 +152,9 @@ int main(int argc, char* argv[])
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> hub_initialisation", std::source_location::current());
 			hub_locator.Register(data_hub).Register(equipment_hub).Register(preferences_hub).Register(statistics_hub);
+
+			auto command_dispatcher = std::make_shared<Devices::CommandDispatcher>(data_hub, equipment_hub);
+			hub_locator.Register<Interfaces::ICommandDispatcher>(command_dispatcher);
 		}
 
 		//---------------------------------------------------------------------

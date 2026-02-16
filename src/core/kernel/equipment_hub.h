@@ -8,6 +8,8 @@
 
 #include <boost/signals2.hpp>
 
+#include <functional>
+
 #include "interfaces/idevice.h"
 #include "interfaces/ideviceidentifier.h"
 #include "interfaces/istatuspublisher.h"
@@ -52,6 +54,8 @@ namespace AqualinkAutomate::Kernel
 		bool DeviceExists(const Interfaces::IDeviceIdentifier& device_id) const;
 		bool DeviceExists(std::unique_ptr<Interfaces::IDevice> const& device) const;
 		bool AddDevice(std::unique_ptr<Interfaces::IDevice> device);
+
+		Interfaces::IDevice* FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const;
 
 	private:
 		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;

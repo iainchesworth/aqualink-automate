@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 #include <tuple>
 
 #include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
-#include <tl/expected.hpp>
 
 #include "errors/string_conversion_errors.h"
 #include "kernel/orp.h"
@@ -38,8 +38,8 @@ namespace AqualinkAutomate::Utility
 		ChemistryStringConverter& operator=(const std::string& chemistry_string) noexcept;
 
 	public:
-		tl::expected<Kernel::ORP, boost::system::error_code> ORP() const noexcept;
-		tl::expected<Kernel::pH, boost::system::error_code> PH() const noexcept;
+		std::expected<Kernel::ORP, boost::system::error_code> ORP() const noexcept;
+		std::expected<Kernel::pH, boost::system::error_code> PH() const noexcept;
 
 	private:
 		void ConvertStringToChemistry(const std::string& chemistry_string) noexcept;
