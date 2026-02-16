@@ -39,7 +39,7 @@ namespace AqualinkAutomate::HTTP
 
 		if (m_Dirty.exchange(false, std::memory_order_relaxed))
 		{
-			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WS Stats Update", std::source_location::current());
+			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment_Stats::DequeueMessage", std::source_location::current());
 			auto payload = HTTP::WebSocket_Event(HTTP::WebSocket_EventTypes::StatisticsUpdate, JSON::GenerateJson_Equipment_Stats(m_StatisticsHub)).Payload();
 			zone->Value(payload.size());
 			return payload;

@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_SerializationRoundTrip_Ack)
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_SerializationRoundTrip_Message)
 {
-    const std::string test_line = "TEST MESSAGE CONTENT";
+    const std::string test_line = "TEST MSG CONTENT";
     JandyMessage_Message original(test_line);
     std::vector<uint8_t> serialized;
     BOOST_REQUIRE(original.Serialize(serialized));

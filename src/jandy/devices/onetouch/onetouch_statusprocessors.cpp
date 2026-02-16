@@ -127,7 +127,7 @@ namespace AqualinkAutomate::Devices
 			// Match for at least POOL HEAT
 			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
 
-			const std::string pool_heater_label{ "PoolHeating" };
+			const std::string pool_heater_label{ "Pool Heat" };
 
 			if (0 == m_DataHub->Devices.FindByLabel(pool_heater_label).size())
 			{
@@ -180,7 +180,7 @@ namespace AqualinkAutomate::Devices
 			// Match for at least SPA HEAT
 			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
 
-			const std::string spa_heater_label{ "SpaHeating" };
+			const std::string spa_heater_label{ "Spa Heat" };
 
 			if (0 == m_DataHub->Devices.FindByLabel(spa_heater_label).size())
 			{
@@ -233,7 +233,7 @@ namespace AqualinkAutomate::Devices
 			// Match for at least SOLAR HEAT
 			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
 
-			const std::string solar_heater_label{ "SolarHeating" };
+			const std::string solar_heater_label{ "Solar Heat" };
 
 			if (0 == m_DataHub->Devices.FindByLabel(solar_heater_label).size())
 			{
@@ -286,7 +286,7 @@ namespace AqualinkAutomate::Devices
 			// Match for at least HEAT PUMP
 			using Kernel::AuxillaryTraitsTypes::HeaterStatusTrait;
 
-			const std::string heat_pump_label{ "HeatPumpHeating" };
+			const std::string heat_pump_label{ "Heat Pump" };
 
 			if (0 == m_DataHub->Devices.FindByLabel(heat_pump_label).size())
 			{

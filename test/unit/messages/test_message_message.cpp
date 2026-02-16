@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(TestJandyMessage_MessageConstruction)
 
 BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
 {
-    const std::string TEST_LINE {"TEST DATA GOES HERE"};
+    const std::string TEST_LINE {"TEST DATA HERE!!"};  // 16 chars = DISPLAY_LINE_LENGTH
     JandyMessage_Message message1(TEST_LINE);
     JandyMessage_Message message2;
 
@@ -40,9 +40,9 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_NE(message1.RawId(), message2.RawId()); // Deserialisation captures the message "raw" id...
     BOOST_CHECK_EQUAL(0x03, message2.RawId());
     BOOST_CHECK_NE(message1.MessageLength(), message2.MessageLength());  // Deserialisation captures the message length...
-    BOOST_CHECK_EQUAL(26, message2.MessageLength());
+    BOOST_CHECK_EQUAL(23, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
-    BOOST_CHECK_EQUAL(0x21, message2.ChecksumValue());
+    BOOST_CHECK_EQUAL(0x15, message2.ChecksumValue());
 
     BOOST_CHECK_EQUAL(TEST_LINE, message2.Line());
 }

@@ -14,7 +14,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Buttons(const std::shared_ptr<Kernel::DataHub>& data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Buttons", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Buttons", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment buttons JSON");
 		nlohmann::json je_buttons;
 		return je_buttons;
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Devices", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Devices", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment devices JSON");
 		nlohmann::json je_devices;
 
@@ -101,7 +101,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Stats(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Stats", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Stats", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment statistics JSON");
 		nlohmann::json je_stats, message_counts;
 
@@ -173,7 +173,7 @@ namespace AqualinkAutomate::HTTP::JSON
 
 	nlohmann::json GenerateJson_Equipment_Version(const std::shared_ptr<Kernel::DataHub>& data_hub)
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("GenerateJson_Equipment_Version", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Version", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment version JSON");
 		const auto& versions = data_hub->EquipmentVersions;
 

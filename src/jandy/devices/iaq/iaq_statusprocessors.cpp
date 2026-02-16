@@ -95,9 +95,9 @@ namespace AqualinkAutomate::Devices
 			m_DataHub->ConfigUpdateSignal(update_event);
 		};
 
-		update_heater("PoolHeating", msg.PoolHeaterStatus());
-		update_heater("SpaHeating", msg.SpaHeaterStatus());
-		update_heater("SolarHeating", msg.SolarHeaterStatus());
+		update_heater("Pool Heat", msg.PoolHeaterStatus());
+		update_heater("Spa Heat", msg.SpaHeaterStatus());
+		update_heater("Solar Heat", msg.SolarHeaterStatus());
 	}
 
 	void IAQDevice::ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg)

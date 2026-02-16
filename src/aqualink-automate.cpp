@@ -360,10 +360,10 @@ int main(int argc, char* argv[])
 			shutdown = true;
 		});
 
+		profiler.Get()->EmitFrameMark("MainLoop");
+
 		while (!shutdown)
 		{
-			profiler.Get()->EmitFrameMark("MainLoop");
-
 			auto frame_start = clock::now();
 
 			// Process any pending Asio handlers (signal_set, etc.)
@@ -395,6 +395,8 @@ int main(int argc, char* argv[])
 			{
 				std::this_thread::sleep_until(frame_start + FRAME_PERIOD);
 			}
+
+			profiler.Get()->EmitFrameMark("MainLoop");
 		}
 
 		//---------------------------------------------------------------------
