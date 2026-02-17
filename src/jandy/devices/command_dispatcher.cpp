@@ -24,6 +24,16 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::ToggleByUuid(const boost::uuids::uuid& uuid)
 	{
+		return CommandByUuid(uuid, DeviceAction::Toggle);
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::ToggleByLabel(const std::string& label)
+	{
+		return CommandByLabel(label, DeviceAction::Toggle);
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::CommandByUuid(const boost::uuids::uuid& uuid, DeviceAction action)
+	{
 		auto device = m_DataHub->Devices.FindById(uuid);
 		if (!device)
 		{
@@ -31,10 +41,10 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		return DispatchToggle(device);
+		return DispatchCommand(device, action);
 	}
 
-	CommandDispatcher::CommandResult CommandDispatcher::ToggleByLabel(const std::string& label)
+	CommandDispatcher::CommandResult CommandDispatcher::CommandByLabel(const std::string& label, DeviceAction action)
 	{
 		auto matches = m_DataHub->Devices.FindByLabel(label);
 		if (matches.empty())
@@ -43,12 +53,11 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		return DispatchToggle(matches.front());
+		return DispatchCommand(matches.front(), action);
 	}
 
-	CommandDispatcher::CommandResult CommandDispatcher::DispatchToggle(const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+	SerialAdapterDevice* CommandDispatcher::FindSerialAdapter()
 	{
-		// Find the SerialAdapter device using a predicate on the equipment hub.
 		auto* rssa_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
 		{
 			auto* jandy_type = dynamic_cast<const JandyDeviceType*>(&dev.DeviceId());
@@ -57,46 +66,85 @@ namespace AqualinkAutomate::Devices
 
 		if (!rssa_device)
 		{
+			return nullptr;
+		}
+
+		return dynamic_cast<SerialAdapterDevice*>(rssa_device);
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
+	{
+		auto* serial_adapter = FindSerialAdapter();
+		if (!serial_adapter)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
+			return CommandResult::NoSerialAdapter;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting pool setpoint to {}", temperature));
+		serial_adapter->QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
+		return CommandResult::Success;
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
+	{
+		auto* serial_adapter = FindSerialAdapter();
+		if (!serial_adapter)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
+			return CommandResult::NoSerialAdapter;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting spa setpoint to {}", temperature));
+		serial_adapter->QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		return CommandResult::Success;
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction requested_action)
+	{
+		auto* serial_adapter = FindSerialAdapter();
+		if (!serial_adapter)
+		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found in equipment hub");
 			return CommandResult::NoSerialAdapter;
 		}
 
-		auto* serial_adapter = dynamic_cast<SerialAdapterDevice*>(rssa_device);
-		if (!serial_adapter)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: Device class is SerialAdapter but cast failed");
-			return CommandResult::NoSerialAdapter;
-		}
-
-		// Determine desired action based on current device status.
-		// Default to SetOn; if device is already on, use SetOff.
+		// Determine the serial command based on the requested action.
 		auto action = SerialAdapter_CommandTypes::SetOn;
 
-		if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
+		if (requested_action == DeviceAction::Off)
 		{
-			auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
-
-			switch (device_type)
+			action = SerialAdapter_CommandTypes::SetOff;
+		}
+		else if (requested_action == DeviceAction::Toggle)
+		{
+			// Auto-detect: default to SetOn; if device is already on, use SetOff.
+			if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
 			{
-			case AuxillaryTypes::Auxillary:
-			case AuxillaryTypes::Cleaner:
-			case AuxillaryTypes::Spillover:
-			case AuxillaryTypes::Sprinkler:
-				if (auto status = device->AuxillaryTraits.TryGet(AuxillaryStatusTrait{}); status.has_value() && *status == Kernel::AuxillaryStatuses::On)
-				{
-					action = SerialAdapter_CommandTypes::SetOff;
-				}
-				break;
+				auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
 
-			case AuxillaryTypes::Pump:
-				if (auto status = device->AuxillaryTraits.TryGet(PumpStatusTrait{}); status.has_value() && *status == Kernel::PumpStatuses::Running)
+				switch (device_type)
 				{
-					action = SerialAdapter_CommandTypes::SetOff;
-				}
-				break;
+				case AuxillaryTypes::Auxillary:
+				case AuxillaryTypes::Cleaner:
+				case AuxillaryTypes::Spillover:
+				case AuxillaryTypes::Sprinkler:
+					if (auto status = device->AuxillaryTraits.TryGet(AuxillaryStatusTrait{}); status.has_value() && *status == Kernel::AuxillaryStatuses::On)
+					{
+						action = SerialAdapter_CommandTypes::SetOff;
+					}
+					break;
 
-			default:
-				break;
+				case AuxillaryTypes::Pump:
+					if (auto status = device->AuxillaryTraits.TryGet(PumpStatusTrait{}); status.has_value() && *status == Kernel::PumpStatuses::Running)
+					{
+						action = SerialAdapter_CommandTypes::SetOff;
+					}
+					break;
+
+				default:
+					break;
+				}
 			}
 		}
 

@@ -146,7 +146,7 @@ namespace AqualinkAutomate::Devices
 
 	void PDADevice::Slot_PDA_Unknown_PDA_1B(const Messages::JandyMessage_Unknown& msg)
 	{
-		LogDebug(Channel::Devices, "PDA device received a JandyMessage_Unknown signal.");
+		LogDebug(Channel::Devices, std::format("PDA device received a JandyMessage_Unknown signal: type -> 0x{:02x}", msg.RawId()));
 	}
 
 }

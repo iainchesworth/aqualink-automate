@@ -13,6 +13,8 @@
 namespace AqualinkAutomate::Devices
 {
 
+	class SerialAdapterDevice;
+
 	class CommandDispatcher : public Interfaces::ICommandDispatcher
 	{
 	public:
@@ -20,9 +22,14 @@ namespace AqualinkAutomate::Devices
 
 		CommandResult ToggleByUuid(const boost::uuids::uuid& uuid) override;
 		CommandResult ToggleByLabel(const std::string& label) override;
+		CommandResult CommandByUuid(const boost::uuids::uuid& uuid, DeviceAction action) override;
+		CommandResult CommandByLabel(const std::string& label, DeviceAction action) override;
+		CommandResult SetPoolSetpoint(uint8_t temperature) override;
+		CommandResult SetSpaSetpoint(uint8_t temperature) override;
 
 	private:
-		CommandResult DispatchToggle(const std::shared_ptr<Kernel::AuxillaryDevice>& device);
+		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);
+		SerialAdapterDevice* FindSerialAdapter();
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub;

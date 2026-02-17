@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Messages
 	IAQMessage_PageButton::IAQMessage_PageButton() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageButton),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageButton>(),
+		m_ButtonIndex(0),
 		m_ButtonStatus(ButtonStatuses::Unknown),
 		m_ButtonType(ButtonTypes::Unknown),
 		m_ButtonName()
@@ -22,6 +23,11 @@ namespace AqualinkAutomate::Messages
 	}
 
 	IAQMessage_PageButton::~IAQMessage_PageButton() = default;
+
+	uint8_t IAQMessage_PageButton::ButtonIndex() const
+	{
+		return m_ButtonIndex;
+	}
 
 	ButtonStatuses IAQMessage_PageButton::ButtonStatus() const
 	{
@@ -75,7 +81,8 @@ namespace AqualinkAutomate::Messages
 		}
 		else
 		{
-			m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonStatuses::Unknown);
+			m_ButtonIndex = static_cast<uint8_t>(message_bytes[Index_ButtonIndex]);
+			m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(static_cast<uint8_t>(message_bytes[Index_ButtonState])).value_or(ButtonStatuses::Unknown);
 			m_ButtonType = magic_enum::enum_cast<ButtonTypes>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonTypes::Unknown);
 
 			const auto length_to_copy = message_bytes.size() - Index_ButtonNameText - 3;

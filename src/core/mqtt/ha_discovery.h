@@ -80,10 +80,14 @@ namespace AqualinkAutomate::Mqtt
 		//---------------------------------------------------------------------
 
 		void AddTemperatureSensorComponents(nlohmann::json& cmps);
+		void AddSetpointComponents(nlohmann::json& cmps);
 		void AddChemistrySensorComponents(nlohmann::json& cmps);
 		void AddCirculationComponents(nlohmann::json& cmps);
 		void AddSystemComponents(nlohmann::json& cmps);
 		void AddDynamicDeviceComponents(nlohmann::json& cmps);
+
+		std::string SetpointCommandTopic(const std::string& target) const;
+		std::string DeviceCommandTopic(const std::string& slug) const;
 
 	private:
 		std::shared_ptr<MqttClient> m_Client;

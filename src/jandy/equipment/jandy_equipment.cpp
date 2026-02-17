@@ -39,6 +39,7 @@
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_heartbeat.h"
 #include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
 #include "messages/iaq/iaq_message_onetouch_status.h"
@@ -99,6 +100,7 @@ namespace AqualinkAutomate::Equipment
 		m_MessageConnections.push_back(Messages::IAQMessage_AuxStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_CommandReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_ControlReady::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::IAQMessage_Heartbeat::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_MainStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_MessageLong::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::IAQMessage_OneTouchStatus::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));

@@ -48,8 +48,8 @@ BOOST_AUTO_TEST_CASE(Test_MqttOptions_DefaultSettings)
 	BOOST_CHECK(settings.username.empty());
 	BOOST_CHECK(settings.password.empty());
 	BOOST_CHECK_EQUAL(settings.topic_prefix, "aqualink");
-	BOOST_CHECK_EQUAL(settings.status_publish_interval.count(), 30);
-	BOOST_CHECK_EQUAL(settings.statistics_publish_interval.count(), 60);
+	BOOST_CHECK_EQUAL(settings.status_publish_interval.count(), 5);
+	BOOST_CHECK_EQUAL(settings.statistics_publish_interval.count(), 10);
 	BOOST_CHECK_EQUAL(settings.publish_on_change, true);
 	BOOST_CHECK_EQUAL(settings.home_assistant_enabled, false);
 	BOOST_CHECK_EQUAL(settings.ha_discovery_prefix, "homeassistant");

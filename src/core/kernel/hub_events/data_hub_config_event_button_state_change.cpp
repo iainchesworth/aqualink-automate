@@ -13,6 +13,14 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
+	DataHub_ConfigEvent_ButtonStateChange::DataHub_ConfigEvent_ButtonStateChange(const boost::uuids::uuid& button_id, std::string_view status, std::string_view label) :
+		DataHub_ConfigEvent(Hub_EventTypes::ButtonStateChange),
+		m_ButtonId(button_id),
+		m_Status(status),
+		m_Label(label)
+	{
+	}
+
 	DataHub_ConfigEvent_ButtonStateChange::~DataHub_ConfigEvent_ButtonStateChange() = default;
 
 	boost::uuids::uuid DataHub_ConfigEvent_ButtonStateChange::ButtonId() const
@@ -23,6 +31,11 @@ namespace AqualinkAutomate::Kernel
 	std::string_view DataHub_ConfigEvent_ButtonStateChange::Status() const
 	{
 		return m_Status;
+	}
+
+	std::string_view DataHub_ConfigEvent_ButtonStateChange::Label() const
+	{
+		return m_Label;
 	}
 
 	boost::uuids::uuid DataHub_ConfigEvent_ButtonStateChange::Id() const
@@ -37,6 +50,11 @@ namespace AqualinkAutomate::Kernel
 
 		j["button_id"] = boost::uuids::to_string(m_ButtonId);
 		j["status"] = m_Status;
+
+		if (!m_Label.empty())
+		{
+			j["label"] = m_Label;
+		}
 
 		return j;
 	}

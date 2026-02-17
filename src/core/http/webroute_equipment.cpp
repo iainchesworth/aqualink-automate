@@ -30,6 +30,14 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_DataHub->PoolTemp());
 		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_DataHub->SpaTemp());
 		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_DataHub->AirTemp());
+		jandy_equipment_json["temperatures"]["pool_setpoint"] = {
+			{"celsius", m_DataHub->PoolTempSetpoint().InCelsius().value()},
+			{"fahrenheit", m_DataHub->PoolTempSetpoint().InFahrenheit().value()}
+		};
+		jandy_equipment_json["temperatures"]["spa_setpoint"] = {
+			{"celsius", m_DataHub->SpaTempSetpoint().InCelsius().value()},
+			{"fahrenheit", m_DataHub->SpaTempSetpoint().InFahrenheit().value()}
+		};
 
 		jandy_equipment_json["chemistry"]["ph"] = static_cast<double>(m_DataHub->pH()());
 		jandy_equipment_json["chemistry"]["orp"] = static_cast<uint16_t>(m_DataHub->ORP()().value());

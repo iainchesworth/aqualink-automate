@@ -57,12 +57,12 @@ namespace AqualinkAutomate::Messages
 		IAQ_MainStatus = 0x70,
 		IAQ_OneTouchStatus = 0x71,
 		IAQ_AuxStatus = 0x72,
+		IAQ_Heartbeat = 0x53,
 		IAQ_CommandReady = 0x73,
 
 		// Unknown ids
 		Unknown_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
-		Unknown_IAQ_53 = 0x53,
 		Unknown_ReadyControl = 0x80,
 		Unknown = 0xFF
 	};

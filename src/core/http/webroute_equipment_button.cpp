@@ -2,6 +2,7 @@
 #include <format>
 #include <ranges>
 
+#include <boost/url/parse.hpp>
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <magic_enum/magic_enum.hpp>
@@ -17,6 +18,40 @@
 #include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
+
+namespace
+{
+	/// Extract button_id from URL path (last segment of "/api/equipment/buttons/{button_id}").
+	/// Falls back to query string parameter for backwards compatibility.
+	std::optional<std::string> ExtractButtonId(const AqualinkAutomate::HTTP::Request& req)
+	{
+		// Try extracting from URL path first (e.g. /api/equipment/buttons/some-uuid)
+		auto url_result = boost::urls::parse_origin_form(req.target());
+		if (url_result.has_value())
+		{
+			auto segments = url_result->segments();
+			// Path: /api/equipment/buttons/{button_id} -> 4 segments
+			if (segments.size() >= 4)
+			{
+				auto it = segments.end();
+				--it;
+				std::string last_segment(*it);
+				if (!last_segment.empty())
+				{
+					return last_segment;
+				}
+			}
+		}
+
+		// Fall back to query string
+		if (auto qs = AqualinkAutomate::HTTP::ParseQueryString(req, "button_id"); qs.has_value())
+		{
+			return qs.value();
+		}
+
+		return std::nullopt;
+	}
+}
 
 namespace AqualinkAutomate::HTTP
 {
@@ -54,7 +89,7 @@ namespace AqualinkAutomate::HTTP
 			{
 				return Report_SystemIsInactive(req);
 			}
-			else if (auto button_id = HTTP::ParseQueryString(req, "button_id"); !button_id.has_value())
+			else if (auto button_id = ExtractButtonId(req); !button_id.has_value())
 			{
 				return Report_ButtonDoesntExist(req, UNKNOWN_BUTTON_ID);
 			}
@@ -109,7 +144,7 @@ namespace AqualinkAutomate::HTTP
 		{
 			try
 			{
-				if (auto button_id = HTTP::ParseQueryString(req, "button_id"); !button_id.has_value())
+				if (auto button_id = ExtractButtonId(req); !button_id.has_value())
 				{
 					return Report_ButtonDoesntExist(req, UNKNOWN_BUTTON_ID);
 				}

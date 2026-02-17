@@ -155,6 +155,14 @@ namespace AqualinkAutomate::Messages
 			m_MessageLength = static_cast<uint8_t>(packet_data.size());
 			m_ChecksumValue = static_cast<uint8_t>(packet_data[m_MessageLength - PACKET_FOOTER_LENGTH]);
 
+			// Update the enum ID from the wire byte so Id() returns the
+			// specific enum value (e.g. IAQ_Heartbeat) rather than the
+			// default-constructed value (e.g. Unknown).
+			if (auto resolved = magic_enum::enum_cast<JandyMessageIds>(m_RawId); resolved.has_value())
+			{
+				SetId(resolved.value());
+			}
+
 			return DeserializeContents(packet_data);
 		}
 

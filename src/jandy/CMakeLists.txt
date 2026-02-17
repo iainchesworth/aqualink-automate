@@ -89,6 +89,7 @@ target_sources(
 	messages/iaq/iaq_message_aux_status.cpp
 	messages/iaq/iaq_message_command_ready.cpp
 	messages/iaq/iaq_message_control_ready.cpp
+	messages/iaq/iaq_message_heartbeat.cpp
 	messages/iaq/iaq_message_main_status.cpp
 	messages/iaq/iaq_message_message_long.cpp
 	messages/iaq/iaq_message_onetouch_status.cpp

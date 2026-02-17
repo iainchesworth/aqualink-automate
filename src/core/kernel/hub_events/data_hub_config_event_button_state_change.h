@@ -14,11 +14,13 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_ConfigEvent_ButtonStateChange(const boost::uuids::uuid& button_id, std::string_view status);
+		DataHub_ConfigEvent_ButtonStateChange(const boost::uuids::uuid& button_id, std::string_view status, std::string_view label);
 		virtual ~DataHub_ConfigEvent_ButtonStateChange();
 
 	public:
 		boost::uuids::uuid ButtonId() const;
 		std::string_view Status() const;
+		std::string_view Label() const;
 
 	public:
 		virtual boost::uuids::uuid Id() const override;
@@ -27,6 +29,7 @@ namespace AqualinkAutomate::Kernel
 	private:
 		boost::uuids::uuid m_ButtonId;
 		std::string m_Status;
+		std::string m_Label;
 	};
 
 }

@@ -129,6 +129,35 @@
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* Setpoint buttons */
+.setpoint-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.setpoint-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.setpoint-btn:active {
+    transform: scale(0.92);
+}
+
 /* Loading spinner */
 .spinner {
     width: 40px;

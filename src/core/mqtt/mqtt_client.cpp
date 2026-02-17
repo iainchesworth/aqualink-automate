@@ -238,7 +238,7 @@ namespace AqualinkAutomate::Mqtt
 		}
 		else if (!ec)
 		{
-			LogInfo(Channel::Mqtt, std::format("Sent SUBSCRIBE for '{}' (QoS {})", topic_filter, qos));
+			LogDebug(Channel::Mqtt, std::format("Sent SUBSCRIBE for '{}' (QoS {})", topic_filter, qos));
 		}
 	}
 

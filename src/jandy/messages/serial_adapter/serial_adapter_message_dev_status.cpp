@@ -75,37 +75,37 @@ namespace AqualinkAutomate::Messages
 		return m_BatteryCondition;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::Pool_SetPoint_One() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::Pool_SetPoint_One() const
 	{
 		return m_PoolTemperature_SetPoint_One;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::Pool_SetPoint_Two() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::Pool_SetPoint_Two() const
 	{
 		return m_PoolTemperature_SetPoint_Two;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::Spa_SetPoint() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::Spa_SetPoint() const
 	{
 		return m_SpaTemperature_SetPoint;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::AirTemperature() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::AirTemperature() const
 	{
 		return m_AirTemperature;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::PoolTemperature() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::PoolTemperature() const
 	{
 		return m_PoolTemperature;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::SolarTemperature() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::SolarTemperature() const
 	{
 		return m_SolarTemperature;
 	}
 
-	std::optional<Kernel::Temperature> SerialAdapterMessage_DevStatus::SpaTemperature() const
+	std::optional<uint8_t> SerialAdapterMessage_DevStatus::SpaTemperature() const
 	{
 		return m_SpaTemperature;
 	}
@@ -340,20 +340,10 @@ namespace AqualinkAutomate::Messages
 					},
 					[this, &message_bytes](SerialAdapter_SystemTemperatureCommands sa_stc)
 					{
-						auto convert_to_temperature = [](uint8_t encoded_temperature) -> Kernel::Temperature
-						{
-							auto is_celsius = encoded_temperature & 0x80;
-							auto in_degrees = encoded_temperature & 0x7F;
-
-							if (is_celsius)
-							{
-								return Kernel::Temperature::ConvertToTemperatureInCelsius(in_degrees);
-							}
-							else
-							{
-								return Kernel::Temperature::ConvertToTemperatureInFahrenheit(in_degrees);
-							}
-						};
+						// Temperature/setpoint values are raw integer degrees in the system's configured
+						// units (Fahrenheit or Celsius). The UNITS command determines interpretation.
+						// Unit-aware conversion to Temperature objects happens in the message processor
+						// which has access to DataHub's SystemTemperatureUnits().
 
 						switch (sa_stc)
 						{
@@ -379,37 +369,37 @@ namespace AqualinkAutomate::Messages
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::POOLSP:
-							m_PoolTemperature_SetPoint_One = convert_to_temperature(message_bytes[Index_PoolTemperature_SetPoint]);
+							m_PoolTemperature_SetPoint_One = message_bytes[Index_PoolTemperature_SetPoint];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PoolTemp SetPoint 1 -> {}", m_PoolTemperature_SetPoint_One.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::POOLSP2:
-							m_PoolTemperature_SetPoint_Two = convert_to_temperature(message_bytes[Index_PoolTemperature_SetPoint]);
+							m_PoolTemperature_SetPoint_Two = message_bytes[Index_PoolTemperature_SetPoint];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PoolTemp SetPoint 2 -> {}", m_PoolTemperature_SetPoint_Two.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::SPASP:
-							m_SpaTemperature_SetPoint = convert_to_temperature(message_bytes[Index_SpaTemperature_SetPoint]);
+							m_SpaTemperature_SetPoint = message_bytes[Index_SpaTemperature_SetPoint];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: SpaTemp SetPoint -> {}", m_SpaTemperature_SetPoint.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::POOLTMP:
-							m_PoolTemperature = convert_to_temperature(message_bytes[Index_PoolTemperature]);
+							m_PoolTemperature = message_bytes[Index_PoolTemperature];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PoolTemp -> {}", m_PoolTemperature.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::SPATMP:
-							m_SpaTemperature = convert_to_temperature(message_bytes[Index_SpaTemperature]);
+							m_SpaTemperature = message_bytes[Index_SpaTemperature];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: SpaTemp -> {}", m_SpaTemperature.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::AIRTMP:
-							m_AirTemperature = convert_to_temperature(message_bytes[Index_AirTemperature]);
+							m_AirTemperature = message_bytes[Index_AirTemperature];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: AirTemp -> {}", m_AirTemperature.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::SOLTMP:
-							m_SolarTemperature = convert_to_temperature(message_bytes[Index_SolarTemperature]);
+							m_SolarTemperature = message_bytes[Index_SolarTemperature];
 							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: SolarTemp -> {}", m_SolarTemperature.value()));
 							break;
 						}

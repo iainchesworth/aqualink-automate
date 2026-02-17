@@ -172,13 +172,13 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		std::optional<Kernel::TemperatureUnits> TemperatureUnits() const;
-		std::optional<Kernel::Temperature> Pool_SetPoint_One() const;
-		std::optional<Kernel::Temperature> Pool_SetPoint_Two() const;
-		std::optional<Kernel::Temperature> Spa_SetPoint() const;
-		std::optional<Kernel::Temperature> AirTemperature() const;
-		std::optional<Kernel::Temperature> PoolTemperature() const;
-		std::optional<Kernel::Temperature> SolarTemperature() const;
-		std::optional<Kernel::Temperature> SpaTemperature() const;
+		std::optional<uint8_t> Pool_SetPoint_One() const;
+		std::optional<uint8_t> Pool_SetPoint_Two() const;
+		std::optional<uint8_t> Spa_SetPoint() const;
+		std::optional<uint8_t> AirTemperature() const;
+		std::optional<uint8_t> PoolTemperature() const;
+		std::optional<uint8_t> SolarTemperature() const;
+		std::optional<uint8_t> SpaTemperature() const;
 
 	public:
 		std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> AuxilliaryState() const;
@@ -203,13 +203,13 @@ namespace AqualinkAutomate::Messages
 
 	private:
 		std::optional<Kernel::TemperatureUnits> m_TemperatureUnits{ std::nullopt };
-		std::optional<Kernel::Temperature> m_PoolTemperature_SetPoint_One{ std::nullopt };
-		std::optional<Kernel::Temperature> m_PoolTemperature_SetPoint_Two{ std::nullopt };
-		std::optional<Kernel::Temperature> m_SpaTemperature_SetPoint{ std::nullopt };
-		std::optional<Kernel::Temperature> m_AirTemperature{ std::nullopt };
-		std::optional<Kernel::Temperature> m_PoolTemperature{ std::nullopt };
-		std::optional<Kernel::Temperature> m_SolarTemperature{ std::nullopt };
-		std::optional<Kernel::Temperature> m_SpaTemperature{ std::nullopt };
+		std::optional<uint8_t> m_PoolTemperature_SetPoint_One{ std::nullopt };
+		std::optional<uint8_t> m_PoolTemperature_SetPoint_Two{ std::nullopt };
+		std::optional<uint8_t> m_SpaTemperature_SetPoint{ std::nullopt };
+		std::optional<uint8_t> m_AirTemperature{ std::nullopt };
+		std::optional<uint8_t> m_PoolTemperature{ std::nullopt };
+		std::optional<uint8_t> m_SolarTemperature{ std::nullopt };
+		std::optional<uint8_t> m_SpaTemperature{ std::nullopt };
 
 	private:
 		std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> m_Aux_State{ std::nullopt };

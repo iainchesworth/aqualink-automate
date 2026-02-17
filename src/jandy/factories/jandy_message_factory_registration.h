@@ -25,6 +25,7 @@
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_heartbeat.h"
 #include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
 #include "messages/iaq/iaq_message_onetouch_status.h"
@@ -65,7 +66,6 @@ namespace AqualinkAutomate::Factory
 		// Register the UNKNOWN type for all "seen-but-unknown" message types
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_05),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_PDA_1B),
-		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_IAQ_53),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_ReadyControl),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown),
 
@@ -88,6 +88,7 @@ namespace AqualinkAutomate::Factory
 
 		// Register the IAQ message types
 		REGISTER_MESSAGE(Messages::IAQMessage_ControlReady, Messages::JandyMessageIds::IAQ_ControlReady),
+		REGISTER_MESSAGE(Messages::IAQMessage_Heartbeat, Messages::JandyMessageIds::IAQ_Heartbeat),
 		REGISTER_MESSAGE(Messages::IAQMessage_MessageLong, Messages::JandyMessageIds::IAQ_MessageLong),
 		REGISTER_MESSAGE(Messages::IAQMessage_PageButton, Messages::JandyMessageIds::IAQ_PageButton),
 		REGISTER_MESSAGE(Messages::IAQMessage_PageContinue, Messages::JandyMessageIds::IAQ_PageContinue),

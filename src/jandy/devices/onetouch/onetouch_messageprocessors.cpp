@@ -225,7 +225,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Unknown", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogWarning(Channel::Devices, std::format("OneTouch ({}): Received unknown message type: 0x{:02x}", DeviceId(), static_cast<uint8_t>(msg.Id())));
+		LogWarning(Channel::Devices, std::format("OneTouch ({}): Received unknown message type: 0x{:02x}", DeviceId(), msg.RawId()));
 
 		ProcessControllerUpdates();
 

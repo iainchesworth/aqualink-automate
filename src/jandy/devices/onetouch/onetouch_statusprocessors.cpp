@@ -93,7 +93,12 @@ namespace AqualinkAutomate::Devices
 
 				// Signal that a button state change has occurred.
 				auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(pump);
-				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string);
+				std::string pump_lbl;
+				if (auto label_opt = pump->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+				{
+					pump_lbl = label_opt.value();
+				}
+				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string, pump_lbl);
 				m_DataHub->ConfigUpdateSignal(update_event);
 			}
 		}
@@ -147,7 +152,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			std::string heater_lbl;
+			if (auto label_opt = heater->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				heater_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
@@ -200,7 +210,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			std::string heater_lbl;
+			if (auto label_opt = heater->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				heater_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
@@ -253,7 +268,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			std::string heater_lbl;
+			if (auto label_opt = heater->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				heater_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
@@ -306,7 +326,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			std::string heater_lbl;
+			if (auto label_opt = heater->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				heater_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
@@ -359,7 +384,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(chiller);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chiller->Id(), status_string);
+			std::string chiller_lbl;
+			if (auto label_opt = chiller->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				chiller_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chiller->Id(), status_string, chiller_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}
@@ -489,7 +519,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(chlorinator);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chlorinator->Id(), status_string);
+			std::string chlorinator_lbl;
+			if (auto label_opt = chlorinator->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				chlorinator_lbl = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chlorinator->Id(), status_string, chlorinator_lbl);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}

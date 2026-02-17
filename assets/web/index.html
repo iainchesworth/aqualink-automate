@@ -114,6 +114,33 @@
                 </div>
             </div>
 
+            <!-- Temperature Setpoints -->
+            <div class="card mb-2" x-show="$store.pool.poolSetpoint !== '--' || $store.pool.spaSetpoint !== '--'">
+                <div class="card-header">Temperature Setpoints</div>
+                <div class="card-body">
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;" x-show="$store.pool.poolSetpoint !== '--'">
+                            <span style="font-weight:500;min-width:60px;">Pool</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', -0.5)">-</button>
+                                <span style="min-width:60px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;"
+                                      x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
+                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', 0.5)">+</button>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;" x-show="$store.pool.spaSetpoint !== '--'">
+                            <span style="font-weight:500;min-width:60px;">Spa</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', -0.5)">-</button>
+                                <span style="min-width:60px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;"
+                                      x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint"></span>
+                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', 0.5)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- System info bar -->
             <div class="system-info-bar mb-2" x-show="$store.pool.equipmentVersion.length > 0">
                 <template x-for="field in $store.pool.equipmentVersion" :key="field.label">

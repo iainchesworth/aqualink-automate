@@ -70,7 +70,12 @@ namespace AqualinkAutomate::Devices
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, pump_status);
 
 				auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(pump);
-				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string);
+				std::string label;
+				if (auto label_opt = pump->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+				{
+					label = label_opt.value();
+				}
+				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string, label);
 				m_DataHub->ConfigUpdateSignal(update_event);
 			}
 		}
@@ -91,7 +96,12 @@ namespace AqualinkAutomate::Devices
 			heater->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, status);
 
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string);
+			std::string heater_label;
+			if (auto label_opt = heater->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				heater_label = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_label);
 			m_DataHub->ConfigUpdateSignal(update_event);
 		};
 
@@ -157,7 +167,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(aux_ptr);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string);
+			std::string aux_label;
+			if (auto label_opt = aux_ptr->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				aux_label = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, aux_label);
 			m_DataHub->ConfigUpdateSignal(update_event);
 
 			LogTrace(Channel::Devices, std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",

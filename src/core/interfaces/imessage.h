@@ -41,6 +41,9 @@ namespace AqualinkAutomate::Interfaces
 			return is_equal;
 		}
 
+	protected:
+		void SetId(MESSAGE_ID id) { m_Id = id; }
+
 	private:
 		MESSAGE_ID m_Id;
 	};

@@ -125,8 +125,8 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageButton", std::source_location::current(), UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageButton: name='{}', type={}, status={}",
-			DeviceId(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())));
+		LogDebug(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageButton: index={}, name='{}', type={}, status={}",
+			DeviceId(), msg.ButtonIndex(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())));
 
 		ProcessControllerUpdates();
 
@@ -215,6 +215,20 @@ namespace AqualinkAutomate::Devices
 		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_OneTouchStatus", DeviceId()));
 
 		ProcessControllerUpdates();
+
+		Restartable::Kick();
+	}
+
+	void IAQDevice::Slot_IAQ_Heartbeat(const Messages::IAQMessage_Heartbeat& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_Heartbeat", std::source_location::current(), UnitColours::Red);
+
+		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_Heartbeat", DeviceId()));
+
+		// The IAQ device responds to Heartbeat (0x53) with a constant
+		// presence beacon ACK: Type=0x1f, Command=0x00.  This differs from
+		// IAQ_Poll (0x30) which can carry commands.
+		Signal_AckMessage(static_cast<uint8_t>(0x1f), static_cast<uint8_t>(0x00));
 
 		Restartable::Kick();
 	}

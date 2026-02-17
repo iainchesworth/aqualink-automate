@@ -11,13 +11,15 @@
  *   TemperatureUpdate → { pool_temp, spa_temp, air_temp }  (string values from Localised formatter)
  *   ChemistryUpdate   → { ph, orp, salt_level }            (numeric values)
  *   SystemStatusChange → serialised IStatus
- *   ButtonStateChange  → { button_id, status }
+ *   ButtonStateChange  → { button_id, status, label? }
  */
 document.addEventListener('alpine:init', () => {
     Alpine.store('pool', {
         poolTemp: '--',
         spaTemp: '--',
         airTemp: '--',
+        poolSetpoint: '--',
+        spaSetpoint: '--',
         ph: '--',
         orp: '--',
         saltPpm: '--',
@@ -53,6 +55,8 @@ document.addEventListener('alpine:init', () => {
                     this.poolTemp = data.temperatures.pool ?? '--';
                     this.spaTemp = data.temperatures.spa ?? '--';
                     this.airTemp = data.temperatures.air ?? '--';
+                    if (data.temperatures.pool_setpoint) this.poolSetpoint = data.temperatures.pool_setpoint;
+                    if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
 
                 // Chemistry — all under 'chemistry' now
@@ -136,6 +140,8 @@ document.addEventListener('alpine:init', () => {
                         if (msg.payload.pool_temp != null) this.poolTemp = msg.payload.pool_temp;
                         if (msg.payload.spa_temp != null) this.spaTemp = msg.payload.spa_temp;
                         if (msg.payload.air_temp != null) this.airTemp = msg.payload.air_temp;
+                        if (msg.payload.pool_setpoint != null) this.poolSetpoint = msg.payload.pool_setpoint;
+                        if (msg.payload.spa_setpoint != null) this.spaSetpoint = msg.payload.spa_setpoint;
                     }
                     break;
 
@@ -158,10 +164,45 @@ document.addEventListener('alpine:init', () => {
                     if (msg.payload?.button_id != null) {
                         const idx = this.buttons.findIndex(b => b.id === msg.payload.button_id);
                         if (idx !== -1) {
-                            this.buttons[idx] = { ...this.buttons[idx], status: msg.payload.status };
+                            const updates = { status: msg.payload.status };
+                            if (msg.payload.label) updates.label = msg.payload.label;
+                            this.buttons[idx] = { ...this.buttons[idx], ...updates };
+                        } else if (msg.payload.label) {
+                            this.buttons.push({
+                                id: msg.payload.button_id,
+                                label: msg.payload.label,
+                                status: msg.payload.status
+                            });
                         }
                     }
                     break;
+            }
+        },
+
+        async adjustSetpoint(target, delta) {
+            try {
+                const current = target === 'pool' ? this.poolSetpoint : this.spaSetpoint;
+                const currentCelsius = typeof current === 'object' ? current.celsius : parseFloat(current);
+                if (isNaN(currentCelsius)) return;
+                const newTemp = currentCelsius + delta;
+                const body = {};
+                body[target] = newTemp;
+                const resp = await fetch('/api/equipment/setpoints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json();
+                if (data) {
+                    // Optimistic update
+                    if (target === 'pool' && typeof this.poolSetpoint === 'object') {
+                        this.poolSetpoint = { ...this.poolSetpoint, celsius: newTemp };
+                    } else if (target === 'spa' && typeof this.spaSetpoint === 'object') {
+                        this.spaSetpoint = { ...this.spaSetpoint, celsius: newTemp };
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to adjust setpoint:', e);
             }
         },
 

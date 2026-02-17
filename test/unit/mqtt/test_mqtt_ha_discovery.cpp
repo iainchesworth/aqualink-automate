@@ -9,6 +9,7 @@
 #include "mqtt/ha_discovery.h"
 #include "mqtt/mqtt_client.h"
 #include "kernel/data_hub.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "options/options_mqtt_options.h"
 #include "support/unit_test_mqtt_support.h"
 
@@ -339,19 +340,34 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_TemperatureSensorsHaveCorrectC
 	auto& cmps = payload["cmps"];
 
 	int temp_sensor_count = 0;
+	int temp_number_count = 0;
 	for (auto& [key, cmp] : cmps.items())
 	{
 		if (cmp.contains("device_class") && cmp["device_class"] == "temperature")
 		{
-			++temp_sensor_count;
 			BOOST_CHECK_EQUAL(cmp["unit_of_measurement"], "\u00B0C");
-			BOOST_CHECK_EQUAL(cmp["state_class"], "measurement");
 			BOOST_CHECK_EQUAL(cmp["state_topic"], "aqualink/pool/temperatures");
+
+			auto platform = cmp["p"].get<std::string>();
+			if (platform == "sensor")
+			{
+				++temp_sensor_count;
+				BOOST_CHECK_EQUAL(cmp["state_class"], "measurement");
+			}
+			else if (platform == "number")
+			{
+				++temp_number_count;
+				BOOST_CHECK_MESSAGE(cmp.contains("command_topic"), "number entity missing 'command_topic': " + key);
+				BOOST_CHECK_MESSAGE(cmp.contains("min"), "number entity missing 'min': " + key);
+				BOOST_CHECK_MESSAGE(cmp.contains("max"), "number entity missing 'max': " + key);
+				BOOST_CHECK_MESSAGE(cmp.contains("step"), "number entity missing 'step': " + key);
+			}
 		}
 	}
 
-	// Should have 6 temperature sensors: pool, spa, air, freeze_protect, pool_setpoint, spa_setpoint
-	BOOST_CHECK_EQUAL(temp_sensor_count, 6);
+	// Should have 4 temperature sensors (pool, spa, air, freeze_protect) + 2 number entities (pool_setpoint, spa_setpoint)
+	BOOST_CHECK_EQUAL(temp_sensor_count, 4);
+	BOOST_CHECK_EQUAL(temp_number_count, 2);
 }
 
 BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_BinarySensorsHavePayloadOnOff)
@@ -379,6 +395,55 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_BinarySensorsHavePayloadOnOff)
 				"binary_sensor component missing 'payload_off': " + key);
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_SwitchEntitiesHaveCommandTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	// Create a data hub with a pump device so we get a switch entity
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	ha.ConnectDataHub(data_hub);
+
+	auto pump = std::make_shared<Kernel::AuxillaryDevice>();
+	pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Pump);
+	pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, std::string("Filter Pump"));
+	pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::PumpStatuses::Off);
+	data_hub->Devices.Add(pump);
+
+	ha.PublishDiscoveryConfigs();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_REQUIRE_EQUAL(queue.size(), 1);
+
+	auto payload = nlohmann::json::parse(queue[0].payload);
+	auto& cmps = payload["cmps"];
+
+	int switch_count = 0;
+	for (auto& [key, cmp] : cmps.items())
+	{
+		if (cmp.contains("p") && cmp["p"] == "switch")
+		{
+			++switch_count;
+			BOOST_CHECK_MESSAGE(cmp.contains("command_topic"),
+				"switch component missing 'command_topic': " + key);
+			BOOST_CHECK_MESSAGE(cmp.contains("state_on"),
+				"switch component missing 'state_on': " + key);
+			BOOST_CHECK_MESSAGE(cmp.contains("state_off"),
+				"switch component missing 'state_off': " + key);
+			BOOST_CHECK_MESSAGE(cmp.contains("payload_on"),
+				"switch component missing 'payload_on': " + key);
+			BOOST_CHECK_MESSAGE(cmp.contains("payload_off"),
+				"switch component missing 'payload_off': " + key);
+			BOOST_CHECK_EQUAL(cmp["payload_on"], "ON");
+			BOOST_CHECK_EQUAL(cmp["payload_off"], "OFF");
+		}
+	}
+
+	BOOST_CHECK_GE(switch_count, 1);
 }
 
 BOOST_AUTO_TEST_CASE(Test_PublishOnline_PublishesRetainedOnline)
@@ -513,7 +578,7 @@ BOOST_AUTO_TEST_CASE(Test_DeviceDiscoveryPayload_AllComponentsHavePlatform)
 			"Component missing 'p' (platform): " + key);
 
 		auto platform = cmp["p"].get<std::string>();
-		BOOST_CHECK_MESSAGE(platform == "sensor" || platform == "binary_sensor",
+		BOOST_CHECK_MESSAGE(platform == "sensor" || platform == "binary_sensor" || platform == "number" || platform == "switch",
 			"Component has unexpected platform '" + platform + "': " + key);
 	}
 }

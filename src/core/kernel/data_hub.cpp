@@ -84,12 +84,32 @@ namespace AqualinkAutomate::Kernel
 	{
 		m_PoolTempSetpoint = pool_temp_setpoint;
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", m_PoolTempSetpoint.InCelsius().value());
+
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
+		update_event->PoolSetpoint(m_PoolTempSetpoint);
+		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
 	{
 		m_SpaTempSetpoint = spa_temp_setpoint;
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", m_SpaTempSetpoint.InCelsius().value());
+
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
+		update_event->SpaSetpoint(m_SpaTempSetpoint);
+		ConfigUpdateSignal(update_event);
+	}
+
+	Kernel::TemperatureUnits DataHub::SystemTemperatureUnits() const
+	{
+		return m_SystemTemperatureUnits;
+	}
+
+	void DataHub::SystemTemperatureUnits(Kernel::TemperatureUnits units)
+	{
+		m_SystemTemperatureUnits = units;
 	}
 
 	void DataHub::FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point)

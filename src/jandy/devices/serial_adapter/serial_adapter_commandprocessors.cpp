@@ -6,6 +6,7 @@
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/serial_adapter_device.h"
 #include "factories/jandy_auxillary_factory.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 
@@ -133,7 +134,12 @@ namespace AqualinkAutomate::Devices
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(aux_ptr);
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string);
+			std::string label;
+			if (auto label_opt = aux_ptr->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				label = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, label);
 			JandyController::m_DataHub->ConfigUpdateSignal(update_event);
 		}
 	}

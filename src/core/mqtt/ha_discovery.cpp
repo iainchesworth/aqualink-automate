@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Mqtt
 
 	void HomeAssistantDiscovery::PublishDiscoveryConfigs()
 	{
-		LogInfo(Channel::Mqtt, "Publishing Home Assistant device discovery payload");
+		LogDebug(Channel::Mqtt, "Publishing Home Assistant device discovery payload");
 
 		nlohmann::json payload;
 		payload["dev"] = BuildDeviceObject();
@@ -37,6 +37,7 @@ namespace AqualinkAutomate::Mqtt
 
 		nlohmann::json cmps = nlohmann::json::object();
 		AddTemperatureSensorComponents(cmps);
+		AddSetpointComponents(cmps);
 		AddChemistrySensorComponents(cmps);
 		AddCirculationComponents(cmps);
 		AddSystemComponents(cmps);
@@ -47,7 +48,7 @@ namespace AqualinkAutomate::Mqtt
 			m_Settings.ha_discovery_prefix, m_Settings.ha_device_id);
 		m_Client->Publish(topic, payload.dump(), /*retain=*/true);
 
-		LogInfo(Channel::Mqtt, "Home Assistant device discovery payload published");
+		LogDebug(Channel::Mqtt, "Home Assistant device discovery payload published");
 	}
 
 	void HomeAssistantDiscovery::PublishOnline()
@@ -127,8 +128,6 @@ namespace AqualinkAutomate::Mqtt
 			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius }}" },
 			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius }}" },
 			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius }}" },
-			{ "Pool Setpoint Temperature",  "pool_setpoint_temp",  "{{ value_json.pool_setpoint.celsius }}" },
-			{ "Spa Setpoint Temperature",   "spa_setpoint_temp",   "{{ value_json.spa_setpoint.celsius }}" },
 		};
 
 		for (const auto& sensor : sensors)
@@ -142,6 +141,42 @@ namespace AqualinkAutomate::Mqtt
 				{"device_class", "temperature"},
 				{"unit_of_measurement", "\u00B0C"},
 				{"state_class", "measurement"}
+			};
+		}
+	}
+
+	void HomeAssistantDiscovery::AddSetpointComponents(nlohmann::json& cmps)
+	{
+		auto temperatures_topic = TemperaturesTopic();
+
+		struct SetpointEntity
+		{
+			const char* name;
+			const char* key;
+			const char* value_template;
+			const char* target;
+		};
+
+		const SetpointEntity entities[] = {
+			{ "Pool Setpoint", "pool_setpoint", "{{ value_json.pool_setpoint.celsius }}", "pool" },
+			{ "Spa Setpoint",  "spa_setpoint",  "{{ value_json.spa_setpoint.celsius }}",  "spa" },
+		};
+
+		for (const auto& entity : entities)
+		{
+			cmps[entity.key] = {
+				{"p", "number"},
+				{"name", entity.name},
+				{"unique_id", UniqueId(entity.key)},
+				{"state_topic", temperatures_topic},
+				{"value_template", entity.value_template},
+				{"command_topic", SetpointCommandTopic(entity.target)},
+				{"min", 15},
+				{"max", 41},
+				{"step", 0.5},
+				{"unit_of_measurement", "\u00B0C"},
+				{"device_class", "temperature"},
+				{"mode", "slider"}
 			};
 		}
 	}
@@ -240,8 +275,8 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
-		auto add_binary_sensor = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev,
-			const std::string& payload_on, const std::string& payload_off)
+		auto add_switch = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev,
+			const std::string& state_on, const std::string& state_off)
 		{
 			if (!dev)
 			{
@@ -259,12 +294,15 @@ namespace AqualinkAutomate::Mqtt
 			auto state_topic = m_Client->BuildTopic(std::format("ha/{}", key));
 
 			cmps[key] = {
-				{"p", "binary_sensor"},
+				{"p", "switch"},
 				{"name", label.value()},
 				{"unique_id", UniqueId(key)},
 				{"state_topic", state_topic},
-				{"payload_on", payload_on},
-				{"payload_off", payload_off}
+				{"command_topic", DeviceCommandTopic(slug)},
+				{"payload_on", "ON"},
+				{"payload_off", "OFF"},
+				{"state_on", state_on},
+				{"state_off", state_off}
 			};
 		};
 
@@ -293,22 +331,22 @@ namespace AqualinkAutomate::Mqtt
 			};
 		};
 
-		// Pumps -> binary_sensor (Running / Off)
+		// Pumps -> switch (Running / Off)
 		for (const auto& dev : data_hub->Pumps())
 		{
-			add_binary_sensor("pump", dev, "Running", "Off");
+			add_switch("pump", dev, "Running", "Off");
 		}
 
-		// Chlorinators -> binary_sensor (Running / Off)
+		// Chlorinators -> switch (Running / Off)
 		for (const auto& dev : data_hub->Chlorinators())
 		{
-			add_binary_sensor("chlorinator", dev, "Running", "Off");
+			add_switch("chlorinator", dev, "Running", "Off");
 		}
 
-		// Auxiliaries -> binary_sensor (On / Off)
+		// Auxiliaries -> switch (On / Off)
 		for (const auto& dev : data_hub->Auxillaries())
 		{
-			add_binary_sensor("aux", dev, "On", "Off");
+			add_switch("aux", dev, "On", "Off");
 		}
 
 		// Heaters -> sensor (multi-state: Off/Heating/Enabled)
@@ -422,6 +460,16 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::SystemStatusTopic() const
 	{
 		return m_Client->BuildTopic("system/status");
+	}
+
+	std::string HomeAssistantDiscovery::SetpointCommandTopic(const std::string& target) const
+	{
+		return m_Client->BuildTopic(std::format("command/setpoint/{}", target));
+	}
+
+	std::string HomeAssistantDiscovery::DeviceCommandTopic(const std::string& slug) const
+	{
+		return m_Client->BuildTopic(std::format("command/device/{}", slug));
 	}
 
 }

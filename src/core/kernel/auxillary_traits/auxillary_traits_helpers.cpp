@@ -35,7 +35,8 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 			case AuxillaryTypes::Spillover:
 				[[fallthrough]];
 			case AuxillaryTypes::Sprinkler:
-				[[fallthrough]];
+				return magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryStatusTrait{}]));
+
 			case AuxillaryTypes::Unknown:
 				[[fallthrough]];
 			default:

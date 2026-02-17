@@ -1,9 +1,11 @@
 #include <chrono>
+#include <cmath>
 #include <format>
 
 #include <boost/uuid/string_generator.hpp>
 
 #include "interfaces/icommanddispatcher.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 #include "mqtt/mqtt_integration.h"
 
@@ -73,10 +75,11 @@ namespace AqualinkAutomate::Mqtt
 					ha->PublishDeviceStates();
 				});
 
-				m_HaDevicesConnection = m_Hub->OnDevicesPublished.connect([ha]()
+				m_HaDevicesConnection = m_Hub->OnDevicesPublished.connect([this, ha]()
 				{
 					ha->PublishDiscoveryConfigs();
 					ha->PublishDeviceStates();
+					RegisterDynamicDeviceCommands();
 				});
 			}
 
@@ -181,8 +184,9 @@ namespace AqualinkAutomate::Mqtt
 
 			// Re-register the device command now that the command dispatcher is available
 			RegisterDeviceCommand();
+			RegisterSetpointCommand();
 
-			LogInfo(Channel::Mqtt, "MQTT Integration connected to system hubs");
+			LogDebug(Channel::Mqtt, "MQTT Integration connected to system hubs");
 		}
 	}
 
@@ -204,7 +208,7 @@ namespace AqualinkAutomate::Mqtt
 		m_Hub->RegisterCommand("status",
 			[hub](const std::string& topic, const nlohmann::json& payload)
 			{
-				LogInfo(Channel::Mqtt, "Received status command");
+				LogDebug(Channel::Mqtt, "Received status command");
 				try
 				{
 					if (hub) { hub->PublishAllStatus(); }
@@ -219,7 +223,7 @@ namespace AqualinkAutomate::Mqtt
 		m_Hub->RegisterCommand("device",
 			[hub](const std::string& topic, const nlohmann::json& payload)
 			{
-				LogInfo(Channel::Mqtt, "Received device command");
+				LogDebug(Channel::Mqtt, "Received device command");
 				try
 				{
 					std::string device_id = payload.value("device_id", "unknown");
@@ -246,7 +250,7 @@ namespace AqualinkAutomate::Mqtt
 		m_Hub->RegisterCommand("refresh",
 			[hub](const std::string& topic, const nlohmann::json& payload)
 			{
-				LogInfo(Channel::Mqtt, "Received refresh command");
+				LogDebug(Channel::Mqtt, "Received refresh command");
 				try
 				{
 					if (hub) { hub->PublishAllStatus(); }
@@ -282,7 +286,7 @@ namespace AqualinkAutomate::Mqtt
 		m_Hub->RegisterCommand("device",
 			[hub, weak_dispatcher](const std::string& topic, const nlohmann::json& payload)
 			{
-				LogInfo(Channel::Mqtt, "Received device command");
+				LogDebug(Channel::Mqtt, "Received device command");
 				try
 				{
 					auto dispatcher = weak_dispatcher.lock();
@@ -362,6 +366,265 @@ namespace AqualinkAutomate::Mqtt
 			});
 
 		LogDebug(Channel::Mqtt, "Registered device command handler with dispatcher");
+	}
+
+	void MqttIntegration::RegisterSetpointCommand()
+	{
+		if (!m_Hub)
+		{
+			return;
+		}
+
+		auto hub = m_Hub;
+		std::weak_ptr<Interfaces::ICommandDispatcher> weak_dispatcher = m_CommandDispatcher;
+		std::weak_ptr<Kernel::DataHub> weak_data_hub = m_DataHub;
+
+		// Helper lambda to convert Celsius to system unit and dispatch a setpoint command.
+		auto dispatch_setpoint = [weak_dispatcher, weak_data_hub, hub](const std::string& target, double celsius_value) -> std::string
+		{
+			auto dispatcher = weak_dispatcher.lock();
+			if (!dispatcher)
+			{
+				return "error";
+			}
+
+			auto data_hub = weak_data_hub.lock();
+
+			// Convert from Celsius to the system's native unit (typically Fahrenheit)
+			uint8_t temp_value = 0;
+			if (data_hub && data_hub->SystemTemperatureUnits() == Kernel::TemperatureUnits::Celsius)
+			{
+				temp_value = static_cast<uint8_t>(std::round(celsius_value));
+			}
+			else
+			{
+				// Default to Fahrenheit conversion
+				temp_value = static_cast<uint8_t>(std::round(celsius_value * 9.0 / 5.0 + 32.0));
+			}
+
+			Interfaces::ICommandDispatcher::CommandResult result = Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound;
+
+			if (target == "pool")
+			{
+				result = dispatcher->SetPoolSetpoint(temp_value);
+			}
+			else if (target == "spa")
+			{
+				result = dispatcher->SetSpaSetpoint(temp_value);
+			}
+			else
+			{
+				return "invalid_target";
+			}
+
+			switch (result)
+			{
+			case Interfaces::ICommandDispatcher::CommandResult::Success:
+				return "success";
+			case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
+				return "no_serial_adapter";
+			default:
+				return "error";
+			}
+		};
+
+		// JSON command handler: {"target": "pool"|"spa", "temperature": <celsius>}
+		m_Hub->RegisterCommand("setpoint",
+			[hub, dispatch_setpoint](const std::string& topic, const nlohmann::json& payload)
+			{
+				LogDebug(Channel::Mqtt, "Received setpoint command");
+				try
+				{
+					std::string target = payload.value("target", "");
+					double temperature = payload.value("temperature", 0.0);
+
+					if (target.empty() || temperature <= 0.0)
+					{
+						LogWarning(Channel::Mqtt, "Setpoint command missing target or temperature");
+						return;
+					}
+
+					auto status_str = dispatch_setpoint(target, temperature);
+
+					auto now = std::chrono::system_clock::now();
+					nlohmann::json response = {
+						{"command", "setpoint"},
+						{"target", target},
+						{"temperature", temperature},
+						{"status", status_str},
+						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
+					};
+
+					if (hub) { hub->PublishCustom("response/setpoint", response); }
+				}
+				catch (const std::exception& ex)
+				{
+					LogError(Channel::Mqtt, std::format("Error handling setpoint command: {}", ex.what()));
+				}
+			});
+
+		// HA number entity handlers: plain text number on setpoint/pool and setpoint/spa
+		m_Hub->RegisterCommand("setpoint/pool",
+			[hub, dispatch_setpoint](const std::string& topic, const nlohmann::json& payload)
+			{
+				LogDebug(Channel::Mqtt, "Received HA pool setpoint command");
+				try
+				{
+					double temperature = 0.0;
+					if (payload.is_number())
+					{
+						temperature = payload.get<double>();
+					}
+					else if (payload.is_string())
+					{
+						temperature = std::stod(payload.get<std::string>());
+					}
+
+					if (temperature > 0.0)
+					{
+						dispatch_setpoint("pool", temperature);
+					}
+				}
+				catch (const std::exception& ex)
+				{
+					LogError(Channel::Mqtt, std::format("Error handling HA pool setpoint command: {}", ex.what()));
+				}
+			});
+
+		m_Hub->RegisterCommand("setpoint/spa",
+			[hub, dispatch_setpoint](const std::string& topic, const nlohmann::json& payload)
+			{
+				LogDebug(Channel::Mqtt, "Received HA spa setpoint command");
+				try
+				{
+					double temperature = 0.0;
+					if (payload.is_number())
+					{
+						temperature = payload.get<double>();
+					}
+					else if (payload.is_string())
+					{
+						temperature = std::stod(payload.get<std::string>());
+					}
+
+					if (temperature > 0.0)
+					{
+						dispatch_setpoint("spa", temperature);
+					}
+				}
+				catch (const std::exception& ex)
+				{
+					LogError(Channel::Mqtt, std::format("Error handling HA spa setpoint command: {}", ex.what()));
+				}
+			});
+
+		LogDebug(Channel::Mqtt, "Registered setpoint command handlers");
+	}
+
+	void MqttIntegration::RegisterDynamicDeviceCommands()
+	{
+		if (!m_Hub)
+		{
+			return;
+		}
+
+		auto data_hub = m_DataHub.lock();
+		if (!data_hub)
+		{
+			return;
+		}
+
+		std::weak_ptr<Interfaces::ICommandDispatcher> weak_dispatcher = m_CommandDispatcher;
+		auto hub = m_Hub;
+
+		auto register_device = [&](const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
+		{
+			if (!dev)
+			{
+				return;
+			}
+
+			auto label_opt = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			if (!label_opt.has_value())
+			{
+				return;
+			}
+
+			auto label = label_opt.value();
+			auto slug = HomeAssistantDiscovery::Slugify(label);
+			auto command_key = std::format("device/{}", slug);
+
+			// Skip if already registered
+			if (m_Hub->HasCommand(command_key))
+			{
+				return;
+			}
+
+			m_Hub->RegisterCommand(command_key,
+				[weak_dispatcher, label, hub](const std::string& topic, const nlohmann::json& payload)
+				{
+					LogDebug(Channel::Mqtt, std::format("Received device command for '{}'", label));
+					try
+					{
+						auto dispatcher = weak_dispatcher.lock();
+						if (!dispatcher)
+						{
+							LogWarning(Channel::Mqtt, "Command dispatcher not available for device command");
+							return;
+						}
+
+						// Parse payload: expect "ON" or "OFF" (plain text from HA switch)
+						std::string action_str;
+						if (payload.contains("raw"))
+						{
+							action_str = payload["raw"].get<std::string>();
+						}
+						else if (payload.is_string())
+						{
+							action_str = payload.get<std::string>();
+						}
+
+						Interfaces::ICommandDispatcher::DeviceAction action = Interfaces::ICommandDispatcher::DeviceAction::Toggle;
+						if (action_str == "ON")
+						{
+							action = Interfaces::ICommandDispatcher::DeviceAction::On;
+						}
+						else if (action_str == "OFF")
+						{
+							action = Interfaces::ICommandDispatcher::DeviceAction::Off;
+						}
+						else
+						{
+							LogWarning(Channel::Mqtt, std::format("Unknown device action payload: '{}'", action_str));
+							return;
+						}
+
+						auto result = dispatcher->CommandByLabel(label, action);
+
+						LogDebug(Channel::Mqtt, std::format("Device command for '{}': action={}, result={}",
+							label, action_str, static_cast<int>(result)));
+					}
+					catch (const std::exception& ex)
+					{
+						LogError(Channel::Mqtt, std::format("Error handling device command for '{}': {}", label, ex.what()));
+					}
+				});
+		};
+
+		for (const auto& dev : data_hub->Pumps())
+		{
+			register_device(dev);
+		}
+
+		for (const auto& dev : data_hub->Chlorinators())
+		{
+			register_device(dev);
+		}
+
+		for (const auto& dev : data_hub->Auxillaries())
+		{
+			register_device(dev);
+		}
 	}
 
 	std::shared_ptr<MqttIntegration> CreateMqttIntegration(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)

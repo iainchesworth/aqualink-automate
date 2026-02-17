@@ -11,6 +11,7 @@
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_heartbeat.h"
 #include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
 #include "messages/iaq/iaq_message_onetouch_status.h"
@@ -62,6 +63,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_IAQ_AuxStatus(const Messages::IAQMessage_AuxStatus& msg);
 		void Slot_IAQ_CommandReady(const Messages::IAQMessage_CommandReady& msg);
 		void Slot_IAQ_ControlReady(const Messages::IAQMessage_ControlReady& msg);
+		void Slot_IAQ_Heartbeat(const Messages::IAQMessage_Heartbeat& msg);
 		void Slot_IAQ_MainStatus(const Messages::IAQMessage_MainStatus& msg);
 		void Slot_IAQ_MessageLong(const Messages::IAQMessage_MessageLong& msg);
 		void Slot_IAQ_OneTouchStatus(const Messages::IAQMessage_OneTouchStatus& msg);

@@ -206,7 +206,7 @@ namespace AqualinkAutomate::Mqtt
 					OnDataHubConfigChanged(event);
 				});
 
-			LogInfo(Channel::Mqtt, "MQTT Hub connected to Data Hub");
+			LogDebug(Channel::Mqtt, "MQTT Hub connected to Data Hub");
 		}
 	}
 
@@ -222,27 +222,27 @@ namespace AqualinkAutomate::Mqtt
 					OnEquipmentStatusChanged(event);
 				});
 
-			LogInfo(Channel::Mqtt, "MQTT Hub connected to Equipment Hub");
+			LogDebug(Channel::Mqtt, "MQTT Hub connected to Equipment Hub");
 		}
 	}
 
 	void MqttHub::ConnectStatisticsHub(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
 		m_StatisticsHub = statistics_hub;
-		LogInfo(Channel::Mqtt, "MQTT Hub connected to Statistics Hub");
+		LogDebug(Channel::Mqtt, "MQTT Hub connected to Statistics Hub");
 	}
 
 	void MqttHub::RegisterCommand(const std::string& command, CommandHandler handler)
 	{
 		m_CommandHandlers[command] = std::move(handler);
-		LogInfo(Channel::Mqtt, std::format("Registered MQTT command handler: {}", command));
+		LogDebug(Channel::Mqtt, std::format("Registered MQTT command handler: {}", command));
 	}
 
 	void MqttHub::UnregisterCommand(const std::string& command)
 	{
 		if (m_CommandHandlers.erase(command) > 0)
 		{
-			LogInfo(Channel::Mqtt, std::format("Unregistered MQTT command handler: {}", command));
+			LogDebug(Channel::Mqtt, std::format("Unregistered MQTT command handler: {}", command));
 		}
 	}
 
@@ -478,7 +478,7 @@ namespace AqualinkAutomate::Mqtt
 		}
 
 		std::string command = ExtractCommand(topic);
-		LogInfo(Channel::Mqtt, std::format("Received command: {}", command));
+		LogDebug(Channel::Mqtt, std::format("Received command: {}", command));
 
 		nlohmann::json json_payload;
 		if (!payload.empty())
@@ -507,7 +507,7 @@ namespace AqualinkAutomate::Mqtt
 		auto it = m_CommandHandlers.find(command);
 		if (it != m_CommandHandlers.end())
 		{
-			LogInfo(Channel::Mqtt, std::format("Executing command: {}", command));
+			LogDebug(Channel::Mqtt, std::format("Executing command: {}", command));
 			it->second(topic, payload);
 		}
 		else

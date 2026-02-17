@@ -81,6 +81,8 @@ namespace AqualinkAutomate::Mqtt
 
 		void RegisterDefaultCommands();
 		void RegisterDeviceCommand();
+		void RegisterSetpointCommand();
+		void RegisterDynamicDeviceCommands();
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;

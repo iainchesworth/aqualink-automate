@@ -43,6 +43,7 @@ namespace AqualinkAutomate::Devices
 		void QueueCommand(uint8_t ack_type, uint8_t ack_data_value);
 		void QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action);
 		void QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action);
+		void QueueSetpointCommand(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
 
 	private:
 		virtual void ProcessControllerUpdates() override;

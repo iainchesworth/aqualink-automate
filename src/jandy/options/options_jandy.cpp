@@ -36,7 +36,7 @@ namespace AqualinkAutomate::Jandy::Options
 			case JandyEmulatedDeviceTypes::IAQ:				return JandyDeviceId{ 0xA1 };
 			case JandyEmulatedDeviceTypes::RS_Keypad:		return JandyDeviceId{ 0x09 };
 			case JandyEmulatedDeviceTypes::PDA:				return JandyDeviceId{ 0x61 };
-			case JandyEmulatedDeviceTypes::SerialAdapter:	return JandyDeviceId{ 0x49 };
+			case JandyEmulatedDeviceTypes::SerialAdapter:	return JandyDeviceId{ 0x48 };
 			default:										return JandyDeviceId{ 0xFF };
 			}
 		}

@@ -34,6 +34,21 @@ namespace AqualinkAutomate::Devices
 		m_StatusTypesCollection.insert(m_StatusTypesCollection.end(), std::make_move_iterator(status_types3.begin()), std::make_move_iterator(status_types3.end()));
 		m_StatusTypesCollection.erase(m_StatusTypesCollection.begin());  // Don't constantly check the MODEL.
 
+		// Move UNITS to the start of the STC section so temperature unit configuration is
+		// known before any temperature/setpoint values are decoded in the first poll cycle.
+		auto stc_begin = std::find_if(m_StatusTypesCollection.begin(), m_StatusTypesCollection.end(),
+			[](const auto& v) { return std::holds_alternative<SerialAdapter_SystemTemperatureCommands>(v); });
+		auto units_it = std::find_if(stc_begin, m_StatusTypesCollection.end(),
+			[](const auto& v)
+			{
+				return std::holds_alternative<SerialAdapter_SystemTemperatureCommands>(v) &&
+					std::get<SerialAdapter_SystemTemperatureCommands>(v) == SerialAdapter_SystemTemperatureCommands::UNITS;
+			});
+		if (units_it != m_StatusTypesCollection.end() && units_it != stc_begin)
+		{
+			std::rotate(stc_begin, units_it, units_it + 1);
+		}
+
 		m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin();
 
 		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Probe>(std::bind(&SerialAdapterDevice::Slot_SerialAdapter_Probe, this, std::placeholders::_1), (*device_id)());
@@ -159,6 +174,12 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing aux command ({}, action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
 		QueueCommand(magic_enum::enum_integer(aux_id) + Messages::SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET, magic_enum::enum_integer(action));
+	}
+
+	void SerialAdapterDevice::QueueSetpointCommand(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)
+	{
+		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing setpoint command ({}, temperature={})", magic_enum::enum_name(setpoint), temperature));
+		QueueCommand(magic_enum::enum_integer(setpoint), temperature);
 	}
 
 	void SerialAdapterDevice::WatchdogTimeoutOccurred()

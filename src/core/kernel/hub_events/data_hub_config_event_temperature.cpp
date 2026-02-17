@@ -14,7 +14,9 @@ namespace AqualinkAutomate::Kernel
 		DataHub_ConfigEvent(Hub_EventTypes::Temperature),
 		m_PoolTemp(std::nullopt),
 		m_SpaTemp(std::nullopt),
-		m_AirTemp(std::nullopt)
+		m_AirTemp(std::nullopt),
+		m_PoolSetpoint(std::nullopt),
+		m_SpaSetpoint(std::nullopt)
 	{
 	}
 
@@ -50,6 +52,26 @@ namespace AqualinkAutomate::Kernel
 		m_AirTemp = air;
 	}
 
+	std::optional<Kernel::Temperature> DataHub_ConfigEvent_Temperature::PoolSetpoint() const
+	{
+		return m_PoolSetpoint;
+	}
+
+	std::optional<Kernel::Temperature> DataHub_ConfigEvent_Temperature::SpaSetpoint() const
+	{
+		return m_SpaSetpoint;
+	}
+
+	void DataHub_ConfigEvent_Temperature::PoolSetpoint(const Kernel::Temperature& pool_setpoint)
+	{
+		m_PoolSetpoint = pool_setpoint;
+	}
+
+	void DataHub_ConfigEvent_Temperature::SpaSetpoint(const Kernel::Temperature& spa_setpoint)
+	{
+		m_SpaSetpoint = spa_setpoint;
+	}
+
 	boost::uuids::uuid DataHub_ConfigEvent_Temperature::Id() const
 	{
 		static boost::uuids::uuid id{ boost::uuids::random_generator()() };
@@ -73,6 +95,22 @@ namespace AqualinkAutomate::Kernel
 		if (m_AirTemp.has_value())
 		{
 			j["air_temp"] = Localisation::TranslationsAndUnitsFormatter::Instance().Localised(m_AirTemp.value());
+		}
+
+		if (m_PoolSetpoint.has_value())
+		{
+			j["pool_setpoint"] = {
+				{"celsius", m_PoolSetpoint.value().InCelsius().value()},
+				{"fahrenheit", m_PoolSetpoint.value().InFahrenheit().value()}
+			};
+		}
+
+		if (m_SpaSetpoint.has_value())
+		{
+			j["spa_setpoint"] = {
+				{"celsius", m_SpaSetpoint.value().InCelsius().value()},
+				{"fahrenheit", m_SpaSetpoint.value().InFahrenheit().value()}
+			};
 		}
 
 		return j;

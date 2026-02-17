@@ -63,8 +63,9 @@ target_sources(
 	http/webroute_equipment.cpp 
 	http/webroute_equipment_button.cpp 
 	http/webroute_equipment_buttons.cpp 
-	http/webroute_equipment_devices.cpp 
-	http/webroute_equipment_version.cpp 
+	http/webroute_equipment_devices.cpp
+	http/webroute_equipment_setpoints.cpp
+	http/webroute_equipment_version.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
 	http/websocket_event_types.cpp 
