@@ -625,6 +625,83 @@ namespace AqualinkAutomate::Mqtt
 		{
 			register_device(dev);
 		}
+
+		// Chlorinator-specific command handlers
+		if (!m_Hub->HasCommand("chlorinator/percentage"))
+		{
+			m_Hub->RegisterCommand("chlorinator/percentage",
+				[weak_dispatcher](const std::string& topic, const nlohmann::json& payload)
+				{
+					LogDebug(Channel::Mqtt, "Received chlorinator percentage command");
+					try
+					{
+						auto dispatcher = weak_dispatcher.lock();
+						if (!dispatcher)
+						{
+							LogWarning(Channel::Mqtt, "Command dispatcher not available for chlorinator percentage");
+							return;
+						}
+
+						uint8_t percentage = 0;
+						if (payload.contains("raw"))
+						{
+							percentage = static_cast<uint8_t>(std::stoi(payload["raw"].get<std::string>()));
+						}
+						else if (payload.is_number())
+						{
+							percentage = payload.get<uint8_t>();
+						}
+						else if (payload.is_string())
+						{
+							percentage = static_cast<uint8_t>(std::stoi(payload.get<std::string>()));
+						}
+
+						auto result = dispatcher->SetChlorinatorPercentage(percentage);
+						LogDebug(Channel::Mqtt, std::format("Chlorinator percentage command: {}%, result={}", percentage, static_cast<int>(result)));
+					}
+					catch (const std::exception& ex)
+					{
+						LogError(Channel::Mqtt, std::format("Error handling chlorinator percentage command: {}", ex.what()));
+					}
+				});
+		}
+
+		if (!m_Hub->HasCommand("chlorinator/boost"))
+		{
+			m_Hub->RegisterCommand("chlorinator/boost",
+				[weak_dispatcher](const std::string& topic, const nlohmann::json& payload)
+				{
+					LogDebug(Channel::Mqtt, "Received chlorinator boost command");
+					try
+					{
+						auto dispatcher = weak_dispatcher.lock();
+						if (!dispatcher)
+						{
+							LogWarning(Channel::Mqtt, "Command dispatcher not available for chlorinator boost");
+							return;
+						}
+
+						std::string action_str;
+						if (payload.contains("raw"))
+						{
+							action_str = payload["raw"].get<std::string>();
+						}
+						else if (payload.is_string())
+						{
+							action_str = payload.get<std::string>();
+						}
+
+						bool enable = (action_str == "ON");
+
+						auto result = dispatcher->SetChlorinatorBoost(enable);
+						LogDebug(Channel::Mqtt, std::format("Chlorinator boost command: {}, result={}", enable ? "ON" : "OFF", static_cast<int>(result)));
+					}
+					catch (const std::exception& ex)
+					{
+						LogError(Channel::Mqtt, std::format("Error handling chlorinator boost command: {}", ex.what()));
+					}
+				});
+		}
 	}
 
 	std::shared_ptr<MqttIntegration> CreateMqttIntegration(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)

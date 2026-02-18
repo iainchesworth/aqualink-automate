@@ -192,7 +192,17 @@ namespace AqualinkAutomate::Devices
 
 		LogInfo(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_ControlReady", DeviceId()));
 
-		ProcessControllerUpdates();
+		if (m_AwaitingControlReady && !m_ControlDataValue.empty())
+		{
+			LogInfo(Channel::Devices, std::format("IAQ ({}): Sending control data response: '{}'", DeviceId(), m_ControlDataValue));
+			Signal_ControlDataResponse(m_ControlDataValue);
+			m_AwaitingControlReady = false;
+			m_ControlDataValue.clear();
+		}
+		else
+		{
+			ProcessControllerUpdates();
+		}
 
 		Restartable::Kick();
 	}

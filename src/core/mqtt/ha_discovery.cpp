@@ -337,10 +337,77 @@ namespace AqualinkAutomate::Mqtt
 			add_switch("pump", dev, "Running", "Off");
 		}
 
-		// Chlorinators -> switch (Running / Off)
+		// Chlorinators -> switch (On / Off) + sensor entities for generating %, boost mode, status
 		for (const auto& dev : data_hub->Chlorinators())
 		{
-			add_switch("chlorinator", dev, "Running", "Off");
+			add_switch("chlorinator", dev, "On", "Off");
+
+			auto label = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			if (!label.has_value())
+			{
+				continue;
+			}
+
+			auto slug = Slugify(label.value());
+			auto state_topic = DeviceStateTopic(slug);
+
+			auto generating_key = std::format("chlorinator_{}_generating", slug);
+			cmps[generating_key] = {
+				{"p", "sensor"},
+				{"name", std::format("{} Generating %", label.value())},
+				{"unique_id", UniqueId(generating_key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ value_json.generating_percentage }}"},
+				{"unit_of_measurement", "%"},
+				{"state_class", "measurement"}
+			};
+
+			auto boost_key = std::format("chlorinator_{}_boost", slug);
+			cmps[boost_key] = {
+				{"p", "sensor"},
+				{"name", std::format("{} Boost Mode", label.value())},
+				{"unique_id", UniqueId(boost_key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ value_json.boost_mode }}"}
+			};
+
+			auto status_key = std::format("chlorinator_{}_status", slug);
+			cmps[status_key] = {
+				{"p", "sensor"},
+				{"name", std::format("{} Status", label.value())},
+				{"unique_id", UniqueId(status_key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ value_json.chlorinator_status }}"}
+			};
+
+			auto pct_cmd_key = std::format("chlorinator_{}_pct_cmd", slug);
+			cmps[pct_cmd_key] = {
+				{"p", "number"},
+				{"name", std::format("{} Generating Setpoint", label.value())},
+				{"unique_id", UniqueId(pct_cmd_key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ value_json.generating_percentage }}"},
+				{"command_topic", ChlorinatorCommandTopic("percentage")},
+				{"min", 0},
+				{"max", 100},
+				{"step", 1},
+				{"unit_of_measurement", "%"},
+				{"mode", "slider"}
+			};
+
+			auto boost_cmd_key = std::format("chlorinator_{}_boost_cmd", slug);
+			cmps[boost_cmd_key] = {
+				{"p", "switch"},
+				{"name", std::format("{} Boost", label.value())},
+				{"unique_id", UniqueId(boost_cmd_key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ value_json.boost_mode }}"},
+				{"command_topic", ChlorinatorCommandTopic("boost")},
+				{"payload_on", "ON"},
+				{"payload_off", "OFF"},
+				{"state_on", "Boost"},
+				{"state_off", "Off"}
+			};
 		}
 
 		// Auxiliaries -> switch (On / Off)
@@ -470,6 +537,16 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::DeviceCommandTopic(const std::string& slug) const
 	{
 		return m_Client->BuildTopic(std::format("command/device/{}", slug));
+	}
+
+	std::string HomeAssistantDiscovery::DeviceStateTopic(const std::string& slug) const
+	{
+		return m_Client->BuildTopic(std::format("device/{}", slug));
+	}
+
+	std::string HomeAssistantDiscovery::ChlorinatorCommandTopic(const std::string& command) const
+	{
+		return m_Client->BuildTopic(std::format("command/chlorinator/{}", command));
 	}
 
 }

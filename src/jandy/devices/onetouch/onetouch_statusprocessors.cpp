@@ -436,7 +436,7 @@ namespace AqualinkAutomate::Devices
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chlorinator_label);
-				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Running);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -506,7 +506,7 @@ namespace AqualinkAutomate::Devices
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chlorinator_label);
-				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Running);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 

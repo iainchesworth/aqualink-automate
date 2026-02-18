@@ -31,7 +31,7 @@ namespace AqualinkAutomate::Protocol
 
 	ProtocolTask::~ProtocolTask()
 	{
-		m_WriteSignalConnection.release();
+		m_WriteSignalConnections.clear();
 	}
 
 	void ProtocolTask::DrainWrites()

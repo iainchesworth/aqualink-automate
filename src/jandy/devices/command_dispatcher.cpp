@@ -4,6 +4,7 @@
 
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/command_dispatcher.h"
+#include "devices/iaq_device.h"
 #include "devices/jandy_device_types.h"
 #include "devices/serial_adapter_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
@@ -97,6 +98,56 @@ namespace AqualinkAutomate::Devices
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting spa setpoint to {}", temperature));
 		serial_adapter->QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		return CommandResult::Success;
+	}
+
+	IAQDevice* CommandDispatcher::FindIAQDevice()
+	{
+		auto* iaq_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
+		{
+			auto* jandy_type = dynamic_cast<const JandyDeviceType*>(&dev.DeviceId());
+			return jandy_type && jandy_type->Class() == DeviceClasses::AqualinkTouch;
+		});
+
+		if (!iaq_device)
+		{
+			return nullptr;
+		}
+
+		return dynamic_cast<IAQDevice*>(iaq_device);
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorPercentage(uint8_t percentage)
+	{
+		if (percentage > 100)
+		{
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Invalid chlorinator percentage: {}", percentage));
+			return CommandResult::InvalidValue;
+		}
+
+		auto* iaq_device = FindIAQDevice();
+		if (!iaq_device)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator percentage command");
+			return CommandResult::DeviceNotFound;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting chlorinator percentage to {}%", percentage));
+		iaq_device->QueueChlorinatorPercentage(percentage);
+		return CommandResult::Success;
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorBoost(bool enable)
+	{
+		auto* iaq_device = FindIAQDevice();
+		if (!iaq_device)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator boost command");
+			return CommandResult::DeviceNotFound;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: {} chlorinator boost", enable ? "Enabling" : "Disabling"));
+		iaq_device->QueueChlorinatorBoost(enable);
 		return CommandResult::Success;
 	}
 

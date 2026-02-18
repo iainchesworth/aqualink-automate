@@ -35,6 +35,8 @@ namespace AqualinkAutomate::Interfaces
 		virtual CommandResult CommandByLabel(const std::string& label, DeviceAction action) = 0;
 		virtual CommandResult SetPoolSetpoint(uint8_t temperature) = 0;
 		virtual CommandResult SetSpaSetpoint(uint8_t temperature) = 0;
+		virtual CommandResult SetChlorinatorPercentage(uint8_t percentage) = 0;
+		virtual CommandResult SetChlorinatorBoost(bool enable) = 0;
 	};
 
 }

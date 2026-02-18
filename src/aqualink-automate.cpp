@@ -52,6 +52,7 @@
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
 #include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/iaq/iaq_message_control_data_response.h"
 #include "jandy/protocol/jandy_protocol_registration.h"
 
 #include "pentair/options/options_pentair.h"
@@ -252,6 +253,7 @@ int main(int argc, char* argv[])
 
 		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub);
 		protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
+		protocol_task->ConnectWriteSignal<Messages::IAQMessage_ControlDataResponse>();
 
 		//---------------------------------------------------------------------
 		// SUPPORTED EQUIPMENT

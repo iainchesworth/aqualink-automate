@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Utility
 		{
 			LogDebug(Channel::Signals, std::format("Registering general handler for messages of type: {}", typeid(MESSAGE_TYPE*).name()));
 
-			ConnectionVariant connection = typename MESSAGE_TYPE::GetSignal()->connect(handler);
+			ConnectionVariant connection = MESSAGE_TYPE::GetSignal()->connect(handler);
 			auto it = m_Connections.insert(m_Connections.cend(), connection);
 
 			return (m_Connections.end() != it);

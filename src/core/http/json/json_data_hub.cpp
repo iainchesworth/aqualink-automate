@@ -2,6 +2,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "http/json/json_data_hub.h"
+#include "kernel/auxillary_devices/chlorinator_boost_mode.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
@@ -44,6 +46,26 @@ namespace AqualinkAutomate::Kernel
 		const auto state = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 		json_payload["state"] = state;
 		LogTrace(Channel::Web, std::format("  Device {} state: {}", device_id_str, state));
+
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::GeneratingPercentageTrait{}))
+		{
+			json_payload["generating_percentage"] = *(device.AuxillaryTraits[AuxillaryTraitsTypes::GeneratingPercentageTrait{}]);
+		}
+
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::BoostModeTrait{}))
+		{
+			json_payload["boost_mode"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::BoostModeTrait{}])));
+		}
+
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::ChlorinatorHealthStatusTrait{}))
+		{
+			json_payload["chlorinator_status"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::ChlorinatorHealthStatusTrait{}])));
+		}
+
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::DutyCycleTrait{}))
+		{
+			json_payload["duty_cycle"] = *(device.AuxillaryTraits[AuxillaryTraitsTypes::DutyCycleTrait{}]);
+		}
 
 		j = json_payload;
 	}

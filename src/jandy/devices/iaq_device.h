@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <cstdint>
+#include <deque>
+#include <string>
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
@@ -51,6 +53,8 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		void QueueCommand(uint8_t command);
+		void QueueChlorinatorPercentage(uint8_t percentage);
+		void QueueChlorinatorBoost(bool enable);
 
 	private:
 		virtual void ProcessControllerUpdates() override;
@@ -90,8 +94,14 @@ namespace AqualinkAutomate::Devices
 		Utility::ScreenDataPageUpdater<Utility::ScreenDataPage> m_SM_TableUpdate;
 
 	private:
+		void Signal_ControlDataResponse(const std::string& ascii_data);
+
+	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
 		uint8_t m_PendingCommand{ 0x00 };
+		std::deque<uint8_t> m_CommandQueue;
+		bool m_AwaitingControlReady{ false };
+		std::string m_ControlDataValue;
 
 	private:
 		Types::ProfilingUnitTypePtr m_ProfilingDomain;

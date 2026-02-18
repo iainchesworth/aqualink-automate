@@ -88,6 +88,8 @@ namespace AqualinkAutomate::Mqtt
 
 		std::string SetpointCommandTopic(const std::string& target) const;
 		std::string DeviceCommandTopic(const std::string& slug) const;
+		std::string DeviceStateTopic(const std::string& slug) const;
+		std::string ChlorinatorCommandTopic(const std::string& command) const;
 
 	private:
 		std::shared_ptr<MqttClient> m_Client;

@@ -41,7 +41,7 @@ namespace AqualinkAutomate::Protocol
 		{
 			if (auto publisher = MESSAGE_PUBLISHER::GetPublisher())
 			{
-				m_WriteSignalConnection = publisher->connect(
+				m_WriteSignalConnections.push_back(publisher->connect(
 					[this](typename MESSAGE_PUBLISHER::PublisherRef payload)
 					{
 						std::vector<uint8_t> buffer;
@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Protocol
 							EnqueueWrite(std::move(buffer));
 						}
 					}
-				);
+				));
 			}
 		}
 
@@ -70,7 +70,7 @@ namespace AqualinkAutomate::Protocol
 		std::size_t m_WriteOffset{0};
 
 	private:
-		boost::signals2::scoped_connection m_WriteSignalConnection;
+		std::vector<boost::signals2::scoped_connection> m_WriteSignalConnections;
 	};
 
 }

@@ -6,6 +6,7 @@
 #include <boost/system/error_code.hpp>
 
 #include "kernel/auxillary_devices/auxillary_status.h"
+#include "kernel/auxillary_devices/chlorinator_boost_mode.h"
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_speed.h"
@@ -85,6 +86,24 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+	};
+
+	class GeneratingPercentageTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"GeneratingPercentageTrait"}; }
+	};
+
+	class BoostModeTrait : public MutableTraitType<ChlorinatorBoostModes>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"BoostModeTrait"}; }
+	};
+
+	class ChlorinatorHealthStatusTrait : public MutableTraitType<ChlorinatorStatuses>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"ChlorinatorHealthStatusTrait"}; }
 	};
 
 	//---------------------------------------------------------------------

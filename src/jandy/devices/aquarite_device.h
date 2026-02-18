@@ -3,11 +3,14 @@
 #include <chrono>
 #include <concepts>
 #include <cstdint>
+#include <memory>
 #include <utility>
 
 #include "devices/jandy_device.h"
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/restartable.h"
+#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
@@ -38,8 +41,8 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
-		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
+		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);
+		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
 		virtual ~AquariteDevice() = default;
 
 	private:
@@ -58,11 +61,17 @@ namespace AqualinkAutomate::Devices
 		Utility::ValueDebouncer<Generating_InPercent, TypeWithTimeComparator<Generating_InPercent>> m_Requested;
 		Generating_InPercent m_Reported;
 		SaltConcentration_InPPM m_SaltPPM;
+		Messages::AquariteStatuses m_AquariteStatus{ Messages::AquariteStatuses::Unknown };
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 
 	private:
 		void Slot_Aquarite_GetId(const Messages::AquariteMessage_GetId& msg);
 		void Slot_Aquarite_Percent(const Messages::AquariteMessage_Percent& msg);
 		void Slot_Aquarite_PPM(const Messages::AquariteMessage_PPM& msg);
+
+	private:
+		void PushPercentToDataHub(const Messages::AquariteMessage_Percent& msg);
+		void PushPPMToDataHub(const Messages::AquariteMessage_PPM& msg);
 	};
 
 }

@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_Test)
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::AuxillaryTypeTrait{}));
         BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::AuxillaryTypeTrait{})) == AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
         BOOST_TEST_REQUIRE(test_ptr.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::ChlorinatorStatusTrait{}));
-        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::ChlorinatorStatusTrait{})) == Kernel::ChlorinatorStatuses::Running);
+        BOOST_TEST(*(test_ptr.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::ChlorinatorStatusTrait{})) == Kernel::ChlorinatorStatuses::On);
     }
 
     {

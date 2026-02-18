@@ -202,7 +202,7 @@ namespace AqualinkAutomate::Equipment
 
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(std::move(device_id), m_HubLocator)));
 				break;
 
 			case Devices::DeviceClasses::Jandy_ePump:

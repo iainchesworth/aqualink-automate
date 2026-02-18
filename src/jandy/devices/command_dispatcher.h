@@ -13,6 +13,7 @@
 namespace AqualinkAutomate::Devices
 {
 
+	class IAQDevice;
 	class SerialAdapterDevice;
 
 	class CommandDispatcher : public Interfaces::ICommandDispatcher
@@ -26,10 +27,13 @@ namespace AqualinkAutomate::Devices
 		CommandResult CommandByLabel(const std::string& label, DeviceAction action) override;
 		CommandResult SetPoolSetpoint(uint8_t temperature) override;
 		CommandResult SetSpaSetpoint(uint8_t temperature) override;
+		CommandResult SetChlorinatorPercentage(uint8_t percentage) override;
+		CommandResult SetChlorinatorBoost(bool enable) override;
 
 	private:
 		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);
 		SerialAdapterDevice* FindSerialAdapter();
+		IAQDevice* FindIAQDevice();
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub;

@@ -7,6 +7,7 @@
 #include "devices/device_status.h"
 #include "devices/iaq_device.h"
 #include "formatters/jandy_device_formatters.h"
+#include "messages/iaq/iaq_message_control_data_response.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -69,6 +70,42 @@ namespace AqualinkAutomate::Devices
 		m_PendingCommand = command;
 	}
 
+	void IAQDevice::QueueChlorinatorPercentage(uint8_t percentage)
+	{
+		LogInfo(Channel::Devices, std::format("IAQ ({}): QueueChlorinatorPercentage({}%) - queuing command sequence", DeviceId(), percentage));
+
+		m_CommandQueue.clear();
+		m_CommandQueue.push_back(0x02);  // Back (ensure clean state)
+		m_CommandQueue.push_back(0x19);  // Open AquaPure page
+		m_CommandQueue.push_back(0x11);  // Select Pool (button index 0)
+		m_CommandQueue.push_back(0x80);  // Submit value
+
+		m_AwaitingControlReady = true;
+		m_ControlDataValue = std::format("1{}", percentage);  // "1" = Pool button index
+	}
+
+	void IAQDevice::QueueChlorinatorBoost(bool enable)
+	{
+		LogInfo(Channel::Devices, std::format("IAQ ({}): QueueChlorinatorBoost({}) - queuing command sequence", DeviceId(), enable));
+
+		m_CommandQueue.clear();
+		m_CommandQueue.push_back(0x02);  // Back (ensure clean state)
+		m_CommandQueue.push_back(0x19);  // Open AquaPure page
+		m_CommandQueue.push_back(0x13);  // Quick Boost (button index 2)
+
+		if (enable)
+		{
+			m_CommandQueue.push_back(0x12);  // Start (button index 1)
+		}
+		else
+		{
+			m_CommandQueue.push_back(0x13);  // Stop (button index 2)
+		}
+
+		m_AwaitingControlReady = false;
+		m_ControlDataValue.clear();
+	}
+
 	void IAQDevice::ProcessControllerUpdates()
 	{
 		ProcessControllerUpdates(false);
@@ -112,7 +149,15 @@ namespace AqualinkAutomate::Devices
 		}
 
 		// Commands can only be sent in response to IAQ_Poll messages.
-		if (is_poll_message && m_PendingCommand != 0x00)
+		if (is_poll_message && !m_CommandQueue.empty())
+		{
+			auto cmd = m_CommandQueue.front();
+			m_CommandQueue.pop_front();
+			LogDebug(Channel::Devices, std::format("IAQ ({}): Sending queued command in Poll ACK: 0x{:02x} ({} remaining)",
+				DeviceId(), cmd, m_CommandQueue.size()));
+			Signal_AckMessage(static_cast<uint8_t>(0x00), cmd);
+		}
+		else if (is_poll_message && m_PendingCommand != 0x00)
 		{
 			LogDebug(Channel::Devices, std::format("IAQ ({}): Sending command in Poll ACK: 0x{:02x}", DeviceId(), m_PendingCommand));
 			Signal_AckMessage(static_cast<uint8_t>(0x00), m_PendingCommand);
@@ -135,6 +180,21 @@ namespace AqualinkAutomate::Devices
 			LogWarning(Channel::Devices, std::format("IAQ ({}): No valid data received during StartUp -> entering FaultHasOccurred", DeviceId()));
 			m_OpState = OperatingStates::FaultHasOccurred;
 			Status(Devices::DeviceStatus_FaultOccurred{});
+		}
+	}
+
+	void IAQDevice::Signal_ControlDataResponse(const std::string& ascii_data)
+	{
+		if (!IsEmulated())
+		{
+			return;
+		}
+
+		auto data_msg = std::make_shared<Messages::IAQMessage_ControlDataResponse>(ascii_data);
+		if (data_msg)
+		{
+			LogDebug(Channel::Devices, std::format("IAQ ({}): Signalling control data response: '{}'", DeviceId(), ascii_data));
+			data_msg->Signal_MessageToSend();
 		}
 	}
 

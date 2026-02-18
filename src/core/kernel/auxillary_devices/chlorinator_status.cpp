@@ -8,7 +8,7 @@ namespace AqualinkAutomate::Kernel
 		switch (aux_status)
 		{
 		case AuxillaryStatuses::On:
-			return ChlorinatorStatuses::Running;
+			return ChlorinatorStatuses::On;
 
 		case AuxillaryStatuses::Off:
 			return ChlorinatorStatuses::Off;
