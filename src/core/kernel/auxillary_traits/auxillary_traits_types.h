@@ -13,6 +13,7 @@
 #include "kernel/auxillary_devices/pump_status.h"
 #include "kernel/auxillary_devices/pump_type.h"
 #include "kernel/auxillary_traits/auxillary_traits_base.h"
+#include "kernel/body_of_water_ids.h"
 #include "kernel/flow_rate.h"
 #include "kernel/temperature.h"
 
@@ -100,10 +101,10 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		virtual TraitKey Name() const final { return std::string{"BoostModeTrait"}; }
 	};
 
-	class ChlorinatorHealthStatusTrait : public MutableTraitType<ChlorinatorStatuses>
+	class ChlorinatorHealthTrait : public MutableTraitType<ChlorinatorHealth>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"ChlorinatorHealthStatusTrait"}; }
+		virtual TraitKey Name() const final { return std::string{"ChlorinatorHealthTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -164,6 +165,16 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	{
 	public:
 		virtual TraitKey Name() const final { return std::string{"FlowRateTrait"}; }
+	};
+
+	//---------------------------------------------------------------------
+	// BODY-OF-WATER TRAITS
+	//---------------------------------------------------------------------
+
+	class BodyOfWaterTrait : public MutableTraitType<BodyOfWaterIds>
+	{
+	public:
+		virtual TraitKey Name() const final { return std::string{"BodyOfWaterTrait"}; }
 	};
 
 	//---------------------------------------------------------------------

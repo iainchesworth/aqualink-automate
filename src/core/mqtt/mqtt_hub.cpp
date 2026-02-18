@@ -10,63 +10,17 @@
 #include "mqtt/mqtt_hub.h"
 #include "profiling/factories/profiler_factory.h"
 #include "profiling/factories/profiling_unit_factory.h"
-#include "utility/latency_percentile_tracker.h"
+#include "utility/json_serialization_helpers.h"
+#include "utility/slugify.h"
 #include "version/version.h"
 
 using namespace AqualinkAutomate::Logging;
+using AqualinkAutomate::Utility::Slugify;
+using AqualinkAutomate::Utility::NanosToMicros;
+using AqualinkAutomate::Utility::SerializeLatencySnapshot;
 
 namespace AqualinkAutomate::Mqtt
 {
-
-	namespace
-	{
-		std::string Slugify(const std::string& input)
-		{
-			std::string result;
-			result.reserve(input.size());
-
-			for (char c : input)
-			{
-				if (std::isalnum(static_cast<unsigned char>(c)) || c == '_')
-				{
-					result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-				}
-				else if (c == ' ' || c == '-' || c == '.')
-				{
-					if (!result.empty() && result.back() != '_')
-					{
-						result += '_';
-					}
-				}
-			}
-
-			if (!result.empty() && result.back() == '_')
-			{
-				result.pop_back();
-			}
-
-			return result;
-		}
-
-		double NanosToMicros(std::chrono::nanoseconds ns)
-		{
-			return static_cast<double>(ns.count()) / 1000.0;
-		}
-
-		nlohmann::json SerializeLatencySnapshot(const Utility::LatencyPercentileTracker<>::PercentileSnapshot& snapshot)
-		{
-			return {
-				{"p1_us", NanosToMicros(snapshot.p1)},
-				{"p50_us", NanosToMicros(snapshot.p50)},
-				{"p95_us", NanosToMicros(snapshot.p95)},
-				{"p99_us", NanosToMicros(snapshot.p99)},
-				{"min_us", NanosToMicros(snapshot.min)},
-				{"max_us", NanosToMicros(snapshot.max)},
-				{"mean_us", NanosToMicros(snapshot.mean)},
-				{"sample_count", snapshot.sample_count}
-			};
-		}
-	}
 
 	MqttHub::MqttHub(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)
 		: m_Settings(settings)
@@ -363,6 +317,26 @@ namespace AqualinkAutomate::Mqtt
 			auto configuration_payload = SerializeConfiguration().dump();
 			m_Client->Publish(m_Client->BuildTopic("pool/configuration"), configuration_payload, /*retain=*/true);
 
+			// Publish per-body temperature topics when bodies are available.
+			if (auto data_hub = m_DataHub.lock())
+			{
+				for (const auto& body : data_hub->Bodies())
+				{
+					auto body_name = std::string{ magic_enum::enum_name(body.Id()) };
+					std::transform(body_name.begin(), body_name.end(), body_name.begin(),
+						[](unsigned char c) { return std::tolower(c); });
+
+					nlohmann::json body_temp = {
+						{"current", SerializeTemperature(body.CurrentTemp())},
+						{"setpoint", SerializeTemperature(body.TempSetpoint())},
+						{"is_active", body.IsActive()}
+					};
+
+					auto body_payload = body_temp.dump();
+					m_Client->Publish(m_Client->BuildTopic(std::format("body/{}/temperature", body_name)), body_payload, /*retain=*/true);
+				}
+			}
+
 			zone->Value(temperatures_payload.size() + chemistry_payload.size() + circulation_payload.size() + configuration_payload.size());
 			LogTrace(Channel::Mqtt, "Published pool status (temperatures, chemistry, circulation, configuration)");
 		}
@@ -379,6 +353,7 @@ namespace AqualinkAutomate::Mqtt
 		try
 		{
 			std::size_t total_size = 0;
+			std::size_t device_count = 0;
 
 			if (auto data_hub = m_DataHub.lock())
 			{
@@ -392,6 +367,7 @@ namespace AqualinkAutomate::Mqtt
 					auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
 					if (!label.has_value())
 					{
+						LogDebug(Channel::Mqtt, std::format("Skipping {} device with no label trait", type));
 						return;
 					}
 
@@ -401,34 +377,48 @@ namespace AqualinkAutomate::Mqtt
 					Kernel::to_json(j, *device);
 					j["type"] = type;
 
+					if (auto body_opt = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}); body_opt.has_value())
+					{
+						j["body_of_water"] = std::string{ magic_enum::enum_name(body_opt.value()) };
+					}
+
 					auto payload = j.dump();
 					total_size += payload.size();
 					m_Client->Publish(m_Client->BuildTopic(std::format("device/{}", slug)), payload, /*retain=*/true);
+					++device_count;
 				};
 
-				for (const auto& device : data_hub->Auxillaries())
+				auto auxillaries = data_hub->Auxillaries();
+				auto heaters = data_hub->Heaters();
+				auto pumps = data_hub->Pumps();
+				auto chlorinators = data_hub->Chlorinators();
+
+				LogDebug(Channel::Mqtt, std::format("Publishing device status: {} auxillaries, {} heaters, {} pumps, {} chlorinators",
+					auxillaries.size(), heaters.size(), pumps.size(), chlorinators.size()));
+
+				for (const auto& device : auxillaries)
 				{
 					publish_device("auxillary", device);
 				}
 
-				for (const auto& device : data_hub->Heaters())
+				for (const auto& device : heaters)
 				{
 					publish_device("heater", device);
 				}
 
-				for (const auto& device : data_hub->Pumps())
+				for (const auto& device : pumps)
 				{
 					publish_device("pump", device);
 				}
 
-				for (const auto& device : data_hub->Chlorinators())
+				for (const auto& device : chlorinators)
 				{
 					publish_device("chlorinator", device);
 				}
 			}
 
 			zone->Value(total_size);
-			LogTrace(Channel::Mqtt, "Published device status");
+			LogTrace(Channel::Mqtt, std::format("Published device status ({} devices)", device_count));
 
 			OnDevicesPublished();
 		}
@@ -598,6 +588,12 @@ namespace AqualinkAutomate::Mqtt
 			circulation["mode"] = magic_enum::enum_name(data_hub->CirculationMode);
 			circulation["spa_mode"] = data_hub->SpaMode();
 			circulation["clean_mode"] = data_hub->InCleanMode;
+			circulation["pool_configuration"] = magic_enum::enum_name(data_hub->PoolConfiguration);
+
+			if (auto active_body = data_hub->ActiveBody())
+			{
+				circulation["active_body"] = magic_enum::enum_name(active_body->get().Id());
+			}
 
 			auto timeout_seconds = data_hub->TimeoutRemaining().count();
 			if (timeout_seconds > 0)
@@ -692,14 +688,6 @@ namespace AqualinkAutomate::Mqtt
 		}
 
 		return serial;
-	}
-
-	nlohmann::json MqttHub::SerializeTemperature(const Kernel::Temperature& temp) const
-	{
-		return {
-			{"celsius", temp.InCelsius().value()},
-			{"fahrenheit", temp.InFahrenheit().value()}
-		};
 	}
 
 	std::string MqttHub::StatusTopic(const std::string& subtopic) const

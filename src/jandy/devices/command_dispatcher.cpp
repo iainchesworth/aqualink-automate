@@ -151,6 +151,38 @@ namespace AqualinkAutomate::Devices
 		return CommandResult::Success;
 	}
 
+	CommandDispatcher::CommandResult CommandDispatcher::SetCirculationMode(Kernel::CirculationModes mode)
+	{
+		auto* serial_adapter = FindSerialAdapter();
+		if (!serial_adapter)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for circulation mode command");
+			return CommandResult::NoSerialAdapter;
+		}
+
+		switch (mode)
+		{
+		case Kernel::CirculationModes::Spa:
+			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spa");
+			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
+			return CommandResult::Success;
+
+		case Kernel::CirculationModes::Pool:
+			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Pool");
+			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff);
+			return CommandResult::Success;
+
+		case Kernel::CirculationModes::Spillover:
+			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spillover");
+			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
+			return CommandResult::Success;
+
+		default:
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Invalid circulation mode: {}", magic_enum::enum_name(mode)));
+			return CommandResult::InvalidValue;
+		}
+	}
+
 	CommandDispatcher::CommandResult CommandDispatcher::DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction requested_action)
 	{
 		auto* serial_adapter = FindSerialAdapter();

@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Options::Serial
 		if (OPTION_USE_RFC2217->IsPresent(vm)) { settings.use_rfc2217 = OPTION_USE_RFC2217->As<bool>(vm); }
 		if (OPTION_USE_RAWTCP->IsPresent(vm)) { settings.use_rawtcp = OPTION_USE_RAWTCP->As<bool>(vm); }
 
-		return std::move(settings);
+		return settings;
 	}
 
 }

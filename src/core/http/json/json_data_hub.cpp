@@ -57,14 +57,19 @@ namespace AqualinkAutomate::Kernel
 			json_payload["boost_mode"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::BoostModeTrait{}])));
 		}
 
-		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::ChlorinatorHealthStatusTrait{}))
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::ChlorinatorHealthTrait{}))
 		{
-			json_payload["chlorinator_status"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::ChlorinatorHealthStatusTrait{}])));
+			json_payload["chlorinator_health"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::ChlorinatorHealthTrait{}])));
 		}
 
 		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::DutyCycleTrait{}))
 		{
 			json_payload["duty_cycle"] = *(device.AuxillaryTraits[AuxillaryTraitsTypes::DutyCycleTrait{}]);
+		}
+
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::BodyOfWaterTrait{}))
+		{
+			json_payload["body_of_water"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::BodyOfWaterTrait{}])));
 		}
 
 		j = json_payload;

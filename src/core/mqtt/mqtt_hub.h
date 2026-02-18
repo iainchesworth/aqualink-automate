@@ -16,6 +16,7 @@
 #include "kernel/statistics_hub.h"
 #include "mqtt/mqtt_client.h"
 #include "options/options_mqtt_options.h"
+#include "utility/json_serialization_helpers.h"
 
 
 namespace AqualinkAutomate::Mqtt
@@ -167,7 +168,8 @@ namespace AqualinkAutomate::Mqtt
 		nlohmann::json SerializeStatisticsBandwidth() const;
 		nlohmann::json SerializeStatisticsLatency() const;
 		nlohmann::json SerializeStatisticsSerial() const;
-		nlohmann::json SerializeTemperature(const Kernel::Temperature& temp) const;
+		nlohmann::json SerializeTemperature(const Kernel::Temperature& temp) const { return Utility::SerializeTemperature(temp); }
+		nlohmann::json SerializeTemperature(const std::optional<Kernel::Temperature>& temp) const { return Utility::SerializeTemperature(temp); }
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;

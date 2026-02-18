@@ -18,23 +18,23 @@ namespace AqualinkAutomate::Devices
 
 	namespace
 	{
-		Kernel::ChlorinatorStatuses ConvertToChlorinatorHealthStatus(Messages::AquariteStatuses status)
+		Kernel::ChlorinatorHealth ConvertToChlorinatorHealthStatus(Messages::AquariteStatuses status)
 		{
 			switch (status)
 			{
-			case Messages::AquariteStatuses::On:                     return Kernel::ChlorinatorStatuses::On;
-			case Messages::AquariteStatuses::Off:                    return Kernel::ChlorinatorStatuses::Off;
-			case Messages::AquariteStatuses::TurningOff:             return Kernel::ChlorinatorStatuses::TurningOff;
-			case Messages::AquariteStatuses::Warning_NoFlow:         return Kernel::ChlorinatorStatuses::Warning_NoFlow;
-			case Messages::AquariteStatuses::Warning_LowSalt:        return Kernel::ChlorinatorStatuses::Warning_LowSalt;
-			case Messages::AquariteStatuses::Warning_HighSalt:       return Kernel::ChlorinatorStatuses::Warning_HighSalt;
-			case Messages::AquariteStatuses::Warning_HighCurrent:    return Kernel::ChlorinatorStatuses::Warning_HighCurrent;
-			case Messages::AquariteStatuses::Warning_CleanCell:      return Kernel::ChlorinatorStatuses::Warning_CleanCell;
-			case Messages::AquariteStatuses::Warning_LowVoltage:     return Kernel::ChlorinatorStatuses::Warning_LowVoltage;
-			case Messages::AquariteStatuses::Warning_LowTemperature: return Kernel::ChlorinatorStatuses::Warning_LowTemperature;
-			case Messages::AquariteStatuses::Error_CheckPCB:         return Kernel::ChlorinatorStatuses::Error_CheckPCB;
-			case Messages::AquariteStatuses::GeneralFault:           return Kernel::ChlorinatorStatuses::GeneralFault;
-			default:                                                 return Kernel::ChlorinatorStatuses::Unknown;
+			case Messages::AquariteStatuses::On:                     return Kernel::ChlorinatorHealth::Ok;
+			case Messages::AquariteStatuses::Off:                    return Kernel::ChlorinatorHealth::Ok;
+			case Messages::AquariteStatuses::TurningOff:             return Kernel::ChlorinatorHealth::TurningOff;
+			case Messages::AquariteStatuses::Warning_NoFlow:         return Kernel::ChlorinatorHealth::Warning_NoFlow;
+			case Messages::AquariteStatuses::Warning_LowSalt:        return Kernel::ChlorinatorHealth::Warning_LowSalt;
+			case Messages::AquariteStatuses::Warning_HighSalt:       return Kernel::ChlorinatorHealth::Warning_HighSalt;
+			case Messages::AquariteStatuses::Warning_HighCurrent:    return Kernel::ChlorinatorHealth::Warning_HighCurrent;
+			case Messages::AquariteStatuses::Warning_CleanCell:      return Kernel::ChlorinatorHealth::Warning_CleanCell;
+			case Messages::AquariteStatuses::Warning_LowVoltage:     return Kernel::ChlorinatorHealth::Warning_LowVoltage;
+			case Messages::AquariteStatuses::Warning_LowTemperature: return Kernel::ChlorinatorHealth::Warning_LowTemperature;
+			case Messages::AquariteStatuses::Error_CheckPCB:         return Kernel::ChlorinatorHealth::Error_CheckPCB;
+			case Messages::AquariteStatuses::GeneralFault:           return Kernel::ChlorinatorHealth::GeneralFault;
+			default:                                                 return Kernel::ChlorinatorHealth::Unknown;
 			}
 		}
 	}
@@ -131,6 +131,25 @@ namespace AqualinkAutomate::Devices
 		Restartable::Kick();
 	}
 
+	void AquariteDevice::EnsureChlorinatorDeviceExists()
+	{
+		if (!m_DataHub || !m_DataHub->Chlorinators().empty())
+		{
+			return;
+		}
+
+		using namespace Kernel::AuxillaryTraitsTypes;
+
+		LogInfo(Channel::Devices, "AquariteDevice: Creating chlorinator device from AquaRite wire data");
+
+		auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
+		ptr->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		ptr->AuxillaryTraits.Set(LabelTrait{}, std::string{"AquaPure"});
+		ptr->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Off);
+		ptr->AuxillaryTraits.Set(BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
+		m_DataHub->Devices.Add(std::move(ptr));
+	}
+
 	void AquariteDevice::PushPercentToDataHub(const Messages::AquariteMessage_Percent& msg)
 	{
 		if (!m_DataHub)
@@ -139,6 +158,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		using namespace Kernel::AuxillaryTraitsTypes;
+
+		EnsureChlorinatorDeviceExists();
 
 		auto chlorinators = m_DataHub->Chlorinators();
 		if (chlorinators.empty())
@@ -164,6 +185,8 @@ namespace AqualinkAutomate::Devices
 
 		m_DataHub->SaltLevel(static_cast<double>(msg.SaltConcentrationPPM()) * Units::ppm);
 
+		EnsureChlorinatorDeviceExists();
+
 		auto chlorinators = m_DataHub->Chlorinators();
 		if (chlorinators.empty())
 		{
@@ -171,7 +194,13 @@ namespace AqualinkAutomate::Devices
 		}
 
 		auto& device = chlorinators.front();
-		device->AuxillaryTraits.Set(ChlorinatorHealthStatusTrait{}, ConvertToChlorinatorHealthStatus(msg.Status()));
+		device->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, ConvertToChlorinatorHealthStatus(msg.Status()));
+
+		// Update operating status from AquaRite wire status.
+		auto operating_status = (msg.Status() == Messages::AquariteStatuses::Off || msg.Status() == Messages::AquariteStatuses::TurningOff)
+			? Kernel::ChlorinatorStatuses::Off
+			: Kernel::ChlorinatorStatuses::On;
+		device->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, operating_status);
 	}
 
 }

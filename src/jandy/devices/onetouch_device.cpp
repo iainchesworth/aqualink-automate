@@ -6,6 +6,8 @@
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
 #include "formatters/jandy_device_formatters.h"
+#include "kernel/body_of_water.h"
+#include "kernel/body_of_water_ids.h"
 #include "navigation/onetouch_menu_model.h"
 #include "navigation/visit_policies.h"
 #include "utility/jandy_pool_configuration_decoder.h"
@@ -388,11 +390,44 @@ namespace AqualinkAutomate::Devices
 
 		Utility::PoolConfigurationDecoder pool_config_decoder(panel_type);
 
-		JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
+		// Handle autodetect vs user-specified configuration.
+		if (JandyController::m_DataHub->PoolConfigurationSource == Kernel::ConfigurationSource::UserSpecified
+			&& pool_config_decoder.Configuration() != JandyController::m_DataHub->PoolConfiguration)
+		{
+			LogWarning(Channel::Equipment, std::format("Autodetected pool configuration '{}' disagrees with user-specified '{}'",
+				magic_enum::enum_name(pool_config_decoder.Configuration()),
+				magic_enum::enum_name(JandyController::m_DataHub->PoolConfiguration)));
+			// User specification takes precedence; do not override.
+		}
+		else
+		{
+			JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
+		}
+
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
 		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
 		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
+
+		// Populate bodies if not already present (user config may have done this at startup).
+		if (JandyController::m_DataHub->Bodies().empty())
+		{
+			switch (JandyController::m_DataHub->PoolConfiguration)
+			{
+			case Kernel::PoolConfigurations::DualBody_SharedEquipment:
+			case Kernel::PoolConfigurations::DualBody_DualEquipment:
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Spa, "Spa" });
+				break;
+
+			case Kernel::PoolConfigurations::SingleBody:
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
+				break;
+
+			default:
+				break;
+			}
+		}
 
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
 	}

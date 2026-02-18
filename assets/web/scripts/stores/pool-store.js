@@ -44,6 +44,12 @@ document.addEventListener('alpine:init', () => {
             ]);
         },
 
+        _formatTemp(val) {
+            if (val == null) return '--';
+            if (typeof val === 'object' && val.celsius != null) return Math.round(val.celsius) + '\u00B0C';
+            return String(val);
+        },
+
         async _fetchEquipment() {
             try {
                 const resp = await fetch('/api/equipment');
@@ -52,9 +58,9 @@ document.addEventListener('alpine:init', () => {
 
                 // Temperatures
                 if (data.temperatures) {
-                    this.poolTemp = data.temperatures.pool ?? '--';
-                    this.spaTemp = data.temperatures.spa ?? '--';
-                    this.airTemp = data.temperatures.air ?? '--';
+                    this.poolTemp = this._formatTemp(data.temperatures.pool);
+                    this.spaTemp = this._formatTemp(data.temperatures.spa);
+                    this.airTemp = this._formatTemp(data.temperatures.air);
                     if (data.temperatures.pool_setpoint) this.poolSetpoint = data.temperatures.pool_setpoint;
                     if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
@@ -137,9 +143,9 @@ document.addEventListener('alpine:init', () => {
             switch (msg.type) {
                 case 'TemperatureUpdate':
                     if (msg.payload) {
-                        if (msg.payload.pool_temp != null) this.poolTemp = msg.payload.pool_temp;
-                        if (msg.payload.spa_temp != null) this.spaTemp = msg.payload.spa_temp;
-                        if (msg.payload.air_temp != null) this.airTemp = msg.payload.air_temp;
+                        if (msg.payload.pool_temp != null) this.poolTemp = this._formatTemp(msg.payload.pool_temp);
+                        if (msg.payload.spa_temp != null) this.spaTemp = this._formatTemp(msg.payload.spa_temp);
+                        if (msg.payload.air_temp != null) this.airTemp = this._formatTemp(msg.payload.air_temp);
                         if (msg.payload.pool_setpoint != null) this.poolSetpoint = msg.payload.pool_setpoint;
                         if (msg.payload.spa_setpoint != null) this.spaSetpoint = msg.payload.spa_setpoint;
                     }

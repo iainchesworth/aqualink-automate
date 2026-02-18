@@ -29,6 +29,7 @@ namespace AqualinkAutomate::Devices
 		CommandResult SetSpaSetpoint(uint8_t temperature) override;
 		CommandResult SetChlorinatorPercentage(uint8_t percentage) override;
 		CommandResult SetChlorinatorBoost(bool enable) override;
+		CommandResult SetCirculationMode(Kernel::CirculationModes mode) override;
 
 	private:
 		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);

@@ -110,7 +110,7 @@ namespace AqualinkAutomate::Options::Web
 			settings.https_port = Application::DEFAULT_HTTPS_PORT;
 		}
 
-		return std::move(settings);
+		return settings;
 	}
 
 }

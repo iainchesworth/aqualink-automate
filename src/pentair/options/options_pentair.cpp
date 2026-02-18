@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Pentair::Options
 	{
 		SettingsType settings;
 
-		return std::move(settings);
+		return settings;
 	}
 
 }

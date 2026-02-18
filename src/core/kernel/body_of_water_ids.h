@@ -1,15 +1,16 @@
 #pragma once
 
+#include <cstdint>
+
 namespace AqualinkAutomate::Kernel
 {
 
-	enum class CirculationModes
+	enum class BodyOfWaterIds : uint8_t
 	{
 		Pool,
 		Spa,
-		SpaFill,
-		SpaDrain,
-		Spillover
+		Shared,
+		Unknown
 	};
 
 }

@@ -82,6 +82,16 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Remove", std::source_location::current());
 
 		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+
+		for (auto vp = boost::vertices(m_DevicesGraph); vp.first != vp.second; ++vp.first)
+		{
+			if (m_DevicesGraph[*vp.first] == device)
+			{
+				boost::clear_vertex(*vp.first, m_DevicesGraph);
+				boost::remove_vertex(*vp.first, m_DevicesGraph);
+				return;
+			}
+		}
 	}
 
 	uint32_t DevicesGraph::CountById(const boost::uuids::uuid& id) const

@@ -6,6 +6,7 @@
 
 #include "interfaces/icommanddispatcher.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/circulation.h"
 #include "logging/logging.h"
 #include "mqtt/mqtt_integration.h"
 
@@ -13,6 +14,88 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Mqtt
 {
+
+	namespace
+	{
+		/// Get current epoch time in seconds for response timestamps.
+		int64_t GetTimestampSeconds()
+		{
+			auto now = std::chrono::system_clock::now();
+			return std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+		}
+
+		/// Convert CommandResult enum to a string for MQTT responses.
+		std::string CommandResultToString(Interfaces::ICommandDispatcher::CommandResult result)
+		{
+			switch (result)
+			{
+			case Interfaces::ICommandDispatcher::CommandResult::Success:
+				return "success";
+			case Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound:
+				return "device_not_found";
+			case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
+				return "no_serial_adapter";
+			case Interfaces::ICommandDispatcher::CommandResult::UnknownEquipmentType:
+				return "unknown_equipment_type";
+			case Interfaces::ICommandDispatcher::CommandResult::InvalidValue:
+				return "invalid_value";
+			default:
+				return "error";
+			}
+		}
+
+		/// Build a standard MQTT command response JSON object.
+		nlohmann::json BuildCommandResponse(const std::string& command, const std::string& status,
+			const nlohmann::json& extra = nlohmann::json::object())
+		{
+			nlohmann::json response = {
+				{"command", command},
+				{"status", status},
+				{"timestamp", GetTimestampSeconds()}
+			};
+
+			for (auto& [key, value] : extra.items())
+			{
+				response[key] = value;
+			}
+
+			return response;
+		}
+
+		/// Parse a numeric value from a JSON payload (handles raw string, number, and string types).
+		template<typename T>
+		T ParsePayloadNumber(const nlohmann::json& payload, T default_value = T{})
+		{
+			if (payload.contains("raw"))
+			{
+				return static_cast<T>(std::stoi(payload["raw"].get<std::string>()));
+			}
+			else if (payload.is_number())
+			{
+				return payload.get<T>();
+			}
+			else if (payload.is_string())
+			{
+				return static_cast<T>(std::stoi(payload.get<std::string>()));
+			}
+			return default_value;
+		}
+
+		/// Parse a string value from a JSON payload (handles raw object and plain string).
+		std::string ParsePayloadString(const nlohmann::json& payload)
+		{
+			if (payload.contains("raw"))
+			{
+				return payload["raw"].get<std::string>();
+			}
+			else if (payload.is_string())
+			{
+				return payload.get<std::string>();
+			}
+			return {};
+		}
+	}
+	// anonymous namespace
 
 	MqttIntegration::MqttIntegration(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)
 		: m_Settings(settings)
@@ -229,15 +312,7 @@ namespace AqualinkAutomate::Mqtt
 					std::string device_id = payload.value("device_id", "unknown");
 					std::string action = payload.value("action", "toggle");
 
-					auto now = std::chrono::system_clock::now();
-					nlohmann::json response = {
-						{"command", "device"},
-						{"device_id", device_id},
-						{"action", action},
-						{"status", "acknowledged"},
-						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-					};
-
+					auto response = BuildCommandResponse("device", "acknowledged", {{"device_id", device_id}, {"action", action}});
 					if (hub) { hub->PublishCustom("response/device", response); }
 				}
 				catch (const std::exception& ex)
@@ -255,13 +330,7 @@ namespace AqualinkAutomate::Mqtt
 				{
 					if (hub) { hub->PublishAllStatus(); }
 
-					auto now = std::chrono::system_clock::now();
-					nlohmann::json response = {
-						{"command", "refresh"},
-						{"status", "completed"},
-						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-					};
-
+					auto response = BuildCommandResponse("refresh", "completed");
 					if (hub) { hub->PublishCustom("response/refresh", response); }
 				}
 				catch (const std::exception& ex)
@@ -294,14 +363,7 @@ namespace AqualinkAutomate::Mqtt
 					{
 						LogWarning(Channel::Mqtt, "Command dispatcher not available");
 
-						auto now = std::chrono::system_clock::now();
-						nlohmann::json response = {
-							{"command", "device"},
-							{"status", "error"},
-							{"error", "command dispatcher not available"},
-							{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-						};
-
+						auto response = BuildCommandResponse("device", "error", {{"error", "command dispatcher not available"}});
 						if (hub) { hub->PublishCustom("response/device", response); }
 						return;
 					}
@@ -330,33 +392,8 @@ namespace AqualinkAutomate::Mqtt
 						result = dispatcher->ToggleByLabel(device_id);
 					}
 
-					auto now = std::chrono::system_clock::now();
-					std::string status_str;
-
-					switch (result)
-					{
-					case Interfaces::ICommandDispatcher::CommandResult::Success:
-						status_str = "success";
-						break;
-					case Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound:
-						status_str = "device_not_found";
-						break;
-					case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
-						status_str = "no_serial_adapter";
-						break;
-					case Interfaces::ICommandDispatcher::CommandResult::UnknownEquipmentType:
-						status_str = "unknown_equipment_type";
-						break;
-					}
-
-					nlohmann::json response = {
-						{"command", "device"},
-						{"device_id", device_id},
-						{"action", action},
-						{"status", status_str},
-						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-					};
-
+					auto response = BuildCommandResponse("device", CommandResultToString(result),
+						{{"device_id", device_id}, {"action", action}});
 					if (hub) { hub->PublishCustom("response/device", response); }
 				}
 				catch (const std::exception& ex)
@@ -417,15 +454,7 @@ namespace AqualinkAutomate::Mqtt
 				return "invalid_target";
 			}
 
-			switch (result)
-			{
-			case Interfaces::ICommandDispatcher::CommandResult::Success:
-				return "success";
-			case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
-				return "no_serial_adapter";
-			default:
-				return "error";
-			}
+			return CommandResultToString(result);
 		};
 
 		// JSON command handler: {"target": "pool"|"spa", "temperature": <celsius>}
@@ -446,15 +475,8 @@ namespace AqualinkAutomate::Mqtt
 
 					auto status_str = dispatch_setpoint(target, temperature);
 
-					auto now = std::chrono::system_clock::now();
-					nlohmann::json response = {
-						{"command", "setpoint"},
-						{"target", target},
-						{"temperature", temperature},
-						{"status", status_str},
-						{"timestamp", std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count()}
-					};
-
+					auto response = BuildCommandResponse("setpoint", status_str,
+						{{"target", target}, {"temperature", temperature}});
 					if (hub) { hub->PublishCustom("response/setpoint", response); }
 				}
 				catch (const std::exception& ex)
@@ -470,16 +492,7 @@ namespace AqualinkAutomate::Mqtt
 				LogDebug(Channel::Mqtt, "Received HA pool setpoint command");
 				try
 				{
-					double temperature = 0.0;
-					if (payload.is_number())
-					{
-						temperature = payload.get<double>();
-					}
-					else if (payload.is_string())
-					{
-						temperature = std::stod(payload.get<std::string>());
-					}
-
+					auto temperature = ParsePayloadNumber<double>(payload, 0.0);
 					if (temperature > 0.0)
 					{
 						dispatch_setpoint("pool", temperature);
@@ -497,16 +510,7 @@ namespace AqualinkAutomate::Mqtt
 				LogDebug(Channel::Mqtt, "Received HA spa setpoint command");
 				try
 				{
-					double temperature = 0.0;
-					if (payload.is_number())
-					{
-						temperature = payload.get<double>();
-					}
-					else if (payload.is_string())
-					{
-						temperature = std::stod(payload.get<std::string>());
-					}
-
+					auto temperature = ParsePayloadNumber<double>(payload, 0.0);
 					if (temperature > 0.0)
 					{
 						dispatch_setpoint("spa", temperature);
@@ -574,15 +578,7 @@ namespace AqualinkAutomate::Mqtt
 						}
 
 						// Parse payload: expect "ON" or "OFF" (plain text from HA switch)
-						std::string action_str;
-						if (payload.contains("raw"))
-						{
-							action_str = payload["raw"].get<std::string>();
-						}
-						else if (payload.is_string())
-						{
-							action_str = payload.get<std::string>();
-						}
+						auto action_str = ParsePayloadString(payload);
 
 						Interfaces::ICommandDispatcher::DeviceAction action = Interfaces::ICommandDispatcher::DeviceAction::Toggle;
 						if (action_str == "ON")
@@ -642,19 +638,7 @@ namespace AqualinkAutomate::Mqtt
 							return;
 						}
 
-						uint8_t percentage = 0;
-						if (payload.contains("raw"))
-						{
-							percentage = static_cast<uint8_t>(std::stoi(payload["raw"].get<std::string>()));
-						}
-						else if (payload.is_number())
-						{
-							percentage = payload.get<uint8_t>();
-						}
-						else if (payload.is_string())
-						{
-							percentage = static_cast<uint8_t>(std::stoi(payload.get<std::string>()));
-						}
+						auto percentage = ParsePayloadNumber<uint8_t>(payload);
 
 						auto result = dispatcher->SetChlorinatorPercentage(percentage);
 						LogDebug(Channel::Mqtt, std::format("Chlorinator percentage command: {}%, result={}", percentage, static_cast<int>(result)));
@@ -681,16 +665,7 @@ namespace AqualinkAutomate::Mqtt
 							return;
 						}
 
-						std::string action_str;
-						if (payload.contains("raw"))
-						{
-							action_str = payload["raw"].get<std::string>();
-						}
-						else if (payload.is_string())
-						{
-							action_str = payload.get<std::string>();
-						}
-
+						auto action_str = ParsePayloadString(payload);
 						bool enable = (action_str == "ON");
 
 						auto result = dispatcher->SetChlorinatorBoost(enable);
@@ -699,6 +674,53 @@ namespace AqualinkAutomate::Mqtt
 					catch (const std::exception& ex)
 					{
 						LogError(Channel::Mqtt, std::format("Error handling chlorinator boost command: {}", ex.what()));
+					}
+				});
+		}
+
+		// Circulation mode command: accepts "pool", "spa", or "spillover"
+		if (!m_Hub->HasCommand("circulation/mode"))
+		{
+			m_Hub->RegisterCommand("circulation/mode",
+				[weak_dispatcher](const std::string& topic, const nlohmann::json& payload)
+				{
+					LogDebug(Channel::Mqtt, "Received circulation mode command");
+					try
+					{
+						auto dispatcher = weak_dispatcher.lock();
+						if (!dispatcher)
+						{
+							LogWarning(Channel::Mqtt, "Command dispatcher not available for circulation mode");
+							return;
+						}
+
+						auto mode_str = ParsePayloadString(payload);
+
+						Kernel::CirculationModes mode = Kernel::CirculationModes::Pool;
+						if (mode_str == "pool" || mode_str == "Pool")
+						{
+							mode = Kernel::CirculationModes::Pool;
+						}
+						else if (mode_str == "spa" || mode_str == "Spa")
+						{
+							mode = Kernel::CirculationModes::Spa;
+						}
+						else if (mode_str == "spillover" || mode_str == "Spillover")
+						{
+							mode = Kernel::CirculationModes::Spillover;
+						}
+						else
+						{
+							LogWarning(Channel::Mqtt, std::format("Unknown circulation mode: '{}'", mode_str));
+							return;
+						}
+
+						auto result = dispatcher->SetCirculationMode(mode);
+						LogDebug(Channel::Mqtt, std::format("Circulation mode command: {}, result={}", mode_str, static_cast<int>(result)));
+					}
+					catch (const std::exception& ex)
+					{
+						LogError(Channel::Mqtt, std::format("Error handling circulation mode command: {}", ex.what()));
 					}
 				});
 		}

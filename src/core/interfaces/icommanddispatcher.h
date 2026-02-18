@@ -5,6 +5,8 @@
 
 #include <boost/uuid/uuid.hpp>
 
+#include "kernel/circulation.h"
+
 namespace AqualinkAutomate::Interfaces
 {
 
@@ -37,6 +39,7 @@ namespace AqualinkAutomate::Interfaces
 		virtual CommandResult SetSpaSetpoint(uint8_t temperature) = 0;
 		virtual CommandResult SetChlorinatorPercentage(uint8_t percentage) = 0;
 		virtual CommandResult SetChlorinatorBoost(bool enable) = 0;
+		virtual CommandResult SetCirculationMode(Kernel::CirculationModes mode) = 0;
 	};
 
 }

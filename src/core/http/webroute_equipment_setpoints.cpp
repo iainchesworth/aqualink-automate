@@ -5,6 +5,7 @@
 
 #include "http/webroute_equipment_setpoints.h"
 #include "http/server/server_fields.h"
+#include "utility/json_serialization_helpers.h"
 #include "http/server/responses/response_405.h"
 #include "logging/logging.h"
 #include "profiling/factories/profiling_unit_factory.h"
@@ -41,14 +42,8 @@ namespace AqualinkAutomate::HTTP
 	{
 		nlohmann::json body;
 
-		body["pool_setpoint"] = {
-			{"celsius", m_DataHub->PoolTempSetpoint().InCelsius().value()},
-			{"fahrenheit", m_DataHub->PoolTempSetpoint().InFahrenheit().value()}
-		};
-		body["spa_setpoint"] = {
-			{"celsius", m_DataHub->SpaTempSetpoint().InCelsius().value()},
-			{"fahrenheit", m_DataHub->SpaTempSetpoint().InFahrenheit().value()}
-		};
+		body["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
+		body["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };
 		resp.set(boost::beast::http::field::server, ServerFields::Server());

@@ -49,6 +49,14 @@ public:
 	{
 		return client.ParseConnack(data);
 	}
+
+	/// Force the client into the Connected state for integration testing.
+	/// This allows MqttHub publish methods to run without a real broker.
+	static void ForceConnectedState(Mqtt::MqttClient& client)
+	{
+		client.m_State = Mqtt::MqttClient::State::Connected;
+		client.m_Running = true;
+	}
 };
 
 //=============================================================================

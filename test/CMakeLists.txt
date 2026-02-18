@@ -172,6 +172,78 @@ endif(ENABLE_SANITIZERS)
 
 #------------------------------------------------------------------------------
 #
+#  Integration Tests
+#
+#------------------------------------------------------------------------------
+
+add_executable(intaqualink-automate)
+
+target_sources(
+	intaqualink-automate
+	PRIVATE
+	integration/test_main.cpp
+	# support
+	integration/support/integration_test_pipeline.cpp
+	integration/support/integration_test_scenarios.cpp
+	# equipment config tests
+	integration/equipment/test_equipment_pool_only.cpp
+	integration/equipment/test_equipment_spa_only.cpp
+	integration/equipment/test_equipment_dual_body_shared.cpp
+	integration/equipment/test_equipment_dual_body_dual.cpp
+	# flow tests
+	integration/flows/test_flow_serial_to_mqtt.cpp
+	integration/flows/test_flow_serial_to_web.cpp
+	integration/flows/test_flow_mqtt_commands.cpp
+	integration/flows/test_flow_web_commands.cpp
+	# reuse unit test support
+	unit/mocks/mock_beast_basicstream_with_timeout.cpp
+	unit/mocks/mock_testserialportimpl.cpp
+	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_ostream_support.cpp
+	unit/support/unit_test_protocolmessagebuilder.cpp
+	unit/support/unit_test_httprequestresponse.cpp
+)
+
+target_compile_definitions(
+	intaqualink-automate
+	PUBLIC
+	-DBOOST_TEST_DYN_LINK=1
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
+)
+
+target_include_directories(
+	intaqualink-automate
+	PUBLIC
+	"${PROJECT_SOURCE_DIR}/test/unit"
+	"${PROJECT_SOURCE_DIR}/test/integration"
+)
+
+target_link_libraries(
+	intaqualink-automate
+	PRIVATE
+	libaqualink-automate
+	libaqualink-jandy
+	libaqualink-pentair
+	Boost::unit_test_framework
+)
+
+add_test(NAME AqualinkAutomateIntegrationTests COMMAND intaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+if(ENABLE_SANITIZERS)
+target_enable_sanitizers(intaqualink-automate)
+endif(ENABLE_SANITIZERS)
+
+# Integration tests need web templates too
+add_custom_command(
+	TARGET intaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to integration test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)
+
+#------------------------------------------------------------------------------
+#
 #
 #
 #

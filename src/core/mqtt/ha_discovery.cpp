@@ -1,11 +1,11 @@
 #include <algorithm>
-#include <cctype>
 #include <format>
 
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 #include "mqtt/ha_discovery.h"
+#include "utility/slugify.h"
 #include "version/version_cmake.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -65,6 +65,8 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
+		std::size_t device_count = 0;
+
 		auto publish_device_state = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
 		{
 			if (!device)
@@ -75,6 +77,7 @@ namespace AqualinkAutomate::Mqtt
 			auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
 			if (!label.has_value())
 			{
+				LogDebug(Channel::Mqtt, std::format("Skipping HA state for {} device with no label trait", category));
 				return;
 			}
 
@@ -83,6 +86,7 @@ namespace AqualinkAutomate::Mqtt
 			auto state = std::string(Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device));
 
 			m_Client->Publish(state_topic, state, /*retain=*/true);
+			++device_count;
 		};
 
 		for (const auto& device : data_hub->Pumps())
@@ -105,7 +109,7 @@ namespace AqualinkAutomate::Mqtt
 			publish_device_state("aux", device);
 		}
 
-		LogTrace(Channel::Mqtt, "Published HA device states");
+		LogTrace(Channel::Mqtt, std::format("Published HA device states ({} devices)", device_count));
 	}
 
 	//=========================================================================
@@ -124,10 +128,10 @@ namespace AqualinkAutomate::Mqtt
 		};
 
 		const TempSensor sensors[] = {
-			{ "Pool Temperature",           "pool_temp",           "{{ value_json.pool.celsius }}" },
-			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius }}" },
-			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius }}" },
-			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius }}" },
+			{ "Pool Temperature",           "pool_temp",           "{{ value_json.pool.celsius if value_json.pool else '' }}" },
+			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius if value_json.spa else '' }}" },
+			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius if value_json.air else '' }}" },
+			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius if value_json.freeze_protect else '' }}" },
 		};
 
 		for (const auto& sensor : sensors)
@@ -158,8 +162,8 @@ namespace AqualinkAutomate::Mqtt
 		};
 
 		const SetpointEntity entities[] = {
-			{ "Pool Setpoint", "pool_setpoint", "{{ value_json.pool_setpoint.celsius }}", "pool" },
-			{ "Spa Setpoint",  "spa_setpoint",  "{{ value_json.spa_setpoint.celsius }}",  "spa" },
+			{ "Pool Setpoint", "pool_setpoint", "{{ value_json.pool_setpoint.celsius if value_json.pool_setpoint else '' }}", "pool" },
+			{ "Spa Setpoint",  "spa_setpoint",  "{{ value_json.spa_setpoint.celsius if value_json.spa_setpoint else '' }}",  "spa" },
 		};
 
 		for (const auto& entity : entities)
@@ -248,6 +252,23 @@ namespace AqualinkAutomate::Mqtt
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};
+
+		// Circulation mode select — only for combo/dual systems.
+		auto data_hub = m_DataHub.lock();
+		if (data_hub
+			&& (data_hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_SharedEquipment
+				|| data_hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_DualEquipment))
+		{
+			cmps["circulation_mode_select"] = {
+				{"p", "select"},
+				{"name", "Circulation Mode"},
+				{"unique_id", UniqueId("circulation_mode_select")},
+				{"state_topic", circulation_topic},
+				{"value_template", "{{ value_json.mode }}"},
+				{"command_topic", CirculationCommandTopic()},
+				{"options", nlohmann::json::array({"Pool", "Spa", "Spillover"})}
+			};
+		}
 	}
 
 	void HomeAssistantDiscovery::AddSystemComponents(nlohmann::json& cmps)
@@ -371,13 +392,13 @@ namespace AqualinkAutomate::Mqtt
 				{"value_template", "{{ value_json.boost_mode }}"}
 			};
 
-			auto status_key = std::format("chlorinator_{}_status", slug);
-			cmps[status_key] = {
+			auto health_key = std::format("chlorinator_{}_health", slug);
+			cmps[health_key] = {
 				{"p", "sensor"},
-				{"name", std::format("{} Status", label.value())},
-				{"unique_id", UniqueId(status_key)},
+				{"name", std::format("{} Health", label.value())},
+				{"unique_id", UniqueId(health_key)},
 				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.chlorinator_status }}"}
+				{"value_template", "{{ value_json.chlorinator_health }}"}
 			};
 
 			auto pct_cmd_key = std::format("chlorinator_{}_pct_cmd", slug);
@@ -472,31 +493,7 @@ namespace AqualinkAutomate::Mqtt
 
 	std::string HomeAssistantDiscovery::Slugify(const std::string& input)
 	{
-		std::string result;
-		result.reserve(input.size());
-
-		for (char c : input)
-		{
-			if (std::isalnum(static_cast<unsigned char>(c)) || c == '_')
-			{
-				result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-			}
-			else if (c == ' ' || c == '-' || c == '.')
-			{
-				if (!result.empty() && result.back() != '_')
-				{
-					result += '_';
-				}
-			}
-		}
-
-		// Trim trailing underscore
-		if (!result.empty() && result.back() == '_')
-		{
-			result.pop_back();
-		}
-
-		return result;
+		return Utility::Slugify(input);
 	}
 
 	std::string HomeAssistantDiscovery::UniqueId(const std::string& suffix) const
@@ -547,6 +544,11 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::ChlorinatorCommandTopic(const std::string& command) const
 	{
 		return m_Client->BuildTopic(std::format("command/chlorinator/{}", command));
+	}
+
+	std::string HomeAssistantDiscovery::CirculationCommandTopic() const
+	{
+		return m_Client->BuildTopic("command/circulation/mode");
 	}
 
 }

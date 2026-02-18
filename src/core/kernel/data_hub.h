@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <boost/functional/hash.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -12,6 +15,8 @@
 #include <boost/signals2.hpp>
 
 #include "interfaces/ihub.h"
+#include "kernel/body_of_water.h"
+#include "kernel/body_of_water_ids.h"
 #include "kernel/circulation.h"
 #include "kernel/equipment_versions.h"
 #include "kernel/hub_events/data_hub_config_event.h"
@@ -39,6 +44,12 @@ namespace AqualinkAutomate::Kernel
 		TimeOut
 	};
 
+	enum class ConfigurationSource
+	{
+		Auto,
+		UserSpecified
+	};
+
 	class DataHub : public Interfaces::IHub
 	{
 	public:
@@ -58,6 +69,7 @@ namespace AqualinkAutomate::Kernel
 	public:
 		Kernel::EquipmentMode Mode{ Kernel::EquipmentMode::Normal };
 		Kernel::PoolConfigurations PoolConfiguration{ Kernel::PoolConfigurations::Unknown };
+		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
 
 	//---------------------------------------------------------------------
@@ -85,22 +97,39 @@ namespace AqualinkAutomate::Kernel
 
 		bool SpaMode() const
 		{
-			return (CirculationModes::Spa == CirculationMode);
+			return CirculationModes::Spa == CirculationMode
+				|| CirculationModes::SpaFill == CirculationMode
+				|| CirculationModes::SpaDrain == CirculationMode;
 		}
 
 		bool InCleanMode{ false };
+
+	//---------------------------------------------------------------------
+	// BODIES OF WATER
+	//---------------------------------------------------------------------
+
+	public:
+		void ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source = ConfigurationSource::UserSpecified);
+		void AddBody(BodyOfWater body);
+		std::optional<std::reference_wrapper<BodyOfWater>> GetBody(BodyOfWaterIds id);
+		std::optional<std::reference_wrapper<const BodyOfWater>> GetBody(BodyOfWaterIds id) const;
+		std::optional<std::reference_wrapper<BodyOfWater>> ActiveBody();
+		const std::vector<BodyOfWater>& Bodies() const;
+
+	private:
+		std::vector<BodyOfWater> m_Bodies;
 
 	//---------------------------------------------------------------------
 	// TEMPERATURES
 	//---------------------------------------------------------------------
 
 	public:
-		Kernel::Temperature AirTemp() const;
-		Kernel::Temperature PoolTemp() const;
-		Kernel::Temperature SpaTemp() const;
-		Kernel::Temperature PoolTempSetpoint() const;
-		Kernel::Temperature SpaTempSetpoint() const;
-		Kernel::Temperature FreezeProtectPoint() const;
+		std::optional<Kernel::Temperature> AirTemp() const;
+		std::optional<Kernel::Temperature> PoolTemp() const;
+		std::optional<Kernel::Temperature> SpaTemp() const;
+		std::optional<Kernel::Temperature> PoolTempSetpoint() const;
+		std::optional<Kernel::Temperature> SpaTempSetpoint() const;
+		std::optional<Kernel::Temperature> FreezeProtectPoint() const;
 		Kernel::TemperatureUnits SystemTemperatureUnits() const;
 
 	public:
@@ -113,12 +142,12 @@ namespace AqualinkAutomate::Kernel
 		void SystemTemperatureUnits(Kernel::TemperatureUnits units);
 
 	private:
-		Kernel::Temperature m_AirTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
-		Kernel::Temperature m_PoolTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
-		Kernel::Temperature m_SpaTemp{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
-		Kernel::Temperature m_PoolTempSetpoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
-		Kernel::Temperature m_SpaTempSetpoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
-		Kernel::Temperature m_FreezeProtectPoint{ Kernel::Temperature::ConvertToTemperatureInCelsius(0.0f) };
+		std::optional<Kernel::Temperature> m_AirTemp;
+		std::optional<Kernel::Temperature> m_PoolTemp;
+		std::optional<Kernel::Temperature> m_SpaTemp;
+		std::optional<Kernel::Temperature> m_PoolTempSetpoint;
+		std::optional<Kernel::Temperature> m_SpaTempSetpoint;
+		std::optional<Kernel::Temperature> m_FreezeProtectPoint;
 		Kernel::TemperatureUnits m_SystemTemperatureUnits{ Kernel::TemperatureUnits::Fahrenheit };
 
 	//---------------------------------------------------------------------
@@ -158,8 +187,6 @@ namespace AqualinkAutomate::Kernel
 		[[deprecated("Use FilterPumps() instead; that returns a collection of pumps as there might be more than one")]]
 		std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> FilterPump();
 
-	private:
-		std::shared_ptr<Kernel::AuxillaryDevice> m_CachedFilterPump{ nullptr };
 	};
 
 }

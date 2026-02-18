@@ -5,7 +5,7 @@
 #include "http/json/json_equipment.h"
 #include "logging/logging.h"
 #include "profiling/factories/profiling_unit_factory.h"
-#include "utility/latency_percentile_tracker.h"
+#include "utility/json_serialization_helpers.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -75,29 +75,8 @@ namespace AqualinkAutomate::HTTP::JSON
 		return je_devices;
 	}
 
-	namespace
-	{
-		/// Helper function to convert nanoseconds to microseconds for JSON output.
-		double NanosToMicros(std::chrono::nanoseconds ns)
-		{
-			return static_cast<double>(ns.count()) / 1000.0;
-		}
-
-		/// Serialize a latency percentile snapshot to JSON.
-		nlohmann::json SerializeLatencySnapshot(const Utility::LatencyPercentileTracker<>::PercentileSnapshot& snapshot)
-		{
-			nlohmann::json latency;
-			latency["p1_us"] = NanosToMicros(snapshot.p1);
-			latency["p50_us"] = NanosToMicros(snapshot.p50);
-			latency["p95_us"] = NanosToMicros(snapshot.p95);
-			latency["p99_us"] = NanosToMicros(snapshot.p99);
-			latency["min_us"] = NanosToMicros(snapshot.min);
-			latency["max_us"] = NanosToMicros(snapshot.max);
-			latency["mean_us"] = NanosToMicros(snapshot.mean);
-			latency["sample_count"] = snapshot.sample_count;
-			return latency;
-		}
-	}
+	using Utility::NanosToMicros;
+	using Utility::SerializeLatencySnapshot;
 
 	nlohmann::json GenerateJson_Equipment_Stats(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
@@ -124,7 +103,7 @@ namespace AqualinkAutomate::HTTP::JSON
 		bandwidth_util_read["total_bytes"] = statistics_hub->BandwidthMetrics.Read.TotalBytes;
 		bandwidth_util_read["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation();
 		bandwidth_util_read["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation();
-		bandwidth_util_read["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation();
+		bandwidth_util_read["average_utilisation_5min"] = statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation();
 		je_stats["bandwidth_read"] = bandwidth_util_read;
 
 		LogTrace(Channel::Web, std::format("Read bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Read.TotalBytes, statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()));
@@ -133,7 +112,7 @@ namespace AqualinkAutomate::HTTP::JSON
 		bandwidth_util_write["total_bytes"] = statistics_hub->BandwidthMetrics.Write.TotalBytes;
 		bandwidth_util_write["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation();
 		bandwidth_util_write["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation();
-		bandwidth_util_write["average_utilisation_5mins"] = statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation();
+		bandwidth_util_write["average_utilisation_5min"] = statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation();
 		je_stats["bandwidth_write"] = bandwidth_util_write;
 
 		LogTrace(Channel::Web, std::format("Write bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Write.TotalBytes, statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()));

@@ -58,7 +58,7 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_LOGLEVEL_OPTIONS{ make_appoption("loglevel-options", "Set the logging level for Channel::Options", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PLATFORM{ make_appoption("loglevel-platform", "Set the logging level for Channel::Platform", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_PROFILING{ make_appoption("loglevel-profiling", "Set the logging level for Channel::Profiling", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
-		AppOptionPtr OPTION_LOGLEVEL_PROTCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
+		AppOptionPtr OPTION_LOGLEVEL_PROTOCOL{ make_appoption("loglevel-protocol", "Set the logging level for Channel::Protocol", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_SCRAPING{ make_appoption("loglevel-scraping", "Set the logging level for Channel::Scraping", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_SERIAL{ make_appoption("loglevel-serial", "Set the logging level for Channel::Serial", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_SIGNALS{ make_appoption("loglevel-signals", "Set the logging level for Channel::Signals", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -82,7 +82,7 @@ namespace AqualinkAutomate::Options::Developer
 			OPTION_LOGLEVEL_OPTIONS,
 			OPTION_LOGLEVEL_PLATFORM,
 			OPTION_LOGLEVEL_PROFILING,
-			OPTION_LOGLEVEL_PROTCOL,
+			OPTION_LOGLEVEL_PROTOCOL,
 			OPTION_LOGLEVEL_SCRAPING,
 			OPTION_LOGLEVEL_SERIAL,
 			OPTION_LOGLEVEL_SIGNALS,

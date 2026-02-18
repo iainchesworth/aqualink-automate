@@ -107,6 +107,7 @@ target_sources(
 	interfaces/istatuspublisher.cpp
 	interfaces/iwebroute.cpp
 	interfaces/iwebsocket.cpp
+	kernel/body_of_water.cpp
 	kernel/auxillary_devices/auxillary_device.cpp
 	kernel/auxillary_devices/auxillary_health_states.cpp
 	kernel/auxillary_devices/auxillary_status.cpp
@@ -165,6 +166,7 @@ target_sources(
 	options/options.cpp
 	options/options_app_options.cpp
 	options/options_developer_options.cpp
+	options/options_equipment_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
 	options/options_registry.cpp

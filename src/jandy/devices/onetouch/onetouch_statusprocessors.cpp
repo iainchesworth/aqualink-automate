@@ -6,6 +6,7 @@
 #include "devices/onetouch_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/body_of_water_ids.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 #include "logging/logging.h"
 #include "utility/string_manipulation.h"
@@ -140,6 +141,7 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, pool_heater_label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Pool);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -193,11 +195,12 @@ namespace AqualinkAutomate::Devices
 
 			if (0 == m_DataHub->Devices.FindByLabel(spa_heater_label).size())
 			{
-				// Check for installed solar heating.  If it doesn't exist, add it.
+				// Check for installed spa heating.  If it doesn't exist, add it.
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, spa_heater_label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Spa);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -256,6 +259,7 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, solar_heater_label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -314,6 +318,7 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, heat_pump_label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -372,6 +377,7 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chiller_label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -433,14 +439,19 @@ namespace AqualinkAutomate::Devices
 			if (0 == m_DataHub->Devices.FindByLabel(chlorinator_label).size())
 			{
 				// Check for an installed chlorinator.  If one doesn't exist, add one.
+				// Default to Off; actual status comes from AquaRite RS-485 messages.
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chlorinator_label);
-				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
-			m_DataHub->Devices.FindByLabel(chlorinator_label).front()->AuxillaryTraits.Set(DutyCycleTrait{}, percentage_dutycycle.value());
+			if (auto devices = m_DataHub->Devices.FindByLabel(chlorinator_label); !devices.empty())
+			{
+				devices.front()->AuxillaryTraits.Set(DutyCycleTrait{}, percentage_dutycycle.value());
+			}
 		}
 	}
 
@@ -503,19 +514,24 @@ namespace AqualinkAutomate::Devices
 			if (0 == m_DataHub->Devices.FindByLabel(chlorinator_label).size())
 			{
 				// Check for an installed chlorinator.  If one doesn't exist, add one.
+				// Default to Off; actual status comes from AquaRite RS-485 messages.
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, chlorinator_label);
-				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
 			// "Check AquaPure" on the Equipment Status page is a binary alert;
 			// specific error codes are decoded from AquaRite RS-485 messages.
 			// Flag the chlorinator status so consumers know there is a problem.
-			auto chlorinator = m_DataHub->Devices.FindByLabel(chlorinator_label).front();
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator status to Unknown (check system alert)", DeviceId()));
-			chlorinator->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Unknown);
+			auto chlorinators = m_DataHub->Devices.FindByLabel(chlorinator_label);
+			if (chlorinators.empty()) { return; }
+			auto chlorinator = chlorinators.front();
+
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator health to GeneralFault (check system alert)", DeviceId()));
+			chlorinator->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::GeneralFault);
 
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(chlorinator);

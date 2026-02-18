@@ -8,6 +8,7 @@
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_devices/heater_status.h"
 #include "kernel/auxillary_devices/pump_status.h"
+#include "kernel/body_of_water_ids.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 #include "utility/overloaded_variant_visitor.h"
@@ -208,6 +209,7 @@ namespace AqualinkAutomate::Factory
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(CHLORINATOR));
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 
 						if (data.Status.has_value())
 						{
@@ -219,6 +221,7 @@ namespace AqualinkAutomate::Factory
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Cleaner);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(CLEANER));
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::Off);
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Pool);
 					},
 					[&aux_ptr](const HeaterDevice_Data& data)
 					{
@@ -229,6 +232,16 @@ namespace AqualinkAutomate::Factory
 						{
 							aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::ConvertToHeaterStatus(data.Status.value()));
 						}
+
+						auto label = data.Label.value_or(HEATER);
+						auto body_id = Kernel::BodyOfWaterIds::Unknown;
+						if (label.find("Pool") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Pool;
+						else if (label.find("Spa") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Spa;
+						else if (label.find("Solar") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Shared;
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 					},
 					[&aux_ptr](const PumpDevice_Data& data)
 					{
@@ -239,12 +252,23 @@ namespace AqualinkAutomate::Factory
 						{
 							aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::ConvertToPumpStatus(data.Status.value()));
 						}
+
+						auto label = data.Label.value_or(PUMP);
+						auto body_id = Kernel::BodyOfWaterIds::Unknown;
+						if (label.find("Filter") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Shared;
+						else if (label.find("Pool") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Pool;
+						else if (label.find("Spa") != std::string::npos)
+							body_id = Kernel::BodyOfWaterIds::Spa;
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 					},
 					[&aux_ptr](const SpilloverDevice_Data& data)
 					{
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Spillover);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(SPILLOVER));
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::Off);
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
 					},
 					[&aux_ptr](const SprinklerDevice_Data& data)
 					{

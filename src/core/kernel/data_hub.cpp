@@ -12,27 +12,136 @@
 namespace AqualinkAutomate::Kernel
 {
 	
-	DataHub::DataHub() : 
+	DataHub::DataHub() :
 		IHub()
 	{
 	}
 
-	Kernel::Temperature DataHub::AirTemp() const
+	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source)
+	{
+		PoolConfiguration = config;
+		PoolConfigurationSource = source;
+
+		if (!m_Bodies.empty())
+		{
+			return; // Bodies already populated
+		}
+
+		switch (config)
+		{
+		case PoolConfigurations::DualBody_SharedEquipment:
+		case PoolConfigurations::DualBody_DualEquipment:
+			AddBody(BodyOfWater{ BodyOfWaterIds::Pool, "Pool" });
+			AddBody(BodyOfWater{ BodyOfWaterIds::Spa, "Spa" });
+			break;
+		case PoolConfigurations::SingleBody:
+			AddBody(BodyOfWater{ BodyOfWaterIds::Pool, "Pool" });
+			break;
+		default:
+			break;
+		}
+
+		// Set active body based on current circulation mode.
+		// The Jandy controller always has one body active (Pool by default).
+		bool spa_active = (CirculationMode == CirculationModes::Spa
+			|| CirculationMode == CirculationModes::SpaFill
+			|| CirculationMode == CirculationModes::SpaDrain);
+
+		if (auto pool = GetBody(BodyOfWaterIds::Pool))
+		{
+			pool->get().IsActive(!spa_active);
+		}
+
+		if (auto spa = GetBody(BodyOfWaterIds::Spa))
+		{
+			spa->get().IsActive(spa_active);
+		}
+	}
+
+	void DataHub::AddBody(BodyOfWater body)
+	{
+		// Avoid duplicates
+		for (const auto& existing : m_Bodies)
+		{
+			if (existing.Id() == body.Id())
+			{
+				return;
+			}
+		}
+
+		m_Bodies.push_back(std::move(body));
+	}
+
+	std::optional<std::reference_wrapper<BodyOfWater>> DataHub::GetBody(BodyOfWaterIds id)
+	{
+		for (auto& body : m_Bodies)
+		{
+			if (body.Id() == id)
+			{
+				return body;
+			}
+		}
+
+		return std::nullopt;
+	}
+
+	std::optional<std::reference_wrapper<const BodyOfWater>> DataHub::GetBody(BodyOfWaterIds id) const
+	{
+		for (const auto& body : m_Bodies)
+		{
+			if (body.Id() == id)
+			{
+				return body;
+			}
+		}
+
+		return std::nullopt;
+	}
+
+	std::optional<std::reference_wrapper<BodyOfWater>> DataHub::ActiveBody()
+	{
+		for (auto& body : m_Bodies)
+		{
+			if (body.IsActive())
+			{
+				return body;
+			}
+		}
+
+		return std::nullopt;
+	}
+
+	const std::vector<BodyOfWater>& DataHub::Bodies() const
+	{
+		return m_Bodies;
+	}
+
+	std::optional<Kernel::Temperature> DataHub::AirTemp() const
 	{
 		return m_AirTemp;
 	}
 
-	Kernel::Temperature DataHub::PoolTemp() const
+	std::optional<Kernel::Temperature> DataHub::PoolTemp() const
 	{
+		if (auto body = GetBody(BodyOfWaterIds::Pool))
+		{
+			return body->get().CurrentTemp();
+		}
+
 		return m_PoolTemp;
 	}
 
-	Kernel::Temperature DataHub::SpaTemp() const
+	std::optional<Kernel::Temperature> DataHub::SpaTemp() const
 	{
+		if (auto body = GetBody(BodyOfWaterIds::Spa))
+		{
+			return body->get().CurrentTemp();
+		}
+
 		return m_SpaTemp;
 	}
 
-	Kernel::Temperature DataHub::FreezeProtectPoint() const
+	std::optional<Kernel::Temperature> DataHub::FreezeProtectPoint() const
 	{
 		return m_FreezeProtectPoint;
 	}
@@ -40,65 +149,99 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::AirTemp(const Kernel::Temperature& air_temp)
 	{
 		m_AirTemp = air_temp;
-		Factory::ProfilerFactory::Instance().Get()->PlotValue("Air Temp", m_AirTemp.InCelsius().value());
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Air Temp", air_temp.InCelsius().value());
 
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->AirTemp(m_AirTemp);
+		update_event->AirTemp(air_temp);
 		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::PoolTemp(const Kernel::Temperature& pool_temp)
 	{
 		m_PoolTemp = pool_temp;
-		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp", m_PoolTemp.InCelsius().value());
+
+		if (auto body = GetBody(BodyOfWaterIds::Pool))
+		{
+			body->get().CurrentTemp(pool_temp);
+		}
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp", pool_temp.InCelsius().value());
 
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->PoolTemp(m_PoolTemp);
+		update_event->PoolTemp(pool_temp);
 		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::SpaTemp(const Kernel::Temperature& spa_temp)
 	{
 		m_SpaTemp = spa_temp;
-		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp", m_SpaTemp.InCelsius().value());
+
+		if (auto body = GetBody(BodyOfWaterIds::Spa))
+		{
+			body->get().CurrentTemp(spa_temp);
+		}
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp", spa_temp.InCelsius().value());
 
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->SpaTemp(m_SpaTemp);
+		update_event->SpaTemp(spa_temp);
 		ConfigUpdateSignal(update_event);
 	}
 
-	Kernel::Temperature DataHub::PoolTempSetpoint() const
+	std::optional<Kernel::Temperature> DataHub::PoolTempSetpoint() const
 	{
+		if (auto body = GetBody(BodyOfWaterIds::Pool))
+		{
+			return body->get().TempSetpoint();
+		}
+
 		return m_PoolTempSetpoint;
 	}
 
-	Kernel::Temperature DataHub::SpaTempSetpoint() const
+	std::optional<Kernel::Temperature> DataHub::SpaTempSetpoint() const
 	{
+		if (auto body = GetBody(BodyOfWaterIds::Spa))
+		{
+			return body->get().TempSetpoint();
+		}
+
 		return m_SpaTempSetpoint;
 	}
 
 	void DataHub::PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint)
 	{
 		m_PoolTempSetpoint = pool_temp_setpoint;
-		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", m_PoolTempSetpoint.InCelsius().value());
+
+		if (auto body = GetBody(BodyOfWaterIds::Pool))
+		{
+			body->get().TempSetpoint(pool_temp_setpoint);
+		}
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", pool_temp_setpoint.InCelsius().value());
 
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->PoolSetpoint(m_PoolTempSetpoint);
+		update_event->PoolSetpoint(pool_temp_setpoint);
 		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
 	{
 		m_SpaTempSetpoint = spa_temp_setpoint;
-		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", m_SpaTempSetpoint.InCelsius().value());
+
+		if (auto body = GetBody(BodyOfWaterIds::Spa))
+		{
+			body->get().TempSetpoint(spa_temp_setpoint);
+		}
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", spa_temp_setpoint.InCelsius().value());
 
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->SpaSetpoint(m_SpaTempSetpoint);
+		update_event->SpaSetpoint(spa_temp_setpoint);
 		ConfigUpdateSignal(update_event);
 	}
 
@@ -194,25 +337,12 @@ namespace AqualinkAutomate::Kernel
 
 	std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::FilterPump()
 	{
-		if (nullptr != m_CachedFilterPump)
+		auto pumps = FilterPumps();
+		if (pumps.empty())
 		{
-			// Already know which device is the filter pump so use the cache.
-			return m_CachedFilterPump;
+			return std::nullopt;
 		}
-		else
-		{
-			for (const auto& base_ptr : Devices.FindByLabel(Kernel::AuxillaryTraitsTypes::LabelTrait::COMMON_LABEL_FILTER_PUMP))
-			{
-				if (nullptr != base_ptr)
-				{
-					// If there's at least one matching pump, use the first one found...
-					m_CachedFilterPump = base_ptr;
-					return m_CachedFilterPump;
-				}
-			}
-		}
-
-		return std::nullopt;
+		return pumps.front();
 	}
 
 }

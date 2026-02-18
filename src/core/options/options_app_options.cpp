@@ -55,7 +55,7 @@ namespace AqualinkAutomate::Options::App
 			// Do nothing...
 		}
 
-		return std::move(settings);
+		return settings;
 	}
 
 	void HandleHelp(boost::program_options::variables_map& vm, boost::program_options::options_description& options)

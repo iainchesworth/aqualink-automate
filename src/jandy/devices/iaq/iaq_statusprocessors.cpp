@@ -11,6 +11,7 @@
 #include "factories/jandy_auxillary_factory.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/body_of_water_ids.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -32,6 +33,34 @@ namespace AqualinkAutomate::Devices
 			magic_enum::enum_name(msg.PoolHeaterStatus()),
 			magic_enum::enum_name(msg.SpaHeaterStatus()),
 			magic_enum::enum_name(msg.SolarHeaterStatus())));
+
+		// Update circulation mode from MainStatus spa mode flag.
+		m_DataHub->CirculationMode = msg.SpaMode()
+			? Kernel::CirculationModes::Spa
+			: Kernel::CirculationModes::Pool;
+
+		// Update active body state based on circulation mode.
+		if (auto pool = m_DataHub->GetBody(Kernel::BodyOfWaterIds::Pool))
+		{
+			pool->get().IsActive(!msg.SpaMode());
+		}
+
+		if (auto spa = m_DataHub->GetBody(Kernel::BodyOfWaterIds::Spa))
+		{
+			spa->get().IsActive(msg.SpaMode());
+		}
+
+		// Heuristic: if we see spa mode and have no bodies yet (IAQ-only setup),
+		// infer DualBody_SharedEquipment and create both bodies.
+		if (msg.SpaMode() && m_DataHub->Bodies().empty()
+			&& m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::Unknown
+			&& m_DataHub->PoolConfigurationSource == Kernel::ConfigurationSource::Auto)
+		{
+			m_DataHub->PoolConfiguration = Kernel::PoolConfigurations::DualBody_SharedEquipment;
+			m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
+			m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Spa, "Spa" });
+			LogInfo(Channel::Devices, "IAQ: Auto-detected DualBody_SharedEquipment from MainStatus SpaMode");
+		}
 
 		// Update temperatures in the DataHub.
 		m_DataHub->PoolTemp(msg.PoolTemperature());
@@ -61,6 +90,14 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpSpeedTrait{}, Kernel::PumpSpeeds::Unknown);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::PumpStatuses::Unknown);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpTypeTrait{}, Kernel::PumpTypes::FilterCirculation);
+
+				// Filter pump is Shared in combo/dual systems, Pool in single-body.
+				auto body_id = (m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_SharedEquipment
+					|| m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_DualEquipment)
+					? Kernel::BodyOfWaterIds::Shared
+					: Kernel::BodyOfWaterIds::Pool;
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
+
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -81,7 +118,7 @@ namespace AqualinkAutomate::Devices
 		}
 
 		// Helper to create/update a heater device in the DataHub.
-		auto update_heater = [this](const std::string& label, Kernel::HeaterStatuses status)
+		auto update_heater = [this](const std::string& label, Kernel::HeaterStatuses status, Kernel::BodyOfWaterIds body_id)
 		{
 			if (0 == m_DataHub->Devices.FindByLabel(label).size())
 			{
@@ -89,6 +126,7 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, label);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
+				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 				m_DataHub->Devices.Add(std::move(ptr));
 			}
 
@@ -105,9 +143,9 @@ namespace AqualinkAutomate::Devices
 			m_DataHub->ConfigUpdateSignal(update_event);
 		};
 
-		update_heater("Pool Heat", msg.PoolHeaterStatus());
-		update_heater("Spa Heat", msg.SpaHeaterStatus());
-		update_heater("Solar Heat", msg.SolarHeaterStatus());
+		update_heater("Pool Heat", msg.PoolHeaterStatus(), Kernel::BodyOfWaterIds::Pool);
+		update_heater("Spa Heat", msg.SpaHeaterStatus(), Kernel::BodyOfWaterIds::Spa);
+		update_heater("Solar Heat", msg.SolarHeaterStatus(), Kernel::BodyOfWaterIds::Shared);
 	}
 
 	void IAQDevice::ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg)
@@ -163,6 +201,21 @@ namespace AqualinkAutomate::Devices
 			if (!info.name.empty())
 			{
 				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, info.name);
+
+				// Set BodyOfWaterTrait based on label heuristic if not already set.
+				if (!aux_ptr->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}))
+				{
+					auto body_id = Kernel::BodyOfWaterIds::Unknown;
+					if (info.name.find("Spa") != std::string::npos)
+					{
+						body_id = Kernel::BodyOfWaterIds::Spa;
+					}
+					else if (info.name.find("Pool") != std::string::npos)
+					{
+						body_id = Kernel::BodyOfWaterIds::Pool;
+					}
+					aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
+				}
 			}
 
 			// Signal that a button state change has occurred.

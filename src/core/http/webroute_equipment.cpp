@@ -1,10 +1,11 @@
 #include <nlohmann/json.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "formatters/temperature_formatter.h"
 #include "http/json/json_equipment.h"
 #include "http/server/server_fields.h"
 #include "http/webroute_equipment.h"
 #include "profiling/factories/profiling_unit_factory.h"
+#include "utility/json_serialization_helpers.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -22,26 +23,37 @@ namespace AqualinkAutomate::HTTP
 
 		nlohmann::json jandy_equipment_json;
 
-		jandy_equipment_json["spaHeatStatus"] = "On";
-		jandy_equipment_json["poolHeatStatus"] = "Enabled";
-		jandy_equipment_json["userStatus"] = "Off";
-		jandy_equipment_json["cleanStatus"] = "On";
-
-		jandy_equipment_json["temperatures"]["pool"] = std::format("{}", m_DataHub->PoolTemp());
-		jandy_equipment_json["temperatures"]["spa"] = std::format("{}", m_DataHub->SpaTemp());
-		jandy_equipment_json["temperatures"]["air"] = std::format("{}", m_DataHub->AirTemp());
-		jandy_equipment_json["temperatures"]["pool_setpoint"] = {
-			{"celsius", m_DataHub->PoolTempSetpoint().InCelsius().value()},
-			{"fahrenheit", m_DataHub->PoolTempSetpoint().InFahrenheit().value()}
-		};
-		jandy_equipment_json["temperatures"]["spa_setpoint"] = {
-			{"celsius", m_DataHub->SpaTempSetpoint().InCelsius().value()},
-			{"fahrenheit", m_DataHub->SpaTempSetpoint().InFahrenheit().value()}
-		};
+		jandy_equipment_json["temperatures"]["pool"] = Utility::SerializeTemperature(m_DataHub->PoolTemp());
+		jandy_equipment_json["temperatures"]["spa"] = Utility::SerializeTemperature(m_DataHub->SpaTemp());
+		jandy_equipment_json["temperatures"]["air"] = Utility::SerializeTemperature(m_DataHub->AirTemp());
+		jandy_equipment_json["temperatures"]["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
+		jandy_equipment_json["temperatures"]["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
 
 		jandy_equipment_json["chemistry"]["ph"] = static_cast<double>(m_DataHub->pH()());
 		jandy_equipment_json["chemistry"]["orp"] = static_cast<uint16_t>(m_DataHub->ORP()().value());
 		jandy_equipment_json["chemistry"]["salt_in_ppm"] = static_cast<uint16_t>(m_DataHub->SaltLevel().value());
+
+		// Configuration section with body-of-water info.
+		{
+			nlohmann::json config;
+			config["pool_configuration"] = std::string{ magic_enum::enum_name(m_DataHub->PoolConfiguration) };
+			config["configuration_source"] = std::string{ magic_enum::enum_name(m_DataHub->PoolConfigurationSource) };
+
+			nlohmann::json bodies_array = nlohmann::json::array();
+			for (const auto& body : m_DataHub->Bodies())
+			{
+				nlohmann::json body_json;
+				body_json["id"] = std::string{ magic_enum::enum_name(body.Id()) };
+				body_json["label"] = body.Label();
+				body_json["is_active"] = body.IsActive();
+				body_json["temperature"] = Utility::SerializeTemperature(body.CurrentTemp());
+				body_json["setpoint"] = Utility::SerializeTemperature(body.TempSetpoint());
+				bodies_array.push_back(std::move(body_json));
+			}
+			config["bodies"] = std::move(bodies_array);
+
+			jandy_equipment_json["configuration"] = std::move(config);
+		}
 
 		jandy_equipment_json["buttons"] = JSON::GenerateJson_Equipment_Buttons(m_DataHub);
 		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub);

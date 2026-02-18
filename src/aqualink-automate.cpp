@@ -107,6 +107,7 @@ int main(int argc, char* argv[])
 			auto processed_options = Options::Initialise()
 				| Add(Options::App::OptionsProcessor{})
 				| Add(Options::Developer::OptionsProcessor{})
+				| Add(Options::Equipment::OptionsProcessor{})
 				| Add(Options::Mqtt::OptionsProcessor{})
 				| Add(Options::Serial::OptionsProcessor{})
 				| Add(Options::Web::OptionsProcessor{})
@@ -118,6 +119,7 @@ int main(int argc, char* argv[])
 				| Process(
 					Options::App::OptionsProcessor{},
 					Options::Developer::OptionsProcessor{},
+					Options::Equipment::OptionsProcessor{},
 					Options::Mqtt::OptionsProcessor{},
 					Options::Serial::OptionsProcessor{},
 					Options::Web::OptionsProcessor{},
@@ -157,6 +159,25 @@ int main(int argc, char* argv[])
 
 			auto command_dispatcher = std::make_shared<Devices::CommandDispatcher>(data_hub, equipment_hub);
 			hub_locator.Register<Interfaces::ICommandDispatcher>(command_dispatcher);
+		}
+
+		//---------------------------------------------------------------------
+		// EQUIPMENT CONFIGURATION (from CLI options)
+		//---------------------------------------------------------------------
+
+		{
+			auto equipment_settings_result = settings.Get<Options::Equipment::EquipmentSettings>();
+			if (equipment_settings_result)
+			{
+				const auto& equipment_settings = equipment_settings_result.value().get();
+
+				if (equipment_settings.pool_configuration_is_user_specified)
+				{
+					data_hub->ApplyPoolConfiguration(equipment_settings.pool_configuration, Kernel::ConfigurationSource::UserSpecified);
+
+					LogInfo(Channel::Equipment, std::format("Pool configuration set from CLI: {}", magic_enum::enum_name(equipment_settings.pool_configuration)));
+				}
+			}
 		}
 
 		//---------------------------------------------------------------------

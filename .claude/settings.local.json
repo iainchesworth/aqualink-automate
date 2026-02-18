@@ -206,7 +206,10 @@
       "Bash(R:\\\\aqualink-automate\\\\build\\\\config-windows-msvc-debug\\\\src\\\\aqualink-automate.exe:*)",
       "Bash(git mv:*)",
       "Bash(Select-String -Pattern \"error\" -SimpleMatch)",
-      "Bash(./build/config-windows-msvc-debug/src/aqualink-automate.exe:*)"
+      "Bash(./build/config-windows-msvc-debug/src/aqualink-automate.exe:*)",
+      "WebFetch(domain:basinpooldesigns.com)",
+      "Bash(./intaqualink-automate.exe:*)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/intaqualink-automate.exe --log_level=test_suite)"
     ]
   }
 }

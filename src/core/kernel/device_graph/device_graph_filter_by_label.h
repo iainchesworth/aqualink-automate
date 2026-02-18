@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Kernel
 
 	private:
 		const DevicesGraphType& m_Graph;
-		const std::string& m_DeviceLabel;
+		std::string m_DeviceLabel;
 	};
 
 }

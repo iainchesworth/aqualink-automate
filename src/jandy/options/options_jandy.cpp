@@ -218,7 +218,7 @@ namespace AqualinkAutomate::Jandy::Options
 			);
 		}
 
-		return std::move(settings);
+		return settings;
 	}
 
 }
