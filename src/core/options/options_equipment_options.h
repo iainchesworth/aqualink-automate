@@ -38,7 +38,7 @@ namespace AqualinkAutomate::Options::Equipment
 	private:
 		AppOptionPtr OPTION_POOL_CONFIGURATION{ make_appoption("pool-configuration", "Pool installation type: pool-only, spa-only, combo, dual (default: auto)", boost::program_options::value<std::string>()->default_value("auto")) };
 
-		std::vector<AppOptionPtr> EquipmentOptionsCollection
+		const std::vector<AppOptionPtr> EquipmentOptionsCollection
 		{
 			OPTION_POOL_CONFIGURATION
 		};

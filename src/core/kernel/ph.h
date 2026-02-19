@@ -7,8 +7,8 @@ namespace AqualinkAutomate::Kernel
 
 	class pH
 	{
-		inline static const boost::float32_t MINIMUM_PH_VALUE = 0.0f;
-		inline static const boost::float32_t MAXIMUM_PH_VALUE = 14.0f;
+		static constexpr boost::float32_t MINIMUM_PH_VALUE = 0.0f;
+		static constexpr boost::float32_t MAXIMUM_PH_VALUE = 14.0f;
 
 	public:
 		pH(boost::float32_t value);

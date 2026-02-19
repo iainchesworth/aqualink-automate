@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include "kernel/body_of_water_ids.h"
 #include "kernel/temperature.h"
@@ -12,7 +13,7 @@ namespace AqualinkAutomate::Kernel
 	class BodyOfWater
 	{
 	public:
-		BodyOfWater(BodyOfWaterIds id, const std::string& label);
+		BodyOfWater(BodyOfWaterIds id, std::string_view label);
 
 	public:
 		BodyOfWaterIds Id() const;

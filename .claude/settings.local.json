@@ -209,7 +209,13 @@
       "Bash(./build/config-windows-msvc-debug/src/aqualink-automate.exe:*)",
       "WebFetch(domain:basinpooldesigns.com)",
       "Bash(./intaqualink-automate.exe:*)",
-      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/intaqualink-automate.exe --log_level=test_suite)"
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/intaqualink-automate.exe --log_level=test_suite)",
+      "Bash(R:/aqualink-automate/build/config-windows-msvc-debug/test/intaqualink-automate.exe:*)",
+      "Bash(gh search code:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(Select-String -Pattern \"\\(passed|failed|error|Test\\)\")",
+      "Bash(Select-Object -First 10)"
     ]
   }
 }

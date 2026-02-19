@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <boost/uuid/uuid.hpp>
@@ -33,8 +35,8 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);
-		SerialAdapterDevice* FindSerialAdapter();
-		IAQDevice* FindIAQDevice();
+		std::optional<std::reference_wrapper<SerialAdapterDevice>> FindSerialAdapter();
+		std::optional<std::reference_wrapper<IAQDevice>> FindIAQDevice();
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub;

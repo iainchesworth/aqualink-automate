@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	BodyOfWater::BodyOfWater(BodyOfWaterIds id, const std::string& label)
+	BodyOfWater::BodyOfWater(BodyOfWaterIds id, std::string_view label)
 		: m_Id(id)
 		, m_Label(label)
 	{

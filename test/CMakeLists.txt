@@ -38,8 +38,10 @@ target_sources(
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/options/test_options_equipment.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
+	unit/options/test_options_serial.cpp
 	unit/options/test_options_web.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp

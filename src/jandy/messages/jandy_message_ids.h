@@ -60,8 +60,10 @@ namespace AqualinkAutomate::Messages
 		IAQ_Heartbeat = 0x53,
 		IAQ_CommandReady = 0x73,
 
+		// Display protocol
+		DisplayUpdate = 0x05,
+
 		// Unknown ids
-		Unknown_05 = 0x05,
 		Unknown_PDA_1B = 0x1B,
 		Unknown_ReadyControl = 0x80,
 		Unknown = 0xFF

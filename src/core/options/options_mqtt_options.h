@@ -159,7 +159,7 @@ namespace AqualinkAutomate::Options::Mqtt
 		AppOptionPtr OPTION_HA_DISCOVERY_PREFIX{ make_appoption("ha-discovery-prefix", "Home Assistant discovery topic prefix", boost::program_options::value<std::string>()->default_value("homeassistant")) };
 		AppOptionPtr OPTION_HA_DEVICE_ID{ make_appoption("ha-device-id", "Home Assistant device identifier (default: aqualink_{topic_prefix})", boost::program_options::value<std::string>()) };
 
-		std::vector<AppOptionPtr> MqttOptionsCollection
+		const std::vector<AppOptionPtr> MqttOptionsCollection
 		{
 			OPTION_ENABLE,
 			OPTION_BROKER_HOST,

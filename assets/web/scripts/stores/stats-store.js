@@ -109,6 +109,7 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 _freq.prevTime = nowMs;
+                enriched.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                 this.messageCounts.splice(0, this.messageCounts.length, ...enriched);
             }
 

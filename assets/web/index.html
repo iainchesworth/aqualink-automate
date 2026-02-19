@@ -292,6 +292,14 @@
                                     <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.max_us)"></span>
                                 </div>
                                 <div class="latency-item">
+                                    <span class="latency-label">AT Min</span>
+                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_min_us)"></span>
+                                </div>
+                                <div class="latency-item">
+                                    <span class="latency-label">AT Max</span>
+                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_max_us)"></span>
+                                </div>
+                                <div class="latency-item">
                                     <span class="latency-label">Mean</span>
                                     <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.mean_us)"></span>
                                 </div>
@@ -391,6 +399,52 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Log level controls -->
+            <div class="section-title">Log Levels</div>
+            <div x-show="logLevelsLoaded" class="card mb-2">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>Per-Channel Log Levels</span>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <label style="font-size:0.8rem;font-weight:normal;color:var(--text-secondary);">Global:</label>
+                        <select style="font-size:0.8rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                                :value="globalLevel"
+                                @change="setGlobalLevel($event.target.value)">
+                            <option value="" disabled>Mixed</option>
+                            <template x-for="lvl in severityLevels" :key="lvl">
+                                <option :value="lvl" x-text="lvl" :selected="lvl === globalLevel"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0;overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Channel</th>
+                                <th>Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="[ch, lvl] in Object.entries(logChannels).sort()" :key="ch">
+                                <tr>
+                                    <td><code x-text="ch"></code></td>
+                                    <td>
+                                        <select style="font-size:0.8rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                                                :value="lvl"
+                                                @change="setChannelLevel(ch, $event.target.value)">
+                                            <template x-for="s in severityLevels" :key="s">
+                                                <option :value="s" x-text="s" :selected="s === lvl"></option>
+                                            </template>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2" style="padding:1rem;">Loading log levels...</div>
 
             <!-- Stats connection indicator -->
             <div class="text-muted text-center mt-2" style="font-size:0.75rem;">

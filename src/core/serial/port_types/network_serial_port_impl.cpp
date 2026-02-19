@@ -119,6 +119,16 @@ namespace AqualinkAutomate::Serial::PortTypes
 						return;
 					}
 
+					// Disable Nagle's algorithm — serial-over-TCP messages are small
+					// and latency-sensitive; buffering them defeats the purpose.
+					boost::asio::ip::tcp::no_delay no_delay_opt(true);
+					m_Socket.set_option(no_delay_opt, ec);
+					if (ec)
+					{
+						LogWarning(Channel::Serial, std::format("Failed to set TCP_NODELAY on '{}': {}", endpoint_name, ec.message()));
+						ec = {};
+					}
+
 					LogInfo(Channel::Serial, std::format("Successfully connected to network serial port: {}", endpoint_name));
 
 					LogDebug(Channel::Serial, "Initializing RFC2217 protocol handler");

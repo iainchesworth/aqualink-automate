@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "kernel/pool_configurations.h"
 #include "options/options.h"
 #include "jandy/options/options_jandy.h"
 #include "pentair/options/options_pentair.h"
@@ -23,6 +24,7 @@ namespace
 		return Options::Initialise()
 			| Options::Add(Options::App::OptionsProcessor{})
 			| Options::Add(Options::Developer::OptionsProcessor{})
+			| Options::Add(Options::Equipment::OptionsProcessor{})
 			| Options::Add(Options::Mqtt::OptionsProcessor{})
 			| Options::Add(Options::Serial::OptionsProcessor{})
 			| Options::Add(Options::Web::OptionsProcessor{})
@@ -33,6 +35,7 @@ namespace
 			| Options::Process(
 				Options::App::OptionsProcessor{},
 				Options::Developer::OptionsProcessor{},
+				Options::Equipment::OptionsProcessor{},
 				Options::Mqtt::OptionsProcessor{},
 				Options::Serial::OptionsProcessor{},
 				Options::Web::OptionsProcessor{},
@@ -57,6 +60,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_AllSettingsAreasPopulated)
 
 	BOOST_CHECK(settings.Has("Application"));
 	BOOST_CHECK(settings.Has("Developer"));
+	BOOST_CHECK(settings.Has("Equipment"));
 	BOOST_CHECK(settings.Has("MQTT"));
 	BOOST_CHECK(settings.Has("Serial"));
 	BOOST_CHECK(settings.Has("Web"));
@@ -73,6 +77,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_AllSettingsAreasRetrievable)
 
 	BOOST_CHECK(settings.Get<Options::App::AppSettings>().has_value());
 	BOOST_CHECK(settings.Get<Options::Developer::DeveloperSettings>().has_value());
+	BOOST_CHECK(settings.Get<Options::Equipment::EquipmentSettings>().has_value());
 	BOOST_CHECK(settings.Get<Options::Mqtt::MqttSettings>().has_value());
 	BOOST_CHECK(settings.Get<Options::Serial::SerialSettings>().has_value());
 	BOOST_CHECK(settings.Get<Options::Web::WebSettings>().has_value());
@@ -416,6 +421,145 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_Validation_ExplicitConflictingSerialOptions)
 	// Both explicitly provided = conflict
 	auto result = RunFullPipeline({ "program", "--serial-port=COM5", "--remote-serial-port=192.168.1.100:2000" });
 	BOOST_CHECK(!result.has_value());
+}
+
+//=============================================================================
+// PARSER HARDENING: Unrecognized arguments
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_UnrecognizedPositionalArg_Fails)
+{
+	// Simulates the typo "s COM6" instead of "-s COM6"
+	auto result = RunFullPipeline({ "program", "s", "COM6" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_UnrecognizedLongOption_Fails)
+{
+	auto result = RunFullPipeline({ "program", "--bogus-option" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_UnrecognizedShortOption_Fails)
+{
+	auto result = RunFullPipeline({ "program", "-z" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_MixedValidAndUnrecognized_Fails)
+{
+	auto result = RunFullPipeline({ "program", "--mqtt", "leftover" });
+	BOOST_CHECK(!result.has_value());
+}
+
+//=============================================================================
+// SHORT OPTION FLAGS
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_SerialArgs_ShortFlag_s)
+{
+	auto result = RunFullPipeline({ "program", "-s", "COM6" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto serial = result.value().Get<Options::Serial::SerialSettings>();
+	BOOST_REQUIRE(serial.has_value());
+
+	BOOST_CHECK_EQUAL(serial.value().get().serial_port, "COM6");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_SerialArgs_ShortFlag_r)
+{
+	auto result = RunFullPipeline({ "program", "-r", "192.168.1.1:2000" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto serial = result.value().Get<Options::Serial::SerialSettings>();
+	BOOST_REQUIRE(serial.has_value());
+
+	BOOST_CHECK_EQUAL(serial.value().get().remote_serial_port, "192.168.1.1:2000");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_AppArgs_ShortFlag_d)
+{
+	auto result = RunFullPipeline({ "program", "-d" });
+	BOOST_REQUIRE(result.has_value());
+}
+
+//=============================================================================
+// TYPE MISMATCH / MISSING VALUES
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_InvalidPortNumber_Fails)
+{
+	auto result = RunFullPipeline({ "program", "--http-port=abc" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_InvalidBaudRate_Fails)
+{
+	auto result = RunFullPipeline({ "program", "--baudrate=xyz" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_MissingOptionValue_Fails)
+{
+	auto result = RunFullPipeline({ "program", "--serial-port" });
+	BOOST_CHECK(!result.has_value());
+}
+
+//=============================================================================
+// EQUIPMENT OPTIONS
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_EquipmentDefaults)
+{
+	auto result = RunFullPipeline({ "program" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto equipment = result.value().Get<Options::Equipment::EquipmentSettings>();
+	BOOST_REQUIRE(equipment.has_value());
+
+	const auto& s = equipment.value().get();
+	BOOST_CHECK(s.pool_configuration == Kernel::PoolConfigurations::Unknown);
+	BOOST_CHECK(!s.pool_configuration_is_user_specified);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_EquipmentArgs_PoolOnly)
+{
+	auto result = RunFullPipeline({ "program", "--pool-configuration=pool-only" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto equipment = result.value().Get<Options::Equipment::EquipmentSettings>();
+	BOOST_REQUIRE(equipment.has_value());
+
+	const auto& s = equipment.value().get();
+	BOOST_CHECK(s.pool_configuration == Kernel::PoolConfigurations::SingleBody);
+	BOOST_CHECK(s.pool_configuration_is_user_specified);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_EquipmentArgs_Combo)
+{
+	auto result = RunFullPipeline({ "program", "--pool-configuration=combo" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto equipment = result.value().Get<Options::Equipment::EquipmentSettings>();
+	BOOST_REQUIRE(equipment.has_value());
+
+	const auto& s = equipment.value().get();
+	BOOST_CHECK(s.pool_configuration == Kernel::PoolConfigurations::DualBody_SharedEquipment);
+	BOOST_CHECK(s.pool_configuration_is_user_specified);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_EquipmentArgs_Dual)
+{
+	auto result = RunFullPipeline({ "program", "--pool-configuration=dual" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto equipment = result.value().Get<Options::Equipment::EquipmentSettings>();
+	BOOST_REQUIRE(equipment.has_value());
+
+	const auto& s = equipment.value().get();
+	BOOST_CHECK(s.pool_configuration == Kernel::PoolConfigurations::DualBody_DualEquipment);
+	BOOST_CHECK(s.pool_configuration_is_user_specified);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

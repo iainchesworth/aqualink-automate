@@ -71,7 +71,7 @@ namespace AqualinkAutomate::Options::Web
 		AppOptionPtr OPTION_TLSCACERT{ make_appoption("cachain-cert", "Specify the CA chain certificate (PEM format) to use", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DOCROOT{ make_appoption("doc-root", "The location from which HTML files are served", boost::program_options::value<std::string>()->default_value(Application::DOC_ROOT)) };
 
-		std::vector<AppOptionPtr> WebOptionsCollection
+		const std::vector<AppOptionPtr> WebOptionsCollection
 		{
 			OPTION_INTERFACE,
 			OPTION_HTTPPORT,

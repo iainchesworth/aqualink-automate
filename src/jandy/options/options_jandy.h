@@ -50,7 +50,7 @@ namespace AqualinkAutomate::Jandy::Options
 		AppOptionPtr OPTION_EMULATEDDEVICEID{ make_appoption("jandy-device-id", "Comma-separated hex device IDs (e.g. 0xa1,0x41)", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_NAVPASSWORD{ make_appoption("jandy-nav-password", "4-digit password for navigating Jandy password-protected menus", boost::program_options::value<std::string>()->default_value("")) };
 
-		std::vector<AppOptionPtr> JandyOptionsCollection
+		const std::vector<AppOptionPtr> JandyOptionsCollection
 		{
 			OPTION_DISABLEEMULATION,
 			OPTION_EMULATEDDEVICETYPE,

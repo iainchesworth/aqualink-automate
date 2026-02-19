@@ -33,7 +33,7 @@ namespace AqualinkAutomate::Pentair::Options
 	class OptionsProcessor
 	{
 	private:
-		std::vector<AppOptionPtr> PentairOptionsCollection
+		const std::vector<AppOptionPtr> PentairOptionsCollection
 		{
 		};
 

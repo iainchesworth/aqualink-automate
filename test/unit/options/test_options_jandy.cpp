@@ -17,6 +17,7 @@ namespace
 		return Options::Initialise()
 			| Options::Add(Options::App::OptionsProcessor{})
 			| Options::Add(Options::Developer::OptionsProcessor{})
+			| Options::Add(Options::Equipment::OptionsProcessor{})
 			| Options::Add(Options::Mqtt::OptionsProcessor{})
 			| Options::Add(Options::Serial::OptionsProcessor{})
 			| Options::Add(Options::Web::OptionsProcessor{})
@@ -27,6 +28,7 @@ namespace
 			| Options::Process(
 				Options::App::OptionsProcessor{},
 				Options::Developer::OptionsProcessor{},
+				Options::Equipment::OptionsProcessor{},
 				Options::Mqtt::OptionsProcessor{},
 				Options::Serial::OptionsProcessor{},
 				Options::Web::OptionsProcessor{},

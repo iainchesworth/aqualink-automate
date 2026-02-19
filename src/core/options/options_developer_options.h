@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_LOGLEVEL_WEB{ make_appoption("loglevel-web", "Set the logging level for Channel::Web", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Types::ProfilerTypes>()->multitoken()) };
 
-		std::vector<AppOptionPtr> DeveloperOptionsCollection
+		const std::vector<AppOptionPtr> DeveloperOptionsCollection
 		{
 			OPTION_DEVMODE,
 			OPTION_DEVREPLAYFILE,

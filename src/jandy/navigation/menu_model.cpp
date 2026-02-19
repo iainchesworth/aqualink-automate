@@ -1,7 +1,9 @@
 #include "navigation/menu_model.h"
 
 #include <algorithm>
+#include <numeric>
 #include <queue>
+#include <ranges>
 
 #include "logging/logging.h"
 
@@ -91,22 +93,12 @@ namespace AqualinkAutomate::Navigation
 				continue;
 			}
 
-			bool all_match = true;
-			for (const auto& detector : page.detectors)
-			{
-				if (detector.line >= content.Size())
+			bool all_match = std::ranges::all_of(page.detectors,
+				[&content](const auto& detector)
 				{
-					all_match = false;
-					break;
-				}
-
-				const auto& row_text = content[detector.line].Text;
-				if (row_text.find(detector.pattern) == std::string::npos)
-				{
-					all_match = false;
-					break;
-				}
-			}
+					return detector.line < content.Size() &&
+						content[detector.line].Text.find(detector.pattern) != std::string::npos;
+				});
 
 			if (all_match)
 			{
@@ -245,7 +237,7 @@ namespace AqualinkAutomate::Navigation
 			}
 		}
 
-		LogWarning(Channel::Navigation, std::format("MenuModel: No path found from {} to {}",
+		LogTrace(Channel::Navigation, std::format("MenuModel: No path found from {} to {}",
 			static_cast<uint32_t>(from), static_cast<uint32_t>(to)));
 		return {}; // No path found
 	}

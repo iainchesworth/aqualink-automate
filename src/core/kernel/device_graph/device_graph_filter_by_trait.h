@@ -1,13 +1,24 @@
 #pragma once
 
+#include <concepts>
 #include <optional>
+#include <string>
 
 #include "kernel/device_graph/device_graph_types.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	template<typename TRAIT_TYPE>
+	/// Concept constraining types usable as trait filters on the device graph.
+	template<typename T>
+	concept IsTraitType = requires(T t) {
+		typename T::TraitValue;
+		typename T::TraitKey;
+		{ t.Name() } -> std::convertible_to<std::string>;
+		{ t.IsMutable() } -> std::same_as<bool>;
+	};
+
+	template<IsTraitType TRAIT_TYPE>
 	class DeviceTraitFilter
 	{
 	public:

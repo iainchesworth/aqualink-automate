@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <vector>
 
 #include <boost/circular_buffer.hpp>
@@ -56,7 +56,7 @@ namespace AqualinkAutomate::Protocol
 			int priority;
 		};
 
-		mutable std::mutex m_Mutex;
+		mutable std::shared_mutex m_Mutex;
 		std::vector<GeneratorEntry> m_Generators;
 	};
 

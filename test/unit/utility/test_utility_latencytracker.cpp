@@ -27,6 +27,8 @@ BOOST_AUTO_TEST_CASE(Test_EmptyTracker_ReturnsZeroPercentiles)
 	BOOST_CHECK_EQUAL(snapshot.p99.count(), 0);
 	BOOST_CHECK_EQUAL(snapshot.min.count(), 0);
 	BOOST_CHECK_EQUAL(snapshot.max.count(), 0);
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 0);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 0);
 	BOOST_CHECK_EQUAL(snapshot.mean.count(), 0);
 }
 
@@ -43,6 +45,8 @@ BOOST_AUTO_TEST_CASE(Test_SingleSample_AllPercentilesEqual)
 	BOOST_CHECK_EQUAL(snapshot.p99.count(), 1000);
 	BOOST_CHECK_EQUAL(snapshot.min.count(), 1000);
 	BOOST_CHECK_EQUAL(snapshot.max.count(), 1000);
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 1000);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 1000);
 	BOOST_CHECK_EQUAL(snapshot.mean.count(), 1000);
 }
 
@@ -153,6 +157,36 @@ BOOST_AUTO_TEST_CASE(Test_MaxSampleLimit_EnforcedCorrectly)
 
 	// Max should be the last sample (1900ns)
 	BOOST_CHECK_EQUAL(snapshot.max.count(), 1900);
+
+	// All-time min/max should reflect the full range including evicted samples
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 0);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 1900);
+}
+
+BOOST_AUTO_TEST_CASE(Test_AlltimeMinMax_SurviveWindowEviction)
+{
+	// Create tracker with max 5 samples
+	LatencyPercentileTracker<> tracker(5, 60s);
+
+	// Record an extreme low and high
+	tracker.Record(10ns);
+	tracker.Record(50000ns);
+
+	// Fill the window with mid-range values to evict the extremes
+	for (int i = 0; i < 5; ++i)
+	{
+		tracker.Record(std::chrono::nanoseconds(1000 + i * 100));
+	}
+
+	auto snapshot = tracker.GetSnapshot();
+
+	// Window min/max should reflect only the retained mid-range samples
+	BOOST_CHECK_EQUAL(snapshot.min.count(), 1000);
+	BOOST_CHECK_EQUAL(snapshot.max.count(), 1400);
+
+	// All-time min/max should still reflect the original extremes
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 10);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 50000);
 }
 
 //-----------------------------------------------------------------------------
@@ -171,6 +205,8 @@ BOOST_AUTO_TEST_CASE(Test_Reset_ClearsAllSamples)
 
 	auto snapshot = tracker.GetSnapshot();
 	BOOST_CHECK_EQUAL(snapshot.sample_count, 0);
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 0);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 0);
 	BOOST_CHECK_EQUAL(tracker.TotalSampleCount(), 0);
 }
 

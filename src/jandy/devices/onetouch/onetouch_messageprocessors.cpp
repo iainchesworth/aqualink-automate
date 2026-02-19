@@ -221,6 +221,19 @@ namespace AqualinkAutomate::Devices
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (ShiftLines)", DeviceId()));
 	}
 
+	void OneTouchDevice::Slot_OneTouch_DisplayUpdate(const Messages::JandyMessage_DisplayUpdate& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_DisplayUpdate", std::source_location::current(), Profiling::UnitColours::Red);
+
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_DisplayUpdate", DeviceId()));
+
+		ProcessControllerUpdates();
+
+		// Kick the watchdog to indicate that this device is alive.
+		Restartable::Kick();
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (DisplayUpdate)", DeviceId()));
+	}
+
 	void OneTouchDevice::Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Unknown", std::source_location::current(), Profiling::UnitColours::Red);

@@ -22,6 +22,12 @@ namespace AqualinkAutomate::Mqtt
 {
 
 	/// Poll-based MQTT 3.1.1 client with synchronous state machine.
+	///
+	/// Thread-safety contract: This class is NOT thread-safe. All public methods
+	/// (including Publish(), Poll(), Start(), Stop()) must be called from the
+	/// same thread that runs the associated io_context. The internal publish
+	/// queue and connection state are accessed without synchronization,
+	/// relying on single-threaded execution within the io_context poll loop.
 	class MqttClient : public std::enable_shared_from_this<MqttClient>
 	{
 	public:

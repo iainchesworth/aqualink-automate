@@ -117,6 +117,7 @@ target_sources(
 	messages/jandy_message_ids.cpp
 	messages/jandy_message_message.cpp
 	messages/jandy_message_message_long.cpp	
+	messages/jandy_message_display_update.cpp
 	messages/jandy_message_probe.cpp
 	messages/jandy_message_status.cpp	 
 	messages/jandy_message_unknown.cpp

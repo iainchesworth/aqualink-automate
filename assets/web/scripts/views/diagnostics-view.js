@@ -33,12 +33,20 @@ function diagnosticsView() {
             return val || fallback;
         },
 
+        // Log level control state
+        logChannels: {},
+        severityLevels: [],
+        globalLevel: '',
+        logLevelsLoaded: false,
+
         initChart() {
             Alpine.store('ws').connectStats();
 
             if (!_diag.chart) {
                 this.$nextTick(() => this._createChart());
             }
+
+            this._fetchLogLevels();
         },
 
         _createChart() {
@@ -160,6 +168,56 @@ function diagnosticsView() {
             if (v < 50) return 'var(--gauge-good)';
             if (v < 80) return 'var(--gauge-warn)';
             return 'var(--gauge-bad)';
+        },
+
+        async _fetchLogLevels() {
+            try {
+                const resp = await fetch('/api/diagnostics/logging');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                this.logChannels = data.channels || {};
+                this.severityLevels = data.severity_levels || [];
+                if (this.severityLevels.length > 0) {
+                    // Determine global level: if all channels share the same level, show it
+                    const values = Object.values(this.logChannels);
+                    this.globalLevel = values.length > 0 && values.every(v => v === values[0]) ? values[0] : '';
+                }
+                this.logLevelsLoaded = true;
+            } catch (e) {
+                // Silently fail — endpoint may not be available
+            }
+        },
+
+        async setChannelLevel(channel, level) {
+            this.logChannels[channel] = level;
+            try {
+                await fetch('/api/diagnostics/logging', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel, level })
+                });
+            } catch (e) {
+                // Silently fail
+            }
+            // Update global indicator
+            const values = Object.values(this.logChannels);
+            this.globalLevel = values.every(v => v === values[0]) ? values[0] : '';
+        },
+
+        async setGlobalLevel(level) {
+            this.globalLevel = level;
+            for (const ch in this.logChannels) {
+                this.logChannels[ch] = level;
+            }
+            try {
+                await fetch('/api/diagnostics/logging', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ global: level })
+                });
+            } catch (e) {
+                // Silently fail
+            }
         }
     };
 }

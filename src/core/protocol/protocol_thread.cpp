@@ -165,7 +165,10 @@ namespace AqualinkAutomate::Protocol
 		{
 			// Linearize so that packet subranges are contiguous in memory,
 			// enabling zero-copy deserialization via span.
-			m_SerialBuffer.linearize();
+			if (!m_SerialBuffer.is_linearized())
+			{
+				m_SerialBuffer.linearize();
+			}
 
 			messages_parsed = ProcessMessages(m_SerialBuffer);
 
@@ -221,6 +224,14 @@ namespace AqualinkAutomate::Protocol
 				if (m_StatisticsHub)
 				{
 					m_StatisticsHub->LatencyMetrics.MessageProcessingLatency.RecordSince(msg_processing_start);
+				}
+
+				auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+					std::chrono::steady_clock::now() - msg_processing_start).count();
+				if (elapsed_us > 2000)
+				{
+					LogWarning(Channel::Protocol, std::format(
+						"Slow message processing: took {:.2f} ms", elapsed_us / 1000.0));
 				}
 			}
 			else

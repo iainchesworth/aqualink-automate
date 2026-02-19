@@ -35,8 +35,10 @@ namespace AqualinkAutomate::Utility
 			Duration p50{ 0 };   // Median
 			Duration p95{ 0 };   // 95th percentile
 			Duration p99{ 0 };   // 99th percentile (worst case)
-			Duration min{ 0 };   // Minimum observed
-			Duration max{ 0 };   // Maximum observed
+			Duration min{ 0 };   // Minimum observed (within window)
+			Duration max{ 0 };   // Maximum observed (within window)
+			Duration alltime_min{ 0 }; // All-time minimum
+			Duration alltime_max{ 0 }; // All-time maximum
 			Duration mean{ 0 };  // Arithmetic mean
 			std::size_t sample_count{ 0 };
 		};
@@ -83,6 +85,9 @@ namespace AqualinkAutomate::Utility
 			// Update running statistics
 			m_TotalSamples++;
 			m_TotalLatency += latency;
+
+			if (m_TotalSamples == 1 || latency < m_AlltimeMin) { m_AlltimeMin = latency; }
+			if (latency > m_AlltimeMax) { m_AlltimeMax = latency; }
 		}
 
 		/// Records a latency sample measured from a start time to now.
@@ -108,6 +113,8 @@ namespace AqualinkAutomate::Utility
 			snapshot.sample_count = m_SortedLatencies.size();
 			snapshot.min = *m_SortedLatencies.begin();
 			snapshot.max = *m_SortedLatencies.rbegin();
+			snapshot.alltime_min = m_AlltimeMin;
+			snapshot.alltime_max = m_AlltimeMax;
 
 			// Compute percentiles by advancing an iterator through the sorted multiset
 			snapshot.p1 = ComputePercentileFromSorted(1);
@@ -141,6 +148,8 @@ namespace AqualinkAutomate::Utility
 			m_SortedLatencies.clear();
 			m_TotalSamples = 0;
 			m_TotalLatency = Duration{ 0 };
+			m_AlltimeMin = Duration{ 0 };
+			m_AlltimeMax = Duration{ 0 };
 		}
 
 	private:
@@ -205,6 +214,8 @@ namespace AqualinkAutomate::Utility
 		// Running statistics
 		std::size_t m_TotalSamples{ 0 };
 		Duration m_TotalLatency{ 0 };
+		Duration m_AlltimeMin{ 0 };
+		Duration m_AlltimeMax{ 0 };
 	};
 
 	/// Convenience class for measuring operation latency using RAII.

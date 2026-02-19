@@ -17,6 +17,7 @@
 #include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_message_long.h"
 #include "messages/jandy_message_status.h"
+#include "messages/jandy_message_display_update.h"
 #include "messages/jandy_message_unknown.h"
 #include "messages/pda/pda_message_clear.h"
 #include "messages/pda/pda_message_highlight.h"
@@ -80,6 +81,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_OneTouch_Highlight(const Messages::PDAMessage_Highlight& msg);
 		void Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg);
 		void Slot_OneTouch_ShiftLines(const Messages::PDAMessage_ShiftLines& msg);
+		void Slot_OneTouch_DisplayUpdate(const Messages::JandyMessage_DisplayUpdate& msg);
 		void Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg);
 
 	private:

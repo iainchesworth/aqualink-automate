@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Protocol
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MessageGeneratorRegistry::GenerateMessage", std::source_location::current());
 		zone->Value(buffer.size());
 
-		std::lock_guard lock(m_Mutex);
+		std::shared_lock lock(m_Mutex);
 
 		if (m_Generators.empty())
 		{
@@ -78,13 +78,13 @@ namespace AqualinkAutomate::Protocol
 
 	bool MessageGeneratorRegistry::HasGenerators() const
 	{
-		std::lock_guard lock(m_Mutex);
+		std::shared_lock lock(m_Mutex);
 		return !m_Generators.empty();
 	}
 
 	std::size_t MessageGeneratorRegistry::GeneratorCount() const
 	{
-		std::lock_guard lock(m_Mutex);
+		std::shared_lock lock(m_Mutex);
 		return m_Generators.size();
 	}
 

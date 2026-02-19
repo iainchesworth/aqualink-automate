@@ -5,6 +5,7 @@
 #include <memory>
 #include <shared_mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <boost/graph/filtered_graph.hpp>
@@ -33,8 +34,8 @@ namespace AqualinkAutomate::Kernel
 		void Remove(const std::shared_ptr<AuxillaryDevice>& device);
 
 	public:
-		uint32_t CountByLabel(const std::string& device_label) const;
-		std::vector<std::shared_ptr<AuxillaryDevice>> FindByLabel(const std::string& device_label) const;
+		uint32_t CountByLabel(std::string_view device_label) const;
+		std::vector<std::shared_ptr<AuxillaryDevice>> FindByLabel(std::string_view device_label) const;
 
 	public:
 		uint32_t CountById(const boost::uuids::uuid& id) const;
@@ -70,6 +71,12 @@ namespace AqualinkAutomate::Kernel
 		}
 
 	private:
+		template<typename Filter>
+		auto MakeFilteredView(const Filter& filter) const
+		{
+			return boost::filtered_graph<DevicesGraphType, boost::keep_all, Filter>(m_DevicesGraph, boost::keep_all{}, filter);
+		}
+
 		template<typename TRAIT_TYPE>
 		uint32_t CountByTraitImpl(TRAIT_TYPE trait_type, DeviceTraitFilter<TRAIT_TYPE> trait_filter) const
 		{
@@ -77,7 +84,7 @@ namespace AqualinkAutomate::Kernel
 
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
-			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
+			auto fg = MakeFilteredView(trait_filter);
 
 			auto range = boost::make_iterator_range(boost::vertices(fg));
 
@@ -93,7 +100,7 @@ namespace AqualinkAutomate::Kernel
 
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
-			boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceTraitFilter<TRAIT_TYPE>> fg(m_DevicesGraph, boost::keep_all{}, trait_filter);
+			auto fg = MakeFilteredView(trait_filter);
 
 			for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
 			{

@@ -10,6 +10,7 @@
 #include "messages/jandy_message_ids.h"
 #include "messages/jandy_message_message.h"
 #include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_display_update.h"
 #include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_status.h"
 #include "messages/jandy_message_unknown.h"
@@ -63,8 +64,10 @@ namespace AqualinkAutomate::Factory
 		REGISTER_MESSAGE(Messages::JandyMessage_Message, Messages::JandyMessageIds::Message),
 		REGISTER_MESSAGE(Messages::JandyMessage_MessageLong, Messages::JandyMessageIds::MessageLong),
 
+		// Register the display protocol message types
+		REGISTER_MESSAGE(Messages::JandyMessage_DisplayUpdate, Messages::JandyMessageIds::DisplayUpdate),
+
 		// Register the UNKNOWN type for all "seen-but-unknown" message types
-		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_05),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_PDA_1B),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_ReadyControl),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown),

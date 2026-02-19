@@ -1,3 +1,5 @@
+#include <ranges>
+
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/device_graph/device_graph.h"
@@ -55,10 +57,8 @@ namespace AqualinkAutomate::Kernel
 		{
 			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
-			auto iter = std::find_if
-			(
-				boost::vertices(m_DevicesGraph).first,
-				boost::vertices(m_DevicesGraph).second,
+			auto verts = boost::make_iterator_range(boost::vertices(m_DevicesGraph));
+			auto iter = std::ranges::find_if(verts,
 				[this, &device](const auto& vertex)
 				{
 					if (nullptr == m_DevicesGraph[vertex])
@@ -73,7 +73,7 @@ namespace AqualinkAutomate::Kernel
 				}
 			);
 
-			return (boost::vertices(m_DevicesGraph).second != iter);
+			return (iter != verts.end());
 		}
 	}
 
@@ -128,7 +128,7 @@ namespace AqualinkAutomate::Kernel
 		return nullptr;
 	}
 
-	uint32_t DevicesGraph::CountByLabel(const std::string& device_label) const
+	uint32_t DevicesGraph::CountByLabel(std::string_view device_label) const
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByLabel", std::source_location::current());
 
@@ -142,7 +142,7 @@ namespace AqualinkAutomate::Kernel
 		return std::distance(range.begin(), range.end());
 	}
 
-	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(const std::string& device_label) const
+	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(std::string_view device_label) const
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByLabel", std::source_location::current());
 

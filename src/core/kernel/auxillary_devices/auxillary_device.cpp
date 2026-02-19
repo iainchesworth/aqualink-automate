@@ -10,10 +10,10 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	AuxillaryDevice::AuxillaryDevice(const std::string& label) :
+	AuxillaryDevice::AuxillaryDevice(std::string_view label) :
 		AuxillaryDevice()
 	{
-		AuxillaryTraits.Set(AuxillaryTraitsTypes::LabelTrait{}, label);
+		AuxillaryTraits.Set(AuxillaryTraitsTypes::LabelTrait{}, std::string{label});
 	}
 
 	boost::uuids::uuid AuxillaryDevice::Id() const

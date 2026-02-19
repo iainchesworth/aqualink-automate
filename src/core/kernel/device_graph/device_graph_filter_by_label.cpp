@@ -4,7 +4,7 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	DeviceLabelFilter::DeviceLabelFilter(const DevicesGraphType& graph, const std::string& device_label) :
+	DeviceLabelFilter::DeviceLabelFilter(const DevicesGraphType& graph, std::string_view device_label) :
 		m_Graph(graph),
 		m_DeviceLabel(device_label)
 	{

@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		AuxillaryDevice();
-		AuxillaryDevice(const std::string& label);
+		AuxillaryDevice(std::string_view label);
 
 	public:
 		boost::uuids::uuid Id() const;

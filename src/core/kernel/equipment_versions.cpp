@@ -1,13 +1,14 @@
 #include "kernel/equipment_versions.h"
 
 #include <algorithm>
+#include <ranges>
 
 namespace AqualinkAutomate::Kernel
 {
 
 	void EquipmentVersions::Set(const std::string& label, const std::string& value)
 	{
-		auto it = std::find_if(Fields.begin(), Fields.end(),
+		auto it = std::ranges::find_if(Fields,
 			[&](const EquipmentVersionField& f) { return f.label == label; });
 
 		if (it != Fields.end())
@@ -22,7 +23,7 @@ namespace AqualinkAutomate::Kernel
 
 	std::string EquipmentVersions::Get(const std::string& label) const
 	{
-		auto it = std::find_if(Fields.begin(), Fields.end(),
+		auto it = std::ranges::find_if(Fields,
 			[&](const EquipmentVersionField& f) { return f.label == label; });
 
 		return (it != Fields.end()) ? it->value : std::string{};

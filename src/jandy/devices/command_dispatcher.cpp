@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Devices
 		return DispatchCommand(matches.front(), action);
 	}
 
-	SerialAdapterDevice* CommandDispatcher::FindSerialAdapter()
+	std::optional<std::reference_wrapper<SerialAdapterDevice>> CommandDispatcher::FindSerialAdapter()
 	{
 		auto* rssa_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
 		{
@@ -65,17 +65,17 @@ namespace AqualinkAutomate::Devices
 			return jandy_type && jandy_type->Class() == DeviceClasses::SerialAdapter;
 		});
 
-		if (!rssa_device)
+		if (auto* adapter = rssa_device ? dynamic_cast<SerialAdapterDevice*>(rssa_device) : nullptr)
 		{
-			return nullptr;
+			return std::ref(*adapter);
 		}
 
-		return dynamic_cast<SerialAdapterDevice*>(rssa_device);
+		return std::nullopt;
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
 	{
-		auto* serial_adapter = FindSerialAdapter();
+		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
@@ -83,13 +83,13 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting pool setpoint to {}", temperature));
-		serial_adapter->QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
+		serial_adapter->get().QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
 		return CommandResult::Success;
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
 	{
-		auto* serial_adapter = FindSerialAdapter();
+		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
@@ -97,11 +97,11 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting spa setpoint to {}", temperature));
-		serial_adapter->QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		serial_adapter->get().QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
 		return CommandResult::Success;
 	}
 
-	IAQDevice* CommandDispatcher::FindIAQDevice()
+	std::optional<std::reference_wrapper<IAQDevice>> CommandDispatcher::FindIAQDevice()
 	{
 		auto* iaq_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
 		{
@@ -109,12 +109,12 @@ namespace AqualinkAutomate::Devices
 			return jandy_type && jandy_type->Class() == DeviceClasses::AqualinkTouch;
 		});
 
-		if (!iaq_device)
+		if (auto* device = iaq_device ? dynamic_cast<IAQDevice*>(iaq_device) : nullptr)
 		{
-			return nullptr;
+			return std::ref(*device);
 		}
 
-		return dynamic_cast<IAQDevice*>(iaq_device);
+		return std::nullopt;
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorPercentage(uint8_t percentage)
@@ -125,7 +125,7 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto* iaq_device = FindIAQDevice();
+		auto iaq_device = FindIAQDevice();
 		if (!iaq_device)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator percentage command");
@@ -133,13 +133,13 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting chlorinator percentage to {}%", percentage));
-		iaq_device->QueueChlorinatorPercentage(percentage);
+		iaq_device->get().QueueChlorinatorPercentage(percentage);
 		return CommandResult::Success;
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorBoost(bool enable)
 	{
-		auto* iaq_device = FindIAQDevice();
+		auto iaq_device = FindIAQDevice();
 		if (!iaq_device)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator boost command");
@@ -147,13 +147,13 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: {} chlorinator boost", enable ? "Enabling" : "Disabling"));
-		iaq_device->QueueChlorinatorBoost(enable);
+		iaq_device->get().QueueChlorinatorBoost(enable);
 		return CommandResult::Success;
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetCirculationMode(Kernel::CirculationModes mode)
 	{
-		auto* serial_adapter = FindSerialAdapter();
+		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for circulation mode command");
@@ -164,17 +164,17 @@ namespace AqualinkAutomate::Devices
 		{
 		case Kernel::CirculationModes::Spa:
 			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spa");
-			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
+			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
 			return CommandResult::Success;
 
 		case Kernel::CirculationModes::Pool:
 			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Pool");
-			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff);
+			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff);
 			return CommandResult::Success;
 
 		case Kernel::CirculationModes::Spillover:
 			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spillover");
-			serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
+			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
 			return CommandResult::Success;
 
 		default:
@@ -185,7 +185,7 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction requested_action)
 	{
-		auto* serial_adapter = FindSerialAdapter();
+		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
 			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found in equipment hub");
@@ -236,7 +236,7 @@ namespace AqualinkAutomate::Devices
 		{
 			auto aux_id = *(device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
 			LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching aux command for {} (action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
-			serial_adapter->QueueAuxCommand(aux_id, action);
+			serial_adapter->get().QueueAuxCommand(aux_id, action);
 			return CommandResult::Success;
 		}
 
@@ -253,19 +253,19 @@ namespace AqualinkAutomate::Devices
 				if (label.find("Filter") != std::string::npos || label.find("Pump") != std::string::npos)
 				{
 					LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command PUMP (action=0x{:02x})", magic_enum::enum_integer(action)));
-					serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::PUMP, action);
+					serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::PUMP, action);
 					return CommandResult::Success;
 				}
 				break;
 
 			case AuxillaryTypes::Cleaner:
 				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command CLEANR (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::CLEANR, action);
+				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::CLEANR, action);
 				return CommandResult::Success;
 
 			case AuxillaryTypes::Spillover:
 				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command SPILLOVER (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, action);
+				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, action);
 				return CommandResult::Success;
 
 			default:
@@ -276,7 +276,7 @@ namespace AqualinkAutomate::Devices
 			if (label.find("Spa") != std::string::npos)
 			{
 				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command SPA (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, action);
+				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, action);
 				return CommandResult::Success;
 			}
 		}

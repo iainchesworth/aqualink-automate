@@ -28,15 +28,24 @@ namespace AqualinkAutomate::Devices
 		using Percentage = uint8_t;
 		using PPM = uint16_t;
 
-		using Generating_InPercent = std::pair<Percentage, std::chrono::time_point<std::chrono::system_clock>>;
-		using SaltConcentration_InPPM = std::pair<PPM, std::chrono::time_point<std::chrono::system_clock>>;
+		struct Generating_InPercent
+		{
+			Percentage value;
+			std::chrono::system_clock::time_point timestamp;
+		};
+
+		struct SaltConcentration_InPPM
+		{
+			PPM value;
+			std::chrono::system_clock::time_point timestamp;
+		};
 
 		template<typename TYPE_WITH_TIME>
 		struct TypeWithTimeComparator
 		{
 			bool operator()(const TYPE_WITH_TIME& p1, const TYPE_WITH_TIME& p2)
 			{
-				return (p1.first == p2.first);
+				return (p1.value == p2.value);
 			}
 		};
 

@@ -309,7 +309,7 @@ namespace AqualinkAutomate::Navigation
 
 		if (m_Path.empty() && m_CurrentPage != m_TargetPage)
 		{
-			LogWarning(Channel::Navigation, std::format("Navigator: No path found from {} to {}",
+			LogTrace(Channel::Navigation, std::format("Navigator: No path found from {} to {}",
 				static_cast<uint32_t>(m_CurrentPage), static_cast<uint32_t>(m_TargetPage)));
 			InitiateRecovery();
 			return;

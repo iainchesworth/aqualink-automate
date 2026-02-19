@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "kernel/device_graph/device_graph_types.h"
 
@@ -10,7 +11,7 @@ namespace AqualinkAutomate::Kernel
 	class DeviceLabelFilter
 	{
 	public:
-		DeviceLabelFilter(const DevicesGraphType& graph, const std::string& device_label);
+		DeviceLabelFilter(const DevicesGraphType& graph, std::string_view device_label);
 
 	public:
 		bool operator()(const DevicesGraphType::edge_descriptor) const;

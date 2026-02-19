@@ -88,6 +88,7 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_Highlight>(std::bind(&OneTouchDevice::Slot_OneTouch_Highlight, this, std::placeholders::_1), (*device_id)());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_HighlightChars>(std::bind(&OneTouchDevice::Slot_OneTouch_HighlightChars, this, std::placeholders::_1), (*device_id)());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<PDAMessage_ShiftLines>(std::bind(&OneTouchDevice::Slot_OneTouch_ShiftLines, this, std::placeholders::_1), (*device_id)());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_DisplayUpdate>(std::bind(&OneTouchDevice::Slot_OneTouch_DisplayUpdate, this, std::placeholders::_1), (*device_id)());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<JandyMessage_Unknown>(std::bind(&OneTouchDevice::Slot_OneTouch_Unknown, this, std::placeholders::_1), (*device_id)());
 
 		if (!IsEmulated())
@@ -356,6 +357,14 @@ namespace AqualinkAutomate::Devices
 				// On a transient page - don't count as stall, controller will auto-transition
 				LogDebug(Channel::Scraping, std::format("OneTouch ({}): On transient page '{}' - waiting for controller to transition",
 					DeviceId(), page_info->name));
+				m_ScrapingStallCounter = 0;
+			}
+			else if (m_Navigator && (m_Navigator->GetState() == Navigation::Navigator::State::WaitingForPage
+				|| m_Navigator->GetState() == Navigation::Navigator::State::MovingCursor))
+			{
+				// Navigator is actively waiting for a Status message to decrement the
+				// pending counter — non-Status messages (MessageLong, Highlight, etc.)
+				// trigger ProcessStep but that's not a stall.
 				m_ScrapingStallCounter = 0;
 			}
 			else

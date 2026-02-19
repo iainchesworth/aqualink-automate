@@ -35,7 +35,7 @@ namespace AqualinkAutomate::Options
 	using Result = std::expected<State, Error>;
 	using Transform = std::function<Result(State)>;
 
-	inline auto Initialise() -> Result
+	[[nodiscard]] inline auto Initialise() -> Result
 	{
 		return State
 		{
@@ -47,7 +47,7 @@ namespace AqualinkAutomate::Options
 	}
 
 	template<Concepts::IsOptionProcessor PROCESSOR>
-	auto Add(PROCESSOR processor) -> Transform
+	[[nodiscard]] auto Add(PROCESSOR processor) -> Transform
 	{
 		return [p = std::move(processor)](State state) -> Result
 			{
@@ -64,7 +64,7 @@ namespace AqualinkAutomate::Options
 			};
 	}
 
-	inline auto Parse(int argc, char* argv[]) -> Transform
+	[[nodiscard]] inline auto Parse(int argc, char* argv[]) -> Transform
 	{
 		return [argc, argv](State state) -> Result
 			{
@@ -72,7 +72,24 @@ namespace AqualinkAutomate::Options
 
 				try
 				{
-					boost::program_options::store(boost::program_options::parse_command_line(argc, argv, *desc), vm);
+					auto parsed = boost::program_options::command_line_parser(argc, argv)
+						.options(*desc)
+						.run();
+
+					auto unrecognized = boost::program_options::collect_unrecognized(parsed.options, boost::program_options::include_positional);
+					if (!unrecognized.empty())
+					{
+						std::string unknown_args;
+						for (const auto& arg : unrecognized)
+						{
+							if (!unknown_args.empty()) unknown_args += ", ";
+							unknown_args += std::format("'{}'", arg);
+						}
+						LogError(Channel::Options, std::format("Unrecognized arguments on command line: {}", unknown_args));
+						return std::unexpected(Error::OptionsParsingFailed);
+					}
+
+					boost::program_options::store(parsed, vm);
 					boost::program_options::notify(vm);
 					return state;
 				}
@@ -89,7 +106,7 @@ namespace AqualinkAutomate::Options
 			};
 	}
 
-	inline auto Validate() -> Transform
+	[[nodiscard]] inline auto Validate() -> Transform
 	{
 		return [](State state) -> Result
 			{
@@ -119,7 +136,7 @@ namespace AqualinkAutomate::Options
 			};
 	}
 
-	inline auto CheckHelpAndVersion() -> Transform
+	[[nodiscard]] inline auto CheckHelpAndVersion() -> Transform
 	{
 		return [](State state) -> Result
 			{
@@ -133,7 +150,7 @@ namespace AqualinkAutomate::Options
 	}
 
 	template<typename... Processors>
-	auto Process(Processors... processors) -> Transform
+	[[nodiscard]] auto Process(Processors... processors) -> Transform
 	{
 		return [... ps = std::move(processors)](State state) -> Result
 			{
@@ -151,7 +168,7 @@ namespace AqualinkAutomate::Options
 			};
 	}
 
-	inline auto Finalise() -> std::function<std::expected<Settings, Error>(State)>
+	[[nodiscard]] inline auto Finalise() -> std::function<std::expected<Settings, Error>(State)>
 	{
 		return [](State state) -> std::expected<Settings, Error>
 			{

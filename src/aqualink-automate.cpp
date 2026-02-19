@@ -1,4 +1,5 @@
-﻿#include <chrono>
+﻿// Standard library
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -6,20 +7,41 @@
 #include <thread>
 #include <vector>
 
+// Third-party
 #include <boost/asio.hpp>
 #include <boost/stacktrace.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+// Core — infrastructure
 #include "certificates/certificate_management.h"
+#include "exceptions/exception_optionparsingfailed.h"
+#include "exceptions/exception_optionshelporversion.h"
+#include "interfaces/icommanddispatcher.h"
+#include "interfaces/iserialportimpl.h"
+#include "logging/logging.h"
+#include "logging/logging_initialise.h"
+#include "logging/logging_severity_filter.h"
+#include "options/options.h"
+#include "profiling/profiling.h"
+#include "version/version.h"
+
+// Core — kernel
+#include "kernel/data_hub.h"
+#include "kernel/equipment_hub.h"
+#include "kernel/hub_locator.h"
+#include "kernel/preferences_hub.h"
+#include "kernel/statistics_hub.h"
+
+// Core — developer tools
 #include "developer/firewall_manager.h"
 #include "developer/mock_serial_port_impl.h"
 #include "developer/recording_serial_port_impl.h"
-#include "interfaces/icommanddispatcher.h"
-#include "interfaces/iserialportimpl.h"
-#include "exceptions/exception_optionparsingfailed.h"
-#include "exceptions/exception_optionshelporversion.h"
+
+// Core — HTTP server and routes
 #include "http/server/http_server.h"
 #include "http/server/static_file_handler.h"
+#include "http/server/routing/routing.h"
+#include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
@@ -29,17 +51,8 @@
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
-#include "http/server/routing/routing.h"
-#include "kernel/data_hub.h"
-#include "kernel/equipment_hub.h"
-#include "kernel/hub_locator.h"
-#include "kernel/preferences_hub.h"
-#include "kernel/statistics_hub.h"
-#include "logging/logging.h"
-#include "logging/logging_initialise.h"
-#include "logging/logging_severity_filter.h"
-#include "options/options.h"
-#include "profiling/profiling.h"
+
+// Core — MQTT, serial, protocol
 #include "mqtt/mqtt_integration.h"
 #include "protocol/message_generator_registry.h"
 #include "protocol/protocol_thread.h"
@@ -48,6 +61,7 @@
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
 
+// Jandy protocol
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
@@ -55,10 +69,9 @@
 #include "jandy/messages/iaq/iaq_message_control_data_response.h"
 #include "jandy/protocol/jandy_protocol_registration.h"
 
+// Pentair protocol
 #include "pentair/options/options_pentair.h"
 #include "pentair/pentair.h"
-
-#include "version/version.h"
 
 #include "aqualink-automate.h"
 
@@ -215,6 +228,13 @@ int main(int argc, char* argv[])
 				const auto& developer_settings = developer_settings_result.value().get();
 				const auto& serial_settings = serial_settings_result.value().get();
 
+				LogDebug(Channel::Serial, std::format("Serial settings: port='{}', remote='{}', baud={}, rfc2217={}, rawtcp={}",
+					serial_settings.serial_port,
+					serial_settings.remote_serial_port,
+					serial_settings.baud_rate,
+					serial_settings.use_rfc2217,
+					serial_settings.use_rawtcp));
+
 				auto executor = io_context.get_executor();
 
 				if ((developer_settings.dev_mode_enabled) && (!developer_settings.replay_file.empty()))
@@ -238,7 +258,12 @@ int main(int argc, char* argv[])
 					}
 
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
-					AqualinkAutomate::Serial::Initialise(settings, serial_port);
+
+					if (!AqualinkAutomate::Serial::Initialise(settings, serial_port))
+					{
+						LogFatal(Channel::Serial, std::format("Failed to initialise serial port '{}'; cannot continue", serial_settings.serial_port));
+						return EXIT_FAILURE;
+					}
 				}
 				else if (serial_settings.UsingRemoteSerialPort())
 				{
@@ -253,7 +278,12 @@ int main(int argc, char* argv[])
 					}
 
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
-					AqualinkAutomate::Serial::Initialise(settings, serial_port);
+
+					if (!AqualinkAutomate::Serial::Initialise(settings, serial_port))
+					{
+						LogFatal(Channel::Serial, std::format("Failed to initialise remote serial port '{}'; cannot continue", serial_settings.remote_serial_port));
+						return EXIT_FAILURE;
+					}
 				}
 				else
 				{
@@ -301,6 +331,7 @@ int main(int argc, char* argv[])
 		{
 			const auto& web_settings = web_settings_result.value().get();
 
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
