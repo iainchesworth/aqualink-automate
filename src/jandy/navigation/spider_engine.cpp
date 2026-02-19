@@ -19,6 +19,8 @@ namespace AqualinkAutomate::Navigation
 	{
 		m_Policy = std::move(policy);
 		m_Visited.clear();
+		m_VisitedMultiEdges.clear();
+		m_CurrentMultiEdge = std::nullopt;
 		m_CurrentTarget = PageId::Unknown;
 		m_NavigationFailures = 0;
 
@@ -103,8 +105,19 @@ namespace AqualinkAutomate::Navigation
 						return std::nullopt;
 					}
 
-					// Skip this page and try the next target
-					m_Visited.insert(m_CurrentTarget);  // Mark as visited to skip it
+					// For multi-instance pages, mark the current edge as visited so we skip it
+					if (m_CurrentMultiEdge.has_value())
+					{
+						auto edge = m_CurrentMultiEdge.value();
+						m_VisitedMultiEdges[m_CurrentTarget].insert({ edge->source, edge->trigger_line });
+						m_CurrentMultiEdge = std::nullopt;
+					}
+					else
+					{
+						// Skip this page and try the next target
+						m_Visited.insert(m_CurrentTarget);  // Mark as visited to skip it
+					}
+
 					NavigateToNextTarget();
 
 					if (m_State == State::NavigatingToNext)
@@ -125,10 +138,36 @@ namespace AqualinkAutomate::Navigation
 			{
 				m_Policy->OnPageReached(m_CurrentTarget, content);
 			}
-			m_Visited.insert(m_CurrentTarget);
 
-			LogDebug(Channel::Scraping, std::format("SpiderEngine: Captured page {} ({} pages visited so far)",
-				static_cast<uint32_t>(m_CurrentTarget), m_Visited.size()));
+			// Track visit for multi-instance vs normal pages
+			const MenuPage* page_info = m_Model.GetPage(m_CurrentTarget);
+			if (page_info && page_info->multi_instance && m_CurrentMultiEdge.has_value())
+			{
+				// Mark the specific edge as visited (not the page itself)
+				auto edge = m_CurrentMultiEdge.value();
+				m_VisitedMultiEdges[m_CurrentTarget].insert({ edge->source, edge->trigger_line });
+				m_CurrentMultiEdge = std::nullopt;
+
+				LogDebug(Channel::Scraping, std::format("SpiderEngine: Captured multi-instance page {} via edge (source={}, line={}) ({} edges visited)",
+					static_cast<uint32_t>(m_CurrentTarget),
+					static_cast<uint32_t>(edge->source), edge->trigger_line,
+					m_VisitedMultiEdges[m_CurrentTarget].size()));
+
+				// Only mark the page as fully visited when ALL incoming edges are done
+				if (!HasUnvisitedMultiEdges(m_CurrentTarget))
+				{
+					m_Visited.insert(m_CurrentTarget);
+					LogInfo(Channel::Scraping, std::format("SpiderEngine: All instances of multi-instance page {} visited",
+						static_cast<uint32_t>(m_CurrentTarget)));
+				}
+			}
+			else
+			{
+				m_Visited.insert(m_CurrentTarget);
+
+				LogDebug(Channel::Scraping, std::format("SpiderEngine: Captured page {} ({} pages visited so far)",
+					static_cast<uint32_t>(m_CurrentTarget), m_Visited.size()));
+			}
 
 			// Choose next target
 			NavigateToNextTarget();
@@ -168,12 +207,23 @@ namespace AqualinkAutomate::Navigation
 		std::vector<PageId> candidates;
 		for (const auto& [id, page] : all_pages)
 		{
-			if (m_Visited.count(id) > 0)
+			if (id == PageId::Unknown)
 			{
-				continue;  // Already visited
+				continue;
 			}
 
-			if (id == PageId::Unknown)
+			// For multi-instance pages, check if there are unvisited incoming edges
+			if (page.multi_instance)
+			{
+				if (HasUnvisitedMultiEdges(id) && m_Policy && m_Policy->ShouldVisit(id, page))
+				{
+					candidates.push_back(id);
+				}
+				continue;
+			}
+
+			// Normal pages: skip if already visited
+			if (m_Visited.count(id) > 0)
 			{
 				continue;
 			}
@@ -195,6 +245,26 @@ namespace AqualinkAutomate::Navigation
 
 		for (PageId candidate : candidates)
 		{
+			const MenuPage* page = m_Model.GetPage(candidate);
+
+			// For multi-instance pages, compute path to the parent page (via specific edge)
+			if (page && page->multi_instance)
+			{
+				auto next_edge = GetNextUnvisitedMultiEdge(candidate);
+				if (next_edge.has_value())
+				{
+					auto path = m_Model.FindPath(current, next_edge.value()->source);
+					// Path to parent + 1 step to select item
+					size_t total = path.empty() ? (current == next_edge.value()->source ? 1 : SIZE_MAX) : path.size() + 1;
+					if (total < shortest_path)
+					{
+						shortest_path = total;
+						nearest = candidate;
+					}
+				}
+				continue;
+			}
+
 			auto path = m_Model.FindPath(current, candidate);
 			if (!path.empty() && path.size() < shortest_path)
 			{
@@ -240,6 +310,26 @@ namespace AqualinkAutomate::Navigation
 		LogDebug(Channel::Scraping, std::format("SpiderEngine: Next target -> {}({})",
 			static_cast<uint32_t>(m_CurrentTarget), target_page ? target_page->name : "Unknown"));
 
+		// Multi-instance pages: navigate to parent page and select specific menu item
+		if (target_page && target_page->multi_instance)
+		{
+			auto next_edge = GetNextUnvisitedMultiEdge(m_CurrentTarget);
+			if (next_edge.has_value())
+			{
+				auto edge = next_edge.value();
+				m_CurrentMultiEdge = edge;
+
+				LogDebug(Channel::Scraping, std::format("SpiderEngine: Multi-instance navigation via parent {}({}) line {} '{}'",
+					static_cast<uint32_t>(edge->source), edge->trigger_line,
+					edge->trigger_line, edge->label));
+
+				// Navigate to the parent page, position cursor on the item, and select it
+				m_Navigator.NavigateToItem(edge->source, edge->trigger_line, edge->label, m_CurrentTarget);
+				m_State = State::NavigatingToNext;
+				return;
+			}
+		}
+
 		// If already on the target page, go straight to capture
 		if (m_Navigator.GetCurrentPage() == m_CurrentTarget)
 		{
@@ -250,6 +340,50 @@ namespace AqualinkAutomate::Navigation
 
 		m_Navigator.NavigateTo(m_CurrentTarget);
 		m_State = State::NavigatingToNext;
+	}
+
+	bool SpiderEngine::HasUnvisitedMultiEdges(PageId page) const
+	{
+		auto incoming = m_Model.GetIncomingSelectEdges(page);
+		if (incoming.empty())
+		{
+			return false;
+		}
+
+		auto it = m_VisitedMultiEdges.find(page);
+		if (it == m_VisitedMultiEdges.end())
+		{
+			return true;  // No edges visited yet
+		}
+
+		const auto& visited = it->second;
+		for (const auto* edge : incoming)
+		{
+			if (visited.count({ edge->source, edge->trigger_line }) == 0)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	std::optional<const MenuEdge*> SpiderEngine::GetNextUnvisitedMultiEdge(PageId page) const
+	{
+		auto incoming = m_Model.GetIncomingSelectEdges(page);
+
+		auto it = m_VisitedMultiEdges.find(page);
+		const std::set<MultiEdgeKey>* visited = (it != m_VisitedMultiEdges.end()) ? &it->second : nullptr;
+
+		for (const auto* edge : incoming)
+		{
+			if (!visited || visited->count({ edge->source, edge->trigger_line }) == 0)
+			{
+				return edge;
+			}
+		}
+
+		return std::nullopt;
 	}
 
 }

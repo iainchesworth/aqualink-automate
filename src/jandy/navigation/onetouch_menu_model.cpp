@@ -240,20 +240,29 @@ namespace AqualinkAutomate::Navigation
 		});
 
 		// Label Aux List (scrollable - "^^ More vv" indicator)
+		// Edge labels must match screen content for FindLineByLabel to work.
+		// Primary aux (1-7) are always present at fixed lines 2-8.
+		// B/C/D series depend on power centers and require scrolling (future enhancement).
+		// NOTE: Labels are empty because the screen shows user-configured custom labels
+		// (e.g. "Swim Jet", "Pool Light"), not device IDs. Navigation uses trigger_line position.
 		model.RegisterPage({
 			.id = PageId::LabelAuxList,
 			.name = "LabelAuxList",
 			.page_type = ScreenDataPageTypes::Page_LabelAuxList,
 			.detectors = {{ 0, "Label Aux" }},
 			.edges = {
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     2, "AUX 1" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     3, "AUX 2" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     4, "AUX 3" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     5, "AUX 4" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     6, "AUX 5" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     7, "AUX 6" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     8, "AUX 7" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     9, "AUX B1" },
+				// Primary aux devices (always present, position-based navigation)
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     2, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     3, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     4, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     5, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     6, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     7, "" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     8, "" },
+				// TODO: B/C/D power center aux devices require dynamic scrolling discovery.
+				// They appear after the primary 7 and show custom labels. Position-based
+				// navigation won't work because their line positions shift with scrolling.
+				// Navigation
 				{ EdgeTrigger::Back,     PageId::LabelAuxList, PageId::SystemSetup,  0, "" },
 				{ EdgeTrigger::LineUp,   PageId::LabelAuxList, PageId::LabelAuxList, 0, "" },
 				{ EdgeTrigger::LineDown, PageId::LabelAuxList, PageId::LabelAuxList, 0, "" },
@@ -263,6 +272,8 @@ namespace AqualinkAutomate::Navigation
 		});
 
 		// Label Aux detail page (individual label editing)
+		// multi_instance: the spider visits this page once per incoming Select edge from
+		// LabelAuxList, since each edge shows a different aux device's current label.
 		model.RegisterPage({
 			.id = PageId::LabelAux,
 			.name = "LabelAux",
@@ -277,7 +288,8 @@ namespace AqualinkAutomate::Navigation
 				{ EdgeTrigger::Back,     PageId::LabelAux, PageId::LabelAuxList,    0, "" },
 				{ EdgeTrigger::LineUp,   PageId::LabelAux, PageId::LabelAux,        0, "" },
 				{ EdgeTrigger::LineDown, PageId::LabelAux, PageId::LabelAux,        0, "" },
-			}
+			},
+			.multi_instance = true,
 		});
 
 		// =========================================================================

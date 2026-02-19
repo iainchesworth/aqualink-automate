@@ -39,6 +39,7 @@ namespace AqualinkAutomate::Navigation
 
 		m_TargetPage = target;
 		m_NavigatingToItem = false;
+		m_SelectTarget = PageId::Unknown;
 		m_PathIndex = 0;
 		m_Path.clear();
 		m_State = State::Navigating;
@@ -48,18 +49,24 @@ namespace AqualinkAutomate::Navigation
 		m_RecoveryBackPresses = 0;
 	}
 
-	void Navigator::NavigateToItem(PageId page, uint8_t menu_item_line)
+	void Navigator::NavigateToItem(PageId page, uint8_t menu_item_line, const std::string& item_label, PageId select_target)
 	{
-		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation to item on page {}, line {}",
-			static_cast<uint32_t>(page), menu_item_line));
+		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation to item on page {}, line {}, label '{}', select_target={}",
+			static_cast<uint32_t>(page), menu_item_line, item_label, static_cast<uint32_t>(select_target)));
 
 		m_TargetPage = page;
 		m_NavigatingToItem = true;
 		m_TargetItemLine = menu_item_line;
+		m_ItemLabel = item_label;
+		m_SelectTarget = select_target;
+		m_ItemScrollAttempts = 0;
 		m_PathIndex = 0;
 		m_Path.clear();
 		m_State = State::Navigating;
 		m_PendingStatusMessages = 0;
+		m_RecomputeCount = 0;
+		m_RecoveryAttempts = 0;
+		m_RecoveryBackPresses = 0;
 	}
 
 	void Navigator::OnStatusMessageReceived()
@@ -275,6 +282,7 @@ namespace AqualinkAutomate::Navigation
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
 		m_NavigatingToItem = false;
+		m_SelectTarget = PageId::Unknown;
 		m_CursorStuckCount = 0;
 		m_PreviousCursorLine = 0;
 		m_SkipCursorCheck = false;
@@ -399,12 +407,108 @@ namespace AqualinkAutomate::Navigation
 		{
 			if (m_NavigatingToItem)
 			{
-				// Need to move cursor to specific item
-				m_TargetCursorLine = m_TargetItemLine;
-				if (m_CursorLine != m_TargetCursorLine)
+				// Use content-based label matching to find the item on screen
+				if (!m_ItemLabel.empty())
 				{
-					m_State = State::MovingCursor;
-					return MoveCursorToTarget();
+					auto resolved = FindLineByLabel(m_ItemLabel);
+					if (resolved.has_value())
+					{
+						// Found the item on the current screen
+						m_TargetCursorLine = resolved.value();
+						if (m_CursorLine != m_TargetCursorLine)
+						{
+							m_State = State::MovingCursor;
+							return MoveCursorToTarget();
+						}
+
+						// Cursor is positioned on the item. If we have a select_target,
+						// send Select to enter the sub-page.
+						if (m_SelectTarget != PageId::Unknown)
+						{
+							LogDebug(Channel::Navigation, std::format("Navigator: Item '{}' found at line {}, sending Select to enter page {}",
+								m_ItemLabel, m_CursorLine, static_cast<uint32_t>(m_SelectTarget)));
+							m_TargetPage = m_SelectTarget;
+							m_NavigatingToItem = false;
+							m_SelectTarget = PageId::Unknown;
+							m_Path.clear();
+							m_PathIndex = 0;
+							m_PendingStatusMessages = 2;
+							m_State = State::WaitingForPage;
+							return NavKeyCommand::Select;
+						}
+					}
+					else
+					{
+						// Item not on screen -- try scrolling down if the page supports it
+						const MenuPage* page = m_Model.GetPage(m_CurrentPage);
+						if (page && page->SupportsKey(EdgeTrigger::PageDown) && m_ItemScrollAttempts < MAX_ITEM_SCROLL_ATTEMPTS)
+						{
+							m_ItemScrollAttempts++;
+							// Log screen content on first scroll attempt for diagnostics
+							if (m_ItemScrollAttempts == 1 && m_pCurrentContent)
+							{
+								LogWarning(Channel::Navigation, std::format("Navigator: Item '{}' not on initial screen, dumping content:", m_ItemLabel));
+								for (size_t di = 0; di < m_pCurrentContent->Size() && di < 12; ++di)
+								{
+									const auto& drow = (*m_pCurrentContent)[di];
+									if (!drow.Text.empty())
+									{
+										LogWarning(Channel::Navigation, std::format("Navigator: Screen[{}]: '{}'", di, drow.Text));
+									}
+								}
+							}
+							LogDebug(Channel::Navigation, std::format("Navigator: Item '{}' not visible, scrolling down (attempt {}/{})",
+								m_ItemLabel, m_ItemScrollAttempts, MAX_ITEM_SCROLL_ATTEMPTS));
+							m_PendingStatusMessages = 1;
+							m_State = State::WaitingForPage;
+							return NavKeyCommand::PageDown_Or_Select1;
+						}
+						else
+						{
+							// Dump screen content for debugging
+							if (m_pCurrentContent)
+							{
+								for (size_t di = 0; di < m_pCurrentContent->Size() && di < 12; ++di)
+								{
+									const auto& drow = (*m_pCurrentContent)[di];
+									if (!drow.Text.empty())
+									{
+										LogWarning(Channel::Navigation, std::format("Navigator: Screen[{}]: '{}'", di, drow.Text));
+									}
+								}
+							}
+							// Item not found after scrolling -- doesn't exist on this controller
+							LogWarning(Channel::Navigation, std::format("Navigator: Item '{}' not found on page {} -- failing navigation (scrolled {} times)",
+								m_ItemLabel, static_cast<uint32_t>(m_CurrentPage), m_ItemScrollAttempts));
+							m_State = State::Failed;
+							return std::nullopt;
+						}
+					}
+				}
+				else
+				{
+					// Fallback: use fixed line number
+					m_TargetCursorLine = m_TargetItemLine;
+					if (m_CursorLine != m_TargetCursorLine)
+					{
+						m_State = State::MovingCursor;
+						return MoveCursorToTarget();
+					}
+
+					// Cursor is positioned. If we have a select_target, send Select.
+					if (m_SelectTarget != PageId::Unknown)
+					{
+						LogDebug(Channel::Navigation, std::format("Navigator: Item at line {}, sending Select to enter page {}",
+							m_CursorLine, static_cast<uint32_t>(m_SelectTarget)));
+						m_TargetPage = m_SelectTarget;
+						m_NavigatingToItem = false;
+						m_SelectTarget = PageId::Unknown;
+						m_Path.clear();
+						m_PathIndex = 0;
+						m_PendingStatusMessages = 2;
+						m_State = State::WaitingForPage;
+						return NavKeyCommand::Select;
+					}
 				}
 			}
 
@@ -571,6 +675,17 @@ namespace AqualinkAutomate::Navigation
 			// If still over limit after recovery attempt, give up
 			if (m_CursorMoveCount > MAX_CURSOR_MOVES)
 			{
+				// For NavigateToItem mode, fail cleanly -- the target item likely doesn't
+				// exist on the screen (e.g. "AUX B1" on a controller without power center B).
+				if (m_NavigatingToItem)
+				{
+					LogWarning(Channel::Navigation, std::format("Navigator: Target line {} unreachable in NavigateToItem mode - failing navigation",
+						m_TargetCursorLine));
+					m_CursorMoveCount = 0;
+					m_State = State::Failed;
+					return std::nullopt;
+				}
+
 				LogWarning(Channel::Navigation, "Navigator: Accepting current cursor position after wrap detection");
 				m_CursorMoveCount = 0;
 				m_TargetCursorLine = m_CursorLine;
@@ -589,6 +704,16 @@ namespace AqualinkAutomate::Navigation
 
 			if (m_CursorStuckCount >= MAX_CURSOR_STUCK_COUNT)
 			{
+				// For NavigateToItem mode, fail cleanly -- the target item doesn't exist
+				if (m_NavigatingToItem)
+				{
+					LogWarning(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} in NavigateToItem mode - failing navigation",
+						m_CursorLine));
+					m_CursorStuckCount = 0;
+					m_State = State::Failed;
+					return std::nullopt;
+				}
+
 				// Cursor appears to be at a boundary and can't move further
 				// Assume we're as close as we can get and proceed
 				LogWarning(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} after {} attempts, assuming at boundary and proceeding",
@@ -848,7 +973,20 @@ namespace AqualinkAutomate::Navigation
 			auto end = trimmed.find_last_not_of(" \t");
 			trimmed = trimmed.substr(start, end - start + 1);
 
-			if (trimmed.starts_with(label))
+			// Case-insensitive prefix match
+			bool prefix_match = (trimmed.size() >= label.size());
+			if (prefix_match)
+			{
+				for (size_t ci = 0; ci < label.size(); ++ci)
+				{
+					if (std::tolower(static_cast<unsigned char>(trimmed[ci])) != std::tolower(static_cast<unsigned char>(label[ci])))
+					{
+						prefix_match = false;
+						break;
+					}
+				}
+			}
+			if (prefix_match)
 			{
 				// Word-boundary check: ensure the label isn't a prefix of a longer word
 				// e.g., "Help" should match "Help           >" but NOT "HelpChoose..."

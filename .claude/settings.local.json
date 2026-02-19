@@ -215,7 +215,8 @@
       "Bash(gh api:*)",
       "WebFetch(domain:api.github.com)",
       "Bash(Select-String -Pattern \"\\(passed|failed|error|Test\\)\")",
-      "Bash(Select-Object -First 10)"
+      "Bash(Select-Object -First 10)",
+      "Bash(python:*)"
     ]
   }
 }

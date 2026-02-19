@@ -59,8 +59,10 @@ namespace AqualinkAutomate::Navigation
 		// Start navigation to a specific page
 		void NavigateTo(PageId target);
 
-		// Start navigation to a specific menu item on a page
-		void NavigateToItem(PageId page, uint8_t menu_item_line);
+		// Start navigation to a specific menu item on a page.
+		// When item_label is provided, the navigator uses content-based matching to find the
+		// item on screen and scrolls the page if needed (for scrollable lists like LabelAuxList).
+		void NavigateToItem(PageId page, uint8_t menu_item_line, const std::string& item_label = "", PageId select_target = PageId::Unknown);
 
 		// Called when Status message is received to decrement wait counter
 		void OnStatusMessageReceived();
@@ -158,6 +160,10 @@ namespace AqualinkAutomate::Navigation
 		// For item navigation
 		bool m_NavigatingToItem{ false };
 		uint8_t m_TargetItemLine{ 0 };
+		std::string m_ItemLabel;                   // Label for content-based item discovery
+		PageId m_SelectTarget{ PageId::Unknown };  // Page expected after Select (multi-instance sub-page)
+		uint32_t m_ItemScrollAttempts{ 0 };         // PageDown attempts for scrollable lists
+		static constexpr uint32_t MAX_ITEM_SCROLL_ATTEMPTS = 6;  // Max scrolls before giving up
 
 		// Cursor movement tracking (to detect stuck cursors at screen boundaries)
 		uint8_t m_PreviousCursorLine{ 0 };

@@ -65,6 +65,11 @@ namespace AqualinkAutomate::Navigation
 		// When set, detection requires the screen to have at most this many non-empty lines.
 		std::optional<uint8_t> max_content_lines;
 
+		// When true, the spider engine visits this page once per incoming Select edge
+		// (rather than once total). Used for parameterized pages like LabelAux where
+		// the same PageId shows different content depending on which menu item was selected.
+		bool multi_instance = false;
+
 		// Convenience: find the Back edge target (nullopt if no Back edge)
 		std::optional<PageId> BackTarget() const;
 
@@ -100,7 +105,7 @@ namespace AqualinkAutomate::Navigation
 		// System Setup pages
 		SystemSetup,        // System Setup menu
 		LabelAuxList,       // Label Aux list
-		LabelAux,           // Individual label editing
+		LabelAux,           // Individual label editing (multi-instance: visited per incoming edge)
 
 		// Label Aux sub-pages
 		GeneralLabels,      // General labels list
@@ -178,6 +183,9 @@ namespace AqualinkAutomate::Navigation
 
 		// Get all global edges (for debugging/testing)
 		const std::vector<MenuEdge>& GetGlobalEdges() const { return m_GlobalEdges; }
+
+		// Collect all incoming Select edges that transition to the given page
+		std::vector<const MenuEdge*> GetIncomingSelectEdges(PageId target) const;
 
 	private:
 		// BFS helper for pathfinding

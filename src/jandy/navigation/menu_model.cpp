@@ -249,6 +249,24 @@ namespace AqualinkAutomate::Navigation
 		return FindPath(from, target_page);
 	}
 
+	std::vector<const MenuEdge*> MenuModel::GetIncomingSelectEdges(PageId target) const
+	{
+		std::vector<const MenuEdge*> result;
+
+		for (const auto& [id, page] : m_Pages)
+		{
+			for (const auto& edge : page.edges)
+			{
+				if (edge.target == target && edge.trigger == EdgeTrigger::Select && edge.IsPageTransition())
+				{
+					result.push_back(&edge);
+				}
+			}
+		}
+
+		return result;
+	}
+
 	std::optional<MenuEdge> MenuModel::FindSystemEvent(PageId detected_page) const
 	{
 		for (const auto& edge : m_GlobalEdges)

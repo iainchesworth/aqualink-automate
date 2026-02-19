@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -75,6 +76,12 @@ namespace AqualinkAutomate::Navigation
 		// Begin navigation to the next target
 		void NavigateToNextTarget();
 
+		// Check if a multi-instance page has unvisited incoming edges
+		bool HasUnvisitedMultiEdges(PageId page) const;
+
+		// Get the next unvisited incoming edge for a multi-instance page
+		std::optional<const MenuEdge*> GetNextUnvisitedMultiEdge(PageId page) const;
+
 		const MenuModel& m_Model;
 		Navigator& m_Navigator;
 		std::unique_ptr<VisitPolicy> m_Policy;
@@ -82,6 +89,13 @@ namespace AqualinkAutomate::Navigation
 		std::set<PageId> m_Visited;
 		PageId m_CurrentTarget{ PageId::Unknown };
 		uint32_t m_NavigationFailures{ 0 };
+
+		// Multi-instance page tracking: visited incoming edges keyed by (source PageId, trigger_line)
+		using MultiEdgeKey = std::pair<PageId, uint8_t>;
+		std::map<PageId, std::set<MultiEdgeKey>> m_VisitedMultiEdges;
+
+		// The specific edge being used for current multi-instance navigation
+		std::optional<const MenuEdge*> m_CurrentMultiEdge;
 	};
 
 }

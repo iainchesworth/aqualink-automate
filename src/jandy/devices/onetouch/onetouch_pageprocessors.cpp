@@ -168,14 +168,35 @@ namespace AqualinkAutomate::Devices
 		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
 		{
 			auto new_aux_state = Utility::AuxillaryStateStringConverter(Utility::TrimWhitespace(page[row_index].Text));
-			
+
 			if (auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().OneTouchDevice_CreateDevice(new_aux_state); !aux_ptr.has_value())
 			{
 				LogTrace(Channel::Devices, std::format("OneTouch ({}): Failed to create a device for this specific devic's row text: {}", DeviceId(), Utility::TrimWhitespace(page[row_index].Text)));
 			}
 			else
 			{
-				JandyController::m_DataHub->Devices.Add(aux_ptr.value());
+				auto new_device = aux_ptr.value();
+
+				// For aux devices with JandyAuxillaryId, check if the device already exists in the
+				// graph (possibly with a custom label from LabelAux). If so, update the existing
+				// device's status rather than adding a duplicate (operator== compares labels, so a
+				// device with custom label "Swim Jet" wouldn't match one with default label "Aux2").
+				if (new_device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+				{
+					auto aux_id_val = new_device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}];
+					auto existing = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id_val);
+					if (!existing.empty())
+					{
+						// Update status on existing device (preserving its custom label)
+						if (auto status_opt = new_device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}); status_opt.has_value())
+						{
+							existing.front()->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, status_opt.value());
+						}
+						continue;
+					}
+				}
+
+				JandyController::m_DataHub->Devices.Add(new_device);
 			}
 		}
 	}
@@ -537,6 +558,7 @@ namespace AqualinkAutomate::Devices
 		else
 		{
 			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
+			bool newly_created = false;
 
 			if (auto aux_collection = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
 			{
@@ -547,6 +569,7 @@ namespace AqualinkAutomate::Devices
 				else
 				{
 					aux_ptr = temp_ptr.value();
+					newly_created = true;
 				}
 			}
 			else if (1 < aux_collection.size())
@@ -565,6 +588,13 @@ namespace AqualinkAutomate::Devices
 			else
 			{
 				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, aux_custom_label);
+
+				// If this device was newly created (not found in graph), add it now
+				if (newly_created)
+				{
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Adding newly created Auxillary Device with custom label '{}' for aux id: {}", DeviceId(), aux_custom_label, magic_enum::enum_name(aux_id.value())));
+					JandyController::m_DataHub->Devices.Add(aux_ptr);
+				}
 			}
 		}
 	}
