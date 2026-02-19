@@ -191,6 +191,218 @@ nav .nav-controls {
     50% { opacity: 0.5; }
 }
 
+/* === Nav status / mode indicators === */
+
+.nav-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mode-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.mode-ready {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.mode-starting {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.mode-disconnected {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.mode-service {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.mode-monitor {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.15);
+}
+
+.mode-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.mode-dot.connected {
+    background: #10b981;
+}
+
+.mode-dot.disconnected {
+    background: #ef4444;
+}
+
+.mode-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(245, 158, 11, 0.3);
+    border-top-color: #f59e0b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* === Global command gating === */
+
+.commands-disabled .eq-button,
+.commands-disabled .setpoint-btn {
+    pointer-events: none;
+    opacity: 0.45;
+    filter: grayscale(0.3);
+}
+
+.commands-disabled .eq-button:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+    border-color: var(--button-inactive-border);
+}
+
+.theme-toggle.active {
+    background: rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+/* === Telemetry freshness === */
+
+.telemetry-age {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.stale {
+    color: var(--text-muted) !important;
+    opacity: 0.6;
+}
+
+.stale-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.1rem 0.3rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+/* === Startup banner === */
+
+.startup-banner {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.06));
+    border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+.startup-banner-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* === Service mode banner === */
+
+.service-banner {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08));
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+.service-banner-inner {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* === Modal overlay === */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 1rem;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    max-width: 420px;
+    width: 100%;
+    padding: 2rem;
+    text-align: center;
+}
+
+.modal-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.modal-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-text {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.modal-hint {
+    margin: 0 0 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.modal-dismiss {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.modal-dismiss:hover {
+    background: var(--accent-hover);
+}
+
 /* === Theme toggle === */
 
 .theme-toggle {
@@ -345,4 +557,114 @@ a:hover {
 .info-grid dd {
     margin: 0;
     color: var(--text-primary);
+}
+
+/* === Device Status (diagnostics) === */
+
+.device-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.device-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.8rem;
+}
+
+.device-status-row:last-child {
+    border-bottom: none;
+}
+
+.device-status-name {
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.device-status-type {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.device-status-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.badge-device-normal {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--gauge-good);
+}
+
+.badge-device-init {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-device-fault {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.device-status-time {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* === Settings View === */
+
+.settings-range-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.settings-range-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-range-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.settings-tier-label {
+    min-width: 50px;
+    text-align: center;
+    font-size: 0.65rem;
+}
+
+.settings-input {
+    width: 72px;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    transition: border-color var(--transition);
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: var(--accent);
 }

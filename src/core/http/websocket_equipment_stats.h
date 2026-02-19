@@ -1,10 +1,11 @@
 #pragma once
 
-#include <atomic>
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <boost/signals2.hpp>
 
@@ -22,20 +23,28 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Equipment_Stats(Kernel::HubLocator& hub_locator);
 
 	public:
-		virtual std::optional<std::string> DequeueMessage() override;
+		virtual std::optional<std::string> DequeueMessage(ConnectionId connId) override;
 
 	public:
-		virtual void OnOpen() override;
-		virtual void OnMessage(const boost::beast::flat_buffer& buffer) override;
-		virtual void OnPublish() override;
-		virtual void OnClose() override;
-		virtual void OnError() override;
+		virtual ConnectionId OnOpen() override;
+		virtual void OnMessage(ConnectionId connId, const boost::beast::flat_buffer& buffer) override;
+		virtual void OnPublish(ConnectionId connId) override;
+		virtual void OnClose(ConnectionId connId) override;
+		virtual void OnError(ConnectionId connId) override;
 
 	private:
+		struct ConnectionState
+		{
+			std::deque<std::string> queue;
+			bool dirty{ false };
+		};
+
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };
 		boost::signals2::connection m_StatsSlot;
-		std::deque<std::string> m_MessageQueue;
-		std::atomic<bool> m_Dirty{ false };
+
+		std::mutex m_Mutex;
+		std::unordered_map<ConnectionId, ConnectionState> m_Connections;
+		ConnectionId m_NextConnectionId{ 1 };
 	};
 
 }

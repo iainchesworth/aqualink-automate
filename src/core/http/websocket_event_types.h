@@ -10,6 +10,7 @@ namespace AqualinkAutomate::HTTP
 		TemperatureUpdate,
 
 		SystemStatusChange,
+		SystemStateUpdate,
 		ButtonStateChange,
 
 		Unknown

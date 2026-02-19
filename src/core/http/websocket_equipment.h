@@ -2,8 +2,10 @@
 
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <boost/signals2.hpp>
 
@@ -24,23 +26,29 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Equipment(Kernel::HubLocator& hub_locator);
 
 	public:
-		virtual std::optional<std::string> DequeueMessage() override;
+		virtual std::optional<std::string> DequeueMessage(ConnectionId connId) override;
 
 	public:
-        virtual void OnOpen() override;
-        virtual void OnMessage(const boost::beast::flat_buffer& buffer) override;
-		virtual void OnPublish() override;
-        virtual void OnClose() override;
-        virtual void OnError() override;
+        virtual ConnectionId OnOpen() override;
+        virtual void OnMessage(ConnectionId connId, const boost::beast::flat_buffer& buffer) override;
+		virtual void OnPublish(ConnectionId connId) override;
+        virtual void OnClose(ConnectionId connId) override;
+        virtual void OnError(ConnectionId connId) override;
+
+	private:
+		void Broadcast(const std::string& payload);
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub{ nullptr };
 		boost::signals2::connection m_ConfigChangeSlot;
 		boost::signals2::connection m_StatusChangeSlot;
-		std::deque<std::string> m_MessageQueue;
 
-		// Security: Maximum queue size to prevent memory exhaustion
+		std::mutex m_Mutex;
+		std::unordered_map<ConnectionId, std::deque<std::string>> m_Connections;
+		ConnectionId m_NextConnectionId{ 1 };
+
+		// Security: Maximum queue size per connection to prevent memory exhaustion
 		static constexpr std::size_t MAX_MESSAGE_QUEUE_SIZE = 100;
 	};
 

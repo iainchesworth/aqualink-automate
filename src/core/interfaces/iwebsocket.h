@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -18,6 +19,8 @@ namespace AqualinkAutomate::Interfaces
     class IWebSocketBase
     {
     public:
+        using ConnectionId = uint64_t;
+
         IWebSocketBase() = default;
         virtual ~IWebSocketBase() = default;
 
@@ -25,14 +28,14 @@ namespace AqualinkAutomate::Interfaces
         virtual const std::string_view Route() const = 0;
 
     public:
-        virtual std::optional<std::string> DequeueMessage() = 0;
+        virtual std::optional<std::string> DequeueMessage(ConnectionId connId) = 0;
 
     public:
-        virtual void OnOpen() = 0;
-        virtual void OnMessage(const boost::beast::flat_buffer& buffer) = 0;
-        virtual void OnPublish() = 0;
-        virtual void OnClose() = 0;
-        virtual void OnError() = 0;
+        virtual ConnectionId OnOpen() = 0;
+        virtual void OnMessage(ConnectionId connId, const boost::beast::flat_buffer& buffer) = 0;
+        virtual void OnPublish(ConnectionId connId) = 0;
+        virtual void OnClose(ConnectionId connId) = 0;
+        virtual void OnError(ConnectionId connId) = 0;
     };
 
 	template<const auto& ROUTE_URL>

@@ -1,26 +1,51 @@
 /**
  * Chemistry Gauge — Semi-circular SVG arc gauge component
+ *
+ * Three-tier bands: Good / Okay / Bad
+ * Configurable via localStorage key 'chemistryBands'.
  */
 function chemistryGauge(type) {
-    const configs = {
-        ph:   { label: 'pH',       min: 6.8, max: 8.0, targetMin: 7.2, targetMax: 7.8, unit: '',    decimals: 1 },
-        orp:  { label: 'ORP',      min: 400, max: 900, targetMin: 650, targetMax: 750, unit: ' mV', decimals: 0 },
-        salt: { label: 'Salt',     min: 0,   max: 6000, targetMin: 2700, targetMax: 3400, unit: ' ppm', decimals: 0 }
+    const defaults = {
+        ph: {
+            label: 'pH', min: 6.5, max: 8.5, unit: '', decimals: 1,
+            goodMin: 7.4, goodMax: 7.6,
+            okayMin: 7.2, okayMax: 7.8,
+            badMin:  7.0, badMax:  8.0
+        },
+        orp: {
+            label: 'ORP', min: 400, max: 900, unit: ' mV', decimals: 0,
+            goodMin: 700, goodMax: 750,
+            okayMin: 650, okayMax: 700,
+            badMin:  650, badMax:  800
+        },
+        salt: {
+            label: 'Salt', min: 0, max: 6000, unit: ' ppm', decimals: 0,
+            goodMin: 3500, goodMax: 4000,
+            okayMin: 2700, okayMax: 3500,
+            badMin:  2700, badMax:  4500
+        }
     };
 
-    const cfg = configs[type] || configs.ph;
+    // Load overrides from localStorage
+    const stored = JSON.parse(localStorage.getItem('chemistryBands') || '{}');
+    const overrides = stored[type] || {};
+    const cfg = { ...(defaults[type] || defaults.ph), ...overrides };
 
     return {
         cfg,
 
         get value() {
             const store = Alpine.store('pool');
+            let raw;
             switch (type) {
-                case 'ph':   return store.ph;
-                case 'orp':  return store.orp;
-                case 'salt': return store.saltPpm;
+                case 'ph':   raw = store.ph; break;
+                case 'orp':  raw = store.orp; break;
+                case 'salt': raw = store.saltPpm; break;
                 default:     return '--';
             }
+            // Treat 0 as unknown — real sensors never report exactly 0
+            if (raw === 0 || raw === '0' || raw === '0.0') return '--';
+            return raw;
         },
 
         get numericValue() {
@@ -46,16 +71,31 @@ function chemistryGauge(type) {
             return circumference - (this.percentage / 100) * circumference;
         },
 
+        /** Three-tier band: 'good', 'okay', or 'bad' */
+        get band() {
+            const v = this.numericValue;
+            if (v === null) return null;
+            if (v >= cfg.goodMin && v <= cfg.goodMax) return 'good';
+            if (v >= cfg.okayMin && v <= cfg.okayMax) return 'okay';
+            return 'bad';
+        },
+
         get statusColor() {
-            if (this.numericValue === null) return 'var(--text-muted)';
-            if (this.numericValue >= cfg.targetMin && this.numericValue <= cfg.targetMax) {
-                return 'var(--gauge-good)';
+            switch (this.band) {
+                case 'good': return 'var(--gauge-good)';
+                case 'okay': return 'var(--gauge-warn)';
+                case 'bad':  return 'var(--gauge-bad)';
+                default:     return 'var(--text-muted)';
             }
-            const range = cfg.targetMax - cfg.targetMin;
-            if (this.numericValue < cfg.targetMin - range * 0.5 || this.numericValue > cfg.targetMax + range * 0.5) {
-                return 'var(--gauge-bad)';
+        },
+
+        get statusLabel() {
+            switch (this.band) {
+                case 'good': return 'Good';
+                case 'okay': return 'Okay';
+                case 'bad':  return 'Bad';
+                default:     return '';
             }
-            return 'var(--gauge-warn)';
         }
     };
 }

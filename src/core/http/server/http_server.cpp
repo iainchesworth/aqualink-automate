@@ -343,7 +343,7 @@ namespace AqualinkAutomate::HTTP
 		}
 
 		Factory::ProfilerFactory::Instance().Get()->Message("WebSocket: Upgrade accepted", static_cast<uint32_t>(Profiling::UnitColours::Cyan));
-		m_WsHandler->OnOpen();
+		m_WsConnectionId = m_WsHandler->OnOpen();
 		m_WsActive = true;
 
 		DoWsRead();
@@ -385,7 +385,7 @@ namespace AqualinkAutomate::HTTP
 
 		if (ec == boost::beast::websocket::error::closed)
 		{
-			if (m_WsHandler) m_WsHandler->OnClose();
+			if (m_WsHandler) m_WsHandler->OnClose(m_WsConnectionId);
 			MarkDone();
 			return;
 		}
@@ -395,7 +395,7 @@ namespace AqualinkAutomate::HTTP
 			if (ec != boost::asio::error::operation_aborted)
 			{
 				LogTrace(Channel::Web, std::format("WebSocket read error: {}", ec.message()));
-				if (m_WsHandler) m_WsHandler->OnError();
+				if (m_WsHandler) m_WsHandler->OnError(m_WsConnectionId);
 			}
 			MarkDone();
 			return;
@@ -404,7 +404,7 @@ namespace AqualinkAutomate::HTTP
 		if (bytes > 0 && m_WsHandler)
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HttpServer::ws_message", std::source_location::current());
-			m_WsHandler->OnMessage(m_WsReadBuffer);
+			m_WsHandler->OnMessage(m_WsConnectionId, m_WsReadBuffer);
 		}
 
 		DoWsRead();
@@ -416,7 +416,7 @@ namespace AqualinkAutomate::HTTP
 	{
 		if (m_Done || m_WsWriting || !m_WsHandler) return;
 
-		auto msg = m_WsHandler->DequeueMessage();
+		auto msg = m_WsHandler->DequeueMessage(m_WsConnectionId);
 		if (!msg) return;
 
 		m_WsWriting = true;
@@ -455,7 +455,7 @@ namespace AqualinkAutomate::HTTP
 
 		if (ec == boost::beast::websocket::error::closed)
 		{
-			if (m_WsHandler) m_WsHandler->OnClose();
+			if (m_WsHandler) m_WsHandler->OnClose(m_WsConnectionId);
 			MarkDone();
 			return;
 		}
@@ -465,13 +465,13 @@ namespace AqualinkAutomate::HTTP
 			if (ec != boost::asio::error::operation_aborted)
 			{
 				LogDebug(Channel::Web, std::format("WebSocket write error: {}", ec.message()));
-				if (m_WsHandler) m_WsHandler->OnError();
+				if (m_WsHandler) m_WsHandler->OnError(m_WsConnectionId);
 			}
 			MarkDone();
 			return;
 		}
 
-		if (m_WsHandler) m_WsHandler->OnPublish();
+		if (m_WsHandler) m_WsHandler->OnPublish(m_WsConnectionId);
 
 		// Chain: try writing the next queued message immediately
 		TryWsWrite();

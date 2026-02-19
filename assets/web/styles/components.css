@@ -59,6 +59,21 @@
     margin-top: 0.25rem;
 }
 
+.gauge-band-indicator {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 1rem;
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.gauge-band-good { background: rgba(16, 185, 129, 0.15); color: var(--gauge-good); }
+.gauge-band-okay { background: rgba(245, 158, 11, 0.15); color: var(--gauge-warn); }
+.gauge-band-bad { background: rgba(239, 68, 68, 0.15); color: var(--gauge-bad); }
+
 /* Equipment Button Grid */
 .equipment-grid {
     display: grid;
@@ -101,8 +116,8 @@
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
 }
 
-.eq-button.pressing {
-    opacity: 0.6;
+.eq-button.cmd-sending {
+    opacity: 0.7;
     pointer-events: none;
 }
 
@@ -259,6 +274,15 @@
     font-variant-numeric: tabular-nums;
 }
 
+.latency-section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
 /* Chart window selector */
 .window-selector {
     display: flex;
@@ -396,6 +420,205 @@
     .stat-cards {
         grid-template-columns: 1fr;
     }
+}
+
+/* Expandable rows */
+.expandable-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    transition: background var(--transition);
+    border-bottom: 1px solid var(--border-color);
+    user-select: none;
+}
+
+.expandable-row:hover {
+    background: var(--bg-card-hover);
+}
+
+.expandable-row:last-child {
+    border-bottom: none;
+}
+
+.expandable-label {
+    font-weight: 500;
+    min-width: 60px;
+}
+
+.expandable-value {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-right: 0.5rem;
+}
+
+.expandable-chevron {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.expandable-chevron.open {
+    transform: rotate(90deg);
+}
+
+.expandable-content {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.expandable-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.expandable-edit-value {
+    min-width: 80px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.expandable-feedback {
+    text-align: center;
+    margin-top: 0.5rem;
+    min-height: 1.2rem;
+}
+
+/* Heater row */
+.heater-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.heater-row {
+    position: relative;
+    overflow: hidden;
+}
+
+.heater-row-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+}
+
+.heater-toggle {
+    min-width: 56px;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    user-select: none;
+}
+
+.heater-toggle.active {
+    background: var(--button-active-bg);
+    border-color: var(--button-active-border);
+    color: #fff;
+}
+
+.heater-toggle.cmd-sending {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.heater-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 80px;
+}
+
+.heater-status-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.badge-heater-off {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+.badge-heater-enabled {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.badge-heater-heating {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+.heater-temp {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
+}
+
+.heater-setpoint {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Command feedback */
+.eq-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.cmd-badge {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cmd-applied { background: var(--gauge-good); color: #fff; }
+.cmd-rejected { background: var(--gauge-bad); color: #fff; }
+.cmd-timedout { background: var(--gauge-warn); color: #fff; }
+.cmd-blocked { background: var(--bg-secondary); color: var(--text-muted); }
+
+.cmd-spinner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: inherit;
+}
+
+.cmd-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
 
 /* Touch targets — minimum 48x48px (WCAG) */

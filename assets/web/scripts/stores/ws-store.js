@@ -31,6 +31,7 @@ document.addEventListener('alpine:init', () => {
                         const msg = JSON.parse(event.data);
                         console.debug('[WS /equipment]', msg.type, msg.payload);
                         Alpine.store('pool').handleEvent(msg);
+                        Alpine.store('system').handleEvent(msg);
                     } catch (e) {
                         console.error('WS parse error:', e);
                     }

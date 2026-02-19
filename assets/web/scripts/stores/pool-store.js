@@ -23,7 +23,13 @@ document.addEventListener('alpine:init', () => {
         ph: '--',
         orp: '--',
         saltPpm: '--',
+
+        // Per-value timestamps for freshness tracking
+        _timestamps: {},
+        _stalenessThreshold: 60,  // seconds
+
         buttons: [],
+        commandStates: {},   // { [buttonId|'setpoint:pool'|'setpoint:spa']: { state, timer } }
         systemStatus: 'unknown',
         equipmentVersion: [],
         softwareVersion: '--',
@@ -50,6 +56,21 @@ document.addEventListener('alpine:init', () => {
             return String(val);
         },
 
+        _touch(field) {
+            this._timestamps = { ...this._timestamps, [field]: Date.now() };
+        },
+
+        age(field) {
+            const ts = this._timestamps[field];
+            if (!ts) return null;
+            return Math.floor((Date.now() - ts) / 1000);
+        },
+
+        isStale(field) {
+            const a = this.age(field);
+            return a !== null && a > this._stalenessThreshold;
+        },
+
         async _fetchEquipment() {
             try {
                 const resp = await fetch('/api/equipment');
@@ -65,11 +86,11 @@ document.addEventListener('alpine:init', () => {
                     if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
 
-                // Chemistry — all under 'chemistry' now
+                // Chemistry — all under 'chemistry' now (filter 0 as unknown)
                 if (data.chemistry) {
-                    if (data.chemistry.ph != null && data.chemistry.ph !== '') this.ph = data.chemistry.ph;
-                    if (data.chemistry.orp != null && data.chemistry.orp !== '') this.orp = data.chemistry.orp;
-                    if (data.chemistry.salt_in_ppm != null && data.chemistry.salt_in_ppm !== '') this.saltPpm = data.chemistry.salt_in_ppm;
+                    if (data.chemistry.ph != null && data.chemistry.ph !== '' && data.chemistry.ph !== 0) this.ph = data.chemistry.ph;
+                    if (data.chemistry.orp != null && data.chemistry.orp !== '' && data.chemistry.orp !== 0) this.orp = data.chemistry.orp;
+                    if (data.chemistry.salt_in_ppm != null && data.chemistry.salt_in_ppm !== '' && data.chemistry.salt_in_ppm !== 0) this.saltPpm = data.chemistry.salt_in_ppm;
                 }
 
                 // Equipment version — use generic fields array if available
@@ -94,6 +115,17 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 this.systemStatus = 'operational';
+
+                // Update system store if pool configuration is known
+                if (data.configuration && data.configuration.pool_configuration &&
+                    data.configuration.pool_configuration !== 'Unknown') {
+                    const sys = Alpine.store('system');
+                    if (sys.backendState === 'starting') {
+                        sys._prevBackendState = sys.backendState;
+                        sys.backendState = 'ready';
+                    }
+                    sys.poolConfiguration = data.configuration.pool_configuration;
+                }
             } catch (e) {
                 console.error('Failed to fetch equipment:', e);
             }
@@ -131,6 +163,10 @@ document.addEventListener('alpine:init', () => {
                     this.gitDate = data.git_info.commit_date || '';
                     this.gitUncommitted = data.git_info.uncommitted_changes || false;
                 }
+                // Forward server timing to system store
+                const sys = Alpine.store('system');
+                if (data.server_start_time) sys.serverStartTime = data.server_start_time;
+                if (data.uptime_seconds != null) sys.uptimeSeconds = data.uptime_seconds;
             } catch (e) {
                 console.error('Failed to fetch version:', e);
             }
@@ -143,9 +179,9 @@ document.addEventListener('alpine:init', () => {
             switch (msg.type) {
                 case 'TemperatureUpdate':
                     if (msg.payload) {
-                        if (msg.payload.pool_temp != null) this.poolTemp = this._formatTemp(msg.payload.pool_temp);
-                        if (msg.payload.spa_temp != null) this.spaTemp = this._formatTemp(msg.payload.spa_temp);
-                        if (msg.payload.air_temp != null) this.airTemp = this._formatTemp(msg.payload.air_temp);
+                        if (msg.payload.pool_temp != null) { this.poolTemp = this._formatTemp(msg.payload.pool_temp); this._touch('poolTemp'); }
+                        if (msg.payload.spa_temp != null) { this.spaTemp = this._formatTemp(msg.payload.spa_temp); this._touch('spaTemp'); }
+                        if (msg.payload.air_temp != null) { this.airTemp = this._formatTemp(msg.payload.air_temp); this._touch('airTemp'); }
                         if (msg.payload.pool_setpoint != null) this.poolSetpoint = msg.payload.pool_setpoint;
                         if (msg.payload.spa_setpoint != null) this.spaSetpoint = msg.payload.spa_setpoint;
                     }
@@ -153,15 +189,15 @@ document.addEventListener('alpine:init', () => {
 
                 case 'ChemistryUpdate':
                     if (msg.payload) {
-                        if (msg.payload.ph != null) this.ph = msg.payload.ph;
-                        if (msg.payload.orp != null) this.orp = msg.payload.orp;
-                        if (msg.payload.salt_level != null) this.saltPpm = msg.payload.salt_level;
+                        if (msg.payload.ph != null && msg.payload.ph !== 0) { this.ph = msg.payload.ph; this._touch('ph'); }
+                        if (msg.payload.orp != null && msg.payload.orp !== 0) { this.orp = msg.payload.orp; this._touch('orp'); }
+                        if (msg.payload.salt_level != null && msg.payload.salt_level !== 0) { this.saltPpm = msg.payload.salt_level; this._touch('saltPpm'); }
                     }
                     break;
 
                 case 'SystemStatusChange':
-                    this.systemStatus = msg.payload?.status || 'unknown';
-                    if (this.systemStatus === 'operational' && this.buttons.length === 0) {
+                    this.systemStatus = msg.payload?.status_type || 'unknown';
+                    if (this.systemStatus === 'Normal' && this.buttons.length === 0) {
                         this._fetchButtons();
                     }
                     break;
@@ -173,19 +209,53 @@ document.addEventListener('alpine:init', () => {
                             const updates = { status: msg.payload.status };
                             if (msg.payload.label) updates.label = msg.payload.label;
                             this.buttons[idx] = { ...this.buttons[idx], ...updates };
-                        } else if (msg.payload.label) {
-                            this.buttons.push({
-                                id: msg.payload.button_id,
-                                label: msg.payload.label,
-                                status: msg.payload.status
-                            });
+                        } else {
+                            // New button discovered — re-fetch to get full data (device_type, etc.)
+                            this._fetchButtons();
                         }
                     }
                     break;
             }
         },
 
+        _setCommandState(key, state) {
+            const prev = this.commandStates[key];
+            if (prev?.timer) clearTimeout(prev.timer);
+
+            let timer = null;
+            if (state !== 'sending') {
+                timer = setTimeout(() => {
+                    delete this.commandStates[key];
+                    this.commandStates = { ...this.commandStates };
+                }, 3000);
+            } else {
+                // Timeout for in-flight commands
+                timer = setTimeout(() => {
+                    if (this.commandStates[key]?.state === 'sending') {
+                        this.commandStates[key] = { state: 'timedout' };
+                        this.commandStates = { ...this.commandStates };
+                        setTimeout(() => {
+                            delete this.commandStates[key];
+                            this.commandStates = { ...this.commandStates };
+                        }, 3000);
+                    }
+                }, 5000);
+            }
+
+            this.commandStates = { ...this.commandStates, [key]: { state, timer } };
+        },
+
+        getCommandState(key) {
+            return this.commandStates[key]?.state || null;
+        },
+
         async adjustSetpoint(target, delta) {
+            const key = `setpoint:${target}`;
+            if (!Alpine.store('system').commandsEnabled) {
+                this._setCommandState(key, 'blocked');
+                return;
+            }
+
             try {
                 const current = target === 'pool' ? this.poolSetpoint : this.spaSetpoint;
                 const currentCelsius = typeof current === 'object' ? current.celsius : parseFloat(current);
@@ -193,37 +263,60 @@ document.addEventListener('alpine:init', () => {
                 const newTemp = currentCelsius + delta;
                 const body = {};
                 body[target] = newTemp;
+
+                this._setCommandState(key, 'sending');
+
                 const resp = await fetch('/api/equipment/setpoints', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                const data = await resp.json();
-                if (data) {
-                    // Optimistic update
-                    if (target === 'pool' && typeof this.poolSetpoint === 'object') {
-                        this.poolSetpoint = { ...this.poolSetpoint, celsius: newTemp };
-                    } else if (target === 'spa' && typeof this.spaSetpoint === 'object') {
-                        this.spaSetpoint = { ...this.spaSetpoint, celsius: newTemp };
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data) {
+                        if (target === 'pool' && typeof this.poolSetpoint === 'object') {
+                            this.poolSetpoint = { ...this.poolSetpoint, celsius: newTemp };
+                        } else if (target === 'spa' && typeof this.spaSetpoint === 'object') {
+                            this.spaSetpoint = { ...this.spaSetpoint, celsius: newTemp };
+                        }
                     }
+                    this._setCommandState(key, 'applied');
+                } else {
+                    this._setCommandState(key, 'rejected');
                 }
             } catch (e) {
                 console.error('Failed to adjust setpoint:', e);
+                this._setCommandState(key, 'rejected');
             }
         },
 
         async toggleButton(id) {
+            if (!Alpine.store('system').commandsEnabled) {
+                this._setCommandState(id, 'blocked');
+                return;
+            }
+
             try {
+                this._setCommandState(id, 'sending');
+
                 const resp = await fetch(`/api/equipment/buttons/${id}`, { method: 'POST' });
-                const data = await resp.json();
-                if (data) {
-                    const idx = this.buttons.findIndex(b => b.id === id);
-                    if (idx !== -1) {
-                        this.buttons[idx] = { ...this.buttons[idx], status: data.status };
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data) {
+                        const idx = this.buttons.findIndex(b => b.id === id);
+                        if (idx !== -1) {
+                            this.buttons[idx] = { ...this.buttons[idx], status: data.status };
+                        }
                     }
+                    this._setCommandState(id, 'applied');
+                } else {
+                    this._setCommandState(id, 'rejected');
                 }
             } catch (e) {
                 console.error('Failed to toggle button:', e);
+                this._setCommandState(id, 'rejected');
             }
         }
     });

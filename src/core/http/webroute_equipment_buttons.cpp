@@ -64,6 +64,13 @@ namespace AqualinkAutomate::HTTP
 					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}
 
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}))
+				{
+					button["device_type"] = std::string(magic_enum::enum_name(
+						*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}])
+					));
+				}
+
 				buttons.push_back(button);
 			}
 		);

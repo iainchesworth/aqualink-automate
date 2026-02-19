@@ -26,13 +26,32 @@
             <div class="nav-links">
                 <button class="nav-link" :class="{ active: isRoute('dashboard') }" @click="navigate('dashboard')">Dashboard</button>
                 <button class="nav-link" :class="{ active: isRoute('diagnostics') }" @click="navigate('diagnostics')">Diagnostics</button>
+                <button class="nav-link" :class="{ active: isRoute('settings') }" @click="navigate('settings')">Settings</button>
                 <button class="nav-link" :class="{ active: isRoute('about') }" @click="navigate('about')">About</button>
             </div>
-            <div class="nav-controls">
-                <span class="flex items-center gap-1" style="font-size:0.8rem;">
-                    <span class="connection-dot" :class="$store.ws.connected ? 'connected' : 'disconnected'"></span>
-                    <span x-text="$store.ws.connected ? 'Connected' : 'Disconnected'" style="color:rgba(255,255,255,0.7)"></span>
+            <div class="nav-status">
+                <span class="mode-indicator mode-starting" x-show="$store.system.state === 'Starting'" x-cloak>
+                    <span class="mode-spinner"></span> Starting...
                 </span>
+                <span class="mode-indicator mode-disconnected" x-show="$store.system.state === 'Disconnected'" x-cloak>
+                    <span class="mode-dot disconnected"></span> Disconnected
+                </span>
+                <span class="mode-indicator mode-service" x-show="$store.system.state === 'ServiceMode'" x-cloak>
+                    &#x1F527; Service Mode
+                </span>
+                <span class="mode-indicator mode-monitor" x-show="$store.system.state === 'MonitorOnly'" x-cloak>
+                    &#x1F512; Monitor-only
+                </span>
+                <span class="mode-indicator mode-ready" x-show="$store.system.state === 'Ready'" x-cloak>
+                    <span class="mode-dot connected"></span> Ready
+                </span>
+            </div>
+            <div class="nav-controls">
+                <button class="theme-toggle" @click="$store.system.toggleMonitorOnly()"
+                        :title="$store.system.monitorOnly ? 'Disable monitor-only mode' : 'Enable monitor-only mode'"
+                        :class="{ active: $store.system.monitorOnly }">
+                    <span x-text="$store.system.monitorOnly ? '\u{1F512}' : '\u{1F513}'"></span>
+                </button>
                 <button class="theme-toggle" @click="$store.theme.toggle()" :title="$store.theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'">
                     <span x-text="$store.theme.isDark ? '\u2600\uFE0F' : '\u{1F319}'"></span>
                 </button>
@@ -40,8 +59,37 @@
         </div>
     </nav>
 
+    <!-- ====== STARTUP BANNER ====== -->
+    <div class="startup-banner" x-show="$store.system.state === 'Starting'" x-cloak x-transition.opacity>
+        <div class="startup-banner-inner">
+            <span class="mode-spinner"></span>
+            <span x-show="!$store.ws.connected">Connecting to server...</span>
+            <span x-show="$store.ws.connected && $store.system.poolConfiguration === 'Unknown'">Discovering equipment...</span>
+        </div>
+    </div>
+
+    <!-- ====== SERVICE MODE BANNER ====== -->
+    <div class="service-banner" x-show="$store.system.state === 'ServiceMode'" x-cloak x-transition.opacity>
+        <div class="service-banner-inner">
+            &#x1F527; Service Mode active &mdash; commands are disabled
+        </div>
+    </div>
+
+    <!-- ====== SERVICE MODE MODAL ====== -->
+    <div class="modal-overlay" x-show="$store.system.showServiceModal" x-cloak x-transition.opacity
+         @click.self="$store.system.dismissServiceModal()">
+        <div class="modal-content">
+            <div class="modal-icon">&#x1F527;</div>
+            <h3 class="modal-title">Service Mode Active</h3>
+            <p class="modal-text">The pool controller has entered Service Mode. All commands are disabled until the controller returns to normal operation.</p>
+            <p class="modal-hint">To exit Service Mode, use the physical controller panel.</p>
+            <button class="modal-dismiss" @click="$store.system.dismissServiceModal()">Understood</button>
+        </div>
+    </div>
+
     <!-- ====== MAIN ====== -->
-    <main class="app-container">
+    <main class="app-container" :class="{ 'commands-disabled': !$store.system.commandsEnabled }"
+          :data-disable-reason="$store.system.disableReason">
 
         <!-- ====== DASHBOARD VIEW ====== -->
         <div x-show="route === 'dashboard'" x-cloak x-data="dashboardView()">
@@ -114,27 +162,49 @@
                 </div>
             </div>
 
-            <!-- Temperature Setpoints -->
+            <!-- Temperature Setpoints (expandable) -->
             <div class="card mb-2" x-show="$store.pool.poolSetpoint !== '--' || $store.pool.spaSetpoint !== '--'">
                 <div class="card-header">Temperature Setpoints</div>
-                <div class="card-body">
-                    <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;" x-show="$store.pool.poolSetpoint !== '--'">
-                            <span style="font-weight:500;min-width:60px;">Pool</span>
-                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div class="card-body" style="padding:0;">
+                    <!-- Pool setpoint -->
+                    <div x-data="{ expanded: false, pending: false }" x-show="$store.pool.poolSetpoint !== '--'">
+                        <div class="expandable-row" @click="expanded = !expanded">
+                            <span class="expandable-label">Pool</span>
+                            <span class="expandable-value"
+                                  x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
+                            <span class="expandable-chevron" :class="{ open: expanded }">&#x25B8;</span>
+                        </div>
+                        <div class="expandable-content" x-show="expanded" x-transition.opacity>
+                            <div class="expandable-controls">
                                 <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', -0.5)">-</button>
-                                <span style="min-width:60px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;"
+                                <span class="expandable-edit-value"
                                       x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
                                 <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', 0.5)">+</button>
                             </div>
+                            <div class="expandable-feedback">
+                                <span class="cmd-badge cmd-applied" x-show="$store.pool.getCommandState('setpoint:pool') === 'applied'" x-transition.opacity>Applied</span>
+                                <span class="cmd-badge cmd-rejected" x-show="$store.pool.getCommandState('setpoint:pool') === 'rejected'" x-transition.opacity>Rejected</span>
+                            </div>
                         </div>
-                        <div style="display:flex;align-items:center;justify-content:space-between;" x-show="$store.pool.spaSetpoint !== '--'">
-                            <span style="font-weight:500;min-width:60px;">Spa</span>
-                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                    </div>
+                    <!-- Spa setpoint -->
+                    <div x-data="{ expanded: false }" x-show="$store.pool.spaSetpoint !== '--'">
+                        <div class="expandable-row" @click="expanded = !expanded">
+                            <span class="expandable-label">Spa</span>
+                            <span class="expandable-value"
+                                  x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint"></span>
+                            <span class="expandable-chevron" :class="{ open: expanded }">&#x25B8;</span>
+                        </div>
+                        <div class="expandable-content" x-show="expanded" x-transition.opacity>
+                            <div class="expandable-controls">
                                 <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', -0.5)">-</button>
-                                <span style="min-width:60px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;"
+                                <span class="expandable-edit-value"
                                       x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint"></span>
                                 <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', 0.5)">+</button>
+                            </div>
+                            <div class="expandable-feedback">
+                                <span class="cmd-badge cmd-applied" x-show="$store.pool.getCommandState('setpoint:spa') === 'applied'" x-transition.opacity>Applied</span>
+                                <span class="cmd-badge cmd-rejected" x-show="$store.pool.getCommandState('setpoint:spa') === 'rejected'" x-transition.opacity>Rejected</span>
                             </div>
                         </div>
                     </div>
@@ -170,11 +240,49 @@
                         </svg>
                         <div class="gauge-value" x-text="displayValue" :style="`color:${statusColor}`"></div>
                         <div class="gauge-label" x-text="cfg.label"></div>
+                        <span class="gauge-band-indicator"
+                              x-show="band"
+                              :class="'gauge-band-' + (band || '')"
+                              x-text="statusLabel"></span>
                     </div>
                 </template>
             </div>
 
-            <!-- Equipment Buttons -->
+            <!-- Heater Controls -->
+            <template x-if="$store.pool.buttons.some(b => b.label && b.label.toLowerCase().includes('heat'))">
+                <div>
+                    <div class="section-title">Heater</div>
+                    <div class="heater-rows mb-2">
+                        <template x-for="button in $store.pool.buttons.filter(b => b.label && b.label.toLowerCase().includes('heat'))" :key="button.id">
+                            <div class="heater-row card" x-data="equipmentButton()">
+                                <div class="heater-row-inner">
+                                    <button class="heater-toggle"
+                                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending' }"
+                                            @click="toggle(button)">
+                                        <span x-text="isActive(button) ? 'On' : 'Off'"></span>
+                                    </button>
+                                    <span class="heater-label" x-text="button.label"></span>
+                                    <span class="heater-status-badge"
+                                          :class="{
+                                              'badge-heater-off': !isActive(button),
+                                              'badge-heater-enabled': String(button.status).toLowerCase() === 'enabled',
+                                              'badge-heater-heating': String(button.status).toLowerCase() === 'heating'
+                                          }"
+                                          x-text="statusLabel(button)"></span>
+                                    <span class="heater-temp" x-text="$store.pool.poolTemp"></span>
+                                    <span class="heater-setpoint text-muted" x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
+                                </div>
+                                <!-- Command feedback -->
+                                <span class="cmd-badge cmd-applied" x-show="cmdState(button) === 'applied'" x-transition.opacity>Applied</span>
+                                <span class="cmd-badge cmd-rejected" x-show="cmdState(button) === 'rejected'" x-transition.opacity>Rejected</span>
+                                <span class="cmd-badge cmd-timedout" x-show="cmdState(button) === 'timedout'" x-transition.opacity>Timed out</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Equipment Buttons (non-heater) -->
             <div class="section-title">Equipment Controls</div>
             <div x-show="$store.pool.buttonsLoading" class="text-center">
                 <div class="spinner"></div>
@@ -184,14 +292,25 @@
                 <p class="text-muted">No equipment controls available</p>
             </div>
             <div class="equipment-grid" x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length > 0">
-                <template x-for="button in $store.pool.buttons" :key="button.id">
+                <template x-for="button in $store.pool.buttons.filter(b => !(b.label && b.label.toLowerCase().includes('heat')))" :key="button.id">
                     <div class="eq-button"
                          x-data="equipmentButton()"
-                         :class="{ active: isActive(button), pressing: pressing }"
+                         :class="{
+                             active: isActive(button),
+                             'cmd-sending': cmdState(button) === 'sending'
+                         }"
                          @click="toggle(button)">
                         <span class="eq-button-icon" x-text="icon(button)"></span>
                         <span class="eq-button-label" x-text="button.label"></span>
                         <span class="eq-button-status" x-text="statusLabel(button)"></span>
+                        <!-- Command feedback overlay -->
+                        <span class="cmd-badge cmd-applied" x-show="cmdState(button) === 'applied'" x-transition.opacity>Applied</span>
+                        <span class="cmd-badge cmd-rejected" x-show="cmdState(button) === 'rejected'" x-transition.opacity>Rejected</span>
+                        <span class="cmd-badge cmd-timedout" x-show="cmdState(button) === 'timedout'" x-transition.opacity>Timed out</span>
+                        <span class="cmd-badge cmd-blocked" x-show="cmdState(button) === 'blocked'" x-transition.opacity x-text="$store.system.disableReason || 'Blocked'"></span>
+                        <span class="cmd-spinner-overlay" x-show="cmdState(button) === 'sending'">
+                            <span class="cmd-spinner"></span>
+                        </span>
                     </div>
                 </template>
             </div>
@@ -257,6 +376,17 @@
 
             <!-- Latency percentiles -->
             <div class="section-title">Communication Latency</div>
+            <!-- Uptime info -->
+            <div class="system-info-bar mb-1" x-show="$store.system.serverStartTime">
+                <span class="system-info-item">
+                    <span class="system-info-label">Started at</span>
+                    <span class="system-info-value" x-text="$store.system.serverStartTime ? new Date($store.system.serverStartTime).toLocaleString() : '--'"></span>
+                </span>
+                <span class="system-info-item">
+                    <span class="system-info-label">Uptime</span>
+                    <span class="system-info-value" x-text="formatUptime($store.system.uptimeSeconds)"></span>
+                </span>
+            </div>
             <div x-show="$store.stats.latency" class="mb-2">
                 <template x-for="cat in [
                     { key: 'serial_read', label: 'Serial Read' },
@@ -266,6 +396,7 @@
                     <div class="card mb-1" x-show="$store.stats.latency?.[cat.key]">
                         <div class="card-header" x-text="cat.label"></div>
                         <div class="card-body">
+                            <div class="latency-section-label">Window (last 15m): min &ndash; max</div>
                             <div class="latency-grid">
                                 <div class="latency-item">
                                     <span class="latency-label">P1</span>
@@ -292,20 +423,23 @@
                                     <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.max_us)"></span>
                                 </div>
                                 <div class="latency-item">
-                                    <span class="latency-label">AT Min</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_min_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">AT Max</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_max_us)"></span>
-                                </div>
-                                <div class="latency-item">
                                     <span class="latency-label">Mean</span>
                                     <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.mean_us)"></span>
                                 </div>
                                 <div class="latency-item">
                                     <span class="latency-label">Samples</span>
                                     <span class="latency-value" x-text="($store.stats.latency?.[cat.key]?.sample_count || 0).toLocaleString()"></span>
+                                </div>
+                            </div>
+                            <div class="latency-section-label mt-1">Since restart: min / max</div>
+                            <div class="latency-grid">
+                                <div class="latency-item">
+                                    <span class="latency-label">Min</span>
+                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_min_us)"></span>
+                                </div>
+                                <div class="latency-item">
+                                    <span class="latency-label">Max</span>
+                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_max_us)"></span>
                                 </div>
                             </div>
                         </div>
@@ -446,12 +580,83 @@
             </div>
             <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2" style="padding:1rem;">Loading log levels...</div>
 
+            <!-- Device Status -->
+            <div class="section-title mt-2">Device Status</div>
+            <div class="card mb-2">
+                <div class="card-body">
+                    <template x-if="$store.system.deviceStatuses.length > 0">
+                        <div class="device-status-list">
+                            <template x-for="dev in $store.system.deviceStatuses" :key="dev.key">
+                                <div class="device-status-row">
+                                    <span class="device-status-name" x-text="dev.sourceName"></span>
+                                    <span class="device-status-type" x-text="dev.sourceType"></span>
+                                    <span class="device-status-badge"
+                                          :class="dev.statusType === 'Normal' ? 'badge-device-normal' : (dev.statusType === 'Initializing' ? 'badge-device-init' : 'badge-device-fault')"
+                                          x-text="dev.statusType"></span>
+                                    <span class="device-status-time" x-text="dev.lastSeen"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="$store.system.deviceStatuses.length === 0">
+                        <p class="text-muted" style="margin:0;">No device status events received yet</p>
+                    </template>
+                </div>
+            </div>
+
             <!-- Stats connection indicator -->
             <div class="text-muted text-center mt-2" style="font-size:0.75rem;">
                 Stats WebSocket:
                 <span class="connection-dot" :class="$store.ws.statsConnected ? 'connected' : 'disconnected'" style="width:6px;height:6px;vertical-align:middle;"></span>
                 <span x-text="$store.ws.statsConnected ? 'Connected' : 'Disconnected'"></span>
             </div>
+        </div>
+
+        <!-- ====== SETTINGS VIEW ====== -->
+        <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
+
+            <div class="section-title mt-2">Chemistry Target Ranges</div>
+            <p class="text-muted mb-1" style="font-size:0.8rem;">
+                Configure the Good / Okay / Bad ranges for each chemistry gauge.
+                Values outside the Bad range are also shown as Bad.
+                Changes are saved to this browser only.
+            </p>
+
+            <template x-for="gauge in gauges" :key="gauge.key">
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                            <strong x-text="gauge.label" style="font-size:1rem;"></strong>
+                            <button class="setpoint-btn" style="width:auto;height:auto;padding:0.25rem 0.6rem;font-size:0.7rem;"
+                                    @click="resetGauge(gauge.key)">Reset</button>
+                        </div>
+                        <div class="settings-range-grid">
+                            <template x-for="tier in ['good', 'okay', 'bad']" :key="tier">
+                                <div class="settings-range-row">
+                                    <span class="gauge-band-indicator settings-tier-label"
+                                          :class="'gauge-band-' + tier"
+                                          x-text="tier.charAt(0).toUpperCase() + tier.slice(1)"></span>
+                                    <label>
+                                        Min
+                                        <input type="number" class="settings-input"
+                                               :step="gauge.step"
+                                               :value="values[gauge.key][tier + 'Min']"
+                                               @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
+                                    </label>
+                                    <span style="color:var(--text-muted);">&#x2013;</span>
+                                    <label>
+                                        Max
+                                        <input type="number" class="settings-input"
+                                               :step="gauge.step"
+                                               :value="values[gauge.key][tier + 'Max']"
+                                               @change="updateValue(gauge.key, tier + 'Max', $event.target.value)">
+                                    </label>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- ====== ABOUT VIEW ====== -->
@@ -534,6 +739,7 @@
     <!-- Store scripts -->
     <script src="/scripts/stores/theme-store.js"></script>
     <script src="/scripts/stores/ws-store.js"></script>
+    <script src="/scripts/stores/system-store.js"></script>
     <script src="/scripts/stores/pool-store.js"></script>
     <script src="/scripts/stores/stats-store.js"></script>
     <!-- Component scripts -->
@@ -544,6 +750,7 @@
     <script src="/scripts/views/dashboard-view.js"></script>
     <script src="/scripts/views/diagnostics-view.js"></script>
     <script src="/scripts/views/about-view.js"></script>
+    <script src="/scripts/views/settings-view.js"></script>
     <!-- App init -->
     <script src="/scripts/app.js"></script>
 </body>

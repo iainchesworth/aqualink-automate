@@ -80,6 +80,7 @@ namespace AqualinkAutomate::HTTP
 		std::optional<WsStream> m_WsStream;
 		std::optional<WsSslStream> m_WsSslStream;
 		Interfaces::IWebSocketBase* m_WsHandler{ nullptr };
+		Interfaces::IWebSocketBase::ConnectionId m_WsConnectionId{ 0 };
 		boost::beast::flat_buffer m_WsReadBuffer;
 		std::string m_WsWriteBuffer;
 

@@ -170,6 +170,14 @@ function diagnosticsView() {
             return 'var(--gauge-bad)';
         },
 
+        formatUptime(secs) {
+            if (secs == null) return '--';
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            if (h > 0) return h + 'h ' + m + 'm';
+            return m + 'm';
+        },
+
         async _fetchLogLevels() {
             try {
                 const resp = await fetch('/api/diagnostics/logging');

@@ -1,3 +1,6 @@
+#include <chrono>
+#include <ctime>
+
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_version.h"
@@ -7,6 +10,24 @@
 
 namespace AqualinkAutomate::HTTP
 {
+	namespace
+	{
+		const auto SERVER_START_TIME = std::chrono::system_clock::now();
+
+		std::string FormatIso8601(const std::chrono::system_clock::time_point& tp)
+		{
+			auto time_t_val = std::chrono::system_clock::to_time_t(tp);
+			std::tm tm_buf{};
+#ifdef _WIN32
+			(void)gmtime_s(&tm_buf, &time_t_val);
+#else
+			(void)gmtime_r(&time_t_val, &tm_buf);
+#endif
+			char buf[32];
+			(void)std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
+			return buf;
+		}
+	}
 
 	boost::beast::http::message_generator WebRoute_Version::OnRequest(const HTTP::Request& req)
 	{
@@ -25,6 +46,12 @@ namespace AqualinkAutomate::HTTP
 			version_info["git_info"]["commit_date"] = Version::GitMetadata::CommitDate();
 			version_info["git_info"]["uncommitted_changes"] = Version::GitMetadata::AnyUncommittedChanges();
 		}
+
+		auto now = std::chrono::system_clock::now();
+		auto uptime_secs = std::chrono::duration_cast<std::chrono::seconds>(now - SERVER_START_TIME).count();
+
+		version_info["server_start_time"] = FormatIso8601(SERVER_START_TIME);
+		version_info["uptime_seconds"] = uptime_secs;
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };
 
