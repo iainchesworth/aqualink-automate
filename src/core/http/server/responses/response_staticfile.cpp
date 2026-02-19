@@ -67,6 +67,11 @@ namespace AqualinkAutomate::HTTP::Responses
                 case ".json"_sh:
                     return "application/json";
 
+                case ".yaml"_sh:
+                    [[fallthrough]];
+                case ".yml"_sh:
+                    return "application/yaml";
+
                 case ".png"_sh:
                     return "image/png";
 
