@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: ["develop", "main", "feature/**", "bug/**"]
+  pull_request:
+    branches: ["develop", "main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Linux GCC"
+            os: ubuntu-latest
+            compiler: gcc-13
+            configure_preset: config-linux-gcc
+            build_preset: build-linux-gcc
+            test_preset: test-linux-gcc
+          - name: "Windows MSVC"
+            os: windows-latest
+            compiler: msvc
+            configure_preset: config-windows-msvc
+            build_preset: build-windows-msvc
+            test_preset: test-windows-msvc
+          - name: "macOS Clang"
+            os: macos-latest
+            compiler: llvm
+            configure_preset: config-macos-llvm
+            build_preset: build-macos-llvm
+            test_preset: test-macos-llvm
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: aminya/setup-cpp@v1
+        with:
+          compiler: ${{ matrix.compiler }}
+          vcvarsall: ${{ contains(matrix.os, 'windows') }}
+          cmake: true
+          ninja: true
+
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: "${{ github.workspace }}/deps/vcpkg"
+
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.configure_preset }}
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.build_preset }}
+
+      - name: Test
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: ${{ matrix.test_preset }}
+
+  docker-verify:
+    name: Docker Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build CI target
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ci
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build runtime target
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: false
+          load: true
+          tags: aqualink-automate:verify
+          cache-from: type=gha
+
+      - name: Verify runtime starts
+        run: docker run --rm aqualink-automate:verify --version
