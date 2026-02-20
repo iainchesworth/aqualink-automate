@@ -56,6 +56,10 @@ jobs:
           cmake: true
           ninja: true
 
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install autoconf automake libtool
+
       - uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: "${{ github.workspace }}/deps/vcpkg"

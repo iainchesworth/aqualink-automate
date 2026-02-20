@@ -977,7 +977,7 @@ namespace AqualinkAutomate::Mqtt
 		auto base_delay = m_Settings.reconnect_delay_initial.count();
 		auto max_delay = m_Settings.reconnect_delay_max.count();
 
-		auto delay = base_delay * (1 << std::min(m_ReconnectAttempts, static_cast<uint16_t>(10)));
+		auto delay = base_delay * (1LL << std::min(m_ReconnectAttempts, static_cast<uint16_t>(10)));
 		delay = std::min(delay, max_delay);
 
 		std::random_device rd;

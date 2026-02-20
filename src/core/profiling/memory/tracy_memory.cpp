@@ -1,3 +1,10 @@
+// PREfast C28251: Our global operator new/delete replacements intentionally
+// lack the SAL annotations present on the CRT declarations.  These are
+// legitimate replacements for Tracy memory profiling; suppress the noise.
+#if defined(_MSC_VER)
+#pragma warning(disable: 28251)
+#endif
+
 #if defined(TRACY_ENABLE)
 
 #include <atomic>   // std::atomic_flag

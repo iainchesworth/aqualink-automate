@@ -236,7 +236,7 @@ namespace AqualinkAutomate::Protocol
 			}
 			else
 			{
-				auto error = message.error();
+				const auto& error = message.error();
 				ProtocolHandler_ReadOp_ErrorHandler(error, m_StatisticsHub);
 
 				// These errors mean the generator cleaned up bad data but there

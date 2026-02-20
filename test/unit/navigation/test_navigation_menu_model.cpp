@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE(TestLabelAuxListPageSelectEdgeLineNumbers)
 	for (size_t i = 0; i < 7; ++i)
 	{
 		BOOST_CHECK_EQUAL(select_edges[i]->label, "");
-		BOOST_CHECK_EQUAL(select_edges[i]->trigger_line, static_cast<int>(i + 2));
+		BOOST_CHECK_EQUAL(select_edges[i]->trigger_line, static_cast<uint8_t>(i + 2));
 	}
 
 	// All AUX Select edges should target LabelAux page

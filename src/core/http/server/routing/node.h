@@ -8,6 +8,14 @@
 #include <boost/url/decode_view.hpp>
 #include <boost/url/segments_encoded_view.hpp>
 
+// PREfast C26449: pct_string_view→string_view conversion is safe because
+// pct_string_view is a view into the URL's stable storage, not a temporary
+// owning buffer.  PREfast cannot see through the Boost.URL abstraction.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 26449)
+#endif
+
 #include "http/server/routing/child_idx_vector.h"
 #include "http/server/routing/segment_template.h"
 #include "logging/logging.h"
@@ -540,3 +548,7 @@ namespace AqualinkAutomate::HTTP::Routing
 
 }
 // namespace AqualinkAutomate::HTTP::Routing
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif

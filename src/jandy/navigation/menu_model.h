@@ -51,9 +51,9 @@ namespace AqualinkAutomate::Navigation
 	// Describes a single page in the menu hierarchy
 	struct MenuPage
 	{
-		PageId id;
+		PageId id{};
 		std::string name;
-		Utility::ScreenDataPageTypes page_type;
+		Utility::ScreenDataPageTypes page_type{};
 
 		// Detection patterns - all must match to identify this page
 		std::vector<Detector> detectors;

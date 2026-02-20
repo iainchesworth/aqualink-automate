@@ -30,14 +30,14 @@ namespace AqualinkAutomate::Devices
 
 		struct Generating_InPercent
 		{
-			Percentage value;
-			std::chrono::system_clock::time_point timestamp;
+			Percentage value{};
+			std::chrono::system_clock::time_point timestamp{};
 		};
 
 		struct SaltConcentration_InPPM
 		{
-			PPM value;
-			std::chrono::system_clock::time_point timestamp;
+			PPM value{};
+			std::chrono::system_clock::time_point timestamp{};
 		};
 
 		template<typename TYPE_WITH_TIME>

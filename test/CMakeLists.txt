@@ -125,7 +125,7 @@ if(MSVC)
 
 setup_target_for_coverage_opencppcoverage(
 	NAME coverage-testaqualink-automate
-	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
 	DEPENDENCIES testaqualink-automate
 	SOURCES
 		"${PROJECT_SOURCE_DIR}/src"
@@ -141,7 +141,7 @@ elseif(USE_SONARQUBE)
 
 setup_target_for_coverage_gcovr_xml(
 	NAME coverage-testaqualink-automate
-	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
 	DEPENDENCIES testaqualink-automate
 	EXCLUDE
 		"${PROJECT_SOURCE_DIR}/deps"
@@ -155,7 +155,7 @@ else()
 
 setup_target_for_coverage_gcovr_html(
 	NAME coverage-testaqualink-automate
-	EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
 	DEPENDENCIES testaqualink-automate
 	EXCLUDE
 		"${PROJECT_SOURCE_DIR}/deps"

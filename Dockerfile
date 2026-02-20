@@ -16,11 +16,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 #   - CMake 3.31+ via official binary (project requires 3.31)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
         ca-certificates \
         ccache \
         curl \
         git \
         gpg \
+        libtool \
         linux-libc-dev \
         ninja-build \
         pkg-config \

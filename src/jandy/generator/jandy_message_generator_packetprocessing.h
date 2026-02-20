@@ -16,9 +16,9 @@ namespace AqualinkAutomate::Generators
 		Iterator p1_end;
 		Iterator p2_start;
 
-		bool HasPacketStart;
-		bool HasPacketEnd;
-		bool HasSecondPacketStart;
+		bool HasPacketStart{false};
+		bool HasPacketEnd{false};
+		bool HasSecondPacketStart{false};
 	};
 
 	PacketLocations PacketProcessing_FindAllPacketLocations(boost::circular_buffer<uint8_t>& serial_data);
