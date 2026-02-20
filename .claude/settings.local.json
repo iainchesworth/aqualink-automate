@@ -216,7 +216,13 @@
       "WebFetch(domain:api.github.com)",
       "Bash(Select-String -Pattern \"\\(passed|failed|error|Test\\)\")",
       "Bash(Select-Object -First 10)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebFetch(domain:launchpad.net)",
+      "WebFetch(domain:documentation.ubuntu.com)",
+      "WebFetch(domain:packages.ubuntu.com)",
+      "WebFetch(domain:apt.llvm.org)",
+      "WebFetch(domain:community.sonarsource.com)",
+      "WebFetch(domain:docs.sonarsource.com)"
     ]
   }
 }

@@ -2,16 +2,22 @@
 # Stage: base (shared tooling for dev, ci, and runtime builds)
 # ==============================================================================
 
-FROM ubuntu:24.04 AS base
+FROM ubuntu:25.04 AS base
 
 ARG GCC_VERSION=15
 ARG LLVM_VERSION=21
+ARG CMAKE_VERSION=3.31.6
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install build toolchain:
+#   - GCC 15 from ubuntu-toolchain-r PPA (not default on 25.04)
+#   - clang-tidy 21 from apt.llvm.org (static analysis)
+#   - CMake 3.31+ via official binary (project requires 3.31)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        ccache \
         curl \
         git \
         gpg \
@@ -24,7 +30,7 @@ RUN apt-get update \
         wget \
         zip \
     # GCC from ubuntu-toolchain-r PPA
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -33,21 +39,16 @@ RUN apt-get update \
     && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION} \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION} \
     # clang-tidy from LLVM apt repo
-    && wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-${LLVM_VERSION} main" \
+    && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+        | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null \
+    && echo "deb http://apt.llvm.org/plucky/ llvm-toolchain-plucky-${LLVM_VERSION} main" \
         > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends clang-tidy-${LLVM_VERSION} \
     && update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${LLVM_VERSION} ${LLVM_VERSION} \
-    # CMake from Kitware PPA
-    && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
-        | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main" \
-        > /etc/apt/sources.list.d/kitware.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cmake \
-    # ccache
-    && apt-get install -y --no-install-recommends ccache \
+    # CMake via official binary release
+    && wget -qO- "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+        | tar xz -C /usr/local --strip-components=1 \
     # Cleanup
     && rm -rf /var/lib/apt/lists/*
 
@@ -114,7 +115,7 @@ RUN cmake --install build/config-linux-gcc
 # Stage: runtime (minimal production image)
 # ==============================================================================
 
-FROM ubuntu:24.04 AS runtime
+FROM ubuntu:25.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
