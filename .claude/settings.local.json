@@ -222,7 +222,8 @@
       "WebFetch(domain:packages.ubuntu.com)",
       "WebFetch(domain:apt.llvm.org)",
       "WebFetch(domain:community.sonarsource.com)",
-      "WebFetch(domain:docs.sonarsource.com)"
+      "WebFetch(domain:docs.sonarsource.com)",
+      "Bash(git grep:*)"
     ]
   }
 }

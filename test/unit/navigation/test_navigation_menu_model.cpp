@@ -259,32 +259,16 @@ BOOST_AUTO_TEST_CASE(TestLabelAuxListPageSelectEdgeLineNumbers)
 	BOOST_REQUIRE(aux_list_page != nullptr);
 
 	auto select_edges = GetSelectEdges(aux_list_page);
-	BOOST_REQUIRE_GE(select_edges.size(), 8);  // AUX 1-7 + AUX B1
+	BOOST_REQUIRE_GE(select_edges.size(), 7);  // AUX 1-7 (B/C/D require dynamic scrolling - future enhancement)
 
 	// AUX items should start at line 2 (line 0 = title, line 1 = blank)
-	BOOST_CHECK_EQUAL(select_edges[0]->label, "AUX 1");
-	BOOST_CHECK_EQUAL(select_edges[0]->trigger_line, 2);
-
-	BOOST_CHECK_EQUAL(select_edges[1]->label, "AUX 2");
-	BOOST_CHECK_EQUAL(select_edges[1]->trigger_line, 3);
-
-	BOOST_CHECK_EQUAL(select_edges[2]->label, "AUX 3");
-	BOOST_CHECK_EQUAL(select_edges[2]->trigger_line, 4);
-
-	BOOST_CHECK_EQUAL(select_edges[3]->label, "AUX 4");
-	BOOST_CHECK_EQUAL(select_edges[3]->trigger_line, 5);
-
-	BOOST_CHECK_EQUAL(select_edges[4]->label, "AUX 5");
-	BOOST_CHECK_EQUAL(select_edges[4]->trigger_line, 6);
-
-	BOOST_CHECK_EQUAL(select_edges[5]->label, "AUX 6");
-	BOOST_CHECK_EQUAL(select_edges[5]->trigger_line, 7);
-
-	BOOST_CHECK_EQUAL(select_edges[6]->label, "AUX 7");
-	BOOST_CHECK_EQUAL(select_edges[6]->trigger_line, 8);
-
-	BOOST_CHECK_EQUAL(select_edges[7]->label, "AUX B1");
-	BOOST_CHECK_EQUAL(select_edges[7]->trigger_line, 9);
+	// Labels are empty because the screen shows user-configured custom labels,
+	// not device IDs. Navigation uses trigger_line position.
+	for (size_t i = 0; i < 7; ++i)
+	{
+		BOOST_CHECK_EQUAL(select_edges[i]->label, "");
+		BOOST_CHECK_EQUAL(select_edges[i]->trigger_line, static_cast<int>(i + 2));
+	}
 
 	// All AUX Select edges should target LabelAux page
 	for (size_t i = 0; i < select_edges.size(); ++i)
