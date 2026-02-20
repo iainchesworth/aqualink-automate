@@ -65,8 +65,8 @@ ENV CMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 FROM base AS dev
 
-RUN groupadd --gid 1000 dev \
-    && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash dev \
+RUN groupmod --new-name dev ubuntu \
+    && usermod --login dev --home /home/dev --move-home ubuntu \
     && mkdir -p /ccache /vcpkg-cache /src \
     && chown dev:dev /ccache /vcpkg-cache /src
 
