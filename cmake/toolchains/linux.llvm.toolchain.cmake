@@ -8,34 +8,34 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # Find LLVM/Clang compilers
-find_program(CMAKE_C_COMPILER clang
+find_program(CMAKE_C_COMPILER
+    NAMES clang-21 clang clang-18 clang-17 clang-16 clang-15
     HINTS
         "/usr/bin"
         "/usr/local/bin"
         "/opt/llvm/bin"
         "$ENV{LLVM_ROOT}/bin"
-    NAMES clang clang-18 clang-17 clang-16 clang-15
     REQUIRED
 )
 
-find_program(CMAKE_CXX_COMPILER clang++
+find_program(CMAKE_CXX_COMPILER
+    NAMES clang++-21 clang++ clang++-18 clang++-17 clang++-16 clang++-15
     HINTS
         "/usr/bin"
         "/usr/local/bin"
         "/opt/llvm/bin"
         "$ENV{LLVM_ROOT}/bin"
-    NAMES clang++ clang++-18 clang++-17 clang++-16 clang++-15
     REQUIRED
 )
 
 # Use lld linker if available
-find_program(CMAKE_LINKER ld.lld
+find_program(CMAKE_LINKER
+    NAMES ld.lld-21 ld.lld ld.lld-18 ld.lld-17 ld.lld-16 ld.lld-15
     HINTS
         "/usr/bin"
         "/usr/local/bin"
         "/opt/llvm/bin"
         "$ENV{LLVM_ROOT}/bin"
-    NAMES ld.lld ld.lld-18 ld.lld-17 ld.lld-16 ld.lld-15
 )
 
 if(CMAKE_LINKER)

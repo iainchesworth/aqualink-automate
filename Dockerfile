@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build toolchain:
 #   - GCC 15 from ubuntu-toolchain-r PPA (not default on 25.04)
-#   - clang-tidy 21 from apt.llvm.org (static analysis)
+#   - LLVM/Clang 21 from apt.llvm.org (compiler, linker, libc++, clang-tidy)
 #   - CMake 3.31+ via official binary (project requires 3.31)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -41,14 +41,23 @@ RUN apt-get update \
         g++-${GCC_VERSION} \
     && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION} \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION} \
-    # clang-tidy from LLVM apt repo
+    # LLVM/Clang from apt.llvm.org
     && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null \
     && echo "deb http://apt.llvm.org/plucky/ llvm-toolchain-plucky-${LLVM_VERSION} main" \
         > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends clang-tidy-${LLVM_VERSION} \
+    && apt-get install -y --no-install-recommends \
+        clang-${LLVM_VERSION} \
+        clang-tidy-${LLVM_VERSION} \
+        lld-${LLVM_VERSION} \
+        libc++-${LLVM_VERSION}-dev \
+        libc++abi-${LLVM_VERSION}-dev \
+    && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} ${LLVM_VERSION} \
+    && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} ${LLVM_VERSION} \
     && update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${LLVM_VERSION} ${LLVM_VERSION} \
+    && update-alternatives --install /usr/bin/lld lld /usr/bin/lld-${LLVM_VERSION} ${LLVM_VERSION} \
+    && update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-${LLVM_VERSION} ${LLVM_VERSION} \
     # CMake via official binary release
     && wget -qO- "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
         | tar xz -C /usr/local --strip-components=1 \
