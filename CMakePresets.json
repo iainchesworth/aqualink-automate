@@ -239,13 +239,13 @@
       "inherits": [ "core", "release" ],
       "displayName": "macOS LLVM Release",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-macos-llvm",
+        "VCPKG_TARGET_TRIPLET": "arm64-macos-llvm",
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.llvm.toolchain.cmake"
       },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
-        "rhs": "MacOS"
+        "rhs": "Darwin"
       }
     },
     {
@@ -254,7 +254,7 @@
       "displayName": "macOS LLVM Debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "VCPKG_TARGET_TRIPLET": "x64-macos-llvm",
+        "VCPKG_TARGET_TRIPLET": "arm64-macos-llvm",
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.llvm.toolchain.cmake",
         "ENABLE_PROFILING": "OFF",
         "ENABLE_SANITIZERS": "ON",
@@ -265,7 +265,7 @@
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
-        "rhs": "MacOS"
+        "rhs": "Darwin"
       }
     }
   ],

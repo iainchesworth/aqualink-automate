@@ -147,7 +147,6 @@ jobs:
 
     - uses: aminya/setup-cpp@v1
       with:
-        compiler: msvc
         cmake: true
         ninja: true
 

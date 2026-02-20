@@ -40,9 +40,18 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: aminya/setup-cpp@v1
+      - name: Setup C++ toolchain
+        if: runner.os != 'Windows'
+        uses: aminya/setup-cpp@v1
         with:
           compiler: ${{ matrix.compiler }}
+          cmake: true
+          ninja: true
+
+      - name: Setup build tools
+        if: runner.os == 'Windows'
+        uses: aminya/setup-cpp@v1
+        with:
           cmake: true
           ninja: true
 

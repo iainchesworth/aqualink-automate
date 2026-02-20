@@ -5,7 +5,31 @@
 message(STATUS "Configuring macOS Toolchain (LLVM/Clang Variant)")
 
 set(CMAKE_SYSTEM_NAME Darwin)
-set(CMAKE_SYSTEM_PROCESSOR x86_64)
+
+# Determine target architecture from vcpkg triplet or auto-detect
+if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64")
+    set(CMAKE_SYSTEM_PROCESSOR arm64)
+    set(_MACOS_ARCH_FLAG "-arch arm64")
+elseif(VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
+    set(CMAKE_SYSTEM_PROCESSOR x86_64)
+    set(_MACOS_ARCH_FLAG "-arch x86_64")
+else()
+    # Auto-detect host architecture
+    execute_process(
+        COMMAND uname -m
+        OUTPUT_VARIABLE _HOST_ARCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(_HOST_ARCH STREQUAL "arm64")
+        set(CMAKE_SYSTEM_PROCESSOR arm64)
+        set(_MACOS_ARCH_FLAG "-arch arm64")
+    else()
+        set(CMAKE_SYSTEM_PROCESSOR x86_64)
+        set(_MACOS_ARCH_FLAG "-arch x86_64")
+    endif()
+endif()
+
+message(STATUS "Target architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 # Find LLVM/Clang compilers (prefer Homebrew or MacPorts over system)
 find_program(CMAKE_C_COMPILER clang
@@ -16,7 +40,7 @@ find_program(CMAKE_C_COMPILER clang
         "/usr/local/opt/llvm/bin"
         "/opt/local/bin"
         "/usr/bin"
-    NAMES clang clang-18 clang-17 clang-16 clang-15
+    NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17
     REQUIRED
 )
 
@@ -28,7 +52,7 @@ find_program(CMAKE_CXX_COMPILER clang++
         "/usr/local/opt/llvm/bin"
         "/opt/local/bin"
         "/usr/bin"
-    NAMES clang++ clang++-18 clang++-17 clang++-16 clang++-15
+    NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17
     REQUIRED
 )
 
@@ -60,9 +84,9 @@ if(CMAKE_OSX_SYSROOT)
     message(STATUS "Using macOS SDK: ${CMAKE_OSX_SYSROOT}")
 endif()
 
-# Configure compiler flags
-set(CMAKE_C_FLAGS_INIT "-arch x86_64")
-set(CMAKE_CXX_FLAGS_INIT "-arch x86_64")
+# Configure compiler flags for target architecture
+set(CMAKE_C_FLAGS_INIT "${_MACOS_ARCH_FLAG}")
+set(CMAKE_CXX_FLAGS_INIT "${_MACOS_ARCH_FLAG}")
 
 # Enable color diagnostics
 add_compile_options(-fcolor-diagnostics)
