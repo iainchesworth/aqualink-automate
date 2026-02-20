@@ -208,6 +208,19 @@ namespace AqualinkAutomate::HTTP
 						resp.prepare_payload();
 						return resp;
 					}
+
+					case Interfaces::ICommandDispatcher::CommandResult::InvalidValue:
+					{
+						LogWarning(Channel::Web, std::format("Cannot toggle device '{}': invalid value", button_id.value()));
+
+						HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
+						resp.set(boost::beast::http::field::server, ServerFields::Server());
+						resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+						resp.keep_alive(req.keep_alive());
+						resp.body() = "Invalid value for device command";
+						resp.prepare_payload();
+						return resp;
+					}
 					}
 
 					// Fallback (should not be reached).
