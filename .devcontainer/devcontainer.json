@@ -18,11 +18,12 @@
   },
   "mounts": [
     "source=aqualink-ccache,target=/ccache,type=volume",
-    "source=aqualink-vcpkg-cache,target=/vcpkg-cache,type=volume"
+    "source=aqualink-vcpkg-cache,target=/vcpkg-cache,type=volume",
+    "source=aqualink-vcpkg,target=/src/deps/vcpkg,type=volume"
   ],
   "containerEnv": {
     "CCACHE_DIR": "/ccache",
     "VCPKG_DEFAULT_BINARY_CACHE": "/vcpkg-cache"
   },
-  "postCreateCommand": "git submodule update --init --recursive && ./deps/vcpkg/bootstrap-vcpkg.sh -disableMetrics"
+  "postCreateCommand": ".devcontainer/setup.sh"
 }

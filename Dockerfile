@@ -65,10 +65,15 @@ ENV CMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 FROM base AS dev
 
-RUN groupmod --new-name dev ubuntu \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupmod --new-name dev ubuntu \
     && usermod --login dev --home /home/dev --move-home ubuntu \
+    && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
     && mkdir -p /ccache /vcpkg-cache /src \
-    && chown dev:dev /ccache /vcpkg-cache /src
+    && chown dev:dev /ccache /vcpkg-cache /src \
+    && git config --system --add safe.directory /src
 
 RUN ccache --set-config=max_size=2G \
     && ccache --set-config=compression=true
