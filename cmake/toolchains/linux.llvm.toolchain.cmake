@@ -50,21 +50,9 @@ set(CMAKE_CXX_FLAGS_INIT "-m64")
 # Enable color diagnostics and better error messages
 add_compile_options(-fcolor-diagnostics -fdiagnostics-show-template-tree)
 
-# Use libc++ if available
-find_library(LIBCXX_LIB c++
-    HINTS
-        "/usr/lib/x86_64-linux-gnu"
-        "/usr/lib64"
-        "/usr/local/lib"
-)
-
-if(LIBCXX_LIB)
-    add_compile_options(-stdlib=libc++)
-    add_link_options(-stdlib=libc++)
-else()
-    # Using GCC's libstdc++; link libstdc++exp for std::stacktrace runtime
-    add_link_options(-lstdc++exp)
-endif()
+# Use GCC's libstdc++ (default for Clang on Linux). libc++ lacks C++23
+# <stacktrace> support so we cannot use it until that is resolved.
+add_link_options(-lstdc++exp)
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
 if(CMAKE_LINKER)
