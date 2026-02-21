@@ -81,7 +81,7 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 
 		const auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), message_bytes.size()));
 
-		message_bytes.emplace_back(Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend()));
+		message_bytes.emplace_back(Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.begin(), message_span_to_checksum.end()));
 		message_bytes.emplace_back(Messages::HEADER_BYTE_DLE);
 		message_bytes.emplace_back(Messages::HEADER_BYTE_ETX);
 		
@@ -204,7 +204,7 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 		bool packet_is_valid = true;
 
 		std::span<const uint8_t> message_span_to_checksum(message_bytes.data(), message_bytes.size() - PACKET_FOOTER_LENGTH);
-		const auto expected_checksum = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend());
+		const auto expected_checksum = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.begin(), message_span_to_checksum.end());
 		const auto received_checksum = message_bytes[message_bytes.size() - PACKET_FOOTER_LENGTH];
 
 		packet_is_valid &= (expected_checksum == received_checksum);

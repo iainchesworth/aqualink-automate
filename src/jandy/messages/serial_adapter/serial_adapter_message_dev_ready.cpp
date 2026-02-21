@@ -40,7 +40,7 @@ namespace AqualinkAutomate::Messages
 		};
 
 		auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), 5));
-		message_bytes[5] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.cbegin(), message_span_to_checksum.cend());
+		message_bytes[5] = Utility::JandyPacket_CalculateChecksum(message_span_to_checksum.begin(), message_span_to_checksum.end());
 
 		return true;
 	}
