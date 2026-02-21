@@ -87,6 +87,9 @@ set(CMAKE_CXX_FLAGS_INIT "${_MACOS_ARCH_FLAG}")
 get_filename_component(_LLVM_COMPILER_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 get_filename_component(_LLVM_PREFIX "${_LLVM_COMPILER_DIR}" DIRECTORY)
 
+message(STATUS "LLVM compiler dir: ${_LLVM_COMPILER_DIR}")
+message(STATUS "LLVM prefix: ${_LLVM_PREFIX}")
+
 set(_LLVM_LIBCXX_INCLUDE "${_LLVM_PREFIX}/include/c++/v1")
 set(_LLVM_LIBCXX_LIB "${_LLVM_PREFIX}/lib")
 
