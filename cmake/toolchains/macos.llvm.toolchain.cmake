@@ -58,20 +58,10 @@ find_program(CMAKE_CXX_COMPILER
     REQUIRED
 )
 
-# Use lld linker if available (for non-system LLVM)
-find_program(CMAKE_LINKER
-    NAMES ld.lld-21 ld.lld
-    HINTS
-        "/opt/local/libexec/llvm-21/bin"
-        "/opt/homebrew/opt/llvm/bin"
-        "/usr/local/opt/llvm/bin"
-        "/opt/local/bin"
-)
-
-if(CMAKE_LINKER)
-    set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
-    set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld")
-endif()
+# Note: We intentionally do NOT use LLD on macOS. While LLVM ships ld64.lld
+# (Mach-O linker), autotools-based vcpkg ports (e.g. libbacktrace) use libtool
+# which generates -Wl,-soname (ELF) instead of -Wl,-install_name (Mach-O) when
+# it detects lld, causing link failures. Apple's system linker works fine.
 
 # Set minimum macOS version (13.3 required for full std::to_chars support)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "Minimum macOS version")
@@ -108,8 +98,8 @@ if(EXISTS "${_LLVM_LIBCXX_INCLUDE}")
     string(APPEND CMAKE_CXX_FLAGS_INIT " -nostdinc++ -isystem ${_LLVM_LIBCXX_INCLUDE}")
 
     # Link against LLVM's libc++ runtime
-    set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} -L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
-    set(CMAKE_SHARED_LINKER_FLAGS_INIT "${CMAKE_SHARED_LINKER_FLAGS_INIT} -L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
+    set(CMAKE_EXE_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
+    set(CMAKE_SHARED_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
 else()
     message(STATUS "LLVM libc++ not found at ${_LLVM_LIBCXX_INCLUDE}, falling back to system libc++")
     # Fall back to system libc++ (Apple's SDK)
