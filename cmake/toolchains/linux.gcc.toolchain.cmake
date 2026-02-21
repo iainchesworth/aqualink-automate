@@ -36,6 +36,9 @@ add_compile_options(-fdiagnostics-color=always)
 # Link with pthread for multithreading
 add_link_options(-pthread)
 
+# libstdc++exp provides std::stacktrace runtime (not in main libstdc++ yet)
+add_link_options(-lstdc++exp)
+
 message(STATUS "Using GCC at: ${CMAKE_CXX_COMPILER}")
 message("Linux GCC toolchain CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
 message("Linux GCC toolchain CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")

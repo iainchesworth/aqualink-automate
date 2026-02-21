@@ -19,35 +19,41 @@
 namespace AqualinkAutomate::Devices
 {
 
+	using AquaritePercentage = uint8_t;
+	using AquaritePPM = uint16_t;
+
+	struct AquariteGenerating_InPercent
+	{
+		AquaritePercentage value{};
+		std::chrono::system_clock::time_point timestamp{};
+	};
+
+	struct AquariteSaltConcentration_InPPM
+	{
+		AquaritePPM value{};
+		std::chrono::system_clock::time_point timestamp{};
+	};
+
+	template<typename TYPE_WITH_TIME>
+	struct AquariteTypeWithTimeComparator
+	{
+		bool operator()(const TYPE_WITH_TIME& p1, const TYPE_WITH_TIME& p2)
+		{
+			return (p1.value == p2.value);
+		}
+	};
+
 	class AquariteDevice : public JandyDevice, public Capabilities::Restartable
 	{
 		inline static const std::chrono::seconds AQUARITE_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t AQUARITE_PERCENT_DEBOUNCE_THRESHOLD{ 10 };
 
 	public:
-		using Percentage = uint8_t;
-		using PPM = uint16_t;
-
-		struct Generating_InPercent
-		{
-			Percentage value{};
-			std::chrono::system_clock::time_point timestamp{};
-		};
-
-		struct SaltConcentration_InPPM
-		{
-			PPM value{};
-			std::chrono::system_clock::time_point timestamp{};
-		};
-
-		template<typename TYPE_WITH_TIME>
-		struct TypeWithTimeComparator
-		{
-			bool operator()(const TYPE_WITH_TIME& p1, const TYPE_WITH_TIME& p2)
-			{
-				return (p1.value == p2.value);
-			}
-		};
+		using Percentage = AquaritePercentage;
+		using PPM = AquaritePPM;
+		using Generating_InPercent = AquariteGenerating_InPercent;
+		using SaltConcentration_InPPM = AquariteSaltConcentration_InPPM;
+		template<typename T> using TypeWithTimeComparator = AquariteTypeWithTimeComparator<T>;
 
 	public:
 		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);

@@ -25,6 +25,7 @@ RUN apt-get update \
         gpg \
         libtool \
         linux-libc-dev \
+        gcovr \
         ninja-build \
         pkg-config \
         software-properties-common \
@@ -41,6 +42,7 @@ RUN apt-get update \
         g++-${GCC_VERSION} \
     && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION} \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION} \
+    && update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION} ${GCC_VERSION} \
     # LLVM/Clang from apt.llvm.org
     && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null \

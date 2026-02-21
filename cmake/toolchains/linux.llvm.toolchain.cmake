@@ -61,6 +61,9 @@ find_library(LIBCXX_LIB c++
 if(LIBCXX_LIB)
     add_compile_options(-stdlib=libc++)
     add_link_options(-stdlib=libc++)
+else()
+    # Using GCC's libstdc++; link libstdc++exp for std::stacktrace runtime
+    add_link_options(-lstdc++exp)
 endif()
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
