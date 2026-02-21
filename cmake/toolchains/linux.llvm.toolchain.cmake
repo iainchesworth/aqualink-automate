@@ -50,12 +50,6 @@ set(CMAKE_CXX_FLAGS_INIT "-m64")
 # Enable color diagnostics and better error messages
 add_compile_options(-fcolor-diagnostics -fdiagnostics-show-template-tree)
 
-# Use GCC's libstdc++ (default for Clang on Linux). libc++ lacks C++23
-# <stacktrace> support so we cannot use it until that is resolved.
-# Must use CMAKE_CXX_STANDARD_LIBRARIES (not add_link_options) so the library
-# appears AFTER object files in the link command -- GNU ld is order-sensitive.
-set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lstdc++exp")
-
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
 if(CMAKE_LINKER)
     message(STATUS "Using LLD linker at: ${CMAKE_LINKER}")

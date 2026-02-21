@@ -83,7 +83,7 @@ set(CMAKE_C_FLAGS_INIT "${_MACOS_ARCH_FLAG}")
 set(CMAKE_CXX_FLAGS_INIT "${_MACOS_ARCH_FLAG}")
 
 # Detect LLVM's own libc++ and use it instead of Apple's SDK libc++
-# This provides full C++23 support including <stacktrace> and unrestricted std::to_chars
+# This provides full C++23 support including unrestricted std::to_chars
 get_filename_component(_LLVM_COMPILER_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 get_filename_component(_LLVM_PREFIX "${_LLVM_COMPILER_DIR}" DIRECTORY)
 

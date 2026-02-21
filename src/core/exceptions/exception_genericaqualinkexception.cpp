@@ -6,7 +6,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Exceptions
 {
 
-	GenericAqualinkException::GenericAqualinkException(std::string message, std::source_location location, std::stacktrace trace) :
+	GenericAqualinkException::GenericAqualinkException(std::string message, std::source_location location, boost::stacktrace::stacktrace trace) :
 		m_ExceptionMessage{ std::move(message) },
 		m_SourceLocation{std::move(location) },
 		m_StackTrace{ std::move(trace) }
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Exceptions
 		return m_SourceLocation;
 	}
 
-	const std::stacktrace& GenericAqualinkException::StackTrace() const noexcept
+	const boost::stacktrace::stacktrace& GenericAqualinkException::StackTrace() const noexcept
 	{
 		return m_StackTrace;
 	}

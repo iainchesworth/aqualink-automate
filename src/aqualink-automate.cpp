@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <stacktrace>
 #include <thread>
 #include <vector>
 
@@ -536,7 +535,7 @@ int main(int argc, char* argv[])
 
 		for (const auto& frame : st)
 		{
-			LogDebug(Channel::Main, std::format("{}, {}({})", frame.description(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+			LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
 		}
 	}
 	catch (const boost::system::system_error& err)
@@ -547,10 +546,10 @@ int main(int argc, char* argv[])
 	{
 		LogFatal(Channel::Main, std::format("Unknown exception occurred...terminating!  Message: {}", err.what()));
 
-		const auto trace = std::stacktrace::current();
+		const auto trace = boost::stacktrace::stacktrace();
 		for (const auto& frame : trace)
 		{
-			LogDebug(Channel::Main, std::format("{}, {}({})", frame.description(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
+			LogDebug(Channel::Main, std::format("{}, {}({})", frame.name(), frame.source_file().empty() ? "Unknown File" : frame.source_file(), frame.source_line()));
 		}
 
 	}
