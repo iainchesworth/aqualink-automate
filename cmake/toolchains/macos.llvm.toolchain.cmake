@@ -31,16 +31,16 @@ endif()
 
 message(STATUS "Target architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
-# Find LLVM/Clang compilers (prefer MacPorts LLVM 21, then Homebrew, then system)
+# Find LLVM/Clang compilers (prefer Homebrew LLVM, then MacPorts, then system)
 find_program(CMAKE_C_COMPILER
     NAMES clang-21 clang
     HINTS
-        "/opt/local/libexec/llvm-21/bin"
-        "/opt/homebrew/bin"
         "/opt/homebrew/opt/llvm/bin"
-        "/usr/local/bin"
         "/usr/local/opt/llvm/bin"
+        "/opt/local/libexec/llvm-21/bin"
         "/opt/local/bin"
+        "/opt/homebrew/bin"
+        "/usr/local/bin"
         "/usr/bin"
     REQUIRED
 )
@@ -48,12 +48,12 @@ find_program(CMAKE_C_COMPILER
 find_program(CMAKE_CXX_COMPILER
     NAMES clang++-21 clang++
     HINTS
-        "/opt/local/libexec/llvm-21/bin"
-        "/opt/homebrew/bin"
         "/opt/homebrew/opt/llvm/bin"
-        "/usr/local/bin"
         "/usr/local/opt/llvm/bin"
+        "/opt/local/libexec/llvm-21/bin"
         "/opt/local/bin"
+        "/opt/homebrew/bin"
+        "/usr/local/bin"
         "/usr/bin"
     REQUIRED
 )
