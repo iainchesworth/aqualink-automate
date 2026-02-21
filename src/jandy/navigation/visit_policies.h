@@ -10,9 +10,8 @@
 namespace AqualinkAutomate::Navigation
 {
 
-	// Callback types for visit policies (move-only: these are stored, not copied)
-	using PageVisitCallback = std::move_only_function<void(PageId page, const Utility::ScreenDataPage& content)>;
-	using CrawlCompleteCallback = std::move_only_function<void()>;
+	using PageVisitCallback = std::function<void(PageId page, const Utility::ScreenDataPage& content)>;
+	using CrawlCompleteCallback = std::function<void()>;
 
 	// Visits all pages reachable from the starting position
 	class FullDiscoveryVisitPolicy : public VisitPolicy
