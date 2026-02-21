@@ -97,12 +97,15 @@ if(EXISTS "${_LLVM_LIBCXX_INCLUDE}")
     message(STATUS "Found LLVM libc++ headers: ${_LLVM_LIBCXX_INCLUDE}")
     message(STATUS "Using LLVM libc++ runtime: ${_LLVM_LIBCXX_LIB}")
 
-    # Use LLVM's libc++ headers instead of Apple SDK's
-    string(APPEND CMAKE_CXX_FLAGS_INIT " -nostdinc++ -isystem ${_LLVM_LIBCXX_INCLUDE}")
+    # Use LLVM's libc++ headers instead of Apple SDK's.
+    # Disable vendor availability annotations so features like std::from_chars
+    # are not gated on the macOS deployment target — we link against LLVM's
+    # own libc++ runtime which has all symbols available.
+    string(APPEND CMAKE_CXX_FLAGS_INIT " -nostdinc++ -isystem ${_LLVM_LIBCXX_INCLUDE} -D_LIBCPP_DISABLE_AVAILABILITY")
 
     # Link against LLVM's libc++ runtime
-    set(CMAKE_EXE_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
-    set(CMAKE_SHARED_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
+    set(CMAKE_EXE_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB}/c++ -L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}/c++ -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
+    set(CMAKE_SHARED_LINKER_FLAGS_INIT "-L${_LLVM_LIBCXX_LIB}/c++ -L${_LLVM_LIBCXX_LIB} -Wl,-rpath,${_LLVM_LIBCXX_LIB}/c++ -Wl,-rpath,${_LLVM_LIBCXX_LIB}")
 else()
     message(STATUS "LLVM libc++ not found at ${_LLVM_LIBCXX_INCLUDE}, falling back to system libc++")
     # Fall back to system libc++ (Apple's SDK)
