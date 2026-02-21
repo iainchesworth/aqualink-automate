@@ -36,8 +36,10 @@ add_compile_options(-fdiagnostics-color=always)
 # Link with pthread for multithreading
 add_link_options(-pthread)
 
-# libstdc++exp provides std::stacktrace runtime (not in main libstdc++ yet)
-add_link_options(-lstdc++exp)
+# libstdc++exp provides std::stacktrace runtime (not in main libstdc++ yet).
+# Must use CMAKE_CXX_STANDARD_LIBRARIES (not add_link_options) so the library
+# appears AFTER object files in the link command -- GNU ld is order-sensitive.
+set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lstdc++exp")
 
 message(STATUS "Using GCC at: ${CMAKE_CXX_COMPILER}")
 message("Linux GCC toolchain CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
