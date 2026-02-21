@@ -73,7 +73,16 @@ jobs:
           echo "libc++ runtime: $(ls ${LLVM_PREFIX}/lib/libc++* 2>/dev/null | head -3 || echo 'not found')"
           echo "PATH: ${PATH}"
 
+      - name: Set up vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-${{ matrix.name }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ matrix.name }}-
+
       - uses: lukka/run-vcpkg@v11
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
         with:
           vcpkgDirectory: "${{ github.workspace }}/deps/vcpkg"
 
