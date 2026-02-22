@@ -1,3 +1,7 @@
+// NOLINTBEGIN(cppcoreguidelines-no-malloc)
+// This file intentionally uses malloc/free/aligned_alloc to implement global
+// operator new/delete replacements for Tracy memory profiling.
+
 // PREfast C28251: Our global operator new/delete replacements intentionally
 // lack the SAL annotations present on the CRT declarations.  These are
 // legitimate replacements for Tracy memory profiling; suppress the noise.
@@ -448,3 +452,5 @@ void operator delete[](void* ptr, std::size_t, std::align_val_t) noexcept
 }
 
 #endif // defined(TRACY_ENABLE)
+
+// NOLINTEND(cppcoreguidelines-no-malloc)

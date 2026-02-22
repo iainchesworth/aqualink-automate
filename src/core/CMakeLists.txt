@@ -291,6 +291,18 @@ target_sources(
 )
 endif(LINUX)
 
+if(APPLE)
+target_sources(
+	libaqualink-automate
+	PRIVATE
+	platform/macos/application_defaults.cpp
+	platform/macos/firewall_manager.cpp
+	platform/macos/get_terminal_column_width.cpp
+	platform/macos/physical_serial_port_timeout.cpp
+	platform/macos/network_serial_port_timeout.cpp
+)
+endif(APPLE)
+
 target_compile_features(libaqualink-automate PUBLIC cxx_std_23)
 
 target_compile_definitions(

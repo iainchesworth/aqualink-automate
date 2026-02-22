@@ -124,7 +124,7 @@ jobs:
         submodules: recursive
 
     - name: Install build-wrapper
-      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4
+      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
 
     - uses: aminya/setup-cpp@v1
       with:
@@ -174,7 +174,7 @@ jobs:
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build --preset=build-linux-gcc-coverage
 
     - name: Run SonarCloud scan
-      uses: SonarSource/sonarqube-scan-action@v4
+      uses: SonarSource/sonarqube-scan-action@v6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
