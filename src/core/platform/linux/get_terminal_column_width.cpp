@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Utility
 
 	uint32_t get_terminal_column_width()
 	{
-		uint32_t column_width;
+		uint32_t column_width = 0;
 		struct winsize w;
 		
 		if (-1 == ioctl(STDOUT_FILENO, TIOCGWINSZ, &w))

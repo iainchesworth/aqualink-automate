@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(Test_Temperature_ValidTemperatureStrings)
     {
         TemperatureStringConverter temp("air 72`F");
         BOOST_REQUIRE(temp().has_value());
-        BOOST_CHECK(72.0f == temp().value().InFahrenheit().value());
+        BOOST_CHECK_CLOSE(72.0, temp().value().InFahrenheit().value(), 0.001);
         BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_CHECK("air" == *(temp.TemperatureArea()));
     }
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(Test_Temperature_ValidTemperatureStrings)
     {
         TemperatureStringConverter temp("pool        72`F");
         BOOST_REQUIRE(temp().has_value());
-        BOOST_CHECK(72.0f == temp().value().InFahrenheit().value());
+        BOOST_CHECK_CLOSE(72.0, temp().value().InFahrenheit().value(), 0.001);
         BOOST_REQUIRE(temp.TemperatureArea().has_value());
         BOOST_CHECK("pool" == *(temp.TemperatureArea()));
     }
