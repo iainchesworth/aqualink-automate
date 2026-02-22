@@ -73,7 +73,23 @@ jobs:
           echo "libc++ runtime: $(ls ${LLVM_PREFIX}/lib/libc++* 2>/dev/null | head -3 || echo 'not found')"
           echo "PATH: ${PATH}"
 
-      - name: Set up vcpkg binary cache
+      - name: Set up vcpkg cache directories
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/downloads
+          key: vcpkg-downloads-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-downloads-
+
+      - name: Cache vcpkg binaries
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
@@ -95,6 +111,13 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.build_preset }}
+
+      - name: Show build errors on failure
+        if: failure()
+        run: |
+          echo "::group::CMake build retry (verbose)"
+          cmake --build --preset ${{ matrix.build_preset }} -- -k 1 2>&1 | tail -200 || true
+          echo "::endgroup::"
 
       - name: Test
         uses: lukka/run-cmake@v10

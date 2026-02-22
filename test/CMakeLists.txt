@@ -139,6 +139,8 @@ setup_target_for_coverage_opencppcoverage(
 
 elseif(USE_SONARQUBE)
 
+set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn")
+
 setup_target_for_coverage_gcovr_xml(
 	NAME coverage-testaqualink-automate
 	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
