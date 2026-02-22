@@ -2,7 +2,7 @@ name: Automated Code Scanning
 
 on:
   push:
-    branches: [ "develop", "main", "feature/**", "bug/**" ]
+    branches: [ "main", "feature/**", "bug/**" ]
   pull_request:
     branches: [ "develop", "main" ]
   schedule:
