@@ -1,4 +1,5 @@
 #include <sstream>
+#include <type_traits>
 
 #include <boost/test/unit_test.hpp>
 
@@ -27,9 +28,6 @@ BOOST_AUTO_TEST_CASE(CountTest)
     ++counter;
     BOOST_TEST(counter.Count() == 9);
 
-    // Test count after post-increment
-    counter++;
-    BOOST_TEST(counter.Count() == 10);
 }
 
 BOOST_AUTO_TEST_CASE(StatsSignalTest)
@@ -114,14 +112,6 @@ BOOST_AUTO_TEST_CASE(OstreamOperatorNormalCase)
         std::string result = oss.str();
         BOOST_CHECK_EQUAL("9", result);
     }
-
-    counter++;
-    {
-        std::ostringstream oss;
-        oss << counter;
-        std::string result = oss.str();
-        BOOST_CHECK_EQUAL("10", result);
-    }
 }
 
 BOOST_AUTO_TEST_CASE(FormatNormalCase)
@@ -139,9 +129,6 @@ BOOST_AUTO_TEST_CASE(FormatNormalCase)
 
     ++counter;
     BOOST_CHECK_EQUAL("9", std::format("{}", counter));
-
-    counter++;
-    BOOST_CHECK_EQUAL("10", std::format("{}", counter));
 }
 
 BOOST_AUTO_TEST_CASE(StatsCounter_CopyConstructor)
@@ -164,26 +151,11 @@ BOOST_AUTO_TEST_CASE(StatsCounter_MoveConstructor)
     BOOST_CHECK_EQUAL(moved.Count(), 99);
 }
 
-BOOST_AUTO_TEST_CASE(StatsCounter_CopyAssignment)
+BOOST_AUTO_TEST_CASE(StatsCounter_CopyAssignment_IsDeleted)
 {
-    AqualinkAutomate::Utility::StatsSignal signal;
-    AqualinkAutomate::Utility::StatsCounter original(signal);
-    original = 55;
-
-    AqualinkAutomate::Utility::StatsCounter other(signal);
-    other = original;
-    BOOST_CHECK_EQUAL(other.Count(), 55);
-}
-
-BOOST_AUTO_TEST_CASE(StatsCounter_MoveAssignment)
-{
-    AqualinkAutomate::Utility::StatsSignal signal;
-    AqualinkAutomate::Utility::StatsCounter original(signal);
-    original = 77;
-
-    AqualinkAutomate::Utility::StatsCounter other(signal);
-    other = std::move(original);
-    BOOST_CHECK_EQUAL(other.Count(), 77);
+    // StatsCounter copy/move assignment is deleted because m_StatsSignal is a reference.
+    BOOST_CHECK(!std::is_copy_assignable_v<AqualinkAutomate::Utility::StatsCounter>);
+    BOOST_CHECK(!std::is_move_assignable_v<AqualinkAutomate::Utility::StatsCounter>);
 }
 
 BOOST_AUTO_TEST_CASE(StatsCounter_OperatorCallConst)

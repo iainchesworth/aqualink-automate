@@ -192,7 +192,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into SerialAdapterMessage_DevStatus type", message_bytes.size()));
 
-		if (message_bytes.size() <= Index_StatusType)
+		if (message_bytes.size() <= Index_DeviceId)
 		{
 			LogDebug(Channel::Messages, "SerialAdapterMessage_DevStatus is too short to deserialise StatusType");
 		}
@@ -408,7 +408,7 @@ namespace AqualinkAutomate::Messages
 					{
 						auto status = magic_enum::enum_cast<Auxillaries::JandyAuxillaryStatuses>(message_bytes[Index_AuxState]).value_or(Auxillaries::JandyAuxillaryStatuses::Unknown);
 
-						m_Aux_State = std::make_tuple(sa_jai, status),
+						m_Aux_State = std::make_tuple(sa_jai, status);
 
 						LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: {} Status -> {}", magic_enum::enum_name(sa_jai), magic_enum::enum_name(status)));
 					},

@@ -60,8 +60,8 @@ namespace AqualinkAutomate::Utility
 		// Non-copyable but movable
 		LatencyPercentileTracker(const LatencyPercentileTracker&) = delete;
 		LatencyPercentileTracker& operator=(const LatencyPercentileTracker&) = delete;
-		LatencyPercentileTracker(LatencyPercentileTracker&&) = default;
-		LatencyPercentileTracker& operator=(LatencyPercentileTracker&&) = default;
+		LatencyPercentileTracker(LatencyPercentileTracker&&) noexcept = default;
+		LatencyPercentileTracker& operator=(LatencyPercentileTracker&&) noexcept = default;
 
 	public:
 		/// Records a latency sample with the current timestamp.

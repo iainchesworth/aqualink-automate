@@ -116,13 +116,23 @@ BOOST_AUTO_TEST_CASE(Test_ToNumber_LeadingZeros)
 	BOOST_CHECK_EQUAL(result.value(), 7);
 }
 
-BOOST_AUTO_TEST_CASE(Test_ToNumber_PartialParse)
+BOOST_AUTO_TEST_CASE(Test_ToNumber_PartialParse_RejectsTrailingChars)
 {
-	// from_chars succeeds with ec==errc() even if not all characters consumed.
-	// ToNumber only checks ec, so "12abc" returns 12.
+	// ToNumber verifies the entire string was consumed.
 	auto result = ToNumber<int>("12abc");
-	BOOST_REQUIRE(result.has_value());
-	BOOST_CHECK_EQUAL(result.value(), 12);
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_TrailingWhitespace_Rejected)
+{
+	auto result = ToNumber<int>("42 ");
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_TrailingDot_Rejected)
+{
+	auto result = ToNumber<int>("42.");
+	BOOST_CHECK(!result.has_value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

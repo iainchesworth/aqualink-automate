@@ -73,6 +73,12 @@ namespace AqualinkAutomate::Messages
 
 	struct SerialAdapter_SCS_BatteryCondition
 	{
+		SerialAdapter_SCS_BatteryCondition() = default;
+		SerialAdapter_SCS_BatteryCondition(SerialAdapter_SCS_BatteryCondition&& other) noexcept = default;
+		SerialAdapter_SCS_BatteryCondition& operator=(SerialAdapter_SCS_BatteryCondition&& other) noexcept = default;
+		SerialAdapter_SCS_BatteryCondition(const SerialAdapter_SCS_BatteryCondition&) = default;
+		SerialAdapter_SCS_BatteryCondition& operator=(const SerialAdapter_SCS_BatteryCondition&) = default;
+
 		bool IsLow{ true };
 		AqualinkAutomate::Units::voltage Voltage{ 0 * AqualinkAutomate::Units::volts };
 	};

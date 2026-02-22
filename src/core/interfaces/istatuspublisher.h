@@ -67,15 +67,17 @@ namespace AqualinkAutomate::Interfaces
 		return !(operator==(this_status, that_status));
 	}
 
-	// Enable comparisions of the std::weak_ptr type with a status type.
+	// Enable comparisons of the std::weak_ptr type with a status type.
 
 	template<typename THIS_STATUS>
 		requires std::derived_from<THIS_STATUS, Interfaces::IStatus>
 	bool operator==(const THIS_STATUS&, IStatusPublisher::StatusType that_status)
 	{
-		using THAT_STATUS = decltype(that_status)::element_type;
-
-		return std::same_as<std::remove_cvref_t<THIS_STATUS>, std::remove_cvref_t<THAT_STATUS>>;
+		if (auto locked = that_status.lock())
+		{
+			return dynamic_cast<const THIS_STATUS*>(locked.get()) != nullptr;
+		}
+		return false;
 	}
 
 }

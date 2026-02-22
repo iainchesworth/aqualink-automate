@@ -77,12 +77,10 @@ namespace AqualinkAutomate::Kernel
 		template <typename T>
 		HubLocator& Unregister()
 		{
-			auto it = std::remove_if(m_Hubs.begin(), m_Hubs.end(), [](const std::shared_ptr<Hub::Wrapper>& wrapper)
+			std::erase_if(m_Hubs, [](const std::shared_ptr<Hub::Wrapper>& wrapper)
 				{
 					return std::dynamic_pointer_cast<Hub::WrapperImpl<T>>(wrapper) != nullptr;
 				});
-
-			m_Hubs.erase(it, m_Hubs.end());
 
 			return *this;
 		}

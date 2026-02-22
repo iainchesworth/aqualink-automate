@@ -77,7 +77,10 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 		message_bytes.emplace_back(JandyMessage::m_Destination.Id()());
 		message_bytes.emplace_back(magic_enum::enum_integer(IMessage::Id()));
 
-		SerializeContents(message_bytes);
+		if (!SerializeContents(message_bytes))
+		{
+			return false;
+		}
 
 		const auto message_span_to_checksum = std::as_bytes(std::span<uint8_t>(message_bytes.begin(), message_bytes.size()));
 

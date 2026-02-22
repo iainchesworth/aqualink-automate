@@ -56,6 +56,7 @@ namespace AqualinkAutomate::Messages
 			const auto start_index = message_bytes.begin() + Index_TitleText;
 			const auto end_index = start_index + length_to_copy;
 
+			m_Title.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_Title),
 				[](const auto& elem)
 				{

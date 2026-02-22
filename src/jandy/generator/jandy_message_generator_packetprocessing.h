@@ -12,6 +12,12 @@ namespace AqualinkAutomate::Generators
 	{
 		using Iterator = boost::circular_buffer<uint8_t>::iterator;
 
+		PacketLocations() = default;
+		PacketLocations(PacketLocations&& other) noexcept = default;
+		PacketLocations& operator=(PacketLocations&& other) noexcept = default;
+		PacketLocations(const PacketLocations&) = default;
+		PacketLocations& operator=(const PacketLocations&) = default;
+
 		Iterator p1_start;
 		Iterator p1_end;
 		Iterator p2_start;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <source_location>
 #include <string>
 
@@ -8,12 +9,13 @@
 namespace AqualinkAutomate::Exceptions
 {
 
-	class GenericAqualinkException
+	class GenericAqualinkException : public std::exception
 	{
 	public:
 		GenericAqualinkException(std::string message, std::source_location location = std::source_location::current(), boost::stacktrace::stacktrace trace = boost::stacktrace::stacktrace());
 
 	public:
+		const char* what() const noexcept override;
 		std::string& What();
 		const std::string& What() const noexcept;
 		const std::source_location& Where() const noexcept;

@@ -256,6 +256,17 @@ BOOST_AUTO_TEST_CASE(Test_IsCommandTopic_MatchesCommandPrefix)
 	BOOST_CHECK(!hub.IsCommandTopic("other/command/test"));
 }
 
+BOOST_AUTO_TEST_CASE(Test_IsCommandTopic_DoesNotMatchWithoutTrailingSlash)
+{
+	// Regression: "command_extra" must not match as a command topic
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	BOOST_CHECK(!hub.IsCommandTopic("test/command_extra"));
+	BOOST_CHECK(!hub.IsCommandTopic("test/commandsuffix"));
+}
+
 BOOST_AUTO_TEST_CASE(Test_ExtractCommand_ExtractsAction)
 {
 	boost::asio::io_context ioc;

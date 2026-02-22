@@ -23,28 +23,6 @@ namespace AqualinkAutomate::Utility
 		m_Count.exchange(other.m_Count);
 	}
 
-	StatsCounter& StatsCounter::operator=(const StatsCounter& other)
-	{
-		if (this != &other)
-		{
-			m_Count.exchange(other.m_Count);
-			m_StatsSignal.connect(other.m_StatsSignal);
-		}
-
-		return *this;
-	}
-
-	StatsCounter& StatsCounter::operator=(StatsCounter&& other) noexcept
-	{
-		if (this != &other)
-		{
-			m_Count.exchange(other.m_Count);
-			m_StatsSignal = std::move(other.m_StatsSignal);
-		}
-
-		return *this;
-	}
-
 	StatsCounter& StatsCounter::operator=(const uint64_t count_to_assign)
 	{
 		m_Count = count_to_assign;
@@ -62,13 +40,6 @@ namespace AqualinkAutomate::Utility
 	StatsCounter& StatsCounter::operator++()
 	{
 		m_Count++;
-		m_StatsSignal(m_Count);
-		return *this;
-	}
-
-	StatsCounter& StatsCounter::operator++(int)
-	{
-		++m_Count;
 		m_StatsSignal(m_Count);
 		return *this;
 	}

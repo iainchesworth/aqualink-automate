@@ -19,6 +19,10 @@ namespace AqualinkAutomate::Kernel
 	public:
 		Temperature(const boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>>& degrees_celsius);
 		Temperature(const boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>>& degrees_fahrenheit);
+		Temperature(const Temperature& other) = default;
+		Temperature& operator=(const Temperature& other) = default;
+		Temperature(Temperature&& other) noexcept = default;
+		Temperature& operator=(Temperature&& other) noexcept = default;
 
 	public:
 		boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> InCelsius() const;

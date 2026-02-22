@@ -703,7 +703,7 @@ namespace AqualinkAutomate::Mqtt
 
 	bool MqttHub::IsCommandTopic(const std::string& topic) const
 	{
-		std::string prefix = m_Client->BuildTopic(COMMAND_PREFIX);
+		std::string prefix = m_Client->BuildTopic(std::format("{}/", COMMAND_PREFIX));
 		return topic.find(prefix) == 0;
 	}
 

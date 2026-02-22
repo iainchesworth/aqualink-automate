@@ -116,4 +116,21 @@ BOOST_AUTO_TEST_CASE(TestFormat_MixedHighlightedAndNormal)
 	BOOST_CHECK_EQUAL(count, static_cast<size_t>(1));
 }
 
+// =============================================================================
+// ShiftLines edge cases (Bug 10 regression)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestShiftLines_ZeroRows_DoesNotCrash)
+{
+	// Regression: m_Rows.size() - 2 underflows when size < 2
+	ScreenDataPage page(0);
+	BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 0, 0, 1));
+}
+
+BOOST_AUTO_TEST_CASE(TestShiftLines_OneRow_DoesNotCrash)
+{
+	ScreenDataPage page(1);
+	BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 0, 0, 1));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

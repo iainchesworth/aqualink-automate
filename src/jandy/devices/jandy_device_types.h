@@ -97,8 +97,11 @@ namespace AqualinkAutomate::Devices
 	public:
 		bool operator==(const JandyDeviceType& other) const;
 		bool operator!=(const JandyDeviceType& other) const;
-		virtual bool operator==(const Interfaces::IDeviceIdentifier& other) const final;
-		virtual bool operator!=(const Interfaces::IDeviceIdentifier& other) const final;
+		using Interfaces::IDeviceIdentifier::operator==;
+		using Interfaces::IDeviceIdentifier::operator!=;
+
+	protected:
+		bool Equals(const Interfaces::IDeviceIdentifier& other) const override;
 
 	public:
 		DeviceId operator()() const;

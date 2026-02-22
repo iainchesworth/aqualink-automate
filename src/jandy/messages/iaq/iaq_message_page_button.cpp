@@ -89,6 +89,7 @@ namespace AqualinkAutomate::Messages
 			const auto start_index = message_bytes.begin() + Index_ButtonNameText;
 			const auto end_index = start_index + length_to_copy;
 
+			m_ButtonName.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_ButtonName),
 				[](const auto& elem)
 				{

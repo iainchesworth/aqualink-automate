@@ -3,6 +3,8 @@
 #include <format>
 #include <iomanip>
 
+#include "platform/safe_ctime.h"
+
 namespace AqualinkAutomate::Developer
 {
 
@@ -23,7 +25,9 @@ namespace AqualinkAutomate::Developer
 			// Write header with timestamp
 			auto now = std::chrono::system_clock::now();
 			auto time_t_now = std::chrono::system_clock::to_time_t(now);
-			m_RecordingFile << "# Serial recording started at: " << std::ctime(&time_t_now);
+			char time_buf[26]{};
+			Platform::SafeCtime(&time_t_now, time_buf, sizeof(time_buf));
+			m_RecordingFile << "# Serial recording started at: " << time_buf;
 			m_RecordingFile << "# Format: [timestamp_ms] direction byte|byte|byte|...\n";
 			m_RecordingFile << "# Direction: R=read (from device), W=write (to device)\n";
 			m_RecordingFile << "#\n";

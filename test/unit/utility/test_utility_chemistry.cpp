@@ -154,4 +154,41 @@ BOOST_AUTO_TEST_CASE(FormatExceptionCase)
     }
 }
 
+BOOST_AUTO_TEST_CASE(Test_Chemistry_DefaultConstructor_ReturnsError)
+{
+    // Regression: default-constructed converter must report error, not success with zeros.
+    ChemistryStringConverter chem;
+    BOOST_CHECK(!chem.ORP().has_value());
+    BOOST_CHECK(!chem.PH().has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Chemistry_ORP_100_To_199_Accepted)
+{
+    // Regression: ORP values 100-199 were rejected by the old regex.
+    ChemistryStringConverter chem1("ORP/100 PH/7.0");
+    BOOST_REQUIRE(chem1.ORP().has_value());
+    BOOST_CHECK_EQUAL(chem1.ORP().value(), 100);
+
+    ChemistryStringConverter chem2("ORP/150 PH/7.0");
+    BOOST_REQUIRE(chem2.ORP().has_value());
+    BOOST_CHECK_EQUAL(chem2.ORP().value(), 150);
+
+    ChemistryStringConverter chem3("ORP/199 PH/7.0");
+    BOOST_REQUIRE(chem3.ORP().has_value());
+    BOOST_CHECK_EQUAL(chem3.ORP().value(), 199);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Chemistry_ReusedConverterAfterFailure)
+{
+    // Regression: error state must be reset when converting a new valid string.
+    ChemistryStringConverter chem;
+    BOOST_CHECK(!chem.ORP().has_value());  // default = error
+
+    chem = std::string("ORP/500 PH/7.2");
+    BOOST_REQUIRE(chem.ORP().has_value());
+    BOOST_CHECK_EQUAL(chem.ORP().value(), 500);
+    BOOST_REQUIRE(chem.PH().has_value());
+    BOOST_CHECK_EQUAL(chem.PH().value(), 7.2f);
+}
+
 BOOST_AUTO_TEST_SUITE_END();

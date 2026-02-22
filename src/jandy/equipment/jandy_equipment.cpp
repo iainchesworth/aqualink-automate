@@ -223,7 +223,7 @@ namespace AqualinkAutomate::Equipment
 		}
 
 		// Capture statistics, given we are processing every message.
-		m_StatsHub->MessageCounts[message.Id()]++;
+		++m_StatsHub->MessageCounts[message.Id()];
 
 		LogTrace(Channel::Equipment, std::format("Stats: {} messages of type {} received", m_StatsHub->MessageCounts[message.Id()], magic_enum::enum_name(message.Id())));
 	}

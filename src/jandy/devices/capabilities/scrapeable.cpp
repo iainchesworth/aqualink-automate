@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		else
 		{
 			LogDebug(Channel::Devices, std::format("Scrape -> starting active scrape of graph id {}", scrape_graph_id));
-			m_ActiveScrape = { scrape_graph_id, ScraperIter::begin(m_ScraperGraphs.at(scrape_graph_id), starting_index) };
+			m_ActiveScrape.emplace(scrape_graph_id, ScraperIter::begin(m_ScraperGraphs.at(scrape_graph_id), starting_index));
 		}
 	}
 

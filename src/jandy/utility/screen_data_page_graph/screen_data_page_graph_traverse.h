@@ -29,8 +29,8 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
         ForwardIterator(ForwardIterator&& other) noexcept;
 
     public:
-        ForwardIterator& operator=(const ForwardIterator& other);
-        ForwardIterator& operator=(ForwardIterator&& other) noexcept;
+        ForwardIterator& operator=(const ForwardIterator& other) = delete;
+        ForwardIterator& operator=(ForwardIterator&& other) noexcept = delete;
 
     public:
         ForwardIterator& operator++();

@@ -1,6 +1,10 @@
+#include <exception>
+#include <stdexcept>
+
 #include <boost/test/unit_test.hpp>
 
 #include "exceptions/exception_genericaqualinkexception.h"
+#include "exceptions/exception_hubnotfound.h"
 
 BOOST_AUTO_TEST_SUITE(TestSuite_Exceptions)
 
@@ -33,6 +37,69 @@ BOOST_AUTO_TEST_CASE(Test_Exceptions_ThrowAndCatch)
 	const std::string exception_message{ "This is a test message" };
 
 	BOOST_CHECK_THROW(throw GenericAqualinkException(exception_message), GenericAqualinkException);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_InheritsFromStdException)
+{
+	using AqualinkAutomate::Exceptions::GenericAqualinkException;
+
+	GenericAqualinkException ex("test inheritance");
+
+	// Verify dynamic_cast to std::exception succeeds
+	std::exception* base_ptr = dynamic_cast<std::exception*>(&ex);
+	BOOST_REQUIRE(base_ptr != nullptr);
+
+	// Verify what() returns the expected string
+	BOOST_CHECK_EQUAL(std::string(base_ptr->what()), "test inheritance");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_WhatMethodReturnsCorrectString)
+{
+	using AqualinkAutomate::Exceptions::GenericAqualinkException;
+
+	const std::string msg{ "detailed error message" };
+	GenericAqualinkException ex(msg);
+
+	// what() (lowercase, std::exception override) should match What() content
+	BOOST_CHECK_EQUAL(std::string(ex.what()), msg);
+	BOOST_CHECK_EQUAL(ex.What(), msg);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_CatchableViaStdException)
+{
+	using AqualinkAutomate::Exceptions::GenericAqualinkException;
+
+	bool caught_as_std_exception = false;
+
+	try
+	{
+		throw GenericAqualinkException("catch me");
+	}
+	catch (const std::exception& e)
+	{
+		caught_as_std_exception = true;
+		BOOST_CHECK_EQUAL(std::string(e.what()), "catch me");
+	}
+
+	BOOST_CHECK(caught_as_std_exception);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_DerivedTypeCatchableViaStdException)
+{
+	bool caught_as_std_exception = false;
+
+	try
+	{
+		throw AqualinkAutomate::Exceptions::Hub_NotFound();
+	}
+	catch (const std::exception& e)
+	{
+		caught_as_std_exception = true;
+		// Should have a non-empty what() message
+		BOOST_CHECK(std::string(e.what()).size() > 0);
+	}
+
+	BOOST_CHECK(caught_as_std_exception);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

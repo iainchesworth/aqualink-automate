@@ -10,8 +10,11 @@ namespace AqualinkAutomate::Interfaces
 		virtual ~IDeviceIdentifier() = default;
 
 	public:
-		virtual bool operator==(const IDeviceIdentifier& other) const = 0;
-		virtual bool operator!=(const IDeviceIdentifier& other) const = 0;
+		bool operator==(const IDeviceIdentifier& other) const { return Equals(other); }
+		bool operator!=(const IDeviceIdentifier& other) const { return !Equals(other); }
+
+	protected:
+		virtual bool Equals(const IDeviceIdentifier& other) const = 0;
 	};
 
 }

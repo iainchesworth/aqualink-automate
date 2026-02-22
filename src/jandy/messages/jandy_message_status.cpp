@@ -119,7 +119,7 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes into JandyMessage_Status type", message_bytes.size()));
 
-		if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH) != message_bytes.size())
+		if (message_bytes.size() < static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH))
 		{
 			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, message_bytes.size()));
 		}
@@ -141,30 +141,61 @@ namespace AqualinkAutomate::Messages
 
 			m_Aux6 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x40) >> 6).value_or(Kernel::AuxillaryStatuses::Unknown);
 			m_Aux4 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
-			
+
 			m_PoolHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[8] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
 
-			m_SolarHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
-			m_SpaHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x07) >> 0).value_or(Kernel::HeaterStatuses::Unknown);
+			// Byte [9] contains SolarHeater and SpaHeater bits, but is only
+			// present in extended-payload packets (6+ payload bytes, 13+ total).
+			// In standard 12-byte packets (5-byte payload), index 9 is the
+			// checksum byte and must not be interpreted as payload.
+			const bool has_extended_payload = message_bytes.size() > static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH);
 
-			LogDebug(
-				Channel::Messages, 
-				std::format(
-					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 
-					message_bytes.size(),
-					message_bytes.size(), 
-					message_bytes[5],
-					message_bytes[5],
-					message_bytes[6],
-					message_bytes[6],
-					message_bytes[7],
-					message_bytes[7],
-					message_bytes[8],
-					message_bytes[8],
-					message_bytes[9],
-					message_bytes[9]
-				)
-			);
+			if (has_extended_payload)
+			{
+				m_SolarHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
+				m_SpaHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x07) >> 0).value_or(Kernel::HeaterStatuses::Unknown);
+			}
+
+			if (has_extended_payload)
+			{
+				LogDebug(
+					Channel::Messages,
+					std::format(
+						"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}",
+						message_bytes.size(),
+						message_bytes.size(),
+						message_bytes[5],
+						message_bytes[5],
+						message_bytes[6],
+						message_bytes[6],
+						message_bytes[7],
+						message_bytes[7],
+						message_bytes[8],
+						message_bytes[8],
+						message_bytes[9],
+						message_bytes[9]
+					)
+				);
+			}
+			else
+			{
+				LogDebug(
+					Channel::Messages,
+					std::format(
+						"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}",
+						message_bytes.size(),
+						message_bytes.size(),
+						message_bytes[5],
+						message_bytes[5],
+						message_bytes[6],
+						message_bytes[6],
+						message_bytes[7],
+						message_bytes[7],
+						message_bytes[8],
+						message_bytes[8]
+					)
+				);
+			}
 
 			return true;
 		}

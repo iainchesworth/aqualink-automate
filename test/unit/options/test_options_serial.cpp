@@ -145,6 +145,17 @@ BOOST_AUTO_TEST_CASE(Test_SerialOptions_Rfc2217Default)
 	BOOST_CHECK_EQUAL(result.value().use_rawtcp, false);
 }
 
+BOOST_AUTO_TEST_CASE(Test_SerialOptions_Rfc2217Flag_ParsesCorrectly)
+{
+	// Regression: option was previously misspelled as "rfc2177"
+	Options::Serial::OptionsProcessor processor;
+	auto vm = ParseSerialOptions(processor, { "program", "--rfc2217" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_EQUAL(result.value().use_rfc2217, true);
+}
+
 BOOST_AUTO_TEST_CASE(Test_SerialOptions_RawtcpEnabled)
 {
 	Options::Serial::OptionsProcessor processor;
@@ -171,7 +182,7 @@ BOOST_AUTO_TEST_CASE(Test_SerialOptions_ConflictPhysicalAndRemote)
 BOOST_AUTO_TEST_CASE(Test_SerialOptions_ConflictRfc2217AndRawtcp)
 {
 	Options::Serial::OptionsProcessor processor;
-	auto vm = ParseSerialOptions(processor, { "program", "--rfc2177", "--rawtcp" });
+	auto vm = ParseSerialOptions(processor, { "program", "--rfc2217", "--rawtcp" });
 
 	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_ConflictingOptions);
 }

@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
             // The provided start_id exists so map the vertex into the value_type.
             const auto& vertex_desc = m_Graph.m_VertexMap.at(start_id);
             std::get<Vertex>(m_CurrentStep) = m_Graph.m_Graph[vertex_desc];
+            m_Visited.insert(start_id);
         }
     }
 
@@ -25,30 +26,6 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
         m_CurrentStep(std::move(other.m_CurrentStep)),
         m_Visited(std::move(other.m_Visited))
     {
-    }
-
-    ForwardIterator& ForwardIterator::operator=(const ForwardIterator& other)
-    {
-        if (this != &other)
-        {
-            m_Graph = other.m_Graph;
-            m_CurrentStep = other.m_CurrentStep;
-            m_Visited = other.m_Visited;
-        }
-
-        return *this;
-    }
-
-    ForwardIterator& ForwardIterator::operator=(ForwardIterator&& other) noexcept
-    {
-        if (this != &other)
-        {
-            m_Graph = std::move(other.m_Graph);
-            m_CurrentStep = std::move(other.m_CurrentStep);
-            m_Visited = std::move(other.m_Visited);
-        }
-
-        return *this;
     }
 
     ForwardIterator& ForwardIterator::operator++()

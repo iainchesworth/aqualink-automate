@@ -56,4 +56,27 @@ BOOST_AUTO_TEST_CASE(TestToString)
     BOOST_CHECK_EQUAL(message.ToString(), expected);
 }
 
+BOOST_AUTO_TEST_CASE(TestDoubleDeserialize_DoesNotAppend)
+{
+    // Regression test: deserializing twice on the same object must not
+    // concatenate the second text onto the first.
+    const std::string LINE_A{"FIRST LINE DATA!"};
+    const std::string LINE_B{"SECOND LINE !!! "};
+
+    JandyMessage_Message src_a(LINE_A);
+    JandyMessage_Message src_b(LINE_B);
+
+    std::vector<uint8_t> bytes_a, bytes_b;
+    BOOST_REQUIRE(src_a.Serialize(bytes_a));
+    BOOST_REQUIRE(src_b.Serialize(bytes_b));
+
+    JandyMessage_Message target;
+    BOOST_REQUIRE(target.Deserialize(std::as_bytes(std::span<uint8_t>(bytes_a))));
+    BOOST_CHECK_EQUAL(target.Line(), LINE_A);
+
+    // Deserialize again into the same object
+    BOOST_REQUIRE(target.Deserialize(std::as_bytes(std::span<uint8_t>(bytes_b))));
+    BOOST_CHECK_EQUAL(target.Line(), LINE_B);  // Must be LINE_B only, not LINE_A+LINE_B
+}
+
 BOOST_AUTO_TEST_SUITE_END()

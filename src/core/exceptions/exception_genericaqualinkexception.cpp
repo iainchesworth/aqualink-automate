@@ -14,6 +14,11 @@ namespace AqualinkAutomate::Exceptions
 		LogTrace(Channel::Exceptions, "GenericAqualinkException exception base was constructed");
 	}
 
+	const char* GenericAqualinkException::what() const noexcept
+	{
+		return m_ExceptionMessage.c_str();
+	}
+
 	std::string& GenericAqualinkException::What()
 	{
 		return m_ExceptionMessage;

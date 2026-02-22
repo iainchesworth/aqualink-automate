@@ -113,6 +113,18 @@ target_sources(
 	unit/devices/test_devices_pda.cpp
 	unit/devices/test_devices_keypad.cpp
 	unit/devices/test_devices_serial_adapter.cpp
+	unit/kernel/test_kernel_hub_locator.cpp
+	unit/kernel/test_kernel_equipment_versions.cpp
+	unit/kernel/test_kernel_body_of_water.cpp
+	unit/kernel/test_kernel_status_conversions.cpp
+	unit/utility/test_utility_string_manipulation.cpp
+	unit/utility/test_utility_pool_configuration_decoder.cpp
+	unit/utility/test_utility_auxillary_state_converter.cpp
+	unit/http/test_http_server_fields.cpp
+	unit/profiling/test_profiling_noop.cpp
+	unit/options/test_options_settings.cpp
+	unit/serial/test_mock_serial_port_impl.cpp
+	unit/serial/test_test_serial_port_impl.cpp
 )
 
 target_compile_definitions(

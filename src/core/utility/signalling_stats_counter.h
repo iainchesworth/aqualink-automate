@@ -31,14 +31,13 @@ namespace AqualinkAutomate::Utility
 		StatsCounter(StatsSignal& stat_signal);
 		StatsCounter(const StatsCounter& other);
 		StatsCounter(StatsCounter&& other) noexcept;
-		StatsCounter& operator=(const StatsCounter& other);
-		StatsCounter& operator=(StatsCounter&& other) noexcept;
+		StatsCounter& operator=(const StatsCounter& other) = delete;
+		StatsCounter& operator=(StatsCounter&& other) noexcept = delete;
 
 	public:
 		StatsCounter& operator=(const uint64_t count_to_assign);
 		StatsCounter& operator+=(const uint64_t count_to_add);
 		StatsCounter& operator++();
-		StatsCounter& operator++(int);
 
 	public:
 		uint64_t operator()() const;

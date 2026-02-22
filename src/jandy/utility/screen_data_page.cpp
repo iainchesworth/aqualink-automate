@@ -81,7 +81,7 @@ namespace AqualinkAutomate::Utility
 
 	void ScreenDataPage::ShiftLines(ShiftDirections direction, uint8_t start_id, uint8_t end_id, uint8_t lines_to_shift)
 	{
-		if (start_id > (m_Rows.size() - 2))
+		if (m_Rows.size() < 2 || start_id > (m_Rows.size() - 2))
 		{
 			// Out of range - no suitable lines or not enough to rotate
 			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index out of range; start index -> {} (0-based); total lines -> {}", start_id, m_Rows.size()));

@@ -14,6 +14,10 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		BodyOfWater(BodyOfWaterIds id, std::string_view label);
+		BodyOfWater(const BodyOfWater& other) = default;
+		BodyOfWater& operator=(const BodyOfWater& other) = default;
+		BodyOfWater(BodyOfWater&& other) noexcept = default;
+		BodyOfWater& operator=(BodyOfWater&& other) noexcept = default;
 
 	public:
 		BodyOfWaterIds Id() const;

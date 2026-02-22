@@ -253,6 +253,7 @@ target_sources(
 	platform/windows/uac_elevation.cpp
 	platform/windows/physical_serial_port_timeout.cpp
 	platform/windows/network_serial_port_timeout.cpp
+	platform/windows/safe_ctime.cpp
 )
 
 target_compile_definitions(
@@ -288,6 +289,7 @@ target_sources(
 	platform/linux/get_terminal_column_width.cpp
 	platform/linux/physical_serial_port_timeout.cpp
 	platform/linux/network_serial_port_timeout.cpp
+	platform/linux/safe_ctime.cpp
 )
 endif(LINUX)
 
@@ -300,6 +302,7 @@ target_sources(
 	platform/macos/get_terminal_column_width.cpp
 	platform/macos/physical_serial_port_timeout.cpp
 	platform/macos/network_serial_port_timeout.cpp
+	platform/macos/safe_ctime.cpp
 )
 endif(APPLE)
 

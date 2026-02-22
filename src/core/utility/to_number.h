@@ -23,7 +23,7 @@ namespace AqualinkAutomate::Utility
 	{
 		NUMERIC_TYPE value;
 
-		if (auto [_, ec] = std::from_chars(str.data(), str.data() + str.size(), value); std::errc() == ec)
+		if (auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value); std::errc() == ec && ptr == str.data() + str.size())
 		{
 			return value;
 		}

@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Kernel
 	public:
 		// The total number of messages sent or received.
 		// This is a generic counter that works with any enum type (e.g., JandyMessageIds, PentairMessageIds).
-		// Use MessageCounts[SomeMessageIdEnum::Value]++ to increment.
+		// Use ++MessageCounts[SomeMessageIdEnum::Value] to increment.
 		Utility::SignallingStatsCounter MessageCounts;
 
 	public:

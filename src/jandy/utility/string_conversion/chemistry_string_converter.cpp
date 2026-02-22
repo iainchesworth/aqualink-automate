@@ -13,13 +13,13 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string ChemistryStringConverter::REGEX_PATTERN{ "(ORP\\/([2-9][0-9]{2}|[2-9][0-9]{1}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))" };
+	const std::string ChemistryStringConverter::REGEX_PATTERN{ "(ORP\\/([0-9]{1,4}))\\s+(PH\\/([6-7]\\.[0-9]|8\\.([0-1][0-9]|2)))" };
 	const boost::regex ChemistryStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
 	ChemistryStringConverter::ChemistryStringConverter() noexcept :
 		m_ORP(0),
 		m_PH(0.0f),
-		m_ErrorOccurred(std::nullopt)
+		m_ErrorOccurred(ErrorCodes::StringConversion_ErrorCodes::MalformedInput)
 	{
 	}
 
@@ -92,6 +92,8 @@ namespace AqualinkAutomate::Utility
 
 	void ChemistryStringConverter::ConvertStringToChemistry(const std::string& chemistry_string) noexcept
 	{
+		m_ErrorOccurred = std::nullopt;
+
 		const auto chemistry_data = ValidateAndExtractData(chemistry_string);
 
 		const auto orp = std::get<0>(chemistry_data);

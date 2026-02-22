@@ -9,10 +9,14 @@ using namespace AqualinkAutomate::Units;
 namespace AqualinkAutomate::Kernel
 {
 
-    class ORP 
+    class ORP
     {
     public:
         ORP(boost::float64_t value_in_mV);
+        ORP(const ORP& other) = default;
+        ORP& operator=(const ORP& other) = default;
+        ORP(ORP&& other) noexcept = default;
+        ORP& operator=(ORP&& other) noexcept = default;
 
     public:
         Units::millivolt_quantity operator()() const;

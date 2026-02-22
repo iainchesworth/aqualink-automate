@@ -23,7 +23,8 @@ namespace AqualinkAutomate::Messages
 
 	bool JandyMessage_Probe::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		// Probe has no payload; nothing to serialize.
+		return true;
 	}
 
 	bool JandyMessage_Probe::DeserializeContents(std::span<const uint8_t> message_bytes)

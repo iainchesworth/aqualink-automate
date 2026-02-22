@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include "developer/mock_serial_port_impl.h"
 
 namespace AqualinkAutomate::Developer
@@ -51,7 +53,7 @@ namespace AqualinkAutomate::Developer
 		{
 			ec = boost::asio::error::already_open;
 		}
-		else if (m_File.open(device_name); m_File.is_open())
+		else if (std::filesystem::exists(device_name) && (m_File.open(device_name), m_File.is_open()))
 		{
 			m_MockData = false;
 			m_IsOpen = true;
@@ -82,6 +84,8 @@ namespace AqualinkAutomate::Developer
 
 	void MockSerialPortImpl::cancel(boost::system::error_code& ec)
 	{
+		ec = {};
+
 		if (!m_IsOpen)
 		{
 			ec = boost::asio::error::bad_descriptor;
@@ -116,31 +120,43 @@ namespace AqualinkAutomate::Developer
 		m_IsOpen = false;
 		m_MockData = true;
 
-		if (m_File && m_File.is_open()) m_File.close();
+		try
+		{
+			if (m_File && m_File.is_open()) m_File.close();
+		}
+		catch (const std::exception&)
+		{
+			ec = boost::asio::error::operation_aborted;
+		}
 	}
 
 	void MockSerialPortImpl::set_baud_rate(uint32_t rate, boost::system::error_code& ec)
 	{
+		ec = {};
 		m_Options.baud_rate = rate;
 	}
 
 	void MockSerialPortImpl::set_character_size(uint8_t bits, boost::system::error_code& ec)
 	{
+		ec = {};
 		m_Options.character_size = bits;
 	}
 
 	void MockSerialPortImpl::set_flow_control(Serial::FlowControl fc, boost::system::error_code& ec)
 	{
+		ec = {};
 		m_Options.flow_control = fc;
 	}
 
 	void MockSerialPortImpl::set_parity(Serial::Parity p, boost::system::error_code& ec)
 	{
+		ec = {};
 		m_Options.parity = p;
 	}
 
 	void MockSerialPortImpl::set_stop_bits(Serial::StopBits sb, boost::system::error_code& ec)
 	{
+		ec = {};
 		m_Options.stop_bits = sb;
 	}
 
@@ -410,6 +426,11 @@ namespace AqualinkAutomate::Developer
 
 		const auto length_to_copy = boost::asio::buffer_size(buffer);
 		auto length_read = read_from_file(m_File, static_cast<uint8_t*>(buffer.data()), length_to_copy, ec);
+
+		if (ec)
+		{
+			return std::unexpected(ec);
+		}
 
 		return length_read;
 	}

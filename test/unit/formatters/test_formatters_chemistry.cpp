@@ -30,15 +30,14 @@ BOOST_AUTO_TEST_CASE(TestFormat_ValidChemistry_ContainsORPAndPH)
 // Invalid/Error State
 // =============================================================================
 
-BOOST_AUTO_TEST_CASE(TestFormat_DefaultChemistry_ShowsDefaultValues)
+BOOST_AUTO_TEST_CASE(TestFormat_DefaultChemistry_ShowsError)
 {
 	ChemistryStringConverter chemistry;
 
 	auto result = std::format("{}", chemistry);
 
-	// Default-constructed converter has ORP=0 and PH=0.0 - valid values, not error
-	BOOST_CHECK(result.find("ORP=") != std::string::npos);
-	BOOST_CHECK(result.find("PH=") != std::string::npos);
+	// Bug 7 fix: default-constructed converter is now in error state
+	BOOST_CHECK_EQUAL(result, "CHEM=??");
 }
 
 BOOST_AUTO_TEST_CASE(TestFormat_InvalidString_ShowsError)

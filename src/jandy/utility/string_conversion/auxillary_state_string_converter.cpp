@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Utility
 	AuxillaryStateStringConverter::AuxillaryStateStringConverter() noexcept :
 		m_Label(),
 		m_State(Kernel::AuxillaryStatuses::Unknown),
-		m_ErrorOccurred(std::nullopt)
+		m_ErrorOccurred(ErrorCodes::StringConversion_ErrorCodes::MalformedInput)
 	{
 	}
 
@@ -89,6 +89,8 @@ namespace AqualinkAutomate::Utility
 
 	void AuxillaryStateStringConverter::ConvertStringToStatus(const std::string& auxillary_status_string) noexcept
 	{
+		m_ErrorOccurred = std::nullopt;
+
 		const auto auxillary_status_data = ValidateAndExtractData(auxillary_status_string);
 
 		const auto name = std::get<0>(auxillary_status_data);
