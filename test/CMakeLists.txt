@@ -90,7 +90,29 @@ target_sources(
 	unit/utility/test_utility_tonumber.cpp
 	unit/utility/test_utility_valuedebouncer.cpp
 	unit/navigation/test_navigation_menu_model.cpp
+	unit/navigation/test_navigation_navigator_edgecases.cpp
+	unit/navigation/test_navigation_visit_policies.cpp
 	unit/navigation/test_spider_engine.cpp
+	unit/messages/test_chemlink_message_response.cpp
+	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_devices_command_dispatcher.cpp
+	unit/devices/test_devices_iaq.cpp
+	unit/messages/test_iaq_messages.cpp
+	unit/messages/test_iaq_message_main_status.cpp
+	unit/formatters/test_formatters_jandy_messages.cpp
+	unit/formatters/test_formatters_jandy_devices.cpp
+	unit/formatters/test_formatters_screen_data_page.cpp
+	unit/formatters/test_formatters_stats_counter.cpp
+	unit/formatters/test_formatters_chemistry.cpp
+	unit/serial/test_serial_port.cpp
+	unit/messages/test_epump_messages.cpp
+	unit/messages/test_heater_messages.cpp
+	unit/messages/test_pda_messages.cpp
+	unit/messages/test_serial_adapter_messages.cpp
+	unit/devices/test_devices_onetouch.cpp
+	unit/devices/test_devices_pda.cpp
+	unit/devices/test_devices_keypad.cpp
+	unit/devices/test_devices_serial_adapter.cpp
 )
 
 target_compile_definitions(
@@ -199,6 +221,10 @@ target_sources(
 	integration/flows/test_flow_serial_to_web.cpp
 	integration/flows/test_flow_mqtt_commands.cpp
 	integration/flows/test_flow_web_commands.cpp
+	# IAQ device tests
+	integration/devices/test_iaq_device_commands.cpp
+	# Serial Adapter device tests
+	integration/devices/test_serial_adapter_device_commands.cpp
 	# reuse unit test support
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_testserialportimpl.cpp
