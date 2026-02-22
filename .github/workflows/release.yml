@@ -40,28 +40,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup C++ toolchain
-        if: runner.os != 'Windows'
-        uses: aminya/setup-cpp@v1
+      - uses: ./.github/actions/setup-cpp-toolchain
         with:
           compiler: ${{ matrix.compiler }}
-          cmake: true
-          ninja: true
-
-      - name: Setup build tools
-        if: runner.os == 'Windows'
-        uses: aminya/setup-cpp@v1
-        with:
-          cmake: true
-          ninja: true
 
       - name: Install NSIS
         if: runner.os == 'Windows'
         run: choco install nsis -y
 
-      - uses: lukka/run-vcpkg@v11
+      - uses: ./.github/actions/setup-vcpkg-cache
         with:
-          vcpkgDirectory: "${{ github.workspace }}/deps/vcpkg"
+          cache-key-prefix: ${{ matrix.name }}
 
       - name: Configure
         uses: lukka/run-cmake@v10

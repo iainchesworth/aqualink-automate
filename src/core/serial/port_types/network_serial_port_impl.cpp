@@ -40,7 +40,8 @@ namespace AqualinkAutomate::Serial::PortTypes
 	NetworkSerialPortImpl::~NetworkSerialPortImpl()
 	{
 		LogTrace(Channel::Serial, "NetworkSerialPortImpl destructor called");
-		close();
+		boost::system::error_code ec;
+		close(ec);
 	}
 
 	std::unique_ptr<Interfaces::ISerialPortProtocol> NetworkSerialPortImpl::CreateProtocolHandler()

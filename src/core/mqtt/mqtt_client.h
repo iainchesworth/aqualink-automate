@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Mqtt
 
 	public:
 		void Start();
-		void Stop();
+		void Stop() noexcept;
 		void Poll();
 
 		bool IsConnected() const noexcept;

@@ -138,7 +138,7 @@ namespace AqualinkAutomate::Mqtt
 			m_Settings.broker_host, m_Settings.broker_port));
 	}
 
-	void MqttClient::Stop()
+	void MqttClient::Stop() noexcept
 	{
 		if (!m_Running)
 		{
@@ -314,7 +314,7 @@ namespace AqualinkAutomate::Mqtt
 	{
 		if (m_SslStream)
 		{
-			return m_Socket && m_Socket->is_open();
+			return m_SslStream->lowest_layer().is_open();
 		}
 		return m_Socket && m_Socket->is_open();
 	}
@@ -958,7 +958,6 @@ namespace AqualinkAutomate::Mqtt
 	std::string MqttClient::GenerateClientId() const
 	{
 		std::random_device rd;
-		std::mt19937 gen(rd());
 		std::uniform_int_distribution<> dis(0, 15);
 
 		const char* hex = "0123456789abcdef";
@@ -966,7 +965,7 @@ namespace AqualinkAutomate::Mqtt
 
 		for (int i = 0; i < 8; ++i)
 		{
-			result += hex[dis(gen)];
+			result += hex[dis(rd)];
 		}
 
 		return result;
@@ -982,9 +981,8 @@ namespace AqualinkAutomate::Mqtt
 		delay = std::min(delay, max_delay);
 
 		std::random_device rd;
-		std::mt19937 gen(rd());
 		std::uniform_int_distribution<> jitter(0, static_cast<int>(delay / 4));
-		delay += jitter(gen);
+		delay += jitter(rd);
 
 		return std::chrono::seconds(delay);
 	}

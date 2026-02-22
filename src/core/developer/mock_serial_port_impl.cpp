@@ -23,7 +23,8 @@ namespace AqualinkAutomate::Developer
 
 	MockSerialPortImpl::~MockSerialPortImpl()
 	{
-		close();
+		boost::system::error_code ec;
+		close(ec);
 	}
 
 	void MockSerialPortImpl::open(const std::string& device_name)
@@ -253,10 +254,9 @@ namespace AqualinkAutomate::Developer
 		auto* buffer_begin = static_cast<uint8_t*>(buffer.data());
 		auto* buffer_end = buffer_begin + length_to_copy;
 
-		std::mt19937 gen(m_RandomDevice());
 		std::generate(buffer_begin, buffer_end, [&]() -> uint8_t
 			{
-				return static_cast<uint8_t>(m_Distribution(gen));
+				return static_cast<uint8_t>(m_Distribution(m_RandomDevice));
 			}
 		);
 

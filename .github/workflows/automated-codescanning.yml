@@ -44,40 +44,13 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - uses: aminya/setup-cpp@v1
+    - uses: ./.github/actions/setup-cpp-toolchain
       with:
         compiler: gcc-13
-        cmake: true
-        ninja: true
 
-    - name: Set up vcpkg cache directories
-      shell: bash
-      run: |
-        BINARY_DIR="$HOME/.cache/vcpkg/archives"
-        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-    - name: Cache vcpkg downloads
-      uses: actions/cache@v4
+    - uses: ./.github/actions/setup-vcpkg-cache
       with:
-        path: ~/.cache/vcpkg/downloads
-        key: vcpkg-downloads-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-downloads-
-
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/vcpkg/archives
-        key: vcpkg-Linux GCC-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-Linux GCC-
-
-    - uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      with:
-        vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
+        cache-key-prefix: Linux GCC
 
     - name: Configure
       uses: lukka/run-cmake@v10
@@ -141,34 +114,9 @@ jobs:
         gcovr: true
         python: true
 
-    - name: Set up vcpkg cache directories
-      shell: bash
-      run: |
-        BINARY_DIR="$HOME/.cache/vcpkg/archives"
-        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-    - name: Cache vcpkg downloads
-      uses: actions/cache@v4
+    - uses: ./.github/actions/setup-vcpkg-cache
       with:
-        path: ~/.cache/vcpkg/downloads
-        key: vcpkg-downloads-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-downloads-
-
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/vcpkg/archives
-        key: vcpkg-Linux GCC-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-Linux GCC-
-
-    - uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      with:
-        vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
+        cache-key-prefix: Linux GCC
 
     - name: Configure
       uses: lukka/run-cmake@v10
@@ -206,39 +154,13 @@ jobs:
       with:
         submodules: recursive
 
-    - uses: aminya/setup-cpp@v1
+    - uses: ./.github/actions/setup-cpp-toolchain
       with:
-        cmake: true
-        ninja: true
+        compiler: msvc
 
-    - name: Set up vcpkg cache directories
-      shell: bash
-      run: |
-        BINARY_DIR="$HOME/.cache/vcpkg/archives"
-        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-    - name: Cache vcpkg downloads
-      uses: actions/cache@v4
+    - uses: ./.github/actions/setup-vcpkg-cache
       with:
-        path: ~/.cache/vcpkg/downloads
-        key: vcpkg-downloads-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-downloads-
-
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/vcpkg/archives
-        key: vcpkg-Windows MSVC-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-Windows MSVC-
-
-    - uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      with:
-        vcpkgDirectory: '${{ github.workspace }}/deps/vcpkg'
+        cache-key-prefix: Windows MSVC
 
     - name: Configure
       uses: lukka/run-cmake@v10

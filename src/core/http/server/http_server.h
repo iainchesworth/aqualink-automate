@@ -105,7 +105,7 @@ namespace AqualinkAutomate::HTTP
 
 		bool Start();
 		void Poll();
-		void Stop();
+		void Stop() noexcept;
 
 	private:
 		void DoAccept();

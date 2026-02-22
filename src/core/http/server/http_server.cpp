@@ -652,7 +652,7 @@ namespace AqualinkAutomate::HTTP
 		std::erase_if(m_Sessions, [](const auto& s) { return !s || s->IsDone(); });
 	}
 
-	void HttpServer::Stop()
+	void HttpServer::Stop() noexcept
 	{
 		m_Running = false;
 

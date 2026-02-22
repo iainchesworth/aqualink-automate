@@ -119,10 +119,10 @@ namespace AqualinkAutomate::Kernel
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
-		for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
+		auto [begin, end] = boost::vertices(fg);
+		if (begin != end)
 		{
-			// Use the first device with a matching id.
-			return m_DevicesGraph[vp];
+			return m_DevicesGraph[*begin];
 		}
 
 		return nullptr;

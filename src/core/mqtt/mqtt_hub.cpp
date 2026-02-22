@@ -31,11 +31,7 @@ namespace AqualinkAutomate::Mqtt
 
 	MqttHub::~MqttHub()
 	{
-		m_ClientConnectedConnection.disconnect();
-		m_ClientMessageConnection.disconnect();
-		m_DataHubConnection.disconnect();
-		m_EquipmentHubConnection.disconnect();
-
+		// scoped_connection RAII handles disconnect() automatically.
 		m_Running = false;
 	}
 

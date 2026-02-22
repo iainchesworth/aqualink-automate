@@ -1,0 +1,50 @@
+name: Setup vcpkg cache
+description: Configure vcpkg binary and download caching with proper cache keys
+
+inputs:
+  cache-key-prefix:
+    description: Platform/compiler identifier for cache key (e.g. "Linux GCC")
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Get vcpkg version hash
+      id: vcpkg-version
+      shell: bash
+      run: echo "hash=$(git -C "${{ github.workspace }}/deps/vcpkg" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    - name: Set up vcpkg cache directories
+      shell: bash
+      run: |
+        BINARY_DIR="$HOME/.cache/vcpkg/archives"
+        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
+    - name: Cache vcpkg downloads
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/vcpkg/downloads
+        key: vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-
+          vcpkg-downloads-
+
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/vcpkg/archives
+        key: vcpkg-${{ inputs.cache-key-prefix }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
+        restore-keys: |
+          vcpkg-${{ inputs.cache-key-prefix }}-${{ steps.vcpkg-version.outputs.hash }}-
+          vcpkg-${{ inputs.cache-key-prefix }}-
+
+    - name: Run vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: ${{ github.workspace }}/deps/vcpkg
+        doNotCache: true
+      env:
+        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
