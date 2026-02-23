@@ -357,3 +357,9 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 /.clang-format
+
+# Packer - never commit variable values (may contain secrets/infra details)
+cicd/packer/*.pkrvars.hcl
+!cicd/packer/*.pkrvars.hcl.example
+cicd/packer/ISOs/
+cicd/packer/packer_cache/

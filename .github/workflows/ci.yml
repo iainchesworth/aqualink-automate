@@ -14,27 +14,30 @@ permissions:
   contents: read
 
 jobs:
+  # Runner selection: set RUNNER_LINUX / RUNNER_WINDOWS repository variables
+  # to use self-hosted runners (e.g. '["self-hosted","linux","x64"]').
+  # Leave unset to fall back to GitHub-hosted runners.
   build-and-test:
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: "Linux GCC"
-            os: ubuntu-latest
-            compiler: gcc-13
+            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
+            compiler: gcc-14
             configure_preset: config-linux-gcc
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc
           - name: "Windows MSVC"
-            os: windows-latest
+            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
             configure_preset: config-windows-msvc
             build_preset: build-windows-msvc
             test_preset: test-windows-msvc
           - name: "macOS Clang"
-            os: macos-latest
+            runner: '["macos-latest"]'
             compiler: llvm
             configure_preset: config-macos-llvm
             build_preset: build-macos-llvm
@@ -45,13 +48,41 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Clean workspace (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: rm -rf build/
+
       - uses: ./.github/actions/setup-cpp-toolchain
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           compiler: ${{ matrix.compiler }}
 
+      - name: Setup vcpkg cache (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/setup-vcpkg-cache
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           cache-key-prefix: ${{ matrix.name }}
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
+            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          fi
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
       - name: Configure
         uses: lukka/run-cmake@v10
@@ -77,7 +108,7 @@ jobs:
 
   docker-verify:
     name: Docker Verification
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +123,6 @@ jobs:
           context: .
           target: ci
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build runtime target
         uses: docker/build-push-action@v6
@@ -103,7 +132,6 @@ jobs:
           push: false
           load: true
           tags: aqualink-automate:verify
-          cache-from: type=gha
 
       - name: Verify runtime starts
         run: docker run --rm aqualink-automate:verify --version

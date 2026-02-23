@@ -8,27 +8,27 @@ on:
 jobs:
   build-packages:
     name: Package — ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: "Linux GCC"
-            os: ubuntu-latest
-            compiler: gcc-13
+            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
+            compiler: gcc-14
             configure_preset: config-linux-gcc
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc
             package_preset: pack-linux-gcc
           - name: "Windows MSVC"
-            os: windows-latest
+            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
             configure_preset: config-windows-msvc
             build_preset: build-windows-msvc
             test_preset: test-windows-msvc
             package_preset: pack-windows-msvc
           - name: "macOS Clang"
-            os: macos-latest
+            runner: '["macos-latest"]'
             compiler: llvm
             configure_preset: config-macos-llvm
             build_preset: build-macos-llvm
@@ -40,17 +40,45 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Clean workspace (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: rm -rf build/
+
       - uses: ./.github/actions/setup-cpp-toolchain
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           compiler: ${{ matrix.compiler }}
 
       - name: Install NSIS
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && !contains(matrix.runner, 'self-hosted')
         run: choco install nsis -y
 
+      - name: Setup vcpkg cache (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/setup-vcpkg-cache
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           cache-key-prefix: ${{ matrix.name }}
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
+            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          fi
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
       - name: Configure
         uses: lukka/run-cmake@v10
@@ -85,7 +113,7 @@ jobs:
 
   docker-publish:
     name: Docker Publish
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     permissions:
       packages: write
 
@@ -122,8 +150,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   github-release:
     name: GitHub Release
