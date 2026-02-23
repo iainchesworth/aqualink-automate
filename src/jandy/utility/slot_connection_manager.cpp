@@ -1,4 +1,4 @@
-#include "jandy/utility/slot_connection_manager.h"
+#include "utility/slot_connection_manager.h"
 
 namespace AqualinkAutomate::Utility
 {

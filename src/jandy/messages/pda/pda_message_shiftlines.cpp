@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/pda/pda_message_shiftlines.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::PDAMessage_ShiftLines> PDAMessage_ShiftLines::g_PDAMessage_ShiftLines_Registration(JandyMessageIds::PDA_ShiftLines);
-
-	PDAMessage_ShiftLines::PDAMessage_ShiftLines() :
+	PDAMessage_ShiftLines::PDAMessage_ShiftLines() noexcept :
 		PDAMessage(JandyMessageIds::PDA_ShiftLines),
 		Interfaces::IMessageSignalRecv<PDAMessage_ShiftLines>(),
 		m_FirstLineId(0),
@@ -20,9 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_ShiftLines::~PDAMessage_ShiftLines()
-	{
-	}
 
 	uint8_t PDAMessage_ShiftLines::FirstLineId() const
 	{
@@ -49,19 +44,19 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool PDAMessage_ShiftLines::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_ShiftLines::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_ShiftLines type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_FirstLineId)
+		if (message_bytes.size() <= Index_FirstLineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise FirstLineId.");
 		}
-		else if (message_bytes.size() < Index_LastLineId)
+		else if (message_bytes.size() <= Index_LastLineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LastLineId.");
 		}
-		else if (message_bytes.size() < Index_LineShift)
+		else if (message_bytes.size() <= Index_LineShift)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_ShiftLines is too short to deserialise LineShift.");
 		}

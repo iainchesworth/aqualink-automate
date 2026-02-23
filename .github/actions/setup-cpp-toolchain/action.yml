@@ -1,0 +1,32 @@
+name: Setup C++ toolchain
+description: Install platform-appropriate C++ compiler and build tools
+
+inputs:
+  compiler:
+    description: Compiler identifier (e.g. "gcc-13", "llvm", "msvc")
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup C++ toolchain (Linux)
+      if: runner.os == 'Linux'
+      uses: aminya/setup-cpp@v1
+      with:
+        compiler: ${{ inputs.compiler }}
+        cmake: true
+        ninja: true
+
+    - name: Setup build tools (Windows)
+      if: runner.os == 'Windows'
+      uses: aminya/setup-cpp@v1
+      with:
+        cmake: true
+        ninja: true
+
+    - name: Install macOS build tools
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install llvm cmake ninja autoconf automake libtool
+        echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"

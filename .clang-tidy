@@ -1,0 +1,81 @@
+# .clang-tidy — Static analysis configuration for security and code quality
+#
+# Focus areas:
+#   - Security vulnerabilities (buffer overflows, injection, etc.)
+#   - Memory safety (use-after-free, null dereference, leaks)
+#   - Undefined behavior (integer overflow, uninitialized vars)
+#   - Performance issues
+#
+# Run manually: clang-tidy -p build/config-xxx src/core/**/*.cpp
+
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-narrowing-conversions,
+  cppcoreguidelines-no-malloc,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  cppcoreguidelines-slicing,
+  misc-redundant-expression,
+  misc-static-assert,
+  misc-unconventional-assign-operator,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-equals-default,
+  performance-unnecessary-value-param,
+  performance-avoid-endl,
+  performance-for-range-copy,
+  performance-implicit-conversion-in-loop,
+  performance-inefficient-string-concatenation,
+  performance-move-const-arg,
+  performance-trivially-destructible,
+  readability-misleading-indentation,
+  readability-redundant-string-cstr,
+  readability-redundant-string-init,
+  readability-simplify-boolean-expr,
+  readability-static-accessed-through-instance,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -cert-dcl58-cpp,
+  -cert-err58-cpp,
+  -clang-analyzer-core.CallAndMessage,
+  -clang-analyzer-optin.cplusplus.VirtualCall,
+  -clang-analyzer-cplusplus.NewDelete
+
+# Security-critical checks that should fail the build
+WarningsAsErrors: >
+  bugprone-use-after-move,
+  bugprone-dangling-handle,
+  bugprone-undefined-memory-manipulation,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-no-malloc
+
+# Only analyze project headers, not system/vendor headers
+HeaderFilterRegex: 'src/.*'
+
+CheckOptions:
+  # Narrowing conversion settings
+  - key: cppcoreguidelines-narrowing-conversions.WarnOnIntegerNarrowingConversion
+    value: true
+  - key: cppcoreguidelines-narrowing-conversions.WarnOnFloatingPointNarrowingConversion
+    value: true
+
+  # Implicit bool conversion - allow in conditions
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: true
+  - key: readability-implicit-bool-conversion.AllowPointerConditions
+    value: true
+
+  # Performance: don't warn on trivially copyable types
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: false
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: 'std::function.*'
+
+  # Modernize settings
+  - key: modernize-use-auto.MinTypeNameLength
+    value: 8
+...

@@ -6,19 +6,19 @@
 #include <string>
 #include <type_traits>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_message.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/aquarite/aquarite_message_getid.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_message.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_status.h"
+#include "messages/jandy_message_unknown.h"
+#include "messages/aquarite/aquarite_message_getid.h"
+#include "messages/aquarite/aquarite_message_percent.h"
+#include "messages/aquarite/aquarite_message_ppm.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -44,21 +44,33 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Messages::JandyMessageIds> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Messages::JandyMessageIds>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Messages::JandyMessageIds& msg_id, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(magic_enum::enum_name(msg_id)));
+		const auto v{ magic_enum::enum_name(msg_id) };
+		return std::format_to(ctx.out(), "{}", v);
 	}
 };
 
 template<>
-struct std::formatter<AqualinkAutomate::Messages::JandyMessage> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Messages::JandyMessage>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Messages::JandyMessage& msg, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(msg.ToString()));
+		const auto v{ msg.ToString() };
+		return std::format_to(ctx.out(), "{}", v);
 	}
 };

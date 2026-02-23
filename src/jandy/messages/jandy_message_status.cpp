@@ -1,9 +1,9 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_status.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_status.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -12,86 +12,83 @@ namespace AqualinkAutomate::Messages
 {
 	const uint8_t JandyMessage_Status::STATUS_PAYLOAD_LENGTH{ 5 };
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
+	//const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> JandyMessage_Status::g_JandyMessage_Status_Registration(JandyMessageIds::Status);
 
-	JandyMessage_Status::JandyMessage_Status() :
+	JandyMessage_Status::JandyMessage_Status() noexcept :
 		JandyMessage(JandyMessageIds::Status),
 		Interfaces::IMessageSignalRecv<JandyMessage_Status>(), 
 		m_Mode(ComboModes::Unknown),
-		m_FilterPump(Kernel::PumpStatus::Unknown),
-		m_Aux1(Kernel::AuxillaryStates::Unknown),
-		m_Aux2(Kernel::AuxillaryStates::Unknown),
-		m_Aux3(Kernel::AuxillaryStates::Unknown),
-		m_Aux4(Kernel::AuxillaryStates::Unknown),
-		m_Aux5(Kernel::AuxillaryStates::Unknown),
-		m_Aux6(Kernel::AuxillaryStates::Unknown),
-		m_Aux7(Kernel::AuxillaryStates::Unknown),
-		m_PoolHeater(Kernel::HeaterStatus::Unknown),
-		m_SolarHeater(Kernel::HeaterStatus::Unknown),
-		m_SpaHeater(Kernel::HeaterStatus::Unknown)
+		m_FilterPump(Kernel::PumpStatuses::Unknown),
+		m_Aux1(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux2(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux3(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux4(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux5(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux6(Kernel::AuxillaryStatuses::Unknown),
+		m_Aux7(Kernel::AuxillaryStatuses::Unknown),
+		m_PoolHeater(Kernel::HeaterStatuses::Unknown),
+		m_SolarHeater(Kernel::HeaterStatuses::Unknown),
+		m_SpaHeater(Kernel::HeaterStatuses::Unknown)
 	{
 	}
 
-	JandyMessage_Status::~JandyMessage_Status()
-	{
-	}
 
 	ComboModes JandyMessage_Status::Mode() const
 	{
 		return m_Mode;
 	}
 
-	Kernel::PumpStatus JandyMessage_Status::FilterPump() const
+	Kernel::PumpStatuses JandyMessage_Status::FilterPump() const
 	{
 		return m_FilterPump;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux1() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux1() const
 	{
 		return m_Aux1;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux2() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux2() const
 	{
 		return m_Aux2;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux3() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux3() const
 	{
 		return m_Aux3;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux4() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux4() const
 	{
 		return m_Aux4;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux5() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux5() const
 	{
 		return m_Aux5;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux6() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux6() const
 	{
 		return m_Aux6;
 	}
 
-	Kernel::AuxillaryStates JandyMessage_Status::Aux7() const
+	Kernel::AuxillaryStatuses JandyMessage_Status::Aux7() const
 	{
 		return m_Aux7;
 	}
 
-	Kernel::HeaterStatus JandyMessage_Status::PoolHeater() const
+	Kernel::HeaterStatuses JandyMessage_Status::PoolHeater() const
 	{
 		return m_PoolHeater;
 	}
 
-	Kernel::HeaterStatus JandyMessage_Status::SpaHeater() const
+	Kernel::HeaterStatuses JandyMessage_Status::SpaHeater() const
 	{
 		return m_SpaHeater;
 	}
 
-	Kernel::HeaterStatus JandyMessage_Status::SolarHeater() const
+	Kernel::HeaterStatuses JandyMessage_Status::SolarHeater() const
 	{
 		return m_SolarHeater;
 	}
@@ -117,11 +114,11 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool JandyMessage_Status::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool JandyMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes into JandyMessage_Status type", message_bytes.size()));
 
-		if ((JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH) != message_bytes.size())
+		if (message_bytes.size() < static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH))
 		{
 			LogWarning(Channel::Messages, std::format("Failed during JandyMessage_Status deserialising; payload size mismatch: {} vs {}", STATUS_PAYLOAD_LENGTH, message_bytes.size()));
 		}
@@ -129,44 +126,75 @@ namespace AqualinkAutomate::Messages
 		{
 			LogTrace(Channel::Messages, std::format("Deserialising {} payload bytes from span into JandyMessage_Status type", message_bytes.size()));
 
-			m_Aux5 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[5] & 0x80) >> 7).value_or(Kernel::AuxillaryStates::Unknown);
-			m_Aux2 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[5] & 0x40) >> 6).value_or(Kernel::AuxillaryStates::Unknown);
-			m_Aux3 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[5] & 0x10) >> 4).value_or(Kernel::AuxillaryStates::Unknown);
-			m_Aux7 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[5] & 0x01) >> 0).value_or(Kernel::AuxillaryStates::Unknown);
+			m_Aux5 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[5] & 0x80) >> 7).value_or(Kernel::AuxillaryStatuses::Unknown);
+			m_Aux2 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[5] & 0x40) >> 6).value_or(Kernel::AuxillaryStatuses::Unknown);
+			m_Aux3 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[5] & 0x10) >> 4).value_or(Kernel::AuxillaryStatuses::Unknown);
+			m_Aux7 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[5] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
 
-			m_FilterPump = magic_enum::enum_cast<Kernel::PumpStatus>((message_bytes[6] & 0x10) >> 4).value_or(Kernel::PumpStatus::Unknown);
+			m_FilterPump = magic_enum::enum_cast<Kernel::PumpStatuses>((message_bytes[6] & 0x10) >> 4).value_or(Kernel::PumpStatuses::Unknown);
 			m_Mode = magic_enum::enum_cast<ComboModes>((message_bytes[6] & 0x04) >> 2).value_or(ComboModes::Unknown);
-			m_Aux1 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[6] & 0x01) >> 0).value_or(Kernel::AuxillaryStates::Unknown);
+			m_Aux1 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[6] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
 
 			uint8_t tempx = ((message_bytes[7] & 0x40) >> 6); // ENA?
 			uint8_t tempy = ((message_bytes[8] & 0x04) >> 2); // ENA?
 
-			m_Aux6 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[7] & 0x40) >> 6).value_or(Kernel::AuxillaryStates::Unknown);
-			m_Aux4 = magic_enum::enum_cast<Kernel::AuxillaryStates>((message_bytes[7] & 0x01) >> 0).value_or(Kernel::AuxillaryStates::Unknown);
-			
-			m_PoolHeater = magic_enum::enum_cast<Kernel::HeaterStatus>((message_bytes[8] & 0x70) >> 4).value_or(Kernel::HeaterStatus::Unknown);
+			m_Aux6 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x40) >> 6).value_or(Kernel::AuxillaryStatuses::Unknown);
+			m_Aux4 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
 
-			m_SolarHeater = magic_enum::enum_cast<Kernel::HeaterStatus>((message_bytes[9] & 0x70) >> 4).value_or(Kernel::HeaterStatus::Unknown);
-			m_SpaHeater = magic_enum::enum_cast<Kernel::HeaterStatus>((message_bytes[9] & 0x07) >> 0).value_or(Kernel::HeaterStatus::Unknown);
+			m_PoolHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[8] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
 
-			LogInfo(
-				Channel::Messages, 
-				std::format(
-					"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}", 
-					message_bytes.size(),
-					message_bytes.size(), 
-					message_bytes[5],
-					message_bytes[5],
-					message_bytes[6],
-					message_bytes[6],
-					message_bytes[7],
-					message_bytes[7],
-					message_bytes[8],
-					message_bytes[8],
-					message_bytes[9],
-					message_bytes[9]
-				)
-			);
+			// Byte [9] contains SolarHeater and SpaHeater bits, but is only
+			// present in extended-payload packets (6+ payload bytes, 13+ total).
+			// In standard 12-byte packets (5-byte payload), index 9 is the
+			// checksum byte and must not be interpreted as payload.
+			const bool has_extended_payload = message_bytes.size() > static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH);
+
+			if (has_extended_payload)
+			{
+				m_SolarHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x70) >> 4).value_or(Kernel::HeaterStatuses::Unknown);
+				m_SpaHeater = magic_enum::enum_cast<Kernel::HeaterStatuses>((message_bytes[9] & 0x07) >> 0).value_or(Kernel::HeaterStatuses::Unknown);
+			}
+
+			if (has_extended_payload)
+			{
+				LogDebug(
+					Channel::Messages,
+					std::format(
+						"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}",
+						message_bytes.size(),
+						message_bytes.size(),
+						message_bytes[5],
+						message_bytes[5],
+						message_bytes[6],
+						message_bytes[6],
+						message_bytes[7],
+						message_bytes[7],
+						message_bytes[8],
+						message_bytes[8],
+						message_bytes[9],
+						message_bytes[9]
+					)
+				);
+			}
+			else
+			{
+				LogDebug(
+					Channel::Messages,
+					std::format(
+						"Status Flags -> ({} of {} bytes): (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B} (0x{:02x}) {:08B}",
+						message_bytes.size(),
+						message_bytes.size(),
+						message_bytes[5],
+						message_bytes[5],
+						message_bytes[6],
+						message_bytes[6],
+						message_bytes[7],
+						message_bytes[7],
+						message_bytes[8],
+						message_bytes[8]
+					)
+				);
+			}
 
 			return true;
 		}

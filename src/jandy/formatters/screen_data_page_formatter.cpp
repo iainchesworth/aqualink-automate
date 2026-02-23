@@ -1,4 +1,4 @@
-#include "jandy/formatters/screen_data_page_formatter.h"
+#include "formatters/screen_data_page_formatter.h"
 
 namespace AqualinkAutomate::Formatters
 {

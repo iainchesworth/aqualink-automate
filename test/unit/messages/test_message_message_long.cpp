@@ -30,12 +30,12 @@ BOOST_AUTO_TEST_CASE(TestJandyMessage_MessageLongConstruction)
 
 BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
 {
-    const std::string TEST_LINE {"TEST DATA GOES HERE"};
+    const std::string TEST_LINE {"TEST DATA HERE!!"};  // 16 chars = DISPLAY_LINE_LENGTH
     const uint8_t TEST_LINE_ID{ 5 };
 
     JandyMessage_MessageLong message1(TEST_LINE_ID, TEST_LINE);
     JandyMessage_MessageLong message2;
-    
+
     std::vector<uint8_t> serializedMessage;
     BOOST_REQUIRE(message1.Serialize(serializedMessage));
     BOOST_REQUIRE(message2.Deserialize(std::as_bytes(std::span<uint8_t>(serializedMessage))));
@@ -45,9 +45,9 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_NE(message1.RawId(), message2.RawId()); // Deserialisation captures the message "raw" id...
     BOOST_CHECK_EQUAL(0x04, message2.RawId());
     BOOST_CHECK_NE(message1.MessageLength(), message2.MessageLength());  // Deserialisation captures the message length...
-    BOOST_CHECK_EQUAL(27, message2.MessageLength());
+    BOOST_CHECK_EQUAL(24, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
-    BOOST_CHECK_EQUAL(0x27, message2.ChecksumValue());
+    BOOST_CHECK_EQUAL(0x1B, message2.ChecksumValue());
 
     BOOST_CHECK_EQUAL(TEST_LINE, message2.Line());
     BOOST_CHECK_EQUAL(TEST_LINE_ID, message2.LineId());
@@ -60,6 +60,27 @@ BOOST_AUTO_TEST_CASE(TestToString)
     const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: MessageLong (0x04) || Payload: 0";
 
     BOOST_CHECK_EQUAL(message.ToString(), expected);
+}
+
+BOOST_AUTO_TEST_CASE(TestDoubleDeserialize_DoesNotAppend)
+{
+    // Regression test: deserializing twice must replace, not append.
+    const std::string LINE_A{"FIRST LINE DATA!"};
+    const std::string LINE_B{"SECOND LINE !!! "};
+
+    JandyMessage_MessageLong src_a(1, LINE_A);
+    JandyMessage_MessageLong src_b(2, LINE_B);
+
+    std::vector<uint8_t> bytes_a, bytes_b;
+    BOOST_REQUIRE(src_a.Serialize(bytes_a));
+    BOOST_REQUIRE(src_b.Serialize(bytes_b));
+
+    JandyMessage_MessageLong target;
+    BOOST_REQUIRE(target.Deserialize(std::as_bytes(std::span<uint8_t>(bytes_a))));
+    BOOST_CHECK_EQUAL(target.Line(), LINE_A);
+
+    BOOST_REQUIRE(target.Deserialize(std::as_bytes(std::span<uint8_t>(bytes_b))));
+    BOOST_CHECK_EQUAL(target.Line(), LINE_B);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

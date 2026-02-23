@@ -3,34 +3,33 @@
 #include <chrono>
 #include <list>
 
-#include <boost/asio/io_context.hpp>
-
-#include "jandy/devices/jandy_controller.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/emulated.h"
-#include "jandy/devices/capabilities/scrapeable.h"
-#include "jandy/devices/capabilities/screen.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "jandy/messages/jandy_message_unknown.h"
-#include "jandy/messages/pda/pda_message_clear.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
-#include "jandy/messages/pda/pda_message_highlight_chars.h"
-#include "jandy/messages/pda/pda_message_shiftlines.h"
-#include "kernel/data_hub.h"
+#include "devices/jandy_controller.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/emulated.h"
+#include "devices/capabilities/restartable.h"
+#include "devices/capabilities/scrapeable.h"
+#include "devices/capabilities/screen.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_status.h"
+#include "messages/jandy_message_unknown.h"
+#include "messages/pda/pda_message_clear.h"
+#include "messages/pda/pda_message_highlight.h"
+#include "messages/pda/pda_message_highlight_chars.h"
+#include "messages/pda/pda_message_shiftlines.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class PDADevice : public JandyController, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
+	class PDADevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
 	{
 		inline static const uint8_t PDA_PAGE_LINES{ 10 };
 		inline static const Scrapeable::ScrapeId PDA_CONFIG_INIT_SCRAPER{ 1 };
 		inline static const std::chrono::seconds PDA_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		enum class KeyCommands
+		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
 			HotKey1 = 0x01,
@@ -43,11 +42,14 @@ namespace AqualinkAutomate::Devices
 		};
 
 	public:
-		PDADevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
-		virtual ~PDADevice();
+		PDADevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		~PDADevice() override = default;
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
+
+	private:
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_PDA_Ack(const Messages::JandyMessage_Ack& msg);
@@ -61,7 +63,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_PDA_Unknown_PDA_1B(const Messages::JandyMessage_Unknown& msg);
 
 	private:
-		void PageProcessor_Home(const Utility::ScreenDataPage& page);
+		void PageProcessor_System(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTemperature(const Utility::ScreenDataPage& page);
 		void PageProcessor_SetTime(const Utility::ScreenDataPage& page);
 		void PageProcessor_PoolHeat(const Utility::ScreenDataPage& page);

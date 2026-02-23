@@ -1,12 +1,9 @@
 #pragma once
 
-#include <chrono>
-
-#include <boost/asio/io_context.hpp>
-
-#include "jandy/devices/jandy_device.h"
-#include "jandy/devices/jandy_device_types.h"
+#include "devices/jandy_device.h"
+#include "devices/jandy_device_types.h"
 #include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -14,14 +11,14 @@ namespace AqualinkAutomate::Devices
 	class JandyController : public JandyDevice
 	{
 	public:
-		JandyController(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds, Kernel::DataHub& config);
-		virtual ~JandyController();
+		JandyController(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);
+		~JandyController() override = default;
 
 	protected:
 		virtual void ProcessControllerUpdates() = 0;
 
 	protected:
-		Kernel::DataHub& m_Config;
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 	};
 
 }

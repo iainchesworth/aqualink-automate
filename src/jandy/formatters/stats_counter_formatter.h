@@ -23,11 +23,17 @@ namespace std
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Utility::StatsCounter> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Utility::StatsCounter>
 {
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		return ctx.begin();
+	}
+
 	template<typename FormatContext>
 	auto format(const AqualinkAutomate::Utility::StatsCounter& stats_counter, FormatContext& ctx) const
 	{
-		return std::vformat_to(ctx.out(), "{}", std::make_format_args(stats_counter.Count()));
+		const auto v{ stats_counter.Count() };
+		return std::format_to(ctx.out(), "{}", v);
 	}
 };

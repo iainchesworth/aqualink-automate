@@ -1,0 +1,921 @@
+# TODO: Swagger UI should be provided via a developer Docker image rather than
+#       being bundled into the application. This file is served as raw YAML only.
+
+openapi: 3.0.3
+info:
+  title: Aqualink Automate API
+  description: |
+    REST API for controlling and monitoring Aqualink pool automation equipment.
+    This API provides endpoints for retrieving equipment status, managing buttons/devices,
+    controlling temperature setpoints, and managing diagnostics.
+
+    ## WebSocket Endpoints
+
+    These are not part of the OpenAPI spec but are documented here for reference:
+
+    - `GET /ws/equipment` - Real-time equipment status updates via WebSocket.
+    - `GET /ws/equipment/stats` - Real-time equipment statistics streaming via WebSocket.
+  version: 1.0.0
+  contact:
+    name: Aqualink Automate
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost
+    description: Local server
+
+tags:
+  - name: Version
+    description: Application and equipment version information
+  - name: Equipment
+    description: Equipment status and control
+  - name: Buttons
+    description: Control buttons and triggerable devices
+  - name: Devices
+    description: Equipment devices information
+  - name: Setpoints
+    description: Temperature setpoint control
+  - name: Diagnostics
+    description: Diagnostics and logging configuration
+
+paths:
+  /api/version:
+    get:
+      tags:
+        - Version
+      summary: Get application version information
+      description: Returns software version details, git metadata, and server uptime
+      operationId: getVersion
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionInfo'
+              example:
+                software_version:
+                  name: "Aqualink Automate"
+                  version: "1.0.0"
+                  description: "Pool automation system"
+                  homepage: "https://github.com/example/aqualink"
+                git_info:
+                  commit_sha1: "abc123def456"
+                  commit_date: "2024-01-15"
+                  uncommitted_changes: false
+                server_start_time: "2024-01-15T10:30:00Z"
+                uptime_seconds: 3600
+
+  /api/equipment:
+    get:
+      tags:
+        - Equipment
+      summary: Get all equipment information
+      description: Returns comprehensive equipment data including temperatures, chemistry, configuration, buttons, devices, statistics, and version
+      operationId: getEquipment
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipmentResponse'
+
+  /api/equipment/buttons:
+    get:
+      tags:
+        - Buttons
+      summary: Get all buttons
+      description: Returns a list of all triggerable buttons/devices with their current status
+      operationId: getButtons
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ButtonsResponse'
+              example:
+                buttons:
+                  - id: "550e8400-e29b-41d4-a716-446655440000"
+                    label: "Pool Light"
+                    status: "Off"
+                    device_type: "Auxillary"
+                  - id: "550e8400-e29b-41d4-a716-446655440001"
+                    label: "Spa Jets"
+                    status: "On"
+                    device_type: "Auxillary"
+    post:
+      tags:
+        - Buttons
+      summary: Perform bulk button operation
+      description: Placeholder endpoint for bulk button operations
+      operationId: postButtons
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/equipment/buttons/{button_id}:
+    get:
+      tags:
+        - Buttons
+      summary: Get button status
+      description: Returns the current status of a specific button/device
+      operationId: getButton
+      parameters:
+        - name: button_id
+          in: path
+          required: true
+          description: UUID of the button/device
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Button'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                label: "Pool Light"
+                status: "Off"
+        '404':
+          description: Button not found
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "'550e8400-e29b-41d4-a716-446655440000' is an invalid button id"
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      tags:
+        - Buttons
+      summary: Trigger button action
+      description: Activates or toggles the specified button/device
+      operationId: triggerButton
+      parameters:
+        - name: button_id
+          in: path
+          required: true
+          description: UUID of the button/device to trigger
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Button triggered successfully, returns updated button status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ButtonToggleResponse'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                label: "Pool Light"
+                status: "On"
+                command: "toggled"
+        '404':
+          description: Button not found
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "'550e8400-e29b-41d4-a716-446655440000' is an invalid button id"
+        '409':
+          description: Button is currently inactive
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Button '550e8400-e29b-41d4-a716-446655440000' is currently inactive"
+        '422':
+          description: Device type cannot be mapped to a control command
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Device type cannot be mapped to a control command"
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/equipment/devices:
+    get:
+      tags:
+        - Devices
+      summary: Get equipment devices
+      description: Returns information about all equipment devices grouped by category
+      operationId: getDevices
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicesResponse'
+
+  /api/equipment/version:
+    get:
+      tags:
+        - Version
+      summary: Get equipment version information
+      description: Returns version information specific to the pool equipment
+      operationId: getEquipmentVersion
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquipmentVersionResponse'
+
+  /api/equipment/setpoints:
+    get:
+      tags:
+        - Setpoints
+      summary: Get temperature setpoints
+      description: Returns current pool and spa temperature setpoints
+      operationId: getSetpoints
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetpointsGetResponse'
+              example:
+                pool_setpoint:
+                  celsius: 26.5
+                  fahrenheit: 79.7
+                spa_setpoint:
+                  celsius: 38.0
+                  fahrenheit: 100.4
+    post:
+      tags:
+        - Setpoints
+      summary: Set temperature setpoints
+      description: |
+        Set pool and/or spa temperature setpoints. Values are in Celsius.
+        Either or both fields may be provided; omitted fields are left unchanged.
+      operationId: setSetpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetpointsPostRequest'
+            example:
+              pool: 26.5
+              spa: 38.0
+      responses:
+        '200':
+          description: Setpoints updated (per-field status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetpointsPostResponse'
+              example:
+                pool:
+                  status: "success"
+                  celsius: 26.5
+                spa:
+                  status: "success"
+                  celsius: 38.0
+        '400':
+          description: Invalid JSON in request body
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Invalid JSON"
+        '503':
+          description: Command dispatcher not available
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Command dispatcher not available"
+
+  /api/diagnostics/logging:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get logging configuration
+      description: Returns current logging severity levels per channel and the list of available severity levels
+      operationId: getLogging
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoggingGetResponse'
+              example:
+                channels:
+                  Web: "Info"
+                  Serial: "Debug"
+                  Navigation: "Warning"
+                severity_levels:
+                  - "Trace"
+                  - "Debug"
+                  - "Info"
+                  - "Warning"
+                  - "Error"
+    post:
+      tags:
+        - Diagnostics
+      summary: Set logging level
+      description: |
+        Set the logging severity level globally or for a specific channel.
+        Provide either `global` (to set all channels) or both `channel` and `level`.
+      operationId: setLogging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/LoggingSetGlobal'
+                - $ref: '#/components/schemas/LoggingSetChannel'
+            examples:
+              global:
+                summary: Set global log level
+                value:
+                  global: "Debug"
+              channel:
+                summary: Set per-channel log level
+                value:
+                  channel: "Navigation"
+                  level: "Trace"
+      responses:
+        '200':
+          description: Log level updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        '400':
+          description: Invalid request (bad JSON, invalid severity/channel name, or missing fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                invalid_json:
+                  value:
+                    error: "Invalid JSON in request body"
+                invalid_severity:
+                  value:
+                    error: "Invalid severity level"
+                invalid_channel:
+                  value:
+                    error: "Invalid channel or severity level"
+                missing_fields:
+                  value:
+                    error: "Request must contain 'global' or both 'channel' and 'level'"
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET or POST."
+
+components:
+  schemas:
+    VersionInfo:
+      type: object
+      properties:
+        software_version:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Project name
+              example: "Aqualink Automate"
+            version:
+              type: string
+              description: Project version
+              example: "1.0.0"
+            description:
+              type: string
+              description: Project description
+              example: "Pool automation system"
+            homepage:
+              type: string
+              format: uri
+              description: Project homepage URL
+              example: "https://github.com/example/aqualink"
+        git_info:
+          type: object
+          description: Git metadata (only present if populated)
+          properties:
+            commit_sha1:
+              type: string
+              description: Git commit SHA1 hash
+              example: "abc123def456"
+            commit_date:
+              type: string
+              description: Git commit date
+              example: "2024-01-15"
+            uncommitted_changes:
+              type: boolean
+              description: Whether there are uncommitted changes
+              example: false
+        server_start_time:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the server started
+          example: "2024-01-15T10:30:00Z"
+        uptime_seconds:
+          type: integer
+          description: Server uptime in seconds
+          example: 3600
+
+    Temperature:
+      type: object
+      nullable: true
+      description: Temperature value in both Celsius and Fahrenheit. Null when sensor is unavailable.
+      properties:
+        celsius:
+          type: number
+          format: double
+          description: Temperature in Celsius
+          example: 26.5
+        fahrenheit:
+          type: number
+          format: double
+          description: Temperature in Fahrenheit
+          example: 79.7
+
+    Button:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the button/device
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        label:
+          type: string
+          description: Human-readable label for the button
+          example: "Pool Light"
+        status:
+          type: string
+          description: |
+            Current status of the button/device. The possible values depend on the device type:
+            - Auxillary/Cleaner/Spillover/Sprinkler: On, Off, Enabled, Pending, Unknown
+            - Heater: Off, Heating, Enabled, NotInstalled, Unknown
+            - Chlorinator: Off, On, Unknown
+            - Pump: Off, Running, NotInstalled, Unknown
+          example: "Off"
+
+    ButtonWithDeviceType:
+      allOf:
+        - $ref: '#/components/schemas/Button'
+        - type: object
+          properties:
+            device_type:
+              type: string
+              description: Type of the device
+              enum:
+                - "Auxillary"
+                - "Chlorinator"
+                - "Cleaner"
+                - "Heater"
+                - "Pump"
+                - "Spillover"
+                - "Sprinkler"
+                - "Unknown"
+              example: "Auxillary"
+
+    ButtonToggleResponse:
+      allOf:
+        - $ref: '#/components/schemas/Button'
+        - type: object
+          properties:
+            command:
+              type: string
+              description: The command that was executed
+              example: "toggled"
+
+    ButtonsResponse:
+      type: object
+      properties:
+        buttons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ButtonWithDeviceType'
+          description: List of all available buttons/devices
+
+    Device:
+      type: object
+      description: An equipment device with its traits
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the device
+        label:
+          type: string
+          description: Human-readable label for the device
+        state:
+          type: string
+          description: Current state of the device (same values as Button status)
+        generating_percentage:
+          type: integer
+          description: Chlorinator generating percentage (0-100, present only for chlorinators)
+        boost_mode:
+          type: string
+          description: Chlorinator boost mode (present only for chlorinators)
+        chlorinator_health:
+          type: string
+          description: Chlorinator health status (present only for chlorinators)
+          enum:
+            - "Ok"
+            - "TurningOff"
+            - "Warning_NoFlow"
+            - "Warning_LowSalt"
+            - "Warning_HighSalt"
+            - "Warning_HighCurrent"
+            - "Warning_CleanCell"
+            - "Warning_LowVoltage"
+            - "Warning_LowTemperature"
+            - "Error_CheckPCB"
+            - "GeneralFault"
+            - "Unknown"
+        duty_cycle:
+          type: number
+          description: Device duty cycle (present only when applicable)
+        body_of_water:
+          type: string
+          description: Associated body of water (present only when applicable)
+
+    DevicesResponse:
+      type: object
+      properties:
+        auxillaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+          description: Auxiliary devices
+        heaters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+          description: Heater devices
+        pumps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+          description: Pump devices
+
+    BodyOfWater:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Body of water identifier (e.g. Pool, Spa)
+        label:
+          type: string
+          description: Display label
+        is_active:
+          type: boolean
+          description: Whether this body is currently active
+        temperature:
+          $ref: '#/components/schemas/Temperature'
+        setpoint:
+          $ref: '#/components/schemas/Temperature'
+
+    EquipmentResponse:
+      type: object
+      properties:
+        temperatures:
+          type: object
+          properties:
+            pool:
+              $ref: '#/components/schemas/Temperature'
+            spa:
+              $ref: '#/components/schemas/Temperature'
+            air:
+              $ref: '#/components/schemas/Temperature'
+            pool_setpoint:
+              $ref: '#/components/schemas/Temperature'
+            spa_setpoint:
+              $ref: '#/components/schemas/Temperature'
+        chemistry:
+          type: object
+          properties:
+            ph:
+              type: number
+              format: double
+              description: Water pH level
+              example: 7.4
+            orp:
+              type: integer
+              description: Oxidation-Reduction Potential in mV
+              example: 650
+            salt_in_ppm:
+              type: integer
+              description: Salt concentration in parts per million
+              example: 3200
+        configuration:
+          type: object
+          description: Pool configuration and body-of-water information
+          properties:
+            pool_configuration:
+              type: string
+              description: Pool configuration type (e.g. Pool, PoolAndSpa)
+            configuration_source:
+              type: string
+              description: How the configuration was determined
+            bodies:
+              type: array
+              items:
+                $ref: '#/components/schemas/BodyOfWater'
+        buttons:
+          type: array
+          description: Equipment buttons data (from GenerateJson_Equipment_Buttons)
+          items:
+            type: object
+        devices:
+          type: object
+          description: Equipment devices data
+          properties:
+            auxillaries:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+            heaters:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+            pumps:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
+        stats:
+          $ref: '#/components/schemas/EquipmentStats'
+        version:
+          $ref: '#/components/schemas/EquipmentVersionResponse'
+
+    EquipmentStats:
+      type: object
+      description: Equipment statistics and metrics
+      properties:
+        message_counts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              count:
+                type: integer
+        bandwidth_read:
+          $ref: '#/components/schemas/BandwidthMetrics'
+        bandwidth_write:
+          $ref: '#/components/schemas/BandwidthMetrics'
+        latency:
+          type: object
+          properties:
+            serial_read:
+              $ref: '#/components/schemas/LatencySnapshot'
+            serial_write:
+              $ref: '#/components/schemas/LatencySnapshot'
+            message_processing:
+              $ref: '#/components/schemas/LatencySnapshot'
+        serial:
+          type: object
+          properties:
+            message_error_rate:
+              type: number
+            overflow_count:
+              type: integer
+            underflow_count:
+              type: integer
+            transmission_failures:
+              type: integer
+            write_queue_depth:
+              type: integer
+        message_errors:
+          type: object
+          properties:
+            checksum_failures:
+              type: integer
+            deserialization_failures:
+              type: integer
+            invalid_packet_format:
+              type: integer
+            generator_failures:
+              type: integer
+            overlapping_packets:
+              type: integer
+            buffer_overflows:
+              type: integer
+
+    BandwidthMetrics:
+      type: object
+      properties:
+        total_bytes:
+          type: integer
+        average_utilisation_1sec:
+          type: number
+          format: double
+        average_utilisation_30sec:
+          type: number
+          format: double
+        average_utilisation_5min:
+          type: number
+          format: double
+
+    LatencySnapshot:
+      type: object
+      description: Latency percentile statistics in microseconds
+      properties:
+        p1_us:
+          type: number
+          format: double
+        p50_us:
+          type: number
+          format: double
+        p95_us:
+          type: number
+          format: double
+        p99_us:
+          type: number
+          format: double
+        min_us:
+          type: number
+          format: double
+        max_us:
+          type: number
+          format: double
+        alltime_min_us:
+          type: number
+          format: double
+        alltime_max_us:
+          type: number
+          format: double
+        mean_us:
+          type: number
+          format: double
+        sample_count:
+          type: integer
+
+    EquipmentVersionResponse:
+      type: object
+      properties:
+        fields:
+          type: array
+          description: Ordered list of version fields for display
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                description: Field label
+              value:
+                type: string
+                description: Field value
+        model_number:
+          type: string
+          description: Equipment model number
+        fw_revision:
+          type: string
+          description: Equipment firmware revision
+
+    SetpointsGetResponse:
+      type: object
+      properties:
+        pool_setpoint:
+          $ref: '#/components/schemas/Temperature'
+        spa_setpoint:
+          $ref: '#/components/schemas/Temperature'
+
+    SetpointsPostRequest:
+      type: object
+      description: Set one or both temperature setpoints. Values are in Celsius.
+      properties:
+        pool:
+          type: number
+          format: double
+          description: Pool temperature setpoint in Celsius
+          example: 26.5
+        spa:
+          type: number
+          format: double
+          description: Spa temperature setpoint in Celsius
+          example: 38.0
+
+    SetpointsPostResponse:
+      type: object
+      description: Per-field result of the setpoint update
+      properties:
+        pool:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: ["success", "error"]
+            celsius:
+              type: number
+              format: double
+        spa:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: ["success", "error"]
+            celsius:
+              type: number
+              format: double
+
+    LoggingGetResponse:
+      type: object
+      properties:
+        channels:
+          type: object
+          description: Map of channel name to current severity level
+          additionalProperties:
+            type: string
+        severity_levels:
+          type: array
+          description: List of available severity level names
+          items:
+            type: string
+
+    LoggingSetGlobal:
+      type: object
+      required:
+        - global
+      properties:
+        global:
+          type: string
+          description: Severity level to apply to all channels
+          example: "Debug"
+
+    LoggingSetChannel:
+      type: object
+      required:
+        - channel
+        - level
+      properties:
+        channel:
+          type: string
+          description: Channel name to configure
+          example: "Navigation"
+        level:
+          type: string
+          description: Severity level to set for the channel
+          example: "Trace"
+
+  responses:
+    NotFound:
+      description: The specified resource was not found
+      content:
+        text/plain:
+          schema:
+            type: string
+
+    MethodNotAllowed:
+      description: HTTP method not allowed for this endpoint
+      content:
+        text/plain:
+          schema:
+            type: string
+
+    ServiceUnavailable:
+      description: Service is not yet initialized (PoolConfiguration is Unknown)
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Number of seconds to wait before retrying
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "Service is not initialised; cannot action button"

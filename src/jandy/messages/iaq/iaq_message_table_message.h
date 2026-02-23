@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -19,26 +18,23 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_LineText = 5;
 
 	public:
-		IAQMessage_TableMessage();
-		virtual ~IAQMessage_TableMessage();
+		IAQMessage_TableMessage() noexcept;
+		~IAQMessage_TableMessage() override = default;
 
 	public:
 		uint8_t LineId() const;
 		std::string Line() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint8_t m_LineId;
 		std::string m_Line;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::IAQMessage_TableMessage> g_IAQMessage_TableMessage_Registration;
 	};
 
 }

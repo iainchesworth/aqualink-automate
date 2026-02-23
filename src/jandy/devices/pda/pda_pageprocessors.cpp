@@ -1,17 +1,17 @@
 #include <format>
 
 #include "logging/logging.h"
-#include "jandy/devices/pda_device.h"
-#include "jandy/utility/string_manipulation.h"
+#include "devices/pda_device.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
 
-	void PDADevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
+	void PDADevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "PDA device is processing a PageProcessor_Home page.");
+		LogDebug(Channel::Devices, "PDA device is processing a PageProcessor_System page.");
 
 		/*
 			Info:   PDA Menu Line 00 =
@@ -87,8 +87,8 @@ namespace AqualinkAutomate::Devices
 		const auto model_number = Utility::TrimWhitespace(page[1].Text);
 		const auto fw_revision = Utility::TrimWhitespace(page[6].Text);
 
-		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
+		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
+		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
 
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Rev: {}", model_number, fw_revision));
 	}

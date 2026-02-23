@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="poolGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--pool-water, #38bdf8)"/>
+      <stop offset="100%" stop-color="var(--pool-water-deep, #0284c7)"/>
+    </linearGradient>
+    <linearGradient id="spaGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--spa-water, #a78bfa)"/>
+      <stop offset="100%" stop-color="var(--spa-water-deep, #7c3aed)"/>
+    </linearGradient>
+    <linearGradient id="deckGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--bg-secondary, #e2e8f0)"/>
+      <stop offset="100%" stop-color="var(--bg-primary, #f0f4f8)"/>
+    </linearGradient>
+    <clipPath id="poolClip">
+      <rect x="40" y="80" width="480" height="260" rx="30"/>
+    </clipPath>
+    <clipPath id="spaClip">
+      <ellipse cx="650" cy="200" rx="110" ry="90"/>
+    </clipPath>
+  </defs>
+
+  <!-- Deck -->
+  <rect x="10" y="50" width="780" height="330" rx="25" fill="url(#deckGradient)" opacity="0.5"/>
+
+  <!-- Pool body -->
+  <rect x="40" y="80" width="480" height="260" rx="30" fill="url(#poolGradient)"/>
+
+  <!-- Pool waves -->
+  <g clip-path="url(#poolClip)">
+    <path class="pool-wave" d="M30 180 Q80 160 130 180 T230 180 T330 180 T430 180 T530 180" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/>
+    <path class="pool-wave-2" d="M30 200 Q80 180 130 200 T230 200 T330 200 T430 200 T530 200" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Spa body -->
+  <ellipse cx="650" cy="200" rx="110" ry="90" fill="url(#spaGradient)"/>
+
+  <!-- Spa bubbles (shown when spa is active) -->
+  <g clip-path="url(#spaClip)" class="spa-bubbles">
+    <circle class="spa-bubble" cx="620" cy="240" r="3" fill="rgba(255,255,255,0.6)"/>
+    <circle class="spa-bubble" cx="650" cy="250" r="4" fill="rgba(255,255,255,0.5)"/>
+    <circle class="spa-bubble" cx="680" cy="235" r="3" fill="rgba(255,255,255,0.6)"/>
+    <circle class="spa-bubble" cx="640" cy="245" r="2.5" fill="rgba(255,255,255,0.4)"/>
+  </g>
+
+  <!-- Pool temp label -->
+  <text class="pool-temp-sublabel" x="280" y="185" text-anchor="middle">Pool</text>
+  <text class="pool-temp-label" x="280" y="215" text-anchor="middle" data-pool-temp>--</text>
+
+  <!-- Spa temp label -->
+  <text class="pool-temp-sublabel" x="650" y="185" text-anchor="middle">Spa</text>
+  <text class="pool-temp-label" x="650" y="215" text-anchor="middle" data-spa-temp>--</text>
+
+  <!-- Air temp -->
+  <text class="pool-temp-sublabel" x="460" y="60" text-anchor="middle" fill="var(--text-secondary, #64748b)">Air</text>
+  <text style="font-family:var(--font-family);font-weight:700;font-size:16px;fill:var(--text-primary, #1a2332)" x="460" y="45" text-anchor="middle" data-air-temp>--</text>
+
+  <!-- Status indicators -->
+  <circle class="pool-status-dot inactive" cx="60" cy="370" data-pump-dot/>
+  <text class="pool-status-label" x="60" y="390">Pump</text>
+
+  <circle class="pool-status-dot inactive" cx="130" cy="370" data-heater-dot/>
+  <text class="pool-status-label" x="130" y="390">Heater</text>
+
+  <circle class="pool-status-dot inactive" cx="200" cy="370" data-chlorinator-dot/>
+  <text class="pool-status-label" x="200" y="390">Chlor.</text>
+
+  <!-- Connection between pool and spa -->
+  <path d="M520 200 Q560 200 540 200" stroke="var(--border-color, #e2e8f0)" stroke-width="3" fill="none" stroke-dasharray="6 4"/>
+</svg>

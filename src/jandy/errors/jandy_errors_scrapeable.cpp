@@ -1,4 +1,4 @@
-#include "jandy/errors/jandy_errors_scrapeable.h"
+#include "errors/jandy_errors_scrapeable.h"
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -27,6 +27,24 @@ namespace AqualinkAutomate::ErrorCodes
 
 		case Scrapeable_ErrorCodes::NoGraphBeingScraped:
 			return "Scrapeable_ErrorCodes::NoGraphBeingScraped";
+
+		case Scrapeable_ErrorCodes::UnknownScrapeError:
+			return "Scrapeable_ErrorCodes::UnknownScrapeError";
+
+		case Scrapeable_ErrorCodes::PreCommandValidationFailed:
+			return "Scrapeable_ErrorCodes::PreCommandValidationFailed";
+
+		case Scrapeable_ErrorCodes::PostCommandValidationFailed:
+			return "Scrapeable_ErrorCodes::PostCommandValidationFailed";
+
+		case Scrapeable_ErrorCodes::RecoveryInProgress:
+			return "Scrapeable_ErrorCodes::RecoveryInProgress";
+
+		case Scrapeable_ErrorCodes::RecoveryComplete:
+			return "Scrapeable_ErrorCodes::RecoveryComplete";
+
+		case Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded:
+			return "Scrapeable_ErrorCodes::MaxRecoveryAttemptsExceeded";
 
 		default:
 			return "Scrapeable_ErrorCodes - Unknown Error Code";

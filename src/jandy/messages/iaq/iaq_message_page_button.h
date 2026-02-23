@@ -7,8 +7,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -17,6 +16,7 @@ namespace AqualinkAutomate::Messages
 		Off = 0x00,
 		On = 0x01,
 		Enabled = 0x02,
+		EnabledStandby = 0x03,
 		Unknown = 0xFF
 	};
 
@@ -40,34 +40,34 @@ namespace AqualinkAutomate::Messages
 	class IAQMessage_PageButton : public IAQMessage, public Interfaces::IMessageSignalRecv<IAQMessage_PageButton>
 	{
 	public:
+		static const uint8_t Index_ButtonIndex = 4;
 		static const uint8_t Index_ButtonState = 5;
 		// Unknown byte value stored at index position 6.
 		static const uint8_t Index_ButtonType = 7;
 		static const uint8_t Index_ButtonNameText = 8;
 
 	public:
-		IAQMessage_PageButton();
-		virtual ~IAQMessage_PageButton();
+		IAQMessage_PageButton() noexcept;
+		~IAQMessage_PageButton() override = default;
 
 	public:
+		uint8_t ButtonIndex() const;
 		ButtonStatuses ButtonStatus() const;
 		ButtonTypes ButtonType() const;
 		std::string ButtonName() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
+		uint8_t m_ButtonIndex;
 		ButtonStatuses m_ButtonStatus;
 		ButtonTypes m_ButtonType;
 		std::string m_ButtonName;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::IAQMessage_PageButton> g_IAQMessage_PageButton_Registration;
 	};
 
 }

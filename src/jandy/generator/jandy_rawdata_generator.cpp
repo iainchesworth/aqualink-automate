@@ -1,4 +1,4 @@
-#include "jandy/generator/jandy_rawdata_generator.h"
+#include "generator/jandy_rawdata_generator.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 

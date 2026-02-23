@@ -1,4 +1,4 @@
-#include "jandy/formatters/stats_counter_formatter.h"
+#include "formatters/stats_counter_formatter.h"
 
 namespace AqualinkAutomate::Formatters
 {

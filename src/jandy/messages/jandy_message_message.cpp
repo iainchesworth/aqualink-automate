@@ -1,9 +1,10 @@
+#include <algorithm>
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/jandy_message_message.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -11,9 +12,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> JandyMessage_Message::g_JandyMessage_Message_Registration(JandyMessageIds::Message);
+	//const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> JandyMessage_Message::g_JandyMessage_Message_Registration(JandyMessageIds::Message);
 
-	JandyMessage_Message::JandyMessage_Message() : 
+	JandyMessage_Message::JandyMessage_Message() noexcept : 
 		JandyMessage_Message(std::string())
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
@@ -26,9 +27,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Message::~JandyMessage_Message()
-	{
-	}
 
 	std::string JandyMessage_Message::Line() const
 	{
@@ -52,24 +50,31 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool JandyMessage_Message::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool JandyMessage_Message::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into JandyMessage_Message type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineText)
+		if (message_bytes.size() <= Index_LineText)
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Message is too short to deserialise LineText");
 		}
-		else if ((JandyMessage::MINIMUM_PACKET_LENGTH + 1) > message_bytes.size())
+		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "JandyMessage_Message is too short to deserialise content of LineText");
 		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "JandyMessage_Message is too short for content extraction");
+		}
 		else
 		{
-			const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
+			const auto payload_length = message_bytes.size() - Index_LineText - 3;
+			const auto length_to_copy = std::min<std::size_t>(payload_length, DISPLAY_LINE_LENGTH);
 			const auto start_index = message_bytes.begin() + Index_LineText;
-			const auto end_index = message_bytes.begin() + Index_LineText + length_to_copy;
+			const auto end_index = start_index + length_to_copy;
 
+			m_Line.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_Line),
 				[](const auto& elem)
 				{

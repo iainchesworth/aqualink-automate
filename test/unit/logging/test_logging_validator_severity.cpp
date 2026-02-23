@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(ValidSeverityCaseInsensitive)
     for (int i = 0; i < severities.size(); ++i) 
     {
         boost::any val;
-        Severity target;
+        Severity target{};
         std::vector<std::string> values { severities[i] };
 
         validate(val, values, &target, 0);
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(InvalidSeverity)
 
     boost::any val;
     std::vector<std::string> values;
-    Severity target;
+    Severity target{};
 
     // Test invalid severity
     values.push_back("invalid_severity");

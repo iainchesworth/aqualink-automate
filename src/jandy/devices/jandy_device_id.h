@@ -12,6 +12,7 @@ namespace AqualinkAutomate::Devices
 		using value_type = uint8_t;
 
 	public:
+		JandyDeviceId();
 		JandyDeviceId(value_type device_id);
 
 	public:

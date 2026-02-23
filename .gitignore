@@ -33,6 +33,11 @@ bld/
 [Bb]uild/
 [Oo]ut/
 [Pp]ackages/
+[Vv]cpkg_installed/
+
+# SonarCloud working directories
+.scannerwork/
+[Bb]uild_wrapper_output_directory/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -351,3 +356,4 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/.clang-format

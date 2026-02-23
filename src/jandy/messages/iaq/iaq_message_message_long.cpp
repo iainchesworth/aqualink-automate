@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_message_long.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_message_long.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,17 +9,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_MessageLong> IAQMessage_MessageLong::g_IAQMessage_MessageLong_Registration(JandyMessageIds::IAQ_MessageLong);
-
-	IAQMessage_MessageLong::IAQMessage_MessageLong() : 
+	IAQMessage_MessageLong::IAQMessage_MessageLong() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_MessageLong),
 		Interfaces::IMessageSignalRecv<IAQMessage_MessageLong>()
 	{
 	}
 
-	IAQMessage_MessageLong::~IAQMessage_MessageLong()
-	{
-	}
 
 	std::string IAQMessage_MessageLong::ToString() const
 	{
@@ -31,7 +26,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool IAQMessage_MessageLong::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool IAQMessage_MessageLong::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_MessageLong type", message_bytes.size()));
 

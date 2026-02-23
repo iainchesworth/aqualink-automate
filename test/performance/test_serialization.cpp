@@ -57,13 +57,13 @@ public:
 
 BENCHMARK_DEFINE_F(JandyMessage_Deserialise_Fixture, JandyMessage_Deserialise)(benchmark::State& state)
 {
-	for (auto _ : state)
+	for ([[maybe_unused]] auto _ : state)
 	{
 		benchmark::DoNotOptimize(message.Deserialize(span_data));
 		benchmark::ClobberMemory();
 	}
 
-	state.SetBytesProcessed(uint64_t(state.iterations()) * uint64_t(state.range(0) + JandyMessage::MINIMUM_PACKET_LENGTH));
+	state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(state.range(0) + JandyMessage::MINIMUM_PACKET_LENGTH));
 }
 
 BENCHMARK_REGISTER_F(JandyMessage_Deserialise_Fixture, JandyMessage_Deserialise)->DenseRange(1, 120, 12)->Unit(benchmark::kMillisecond);

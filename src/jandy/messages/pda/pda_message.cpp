@@ -1,6 +1,6 @@
 #include <format>
 
-#include "jandy/messages/pda/pda_message.h"
+#include "messages/pda/pda_message.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -12,9 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage::~PDAMessage()
-	{
-	}
 
 	std::string PDAMessage::ToString() const
 	{

@@ -4,22 +4,41 @@
 
 #include "http/websocket_event_types.h"
 #include "interfaces/imessage.h"
-#include "kernel/auxillary.h"
-#include "kernel/heater.h"
-#include "kernel/pool_configurations.h"
-#include "kernel/system_boards.h"
+#include "jandy/auxillaries/jandy_auxillary_id.h"
 #include "jandy/devices/jandy_emulated_device_types.h"
 #include "jandy/errors/jandy_errors_messages.h"
 #include "jandy/errors/jandy_errors_protocol.h"
+#include "jandy/messages/aquarite/aquarite_message_getid.h"
+#include "jandy/messages/aquarite/aquarite_message_ppm.h"
 #include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_status.h"
 #include "jandy/utility/screen_data_page.h"
 #include "jandy/utility/screen_data_page_processor.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
-#include "jandy/utility/string_conversion/temperature.h"
+#include "jandy/utility/string_conversion/auxillary_state_string_converter.h"
+#include "jandy/utility/string_conversion/temperature_string_converter.h"
+#include "kernel/pool_configurations.h"
+#include "kernel/system_boards.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_devices/heater_status.h"
+#include "kernel/auxillary_devices/pump_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging_severity_levels.h"
 #include "profiling/types/profiling_types.h"
+
+namespace AqualinkAutomate::Auxillaries
+{
+    std::ostream& boost_test_print_type(std::ostream& os, JandyAuxillaryIds const& right);
+}
+// namespace AqualinkAutomate::Auxillaries
+
+namespace AqualinkAutomate::Devices
+{
+    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right);
+}
+// namespace AqualinkAutomate::Devices
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -35,20 +54,20 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 
 namespace AqualinkAutomate::Kernel
 {
-    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, PumpStatus const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStatuses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, ChlorinatorStatuses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatuses const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, PumpStatuses const& right);
     std::ostream& boost_test_print_type(std::ostream& os, PoolConfigurations const& right);
     std::ostream& boost_test_print_type(std::ostream& os, SystemBoards const& right);
 }
 // namespace AqualinkAutomate::Kernel
 
-namespace AqualinkAutomate::Devices
+namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
-    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryTypes const& right);
 }
-// namespace AqualinkAutomate::Devices
+// namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 
 namespace AqualinkAutomate::HTTP
 {
@@ -75,7 +94,9 @@ namespace AqualinkAutomate::Logging
 namespace AqualinkAutomate::Messages
 {
     std::ostream& boost_test_print_type(std::ostream& os, AckTypes const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, AquariteStatuses const& right);
     std::ostream& boost_test_print_type(std::ostream& os, ComboModes const& right);
+    std::ostream& boost_test_print_type(std::ostream& os, PanelDataTypes const& right);
 }
 // namespace AqualinkAutomate::Messages
 
@@ -83,7 +104,6 @@ namespace AqualinkAutomate::Utility
 {
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPage::HighlightStates const& right);
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPageTypes const& right);
-    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right);
 }
 // namespace AqualinkAutomate::Utility
 

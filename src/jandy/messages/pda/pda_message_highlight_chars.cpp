@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/pda/pda_message_highlight_chars.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/pda/pda_message_highlight_chars.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::PDAMessage_HighlightChars> PDAMessage_HighlightChars::g_PDAMessage_HighlightChars_Registration(JandyMessageIds::PDA_HighlightChars);
-
-	PDAMessage_HighlightChars::PDAMessage_HighlightChars() :
+	PDAMessage_HighlightChars::PDAMessage_HighlightChars() noexcept :
 		PDAMessage(JandyMessageIds::PDA_HighlightChars),
 		Interfaces::IMessageSignalRecv<PDAMessage_HighlightChars>(),
 		m_LineId(0),
@@ -20,9 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_HighlightChars::~PDAMessage_HighlightChars()
-	{
-	}
 
 	uint8_t PDAMessage_HighlightChars::LineId() const
 	{
@@ -49,19 +44,19 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool PDAMessage_HighlightChars::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_HighlightChars::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_HighlightChars type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineId)
+		if (message_bytes.size() <= Index_LineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise LineId.");
 		}
-		else if (message_bytes.size() < Index_StartIndex)
+		else if (message_bytes.size() <= Index_StartIndex)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StartIndex.");
 		}
-		else if (message_bytes.size() < Index_StopIndex)
+		else if (message_bytes.size() <= Index_StopIndex)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_HighlightChars is too short to deserialise StopIndex.");
 		}

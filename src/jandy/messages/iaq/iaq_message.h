@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -14,14 +14,14 @@ namespace AqualinkAutomate::Messages
 	{
 	public:
 		IAQMessage(const JandyMessageIds& msg_id);
-		virtual ~IAQMessage();
+		~IAQMessage() override = default;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override = 0;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override = 0;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override = 0;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override = 0;
 	};
 
 }

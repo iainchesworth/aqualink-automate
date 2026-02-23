@@ -9,8 +9,7 @@
 
 #include "interfaces/imessagesignal_recv.h"
 #include "interfaces/imessagesignal_send.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/jandy_message.h"
+#include "messages/jandy_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -44,9 +43,13 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_Command = 5;
 
 	public:
-		JandyMessage_Ack();
+		static constexpr JandyMessageIds ID = JandyMessageIds::Ack;
+
+	public:
+		JandyMessage_Ack() noexcept;
 		JandyMessage_Ack(AckTypes ack_type, uint8_t command);
-		virtual ~JandyMessage_Ack();
+		explicit JandyMessage_Ack(uint8_t ack_value, uint8_t command);
+		~JandyMessage_Ack() override = default;
 
 	public:
 		AckTypes AckType() const;
@@ -60,18 +63,15 @@ namespace AqualinkAutomate::Messages
 		}
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
-		AckTypes m_AckType;
+		uint8_t m_AckType;
 		uint8_t m_Command;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::JandyMessage_Ack> g_JandyMessage_Ack_Registration;
 	};
 
 }

@@ -1,7 +1,21 @@
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
-* text=auto
+* text=auto eol=lf
+
+###############################################################################
+# These files will always be checked out with LFs (regardless of the OS they 
+# were checked out on).
+###############################################################################
+*.sh text eol=lf
+*.yml text eol=lf
+
+###############################################################################
+# These files will always be checked out with CRLFs (regardless of the OS they 
+# were checked out on).
+###############################################################################
+*.bat text eol=crlf
+*.ps1 text eol=crlf
 
 ###############################################################################
 # Set default behavior for command prompt diff.
@@ -43,6 +57,13 @@
 #*.jpg   binary
 #*.png   binary
 #*.gif   binary
+
+###############################################################################
+# behavior for executable files (on Windows)
+#
+# Windows executable files are to be treated as binary.
+###############################################################################
+*.exe    binary
 
 ###############################################################################
 # diff behavior for common document formats

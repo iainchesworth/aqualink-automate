@@ -1,7 +1,7 @@
 #include <any>
 #include <limits>
 
-#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
+#include "utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
 
 namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
 {
@@ -15,45 +15,17 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
             // The provided start_id exists so map the vertex into the value_type.
             const auto& vertex_desc = m_Graph.m_VertexMap.at(start_id);
             std::get<Vertex>(m_CurrentStep) = m_Graph.m_Graph[vertex_desc];
+            m_Visited.insert(start_id);
         }
     }
 
-    ForwardIterator::ForwardIterator(const ForwardIterator& other) :
-        m_Graph(other.m_Graph),
-        m_CurrentStep(other.m_CurrentStep),
-        m_Visited(other.m_Visited)
-    {
-    }
+    ForwardIterator::ForwardIterator(const ForwardIterator& other) = default;
 
-    ForwardIterator::ForwardIterator(ForwardIterator&& other) :
+    ForwardIterator::ForwardIterator(ForwardIterator&& other) noexcept :
         m_Graph(other.m_Graph),
         m_CurrentStep(std::move(other.m_CurrentStep)),
         m_Visited(std::move(other.m_Visited))
     {
-    }
-
-    ForwardIterator& ForwardIterator::operator=(const ForwardIterator& other)
-    {
-        if (this != &other)
-        {
-            m_Graph = other.m_Graph;
-            m_CurrentStep = other.m_CurrentStep;
-            m_Visited = other.m_Visited;
-        }
-
-        return *this;
-    }
-
-    ForwardIterator& ForwardIterator::operator=(ForwardIterator&& other)
-    {
-        if (this != &other)
-        {
-            m_Graph = std::move(other.m_Graph);
-            m_CurrentStep = std::move(other.m_CurrentStep);
-            m_Visited = std::move(other.m_Visited);
-        }
-
-        return *this;
     }
 
     ForwardIterator& ForwardIterator::operator++()
@@ -73,7 +45,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
                 m_Visited.insert(target_id);
 
                 const auto& vertex_desc = m_Graph.m_VertexMap.at(target_id);
-                m_CurrentStep = { { target_id, m_Graph.m_Graph[vertex_desc] }, edge_data };
+                m_CurrentStep = { m_Graph.m_Graph[vertex_desc], edge_data };
                 return *this;
             }
         }

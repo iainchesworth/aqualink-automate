@@ -1,4 +1,4 @@
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/jandy_message_ids.h"
 
 namespace AqualinkAutomate::Messages
 {

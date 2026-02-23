@@ -3,7 +3,7 @@
 #include <string>
 
 #include <boost/system/error_code.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -19,8 +19,8 @@ namespace AqualinkAutomate::ErrorCodes
 		static const StringConversion_ErrorCategory& Instance();
 
 	public:
-		virtual const char* name() const noexcept override;
-		virtual std::string message(int ev) const override;
+		const char* name() const noexcept override;
+		std::string message(int ev) const override;
 	};
 
 }

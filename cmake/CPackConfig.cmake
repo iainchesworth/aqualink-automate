@@ -1,4 +1,3 @@
-set(CPACK_OUTPUT_CONFIG_FILE "${PROJECT_BINARY_DIR}/CPackConfig-${PROJECT_NAME}.cmake")
 set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/packages")
 set(CPACK_STRIP_FILES ON)
 set(CPACK_THREADS 0)
@@ -21,17 +20,26 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
         COMPONENT Runtime
     )
 
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION bin COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION bin/ssl COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION bin/web COMPONENT WebAssets)
 
     # Windows installer
-    set(CPACK_GENERATOR "ZIP" CACHE STRING "Package targets")
+    set(CPACK_GENERATOR "ZIP;NSIS" CACHE STRING "Package targets")
+
+    # NSIS-specific configuration
+    set(CPACK_NSIS_DISPLAY_NAME "Aqualink Automate")
+    set(CPACK_NSIS_PACKAGE_NAME "Aqualink Automate")
+    set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_MODIFY_PATH OFF)
 
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 
     include(GNUInstallDirs)
 
     install(TARGETS aqualink-automate)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION ./ssl COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION ./web COMPONENT WebAssets)
 
     # System installation packages for unix systems
     set(CPACK_GENERATOR "TGZ;DEB;RPM" CACHE STRING "Package targets")
@@ -39,10 +47,15 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
  else()
 
     install(TARGETS aqualink-automate)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/web/assets/ DESTINATION . COMPONENT WebAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION ./ssl COMPONENT SslAssets)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION ./web COMPONENT WebAssets)
 
-    # Default (portable package for any platform)
-    set(CPACK_GENERATOR "ZIP;TGZ" CACHE STRING "Package targets")
+    # macOS installer
+    set(CPACK_GENERATOR "TGZ;DragNDrop" CACHE STRING "Package targets")
+
+    # DMG-specific configuration
+    set(CPACK_DMG_VOLUME_NAME "Aqualink Automate")
+    set(CPACK_DMG_FORMAT "UDZO")
 
 endif()
 
@@ -71,10 +84,9 @@ set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 #
 #------------------------------------------------------------------------------
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libboost-dev, libssl")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
-set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+set(CPACK_DEBIAN_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_RPM_PACKAGE_RELEASE 1)
 set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")

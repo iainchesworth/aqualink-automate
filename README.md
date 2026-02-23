@@ -6,6 +6,10 @@ A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool contro
 
 - [Features](#features)
 - [Getting Started](#getting-started)
+- [Development Container](#development-container)
+- [API Documentation](#api-documentation)
+- [Runtime Container](#runtime-container)
+- [CI/CD Overview](#cicd-overview)
 - [License](#license)
 
 # Features
@@ -18,6 +22,78 @@ A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool contro
 # Getting Started
 
 To get started, clone the repository and follow the instructions in the [INSTALL.md](INSTALL.md) file. It contains step-by-step directions to install and configure the Aqualink Automate service on your system.
+
+# Development Container
+
+A Dev Container configuration is provided for VS Code. It builds the `dev` target from the Dockerfile with GCC-15, clang-tidy, CMake, Ninja, and ccache pre-installed.
+
+To get started, clone the repository with submodules and open in VS Code:
+
+```bash
+git clone --recurse-submodules https://github.com/iainchesworth/aqualink-automate.git
+cd aqualink-automate
+code .
+```
+
+When prompted, select **Reopen in Container**. The `postCreateCommand` initializes submodules and bootstraps vcpkg automatically. Named volumes persist ccache and vcpkg binary caches across container rebuilds.
+
+Inside the container, use the standard CMake preset workflow:
+
+```bash
+cmake --preset config-linux-gcc
+cmake --build --preset build-linux-gcc
+ctest --preset test-linux-gcc
+```
+
+# API Documentation
+
+The OpenAPI spec is served by the application at `GET /api/swagger.yaml` when the app is running.
+
+For development, a Swagger UI service is available without needing the app running:
+
+```bash
+docker compose --profile docs up
+```
+
+This starts Swagger UI at `http://localhost:8080`, serving the spec directly from the repository via bind mount.
+
+# Runtime Container
+
+Build and run the production container:
+
+```bash
+docker build --target runtime -t aqualink-automate .
+docker run -p 80:80 aqualink-automate
+```
+
+Defaults: HTTP on `0.0.0.0:80`, HTTPS disabled, doc-root set to `web`.
+
+To connect a serial device:
+
+```bash
+docker run -p 80:80 --device /dev/ttyUSB0 aqualink-automate --serial-port /dev/ttyUSB0
+```
+
+To enable HTTPS, mount certificates and override the default command:
+
+```bash
+docker run -p 443:443 \
+  -v /path/to/certs:/opt/aqualink-automate/ssl:ro \
+  aqualink-automate \
+  --address 0.0.0.0 --doc-root web
+```
+
+Or use `docker compose up` for a simpler workflow with the included `docker-compose.yml`.
+
+# CI/CD Overview
+
+| Workflow | Job | Trigger |
+|----------|-----|---------|
+| `ci.yml` | `build-and-test` (Linux, Windows, macOS) | Push to `develop`/`main`/`feature/**`/`bug/**`, PRs to `develop`/`main` |
+| `ci.yml` | `docker-verify` | Same as above |
+| `release.yml` | `build-packages` (Linux, Windows, macOS) | Push to `main`, version tags (`v*`) |
+| `release.yml` | `docker-publish` (GHCR) | Push to `main`, version tags (`v*`) |
+| `release.yml` | `github-release` | Version tags only (`v*`) |
 
 # Changelog
 

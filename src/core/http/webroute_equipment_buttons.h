@@ -1,0 +1,35 @@
+#pragma once
+
+#include <functional>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
+#include "interfaces/iwebroute.h"
+#include "kernel/data_hub.h"
+#include "kernel/hub_locator.h"
+
+namespace AqualinkAutomate::HTTP
+{
+	inline constexpr char EQUIPMENTBUTTONS_ROUTE_URL[] = "/api/equipment/buttons";
+
+	class WebRoute_Equipment_Buttons : public Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>
+	{
+	public:
+        WebRoute_Equipment_Buttons(Kernel::HubLocator& hub_locator);
+
+    public:
+        HTTP::Message OnRequest(const HTTP::Request& req) final;
+
+	public:
+        HTTP::Message ButtonCollection_GetHandler(const HTTP::Request& req);
+        HTTP::Message ButtonCollection_PostHandler(const HTTP::Request& req);
+
+	private:
+		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+	};
+
+}
+// namespace AqualinkAutomate::HTTP

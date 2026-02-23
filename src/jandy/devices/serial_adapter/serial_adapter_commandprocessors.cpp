@@ -1,0 +1,148 @@
+#include <format>
+
+#include <magic_enum/magic_enum.hpp>
+
+#include "logging/logging.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
+#include "devices/serial_adapter_device.h"
+#include "factories/jandy_auxillary_factory.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/hub_events/data_hub_config_event_button_state_change.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
+
+using namespace AqualinkAutomate::Logging;
+
+namespace AqualinkAutomate::Devices
+{
+	void SerialAdapterDevice::Command_SerialAdapter_Model(const uint16_t model_type)
+	{
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_OpMode(const Messages::SerialAdapter_SCS_OpModes& op_mode)
+	{
+		switch (op_mode)
+		{
+		case Messages::SerialAdapter_SCS_OpModes::Auto:
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
+			break;
+
+		case Messages::SerialAdapter_SCS_OpModes::Service:
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Service;
+			break;
+
+		case Messages::SerialAdapter_SCS_OpModes::Timeout:
+			JandyController::m_DataHub->Mode = Kernel::EquipmentMode::TimeOut;
+			break; 
+
+		case Messages::SerialAdapter_SCS_OpModes::Unknown:
+		default:
+			break;
+		}
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_Options(const Messages::SerialAdapter_SCS_Options& options)
+	{
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_BatteryCondition(const Messages::SerialAdapter_SCS_BatteryCondition& battery_condition)
+	{
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_AirTemperature(const Kernel::Temperature& temperature)
+	{
+		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
+		{
+			JandyController::m_DataHub->AirTemp(temperature);
+		}
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_PoolTemperature(const Kernel::Temperature& temperature)
+	{
+		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
+		{
+			JandyController::m_DataHub->PoolTemp(temperature);
+		}
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_SpaTemperature(const Kernel::Temperature& temperature)
+	{
+		if (SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF < temperature.InCelsius().value())
+		{
+			JandyController::m_DataHub->SpaTemp(temperature);
+		}
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_SolarTemperature(const Kernel::Temperature& temperature)
+	{
+	}
+
+	void SerialAdapterDevice::Command_SerialAdapter_AuxillaryStatus(const Auxillaries::JandyAuxillaryIds& aux_id, const Auxillaries::JandyAuxillaryStatuses& status)
+	{
+		std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
+
+		//
+		// Find (or create) a device that matches this auxillary.
+		//
+
+		auto auxillaries = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{});
+
+		auto aux_has_id = [&aux_id](auto& potential_match) -> bool
+		{
+			if (nullptr == potential_match || !potential_match->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+			{
+				return false;
+			}
+			return (*(potential_match->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]) == aux_id);
+		};
+
+		if (auto auxillary_it = std::find_if(auxillaries.begin(), auxillaries.end(), aux_has_id); auxillaries.end() != auxillary_it)
+		{
+			aux_ptr = *auxillary_it;
+		}
+		else if (auto new_aux_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id, status); new_aux_ptr.has_value())
+		{
+			JandyController::m_DataHub->Devices.Add(new_aux_ptr.value());
+			aux_ptr = new_aux_ptr.value();			
+		}
+		else
+		{
+			LogDebug(Channel::Devices, std::format("Failed to create auxillary device; error reported was: {}", new_aux_ptr.error().message()));
+		}
+
+		//
+		// Update the auxillary's status
+		//
+
+		if (nullptr != aux_ptr)
+		{
+			switch (status)
+			{
+			case Auxillaries::JandyAuxillaryStatuses::Off:
+				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::Off);
+				break;
+
+			case Auxillaries::JandyAuxillaryStatuses::On:
+				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::On);
+				break;
+
+			case Auxillaries::JandyAuxillaryStatuses::Unknown:
+				[[fallthrough]];
+			default:
+				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::Unknown);
+				break;
+			}
+
+			// Signal that a button state change has occurred.
+			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(aux_ptr);
+			std::string label;
+			if (auto label_opt = aux_ptr->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{}); label_opt.has_value())
+			{
+				label = label_opt.value();
+			}
+			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, label);
+			JandyController::m_DataHub->ConfigUpdateSignal(update_event);
+		}
+	}
+
+}
+// namespace AqualinkAutomate::Devices

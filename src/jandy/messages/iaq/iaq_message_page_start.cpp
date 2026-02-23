@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_page_start.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_page_start.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,17 +9,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageStart> IAQMessage_PageStart::g_IAQMessage_PageStart_Registration(JandyMessageIds::IAQ_PageStart);
-
-	IAQMessage_PageStart::IAQMessage_PageStart() : 
+	IAQMessage_PageStart::IAQMessage_PageStart() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageStart),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageStart>()
 	{
 	}
 
-	IAQMessage_PageStart::~IAQMessage_PageStart()
-	{
-	}
 
 	std::string IAQMessage_PageStart::ToString() const
 	{
@@ -31,7 +26,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool IAQMessage_PageStart::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool IAQMessage_PageStart::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageStart type", message_bytes.size()));
 

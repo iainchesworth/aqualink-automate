@@ -3,7 +3,7 @@
 #include <string>
 
 #include <boost/system/error_code.hpp>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -13,7 +13,13 @@ namespace AqualinkAutomate::ErrorCodes
 		WaitingForPage = 4000,
 		WaitingForMessage,
 		NoStepPossible,
-		NoGraphBeingScraped
+		NoGraphBeingScraped,
+		UnknownScrapeError,
+		PreCommandValidationFailed,
+		PostCommandValidationFailed,
+		RecoveryInProgress,
+		RecoveryComplete,
+		MaxRecoveryAttemptsExceeded
 	};
 
 	class Scrapeable_ErrorCategory : public boost::system::error_category
@@ -22,8 +28,8 @@ namespace AqualinkAutomate::ErrorCodes
 		static const Scrapeable_ErrorCategory& Instance();
 
 	public:
-		virtual const char* name() const noexcept override;
-		virtual std::string message(int ev) const override;
+		const char* name() const noexcept override;
+		std::string message(int ev) const override;
 	};
 
 }

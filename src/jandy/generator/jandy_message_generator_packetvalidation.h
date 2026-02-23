@@ -1,12 +1,12 @@
 #pragma once
 
-#include <cstddef>
-#include <span>
+#include <cstdint>
+
+#include <boost/circular_buffer.hpp>
 
 namespace AqualinkAutomate::Generators
 {
-
-	bool PacketValidation_ChecksumIsValid(const std::span<const std::byte>& message_span);
+	bool PacketValidation_ChecksumIsValid(const boost::circular_buffer<uint8_t>::iterator& start_it, const boost::circular_buffer<uint8_t>::iterator& end_it);
 
 }
 // namespace AqualinkAutomate::Generators

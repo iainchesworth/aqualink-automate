@@ -7,8 +7,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/aquarite/aquarite_message.h"
+#include "messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -17,26 +16,27 @@ namespace AqualinkAutomate::Messages
 	{
 	public:
 		static const uint8_t Index_Percent = 4;
+		static const uint8_t Value_Boost = 101;
+		static const uint8_t Value_ServiceMode = 0xFF;
 
 	public:
-		AquariteMessage_Percent();
-		virtual ~AquariteMessage_Percent();
+		AquariteMessage_Percent() noexcept;
+		~AquariteMessage_Percent() override = default;
 
 	public:
 		uint8_t GeneratingPercentage() const;
+		bool IsBoostMode() const;
+		bool IsServiceMode() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint8_t m_Percent;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent> g_AquariteMessage_Percent_Registration;
 	};
 
 }

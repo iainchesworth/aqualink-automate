@@ -1,6 +1,6 @@
-#include "jandy/messages/jandy_message.h"
-#include "jandy/messages/jandy_message_constants.h"
-#include "jandy/utility/jandy_null_handler.h"
+#include "messages/jandy_message.h"
+#include "messages/jandy_message_constants.h"
+#include "utility/jandy_null_handler.h"
 
 namespace AqualinkAutomate::Utility
 {
@@ -41,6 +41,37 @@ namespace AqualinkAutomate::Utility
 				return should_remove;
 			}
 		);
+	}
+
+	bool JandyPacket_NeedsNullCharHandling(std::span<const uint8_t> message_bytes)
+	{
+		for (std::size_t i = 0; i + 1 < message_bytes.size(); ++i)
+		{
+			if (message_bytes[i] == 0x10 && message_bytes[i + 1] == 0x00)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	std::size_t JandyPacket_NullCharHandler_DeserializationToSpan(std::span<const uint8_t> input, std::span<uint8_t> output)
+	{
+		std::size_t out_pos = 0;
+		bool last_byte_was_0x10 = false;
+
+		for (auto byte : input)
+		{
+			bool should_skip = (last_byte_was_0x10 && (0x00 == byte));
+			last_byte_was_0x10 = (0x10 == byte);
+
+			if (!should_skip)
+			{
+				output[out_pos++] = byte;
+			}
+		}
+
+		return out_pos;
 	}
 
 }

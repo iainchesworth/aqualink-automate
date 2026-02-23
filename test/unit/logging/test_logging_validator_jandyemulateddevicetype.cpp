@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(ValidEmulatedDevice)
     for (int i = 0; i < device_types.size(); ++i) 
     {
         boost::any val;
-        JandyEmulatedDeviceTypes target;
+        JandyEmulatedDeviceTypes target{};
 		std::vector<std::string> values { device_types[i] };
 
         validate(val, values, &target, 0);
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(InvalidEmulatedDevice)
 
     boost::any val;
     std::vector<std::string> values;
-    JandyEmulatedDeviceTypes target;
+    JandyEmulatedDeviceTypes target{};
 
     // Test invalid emulated device
     values.push_back("invalid_device");

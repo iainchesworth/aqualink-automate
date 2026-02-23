@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/pda/pda_message.h"
+#include "messages/pda/pda_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -20,8 +19,8 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_LineShift = 6;
 
 	public:
-		PDAMessage_ShiftLines();
-		virtual ~PDAMessage_ShiftLines();
+		PDAMessage_ShiftLines() noexcept;
+		~PDAMessage_ShiftLines() override = default;
 
 	public:
 		uint8_t FirstLineId() const;
@@ -29,19 +28,16 @@ namespace AqualinkAutomate::Messages
 		int8_t LineShift() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint8_t m_FirstLineId;
 		uint8_t m_LastLineId;
 		int8_t m_LineShift;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::PDAMessage_ShiftLines> g_PDAMessage_ShiftLines_Registration;
 	};
 
 }

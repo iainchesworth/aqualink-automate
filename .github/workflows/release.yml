@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+
+jobs:
+  build-packages:
+    name: Package — ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Linux GCC"
+            os: ubuntu-latest
+            compiler: gcc-13
+            configure_preset: config-linux-gcc
+            build_preset: build-linux-gcc
+            test_preset: test-linux-gcc
+            package_preset: pack-linux-gcc
+          - name: "Windows MSVC"
+            os: windows-latest
+            compiler: msvc
+            configure_preset: config-windows-msvc
+            build_preset: build-windows-msvc
+            test_preset: test-windows-msvc
+            package_preset: pack-windows-msvc
+          - name: "macOS Clang"
+            os: macos-latest
+            compiler: llvm
+            configure_preset: config-macos-llvm
+            build_preset: build-macos-llvm
+            test_preset: test-macos-llvm
+            package_preset: pack-macos-llvm
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup-cpp-toolchain
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        run: choco install nsis -y
+
+      - uses: ./.github/actions/setup-vcpkg-cache
+        with:
+          cache-key-prefix: ${{ matrix.name }}
+
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.configure_preset }}
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.build_preset }}
+
+      - name: Test
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: ${{ matrix.test_preset }}
+
+      - name: Package
+        run: cpack --preset=${{ matrix.package_preset }}
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.configure_preset }}
+          path: |
+            packages/*.deb
+            packages/*.rpm
+            packages/*.tgz
+            packages/*.zip
+            packages/*.exe
+            packages/*.dmg
+          retention-days: 30
+
+  docker-publish:
+    name: Docker Publish
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Build and push runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-packages, docker-publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+          pattern: packages-*
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            packages/*

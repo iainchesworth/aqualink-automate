@@ -1,28 +1,26 @@
 #pragma once
 
-#include <chrono>
-
-#include <boost/asio/io_context.hpp>
+#include <memory>
 
 #include "interfaces/idevice.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/utility/slot_connection_manager.h"
+#include "interfaces/istatuspublisher.h"
+#include "devices/jandy_device_types.h"
+#include "utility/slot_connection_manager.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class JandyDevice : public Interfaces::IDevice
+	class JandyDevice : public Interfaces::IDevice, public Interfaces::IStatusPublisher
 	{
 	public:
-		JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds);
-		virtual ~JandyDevice();
+		JandyDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
+		~JandyDevice() override = default;
 
 	public:
 		const Devices::JandyDeviceType& DeviceId() const;
 
 	protected:
 		Utility::SlotConnectionManager m_SlotManager;
-		const Devices::JandyDeviceType m_DeviceId;
 	};
 
 }

@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <random>
-#include <vector>
 
+#include <boost/circular_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/errors/jandy_errors_messages.h"
@@ -11,6 +11,7 @@
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
+#include "support/unit_test_circularbuffermaker.h"
 #include "support/unit_test_ostream_support.h"
 
 using namespace AqualinkAutomate;
@@ -61,6 +62,30 @@ public:
 				BOOST_TEST(!result.has_value());
 			}
 		};
+
+		Test_ChecksumFailure = [&](const TestReturnType& result) -> void
+		{
+			if (!result.has_value())
+			{
+				BOOST_TEST(make_error_code(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure) == result.error());
+			}
+			else
+			{
+				BOOST_TEST(!result.has_value());
+			}
+		};
+
+		Test_OverlappingPackets = [&](const TestReturnType& result) -> void
+		{
+			if (!result.has_value())
+			{
+				BOOST_TEST(make_error_code(ErrorCodes::Protocol_ErrorCodes::OverlappingPackets) == result.error());
+			}
+			else
+			{
+				BOOST_TEST(!result.has_value());
+			}
+		};
 	};
 
 	~JandyMessageGenerator_TestFixture()
@@ -93,13 +118,15 @@ public:
 	std::function<void(const TestReturnType& result)> Test_DataAvailableToProcess;
 	std::function<void(const TestReturnType& result)> Test_ValidMessageOfAnyType;
 	std::function<void(const TestReturnType& result)> Test_WaitingForMoreData;
+	std::function<void(const TestReturnType& result)> Test_ChecksumFailure;
+	std::function<void(const TestReturnType& result)> Test_OverlappingPackets;
 };
 
 BOOST_FIXTURE_TEST_SUITE(JandyMessageGenerator, JandyMessageGenerator_TestFixture);
 
 BOOST_AUTO_TEST_CASE(ZeroDataInSerialBuffer)
 {
-	std::vector<uint8_t> test_data = { };
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({ });
 
 	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
 	StopTests(test_data, 0, "STOPPING TEST");
@@ -109,7 +136,7 @@ BOOST_AUTO_TEST_CASE(ZeroDataInSerialBuffer)
 
 BOOST_AUTO_TEST_CASE(SingleByteInSerialBuffer)
 {
-	std::vector<uint8_t> test_data = { 0x10 };
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({ 0x10 });
 
 	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
 	StopTests(test_data, 0, "STOPPING TEST");
@@ -122,9 +149,7 @@ BOOST_AUTO_TEST_CASE(InvalidDataInSerialBuffer)
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_int_distribution<> dis(32, 127);
-	std::vector<uint8_t> test_data;
-
-	test_data.reserve(255);
+	boost::circular_buffer<uint8_t> test_data(255);
 
 	for (auto& elem : test_data)
 	{
@@ -143,8 +168,7 @@ BOOST_AUTO_TEST_CASE(InvalidMessageTypesInSerialData)
 
 BOOST_AUTO_TEST_CASE(InvalidPacketChecksumsInSerialData)
 {
-	std::vector<uint8_t> test_data =
-	{
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x10, 0x03,
 		0x10, 0x02, 0x00, 0x01, 0x80, 0x00, 0x00, 0x10, 0x03,
 		0x10, 0x02, 0x80, 0x00, 0x00, 0x10, 0x03,
@@ -155,16 +179,16 @@ BOOST_AUTO_TEST_CASE(InvalidPacketChecksumsInSerialData)
 		0x00, 0x00,  // <-- Random NUL bytes (in recorded data)
 		0x10, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x03,
 		0x10, 0x02, 0xa3, 0x53, 0x00, 0x10, 0x03
-	};
+	});
 
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - WAITING FOR DATA");
-	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
+	QueueTest(test_data, Test_ChecksumFailure, "Test Iteration - CHECKSUM FAILURE");
 	StopTests(test_data, 0, "STOPPING TEST");
 
 	RunTests();
@@ -173,8 +197,7 @@ BOOST_AUTO_TEST_CASE(InvalidPacketChecksumsInSerialData)
 
 BOOST_AUTO_TEST_CASE(PacketStartsButIsIncomplete)
 {
-	std::vector<uint8_t> test_data =
-	{
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x00, 0x00,  // <-- Packet is missing end byte sequence
 		0x10, 0x02, 0x00, 0x01, 0x80, 0x00, 0x93, 0x10, 0x03,
 		0x10, 0x02, 0x80, 0x00, 0x92, 0x10, 0x03,
@@ -182,12 +205,12 @@ BOOST_AUTO_TEST_CASE(PacketStartsButIsIncomplete)
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x00, 0x00,  // <-- Packet is missing end byte sequence
 		0x10, 0x02, 0x00, 0x01, 0x80, 0x00, 0x93, 0x10, 0x03,
 		0x10, 0x02, 0x80, 0x00, 0x92, 0x10, 0x03
-	};
+	});
 
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - DATA AVAILABLE");
+	QueueTest(test_data, Test_OverlappingPackets, "Test Iteration - OVERLAPPING PACKETS");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 02");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 02");
-	QueueTest(test_data, Test_DataAvailableToProcess, "Test Iteration - DATA AVAILABLE");
+	QueueTest(test_data, Test_OverlappingPackets, "Test Iteration - OVERLAPPING PACKETS");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 03");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 04");
 	StopTests(test_data, 0, "STOPPING TEST");
@@ -197,11 +220,10 @@ BOOST_AUTO_TEST_CASE(PacketStartsButIsIncomplete)
 
 BOOST_AUTO_TEST_CASE(FollowingPacketStartsButIsIncomplete)
 {
-	std::vector<uint8_t> test_data =
-	{
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x98, 0x10, 0x03, 0x10, 0x02, 0x00, 0x01,
 		0x80, 0x00
-	};
+	});
 
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 01");
 	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
@@ -212,8 +234,7 @@ BOOST_AUTO_TEST_CASE(FollowingPacketStartsButIsIncomplete)
 
 BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLength)
 {
-	std::vector<uint8_t> test_data =
-	{
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x98, 0x10, 0xFF, 0x10, 0xFF, 0x00, 0x01,
 		0x80, 0x00, 0x93, 0x10, 0xFF, 0x10, 0xFF, 0x80, 0x00, 0x92, 0x10, 0xFF, 0x10, 0xFF, 0x10, 0x00,
 		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x24, 0x10, 0xFF, 0x00, 0x10, 0xFF, 0x00, 0x01, 0x00, 0x00,
@@ -223,8 +244,7 @@ BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLength)
 		0x10, 0xFF, 0x00, 0x16, 0x28, 0x00, 0x00, 0x00, 0x50, 0x10, 0xFF, 0x10, 0xFF, 0x60, 0x00, 0x72,
 		0x10, 0xFF, 0x00, 0x16, 0x28, 0x00, 0x00, 0x00, 0x50, 0x10, 0xFF, 0x10, 0xFF, 0x60, 0x00, 0x72,
 		0x10, 0xFF, 0x10, 0xFF, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x98, 0x10, 0xFF, 0x10, 0x03   // <-- 144 byte payload is here...invalid checksum
-	};
-
+	});
 
 	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
 	StopTests(test_data, 0, "STOPPING TEST");
@@ -234,8 +254,7 @@ BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLength)
 
 BOOST_AUTO_TEST_CASE(ValidPackets_50)
 {
-	std::vector<uint8_t> test_data =
-	{
+	auto test_data = Test::MakeCircularBuffer<uint8_t>({
 		0x10, 0x02, 0x40, 0x02, 0x00, 0x00, 0x00, 0x40, 0x04, 0x98, 0x10, 0x03, 0x10, 0x02, 0x00, 0x01,
 		0x80, 0x00, 0x93, 0x10, 0x03, 0x10, 0x02, 0x80, 0x00, 0x92, 0x10, 0x03, 0x10, 0x02, 0x10, 0x00,
 		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x24, 0x10, 0x03, 0x00, 0x10, 0x02, 0x00, 0x01, 0x00, 0x00,
@@ -267,7 +286,7 @@ BOOST_AUTO_TEST_CASE(ValidPackets_50)
 		0x02, 0x00, 0x01, 0x80, 0x00, 0x93, 0x10, 0x03, 0x10, 0x02, 0x10, 0x00, 0x02, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x24, 0x10, 0x03, 0x00, 0x10, 0x02, 0x00, 0x01, 0x00, 0x00, 0x13, 0x10, 0x03, 0x10,
 		0x02, 0x81, 0x00, 0x93, 0x10, 0x03
-	};
+	});
 
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 01");
 	QueueTest(test_data, Test_ValidMessageOfAnyType, "Test Iteration - MESSAGE 02");

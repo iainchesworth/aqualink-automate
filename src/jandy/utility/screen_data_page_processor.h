@@ -5,21 +5,21 @@
 #include <string>
 #include <utility>
 
-#include "jandy/utility/screen_data_page.h"
+#include "utility/screen_data_page.h"
 
 namespace AqualinkAutomate::Utility
 {
 	enum class ScreenDataPageTypes
 	{
-		Page_Home,
+		Page_System,
 		Page_Service,
 		Page_TimeOut,
 		Page_OneTouch,
-		Page_System,
 		Page_EquipmentOnOff,
 		Page_EquipmentStatus,
 		Page_SelectSpeed,
 		Page_MenuHelp,
+		Page_HelpSubmenu,
 		Page_SetPoolHeat,
 		Page_SetSpaHeat,
 		Page_SetTemperature,
@@ -32,6 +32,23 @@ namespace AqualinkAutomate::Utility
 		Page_DiagnosticsSensors,
 		Page_DiagnosticsRemotes,
 		Page_DiagnosticsErrors,
+		Page_DiagnosticsIAQStatus,
+		Page_DiagnosticsIAQRSSI,
+		Page_LabelAuxList,
+		Page_LabelAux,
+		Page_MoreOneTouch,
+		Page_Program,
+		Page_DisplayLight,
+		Page_Lockouts,
+		Page_PasswordSettings,
+		Page_ProgramGroup,
+		Page_GeneralLabels,
+		Page_LightLabels,
+		Page_WaterfallLabels,
+		Page_CustomLabel,
+		Page_EnterPassword,
+		Page_HelpKeys,
+		Page_StartUp,
 		Page_Unknown
 	};
 
@@ -42,7 +59,7 @@ namespace AqualinkAutomate::Utility
 		using MenuMatcherProcessor = std::function<void(const ScreenDataPage&)>;
 
 	public:
-		ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails menu_matcher, MenuMatcherProcessor menu_processor);
+		ScreenDataPage_Processor(ScreenDataPageTypes page_type, const MenuMatcherDetails& menu_matcher, MenuMatcherProcessor menu_processor);
 
 	public:
 		ScreenDataPageTypes PageType() const;

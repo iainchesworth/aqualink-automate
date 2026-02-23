@@ -1,4 +1,4 @@
-#include "jandy/equipment/jandy_equipment_modes.h"
+#include "equipment/jandy_equipment_modes.h"
 
 namespace AqualinkAutomate::Equipment
 {

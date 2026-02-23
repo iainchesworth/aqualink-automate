@@ -1,0 +1,178 @@
+#------------------------------------------------------------------------------
+#
+#  JANDY EQUIPMENT SUPPORT LIBRARY
+#  ===============================
+#
+#------------------------------------------------------------------------------
+
+add_library(libaqualink-jandy)
+
+target_sources( 
+	libaqualink-jandy
+	PRIVATE 
+	auxillaries/jandy_auxillary_id.cpp 
+	auxillaries/jandy_auxillary_status.cpp 
+	auxillaries/jandy_auxillary_traits_types.cpp 
+	concepts/jandy_message_type.cpp
+	devices/aquarite_device.cpp
+	devices/command_dispatcher.cpp
+	devices/chemlink_device.cpp
+	devices/epump_device.cpp
+	devices/heater_device.cpp
+	devices/iaq_device.cpp
+	devices/iaq/iaq_messageprocessors.cpp
+	devices/iaq/iaq_statusprocessors.cpp
+	devices/jandy_controller.cpp
+	devices/jandy_device.cpp 
+	devices/jandy_device_id.cpp 
+	devices/jandy_device_types.cpp
+	devices/jandy_emulated_device_types.cpp 
+	devices/capabilities/emulated.cpp
+	devices/capabilities/restartable.cpp
+	devices/capabilities/scrapeable.cpp
+	devices/capabilities/screen.cpp 
+	devices/keypad_device.cpp 
+	devices/onetouch_device.cpp 
+	devices/pda_device.cpp 
+	devices/serial_adapter_device.cpp 
+	devices/keypad/keypad_messageprocessors.cpp 
+	devices/keypad/keypad_pageprocessors.cpp 
+	devices/onetouch/onetouch_messageprocessors.cpp
+	devices/onetouch/onetouch_pageprocessors.cpp
+	devices/onetouch/onetouch_statusprocessors.cpp
+	navigation/menu_model.cpp
+	navigation/navigator.cpp
+	navigation/onetouch_menu_model.cpp
+	navigation/spider_engine.cpp
+	navigation/visit_policies.cpp
+	devices/pda/pda_messageprocessors.cpp 	 
+	devices/pda/pda_pageprocessors.cpp 
+	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
+	devices/serial_adapter/serial_adapter_messageprocessors.cpp 
+	equipment/jandy_equipment.cpp
+	equipment/jandy_equipment_versions.cpp 
+	errors/jandy_errors_auxillary_factory.cpp 
+	errors/jandy_errors_messages.cpp
+	errors/jandy_errors_protocol.cpp
+	errors/jandy_errors_scrapeable.cpp 
+	errors/string_conversion_errors.cpp
+	factories/jandy_auxillary_factory.cpp 
+	factories/jandy_message_factory.cpp
+	factories/jandy_message_factory_registration.cpp
+	formatters/chemistry_formatter.cpp 
+	formatters/jandy_device_formatters.cpp 
+	formatters/jandy_message_formatters.cpp 
+	formatters/screen_data_page_formatter.cpp
+	formatters/stats_counter_formatter.cpp	 
+	generator/jandy_message_generator.cpp
+	generator/jandy_message_generator_buffercleanup.cpp
+	generator/jandy_message_generator_buffervalidation.cpp
+	generator/jandy_message_generator_packetprocessing.cpp
+	generator/jandy_message_generator_packetvalidation.cpp
+	generator/jandy_message_generator_startendsequence.cpp
+	generator/jandy_rawdata_generator.cpp 
+	messages/aqualink_touch/aqualink_touch_message.cpp
+	messages/chemlink/chemlink_message.cpp
+	messages/chemlink/chemlink_message_response.cpp
+	messages/epump/epump_message.cpp
+	messages/epump/epump_message_status.cpp
+	messages/epump/epump_message_rpm.cpp
+	messages/epump/epump_message_watts.cpp
+	messages/heater/heater_message.cpp
+	messages/heater/heater_message_request.cpp
+	messages/heater/heater_message_status.cpp
+	messages/aquarite/aquarite_message.cpp
+	messages/aquarite/aquarite_message_getid.cpp
+	messages/aquarite/aquarite_message_percent.cpp
+	messages/aquarite/aquarite_message_ppm.cpp
+	messages/iaq/iaq_message.cpp
+	messages/iaq/iaq_message_aux_status.cpp
+	messages/iaq/iaq_message_command_ready.cpp
+	messages/iaq/iaq_message_control_data_response.cpp
+	messages/iaq/iaq_message_control_ready.cpp
+	messages/iaq/iaq_message_heartbeat.cpp
+	messages/iaq/iaq_message_main_status.cpp
+	messages/iaq/iaq_message_message_long.cpp
+	messages/iaq/iaq_message_onetouch_status.cpp
+	messages/iaq/iaq_message_page_button.cpp
+	messages/iaq/iaq_message_page_continue.cpp
+	messages/iaq/iaq_message_page_end.cpp
+	messages/iaq/iaq_message_page_message.cpp
+	messages/iaq/iaq_message_page_start.cpp
+	messages/iaq/iaq_message_poll.cpp
+	messages/iaq/iaq_message_startup.cpp
+	messages/iaq/iaq_message_table_message.cpp
+	messages/iaq/iaq_message_title_message.cpp
+	messages/pda/pda_message.cpp 
+	messages/pda/pda_message_clear.cpp 
+	messages/pda/pda_message_highlight.cpp 
+	messages/pda/pda_message_highlight_chars.cpp 
+	messages/pda/pda_message_shiftlines.cpp 
+	messages/serial_adapter/serial_adapter_message.cpp 
+	messages/serial_adapter/serial_adapter_message_dev_ready.cpp 
+	messages/serial_adapter/serial_adapter_message_dev_status.cpp 
+	messages/jandy_message.cpp
+	messages/jandy_message_ack.cpp
+	messages/jandy_message_constants.cpp
+	messages/jandy_message_ids.cpp
+	messages/jandy_message_message.cpp
+	messages/jandy_message_message_long.cpp	
+	messages/jandy_message_display_update.cpp
+	messages/jandy_message_probe.cpp
+	messages/jandy_message_status.cpp	 
+	messages/jandy_message_unknown.cpp
+	options/options_jandy.cpp
+	options/validators/jandy_device_id_validator.cpp
+	options/validators/jandy_emulated_device_type_validator.cpp
+	protocol/jandy_protocol_registration.cpp
+	types/jandy_types.cpp
+	utility/filtered_slot.cpp 
+	utility/jandy_checksum.cpp 
+	utility/jandy_null_handler.cpp 
+	utility/jandy_pool_configuration_decoder.cpp
+	utility/screen_data_page.cpp
+	utility/screen_data_page_graph.cpp 
+	utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
+	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp 
+	utility/screen_data_page_graph/screen_data_page_graph_validator.cpp
+	utility/screen_data_page_graph/screen_data_page_graph_vertex.cpp 
+	utility/screen_data_page_processor.cpp 
+	utility/screen_data_page_updater.cpp
+	utility/screen_data_page_updater/screen_data_page_updater_context.cpp
+	utility/screen_data_page_updater/screen_data_page_updater_evhighlight.cpp 
+	utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
+	utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
+	utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
+	utility/slot_connection_manager.cpp
+	utility/string_manipulation.cpp 
+	utility/string_conversion/auxillary_state_string_converter.cpp 
+	utility/string_conversion/chemistry_string_converter.cpp 
+	utility/string_conversion/temperature_string_converter.cpp 
+	jandy.cpp
+)
+
+target_compile_features(libaqualink-jandy PUBLIC cxx_std_23)
+
+target_include_directories(
+	libaqualink-jandy
+	PUBLIC
+	"${PROJECT_SOURCE_DIR}/src"
+	"${PROJECT_SOURCE_DIR}/src/jandy"
+)
+
+target_include_directories(
+	libaqualink-jandy 
+	SYSTEM 
+	PUBLIC 	
+	${Boost_INCLUDE_DIRS} 
+	${magic_enum_INCLUDE_DIRS}
+)
+
+target_link_libraries(
+	libaqualink-jandy
+	PUBLIC
+	Boost::boost 
+	magic_enum::magic_enum
+	PRIVATE
+	libaqualink-automate
+)

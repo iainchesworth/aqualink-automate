@@ -1,4 +1,4 @@
-#include "jandy/utility/jandy_checksum.h"
+#include "utility/jandy_checksum.h"
 
 namespace AqualinkAutomate::Utility
 {

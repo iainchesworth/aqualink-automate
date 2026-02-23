@@ -7,7 +7,9 @@
     "boost-asio",
     "boost-assert",
     "boost-beast",
+    "boost-callable-traits",
     "boost-circular-buffer",
+    "boost-dll",
     "boost-graph",
     "boost-iostreams",
     "boost-log",
@@ -20,14 +22,14 @@
     "boost-test",
     "boost-units",
     "boost-uuid",
+    "boost-url",
     "magic-enum",
-    "mqtt-cpp",
-    "mstch",
     "nlohmann-json",
     "openssl",
-    "re2",
-    "tracy",
-    "tl-expected",
+    {
+      "name": "tracy",
+      "features": ["on-demand"]
+    },
     "zlib"
   ]
 }

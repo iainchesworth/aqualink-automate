@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <list>
 
-#include "jandy/utility/screen_data_page.h"
-#include "jandy/utility/screen_data_page_processor.h"
-#include "jandy/utility/screen_data_page_updater.h"
+#include "utility/screen_data_page.h"
+#include "utility/screen_data_page_processor.h"
+#include "utility/screen_data_page_updater.h"
 
 namespace AqualinkAutomate::Devices::Capabilities
 {

@@ -5,7 +5,8 @@
 #include <utility>
 #include <vector>
 
-#include "jandy/devices/jandy_device_id.h"
+#include "interfaces/ideviceidentifier.h"
+#include "devices/jandy_device_id.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -17,14 +18,21 @@ namespace AqualinkAutomate::Devices
 		SpaRemote,
 		OneTouch,
 		LX_Heater,
+		AqualinkTouch,
 		IAQ,
 		SerialAdapter,
+		JXi_Heater,
+		HeatPump,
 		SWG_Aquarite,
 		PC_Dock,
 		PDA,
 		Pentair_Pump,
-		Jandy_VSP,
+		Jandy_ePump,
 		Chemlink,
+		RemotePowerCenter,
+		Chem_Analyzer,
+		Jandy_ePump_Ext,
+		Jandy_Light,
 		Unknown
 	};
 
@@ -43,7 +51,7 @@ namespace AqualinkAutomate::Devices
 		};
 	*/
 
-	class JandyDeviceType
+	class JandyDeviceType : public Interfaces::IDeviceIdentifier
 	{
 		using DeviceId = JandyDeviceId;
 		using DeviceClassAndIds = std::pair<DeviceClasses, std::vector<DeviceId>>;
@@ -59,13 +67,20 @@ namespace AqualinkAutomate::Devices
 			{DeviceClasses::SpaRemote,		{0x20, 0x21, 0x22, 0x23}},
 			{DeviceClasses::OneTouch,		{0x40, 0x41, 0x42, 0x43}},
 			{DeviceClasses::LX_Heater,		{0x38, 0x39, 0x3A, 0x3B}},
-			{DeviceClasses::IAQ,			{0x30, 0x31, 0x32, 0x33}},
+			{DeviceClasses::AqualinkTouch,	{0x30, 0x31, 0x32, 0x33}},
+			{DeviceClasses::IAQ,			{0xA0, 0xA1, 0xA2, 0xA3}},
 			{DeviceClasses::SerialAdapter,	{0x48, 0x49}},
+			{DeviceClasses::JXi_Heater,		{0x68, 0x69, 0x6A, 0x6B}},
+			{DeviceClasses::HeatPump,		{0x70, 0x71, 0x72, 0x73}},
 			{DeviceClasses::SWG_Aquarite,	{0x50, 0x51, 0x52, 0x53}},
 			{DeviceClasses::PC_Dock,		{0x58, 0x59, 0x5A, 0x5B}},
 			{DeviceClasses::PDA,			{0x60, 0x61, 0x62, 0x63}},
-			{DeviceClasses::Jandy_VSP,		{0x78, 0x79, 0x7A, 0x7B}},
+			{DeviceClasses::RemotePowerCenter, {0x28, 0x29, 0x2A, 0x2B}},
+			{DeviceClasses::Jandy_ePump,	{0x78, 0x79, 0x7A, 0x7B}},
 			{DeviceClasses::Chemlink,		{0x80, 0x81, 0x82, 0x83}},
+			{DeviceClasses::Chem_Analyzer,	{0x84, 0x85, 0x86, 0x87}},
+			{DeviceClasses::Jandy_ePump_Ext, {0xE0, 0xE1, 0xE2, 0xE3}},
+			{DeviceClasses::Jandy_Light,	{0xF0, 0xF1, 0xF2, 0xF3, 0xF4}},
 			{UNKNOWN_DEVICE_CLASS,			{UNKNOWN_DEVICE_RAWID}}
 		};
 
@@ -82,6 +97,11 @@ namespace AqualinkAutomate::Devices
 	public:
 		bool operator==(const JandyDeviceType& other) const;
 		bool operator!=(const JandyDeviceType& other) const;
+		using Interfaces::IDeviceIdentifier::operator==;
+		using Interfaces::IDeviceIdentifier::operator!=;
+
+	protected:
+		bool Equals(const Interfaces::IDeviceIdentifier& other) const override;
 
 	public:
 		DeviceId operator()() const;

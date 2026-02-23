@@ -1,12 +1,12 @@
 #pragma once
 
+#include <expected>
 #include <format>
 #include <iostream>
 #include <string>
 
-#include <tl/expected.hpp>
-
-#include "jandy/utility/string_conversion/temperature.h"
+#include "core/formatters/temperature_formatter.h"
+#include "utility/string_conversion/temperature_string_converter.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -19,66 +19,31 @@ namespace AqualinkAutomate::Formatters
 namespace std
 {
 
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::Temperature& obj);
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Utility::TemperatureStringConverter& obj);
 
 }
 // namespace std
 
 template<>
-struct std::formatter<AqualinkAutomate::Utility::Temperature::Units> : std::formatter<std::string>
+struct std::formatter<AqualinkAutomate::Utility::TemperatureStringConverter> : std::formatter<AqualinkAutomate::Kernel::Temperature>
 {
-	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Utility::Temperature::Units& units, FormatContext& ctx) const
+	constexpr auto parse(std::format_parse_context& ctx) -> std::format_parse_context::iterator
 	{
-		static const std::string_view CELSIUS{ "C" };
-		static const std::string_view FARENHEIT{ "F" };
-		static const std::string_view UNKNOWN{ "?" };
-
-		auto ctx_it = ctx.out();
-
-		switch (units)
-		{
-		case AqualinkAutomate::Utility::Temperature::Units::Celsius:
-			std::copy(CELSIUS.begin(), CELSIUS.end(), ctx_it);
-			break;
-
-		case AqualinkAutomate::Utility::Temperature::Units::Farenheit:
-			std::copy(FARENHEIT.begin(), FARENHEIT.end(), ctx_it);
-			break;
-
-		case AqualinkAutomate::Utility::Temperature::Units::Unknown:
-			[[fallthrough]];
-		default:
-			std::copy(UNKNOWN.begin(), UNKNOWN.end(), ctx_it);
-			break;
-		};
-		
-		return ctx_it;
+		return std::formatter<AqualinkAutomate::Kernel::Temperature>::parse(ctx);
 	}
-};
 
-template<>
-struct std::formatter<AqualinkAutomate::Utility::Temperature> : std::formatter<std::string>
-{
 	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Utility::Temperature& temperature, FormatContext& ctx) const
+	auto format(const AqualinkAutomate::Utility::TemperatureStringConverter& temperature, FormatContext& ctx) const
 	{
+		std::ranges::copy(std::string_view{ "TEMP=" }, ctx.out());
+
 		try
 		{
-			auto temps = temperature().value();
-			auto units = temperature.TemperatureUnits().value();
-
-			return std::vformat_to(ctx.out(), "{}\u00B0{}", std::make_format_args(temps, units));
+			return std::formatter<AqualinkAutomate::Kernel::Temperature>::format(temperature().value(), ctx);
 		}
-		catch (const tl::bad_expected_access<boost::system::error_code>& ex_bea)
+		catch (const std::bad_expected_access<boost::system::error_code>& ex_bea)
 		{
-			static const std::string_view UNKNOWN_TEMP{ "TEMP=??" };
-
-			auto ctx_it = ctx.out();
-
-			std::copy(UNKNOWN_TEMP.begin(), UNKNOWN_TEMP.end(), ctx_it);
-
-			return ctx_it;
+			return std::ranges::copy(std::string_view{ "??" }, ctx.out()).out;
 		}
 	}
 };

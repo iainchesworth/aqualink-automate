@@ -21,7 +21,16 @@ BOOST_AUTO_TEST_CASE(TestAckTypes)
 {
     BOOST_CHECK(static_cast<uint8_t>(AckTypes::ACK_IAQTouch) == 0x00);
     BOOST_CHECK(static_cast<uint8_t>(AckTypes::ACK_PDA) == 0x40);
-    // add similar cases for other enum values
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_Normal) == 0x00);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_ScreenBusy_Scroll) == 0x01);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V1_ScreenBusy_Block) == 0x03);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_Normal) == 0x80);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_ScreenBusy_Scroll) == 0x81);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::V2_ScreenBusy_Block) == 0x83);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_3F) == 0x3F);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_70) == 0x70);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown_72) == 0x72);
+    BOOST_CHECK(static_cast<uint8_t>(AckTypes::Unknown) == 0xFF);
 }
 
 BOOST_AUTO_TEST_CASE(TestJandyMessage_AckConstruction)
@@ -66,9 +75,9 @@ BOOST_AUTO_TEST_CASE(TestSerializationDeserialization)
     BOOST_CHECK_NE(message1.RawId(), message2.RawId()); // Deserialisation captures the message "raw" id...
     BOOST_CHECK_EQUAL(0x01, message2.RawId());
     BOOST_CHECK_NE(message1.MessageLength(), message2.MessageLength());  // Deserialisation captures the message length...
-    BOOST_CHECK_EQUAL(10, message2.MessageLength());
+    BOOST_CHECK_EQUAL(9, message2.MessageLength());
     BOOST_CHECK_NE(message1.ChecksumValue(), message2.ChecksumValue());  // Deserialisation captures the message checksum value...
-    BOOST_CHECK_EQUAL(0x10, message2.ChecksumValue());
+    BOOST_CHECK_EQUAL(0x23, message2.ChecksumValue());
 
     BOOST_CHECK(message1.AckType() == message2.AckType());
     BOOST_CHECK(message1.Command() == message2.Command());

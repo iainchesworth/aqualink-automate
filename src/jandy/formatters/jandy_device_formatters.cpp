@@ -1,4 +1,4 @@
-#include "jandy/formatters/jandy_device_formatters.h"
+#include "formatters/jandy_device_formatters.h"
 
 namespace AqualinkAutomate::Formatters
 {

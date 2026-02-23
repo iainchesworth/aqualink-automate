@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_page_continue.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_page_continue.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,17 +9,12 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageContinue> IAQMessage_PageContinue::g_IAQMessage_PageContinue_Registration(JandyMessageIds::IAQ_PageContinue);
-
-	IAQMessage_PageContinue::IAQMessage_PageContinue() : 
+	IAQMessage_PageContinue::IAQMessage_PageContinue() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageContinue),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageContinue>()
 	{
 	}
 
-	IAQMessage_PageContinue::~IAQMessage_PageContinue()
-	{
-	}
 
 	std::string IAQMessage_PageContinue::ToString() const
 	{
@@ -31,7 +26,7 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool IAQMessage_PageContinue::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool IAQMessage_PageContinue::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageContinue type", message_bytes.size()));
 

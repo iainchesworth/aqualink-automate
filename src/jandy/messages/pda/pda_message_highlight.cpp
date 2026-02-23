@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/pda/pda_message_highlight.h"
+#include "messages/jandy_message_ids.h"
+#include "messages/pda/pda_message_highlight.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::PDAMessage_Highlight> PDAMessage_Highlight::g_PDAMessage_Highlight_Registration(JandyMessageIds::PDA_Highlight);
-
-	PDAMessage_Highlight::PDAMessage_Highlight() :
+	PDAMessage_Highlight::PDAMessage_Highlight() noexcept :
 		PDAMessage_Highlight(0)
 	{
 	}
@@ -23,9 +21,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_Highlight::~PDAMessage_Highlight()
-	{
-	}
 
 	uint8_t PDAMessage_Highlight::LineId() const
 	{
@@ -48,11 +43,11 @@ namespace AqualinkAutomate::Messages
 		return true;
 	}
 
-	bool PDAMessage_Highlight::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool PDAMessage_Highlight::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into PDAMessage_Highlight type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineId)
+		if (message_bytes.size() <= Index_LineId)
 		{
 			LogDebug(Channel::Messages, "PDAMessage_Highlight is too short to deserialise LineId.");
 		}

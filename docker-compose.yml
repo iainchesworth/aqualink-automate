@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    profiles: ["docs"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./assets/web/api/swagger.yaml:/usr/share/nginx/html/swagger.yaml:ro
+    environment:
+      URL: /swagger.yaml

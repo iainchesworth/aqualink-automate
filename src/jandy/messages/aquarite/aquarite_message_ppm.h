@@ -7,8 +7,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/aquarite/aquarite_message.h"
+#include "messages/aquarite/aquarite_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -26,6 +25,7 @@ namespace AqualinkAutomate::Messages
 		Warning_LowVoltage = 0x20,
 		Warning_LowTemperature = 0x40,
 		Error_CheckPCB = 0x80,
+		GeneralFault = 0xFD,
 		Unknown = 0xFE
 	};
 
@@ -36,26 +36,23 @@ namespace AqualinkAutomate::Messages
 		static const uint8_t Index_Status = 5;
 
 	public:
-		AquariteMessage_PPM();
-		virtual ~AquariteMessage_PPM();
+		AquariteMessage_PPM() noexcept;
+		~AquariteMessage_PPM() override = default;
 
 	public:
 		uint16_t SaltConcentrationPPM() const;
 		AquariteStatuses Status() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint16_t m_PPM;
 		AquariteStatuses m_Status;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM> g_AquariteMessage_PPM_Registration;
 	};
 
 }

@@ -1,21 +1,33 @@
+#include <algorithm>
+#include <cctype>
+#include <functional>
 #include <format>
 #include <memory>
+#include <tuple>
+
+#include <boost/regex.hpp>
 
 #include "logging/logging.h"
-#include "jandy/devices/onetouch_device.h"
-#include "jandy/factories/jandy_auxillary_factory.h"
-#include "jandy/utility/jandy_pool_configuration_decoder.h"
-#include "jandy/utility/string_manipulation.h"
-#include "jandy/utility/string_conversion/auxillary_state.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
+#include "devices/onetouch_device.h"
+#include "factories/jandy_auxillary_factory.h"
+#include "kernel/body_of_water.h"
+#include "kernel/body_of_water_ids.h"
+#include "utility/jandy_pool_configuration_decoder.h"
+#include "utility/string_manipulation.h"
+#include "utility/string_conversion/auxillary_state_string_converter.h"
+#include "utility/string_conversion/temperature_string_converter.h"
 
 using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Devices
 {
 
-	void OneTouchDevice::PageProcessor_Home(const Utility::ScreenDataPage& page)
+	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Home page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_System", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_System page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 = Paddock Pools
@@ -32,13 +44,40 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =    Menu / Help
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Normal;
-		JandyController::m_Config.AirTemp(Utility::Temperature(Utility::TrimWhitespace(page[6].Text)));
+		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
+
+		// When the filter pump is running, line 5 shows pool or spa water
+		// temperature (e.g. "Pool 82`F" or "Spa 100`F") instead of
+		// "Filter Pump OFF".  Try to parse it as a temperature.
+		if (auto water_temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[5].Text)); water_temp().has_value())
+		{
+			if (auto area = water_temp.TemperatureArea(); area.has_value())
+			{
+				auto area_lower = area.value();
+				std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+				if (area_lower.find("pool") != std::string::npos)
+				{
+					JandyController::m_DataHub->PoolTemp(water_temp().value());
+				}
+				else if (area_lower.find("spa") != std::string::npos)
+				{
+					JandyController::m_DataHub->SpaTemp(water_temp().value());
+				}
+			}
+		}
+
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
+		{
+			JandyController::m_DataHub->AirTemp(temperature().value());
+		}
 	}
 
 	void OneTouchDevice::PageProcessor_Service(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Service page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Service", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Service page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =
@@ -55,12 +94,14 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::Service;
+		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Service;
 	}
 
 	void OneTouchDevice::PageProcessor_TimeOut(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_TimeOut page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_TimeOut", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_TimeOut page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =
@@ -77,13 +118,15 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.Mode = Equipment::JandyEquipmentModes::TimeOut;
-		JandyController::m_Config.TimeoutRemaining = Utility::TimeoutDuration(Utility::TrimWhitespace(page[10].Text));
+		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::TimeOut;
+		JandyController::m_DataHub->TimeoutRemaining = Utility::TimeoutDurationStringConverter(Utility::TrimWhitespace(page[10].Text));
 	}
 
 	void OneTouchDevice::PageProcessor_OneTouch(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_OneTouch page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_OneTouch", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_OneTouch page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =
@@ -101,14 +144,11 @@ namespace AqualinkAutomate::Devices
 		*/
 	}
 
-	void OneTouchDevice::PageProcessor_System(const Utility::ScreenDataPage& page)
-	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_System page.");
-	}
-	
 	void OneTouchDevice::PageProcessor_EquipmentOnOff(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_EquipmentOnOff page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_EquipmentOnOff", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_EquipmentOnOff page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 = Filter Pump  ***
@@ -127,15 +167,45 @@ namespace AqualinkAutomate::Devices
 
 		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
 		{
-			auto new_aux_state = Utility::AuxillaryState(Utility::TrimWhitespace(page[row_index].Text));
-			auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().CreateDevice(new_aux_state);
-			JandyController::m_Config.AddDevice(aux_ptr);
+			auto new_aux_state = Utility::AuxillaryStateStringConverter(Utility::TrimWhitespace(page[row_index].Text));
+
+			if (auto aux_ptr = Factory::JandyAuxillaryFactory::Instance().OneTouchDevice_CreateDevice(new_aux_state); !aux_ptr.has_value())
+			{
+				LogTrace(Channel::Devices, std::format("OneTouch ({}): Failed to create a device for this specific devic's row text: {}", DeviceId(), Utility::TrimWhitespace(page[row_index].Text)));
+			}
+			else
+			{
+				auto new_device = aux_ptr.value();
+
+				// For aux devices with JandyAuxillaryId, check if the device already exists in the
+				// graph (possibly with a custom label from LabelAux). If so, update the existing
+				// device's status rather than adding a duplicate (operator== compares labels, so a
+				// device with custom label "Swim Jet" wouldn't match one with default label "Aux2").
+				if (new_device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+				{
+					auto aux_id_val = new_device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}];
+					auto existing = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id_val);
+					if (!existing.empty())
+					{
+						// Update status on existing device (preserving its custom label)
+						if (auto status_opt = new_device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}); status_opt.has_value())
+						{
+							existing.front()->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, status_opt.value());
+						}
+						continue;
+					}
+				}
+
+				JandyController::m_DataHub->Devices.Add(new_device);
+			}
 		}
 	}
 
 	void OneTouchDevice::PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_EquipmentStatus page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_EquipmentStatus", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_EquipmentStatus page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 = Equipment Status    Equipment Status	Equipment Status
@@ -152,22 +222,58 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		///FIXME How best to process the equipment status lines?
+		using ScreenLineProcessor = std::function<void(const Utility::ScreenDataPage&, const uint8_t)>;
+
+		const std::vector<ScreenLineProcessor> line_processors
+		{
+			{ std::bind(&OneTouchDevice::StatusProcessor_FilterPump, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_SolarHeat, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_HeatPump, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_Chiller, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_PoolHeat, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_SpaHeat, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_AquaPurePercentage, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_SaltLevelPPM, this, std::placeholders::_1, std::placeholders::_2) },
+			{ std::bind(&OneTouchDevice::StatusProcessor_CheckAquaPure, this, std::placeholders::_1, std::placeholders::_2) }
+		};
+
+		for (auto& matcher_processor : line_processors)
+		{
+			// Ignore line 0 on every page as it's the "Equipment Status" title line...
+
+			for (uint8_t line_id = 1; line_id < page.Size(); ++line_id)
+			{
+				if (page[line_id].Text.empty())
+				{
+					// Ignore empty lines...
+				}
+				else
+				{
+					matcher_processor(page, line_id);
+				}
+			}
+		}
 	}
 
 	void OneTouchDevice::PageProcessor_SelectSpeed(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SelectSpeed page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SelectSpeed", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SelectSpeed page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_MenuHelp(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_MenuHelp page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_MenuHelp", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_MenuHelp page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SetTemperature(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetTemperature page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetTemperature", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetTemperature page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =     Set Temp
@@ -184,26 +290,39 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
+		{
+			JandyController::m_DataHub->PoolTempSetpoint(temperature().value());
+		}
 
-		JandyController::m_Config.PoolTemp(Utility::Temperature(Utility::TrimWhitespace(page[2].Text)));
-		JandyController::m_Config.SpaTemp(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
+		{
+			JandyController::m_DataHub->SpaTempSetpoint(temperature().value());
+		}
+
 		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
 		auto maintenance_hours = Utility::TrimWhitespace(page[6].Text);
 	}
 
 	void OneTouchDevice::PageProcessor_SetTime(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetTime page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetTime", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetTime page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SystemSetup(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SystemSetup page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SystemSetup", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SystemSetup page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_FreezeProtect(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_FreezeProtect page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_FreezeProtect", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_FreezeProtect page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =  Freeze Protect
@@ -220,22 +339,31 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		JandyController::m_Config.FreezeProtectPoint(Utility::Temperature(Utility::TrimWhitespace(page[3].Text)));
+		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
+		{
+			JandyController::m_DataHub->FreezeProtectPoint(temperature().value());
+		}
 	}
 
 	void OneTouchDevice::PageProcessor_Boost(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Boost page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Boost", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Boost page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_SetAquapure(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_SetAquapure page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetAquapure", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetAquapure page.", DeviceId()));
 	}
 
 	void OneTouchDevice::PageProcessor_Version(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_Version page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_Version", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_Version page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =
@@ -258,17 +386,53 @@ namespace AqualinkAutomate::Devices
 
 		Utility::PoolConfigurationDecoder pool_config_decoder(panel_type);
 
-		JandyController::m_Config.PoolConfiguration = pool_config_decoder.Configuration();
-		JandyController::m_Config.SystemBoard = pool_config_decoder.SystemBoard();
-		JandyController::m_Config.EquipmentVersions.ModelNumber = model_number;
-		JandyController::m_Config.EquipmentVersions.FirmwareRevision = fw_revision;
-		
+		// Handle autodetect vs user-specified configuration.
+		if (JandyController::m_DataHub->PoolConfigurationSource == Kernel::ConfigurationSource::UserSpecified
+			&& pool_config_decoder.Configuration() != JandyController::m_DataHub->PoolConfiguration)
+		{
+			LogWarning(Channel::Equipment, std::format("Autodetected pool configuration '{}' disagrees with user-specified '{}'",
+				magic_enum::enum_name(pool_config_decoder.Configuration()),
+				magic_enum::enum_name(JandyController::m_DataHub->PoolConfiguration)));
+			// User specification takes precedence; do not override.
+		}
+		else
+		{
+			JandyController::m_DataHub->PoolConfiguration = pool_config_decoder.Configuration();
+		}
+
+		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
+		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
+		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
+
+		// Populate bodies if not already present (user config may have done this at startup).
+		if (JandyController::m_DataHub->Bodies().empty())
+		{
+			switch (JandyController::m_DataHub->PoolConfiguration)
+			{
+			case Kernel::PoolConfigurations::DualBody_SharedEquipment:
+			case Kernel::PoolConfigurations::DualBody_DualEquipment:
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Spa, "Spa" });
+				break;
+
+			case Kernel::PoolConfigurations::SingleBody:
+				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
+				break;
+
+			default:
+				break;
+			}
+		}
+
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
 	}
 
 	void OneTouchDevice::PageProcessor_DiagnosticsSensors(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsSensors page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsSensors", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsSensors page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 = Model   B0029221
@@ -288,7 +452,9 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsRemotes(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsRemotes page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsRemotes", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsRemotes page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =     Remotes
@@ -308,7 +474,9 @@ namespace AqualinkAutomate::Devices
 
 	void OneTouchDevice::PageProcessor_DiagnosticsErrors(const Utility::ScreenDataPage& page)
 	{
-		LogDebug(Channel::Devices, "OneTouch device is processing a PageProcessor_DiagnosticsErrors page.");
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_DiagnosticsErrors", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_DiagnosticsErrors page.", DeviceId()));
 
 		/*
 			Info:   OneTouch Menu Line 00 =      Errors              Errors
@@ -324,6 +492,181 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 10 =
 			Info:   OneTouch Menu Line 11 =    Continue            Continue
 		*/
+	}
+
+	void OneTouchDevice::PageProcessor_LabelAuxList(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_LabelAuxList", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_LabelAuxList page.", DeviceId()));
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Label Aux
+			Info:   OneTouch Menu Line 01 =
+			Info:   OneTouch Menu Line 02 = Aux1           >
+			Info:   OneTouch Menu Line 03 = Aux2           >
+			Info:   OneTouch Menu Line 04 = Aux3           >
+			Info:   OneTouch Menu Line 05 = Aux4           >
+			Info:   OneTouch Menu Line 06 = Aux5           >
+			Info:   OneTouch Menu Line 07 = Aux6           >
+			Info:   OneTouch Menu Line 08 = Aux7           >
+			Info:   OneTouch Menu Line 09 = Aux B1         >
+			Info:   OneTouch Menu Line 10 =    ^^ More vv
+			Info:   OneTouch Menu Line 11 =           
+		*/
+	}
+
+	void OneTouchDevice::PageProcessor_LabelAux(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_LabelAux", std::source_location::current());
+
+		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_LabelAux page.", DeviceId()));
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Label Aux1
+			Info:   OneTouch Menu Line 01 =
+			Info:   OneTouch Menu Line 02 =  Current Label 
+			Info:   OneTouch Menu Line 03 =       Aux1      
+			Info:   OneTouch Menu Line 04 =                
+			Info:   OneTouch Menu Line 05 = General Labels >
+			Info:   OneTouch Menu Line 06 = Light   Labels >
+			Info:   OneTouch Menu Line 07 = Wtrfall Labels >
+			Info:   OneTouch Menu Line 08 = Custom  Label  >
+			Info:   OneTouch Menu Line 09 =
+			Info:   OneTouch Menu Line 10 =
+			Info:   OneTouch Menu Line 11 =           
+		*/
+
+		const auto aux_main_label = Utility::TrimWhitespace(page[0].Text);
+		const auto aux_custom_label = Utility::TrimWhitespace(page[3].Text);
+
+		static const boost::regex pattern("(Label) (Aux(\\s?[B-D][1-8]|\\s?[1-7]))");
+		boost::smatch matches;
+
+		if (aux_custom_label.empty())
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Custom auxillary label was not set; cannot continue", DeviceId()));
+		}
+		else if (!boost::regex_search(aux_main_label, matches, pattern) || matches.size() < 3)
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to parse the row text looking for an auxillary id; text was {}", DeviceId(), Utility::TrimWhitespace(page[0].Text)));
+		}
+		else if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(matches[2].str()); !aux_id.has_value())
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to generate the id for Auxillary Device given string {}", DeviceId(), matches[2].str()));
+		}
+		else
+		{
+			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
+			bool newly_created = false;
+
+			if (auto aux_collection = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
+			{
+				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); !temp_ptr.has_value())
+				{
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to create a new Auxillary Device for aux id: {}", DeviceId(), magic_enum::enum_name(aux_id.value())));
+				}
+				else
+				{
+					aux_ptr = temp_ptr.value();
+					newly_created = true;
+				}
+			}
+			else if (1 < aux_collection.size())
+			{
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Found {} instances of Auxillary Device with aux id: {}; cannot attach custom label", DeviceId(), aux_collection.size(), magic_enum::enum_name(aux_id.value())));
+			}
+			else
+			{
+				aux_ptr = aux_collection.front();
+			}
+
+			if (nullptr == aux_ptr)
+			{
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed to find the Auxillary Device for aux id: {}; cannot set custom label", DeviceId(), magic_enum::enum_name(aux_id.value())));
+			}
+			else
+			{
+				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, aux_custom_label);
+
+				// If this device was newly created (not found in graph), add it now
+				if (newly_created)
+				{
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Adding newly created Auxillary Device with custom label '{}' for aux id: {}", DeviceId(), aux_custom_label, magic_enum::enum_name(aux_id.value())));
+					JandyController::m_DataHub->Devices.Add(aux_ptr);
+				}
+			}
+		}
+	}
+
+	void OneTouchDevice::PageProcessor_MoreOneTouch(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_MoreOneTouch invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_SetPoolHeat(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_SetPoolHeat invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_SetSpaHeat(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_SetSpaHeat invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_Program(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_Program invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_DisplayLight(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_DisplayLight invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_Lockouts(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_Lockouts invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_PasswordSettings(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_PasswordSettings invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_ProgramGroup(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_ProgramGroup invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_GeneralLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_GeneralLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_LightLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_LightLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_WaterfallLabels(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_WaterfallLabels invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_CustomLabel(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_CustomLabel invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_EnterPassword(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_EnterPassword invoked", DeviceId()));
+	}
+
+	void OneTouchDevice::PageProcessor_HelpKeys(const Utility::ScreenDataPage& page)
+	{
+		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpKeys invoked", DeviceId()));
 	}
 
 }

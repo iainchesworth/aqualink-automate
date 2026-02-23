@@ -1,0 +1,49 @@
+#pragma once
+
+#include <format>
+#include <iostream>
+#include <string>
+
+#include "kernel/ph.h"
+
+namespace AqualinkAutomate::Formatters
+{
+
+	// NOTHING HERE
+
+}
+// AqualinkAutomate::Formatters
+
+namespace std
+{
+
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Kernel::pH& obj);
+
+}
+// namespace std
+
+template<>
+struct std::formatter<AqualinkAutomate::Kernel::pH>
+{
+	std::formatter<boost::float32_t> m_Base;
+
+	constexpr auto parse(std::format_parse_context& ctx)
+	{
+		auto it = ctx.begin();
+
+		if (it == ctx.end() || *it == '}')
+		{
+			std::basic_format_parse_context<char> default_ctx(std::string_view(".01f"));
+			m_Base.parse(default_ctx);
+			return it;
+		}
+
+		return m_Base.parse(ctx);
+	}
+
+	template<typename FormatContext>
+	auto format(const AqualinkAutomate::Kernel::pH& pH, FormatContext& ctx) const
+	{
+		return m_Base.format(pH(), ctx);
+	}
+};

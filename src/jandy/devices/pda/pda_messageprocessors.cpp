@@ -1,11 +1,11 @@
 #include <cmath>
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
-#include "jandy/devices/pda_device.h"
-#include "jandy/formatters/screen_data_page_formatter.h"
+#include "devices/pda_device.h"
+#include "formatters/screen_data_page_formatter.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, std::format("Decoded PDA-specific JandyMessage_Ack payload: key press -> {} (raw: 0x{:02x})", magic_enum::enum_name(key_press), msg.Command()));
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Clear(const Messages::PDAMessage_Clear& msg)
@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Highlight(const Messages::PDAMessage_Highlight& msg)
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_HighlightChars(const Messages::PDAMessage_HighlightChars& msg)
@@ -65,7 +65,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_MessageLong(const Messages::JandyMessage_MessageLong& msg)
@@ -77,18 +77,7 @@ namespace AqualinkAutomate::Devices
 		
 		if (PDA_PAGE_LINES <= msg.LineId())
 		{
-			switch (msg.LineId())
-			{
-			case PDA_MESSAGE_LONG_AIRWATER:
-				break;
-
-			case PDA_MESSAGE_LONG_TEMPERATURE:
-				break;
-
-			default:
-				break;
-			}
-
+			// PDA_MESSAGE_LONG_AIRWATER, PDA_MESSAGE_LONG_TEMPERATURE, and other unsupported line types are handled the same way
 			LogDebug(Channel::Devices, std::format("PDA device received a MessageLong update for an unsupported line; line id -> {}, content -> '{}'", msg.LineId(), msg.Line()));
 			Signal_AckMessage(Messages::AckTypes::V1_Normal, KeyCommands::NoKeyCommand);
 		}
@@ -103,7 +92,7 @@ namespace AqualinkAutomate::Devices
 		}
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Probe(const Messages::JandyMessage_Probe& msg)
@@ -114,7 +103,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Status(const Messages::JandyMessage_Status& msg)
@@ -134,7 +123,7 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_ShiftLines(const Messages::PDAMessage_ShiftLines& msg)
@@ -152,12 +141,12 @@ namespace AqualinkAutomate::Devices
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
-		IDevice::KickTimeoutWatchdog();
+		Restartable::Kick();
 	}
 
 	void PDADevice::Slot_PDA_Unknown_PDA_1B(const Messages::JandyMessage_Unknown& msg)
 	{
-		LogDebug(Channel::Devices, "PDA device received a JandyMessage_Unknown signal.");
+		LogDebug(Channel::Devices, std::format("PDA device received a JandyMessage_Unknown signal: type -> 0x{:02x}", msg.RawId()));
 	}
 
 }

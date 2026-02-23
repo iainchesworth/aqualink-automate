@@ -6,8 +6,7 @@
 #include <vector>
 
 #include "interfaces/imessagesignal_recv.h"
-#include "jandy/factories/jandy_message_factory_registration.h"
-#include "jandy/messages/iaq/iaq_message.h"
+#include "messages/iaq/iaq_message.h"
 
 namespace AqualinkAutomate::Messages
 {
@@ -15,18 +14,15 @@ namespace AqualinkAutomate::Messages
 	class IAQMessage_PageEnd : public IAQMessage, public Interfaces::IMessageSignalRecv<IAQMessage_PageEnd>
 	{
 	public:
-		IAQMessage_PageEnd();
-		virtual ~IAQMessage_PageEnd();
+		IAQMessage_PageEnd() noexcept;
+		~IAQMessage_PageEnd() override = default;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(const std::vector<uint8_t>& message_bytes) override;
-
-	private:
-		static const Factory::JandyMessageRegistration<Messages::IAQMessage_PageEnd> g_IAQMessage_PageEnd_Registration;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 	};
 
 }

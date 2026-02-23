@@ -1,7 +1,6 @@
 #include <format>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/aquarite/aquarite_message_percent.h"
+#include "messages/aquarite/aquarite_message_percent.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging; 
@@ -9,22 +8,27 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::AquariteMessage_Percent> AquariteMessage_Percent::g_AquariteMessage_Percent_Registration(JandyMessageIds::AQUARITE_Percent);
-
-	AquariteMessage_Percent::AquariteMessage_Percent() : 
+	AquariteMessage_Percent::AquariteMessage_Percent() noexcept :
 		AquariteMessage(JandyMessageIds::AQUARITE_Percent),
 		Interfaces::IMessageSignalRecv<AquariteMessage_Percent>(),
 		m_Percent(0)
 	{
 	}
 
-	AquariteMessage_Percent::~AquariteMessage_Percent()
-	{
-	}
 
 	uint8_t AquariteMessage_Percent::GeneratingPercentage() const
 	{
 		return m_Percent;
+	}
+
+	bool AquariteMessage_Percent::IsBoostMode() const
+	{
+		return m_Percent == Value_Boost;
+	}
+
+	bool AquariteMessage_Percent::IsServiceMode() const
+	{
+		return m_Percent == Value_ServiceMode;
 	}
 
 	std::string AquariteMessage_Percent::ToString() const
@@ -34,14 +38,16 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_Percent::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		message_bytes.emplace_back(m_Percent);
+
+		return true;
 	}
 
-	bool AquariteMessage_Percent::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool AquariteMessage_Percent::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_Percent type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_Percent)
+		if (message_bytes.size() <= Index_Percent)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_Percent is too short to deserialise Percent.");
 		}

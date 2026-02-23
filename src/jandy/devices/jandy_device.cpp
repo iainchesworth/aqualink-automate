@@ -1,22 +1,20 @@
-#include "jandy/devices/jandy_device.h"
+#include "devices/device_status.h"
+#include "devices/jandy_device.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	JandyDevice::JandyDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, std::chrono::seconds timeout_in_seconds) :
-		IDevice(io_context, timeout_in_seconds),
-		m_SlotManager(),
-		m_DeviceId(device_id)
+	JandyDevice::JandyDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id) :
+		IDevice(device_id),
+		IStatusPublisher(DeviceStatus_Unknown{}),
+		m_SlotManager()
 	{
 	}
 
-	JandyDevice::~JandyDevice()
-	{
-	}
 
 	const Devices::JandyDeviceType& JandyDevice::DeviceId() const
 	{
-		return m_DeviceId;
+		return dynamic_cast<const Devices::JandyDeviceType&>(IDevice::DeviceId());
 	}
 
 }

@@ -1,9 +1,8 @@
 #include <format>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
-#include "jandy/messages/jandy_message_ids.h"
-#include "jandy/messages/aquarite/aquarite_message_ppm.h"
+#include "messages/aquarite/aquarite_message_ppm.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging; 
@@ -11,9 +10,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::AquariteMessage_PPM> AquariteMessage_PPM::g_AquariteMessage_PPM_Registration(JandyMessageIds::AQUARITE_PPM);
-
-	AquariteMessage_PPM::AquariteMessage_PPM() : 
+	AquariteMessage_PPM::AquariteMessage_PPM() noexcept :
 		AquariteMessage(JandyMessageIds::AQUARITE_PPM),
 		Interfaces::IMessageSignalRecv<AquariteMessage_PPM>(),
 		m_PPM(0),
@@ -21,9 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AquariteMessage_PPM::~AquariteMessage_PPM()
-	{
-	}
 
 	uint16_t AquariteMessage_PPM::SaltConcentrationPPM() const
 	{
@@ -42,18 +36,21 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_PPM::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		return false;
+		message_bytes.emplace_back(static_cast<uint8_t>(m_PPM / 100));
+		message_bytes.emplace_back(magic_enum::enum_integer(m_Status));
+
+		return true;
 	}
 
-	bool AquariteMessage_PPM::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool AquariteMessage_PPM::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_PPM)
+		if (message_bytes.size() <= Index_PPM)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise PPM.");
 		}
-		else if (message_bytes.size() < Index_Status)
+		else if (message_bytes.size() <= Index_Status)
 		{
 			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise Status.");
 		}

@@ -1,6 +1,6 @@
 #include <format>
 
-#include "jandy/utility/jandy_pool_configuration_decoder.h"
+#include "utility/jandy_pool_configuration_decoder.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;

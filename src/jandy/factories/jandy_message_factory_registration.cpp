@@ -1,4 +1,4 @@
-#include "jandy/factories/jandy_message_factory_registration.h"
+#include "factories/jandy_message_factory_registration.h"
 
 namespace AqualinkAutomate::Factory
 {

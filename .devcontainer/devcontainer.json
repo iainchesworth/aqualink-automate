@@ -1,0 +1,29 @@
+{
+  "name": "Aqualink Automate Dev",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "target": "dev"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/src,type=bind",
+  "workspaceFolder": "/src",
+  "remoteUser": "dev",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "llvm-vs-code-extensions.vscode-clangd"
+      ]
+    }
+  },
+  "mounts": [
+    "source=aqualink-ccache,target=/ccache,type=volume",
+    "source=aqualink-vcpkg-cache,target=/vcpkg-cache,type=volume",
+    "source=aqualink-vcpkg,target=/src/deps/vcpkg,type=volume"
+  ],
+  "containerEnv": {
+    "CCACHE_DIR": "/ccache",
+    "VCPKG_DEFAULT_BINARY_CACHE": "/vcpkg-cache"
+  },
+  "postCreateCommand": ".devcontainer/setup.sh"
+}

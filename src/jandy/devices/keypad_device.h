@@ -3,37 +3,41 @@
 #include <chrono>
 #include <cstdint>
 
-#include "jandy/devices/jandy_controller.h"
-#include "jandy/devices/jandy_device_types.h"
-#include "jandy/devices/capabilities/emulated.h"
-#include "jandy/devices/capabilities/scrapeable.h"
-#include "jandy/devices/capabilities/screen.h"
-#include "jandy/messages/jandy_message_ack.h"
-#include "jandy/messages/jandy_message_probe.h"
-#include "jandy/messages/jandy_message_message.h"
-#include "jandy/messages/jandy_message_message_long.h"
-#include "jandy/messages/jandy_message_status.h"
-#include "kernel/data_hub.h"
+#include "devices/jandy_controller.h"
+#include "devices/jandy_device_types.h"
+#include "devices/capabilities/emulated.h"
+#include "devices/capabilities/restartable.h"
+#include "devices/capabilities/scrapeable.h"
+#include "devices/capabilities/screen.h"
+#include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_message.h"
+#include "messages/jandy_message_message_long.h"
+#include "messages/jandy_message_status.h"
+#include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::Devices
 {
 
-	class KeypadDevice : public JandyController, public Capabilities::Screen, public Capabilities::Emulated
+	class KeypadDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
 	{
 		inline static const uint8_t KEYPAD_PAGE_LINES{ 3 };
 		inline static const std::chrono::seconds KEYPAD_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		enum class KeyCommands
+		enum class KeyCommands : uint8_t
 		{
 			NoKeyCommand = 0x00,
 		};
 
 	public:
-		KeypadDevice(boost::asio::io_context& io_context, const Devices::JandyDeviceType& device_id, Kernel::DataHub& config, bool is_emulated);
-		virtual ~KeypadDevice();
+		KeypadDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
+		~KeypadDevice() override = default;
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
+
+	private:
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_Keypad_Ack(const Messages::JandyMessage_Ack& msg);

@@ -5,24 +5,47 @@
 #
 #------------------------------------------------------------------------------
 
-add_executable(
+add_executable(testaqualink-automate)
+
+target_sources( 
 	testaqualink-automate
+	PRIVATE
 	unit/test_main.cpp 
 	unit/concepts/test_concept_is_c_array.cpp 
-	unit/devices/test_devices_id.cpp 
+	unit/developer/test_async_operation_tracker.cpp
+	unit/developer/test_coroutine_lifetime_tracker.cpp
+	unit/developer/test_signal_connection_tracker.cpp
+	unit/errors/test_error_categories.cpp
+	unit/devices/test_devices_id.cpp
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
 	unit/devices/test_devices_screendatapage.cpp 
 	unit/devices/test_devices_screendatapage_processor.cpp 
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
+	unit/exceptions/test_genericaqualinkexception.cpp 
+	unit/formatters/test_formatters.cpp
+	unit/factories/test_factories_jandy_auxillary.cpp	 	
+	unit/factories/test_factories_jandy_messages.cpp
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/generators/test_jandy_rawdata_generator.cpp 
 	unit/http/test_api_equipment.cpp 
+	unit/http/test_http_error_responses.cpp 
+	unit/http/test_http_sessions.cpp 
+	unit/http/test_routing_matches.cpp 
 	unit/http/test_ws_equipment.cpp 
+	unit/kernel/test_auxillary_traits.cpp 
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/options/test_options_equipment.cpp
+	unit/options/test_options_jandy.cpp
+	unit/options/test_options_pipeline.cpp
+	unit/options/test_options_serial.cpp
+	unit/options/test_options_web.cpp
+	unit/messages/test_aquarite_message_getid.cpp
+	unit/messages/test_aquarite_message_percent.cpp
+	unit/messages/test_aquarite_message_ppm.cpp
 	unit/messages/test_message.cpp 
 	unit/messages/test_message_ack.cpp 
 	unit/messages/test_message_message.cpp 
@@ -30,46 +53,236 @@ add_executable(
 	unit/messages/test_message_pda_highlight.cpp 
 	unit/messages/test_message_probe.cpp 
 	unit/messages/test_message_status.cpp 
+	unit/messages/test_message_structure.cpp 
 	unit/messages/test_message_unknown.cpp 
+	unit/mocks/mock_beast_basicstream_with_timeout.cpp
+	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
-	unit/mocks/mock_generator_rawdatatomessage.cpp 
-	unit/mocks/mock_serialport.cpp 
+	unit/mocks/mock_generator_rawdatatomessage.cpp 	
+	unit/mocks/mock_mqtt_broker.cpp
+	unit/mocks/mock_testserialportimpl.cpp 
+	unit/mqtt/test_mqtt_client.cpp
+	unit/mqtt/test_mqtt_ha_discovery.cpp
+	unit/mqtt/test_mqtt_hub.cpp
+	unit/mqtt/test_mqtt_integration.cpp
+	unit/mqtt/test_mqtt_options.cpp
 	unit/protocol/test_protocol_handler.cpp 
+	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
+	unit/support/unit_test_circularbuffermaker.cpp
+	unit/support/unit_test_httprequestresponse.cpp
+	unit/support/unit_test_hublocatorinjector.cpp 
+	unit/support/unit_test_onetouchdevice.cpp 	 
+	unit/support/unit_test_ostream_support.cpp 	
+	unit/support/unit_test_protocolmessagebuilder.cpp
+	unit/support/unit_test_wsrequestresponse.cpp
+	unit/units/test_flow_rate.cpp 
 	unit/units/test_units_orp.cpp 
 	unit/units/test_units_ph.cpp 
-	unit/utility/test_utility_auxillarystate.cpp 
-	unit/utility/test_utility_chemistry.cpp 
-	unit/utility/test_utility_jandychecksum.cpp 
-	unit/utility/test_utility_signallingstatscounter.cpp 
-	unit/utility/test_utility_temperature.cpp 
-	unit/support/unit_test_onetouchdevice.cpp 
-	unit/support/unit_test_onetouchdevice_httpserver.cpp 
-	unit/support/unit_test_ostream_support.cpp 
+	unit/utility/test_utility_auxillarystate.cpp
+	unit/utility/test_utility_bandwidthutilisation.cpp
+	unit/utility/test_utility_chemistry.cpp
+	unit/utility/test_utility_endpointparser.cpp
+	unit/utility/test_utility_jandychecksum.cpp
+	unit/utility/test_utility_latencytracker.cpp
+	unit/utility/test_utility_signallingstatscounter.cpp
+	unit/utility/test_utility_temperature.cpp
+	unit/utility/test_utility_timeoutdurationstringconverter.cpp
+	unit/utility/test_utility_tonumber.cpp
+	unit/utility/test_utility_valuedebouncer.cpp
+	unit/navigation/test_navigation_menu_model.cpp
+	unit/navigation/test_navigation_navigator_edgecases.cpp
+	unit/navigation/test_navigation_visit_policies.cpp
+	unit/navigation/test_spider_engine.cpp
+	unit/messages/test_chemlink_message_response.cpp
+	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_devices_command_dispatcher.cpp
+	unit/devices/test_devices_iaq.cpp
+	unit/messages/test_iaq_messages.cpp
+	unit/messages/test_iaq_message_main_status.cpp
+	unit/formatters/test_formatters_jandy_messages.cpp
+	unit/formatters/test_formatters_jandy_devices.cpp
+	unit/formatters/test_formatters_screen_data_page.cpp
+	unit/formatters/test_formatters_stats_counter.cpp
+	unit/formatters/test_formatters_chemistry.cpp
+	unit/serial/test_serial_port.cpp
+	unit/messages/test_epump_messages.cpp
+	unit/messages/test_heater_messages.cpp
+	unit/messages/test_pda_messages.cpp
+	unit/messages/test_serial_adapter_messages.cpp
+	unit/devices/test_devices_onetouch.cpp
+	unit/devices/test_devices_pda.cpp
+	unit/devices/test_devices_keypad.cpp
+	unit/devices/test_devices_serial_adapter.cpp
+	unit/kernel/test_kernel_hub_locator.cpp
+	unit/kernel/test_kernel_equipment_versions.cpp
+	unit/kernel/test_kernel_body_of_water.cpp
+	unit/kernel/test_kernel_status_conversions.cpp
+	unit/utility/test_utility_string_manipulation.cpp
+	unit/utility/test_utility_pool_configuration_decoder.cpp
+	unit/utility/test_utility_auxillary_state_converter.cpp
+	unit/http/test_http_server_fields.cpp
+	unit/profiling/test_profiling_noop.cpp
+	unit/options/test_options_settings.cpp
+	unit/serial/test_mock_serial_port_impl.cpp
+	unit/serial/test_test_serial_port_impl.cpp
 )
 
-if(WIN32)
-target_sources(testaqualink-automate PRIVATE unit/platform/test_main_win32.cpp)
-target_compile_definitions(testaqualink-automate PRIVATE -DBOOST_TEST_DYN_LINK) # Boost Unit Test is dynamically linked under Windows.
-endif(WIN32)
+target_compile_definitions(
+	testaqualink-automate 
+	PUBLIC 
+	-DBOOST_TEST_DYN_LINK=1
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
+	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:-DBOOST_ASIO_ENABLE_HANDLER_TRACKING> # Enable ASIO connection tracking to aid debug async operations
+)
 
-if(LINUX)
-target_sources(testaqualink-automate PRIVATE unit/platform/test_main_linux.cpp)
-endif(LINUX)
-
-target_include_directories(testaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/unit")
+target_include_directories(
+	testaqualink-automate
+	PUBLIC
+	"${PROJECT_SOURCE_DIR}/test/unit"
+)
 
 target_link_libraries(
-	testaqualink-automate 
-	PRIVATE 
-	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
+	testaqualink-automate
+	PRIVATE
+	libaqualink-automate
+	libaqualink-jandy
+	libaqualink-pentair
 	Boost::unit_test_framework
 )
 
-add_test(AqualinkAutomateUnitTests testaqualink-automate)
+add_test(NAME AqualinkAutomateUnitTests COMMAND testaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+if(ENABLE_COVERAGE)
+
+if(MSVC)
+
+setup_target_for_coverage_opencppcoverage(
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
+	DEPENDENCIES testaqualink-automate
+	SOURCES
+		"${PROJECT_SOURCE_DIR}/src"
+	MODULES
+		"${PROJECT_BINARY_DIR}"
+	EXCLUDE
+		"${PROJECT_SOURCE_DIR}/deps"
+		"${CMAKE_BINARY_DIR}/vcpkg_installed"
+	OUTPUT_FORMAT $<IF:$<BOOL:${USE_SONARQUBE}>,cobertura,html>
+)
+
+elseif(USE_SONARQUBE)
+
+set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn")
+
+setup_target_for_coverage_gcovr_xml(
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
+	DEPENDENCIES testaqualink-automate
+	EXCLUDE
+		"${PROJECT_SOURCE_DIR}/deps"
+		"${CMAKE_BINARY_DIR}/vcpkg_installed"
+		"/usr/include"
+		"include"
+	OUTPUT_FORMAT sonarqube
+)
+
+else()
+
+setup_target_for_coverage_gcovr_html(
+	NAME coverage-testaqualink-automate
+	EXECUTABLE ctest -j ${PROCESSOR_COUNT} -R AqualinkAutomateUnitTests
+	DEPENDENCIES testaqualink-automate
+	EXCLUDE
+		"${PROJECT_SOURCE_DIR}/deps"
+		"${CMAKE_BINARY_DIR}/vcpkg_installed"
+		"/usr/include"
+		"include"
+)
+
+endif()
+
+endif(ENABLE_COVERAGE)
 
 if(ENABLE_SANITIZERS)
-add_sanitizers(testaqualink-automate)
+target_enable_sanitizers(testaqualink-automate)
 endif(ENABLE_SANITIZERS)
+
+#------------------------------------------------------------------------------
+#
+#  Integration Tests
+#
+#------------------------------------------------------------------------------
+
+add_executable(intaqualink-automate)
+
+target_sources(
+	intaqualink-automate
+	PRIVATE
+	integration/test_main.cpp
+	# support
+	integration/support/integration_test_pipeline.cpp
+	integration/support/integration_test_scenarios.cpp
+	# equipment config tests
+	integration/equipment/test_equipment_pool_only.cpp
+	integration/equipment/test_equipment_spa_only.cpp
+	integration/equipment/test_equipment_dual_body_shared.cpp
+	integration/equipment/test_equipment_dual_body_dual.cpp
+	# flow tests
+	integration/flows/test_flow_serial_to_mqtt.cpp
+	integration/flows/test_flow_serial_to_web.cpp
+	integration/flows/test_flow_mqtt_commands.cpp
+	integration/flows/test_flow_web_commands.cpp
+	# IAQ device tests
+	integration/devices/test_iaq_device_commands.cpp
+	# Serial Adapter device tests
+	integration/devices/test_serial_adapter_device_commands.cpp
+	# reuse unit test support
+	unit/mocks/mock_beast_basicstream_with_timeout.cpp
+	unit/mocks/mock_testserialportimpl.cpp
+	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_ostream_support.cpp
+	unit/support/unit_test_protocolmessagebuilder.cpp
+	unit/support/unit_test_httprequestresponse.cpp
+)
+
+target_compile_definitions(
+	intaqualink-automate
+	PUBLIC
+	-DBOOST_TEST_DYN_LINK=1
+	-DMAGIC_ENUM_RANGE_MIN=0
+	-DMAGIC_ENUM_RANGE_MAX=255
+)
+
+target_include_directories(
+	intaqualink-automate
+	PUBLIC
+	"${PROJECT_SOURCE_DIR}/test/unit"
+	"${PROJECT_SOURCE_DIR}/test/integration"
+)
+
+target_link_libraries(
+	intaqualink-automate
+	PRIVATE
+	libaqualink-automate
+	libaqualink-jandy
+	libaqualink-pentair
+	Boost::unit_test_framework
+)
+
+add_test(NAME AqualinkAutomateIntegrationTests COMMAND intaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+if(ENABLE_SANITIZERS)
+target_enable_sanitizers(intaqualink-automate)
+endif(ENABLE_SANITIZERS)
+
+# Integration tests need web templates too
+add_custom_command(
+	TARGET intaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to integration test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)
 
 #------------------------------------------------------------------------------
 #
@@ -80,26 +293,54 @@ endif(ENABLE_SANITIZERS)
 
 if(ENABLE_BENCHMARKS)
 
-add_executable(
+add_executable(perfaqualink-automate)
+
+target_sources(
 	perfaqualink-automate
-	performance/test_main.cpp 
-	performance/test_serialization.cpp 
+	PRIVATE
+	performance/test_main.cpp
+	performance/test_jandy_message_factory.cpp
+	performance/test_latency_tracker.cpp
+	performance/test_protocol_handler.cpp
+	performance/test_serialization.cpp
+	performance/test_mqtt_performance.cpp
+	unit/mocks/mock_mqtt_broker.cpp
 )
 
-target_include_directories(perfaqualink-automate PUBLIC "${PROJECT_SOURCE_DIR}/test/performance")
+target_include_directories(
+	perfaqualink-automate
+	PUBLIC
+	"${PROJECT_SOURCE_DIR}/test/performance"
+)
 
 target_link_libraries(
-	perfaqualink-automate 
-	PRIVATE 
-	"$<LINK_LIBRARY:WHOLE_ARCHIVE,libaqualink-automate>"
-	benchmark::benchmark 
+	perfaqualink-automate
+	PRIVATE
+	libaqualink-automate
+	libaqualink-jandy
+	libaqualink-pentair
+	benchmark::benchmark
 	benchmark::benchmark_main
 )
 
 add_test(AqualinkAutomatePerfTests perfaqualink-automate)
 
 if(ENABLE_SANITIZERS)
-add_sanitizers(perfaqualink-automate)
+target_enable_sanitizers(perfaqualink-automate)
 endif(ENABLE_SANITIZERS)
 
 endif(ENABLE_BENCHMARKS)
+
+#------------------------------------------------------------------------------
+#
+#  The various unit tests for HTTP routing require that the templates exist
+#  so that the mstch can render the payloads to be validated.
+#
+#------------------------------------------------------------------------------
+
+add_custom_command(
+	TARGET testaqualink-automate 
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)

@@ -1,7 +1,7 @@
 #include <format>
 
-#include "jandy/messages/iaq/iaq_message_page_message.h"
-#include "jandy/messages/jandy_message_ids.h"
+#include "messages/iaq/iaq_message_page_message.h"
+#include "messages/jandy_message_ids.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -9,9 +9,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	const Factory::JandyMessageRegistration<Messages::IAQMessage_PageMessage> IAQMessage_PageMessage::g_IAQMessage_PageMessage_Registration(JandyMessageIds::IAQ_PageMessage);
-
-	IAQMessage_PageMessage::IAQMessage_PageMessage() : 
+	IAQMessage_PageMessage::IAQMessage_PageMessage() noexcept :
 		IAQMessage(JandyMessageIds::IAQ_PageMessage),
 		Interfaces::IMessageSignalRecv<IAQMessage_PageMessage>(),
 		m_LineId(0),
@@ -19,9 +17,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageMessage::~IAQMessage_PageMessage()
-	{
-	}
 
 	uint8_t IAQMessage_PageMessage::LineId() const
 	{
@@ -43,21 +38,26 @@ namespace AqualinkAutomate::Messages
 		return false;
 	}
 
-	bool IAQMessage_PageMessage::DeserializeContents(const std::vector<uint8_t>& message_bytes)
+	bool IAQMessage_PageMessage::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageMessage type", message_bytes.size()));
 
-		if (message_bytes.size() < Index_LineId)
+		if (message_bytes.size() <= Index_LineId)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise LineId.");
 		}
-		else if (message_bytes.size() < Index_LineText)
+		else if (message_bytes.size() <= Index_LineText)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise LineText.");
 		}
-		else if ((JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
+		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
 		{
 			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise content of LineText");
+		}
+		else if (message_bytes.size() < Index_LineText + 3)
+		{
+			// Security: Prevent integer underflow in length calculation
+			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short for content extraction");
 		}
 		else
 		{
@@ -67,6 +67,7 @@ namespace AqualinkAutomate::Messages
 			const auto start_index = message_bytes.begin() + Index_LineText;
 			const auto end_index = start_index + length_to_copy;
 
+			m_Line.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_Line),
 				[](const auto& elem)
 				{

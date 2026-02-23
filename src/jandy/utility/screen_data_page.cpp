@@ -1,4 +1,4 @@
-#include "jandy/utility/screen_data_page.h"
+#include "utility/screen_data_page.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -47,12 +47,20 @@ namespace AqualinkAutomate::Utility
 				row.HighlightRange = std::nullopt;
 			}
 		}
-		else if (m_Rows.size() < line_id)
+		else if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
 		}
 		else
 		{
+			// Clear all existing highlights first - there can only be one highlighted line at a time
+			// (the cursor position). Without this, highlights accumulate as new ones are set.
+			for (auto& row : m_Rows)
+			{
+				row.HighlightState = HighlightStates::Normal;
+				row.HighlightRange = std::nullopt;
+			}
+
 			m_Rows[line_id].HighlightState = HighlightStates::Highlighted;
 			m_Rows[line_id].HighlightRange = std::nullopt;
 		}
@@ -60,9 +68,9 @@ namespace AqualinkAutomate::Utility
 
 	void ScreenDataPage::HighlightChars(uint8_t line_id, uint8_t start_index, uint8_t stop_index)
 	{
-		if (m_Rows.size() < line_id)
+		if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
 		}
 		else
 		{
@@ -73,7 +81,7 @@ namespace AqualinkAutomate::Utility
 
 	void ScreenDataPage::ShiftLines(ShiftDirections direction, uint8_t start_id, uint8_t end_id, uint8_t lines_to_shift)
 	{
-		if (start_id > (m_Rows.size() - 2))
+		if (m_Rows.size() < 2 || start_id > (m_Rows.size() - 2))
 		{
 			// Out of range - no suitable lines or not enough to rotate
 			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index out of range; start index -> {} (0-based); total lines -> {}", start_id, m_Rows.size()));

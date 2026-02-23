@@ -1,11 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <format>
 #include <functional>
 
 #include <boost/signals2.hpp>
 
-#include "jandy/devices/jandy_device_id.h"
+#include "devices/jandy_device_id.h"
+#include "formatters/jandy_device_formatters.h"
+#include "logging/logging.h"
+
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
@@ -29,19 +34,22 @@ namespace AqualinkAutomate::Utility
 			{
 				if (m_DeviceId != msg.Destination().Id())
 				{
-					// Message was not for this destination.
+					LogTrace(Channel::Signals, std::format("Filtering message (type: {}) as device's id ({}) does not match destination ({})", typeid(MESSAGE_TYPE*).name(), m_DeviceId, msg.Destination().Id()));
 				}
 				else
 				{
+					LogDebug(Channel::Signals, std::format("Handling message (type: {}) as device's id ({}) matches destination ({})", typeid(MESSAGE_TYPE*).name(), m_DeviceId, msg.Destination().Id()));
 					m_Handler(msg);
 				}
 			};
 
+			LogDebug(Channel::Signals, std::format("Connecting slot handler for message  (type: {}) for device id ({}) ", typeid(MESSAGE_TYPE*).name(), m_DeviceId));
 			m_Connection = MESSAGE_TYPE::GetSignal()->connect(filtered_slot_handler);
 		}
 
 		~FilteredSlot_ByDeviceId()
 		{
+			LogDebug(Channel::Signals, std::format("Disconnecting slot handler for message  (type: {}) for device id ({}) ", typeid(MESSAGE_TYPE*).name(), m_DeviceId));
 			m_Connection.disconnect();
 		}
 

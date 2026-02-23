@@ -1,8 +1,34 @@
 #include <iomanip>
 
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "support/unit_test_ostream_support.h"
+
+namespace AqualinkAutomate::Auxillaries
+{
+    std::ostream& boost_test_print_type(std::ostream& os, JandyAuxillaryIds const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+}
+// AqualinkAutomate::Auxillaries
+
+namespace AqualinkAutomate::Devices
+{
+    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+}
+// namespace AqualinkAutomate::Devices
 
 namespace AqualinkAutomate::ErrorCodes
 {
@@ -18,19 +44,25 @@ namespace AqualinkAutomate::ErrorCodes::Protocol
 
 namespace AqualinkAutomate::Kernel
 {
-    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStates const& right)
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryStatuses const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
     }
 
-    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatus const& right)
+    std::ostream& boost_test_print_type(std::ostream& os, ChlorinatorStatuses const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
     }
 
-    std::ostream& boost_test_print_type(std::ostream& os, PumpStatus const& right)
+    std::ostream& boost_test_print_type(std::ostream& os, HeaterStatuses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, PumpStatuses const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
@@ -51,21 +83,17 @@ namespace AqualinkAutomate::Kernel
 }
 // namespace AqualinkAutomate::Kernel
 
-namespace AqualinkAutomate::Devices
+namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
-    std::ostream& boost_test_print_type(std::ostream& os, DeviceClasses const& right)
+
+    std::ostream& boost_test_print_type(std::ostream& os, AuxillaryTraitsTypes::AuxillaryTypes const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
     }
 
-    std::ostream& boost_test_print_type(std::ostream& os, JandyEmulatedDeviceTypes const& right)
-    {
-        os << magic_enum::enum_name(right);
-        return os;
-    }
 }
-// namespace AqualinkAutomate::Devices
+// namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 
 namespace AqualinkAutomate::HTTP
 {
@@ -100,7 +128,19 @@ namespace AqualinkAutomate::Messages
         return os;
     }
 
+    std::ostream& boost_test_print_type(std::ostream& os, AquariteStatuses const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
     std::ostream& boost_test_print_type(std::ostream& os, ComboModes const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
+    std::ostream& boost_test_print_type(std::ostream& os, PanelDataTypes const& right)
     {
         os << magic_enum::enum_name(right);
         return os;
@@ -117,12 +157,6 @@ namespace AqualinkAutomate::Utility
     }
 
     std::ostream& boost_test_print_type(std::ostream& os, ScreenDataPageTypes const& right)
-    {
-        os << magic_enum::enum_name(right);
-        return os;
-    }
-
-    std::ostream& boost_test_print_type(std::ostream& os, Temperature::Units const& right)
     {
         os << magic_enum::enum_name(right);
         return os;

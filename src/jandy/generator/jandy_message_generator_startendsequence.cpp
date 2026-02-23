@@ -1,4 +1,4 @@
-#include "jandy/generator/jandy_message_generator_startendsequence.h"
+#include "generator/jandy_message_generator_startendsequence.h"
 
 namespace AqualinkAutomate::Generators
 {
