@@ -90,7 +90,6 @@ namespace AqualinkAutomate::Options
 					}
 
 					boost::program_options::store(parsed, vm);
-					boost::program_options::notify(vm);
 					return state;
 				}
 				catch (const std::exception& e)

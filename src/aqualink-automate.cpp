@@ -126,6 +126,7 @@ int main(int argc, char* argv[])
 				| Add(Jandy::Options::OptionsProcessor{})
 				| Add(Pentair::Options::OptionsProcessor{})
 				| Parse(argc, argv)
+				| ParseConfigFile()
 				| Validate()
 				| CheckHelpAndVersion()
 				| Process(

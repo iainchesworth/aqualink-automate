@@ -38,6 +38,7 @@ target_sources(
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/options/test_options_config_file.cpp
 	unit/options/test_options_equipment.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp

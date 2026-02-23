@@ -24,6 +24,7 @@ namespace
 			| Options::Add(Jandy::Options::OptionsProcessor{})
 			| Options::Add(Pentair::Options::OptionsProcessor{})
 			| Options::Parse(static_cast<int>(args.size()), const_cast<char**>(args.data()))
+			| Options::Notify()
 			| Options::Validate()
 			| Options::Process(
 				Options::App::OptionsProcessor{},

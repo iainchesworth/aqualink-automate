@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "options/options_config_file.h"
 #include "options/options_web_options.h"
 #include "options/options_registry.h"
 #include "options/options_app_options.h"
@@ -261,6 +262,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DisableHttps)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -284,6 +286,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DefaultsEnableHttps)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -307,6 +310,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DisableBoth)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -330,6 +334,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_ConflictingOptionsFailsValidat
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();

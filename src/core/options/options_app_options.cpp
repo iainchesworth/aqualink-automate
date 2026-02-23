@@ -40,6 +40,11 @@ namespace AqualinkAutomate::Options::App
 	{
 		SettingsType settings;
 
+		if (OPTION_CONFIG->IsPresent(vm))
+		{
+			settings.config_file = OPTION_CONFIG->As<std::string>(vm);
+		}
+
 		if (OPTION_DEBUG->IsPresent(vm))
 		{
 			LogTrace(Channel::Options, "Setting global logging severity level filter to Debug");

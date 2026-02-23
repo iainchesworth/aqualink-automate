@@ -24,12 +24,15 @@ namespace AqualinkAutomate::Options::App
 		tagAppSettings()
 		{
 		}
+
+		std::string config_file;
 	}
 	AppSettings;
 
 	class OptionsProcessor
 	{
 	private:
+		AppOptionPtr OPTION_CONFIG{ make_appoption("config", "c", "Path to configuration file", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DEBUG{ make_appoption("debug", "d", "Enable debug logging") };
 		AppOptionPtr OPTION_HELP{ make_appoption("help", "h", "Displays the help information") };
 		AppOptionPtr OPTION_TRACE{ make_appoption("trace", "Enable trace logging") };
@@ -38,6 +41,7 @@ namespace AqualinkAutomate::Options::App
 
 		const std::vector<AppOptionPtr> AppOptionsCollection
 		{
+			OPTION_CONFIG,
 			OPTION_DEBUG,
 			OPTION_HELP,
 			OPTION_TRACE,

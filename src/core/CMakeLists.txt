@@ -166,6 +166,7 @@ target_sources(
 	mqtt/mqtt_integration.cpp
 	options/options.cpp
 	options/options_app_options.cpp
+	options/options_config_file.cpp
 	options/options_developer_options.cpp
 	options/options_equipment_options.cpp
 	options/options_mqtt_options.cpp
