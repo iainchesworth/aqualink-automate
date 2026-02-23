@@ -64,11 +64,23 @@ if (Test-Path $Marker) {
 }
 
 # Read guestinfo variables (set on the VM in vSphere)
+# Note: Must use Start-Process or cmd /c to preserve the single-argument
+# semantics of --cmd "info-get guestinfo.xxx".  PowerShell's & operator
+# splits the quoted string into separate tokens which vmtoolsd rejects.
 function Get-GuestInfo($key) {
     try {
         $vmtoolsd = "C:\Program Files\VMware\VMware Tools\vmtoolsd.exe"
-        $result = & $vmtoolsd --cmd "info-get guestinfo.$key" 2>$null
-        if ($LASTEXITCODE -eq 0) { return $result.Trim() }
+        $tmpFile = [System.IO.Path]::GetTempFileName()
+        $proc = Start-Process -FilePath $vmtoolsd `
+            -ArgumentList "--cmd `"info-get guestinfo.$key`"" `
+            -Wait -PassThru -NoNewWindow `
+            -RedirectStandardOutput $tmpFile 2>$null
+        if ($proc.ExitCode -eq 0) {
+            $result = Get-Content $tmpFile -Raw -ErrorAction SilentlyContinue
+            Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+            if ($result) { return $result.Trim() }
+        }
+        Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
     } catch {}
     return ""
 }
