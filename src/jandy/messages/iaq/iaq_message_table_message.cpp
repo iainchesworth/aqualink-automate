@@ -17,7 +17,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_TableMessage::~IAQMessage_TableMessage() = default;
 
 	uint8_t IAQMessage_TableMessage::LineId() const
 	{

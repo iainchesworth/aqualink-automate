@@ -17,7 +17,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_ConfigEvent_Chemistry();
-		virtual ~DataHub_ConfigEvent_Chemistry();
+		~DataHub_ConfigEvent_Chemistry() override = default;
 
 	public:
 		std::optional<Kernel::ORP> ORP() const;
@@ -30,8 +30,8 @@ namespace AqualinkAutomate::Kernel
 		void SaltLevel(const Units::ppm_quantity& salt_level_in_ppm);
 
 	public:
-		virtual boost::uuids::uuid Id() const override;
-		virtual nlohmann::json ToJSON() const override;
+		boost::uuids::uuid Id() const override;
+		nlohmann::json ToJSON() const override;
 
 	private:
 		std::optional<Kernel::ORP> m_ORP;

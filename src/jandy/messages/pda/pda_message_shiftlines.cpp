@@ -18,7 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_ShiftLines::~PDAMessage_ShiftLines() = default;
 
 	uint8_t PDAMessage_ShiftLines::FirstLineId() const
 	{

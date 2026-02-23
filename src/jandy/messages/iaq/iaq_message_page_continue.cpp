@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageContinue::~IAQMessage_PageContinue() = default;
 
 	std::string IAQMessage_PageContinue::ToString() const
 	{

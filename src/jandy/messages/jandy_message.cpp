@@ -27,7 +27,6 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 	{
 	}
 
-	JandyMessage::~JandyMessage() = default;
 
 	const Devices::JandyDeviceType JandyMessage::Destination() const
 	{

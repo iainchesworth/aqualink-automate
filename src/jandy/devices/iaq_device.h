@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		IAQDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
-		virtual ~IAQDevice();
+		~IAQDevice() override;
 
 	public:
 		void QueueCommand(uint8_t command);
@@ -57,11 +57,11 @@ namespace AqualinkAutomate::Devices
 		void QueueChlorinatorBoost(bool enable);
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
 		void ProcessControllerUpdates(bool is_poll_message);
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_IAQ_AuxStatus(const Messages::IAQMessage_AuxStatus& msg);

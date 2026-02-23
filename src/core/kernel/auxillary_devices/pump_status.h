@@ -11,8 +11,8 @@ namespace AqualinkAutomate::Kernel
 	{
 		Off = 0x00,
 		Running = 0x01,
-		NotInstalled,
-		Unknown
+		NotInstalled = 0x02,
+		Unknown = 0x03
 	};
 
 	PumpStatuses ConvertToPumpStatus(AuxillaryStatuses aux_states);

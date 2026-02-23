@@ -10,10 +10,10 @@ namespace AqualinkAutomate::HTTP
 	{
     public:
         WebRoute_Version() = default;
-        virtual ~WebRoute_Version() = default;
+        ~WebRoute_Version() override = default;
 
 	public:
-        virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
+        HTTP::Message OnRequest(const HTTP::Request& req) final;
 	};
 
 }

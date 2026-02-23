@@ -43,13 +43,13 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		PDADevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
-		virtual ~PDADevice();
+		~PDADevice() override = default;
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_PDA_Ack(const Messages::JandyMessage_Ack& msg);

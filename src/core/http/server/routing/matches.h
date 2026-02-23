@@ -70,27 +70,27 @@ namespace AqualinkAutomate::HTTP::Routing
     public:
         matches_storage() = default;
 
-        virtual std::string_view const* matches() const override
+        std::string_view const* matches() const override
         {
             return matches_storage_.data();
         }
 
-        virtual std::string_view const* ids() const override
+        std::string_view const* ids() const override
         {
             return ids_storage_.data();
         }
 
-        virtual std::string_view* matches() override
+        std::string_view* matches() override
         {
             return matches_storage_.data();
         }
 
-        virtual std::string_view* ids() override
+        std::string_view* ids() override
         {
             return ids_storage_.data();
         }
 
-        virtual std::size_t size() const override
+        std::size_t size() const override
         {
             return size_;
         }

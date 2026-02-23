@@ -22,8 +22,8 @@ namespace AqualinkAutomate::ErrorCodes
 		static const Options_ErrorCategory& Instance();
 
 	public:
-		virtual const char* name() const noexcept override;
-		virtual std::string message(int ev) const override;
+		const char* name() const noexcept override;
+		std::string message(int ev) const override;
 	};
 
 }

@@ -20,7 +20,6 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	DataHub_ConfigEvent_Temperature::~DataHub_ConfigEvent_Temperature() = default;
 
 	std::optional<Kernel::Temperature> DataHub_ConfigEvent_Temperature::PoolTemp() const
 	{

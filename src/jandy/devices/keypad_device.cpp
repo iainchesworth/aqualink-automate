@@ -25,7 +25,6 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 	
-	KeypadDevice::~KeypadDevice() = default;
 
 	void KeypadDevice::ProcessControllerUpdates()
 	{

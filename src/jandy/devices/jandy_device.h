@@ -14,7 +14,7 @@ namespace AqualinkAutomate::Devices
 	{
 	public:
 		JandyDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
-		virtual ~JandyDevice();
+		~JandyDevice() override = default;
 
 	public:
 		const Devices::JandyDeviceType& DeviceId() const;

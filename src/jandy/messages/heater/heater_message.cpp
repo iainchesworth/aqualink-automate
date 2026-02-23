@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	HeaterMessage::~HeaterMessage() = default;
 
 	std::string HeaterMessage::ToString() const
 	{

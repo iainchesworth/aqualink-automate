@@ -63,14 +63,14 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		OneTouchDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
-		virtual ~OneTouchDevice();
+		~OneTouchDevice() override;
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
 		void ProcessControllerUpdates(bool is_status_message);
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);

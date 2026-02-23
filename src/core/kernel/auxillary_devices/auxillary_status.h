@@ -9,9 +9,9 @@ namespace AqualinkAutomate::Kernel
 	{
 		On = 0x00,
 		Off = 0x01,
-		Enabled,
-		Pending,
-		Unknown
+		Enabled = 0x02,
+		Pending = 0x03,
+		Unknown = 0x04
 	};
 
 }

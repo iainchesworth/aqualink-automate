@@ -15,9 +15,7 @@ namespace AqualinkAutomate::Interfaces
 		{
 		}
 
-		virtual ~IMessage()
-		{
-		}
+		virtual ~IMessage() = default;
 
 	public:
 		MESSAGE_ID Id() const

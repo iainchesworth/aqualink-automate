@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		Hub_Event(Hub_EventTypes event_type);
-		virtual ~Hub_Event();
+		virtual ~Hub_Event() = default;
 
 	public:
 		Hub_EventTypes Type() const;

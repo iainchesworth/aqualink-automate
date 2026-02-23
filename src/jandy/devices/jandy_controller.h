@@ -12,7 +12,7 @@ namespace AqualinkAutomate::Devices
 	{
 	public:
 		JandyController(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);
-		virtual ~JandyController();
+		~JandyController() override = default;
 
 	protected:
 		virtual void ProcessControllerUpdates() = 0;

@@ -22,6 +22,9 @@ namespace AqualinkAutomate::Interfaces
 	template<typename MESSAGE_TYPE>
 	class IMessageSignalRecv : public IMessageSignalRecvBase
 	{
+	protected:
+		IMessageSignalRecv() = default;
+
 	public:
 		virtual ~IMessageSignalRecv() = default;
 

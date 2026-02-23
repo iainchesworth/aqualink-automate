@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_ConfigEvent_Temperature();
-		~DataHub_ConfigEvent_Temperature();
+		~DataHub_ConfigEvent_Temperature() override = default;
 
 	public:
 		std::optional<Kernel::Temperature> PoolTemp() const;
@@ -32,8 +32,8 @@ namespace AqualinkAutomate::Kernel
 		void SpaSetpoint(const Kernel::Temperature& spa_setpoint);
 
 	public:
-		virtual boost::uuids::uuid Id() const override;
-		virtual nlohmann::json ToJSON() const override;
+		boost::uuids::uuid Id() const override;
+		nlohmann::json ToJSON() const override;
 
 	private:
 		std::optional<Kernel::Temperature> m_PoolTemp;

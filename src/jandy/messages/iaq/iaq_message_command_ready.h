@@ -15,14 +15,14 @@ namespace AqualinkAutomate::Messages
 	{
 	public:
 		IAQMessage_CommandReady() noexcept;
-		virtual ~IAQMessage_CommandReady();
+		~IAQMessage_CommandReady() override = default;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 	};
 
 }

@@ -10,10 +10,10 @@ namespace AqualinkAutomate::HTTP
 	{
 	public:
 		WebRoute_Diagnostics_Logging() = default;
-		virtual ~WebRoute_Diagnostics_Logging() = default;
+		~WebRoute_Diagnostics_Logging() override = default;
 
 	public:
-		virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Message OnRequest(const HTTP::Request& req) final;
 
 	private:
 		HTTP::Message HandleGet(const HTTP::Request& req);

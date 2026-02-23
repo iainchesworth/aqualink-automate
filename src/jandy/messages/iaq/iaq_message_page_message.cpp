@@ -17,7 +17,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageMessage::~IAQMessage_PageMessage() = default;
 
 	uint8_t IAQMessage_PageMessage::LineId() const
 	{

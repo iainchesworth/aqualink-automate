@@ -16,7 +16,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		StatisticsHub();
-		virtual ~StatisticsHub();
+		~StatisticsHub() override = default;
 
 	public:
 		// The total number of messages sent or received.

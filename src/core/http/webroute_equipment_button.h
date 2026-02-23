@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Equipment_Button(Kernel::HubLocator& hub_locator);
 
 	public:
-		virtual HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Message OnRequest(const HTTP::Request& req) final;
 
 	public:
 		HTTP::Message ButtonIndividual_GetHandler(const HTTP::Request& req);

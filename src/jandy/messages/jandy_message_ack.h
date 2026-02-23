@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Messages
 		JandyMessage_Ack() noexcept;
 		JandyMessage_Ack(AckTypes ack_type, uint8_t command);
 		explicit JandyMessage_Ack(uint8_t ack_value, uint8_t command);
-		virtual ~JandyMessage_Ack();
+		~JandyMessage_Ack() override = default;
 
 	public:
 		AckTypes AckType() const;
@@ -63,11 +63,11 @@ namespace AqualinkAutomate::Messages
 		}
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint8_t m_AckType;

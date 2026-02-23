@@ -14,7 +14,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_DisplayUpdate::~JandyMessage_DisplayUpdate() = default;
 
 	std::string JandyMessage_DisplayUpdate::ToString() const
 	{

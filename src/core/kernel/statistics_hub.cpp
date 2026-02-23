@@ -8,7 +8,6 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	StatisticsHub::~StatisticsHub() = default;
 
 }
 // namespace AqualinkAutomate::Kernel

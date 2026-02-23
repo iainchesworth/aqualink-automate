@@ -19,7 +19,7 @@ namespace AqualinkAutomate::Messages
 	{
 		Pool = 0x00,
 		Spa = 0x01,
-		Unknown
+		Unknown = 0x02
 	};
 
 	class JandyMessage_Status : public JandyMessage, public Interfaces::IMessageSignalRecv<JandyMessage_Status>
@@ -28,7 +28,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		JandyMessage_Status() noexcept;
-		virtual ~JandyMessage_Status();
+		~JandyMessage_Status() override = default;
 
 	public:
 		ComboModes Mode() const;
@@ -45,11 +45,11 @@ namespace AqualinkAutomate::Messages
 		Kernel::HeaterStatuses SolarHeater() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		ComboModes m_Mode;

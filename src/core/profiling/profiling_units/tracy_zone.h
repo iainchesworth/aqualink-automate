@@ -17,12 +17,12 @@ namespace AqualinkAutomate::Profiling
 	{
 	public:
 		TracyZone(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
-		virtual ~TracyZone() = default;
+		~TracyZone() override = default;
 
 	public:
-		virtual void Start() const override;
-		virtual void Mark() const override;
-		virtual void End() const override;
+		void Start() const override;
+		void Mark() const override;
+		void End() const override;
 
 	public:
 		void Text(std::string_view text) const override;

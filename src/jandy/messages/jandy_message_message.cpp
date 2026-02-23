@@ -27,7 +27,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Message::~JandyMessage_Message() = default;
 
 	std::string JandyMessage_Message::Line() const
 	{

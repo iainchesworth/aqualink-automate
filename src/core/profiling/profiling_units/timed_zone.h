@@ -21,12 +21,12 @@ namespace AqualinkAutomate::Profiling
 	{
 	public:
 		TimedZone(std::string_view name, TimedZoneStates start_state = TimedZoneStates::Running);
-		virtual ~TimedZone() = default;
+		~TimedZone() override = default;
 
 	public:
-		virtual void Start() const override;
-		virtual void Mark() const override;
-		virtual void End() const override;
+		void Start() const override;
+		void Mark() const override;
+		void End() const override;
 
 	public:
 		auto Duration() const;

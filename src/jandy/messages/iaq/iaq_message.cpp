@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage::~IAQMessage() = default;
 
 	std::string IAQMessage::ToString() const
 	{

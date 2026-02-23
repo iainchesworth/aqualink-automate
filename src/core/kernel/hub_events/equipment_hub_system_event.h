@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		EquipmentHub_SystemEvent(Hub_EventTypes event_type);
-		virtual ~EquipmentHub_SystemEvent();
+		~EquipmentHub_SystemEvent() override = default;
 	};
 
 }

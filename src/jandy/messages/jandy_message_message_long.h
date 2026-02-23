@@ -24,18 +24,18 @@ namespace AqualinkAutomate::Messages
 	public:
 		JandyMessage_MessageLong() noexcept;
 		JandyMessage_MessageLong(const uint8_t line_id, const std::string& line);
-		virtual ~JandyMessage_MessageLong();
+		~JandyMessage_MessageLong() override = default;
 
 	public:
 		uint8_t LineId() const;
 		std::string Line() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint8_t m_LineId;

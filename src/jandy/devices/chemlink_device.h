@@ -23,10 +23,10 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		ChemlinkDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
-		virtual ~ChemlinkDevice() = default;
+		~ChemlinkDevice() override = default;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	public:
 		TimestampedORP ORPMillivolts() const;

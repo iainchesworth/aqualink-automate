@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AquariteMessage::~AquariteMessage() = default;
 
 	std::string AquariteMessage::ToString() const
 	{

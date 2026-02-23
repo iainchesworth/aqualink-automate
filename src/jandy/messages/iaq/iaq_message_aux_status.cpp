@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_AuxStatus::~IAQMessage_AuxStatus() = default;
 
 	const std::vector<uint8_t>& IAQMessage_AuxStatus::RawPayload() const
 	{

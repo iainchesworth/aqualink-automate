@@ -26,14 +26,14 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Equipment(Kernel::HubLocator& hub_locator);
 
 	public:
-		virtual std::optional<std::string> DequeueMessage(ConnectionId connId) override;
+		std::optional<std::string> DequeueMessage(ConnectionId connId) override;
 
 	public:
-        virtual ConnectionId OnOpen() override;
-        virtual void OnMessage(ConnectionId connId, const boost::beast::flat_buffer& buffer) override;
-		virtual void OnPublish(ConnectionId connId) override;
-        virtual void OnClose(ConnectionId connId) override;
-        virtual void OnError(ConnectionId connId) override;
+        ConnectionId OnOpen() override;
+        void OnMessage(ConnectionId connId, const boost::beast::flat_buffer& buffer) override;
+		void OnPublish(ConnectionId connId) override;
+        void OnClose(ConnectionId connId) override;
+        void OnError(ConnectionId connId) override;
 
 	private:
 		void Broadcast(const std::string& payload);

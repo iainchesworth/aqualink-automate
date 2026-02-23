@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		JandyMessage(const JandyMessageIds& msg_id);
-		virtual ~JandyMessage();
+		~JandyMessage() override = default;
 
 	public:
 		const Devices::JandyDeviceType Destination() const;
@@ -46,14 +46,14 @@ namespace AqualinkAutomate::Messages
 		const uint8_t ChecksumValue() const;
 
 	public:
-		virtual uint8_t MaxPermittedPacketLength() const override;
-		virtual uint8_t MinPermittedPacketLength() const override;
-		virtual std::string ToString() const override;
+		uint8_t MaxPermittedPacketLength() const override;
+		uint8_t MinPermittedPacketLength() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool Serialize(std::vector<uint8_t>& message_bytes) const final;
+		bool Serialize(std::vector<uint8_t>& message_bytes) const final;
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const = 0;
-		virtual bool Deserialize(const std::span<const std::byte>& message_bytes) final;
+		bool Deserialize(const std::span<const std::byte>& message_bytes) final;
 		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) = 0;
 
 	public:

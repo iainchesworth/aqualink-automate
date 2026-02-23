@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		HeaterMessage_Request() noexcept;
-		virtual ~HeaterMessage_Request();
+		~HeaterMessage_Request() override = default;
 
 	public:
 		HeaterOperatingModes OperatingMode() const;
@@ -46,11 +46,11 @@ namespace AqualinkAutomate::Messages
 		uint8_t WaterTemperature() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		HeaterOperatingModes m_OperatingMode;

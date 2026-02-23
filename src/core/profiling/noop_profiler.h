@@ -8,8 +8,8 @@ namespace AqualinkAutomate::Profiling
 	class NoOp_Profiler : public Interfaces::IProfiler
 	{
 	public:
-		virtual void StartProfiling() override;
-		virtual void StopProfiling() override;
+		void StartProfiling() override;
+		void StopProfiling() override;
 	};
 
 }

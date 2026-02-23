@@ -53,7 +53,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	SerialAdapterMessage_DevStatus::~SerialAdapterMessage_DevStatus() = default;
 
 	std::optional<uint16_t> SerialAdapterMessage_DevStatus::ModelType() const
 	{

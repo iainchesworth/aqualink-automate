@@ -17,7 +17,6 @@ namespace AqualinkAutomate::Messages
 		m_Destination = Devices::JandyDeviceType(0x00);
 	}
 
-	IAQMessage_ControlDataResponse::~IAQMessage_ControlDataResponse() = default;
 
 	std::string IAQMessage_ControlDataResponse::ToString() const
 	{

@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AqualinkTouchMessage::~AqualinkTouchMessage() = default;
 
 	std::string AqualinkTouchMessage::ToString() const
 	{

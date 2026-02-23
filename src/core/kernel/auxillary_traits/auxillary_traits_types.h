@@ -39,19 +39,19 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class AuxillaryTypeTrait : public ImmutableTraitType<const AuxillaryTypes>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"AuxillaryTypesTrait"}; }
+		TraitKey Name() const final { return std::string{"AuxillaryTypesTrait"}; }
 	};
 
 	class DutyCycleTrait : public MutableTraitType<uint8_t>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"DutyCycleTrait"}; }
+		TraitKey Name() const final { return std::string{"DutyCycleTrait"}; }
 	};
 
 	class ErrorCodesTrait : public ImmutableTraitType<std::set<boost::system::error_code>>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"ErrorCodesTrait"}; }
+		TraitKey Name() const final { return std::string{"ErrorCodesTrait"}; }
 	};
 
 	class LabelTrait : public MutableTraitType<const std::string>
@@ -60,13 +60,13 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		static const std::string COMMON_LABEL_FILTER_PUMP;
 
 	public:
-		virtual TraitKey Name() const final { return std::string{"LabelTrait"}; }
+		TraitKey Name() const final { return std::string{"LabelTrait"}; }
 	};
 
 	class StatusTrait : public ImmutableTraitType<const std::string>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -76,7 +76,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class AuxillaryStatusTrait : public MutableTraitType<AuxillaryStatuses>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -86,25 +86,25 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class ChlorinatorStatusTrait : public MutableTraitType<ChlorinatorStatuses>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
 	};
 
 	class GeneratingPercentageTrait : public MutableTraitType<uint8_t>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"GeneratingPercentageTrait"}; }
+		TraitKey Name() const final { return std::string{"GeneratingPercentageTrait"}; }
 	};
 
 	class BoostModeTrait : public MutableTraitType<ChlorinatorBoostModes>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"BoostModeTrait"}; }
+		TraitKey Name() const final { return std::string{"BoostModeTrait"}; }
 	};
 
 	class ChlorinatorHealthTrait : public MutableTraitType<ChlorinatorHealth>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"ChlorinatorHealthTrait"}; }
+		TraitKey Name() const final { return std::string{"ChlorinatorHealthTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -114,13 +114,13 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class HeaterStatusTrait : public MutableTraitType<HeaterStatuses>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
 	};
 
 	class TargetTemperatureTrait : public MutableTraitType<Temperature>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"TargetTemperatureTrait"}; }
+		TraitKey Name() const final { return std::string{"TargetTemperatureTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -130,13 +130,13 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class BrightnessLevelTrait : public MutableTraitType<uint8_t>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"BrightnessLevelTrait"}; }
+		TraitKey Name() const final { return std::string{"BrightnessLevelTrait"}; }
 	};
 
 	class ColourTrait : public MutableTraitType<uint8_t>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"ColourTrait"}; }
+		TraitKey Name() const final { return std::string{"ColourTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -146,25 +146,25 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class PumpSpeedTrait : public MutableTraitType<PumpSpeeds>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{ "PumpSpeedTrait" }; }
+		TraitKey Name() const final { return std::string{ "PumpSpeedTrait" }; }
 	};
 
 	class PumpStatusTrait : public MutableTraitType<PumpStatuses>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{ "StatusTrait_MultipleTraitTypes" }; }
+		TraitKey Name() const final { return std::string{ "StatusTrait_MultipleTraitTypes" }; }
 	};
 
 	class PumpTypeTrait : public MutableTraitType<PumpTypes>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{ "PumpTypeTrait" }; }
+		TraitKey Name() const final { return std::string{ "PumpTypeTrait" }; }
 	};
 
 	class FlowRateTrait : public MutableTraitType<Kernel::FlowRate>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"FlowRateTrait"}; }
+		TraitKey Name() const final { return std::string{"FlowRateTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -174,7 +174,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class BodyOfWaterTrait : public MutableTraitType<BodyOfWaterIds>
 	{
 	public:
-		virtual TraitKey Name() const final { return std::string{"BodyOfWaterTrait"}; }
+		TraitKey Name() const final { return std::string{"BodyOfWaterTrait"}; }
 	};
 
 	//---------------------------------------------------------------------

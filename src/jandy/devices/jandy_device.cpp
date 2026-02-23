@@ -11,7 +11,6 @@ namespace AqualinkAutomate::Devices
 	{
 	}
 
-	JandyDevice::~JandyDevice() = default;
 
 	const Devices::JandyDeviceType& JandyDevice::DeviceId() const
 	{

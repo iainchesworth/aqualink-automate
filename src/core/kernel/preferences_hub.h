@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		PreferencesHub();
-		virtual ~PreferencesHub();
+		~PreferencesHub() override = default;
 
 	public:
 		TemperatureUnits Temperature_DisplayUnits{ TemperatureUnits::Celsius };

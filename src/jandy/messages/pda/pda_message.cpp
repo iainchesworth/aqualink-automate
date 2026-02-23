@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage::~PDAMessage() = default;
 
 	std::string PDAMessage::ToString() const
 	{

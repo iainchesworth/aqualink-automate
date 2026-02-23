@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_Poll::~IAQMessage_Poll() = default;
 
 	std::string IAQMessage_Poll::ToString() const
 	{

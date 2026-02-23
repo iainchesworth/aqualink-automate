@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_Heartbeat::~IAQMessage_Heartbeat() = default;
 
 	std::string IAQMessage_Heartbeat::ToString() const
 	{

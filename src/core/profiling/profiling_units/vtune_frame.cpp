@@ -17,18 +17,18 @@ namespace AqualinkAutomate::Profiling
 
 	void VTuneFrame::Start() const
 	{
-		__itt_frame_begin_v3(m_Domain, NULL);
+		__itt_frame_begin_v3(m_Domain, nullptr);
 	}
 
 	void VTuneFrame::Mark() const
 	{
-		__itt_frame_begin_v3(m_Domain, NULL);
-		__itt_frame_end_v3(m_Domain, NULL);
+		__itt_frame_begin_v3(m_Domain, nullptr);
+		__itt_frame_end_v3(m_Domain, nullptr);
 	}
 
 	void VTuneFrame::End() const
 	{
-		__itt_frame_end_v3(m_Domain, NULL);
+		__itt_frame_end_v3(m_Domain, nullptr);
 	}
 
 }

@@ -24,10 +24,10 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		EPumpDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
-		virtual ~EPumpDevice() = default;
+		~EPumpDevice() override = default;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	public:
 		TimestampedRPM ReportedRPM() const;

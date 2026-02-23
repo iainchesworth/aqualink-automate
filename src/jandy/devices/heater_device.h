@@ -25,10 +25,10 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		HeaterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id);
-		virtual ~HeaterDevice() = default;
+		~HeaterDevice() override = default;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	public:
 		TimestampedMode OperatingMode() const;

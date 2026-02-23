@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Kernel
     class ImmutableTraitType : public TraitType<TRAIT_TYPE>
     {
     public:
-        virtual bool IsMutable() const final
+        bool IsMutable() const final
         {
             return false;
         }
@@ -31,7 +31,7 @@ namespace AqualinkAutomate::Kernel
     class MutableTraitType : public TraitType<TRAIT_TYPE>
     {
     public:
-        virtual bool IsMutable() const final
+        bool IsMutable() const final
         {
             return true;
         }

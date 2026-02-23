@@ -25,7 +25,7 @@ namespace AqualinkAutomate::Equipment
 	{
 	public:
 		JandyEquipment(Kernel::HubLocator& hub_locator);
-		virtual ~JandyEquipment();
+		~JandyEquipment() override;
 
 	private:
 		void IdentifyAndAddDevice(const Messages::JandyMessage& message);

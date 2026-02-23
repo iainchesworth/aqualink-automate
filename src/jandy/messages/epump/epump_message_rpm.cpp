@@ -16,7 +16,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	EPumpMessage_RPM::~EPumpMessage_RPM() = default;
 
 	uint16_t EPumpMessage_RPM::RPM() const
 	{

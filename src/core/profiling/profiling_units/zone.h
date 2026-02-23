@@ -15,12 +15,12 @@ namespace AqualinkAutomate::Profiling
 	{
 	public:
 		Zone(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
-		virtual ~Zone() = default;
+		~Zone() override = default;
 
 	public:
-		virtual void Start() const override;
-		virtual void Mark() const override;
-		virtual void End() const override;
+		void Start() const override;
+		void Mark() const override;
+		void End() const override;
 	};
 
 	using ZonePtr = std::unique_ptr<Profiling::Zone>;

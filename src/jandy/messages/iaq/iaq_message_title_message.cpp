@@ -16,7 +16,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_TitleMessage::~IAQMessage_TitleMessage() = default;
 
 	std::string IAQMessage_TitleMessage::Title() const
 	{

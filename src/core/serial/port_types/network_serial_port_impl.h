@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 		explicit NetworkSerialPortImpl(boost::asio::any_io_executor executor);
 		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name);
 		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, boost::system::error_code& ec);
-		~NetworkSerialPortImpl();
+		~NetworkSerialPortImpl() override;
 
 		NetworkSerialPortImpl(const NetworkSerialPortImpl&) = delete;
 		NetworkSerialPortImpl& operator=(const NetworkSerialPortImpl&) = delete;

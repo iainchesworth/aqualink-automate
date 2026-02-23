@@ -18,7 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	AquariteMessage_PPM::~AquariteMessage_PPM() = default;
 
 	uint16_t AquariteMessage_PPM::SaltConcentrationPPM() const
 	{

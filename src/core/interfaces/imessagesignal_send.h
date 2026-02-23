@@ -23,6 +23,9 @@ namespace AqualinkAutomate::Interfaces
 	template<typename MESSAGE_TYPE>
 	class IMessageSignalSend : public IMessageSignalSendBase
 	{
+	protected:
+		IMessageSignalSend() = default;
+
 	public:
 		virtual ~IMessageSignalSend() = default;
 

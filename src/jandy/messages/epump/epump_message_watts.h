@@ -20,17 +20,17 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		EPumpMessage_Watts() noexcept;
-		virtual ~EPumpMessage_Watts();
+		~EPumpMessage_Watts() override = default;
 
 	public:
 		uint16_t Watts() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		uint16_t m_Watts;

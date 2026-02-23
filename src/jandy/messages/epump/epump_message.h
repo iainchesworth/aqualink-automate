@@ -14,14 +14,14 @@ namespace AqualinkAutomate::Messages
 	{
 	public:
 		EPumpMessage(const JandyMessageIds& msg_id);
-		virtual ~EPumpMessage();
+		~EPumpMessage() override = default;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override = 0;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override = 0;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override = 0;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override = 0;
 	};
 
 }

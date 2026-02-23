@@ -8,7 +8,6 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	DataHub_ConfigEvent::~DataHub_ConfigEvent() = default;
 
 }
 // namespace AqualinkAutomate::Kernel

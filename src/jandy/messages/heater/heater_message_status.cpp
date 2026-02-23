@@ -18,7 +18,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	HeaterMessage_Status::~HeaterMessage_Status() = default;
 
 	HeaterStates HeaterMessage_Status::HeaterState() const
 	{

@@ -30,18 +30,18 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		ChemlinkMessage_Response() noexcept;
-		virtual ~ChemlinkMessage_Response();
+		~ChemlinkMessage_Response() override = default;
 
 	public:
 		ChemlinkDataTag DataTag() const;
 		uint16_t RawValue() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		ChemlinkDataTag m_DataTag;

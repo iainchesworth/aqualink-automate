@@ -32,7 +32,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	JandyMessage_Status::~JandyMessage_Status() = default;
 
 	ComboModes JandyMessage_Status::Mode() const
 	{

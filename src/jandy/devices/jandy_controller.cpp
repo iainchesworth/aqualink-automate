@@ -9,7 +9,6 @@ namespace AqualinkAutomate::Devices
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 	}
 
-	JandyController::~JandyController() = default;
 
 }
 // namespace AqualinkAutomate::Devices

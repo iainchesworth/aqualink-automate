@@ -8,7 +8,6 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	PreferencesHub::~PreferencesHub() = default;
 
 }
 // namespace AqualinkAutomate::Kernel

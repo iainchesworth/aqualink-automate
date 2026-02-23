@@ -37,7 +37,7 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
-		virtual ~SerialAdapterDevice();
+		~SerialAdapterDevice() override;
 
 	public:
 		void QueueCommand(uint8_t ack_type, uint8_t ack_data_value);
@@ -46,10 +46,10 @@ namespace AqualinkAutomate::Devices
 		void QueueSetpointCommand(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_SerialAdapter_Ack(const Messages::JandyMessage_Ack& msg);

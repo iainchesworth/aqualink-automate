@@ -18,11 +18,11 @@ namespace AqualinkAutomate::Profiling
 	class Tracy_Profiler : public Interfaces::IProfiler
 	{
 	public:
-		virtual void StartProfiling() override;
-		virtual void StopProfiling() override;
+		void StartProfiling() override;
+		void StopProfiling() override;
 
 	public:
-		virtual ZonePtr CreateZone(FramePtr frame, const std::string& name) const override;
+		ZonePtr CreateZone(FramePtr frame, const std::string& name) const override;
 
 	public:
 		void Message(std::string_view text) const override;

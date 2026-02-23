@@ -27,7 +27,6 @@ namespace AqualinkAutomate::Messages
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);
 	}
 
-	JandyMessage_MessageLong::~JandyMessage_MessageLong() = default;
 
 	uint8_t JandyMessage_MessageLong::LineId() const
 	{

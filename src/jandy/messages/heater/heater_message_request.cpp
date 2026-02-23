@@ -20,7 +20,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	HeaterMessage_Request::~HeaterMessage_Request() = default;
 
 	HeaterOperatingModes HeaterMessage_Request::OperatingMode() const
 	{

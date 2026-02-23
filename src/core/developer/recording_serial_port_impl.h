@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Developer
 		/// @param recording_file_path Path to the file where serial data will be recorded.
 		RecordingSerialPortImpl(std::unique_ptr<Interfaces::ISerialPortImpl> wrapped_impl, const std::string& recording_file_path);
 
-		~RecordingSerialPortImpl();
+		~RecordingSerialPortImpl() override;
 
 		RecordingSerialPortImpl(const RecordingSerialPortImpl&) = delete;
 		RecordingSerialPortImpl& operator=(const RecordingSerialPortImpl&) = delete;

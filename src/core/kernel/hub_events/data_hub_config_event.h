@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		DataHub_ConfigEvent(Hub_EventTypes event_type);
-		virtual ~DataHub_ConfigEvent();
+		~DataHub_ConfigEvent() override = default;
 	};
 
 }

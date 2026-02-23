@@ -58,7 +58,6 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
-	PDADevice::~PDADevice() = default;
 	
 	void PDADevice::ProcessControllerUpdates()
 	{

@@ -31,13 +31,13 @@ namespace AqualinkAutomate::Devices
 
 	public:
 		KeypadDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
-		virtual ~KeypadDevice();
+		~KeypadDevice() override = default;
 
 	private:
-		virtual void ProcessControllerUpdates() override;
+		void ProcessControllerUpdates() override;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_Keypad_Ack(const Messages::JandyMessage_Ack& msg);

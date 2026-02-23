@@ -34,7 +34,7 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		EquipmentHub() = default;
-		virtual ~EquipmentHub() = default;
+		~EquipmentHub() override = default;
 
 		//---------------------------------------------------------------------
 		// UPDATES / NOTIFICATIONS / EVENTS

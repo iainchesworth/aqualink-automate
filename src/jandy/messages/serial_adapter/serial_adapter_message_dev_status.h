@@ -168,7 +168,7 @@ namespace AqualinkAutomate::Messages
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemPumpCommands sa_spc);
 		SerialAdapterMessage_DevStatus(const SerialAdapter_SystemTemperatureCommands sa_stc);
 		SerialAdapterMessage_DevStatus(const Auxillaries::JandyAuxillaryIds sa_jai);
-		virtual ~SerialAdapterMessage_DevStatus();
+		~SerialAdapterMessage_DevStatus() override = default;
 
 	public:
 		std::optional<uint16_t> ModelType() const;
@@ -190,11 +190,11 @@ namespace AqualinkAutomate::Messages
 		std::optional<std::tuple<Auxillaries::JandyAuxillaryIds, std::optional<Auxillaries::JandyAuxillaryStatuses>>> AuxilliaryState() const;
 
 	public:
-		virtual std::string ToString() const override;
+		std::string ToString() const override;
 
 	public:
-		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
-		virtual bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
+		bool SerializeContents(std::vector<uint8_t>& message_bytes) const override;
+		bool DeserializeContents(std::span<const uint8_t> message_bytes) override;
 
 	private:
 		SerialAdapter_StatusTypes m_StatusType;

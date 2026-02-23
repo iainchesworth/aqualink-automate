@@ -12,7 +12,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	ChemlinkMessage::~ChemlinkMessage() = default;
 
 	std::string ChemlinkMessage::ToString() const
 	{

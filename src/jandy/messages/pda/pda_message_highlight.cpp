@@ -21,7 +21,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	PDAMessage_Highlight::~PDAMessage_Highlight() = default;
 
 	uint8_t PDAMessage_Highlight::LineId() const
 	{

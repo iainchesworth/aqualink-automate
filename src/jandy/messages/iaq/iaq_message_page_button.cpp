@@ -22,7 +22,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageButton::~IAQMessage_PageButton() = default;
 
 	uint8_t IAQMessage_PageButton::ButtonIndex() const
 	{

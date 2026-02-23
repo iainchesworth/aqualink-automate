@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Kernel
 	{
 	}
 
-	EquipmentHub_SystemEvent_StatusChange::~EquipmentHub_SystemEvent_StatusChange() = default;
 
 	boost::uuids::uuid EquipmentHub_SystemEvent_StatusChange::Id() const
 	{

@@ -12,8 +12,8 @@ namespace AqualinkAutomate::Kernel
 		Off = 0x00,
 		Heating = 0x01,
 		Enabled = 0x04,
-		NotInstalled,
-		Unknown
+		NotInstalled = 0x05,
+		Unknown = 0x06
 	};
 
 	HeaterStatuses ConvertToHeaterStatus(AuxillaryStatuses aux_status);

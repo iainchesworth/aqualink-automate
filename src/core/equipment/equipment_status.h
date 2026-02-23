@@ -17,17 +17,17 @@ namespace AqualinkAutomate::Equipment
 		inline static constexpr std::string_view SOURCE_TYPE{ "equipment" };
 
 	public:
-		virtual std::string_view SourceName() const final
+		std::string_view SourceName() const final
 		{
 			return SOURCE_NAME;
 		}
 
-		virtual std::string_view SourceType() const final
+		std::string_view SourceType() const final
 		{
 			return SOURCE_TYPE;
 		}
 
-		virtual std::string_view StatusType() const final
+		std::string_view StatusType() const final
 		{
 			return m_StatusType;
 		}

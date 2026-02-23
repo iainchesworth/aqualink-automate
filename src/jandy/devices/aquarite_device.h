@@ -58,10 +58,10 @@ namespace AqualinkAutomate::Devices
 	public:
 		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator);
 		AquariteDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, Percentage requested_percentage, Percentage reported_percentage, PPM salt_ppm);
-		virtual ~AquariteDevice() = default;
+		~AquariteDevice() override = default;
 
 	private:
-		virtual void WatchdogTimeoutOccurred() override;
+		void WatchdogTimeoutOccurred() override;
 
 	public:
 		void RequestedGeneratingLevel(Percentage new_generating_level);

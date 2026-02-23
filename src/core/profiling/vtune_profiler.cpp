@@ -72,8 +72,8 @@ namespace AqualinkAutomate::Profiling
 
 	void VTune_Profiler::EmitFrameMark(const char* name) const
 	{
-		__itt_frame_begin_v3(m_Domain, NULL);
-		__itt_frame_end_v3(m_Domain, NULL);
+		__itt_frame_begin_v3(m_Domain, nullptr);
+		__itt_frame_end_v3(m_Domain, nullptr);
 	}
 
 	__itt_counter VTune_Profiler::GetOrCreateCounter(const std::string& name)

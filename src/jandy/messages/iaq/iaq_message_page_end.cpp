@@ -15,7 +15,6 @@ namespace AqualinkAutomate::Messages
 	{
 	}
 
-	IAQMessage_PageEnd::~IAQMessage_PageEnd() = default;
 
 	std::string IAQMessage_PageEnd::ToString() const
 	{

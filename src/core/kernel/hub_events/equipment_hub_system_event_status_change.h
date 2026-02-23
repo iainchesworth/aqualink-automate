@@ -13,11 +13,11 @@ namespace AqualinkAutomate::Kernel
 	{
 	public:
 		EquipmentHub_SystemEvent_StatusChange(const Interfaces::IStatus& status);
-		virtual ~EquipmentHub_SystemEvent_StatusChange();
+		~EquipmentHub_SystemEvent_StatusChange() override = default;
 
 	public:
-		virtual boost::uuids::uuid Id() const override;
-		virtual nlohmann::json ToJSON() const override;
+		boost::uuids::uuid Id() const override;
+		nlohmann::json ToJSON() const override;
 
 	private:
 		nlohmann::json m_JSON_Payload;

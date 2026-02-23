@@ -40,7 +40,7 @@ namespace AqualinkAutomate::Developer
 		MockSerialPortImpl();
 		explicit MockSerialPortImpl(const std::string& device_name);
 		MockSerialPortImpl(const std::string& device_name, boost::system::error_code& ec);
-		~MockSerialPortImpl();
+		~MockSerialPortImpl() override;
 
 		MockSerialPortImpl(const MockSerialPortImpl&) = delete;
 		MockSerialPortImpl& operator=(const MockSerialPortImpl&) = delete;
