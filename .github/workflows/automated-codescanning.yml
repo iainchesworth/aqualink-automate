@@ -83,6 +83,7 @@ jobs:
       uses: lukka/run-cmake@v10
       with:
         buildPreset: build-linux-gcc
+        buildPresetAdditionalArgs: "['--parallel', '8']"
       env:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
