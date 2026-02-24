@@ -25,4 +25,12 @@ Write-Host "==> Installing Git"
 choco install git -y --no-progress
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 
+# Ensure Git bash is on the system PATH (required by GitHub Actions runner)
+$sysPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+$gitBin = "C:\Program Files\Git\bin"
+if ($sysPath -notmatch [regex]::Escape($gitBin)) {
+    [Environment]::SetEnvironmentVariable("Path", "$sysPath;$gitBin", "Machine")
+    Write-Host "==> Added Git bash to system PATH"
+}
+
 Write-Host "==> Base configuration complete"
