@@ -11,7 +11,7 @@ ARG CMAKE_VERSION=3.31.6
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build toolchain:
-#   - GCC 15 from ubuntu-toolchain-r PPA (not default on 25.04)
+#   - GCC 15 (default in Ubuntu 25.04)
 #   - LLVM/Clang 21 from apt.llvm.org (compiler, linker, libc++, clang-tidy)
 #   - CMake 3.31+ via official binary (project requires 3.31)
 RUN apt-get update \
@@ -28,15 +28,11 @@ RUN apt-get update \
         gcovr \
         ninja-build \
         pkg-config \
-        software-properties-common \
         tar \
         unzip \
         wget \
         zip \
-    # GCC from ubuntu-toolchain-r PPA
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/ppa \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    # GCC (available in default Ubuntu 25.04 repos)
         build-essential \
         gcc-${GCC_VERSION} \
         g++-${GCC_VERSION} \
