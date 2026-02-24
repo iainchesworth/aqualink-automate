@@ -76,8 +76,6 @@ jobs:
           fi
           echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
           echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-          # Point lukka/run-cmake at our vcpkg (not VS-bundled one)
-          echo "VCPKG_ROOT=${{ github.workspace }}/deps/vcpkg" >> "$GITHUB_ENV"
 
       - uses: ./.github/actions/setup-vcpkg-cache
         if: ${{ !contains(matrix.runner, 'self-hosted') }}
@@ -99,11 +97,15 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Build
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.build_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Show build errors on failure
         if: failure()
@@ -116,6 +118,8 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           testPreset: ${{ matrix.test_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
   docker-verify:
     name: Docker Verification
