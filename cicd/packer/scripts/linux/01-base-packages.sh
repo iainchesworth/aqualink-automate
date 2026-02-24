@@ -12,6 +12,7 @@ apt-get install -y --no-install-recommends \
     gnupg \
     jq \
     libssl-dev \
+    linux-libc-dev \
     lsb-release \
     pkg-config \
     software-properties-common \

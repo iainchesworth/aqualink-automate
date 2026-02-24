@@ -1,18 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "==> Installing GCC 15 toolchain"
+GCC_VERSION=15
 
-add-apt-repository -y ppa:ubuntu-toolchain-r/test
+echo "==> Installing GCC ${GCC_VERSION} toolchain"
+
+# Add toolchain PPA if gcc-$GCC_VERSION is not in the default repos
+if ! apt-cache show "gcc-${GCC_VERSION}" >/dev/null 2>&1; then
+    echo "==> gcc-${GCC_VERSION} not in default repos, adding ubuntu-toolchain-r PPA"
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test
+fi
+
 apt-get update
 apt-get install -y --no-install-recommends \
-    gcc-15 \
-    g++-15
+    "gcc-${GCC_VERSION}" \
+    "g++-${GCC_VERSION}"
 
-# Set up alternatives so gcc/g++/gcov point to version 15
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 150 \
-    --slave /usr/bin/g++ g++ /usr/bin/g++-15 \
-    --slave /usr/bin/gcov gcov /usr/bin/gcov-15
-update-alternatives --set gcc /usr/bin/gcc-15
+# Set up alternatives so gcc/g++/gcov all point to the correct version
+update-alternatives --install /usr/bin/gcc gcc "/usr/bin/gcc-${GCC_VERSION}" "${GCC_VERSION}0" \
+    --slave /usr/bin/g++ g++ "/usr/bin/g++-${GCC_VERSION}" \
+    --slave /usr/bin/gcov gcov "/usr/bin/gcov-${GCC_VERSION}"
+update-alternatives --set gcc "/usr/bin/gcc-${GCC_VERSION}"
 
+# Verify
 echo "==> GCC $(gcc --version | head -1) installed"
+echo "==> gcov $(gcov --version | head -1) installed"
+gcc --version | head -1 | grep -q "${GCC_VERSION}" || { echo "ERROR: gcc version mismatch"; exit 1; }
+gcov --version | head -1 | grep -q "${GCC_VERSION}" || { echo "ERROR: gcov version mismatch"; exit 1; }

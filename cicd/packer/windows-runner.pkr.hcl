@@ -90,8 +90,8 @@ source "vsphere-iso" "windows" {
   # VM settings
   vm_name              = var.vm_name
   guest_os_type        = "windows2019srvNext_64Guest"
-  CPUs                 = 8
-  RAM                  = 12288
+  CPUs                 = 32
+  RAM                  = 24576
   RAM_reserve_all      = false
   disk_controller_type = ["lsilogic-sas"]
 

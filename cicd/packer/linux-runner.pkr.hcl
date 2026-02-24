@@ -48,7 +48,7 @@ variable "vcenter_folder" {
 
 variable "iso_url" {
   type        = string
-  description = "Local path or URL to Ubuntu 24.04 LTS Server ISO"
+  description = "Local path or URL to Ubuntu 25.04 Server ISO"
 }
 
 variable "iso_checksum" {
@@ -63,7 +63,7 @@ variable "vm_name" {
 
 variable "github_runner_version" {
   type    = string
-  default = "2.321.0"
+  default = "2.331.0"
 }
 
 variable "ssh_password" {
@@ -85,13 +85,14 @@ source "vsphere-iso" "ubuntu" {
   # VM settings
   vm_name              = var.vm_name
   guest_os_type        = "ubuntu64Guest"
-  CPUs                 = 8
-  RAM                  = 12288
+  firmware             = "efi"
+  CPUs                 = 32
+  RAM                  = 24576
   RAM_reserve_all      = false
   disk_controller_type = ["pvscsi"]
 
   storage {
-    disk_size             = 102400
+    disk_size             = 153600
     disk_thin_provisioned = true
   }
 
@@ -120,7 +121,7 @@ source "vsphere-iso" "ubuntu" {
   # VM tools
   tools_upgrade_policy = true
 
-  notes = "GitHub Actions self-hosted runner - Ubuntu 24.04 LTS. Built by Packer."
+  notes = "GitHub Actions self-hosted runner - Ubuntu 25.04. Built by Packer."
 }
 
 build {

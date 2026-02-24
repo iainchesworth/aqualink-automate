@@ -9,6 +9,14 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 CODENAME=$(lsb_release -cs)
+DOCKER_REPO="https://download.docker.com/linux/ubuntu/dists/${CODENAME}"
+
+# Verify Docker repo exists for this codename; fall back to nearest LTS if not
+if ! curl -fsSL --head "${DOCKER_REPO}/Release" >/dev/null 2>&1; then
+    echo "WARNING: Docker repo not available for '${CODENAME}', falling back to 'noble'"
+    CODENAME="noble"
+fi
+
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
     > /etc/apt/sources.list.d/docker.list
 
