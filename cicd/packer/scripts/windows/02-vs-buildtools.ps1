@@ -8,7 +8,7 @@ $installerPath = "$env:TEMP\vs_buildtools.exe"
 
 Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
 
-# Install MSVC v143 toolset, Windows SDK, MSBuild, and ASan
+# Install MSVC v143 toolset, Windows SDK, MSBuild, ATL, and ASan
 $args = @(
     "--quiet",
     "--wait",
@@ -18,6 +18,7 @@ $args = @(
     "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
     "--add", "Microsoft.VisualStudio.Component.Windows11SDK.22621",
     "--add", "Microsoft.Component.MSBuild",
+    "--add", "Microsoft.VisualStudio.Component.VC.ATL",
     "--add", "Microsoft.VisualStudio.Component.VC.ASAN",
     "--includeRecommended"
 )
