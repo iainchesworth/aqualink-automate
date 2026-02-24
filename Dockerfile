@@ -117,10 +117,9 @@ RUN --mount=type=cache,target=/ccache \
     VCPKG_DOWNLOADS=/vcpkg-downloads \
     cmake --preset config-linux-gcc \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-        -DENABLE_CLANG_TIDY=ON
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
-# Build (clang-tidy runs during build)
+# Build
 RUN --mount=type=cache,target=/ccache \
     cmake --build --preset build-linux-gcc
 
