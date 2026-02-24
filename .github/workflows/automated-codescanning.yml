@@ -76,11 +76,15 @@ jobs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: config-linux-gcc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
       uses: lukka/run-cmake@v10
       with:
         buildPreset: build-linux-gcc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
@@ -159,6 +163,8 @@ jobs:
       with:
         configurePreset: config-linux-gcc-coverage
         configurePresetAdditionalArgs: "['-DUSE_SONARQUBE=ON']"
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build with build-wrapper
       run: |
@@ -200,6 +206,10 @@ jobs:
       with:
         compiler: msvc
 
+    - name: Setup MSVC environment (self-hosted)
+      if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Setup vcpkg cache (self-hosted)
       if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
       shell: bash
@@ -207,6 +217,11 @@ jobs:
         BINARY_DIR="$HOME/.cache/vcpkg/archives"
         DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
         mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        # Convert Git bash paths to native Windows paths for CMake/vcpkg
+        if command -v cygpath >/dev/null 2>&1; then
+          BINARY_DIR=$(cygpath -w "$BINARY_DIR")
+          DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
+        fi
         echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
         echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
@@ -230,11 +245,15 @@ jobs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: config-windows-msvc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
       uses: lukka/run-cmake@v10
       with:
         buildPreset: build-windows-msvc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - uses: microsoft/msvc-code-analysis-action@v0.1.1
       id: run-analysis
