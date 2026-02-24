@@ -69,6 +69,11 @@ jobs:
           BINARY_DIR="$HOME/.cache/vcpkg/archives"
           DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
           mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          # Convert Git bash paths to native Windows paths for CMake/vcpkg
+          if command -v cygpath >/dev/null 2>&1; then
+            BINARY_DIR=$(cygpath -w "$BINARY_DIR")
+            DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
+          fi
           echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
           echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
