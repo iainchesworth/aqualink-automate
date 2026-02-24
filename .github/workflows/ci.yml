@@ -26,7 +26,7 @@ jobs:
         include:
           - name: "Linux GCC"
             runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
-            compiler: gcc-14
+            compiler: gcc-15
             configure_preset: config-linux-gcc
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc

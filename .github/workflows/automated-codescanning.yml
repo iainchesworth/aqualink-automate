@@ -46,7 +46,7 @@ jobs:
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
       with:
-        compiler: gcc-14
+        compiler: gcc-15
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -134,7 +134,7 @@ jobs:
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
       with:
-        compiler: gcc-14
+        compiler: gcc-15
 
     - name: Install build-wrapper
       uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6

@@ -148,7 +148,7 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 | Script | Packages |
 |--------|----------|
 | `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip |
-| `02-gcc-toolchain.sh` | gcc-14, g++-14, update-alternatives symlinks |
+| `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15, update-alternatives symlinks |
 | `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev from apt.llvm.org |
 | `04-cmake-ninja.sh` | CMake 3.31.6 (Kitware binary), ninja-build |
 | `05-docker.sh` | Docker Engine CE + buildx plugin |
