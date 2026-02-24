@@ -58,6 +58,10 @@ jobs:
         with:
           compiler: ${{ matrix.compiler }}
 
+      - name: Setup MSVC environment (self-hosted)
+        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Setup vcpkg cache (self-hosted)
         if: contains(matrix.runner, 'self-hosted')
         shell: bash
