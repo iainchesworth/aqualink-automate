@@ -50,6 +50,11 @@ namespace AqualinkAutomate::Logging
 			return MinimumSeverityLevelPerChannel[channel];
 		}
 
+		bool ShouldLog(Channel channel, Severity severity)
+		{
+			return severity >= MinimumSeverityLevelPerChannel[channel];
+		}
+
 		bool PerChannelTest(boost::log::value_ref<Channel, tag::channel> const& channel, boost::log::value_ref<Severity, tag::severity> const& severity)
 		{
 			try
