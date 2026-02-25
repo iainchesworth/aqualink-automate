@@ -82,6 +82,8 @@
 }
 
 .eq-button {
+    position: relative;
+    overflow: hidden;
     background: var(--button-inactive-bg);
     border: 2px solid var(--button-inactive-border);
     border-radius: var(--radius-lg);
@@ -97,6 +99,11 @@
     text-align: center;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    line-height: inherit;
+    width: 100%;
 }
 
 .eq-button:hover {
@@ -374,6 +381,125 @@
     color: var(--text-primary);
 }
 
+/* Collapsible section header */
+.section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    color: inherit;
+    width: 100%;
+}
+
+.section-toggle .section-title {
+    margin-bottom: 0;
+}
+
+.section-toggle:hover .section-title {
+    color: var(--text-secondary);
+}
+
+.section-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.section-toggle-chevron {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.section-toggle-chevron.open {
+    transform: rotate(90deg);
+}
+
+/* Pool graphic card body — flush content, inherits card radius */
+.card-body-flush {
+    padding: 0;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+}
+
+/* Card header with space-between layout */
+.card-header-split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Connection dot — small inline variant */
+.connection-dot-sm {
+    width: 6px;
+    height: 6px;
+    vertical-align: middle;
+}
+
+/* Inline select control (log levels, global selector) */
+.inline-select {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.inline-select-sm {
+    font-size: 0.8rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Inline label for controls */
+.inline-label {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--text-secondary);
+}
+
+/* Message stats last-seen column */
+.tabular-muted {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Settings header row */
+.settings-gauge-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+/* Settings reset button override */
+.settings-reset-btn {
+    width: auto;
+    height: auto;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+}
+
+/* Settings gauge title */
+.settings-gauge-title {
+    font-size: 1rem;
+}
+
+/* Range separator dash */
+.range-separator {
+    color: var(--text-muted);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .equipment-grid {
@@ -549,21 +675,6 @@
     letter-spacing: 0.3px;
 }
 
-.badge-heater-off {
-    background: var(--bg-secondary);
-    color: var(--text-muted);
-}
-
-.badge-heater-enabled {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-}
-
-.badge-heater-heating {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
-}
 
 .heater-temp {
     font-weight: 600;
@@ -577,11 +688,6 @@
 }
 
 /* Command feedback */
-.eq-button {
-    position: relative;
-    overflow: hidden;
-}
-
 .cmd-badge {
     position: absolute;
     bottom: 4px;

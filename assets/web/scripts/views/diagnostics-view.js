@@ -33,6 +33,13 @@ function diagnosticsView() {
             return val || fallback;
         },
 
+        // Collapsible section state (power-user sections collapsed by default)
+        showSerialHealth: false,
+        showMessageErrors: false,
+        showMessageStats: false,
+        showLogLevels: false,
+        showDeviceStatus: false,
+
         // Log level control state
         logChannels: {},
         severityLevels: [],

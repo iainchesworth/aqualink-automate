@@ -17,10 +17,10 @@
 <body x-data="app()" x-init="init()">
 
     <!-- ====== NAV ====== -->
-    <nav class="app-nav">
+    <nav class="app-nav" aria-label="Main navigation">
         <div class="nav-inner">
             <a class="nav-brand" href="#dashboard">
-                <svg viewBox="0 0 32 32" fill="none"><path d="M16 3C16 3 6 15 6 21a10 10 0 0020 0C26 15 16 3 16 3z" fill="#38bdf8"/></svg>
+                <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3C16 3 6 15 6 21a10 10 0 0020 0C26 15 16 3 16 3z" fill="#38bdf8"/></svg>
                 Aqualink
             </a>
             <div class="nav-links">
@@ -29,21 +29,21 @@
                 <button class="nav-link" :class="{ active: isRoute('settings') }" @click="navigate('settings')">Settings</button>
                 <button class="nav-link" :class="{ active: isRoute('about') }" @click="navigate('about')">About</button>
             </div>
-            <div class="nav-status">
+            <div class="nav-status" role="status" aria-live="polite">
                 <span class="mode-indicator mode-starting" x-show="$store.system.state === 'Starting'" x-cloak>
-                    <span class="mode-spinner"></span> Starting...
+                    <span class="mode-spinner" aria-hidden="true"></span> Starting...
                 </span>
                 <span class="mode-indicator mode-disconnected" x-show="$store.system.state === 'Disconnected'" x-cloak>
-                    <span class="mode-dot disconnected"></span> Disconnected
+                    <span class="mode-dot disconnected" aria-hidden="true"></span> Disconnected
                 </span>
                 <span class="mode-indicator mode-service" x-show="$store.system.state === 'ServiceMode'" x-cloak>
-                    &#x1F527; Service Mode
+                    Service Mode
                 </span>
                 <span class="mode-indicator mode-monitor" x-show="$store.system.state === 'MonitorOnly'" x-cloak>
-                    &#x1F512; Monitor-only
+                    Monitor-only
                 </span>
                 <span class="mode-indicator mode-ready" x-show="$store.system.state === 'Ready'" x-cloak>
-                    <span class="mode-dot connected"></span> Ready
+                    <span class="mode-dot connected" aria-hidden="true"></span> Ready
                 </span>
             </div>
             <div class="nav-controls">
@@ -77,10 +77,11 @@
 
     <!-- ====== SERVICE MODE MODAL ====== -->
     <div class="modal-overlay" x-show="$store.system.showServiceModal" x-cloak x-transition.opacity
+         role="dialog" aria-modal="true" aria-labelledby="service-modal-title"
          @click.self="$store.system.dismissServiceModal()">
         <div class="modal-content">
-            <div class="modal-icon">&#x1F527;</div>
-            <h3 class="modal-title">Service Mode Active</h3>
+            <div class="modal-icon" aria-hidden="true">&#x1F527;</div>
+            <h3 id="service-modal-title" class="modal-title">Service Mode Active</h3>
             <p class="modal-text">The pool controller has entered Service Mode. All commands are disabled until the controller returns to normal operation.</p>
             <p class="modal-hint">To exit Service Mode, use the physical controller panel.</p>
             <button class="modal-dismiss" @click="$store.system.dismissServiceModal()">Understood</button>
@@ -96,9 +97,9 @@
 
             <!-- Pool Graphic Hero -->
             <div class="card mt-2 mb-2" x-data="poolGraphic()">
-                <div class="card-body" style="padding:0;overflow:hidden;border-radius:var(--radius-lg);">
+                <div class="card-body card-body-flush">
                     <div class="pool-graphic-container">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" role="img" aria-label="Pool and spa overview with temperature readings and equipment status">
                             <defs>
                                 <linearGradient id="pgPool" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="var(--pool-water)"/>
@@ -143,8 +144,8 @@
                             <text class="pool-temp-label" x="650" y="215" text-anchor="middle" x-text="spaTempDisplay"></text>
 
                             <!-- Air temp -->
-                            <text style="font-family:var(--font-family);font-weight:500;font-size:12px;fill:var(--text-secondary)" x="460" y="42" text-anchor="middle">Air</text>
-                            <text style="font-family:var(--font-family);font-weight:700;font-size:16px;fill:var(--text-primary)" x="460" y="60" text-anchor="middle" x-text="airTempDisplay"></text>
+                            <text class="pool-air-sublabel" x="460" y="42" text-anchor="middle">Air</text>
+                            <text class="pool-air-label" x="460" y="60" text-anchor="middle" x-text="airTempDisplay"></text>
 
                             <!-- Status dots -->
                             <circle class="pool-status-dot" :class="pumpActive ? 'active' : 'inactive'" cx="60" cy="365"/>
@@ -165,21 +166,23 @@
             <!-- Temperature Setpoints (expandable) -->
             <div class="card mb-2" x-show="$store.pool.poolSetpoint !== '--' || $store.pool.spaSetpoint !== '--'">
                 <div class="card-header">Temperature Setpoints</div>
-                <div class="card-body" style="padding:0;">
+                <div class="card-body p-0">
                     <!-- Pool setpoint -->
-                    <div x-data="{ expanded: false, pending: false }" x-show="$store.pool.poolSetpoint !== '--'">
-                        <div class="expandable-row" @click="expanded = !expanded">
+                    <div x-data="{ expanded: false }" x-show="$store.pool.poolSetpoint !== '--'">
+                        <div class="expandable-row" role="button" tabindex="0"
+                             :aria-expanded="expanded" aria-controls="pool-setpoint-controls"
+                             @click="expanded = !expanded" @keydown.enter="expanded = !expanded" @keydown.space.prevent="expanded = !expanded">
                             <span class="expandable-label">Pool</span>
                             <span class="expandable-value"
                                   x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
-                            <span class="expandable-chevron" :class="{ open: expanded }">&#x25B8;</span>
+                            <span class="expandable-chevron" :class="{ open: expanded }" aria-hidden="true">&#x25B8;</span>
                         </div>
-                        <div class="expandable-content" x-show="expanded" x-transition.opacity>
+                        <div id="pool-setpoint-controls" class="expandable-content" x-show="expanded" x-transition.opacity>
                             <div class="expandable-controls">
-                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', -0.5)">-</button>
+                                <button class="setpoint-btn" aria-label="Decrease pool setpoint" @click="$store.pool.adjustSetpoint('pool', -0.5)">-</button>
                                 <span class="expandable-edit-value"
                                       x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
-                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('pool', 0.5)">+</button>
+                                <button class="setpoint-btn" aria-label="Increase pool setpoint" @click="$store.pool.adjustSetpoint('pool', 0.5)">+</button>
                             </div>
                             <div class="expandable-feedback">
                                 <span class="cmd-badge cmd-applied" x-show="$store.pool.getCommandState('setpoint:pool') === 'applied'" x-transition.opacity>Applied</span>
@@ -189,18 +192,20 @@
                     </div>
                     <!-- Spa setpoint -->
                     <div x-data="{ expanded: false }" x-show="$store.pool.spaSetpoint !== '--'">
-                        <div class="expandable-row" @click="expanded = !expanded">
+                        <div class="expandable-row" role="button" tabindex="0"
+                             :aria-expanded="expanded" aria-controls="spa-setpoint-controls"
+                             @click="expanded = !expanded" @keydown.enter="expanded = !expanded" @keydown.space.prevent="expanded = !expanded">
                             <span class="expandable-label">Spa</span>
                             <span class="expandable-value"
                                   x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint"></span>
-                            <span class="expandable-chevron" :class="{ open: expanded }">&#x25B8;</span>
+                            <span class="expandable-chevron" :class="{ open: expanded }" aria-hidden="true">&#x25B8;</span>
                         </div>
-                        <div class="expandable-content" x-show="expanded" x-transition.opacity>
+                        <div id="spa-setpoint-controls" class="expandable-content" x-show="expanded" x-transition.opacity>
                             <div class="expandable-controls">
-                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', -0.5)">-</button>
+                                <button class="setpoint-btn" aria-label="Decrease spa setpoint" @click="$store.pool.adjustSetpoint('spa', -0.5)">-</button>
                                 <span class="expandable-edit-value"
                                       x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint"></span>
-                                <button class="setpoint-btn" @click="$store.pool.adjustSetpoint('spa', 0.5)">+</button>
+                                <button class="setpoint-btn" aria-label="Increase spa setpoint" @click="$store.pool.adjustSetpoint('spa', 0.5)">+</button>
                             </div>
                             <div class="expandable-feedback">
                                 <span class="cmd-badge cmd-applied" x-show="$store.pool.getCommandState('setpoint:spa') === 'applied'" x-transition.opacity>Applied</span>
@@ -230,7 +235,7 @@
             <div class="gauge-grid mb-2">
                 <template x-for="type in ['ph', 'orp', 'salt']" :key="type">
                     <div class="gauge-card" x-data="chemistryGauge(type)">
-                        <svg class="gauge-svg" viewBox="0 0 120 70">
+                        <svg class="gauge-svg" viewBox="0 0 120 70" role="img" :aria-label="cfg.label + ' gauge: ' + displayValue + (statusLabel ? ' (' + statusLabel + ')' : '')">
                             <path class="gauge-arc-bg" d="M15 65 A45 45 0 0 1 105 65" />
                             <path class="gauge-arc-value"
                                   d="M15 65 A45 45 0 0 1 105 65"
@@ -258,19 +263,23 @@
                                 <div class="heater-row-inner">
                                     <button class="heater-toggle"
                                             :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending' }"
+                                            :aria-pressed="isActive(button)"
+                                            :aria-label="'Toggle ' + button.label"
                                             @click="toggle(button)">
                                         <span x-text="isActive(button) ? 'On' : 'Off'"></span>
                                     </button>
                                     <span class="heater-label" x-text="button.label"></span>
                                     <span class="heater-status-badge"
                                           :class="{
-                                              'badge-heater-off': !isActive(button),
-                                              'badge-heater-enabled': String(button.status).toLowerCase() === 'enabled',
-                                              'badge-heater-heating': String(button.status).toLowerCase() === 'heating'
+                                              'badge-status-off': !isActive(button),
+                                              'badge-status-warn': String(button.status).toLowerCase() === 'enabled',
+                                              'badge-status-danger-glow': String(button.status).toLowerCase() === 'heating'
                                           }"
                                           x-text="statusLabel(button)"></span>
-                                    <span class="heater-temp" x-text="$store.pool.poolTemp"></span>
-                                    <span class="heater-setpoint text-muted" x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint"></span>
+                                    <span class="heater-temp" x-text="button.label.toLowerCase().includes('spa') ? $store.pool.spaTemp : $store.pool.poolTemp"></span>
+                                    <span class="heater-setpoint text-muted" x-text="button.label.toLowerCase().includes('spa')
+                                        ? (typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint)
+                                        : (typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint)"></span>
                                 </div>
                                 <!-- Command feedback -->
                                 <span class="cmd-badge cmd-applied" x-show="cmdState(button) === 'applied'" x-transition.opacity>Applied</span>
@@ -286,21 +295,23 @@
             <div class="section-title">Equipment Controls</div>
             <div x-show="$store.pool.buttonsLoading" class="text-center">
                 <div class="spinner"></div>
-                <p class="text-muted" style="font-size:0.85rem;">Loading equipment...</p>
+                <p class="text-muted text-sm">Loading equipment...</p>
             </div>
-            <div x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length === 0" class="text-center" style="padding:2rem 0;">
+            <div x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length === 0" class="text-center py-3">
                 <p class="text-muted">No equipment controls available</p>
             </div>
             <div class="equipment-grid" x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length > 0">
                 <template x-for="button in $store.pool.buttons.filter(b => !(b.label && b.label.toLowerCase().includes('heat')))" :key="button.id">
-                    <div class="eq-button"
-                         x-data="equipmentButton()"
-                         :class="{
-                             active: isActive(button),
-                             'cmd-sending': cmdState(button) === 'sending'
-                         }"
-                         @click="toggle(button)">
-                        <span class="eq-button-icon" x-text="icon(button)"></span>
+                    <button class="eq-button"
+                            x-data="equipmentButton()"
+                            :class="{
+                                active: isActive(button),
+                                'cmd-sending': cmdState(button) === 'sending'
+                            }"
+                            :aria-pressed="isActive(button)"
+                            :aria-label="button.label + ' — ' + statusLabel(button)"
+                            @click="toggle(button)">
+                        <span class="eq-button-icon" aria-hidden="true" x-text="icon(button)"></span>
                         <span class="eq-button-label" x-text="button.label"></span>
                         <span class="eq-button-status" x-text="statusLabel(button)"></span>
                         <!-- Command feedback overlay -->
@@ -308,15 +319,15 @@
                         <span class="cmd-badge cmd-rejected" x-show="cmdState(button) === 'rejected'" x-transition.opacity>Rejected</span>
                         <span class="cmd-badge cmd-timedout" x-show="cmdState(button) === 'timedout'" x-transition.opacity>Timed out</span>
                         <span class="cmd-badge cmd-blocked" x-show="cmdState(button) === 'blocked'" x-transition.opacity x-text="$store.system.disableReason || 'Blocked'"></span>
-                        <span class="cmd-spinner-overlay" x-show="cmdState(button) === 'sending'">
+                        <span class="cmd-spinner-overlay" x-show="cmdState(button) === 'sending'" aria-hidden="true">
                             <span class="cmd-spinner"></span>
                         </span>
-                    </div>
+                    </button>
                 </template>
             </div>
 
             <!-- Last update -->
-            <div class="text-muted text-center mt-2" style="font-size:0.75rem;" x-show="lastUpdateText">
+            <div class="text-muted text-center mt-2 text-2xs" x-show="lastUpdateText">
                 Last update: <span x-text="lastUpdateText"></span>
             </div>
         </div>
@@ -356,7 +367,7 @@
 
             <!-- Utilization chart with window selector -->
             <div class="card mb-2">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <div class="card-header card-header-split">
                     <span>Bandwidth Utilization</span>
                     <div class="window-selector">
                         <template x-for="opt in windowOptions" :key="opt.value">
@@ -446,10 +457,15 @@
                     </div>
                 </template>
             </div>
-            <div x-show="!$store.stats.latency" class="text-center text-muted mb-2" style="padding:1rem;">Waiting for latency data...</div>
+            <div x-show="!$store.stats.latency" class="text-center text-muted mb-2 p-2">Waiting for latency data...</div>
 
             <!-- Serial health metrics -->
-            <div class="section-title">Serial Health</div>
+            <button class="section-toggle mb-1" @click="showSerialHealth = !showSerialHealth"
+                    :aria-expanded="showSerialHealth" aria-controls="diag-serial-health">
+                <span class="section-toggle-chevron" :class="{ open: showSerialHealth }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Serial Health</span>
+            </button>
+            <div id="diag-serial-health" x-show="showSerialHealth" x-transition.opacity x-cloak>
             <div x-show="$store.stats.serial" class="stat-cards mb-2">
                 <div class="stat-card">
                     <div class="stat-card-label">Error Rate</div>
@@ -472,10 +488,16 @@
                     <div class="stat-card-value" x-text="$store.stats.serial?.write_queue_depth ?? '--'"></div>
                 </div>
             </div>
-            <div x-show="!$store.stats.serial" class="text-center text-muted mb-2" style="padding:1rem;">Waiting for serial data...</div>
+            <div x-show="!$store.stats.serial" class="text-center text-muted mb-2 p-2">Waiting for serial data...</div>
+            </div>
 
             <!-- Message error metrics -->
-            <div class="section-title">Message Errors</div>
+            <button class="section-toggle mb-1" @click="showMessageErrors = !showMessageErrors"
+                    :aria-expanded="showMessageErrors" aria-controls="diag-message-errors">
+                <span class="section-toggle-chevron" :class="{ open: showMessageErrors }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Message Errors</span>
+            </button>
+            <div id="diag-message-errors" x-show="showMessageErrors" x-transition.opacity x-cloak>
             <div x-show="$store.stats.messageErrors" class="stat-cards mb-2">
                 <div class="stat-card">
                     <div class="stat-card-label">Checksum</div>
@@ -502,12 +524,19 @@
                     <div class="stat-card-value" x-text="($store.stats.messageErrors?.buffer_overflows ?? 0).toLocaleString()"></div>
                 </div>
             </div>
-            <div x-show="!$store.stats.messageErrors" class="text-center text-muted mb-2" style="padding:1rem;">Waiting for error data...</div>
+            <div x-show="!$store.stats.messageErrors" class="text-center text-muted mb-2 p-2">Waiting for error data...</div>
+            </div>
 
             <!-- Message stats table -->
+            <button class="section-toggle mb-1" @click="showMessageStats = !showMessageStats"
+                    :aria-expanded="showMessageStats" aria-controls="diag-message-stats">
+                <span class="section-toggle-chevron" :class="{ open: showMessageStats }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Message Statistics</span>
+            </button>
+            <div id="diag-message-stats" x-show="showMessageStats" x-transition.opacity x-cloak>
             <div class="card mb-2">
                 <div class="card-header">Message Statistics</div>
-                <div class="card-body" style="padding:0;overflow-x:auto;">
+                <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -519,29 +548,35 @@
                         </thead>
                         <tbody>
                             <template x-if="$store.stats.messageCounts.length === 0">
-                                <tr><td colspan="4" class="text-center text-muted" style="padding:2rem;">Waiting for data...</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-3">Waiting for data...</td></tr>
                             </template>
                             <template x-for="stat in $store.stats.messageCounts" :key="stat.name || stat.id">
                                 <tr>
                                     <td><code x-text="stat.name || ('ID ' + stat.id)"></code></td>
                                     <td x-text="(stat.count || 0).toLocaleString()"></td>
                                     <td><span class="badge badge-freq" x-text="stat.frequency.toFixed(2) + ' msg/s'"></span></td>
-                                    <td class="text-muted" style="font-size:0.8rem;font-variant-numeric:tabular-nums;" x-text="stat.lastSeen ? new Date(stat.lastSeen).toLocaleTimeString() : '--'"></td>
+                                    <td class="text-muted tabular-muted" x-text="stat.lastSeen ? new Date(stat.lastSeen).toLocaleTimeString() : '--'"></td>
                                 </tr>
                             </template>
                         </tbody>
                     </table>
                 </div>
             </div>
+            </div>
 
             <!-- Log level controls -->
-            <div class="section-title">Log Levels</div>
+            <button class="section-toggle mb-1" @click="showLogLevels = !showLogLevels"
+                    :aria-expanded="showLogLevels" aria-controls="diag-log-levels">
+                <span class="section-toggle-chevron" :class="{ open: showLogLevels }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Log Levels</span>
+            </button>
+            <div id="diag-log-levels" x-show="showLogLevels" x-transition.opacity x-cloak>
             <div x-show="logLevelsLoaded" class="card mb-2">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <div class="card-header card-header-split">
                     <span>Per-Channel Log Levels</span>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <label style="font-size:0.8rem;font-weight:normal;color:var(--text-secondary);">Global:</label>
-                        <select style="font-size:0.8rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                    <div class="flex items-center gap-1">
+                        <label class="inline-label">Global:</label>
+                        <select class="inline-select"
                                 :value="globalLevel"
                                 @change="setGlobalLevel($event.target.value)">
                             <option value="" disabled>Mixed</option>
@@ -551,7 +586,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="card-body" style="padding:0;overflow-x:auto;">
+                <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -564,7 +599,7 @@
                                 <tr>
                                     <td><code x-text="ch"></code></td>
                                     <td>
-                                        <select style="font-size:0.8rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                                        <select class="inline-select-sm"
                                                 :value="lvl"
                                                 @change="setChannelLevel(ch, $event.target.value)">
                                             <template x-for="s in severityLevels" :key="s">
@@ -578,10 +613,16 @@
                     </table>
                 </div>
             </div>
-            <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2" style="padding:1rem;">Loading log levels...</div>
+            <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2 p-2">Loading log levels...</div>
+            </div>
 
             <!-- Device Status -->
-            <div class="section-title mt-2">Device Status</div>
+            <button class="section-toggle mb-1 mt-2" @click="showDeviceStatus = !showDeviceStatus"
+                    :aria-expanded="showDeviceStatus" aria-controls="diag-device-status">
+                <span class="section-toggle-chevron" :class="{ open: showDeviceStatus }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Device Status</span>
+            </button>
+            <div id="diag-device-status" x-show="showDeviceStatus" x-transition.opacity x-cloak>
             <div class="card mb-2">
                 <div class="card-body">
                     <template x-if="$store.system.deviceStatuses.length > 0">
@@ -591,7 +632,7 @@
                                     <span class="device-status-name" x-text="dev.sourceName"></span>
                                     <span class="device-status-type" x-text="dev.sourceType"></span>
                                     <span class="device-status-badge"
-                                          :class="dev.statusType === 'Normal' ? 'badge-device-normal' : (dev.statusType === 'Initializing' ? 'badge-device-init' : 'badge-device-fault')"
+                                          :class="dev.statusType === 'Normal' ? 'badge-status-normal' : (dev.statusType === 'Initializing' ? 'badge-status-warn' : 'badge-status-danger')"
                                           x-text="dev.statusType"></span>
                                     <span class="device-status-time" x-text="dev.lastSeen"></span>
                                 </div>
@@ -599,15 +640,16 @@
                         </div>
                     </template>
                     <template x-if="$store.system.deviceStatuses.length === 0">
-                        <p class="text-muted" style="margin:0;">No device status events received yet</p>
+                        <p class="text-muted mb-0 mt-0">No device status events received yet</p>
                     </template>
                 </div>
             </div>
+            </div>
 
             <!-- Stats connection indicator -->
-            <div class="text-muted text-center mt-2" style="font-size:0.75rem;">
+            <div class="text-muted text-center mt-2 text-2xs">
                 Stats WebSocket:
-                <span class="connection-dot" :class="$store.ws.statsConnected ? 'connected' : 'disconnected'" style="width:6px;height:6px;vertical-align:middle;"></span>
+                <span class="connection-dot connection-dot-sm" :class="$store.ws.statsConnected ? 'connected' : 'disconnected'"></span>
                 <span x-text="$store.ws.statsConnected ? 'Connected' : 'Disconnected'"></span>
             </div>
         </div>
@@ -616,7 +658,7 @@
         <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
 
             <div class="section-title mt-2">Chemistry Target Ranges</div>
-            <p class="text-muted mb-1" style="font-size:0.8rem;">
+            <p class="text-muted mb-1 text-xs">
                 Configure the Good / Okay / Bad ranges for each chemistry gauge.
                 Values outside the Bad range are also shown as Bad.
                 Changes are saved to this browser only.
@@ -625,9 +667,9 @@
             <template x-for="gauge in gauges" :key="gauge.key">
                 <div class="card mb-2">
                     <div class="card-body">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-                            <strong x-text="gauge.label" style="font-size:1rem;"></strong>
-                            <button class="setpoint-btn" style="width:auto;height:auto;padding:0.25rem 0.6rem;font-size:0.7rem;"
+                        <div class="settings-gauge-header">
+                            <strong x-text="gauge.label" class="settings-gauge-title"></strong>
+                            <button class="setpoint-btn settings-reset-btn"
                                     @click="resetGauge(gauge.key)">Reset</button>
                         </div>
                         <div class="settings-range-grid">
@@ -643,7 +685,7 @@
                                                :value="values[gauge.key][tier + 'Min']"
                                                @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
                                     </label>
-                                    <span style="color:var(--text-muted);">&#x2013;</span>
+                                    <span class="range-separator">&#x2013;</span>
                                     <label>
                                         Max
                                         <input type="number" class="settings-input"
@@ -678,14 +720,17 @@
                         <dt>Git Commit</dt>
                         <dd>
                             <code x-text="shortCommit"></code>
-                            <span x-show="$store.pool.gitUncommitted" class="badge badge-warn" style="margin-left:0.5rem;">uncommitted changes</span>
+                            <span x-show="$store.pool.gitUncommitted" class="badge badge-warn ml-1">uncommitted changes</span>
                         </dd>
 
                         <dt>Commit Date</dt>
                         <dd x-text="$store.pool.gitDate || '--'"></dd>
 
                         <dt>Homepage</dt>
-                        <dd><a :href="$store.pool.projectHomepage" x-text="$store.pool.projectHomepage || '--'" target="_blank" rel="noopener"></a></dd>
+                        <dd>
+                            <a x-show="safeHomepage" :href="safeHomepage" x-text="safeHomepage" target="_blank" rel="noopener noreferrer"></a>
+                            <span x-show="!safeHomepage" class="text-muted">--</span>
+                        </dd>
                     </dl>
                 </div>
             </div>
@@ -695,7 +740,7 @@
                 <div class="card-body">
                     <dl class="info-grid" x-show="$store.pool.equipmentVersion.length > 0">
                         <template x-for="field in $store.pool.equipmentVersion" :key="field.label">
-                            <div style="display:contents;">
+                            <div class="contents">
                                 <dt x-text="field.label"></dt>
                                 <dd x-text="field.value"></dd>
                             </div>
@@ -736,8 +781,19 @@
 
     </main>
 
+    <!-- Toast notifications -->
+    <div class="toast-container" aria-live="polite" aria-atomic="false">
+        <template x-for="toast in $store.toast.items" :key="toast.id">
+            <div class="toast" :class="'toast-' + toast.level" x-transition.opacity>
+                <span x-text="toast.message"></span>
+                <button class="toast-dismiss" @click="$store.toast.dismiss(toast.id)" aria-label="Dismiss">&times;</button>
+            </div>
+        </template>
+    </div>
+
     <!-- Store scripts -->
     <script src="/scripts/stores/theme-store.js"></script>
+    <script src="/scripts/stores/toast-store.js"></script>
     <script src="/scripts/stores/ws-store.js"></script>
     <script src="/scripts/stores/system-store.js"></script>
     <script src="/scripts/stores/pool-store.js"></script>

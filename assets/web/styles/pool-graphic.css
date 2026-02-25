@@ -78,6 +78,20 @@
     fill: rgba(255, 255, 255, 0.8);
 }
 
+.pool-air-sublabel {
+    font-family: var(--font-family);
+    font-weight: 500;
+    font-size: 12px;
+    fill: var(--text-secondary);
+}
+
+.pool-air-label {
+    font-family: var(--font-family);
+    font-weight: 700;
+    font-size: 16px;
+    fill: var(--text-primary);
+}
+
 /* Status indicators around pool edge */
 .pool-status-dot {
     r: 6;
