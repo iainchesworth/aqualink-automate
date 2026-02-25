@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <filesystem>
 #include <source_location>
 #include <utility>
@@ -11,6 +12,7 @@
 
 #include "logging/global_logger.h"
 #include "logging/logging_attributes.h"
+#include "logging/logging_severity_filter.h"
 
 #if defined(TRACY_ENABLE) || defined(VTUNE_SUPPORT_ENABLED) || defined(UProf_SUPPORT_ENABLED)
 #include "profiling/factories/profiler_factory.h"
@@ -23,6 +25,25 @@ namespace AqualinkAutomate::Logging
 	template<typename MESSAGE>
 	void Log(MESSAGE log_message, Channel channel, Severity severity, const std::source_location location)
 	{
+		// Early-out: skip all work if this severity is below the channel's filter level
+		if (!SeverityFiltering::ShouldLog(channel, severity))
+		{
+			return;
+		}
+
+		// Resolve the message: invoke callables (deferred formatting), pass through strings
+		auto resolved = [&]()
+		{
+			if constexpr (std::invocable<MESSAGE>)
+			{
+				return log_message();
+			}
+			else
+			{
+				return std::forward<MESSAGE>(log_message);
+			}
+		}();
+
 		auto GetGlobalLogger = [](auto channel) -> Logger&
 		{
 			switch (channel)
@@ -82,7 +103,7 @@ namespace AqualinkAutomate::Logging
 				return GlobalLogger_Web::get();
 
 			default:
-				// This is a problem...there's a channel type that has not been 
+				// This is a problem...there's a channel type that has not been
 				// added to the above list...default to the Main channel.
 				return GlobalLogger_Main::get();
 			}
@@ -92,7 +113,7 @@ namespace AqualinkAutomate::Logging
 		BOOST_LOG_SEV(lg, severity)
 			<< boost::log::add_value(source_file, std::filesystem::path(location.file_name()).filename().string())
 			<< boost::log::add_value(source_line, location.line())
-			<< log_message;
+			<< resolved;
 
 #if defined(TRACY_ENABLE) || defined(VTUNE_SUPPORT_ENABLED) || defined(UProf_SUPPORT_ENABLED)
 		if (severity >= Severity::Warning)
@@ -108,9 +129,9 @@ namespace AqualinkAutomate::Logging
 
 			if (colour != 0)
 			{
-				if constexpr (std::is_convertible_v<MESSAGE, std::string_view>)
+				if constexpr (std::is_convertible_v<decltype(resolved), std::string_view>)
 				{
-					Factory::ProfilerFactory::Instance().Get()->Message(std::string_view(log_message), colour);
+					Factory::ProfilerFactory::Instance().Get()->Message(std::string_view(resolved), colour);
 				}
 			}
 		}

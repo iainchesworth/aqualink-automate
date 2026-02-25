@@ -17,6 +17,7 @@ namespace AqualinkAutomate::Logging
 		void SetChannelFilterLevel(Channel channel, Severity severity);
 		
 		Severity GetChannelFilterLevel(Channel channel);
+		bool ShouldLog(Channel channel, Severity severity);
 
 		bool PerChannelTest(boost::log::value_ref<Channel, tag::channel> const& channel, boost::log::value_ref<Severity, tag::severity> const& severity);
 	}
