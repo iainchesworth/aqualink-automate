@@ -21,6 +21,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Generate compile_commands.json for clang-tidy
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_SOURCE_DIR}/cmake/tools/" "${CMAKE_SOURCE_DIR}/cmake/tools/coverage" "${CMAKE_SOURCE_DIR}/deps")
 
+# Derive version from git tags before project() declaration
+include(GitVersionDerivation)
+
 # Define options BEFORE project() to ensure preset values take precedence
 # over any vcpkg toolchain cache interference
 option(ENABLE_BENCHMARKS "Enable performance tests" ON)
@@ -34,10 +37,14 @@ option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" OFF)
 
 project(
 	aqualink-automate
-	VERSION 0.0.1
+	VERSION ${DERIVED_VERSION_SEMVER}
 	DESCRIPTION "Control Jandy Aqualink RS pool equipment via common IoT integrations"
 	HOMEPAGE_URL "https://github.com/iainchesworth/aqualink-automate"
 	LANGUAGES C CXX)
+
+# Propagate full version info (CMake project() only accepts M.M.P)
+set(PROJECT_VERSION_PRERELEASE "${DERIVED_VERSION_PRERELEASE}" CACHE STRING "Prerelease label (e.g. beta.2)" FORCE)
+set(PROJECT_VERSION_FULL "${DERIVED_VERSION_FULL}" CACHE STRING "Full semver version (M.M.P[-prerelease])" FORCE)
 
 if(ENABLE_SANITIZERS AND ENABLE_PROFILING)
   message(FATAL_ERROR "ENABLE_SANITIZERS and ENABLE_PROFILING cannot both be ON. "

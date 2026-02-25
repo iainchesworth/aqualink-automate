@@ -31,6 +31,8 @@ function(SetupCMakeVersionMonitoring)
         "set(PROJECT_VERSION_MAJOR \"${PROJECT_VERSION_MAJOR}\")\n"
         "set(PROJECT_VERSION_MINOR \"${PROJECT_VERSION_MINOR}\")\n"
         "set(PROJECT_VERSION_PATCH \"${PROJECT_VERSION_PATCH}\")\n"
+        "set(PROJECT_VERSION_PRERELEASE \"${PROJECT_VERSION_PRERELEASE}\")\n"
+        "set(PROJECT_VERSION_FULL \"${PROJECT_VERSION_FULL}\")\n"
     )
 
     add_custom_target(check_cmake_version

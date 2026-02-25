@@ -121,6 +121,34 @@ jobs:
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
+  version-check:
+    name: Version Check
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        shell: bash
+        run: |
+          BASE_VERSION=$(git show "origin/${{ github.base_ref }}:CMakeLists.txt" \
+            | grep -oP 'VERSION\s+\$\{DERIVED_VERSION_SEMVER\}' || \
+              git show "origin/${{ github.base_ref }}:CMakeLists.txt" \
+            | grep -oP 'VERSION\s+\K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+
+          # Check if any v* tags exist that differ from base
+          HEAD_DESCRIBE=$(git describe --tags --match "v*" --always HEAD 2>/dev/null || echo "none")
+          BASE_DESCRIBE=$(git describe --tags --match "v*" --always "origin/${{ github.base_ref }}" 2>/dev/null || echo "none")
+
+          if [[ "$HEAD_DESCRIBE" == "$BASE_DESCRIBE" ]]; then
+            echo "::warning::Version appears unchanged between base and PR branch. If this PR includes functional changes, consider tagging a new version before merging."
+          else
+            echo "Version info differs: base=$BASE_DESCRIBE, PR=$HEAD_DESCRIBE"
+          fi
+
   docker-verify:
     name: Docker Verification
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}

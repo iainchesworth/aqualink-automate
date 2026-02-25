@@ -36,7 +36,7 @@ namespace AqualinkAutomate::HTTP
 		nlohmann::json version_info;
 
 		version_info["software_version"]["name"] = Version::VersionInfo::ProjectName();
-		version_info["software_version"]["version"] = Version::VersionInfo::ProjectVersion();
+		version_info["software_version"]["version"] = Version::VersionInfo::ProjectVersionFull();
 		version_info["software_version"]["description"] = Version::VersionInfo::ProjectDescription();
 		version_info["software_version"]["homepage"] = Version::VersionInfo::ProjectHomepageURL();
 

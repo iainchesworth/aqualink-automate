@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 	{
 		static const std::string SERVER_VERSION_STRING
 		{
-			std::format("{}/{}", Version::VersionInfo::ProjectName(), Version::VersionInfo::ProjectVersion())
+			std::format("{}/{}", Version::VersionInfo::ProjectName(), Version::VersionInfo::ProjectVersionFull())
 		};
 
 		return std::string_view(SERVER_VERSION_STRING);

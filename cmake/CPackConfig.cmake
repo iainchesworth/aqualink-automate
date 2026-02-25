@@ -2,6 +2,11 @@ set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/packages")
 set(CPACK_STRIP_FILES ON)
 set(CPACK_THREADS 0)
 
+# Include example configuration files in all packages
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/examples/
+    DESTINATION examples COMPONENT ExampleConfigs
+    FILES_MATCHING PATTERN "*.conf")
+
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
 
     install(TARGETS aqualink-automate)
@@ -76,6 +81,12 @@ set(CPACK_PACKAGE_CHECKSUM SHA512)
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+
+# Include prerelease label in package filename when present
+if(PROJECT_VERSION_PRERELEASE)
+    set(CPACK_PACKAGE_FILE_NAME
+        "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${PROJECT_VERSION_PRERELEASE}-${CMAKE_SYSTEM_NAME}")
+endif()
 
 #------------------------------------------------------------------------------
 #

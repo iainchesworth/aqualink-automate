@@ -204,7 +204,7 @@ function(GetGitState _working_dir)
     endif()
 
     # Get output of git describe
-    RunGitCommand(describe --always ${object})
+    RunGitCommand(describe --tags --match "v*" --always ${object})
     if(NOT exit_code EQUAL 0)
         set(ENV{GIT_DESCRIBE} "unknown")
     else()

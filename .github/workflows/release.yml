@@ -2,12 +2,87 @@ name: Release
 
 on:
   push:
-    branches: ["main"]
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.0.0, v1.0.0-beta.1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run — build packages but don't create release"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
+  resolve-version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      version_tag: ${{ steps.resolve.outputs.version_tag }}
+      is_prerelease: ${{ steps.resolve.outputs.is_prerelease }}
+      is_dry_run: ${{ steps.resolve.outputs.is_dry_run }}
+
+    steps:
+      - name: Resolve version from trigger
+        id: resolve
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            IS_DRY_RUN="false"
+          else
+            TAG="${{ inputs.version }}"
+            IS_DRY_RUN="${{ inputs.dry_run }}"
+          fi
+
+          # Validate tag format: v<M>.<M>.<P>[-(alpha|beta|rc).<N>]
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid version format: $TAG (expected v<M>.<M>.<P>[-(alpha|beta|rc).<N>])"
+            exit 1
+          fi
+
+          # Strip leading 'v' for version string
+          VERSION="${TAG#v}"
+
+          # Detect prerelease from tag name or manual input
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            if [[ "$TAG" =~ -(alpha|beta|rc)\. ]]; then
+              IS_PRERELEASE="true"
+            else
+              IS_PRERELEASE="false"
+            fi
+          else
+            IS_PRERELEASE="${{ inputs.prerelease }}"
+            # Auto-detect if the tag itself has a prerelease suffix
+            if [[ "$TAG" =~ -(alpha|beta|rc)\. ]]; then
+              IS_PRERELEASE="true"
+            fi
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "is_dry_run=$IS_DRY_RUN" >> "$GITHUB_OUTPUT"
+
+          echo "### Version Resolution" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | $VERSION |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tag | $TAG |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pre-release | $IS_PRERELEASE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dry run | $IS_DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
+
   build-packages:
     name: Package — ${{ matrix.name }}
+    needs: [resolve-version]
     runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       fail-fast: false
@@ -39,6 +114,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Create local tag for dispatch builds
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git tag "${{ needs.resolve-version.outputs.version_tag }}" HEAD
 
       - name: Clean workspace (self-hosted)
         if: contains(matrix.runner, 'self-hosted')
@@ -109,10 +191,13 @@ jobs:
             packages/*.zip
             packages/*.exe
             packages/*.dmg
+            packages/*.sha512
           retention-days: 30
 
   docker-publish:
     name: Docker Publish
+    needs: [resolve-version, build-packages]
+    if: needs.resolve-version.outputs.is_dry_run != 'true'
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     permissions:
       packages: write
@@ -138,9 +223,9 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=sha
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=semver,pattern={{version}},value=${{ needs.resolve-version.outputs.version_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve-version.outputs.version_tag }}
+            type=raw,value=latest,enable=${{ needs.resolve-version.outputs.is_prerelease != 'true' }}
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v6
@@ -153,8 +238,8 @@ jobs:
 
   github-release:
     name: GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-packages, docker-publish]
+    needs: [resolve-version, build-packages, docker-publish]
+    if: needs.resolve-version.outputs.is_dry_run != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -162,10 +247,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Push tag for dispatch builds
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git tag "${{ needs.resolve-version.outputs.version_tag }}" HEAD && git push origin "${{ needs.resolve-version.outputs.version_tag }}"
+
       - name: Download all package artifacts
         uses: actions/download-artifact@v4
         with:
-          path: packages
+          path: release-artifacts
           pattern: packages-*
           merge-multiple: true
 
@@ -173,7 +264,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
+          PRERELEASE_FLAG=""
+          if [[ "${{ needs.resolve-version.outputs.is_prerelease }}" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "${{ needs.resolve-version.outputs.version_tag }}" \
+            --title "${{ needs.resolve-version.outputs.version_tag }}" \
             --generate-notes \
-            packages/*
+            $PRERELEASE_FLAG \
+            release-artifacts/*

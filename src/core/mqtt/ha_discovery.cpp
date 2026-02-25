@@ -454,7 +454,7 @@ namespace AqualinkAutomate::Mqtt
 			{"identifiers", nlohmann::json::array({m_Settings.ha_device_id})},
 			{"name", "aqualink-automate"},
 			{"manufacturer", "Jandy / Zodiac"},
-			{"sw_version", Version::VersionInfo::ProjectVersion()}
+			{"sw_version", Version::VersionInfo::ProjectVersionFull()}
 		};
 
 		if (auto data_hub = m_DataHub.lock())
@@ -479,7 +479,7 @@ namespace AqualinkAutomate::Mqtt
 	{
 		return {
 			{"name", "aqualink-automate"},
-			{"sw_version", Version::VersionInfo::ProjectVersion()},
+			{"sw_version", Version::VersionInfo::ProjectVersionFull()},
 			{"support_url", Version::VersionInfo::ProjectHomepageURL()}
 		};
 	}

@@ -520,7 +520,7 @@ namespace AqualinkAutomate::Mqtt
 	nlohmann::json MqttHub::SerializeSystemVersion() const
 	{
 		return {
-			{"application", Version::VersionInfo::ProjectVersion()},
+			{"application", Version::VersionInfo::ProjectVersionFull()},
 			{"build_date", Version::GitMetadata::CommitDate()}
 		};
 	}

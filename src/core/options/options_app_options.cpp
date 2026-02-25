@@ -99,7 +99,7 @@ namespace AqualinkAutomate::Options::App
 			(
 				"{} v{}\n{}",
 				Version::VersionInfo::ProjectName(),
-				Version::VersionInfo::ProjectVersion(),
+				Version::VersionInfo::ProjectVersionFull(),
 				Version::VersionInfo::ProjectDescription()
 			);
 
