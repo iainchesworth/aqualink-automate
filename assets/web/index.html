@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#0f172a">
     <title>Aqualink Automate</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles/app.css">
     <link rel="stylesheet" href="/styles/pool-graphic.css">
     <link rel="stylesheet" href="/styles/components.css">
@@ -20,7 +23,7 @@
     <nav class="app-nav" aria-label="Main navigation">
         <div class="nav-inner">
             <a class="nav-brand" href="#dashboard">
-                <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3C16 3 6 15 6 21a10 10 0 0020 0C26 15 16 3 16 3z" fill="#38bdf8"/></svg>
+                <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3C16 3 6 15 6 21a10 10 0 0020 0C26 15 16 3 16 3z" fill="#0ea5e9"/></svg>
                 Aqualink
             </a>
             <div class="nav-links">
@@ -95,70 +98,53 @@
         <!-- ====== DASHBOARD VIEW ====== -->
         <div x-show="route === 'dashboard'" x-cloak x-data="dashboardView()">
 
-            <!-- Pool Graphic Hero -->
-            <div class="card mt-2 mb-2" x-data="poolGraphic()">
-                <div class="card-body card-body-flush">
-                    <div class="pool-graphic-container">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" role="img" aria-label="Pool and spa overview with temperature readings and equipment status">
-                            <defs>
-                                <linearGradient id="pgPool" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="var(--pool-water)"/>
-                                    <stop offset="100%" stop-color="var(--pool-water-deep)"/>
-                                </linearGradient>
-                                <linearGradient id="pgSpa" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="var(--spa-water)"/>
-                                    <stop offset="100%" stop-color="var(--spa-water-deep)"/>
-                                </linearGradient>
-                                <clipPath id="pgPoolClip"><rect x="40" y="80" width="480" height="260" rx="30"/></clipPath>
-                                <clipPath id="pgSpaClip"><ellipse cx="650" cy="200" rx="110" ry="90"/></clipPath>
-                            </defs>
+            <!-- Summary Strip -->
+            <div class="summary-strip card mt-2 mb-2" x-data="poolGraphic()" role="region" aria-label="Pool and spa temperature overview and equipment status">
+                <!-- Pool -->
+                <div class="summary-section">
+                    <span class="summary-accent summary-accent--pool" aria-hidden="true"></span>
+                    <div class="summary-section-body">
+                        <span class="summary-label">Pool</span>
+                        <span class="summary-temp" x-text="poolTempDisplay"></span>
+                        <span class="summary-setpoint" x-show="$store.pool.poolSetpoint !== '--'"
+                              x-text="'Set: ' + (typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint)"></span>
+                    </div>
+                </div>
 
-                            <!-- Deck -->
-                            <rect x="10" y="50" width="780" height="330" rx="25" fill="var(--bg-secondary)" opacity="0.5"/>
+                <!-- Spa -->
+                <div class="summary-section">
+                    <span class="summary-accent summary-accent--spa" aria-hidden="true"></span>
+                    <div class="summary-section-body">
+                        <span class="summary-label">Spa</span>
+                        <span class="summary-temp" x-text="spaTempDisplay"></span>
+                        <span class="summary-setpoint" x-show="$store.pool.spaSetpoint !== '--'"
+                              x-text="'Set: ' + (typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint)"></span>
+                    </div>
+                </div>
 
-                            <!-- Pool -->
-                            <rect x="40" y="80" width="480" height="260" rx="30" fill="url(#pgPool)"/>
-                            <g clip-path="url(#pgPoolClip)">
-                                <path class="pool-wave" d="M30 180 Q80 160 130 180 T230 180 T330 180 T430 180 T530 180" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="none"/>
-                                <path class="pool-wave-2" d="M30 200 Q80 180 130 200 T230 200 T330 200 T430 200 T530 200" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
-                            </g>
+                <!-- Air -->
+                <div class="summary-section">
+                    <div class="summary-section-body">
+                        <span class="summary-label">Air</span>
+                        <span class="summary-temp" x-text="airTempDisplay"></span>
+                    </div>
+                </div>
 
-                            <!-- Spa -->
-                            <ellipse cx="650" cy="200" rx="110" ry="90" fill="url(#pgSpa)"/>
-                            <g clip-path="url(#pgSpaClip)" x-show="spaActive">
-                                <circle class="spa-bubble" cx="620" cy="240" r="3" fill="rgba(255,255,255,0.6)"/>
-                                <circle class="spa-bubble" cx="650" cy="250" r="4" fill="rgba(255,255,255,0.5)"/>
-                                <circle class="spa-bubble" cx="680" cy="235" r="3" fill="rgba(255,255,255,0.6)"/>
-                                <circle class="spa-bubble" cx="640" cy="245" r="2.5" fill="rgba(255,255,255,0.4)"/>
-                            </g>
+                <div class="summary-divider" aria-hidden="true"></div>
 
-                            <!-- Connection -->
-                            <path d="M520 200 L540 200" stroke="var(--border-color)" stroke-width="3" stroke-dasharray="6 4"/>
-
-                            <!-- Pool temp -->
-                            <text class="pool-temp-sublabel" x="280" y="185" text-anchor="middle">Pool</text>
-                            <text class="pool-temp-label" x="280" y="215" text-anchor="middle" x-text="poolTempDisplay"></text>
-
-                            <!-- Spa temp -->
-                            <text class="pool-temp-sublabel" x="650" y="185" text-anchor="middle">Spa</text>
-                            <text class="pool-temp-label" x="650" y="215" text-anchor="middle" x-text="spaTempDisplay"></text>
-
-                            <!-- Air temp -->
-                            <text class="pool-air-sublabel" x="460" y="42" text-anchor="middle">Air</text>
-                            <text class="pool-air-label" x="460" y="60" text-anchor="middle" x-text="airTempDisplay"></text>
-
-                            <!-- Status dots -->
-                            <circle class="pool-status-dot" :class="pumpActive ? 'active' : 'inactive'" cx="60" cy="365"/>
-                            <text class="pool-status-label" x="60" y="385">Pump</text>
-
-                            <circle class="pool-status-dot" :class="heaterActive ? 'active' : 'inactive'" cx="130" cy="365"/>
-                            <text class="pool-status-label" x="130" y="385">Heater</text>
-
-                            <g x-show="hasChlorinator" x-cloak>
-                                <circle class="pool-status-dot" :class="chlorinatorActive ? 'active' : 'inactive'" cx="200" cy="365"/>
-                                <text class="pool-status-label" x="200" y="385">Chlor</text>
-                            </g>
-                        </svg>
+                <!-- Status -->
+                <div class="summary-status">
+                    <div class="summary-status-row">
+                        <span class="summary-status-dot" :class="pumpActive ? 'dot-active' : 'dot-inactive'" aria-hidden="true"></span>
+                        <span x-text="'Pump ' + (pumpActive ? 'On' : 'Off')"></span>
+                    </div>
+                    <div class="summary-status-row">
+                        <span class="summary-status-dot" :class="heaterActive ? 'dot-active' : 'dot-inactive'" aria-hidden="true"></span>
+                        <span x-text="'Heater ' + (heaterActive ? 'On' : 'Off')"></span>
+                    </div>
+                    <div class="summary-status-row" x-show="hasChlorinator" x-cloak>
+                        <span class="summary-status-dot" :class="chlorinatorActive ? 'dot-active' : 'dot-inactive'" aria-hidden="true"></span>
+                        <span x-text="'Chlor ' + (chlorinatorActive ? 'On' : 'Off')"></span>
                     </div>
                 </div>
             </div>
@@ -235,20 +221,29 @@
             <div class="gauge-grid mb-2">
                 <template x-for="type in ['ph', 'orp', 'salt']" :key="type">
                     <div class="gauge-card" x-data="chemistryGauge(type)">
-                        <svg class="gauge-svg" viewBox="0 0 120 70" role="img" :aria-label="cfg.label + ' gauge: ' + displayValue + (statusLabel ? ' (' + statusLabel + ')' : '')">
-                            <path class="gauge-arc-bg" d="M15 65 A45 45 0 0 1 105 65" />
-                            <path class="gauge-arc-value"
-                                  d="M15 65 A45 45 0 0 1 105 65"
-                                  :stroke="statusColor"
-                                  :stroke-dasharray="141.37"
-                                  :stroke-dashoffset="dashOffset" />
-                        </svg>
+                        <div class="gauge-header">
+                            <span class="gauge-label" x-text="cfg.label"></span>
+                            <span class="gauge-band-indicator"
+                                  x-show="band"
+                                  :class="'gauge-band-' + (band || '')"
+                                  x-text="statusLabel"></span>
+                        </div>
                         <div class="gauge-value" x-text="displayValue" :style="`color:${statusColor}`"></div>
-                        <div class="gauge-label" x-text="cfg.label"></div>
-                        <span class="gauge-band-indicator"
-                              x-show="band"
-                              :class="'gauge-band-' + (band || '')"
-                              x-text="statusLabel"></span>
+                        <div class="gauge-bar-track" role="meter"
+                             :aria-label="cfg.label"
+                             :aria-valuenow="numericValue"
+                             :aria-valuemin="cfg.min"
+                             :aria-valuemax="cfg.max">
+                            <div class="gauge-bar-fill"
+                                 :style="`width:${percentage}%;background:${statusColor}`"></div>
+                            <div class="gauge-bar-marker"
+                                 :style="`left:${percentage}%`"
+                                 x-show="numericValue !== null"></div>
+                        </div>
+                        <div class="gauge-range-labels">
+                            <span x-text="cfg.min + cfg.unit"></span>
+                            <span x-text="cfg.max + cfg.unit"></span>
+                        </div>
                     </div>
                 </template>
             </div>
