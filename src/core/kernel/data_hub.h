@@ -71,6 +71,7 @@ namespace AqualinkAutomate::Kernel
 		Kernel::PoolConfigurations PoolConfiguration{ Kernel::PoolConfigurations::Unknown };
 		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
+		bool EmulationDisabled{ false };
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT STATUS

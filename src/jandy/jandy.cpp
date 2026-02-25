@@ -3,6 +3,7 @@
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
+#include "kernel/data_hub.h"
 #include "devices/iaq_device.h"
 #include "devices/keypad_device.h"
 #include "devices/onetouch_device.h"
@@ -50,6 +51,16 @@ namespace AqualinkAutomate::Jandy
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
 		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator));
+
+		if (jandy_settings.disable_emulation)
+		{
+			auto data_hub = hub_locator.Find<Kernel::DataHub>();
+			if (nullptr != data_hub)
+			{
+				data_hub->EmulationDisabled = true;
+				LogInfo(Channel::Main, "Emulation disabled; skipping equipment discovery phase");
+			}
+		}
 
 		if (!jandy_settings.disable_emulation)
 		{

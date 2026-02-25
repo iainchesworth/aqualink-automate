@@ -86,7 +86,7 @@ namespace AqualinkAutomate::HTTP
 			nlohmann::json state_payload;
 
 			std::string state = "ready";
-			if (m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::Unknown)
+			if (!m_DataHub->EmulationDisabled && m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::Unknown)
 				state = "starting";
 			if (m_DataHub->Mode == Kernel::EquipmentMode::Service)
 				state = "service_mode";
