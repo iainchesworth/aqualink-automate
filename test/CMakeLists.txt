@@ -324,7 +324,7 @@ target_link_libraries(
 	benchmark::benchmark_main
 )
 
-add_test(AqualinkAutomatePerfTests perfaqualink-automate)
+add_test(NAME AqualinkAutomatePerfTests COMMAND perfaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 if(ENABLE_SANITIZERS)
 target_enable_sanitizers(perfaqualink-automate)
