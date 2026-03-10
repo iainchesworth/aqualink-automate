@@ -5,6 +5,7 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/scrapeable.h"
@@ -19,7 +20,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class KeypadDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
+	class KeypadDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const uint8_t KEYPAD_PAGE_LINES{ 3 };
 		inline static const std::chrono::seconds KEYPAD_TIMEOUT_DURATION{ std::chrono::seconds(30) };
@@ -32,6 +33,9 @@ namespace AqualinkAutomate::Devices
 	public:
 		KeypadDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		~KeypadDevice() override = default;
+
+	public:
+		nlohmann::json DescribeDiagnostics() const override;
 
 	private:
 		void ProcessControllerUpdates() override;

@@ -10,7 +10,8 @@
 const _diag = {
     chart: null,
     statsListener: null,
-    windowSeconds: 60
+    windowSeconds: 60,
+    emuDeviceTimer: null
 };
 
 function diagnosticsView() {
@@ -39,6 +40,10 @@ function diagnosticsView() {
         showMessageStats: false,
         showLogLevels: false,
         showDeviceStatus: false,
+        showEmulatedDevices: true,
+
+        // Emulated device diagnostics
+        emulatedDevices: [],
 
         // Log level control state
         logChannels: {},
@@ -54,6 +59,8 @@ function diagnosticsView() {
             }
 
             this._fetchLogLevels();
+            this.fetchEmulatedDevices();
+            _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
         },
 
         _createChart() {
@@ -144,6 +151,11 @@ function diagnosticsView() {
         destroyChart() {
             Alpine.store('ws').disconnectStats();
 
+            if (_diag.emuDeviceTimer) {
+                clearInterval(_diag.emuDeviceTimer);
+                _diag.emuDeviceTimer = null;
+            }
+
             if (_diag.statsListener) {
                 window.removeEventListener('stats-updated', _diag.statsListener);
                 _diag.statsListener = null;
@@ -152,6 +164,16 @@ function diagnosticsView() {
             if (_diag.chart) {
                 _diag.chart.destroy();
                 _diag.chart = null;
+            }
+        },
+
+        async fetchEmulatedDevices() {
+            try {
+                const resp = await fetch('/api/diagnostics/emulated-devices');
+                if (!resp.ok) return;
+                this.emulatedDevices = await resp.json();
+            } catch (e) {
+                // Silently fail — endpoint may not be available
             }
         },
 

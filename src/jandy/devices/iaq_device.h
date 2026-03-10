@@ -7,6 +7,7 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
@@ -34,7 +35,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -50,6 +51,9 @@ namespace AqualinkAutomate::Devices
 	public:
 		IAQDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		~IAQDevice() override;
+
+	public:
+		nlohmann::json DescribeDiagnostics() const override;
 
 	public:
 		void QueueCommand(uint8_t command);

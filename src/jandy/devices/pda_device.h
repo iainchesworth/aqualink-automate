@@ -5,6 +5,7 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/scrapeable.h"
@@ -23,7 +24,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class PDADevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated
+	class PDADevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Scrapeable, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const uint8_t PDA_PAGE_LINES{ 10 };
 		inline static const Scrapeable::ScrapeId PDA_CONFIG_INIT_SCRAPER{ 1 };
@@ -44,6 +45,9 @@ namespace AqualinkAutomate::Devices
 	public:
 		PDADevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		~PDADevice() override = default;
+
+	public:
+		nlohmann::json DescribeDiagnostics() const override;
 
 	private:
 		void ProcessControllerUpdates() override;

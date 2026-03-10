@@ -57,7 +57,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			}
 		}
 
-	protected:
+	public:
 		bool IsEmulated() const;
 
 	private:

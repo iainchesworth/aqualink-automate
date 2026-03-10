@@ -454,6 +454,185 @@
             </div>
             <div x-show="!$store.stats.latency" class="text-center text-muted mb-2 p-2">Waiting for latency data...</div>
 
+            <!-- Device Status -->
+            <button class="section-toggle mb-1" @click="showDeviceStatus = !showDeviceStatus"
+                    :aria-expanded="showDeviceStatus" aria-controls="diag-device-status">
+                <span class="section-toggle-chevron" :class="{ open: showDeviceStatus }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Device Status</span>
+            </button>
+            <div id="diag-device-status" x-show="showDeviceStatus" x-transition.opacity x-cloak>
+            <div class="card mb-2">
+                <div class="card-body">
+                    <template x-if="$store.system.deviceStatuses.length > 0">
+                        <div class="device-status-list">
+                            <template x-for="dev in $store.system.deviceStatuses" :key="dev.key">
+                                <div class="device-status-row">
+                                    <span class="device-status-name" x-text="dev.sourceName"></span>
+                                    <span class="device-status-type" x-text="dev.sourceType"></span>
+                                    <span class="device-status-badge"
+                                          :class="dev.statusType === 'Normal' ? 'badge-status-normal' : (dev.statusType === 'Initializing' ? 'badge-status-warn' : 'badge-status-danger')"
+                                          x-text="dev.statusType"></span>
+                                    <span class="device-status-time" x-text="dev.lastSeen"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="$store.system.deviceStatuses.length === 0">
+                        <p class="text-muted mb-0 mt-0">No device status events received yet</p>
+                    </template>
+                </div>
+            </div>
+            </div>
+
+            <!-- Emulated Devices -->
+            <button class="section-toggle mb-1" @click="showEmulatedDevices = !showEmulatedDevices"
+                    :aria-expanded="showEmulatedDevices" aria-controls="diag-emulated-devices">
+                <span class="section-toggle-chevron" :class="{ open: showEmulatedDevices }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Emulated Devices</span>
+            </button>
+            <div id="diag-emulated-devices" x-show="showEmulatedDevices" x-transition.opacity x-cloak>
+                <template x-if="emulatedDevices.length === 0">
+                    <p class="text-muted mb-2 mt-0">No emulated devices active</p>
+                </template>
+                <div class="emu-device-grid">
+                    <template x-for="dev in emulatedDevices" :key="dev.device_id">
+                        <div class="emu-device-card">
+                            <div class="emu-device-header">
+                                <span class="emu-device-type" x-text="dev.device_type"></span>
+                                <code class="emu-device-id" x-text="dev.device_id"></code>
+                                <span class="emu-state-badge" x-text="dev.operating_state"
+                                      :class="{
+                                          'badge-status-normal': dev.operating_state === 'NormalOperation' || dev.operating_state === 'Scraping',
+                                          'badge-status-warn': dev.operating_state === 'StartUp' || dev.operating_state === 'ColdStart',
+                                          'badge-status-danger': dev.operating_state === 'FaultHasOccurred' || dev.operating_state === 'ScrapingFaulted'
+                                      }"></span>
+                                <span class="emu-running-dot" :class="dev.is_running ? 'connected' : 'disconnected'"
+                                      :title="dev.is_running ? 'Watchdog running' : 'Watchdog stopped'"></span>
+                            </div>
+                            <div class="emu-device-body">
+
+                                <!-- OneTouch-specific -->
+                                <template x-if="dev.device_type === 'OneTouch'">
+                                    <div>
+                                        <div class="emu-device-section" x-show="dev.navigator">
+                                            <div class="emu-section-label">Navigator</div>
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">State</span>
+                                                <span class="emu-kv-val" x-text="dev.navigator?.state"></span>
+                                                <span class="emu-kv-key">Current</span>
+                                                <span class="emu-kv-val" x-text="dev.navigator?.current_page"></span>
+                                                <span class="emu-kv-key">Target</span>
+                                                <span class="emu-kv-val" x-text="dev.navigator?.target_page"></span>
+                                                <span class="emu-kv-key">Cursor</span>
+                                                <span class="emu-kv-val" x-text="dev.navigator?.cursor_line"></span>
+                                                <span class="emu-kv-key">Synced</span>
+                                                <span class="emu-kv-val" x-text="dev.navigator?.synced ? 'Yes' : 'No'"></span>
+                                            </div>
+                                        </div>
+                                        <div class="emu-device-section" x-show="dev.spider_engine">
+                                            <div class="emu-section-label">Spider Engine</div>
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">State</span>
+                                                <span class="emu-kv-val" x-text="dev.spider_engine?.state"></span>
+                                                <span class="emu-kv-key">Visited</span>
+                                                <span class="emu-kv-val" x-text="dev.spider_engine?.visited_count"></span>
+                                                <span class="emu-kv-key">Target</span>
+                                                <span class="emu-kv-val" x-text="dev.spider_engine?.current_target"></span>
+                                            </div>
+                                        </div>
+                                        <div class="emu-device-section">
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">Stall Counter</span>
+                                                <span class="emu-kv-val" x-text="dev.scraping_stall_counter"></span>
+                                                <span class="emu-kv-key">Highlighted</span>
+                                                <span class="emu-kv-val" x-text="dev.highlighted_line"></span>
+                                                <span class="emu-kv-key">Key Cmd</span>
+                                                <span class="emu-kv-val" x-text="dev.pending_key_command"></span>
+                                                <span class="emu-kv-key">ACK Type</span>
+                                                <span class="emu-kv-val" x-text="dev.ack_type"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- IAQ-specific -->
+                                <template x-if="dev.device_type === 'IAQ'">
+                                    <div>
+                                        <div class="emu-device-section">
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">Pending Cmd</span>
+                                                <span class="emu-kv-val"><code x-text="dev.pending_command"></code></span>
+                                                <span class="emu-kv-key">Queue Depth</span>
+                                                <span class="emu-kv-val" x-text="dev.command_queue_depth"></span>
+                                                <span class="emu-kv-key">Awaiting CtrlReady</span>
+                                                <span class="emu-kv-val" x-text="dev.awaiting_control_ready ? 'Yes' : 'No'"></span>
+                                                <span class="emu-kv-key">Control Data</span>
+                                                <span class="emu-kv-val" x-text="dev.control_data_value || '--'"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- SerialAdapter-specific -->
+                                <template x-if="dev.device_type === 'SerialAdapter'">
+                                    <div>
+                                        <div class="emu-device-section">
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">Status Types</span>
+                                                <span class="emu-kv-val" x-text="dev.status_collection_count"></span>
+                                                <span class="emu-kv-key">Status Received</span>
+                                                <span class="emu-kv-val" x-text="dev.status_message_received ? 'Yes' : 'No'"></span>
+                                                <span class="emu-kv-key">Pending Cmd</span>
+                                                <span class="emu-kv-val" x-text="dev.has_pending_command ? 'Yes' : 'No'"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- PDA-specific -->
+                                <template x-if="dev.device_type === 'PDA'">
+                                    <div>
+                                        <div class="emu-device-section">
+                                            <div class="emu-kv-grid">
+                                                <span class="emu-kv-key">Scrape State</span>
+                                                <span class="emu-kv-val" x-text="dev.scrape_state"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Screen content (for devices that have it) -->
+                                <template x-if="dev.screen">
+                                    <div class="emu-device-section">
+                                        <div class="emu-section-label">
+                                            Screen
+                                            <span class="emu-page-type" x-text="dev.screen.page_type"></span>
+                                            <span class="emu-screen-mode" x-text="dev.screen.mode" x-show="dev.screen.mode !== 'Normal'"></span>
+                                        </div>
+                                        <div class="emu-screen-lines">
+                                            <template x-for="(line, idx) in dev.screen.lines" :key="idx">
+                                                <div class="emu-screen-line"
+                                                     :class="{ 'emu-screen-line-highlighted': dev.highlighted_line === idx && dev.device_type === 'OneTouch' }">
+                                                    <span class="emu-line-num" x-text="idx"></span>
+                                                    <span x-text="line || '\u00A0'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Generic fallback for unknown device types -->
+                                <template x-if="!['OneTouch','IAQ','SerialAdapter','Keypad','PDA'].includes(dev.device_type)">
+                                    <div class="emu-device-section">
+                                        <pre class="emu-json-dump" x-text="JSON.stringify(dev, null, 2)"></pre>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <!-- Serial health metrics -->
             <button class="section-toggle mb-1" @click="showSerialHealth = !showSerialHealth"
                     :aria-expanded="showSerialHealth" aria-controls="diag-serial-health">
@@ -609,36 +788,6 @@
                 </div>
             </div>
             <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2 p-2">Loading log levels...</div>
-            </div>
-
-            <!-- Device Status -->
-            <button class="section-toggle mb-1 mt-2" @click="showDeviceStatus = !showDeviceStatus"
-                    :aria-expanded="showDeviceStatus" aria-controls="diag-device-status">
-                <span class="section-toggle-chevron" :class="{ open: showDeviceStatus }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Device Status</span>
-            </button>
-            <div id="diag-device-status" x-show="showDeviceStatus" x-transition.opacity x-cloak>
-            <div class="card mb-2">
-                <div class="card-body">
-                    <template x-if="$store.system.deviceStatuses.length > 0">
-                        <div class="device-status-list">
-                            <template x-for="dev in $store.system.deviceStatuses" :key="dev.key">
-                                <div class="device-status-row">
-                                    <span class="device-status-name" x-text="dev.sourceName"></span>
-                                    <span class="device-status-type" x-text="dev.sourceType"></span>
-                                    <span class="device-status-badge"
-                                          :class="dev.statusType === 'Normal' ? 'badge-status-normal' : (dev.statusType === 'Initializing' ? 'badge-status-warn' : 'badge-status-danger')"
-                                          x-text="dev.statusType"></span>
-                                    <span class="device-status-time" x-text="dev.lastSeen"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-                    <template x-if="$store.system.deviceStatuses.length === 0">
-                        <p class="text-muted mb-0 mt-0">No device status events received yet</p>
-                    </template>
-                </div>
-            </div>
             </div>
 
             <!-- Stats connection indicator -->

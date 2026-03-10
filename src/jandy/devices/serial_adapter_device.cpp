@@ -2,6 +2,7 @@
 #include <functional>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "devices/device_status.h"
 #include "logging/logging.h"
@@ -184,6 +185,20 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::WatchdogTimeoutOccurred()
 	{
+	}
+
+	nlohmann::json SerialAdapterDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "SerialAdapter";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+		j["status_collection_count"] = static_cast<uint32_t>(m_StatusTypesCollection.size());
+		j["status_message_received"] = m_StatusMessageReceived;
+		j["has_pending_command"] = m_PendingCommand.has_value();
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }
