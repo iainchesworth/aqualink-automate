@@ -9,9 +9,7 @@
 namespace AqualinkAutomate::Kernel
 {
 	
-	DataHub::DataHub()
-	{
-	}
+	DataHub::DataHub() = default;
 
 	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source)
 	{

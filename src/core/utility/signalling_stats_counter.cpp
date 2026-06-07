@@ -9,11 +9,7 @@ namespace AqualinkAutomate::Utility
 	{
 	}
 
-	StatsCounter::StatsCounter(const StatsCounter& other) :
-		m_Count{ other.m_Count },
-		m_StatsSignal(other.m_StatsSignal)
-	{
-	}
+	StatsCounter::StatsCounter(const StatsCounter& other) = default;
 
 	StatsCounter::StatsCounter(StatsCounter&& other) noexcept :
 		m_Count{ other.m_Count },

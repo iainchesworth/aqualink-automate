@@ -3,9 +3,7 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	PreferencesHub::PreferencesHub()
-	{
-	}
+	PreferencesHub::PreferencesHub() = default;
 
 
 }
