@@ -49,11 +49,11 @@ namespace AqualinkAutomate::Developer
 		uint64_t OnStarted(AsyncOperationType type, const std::string& description, const std::source_location& location = std::source_location::current());
 		void OnCompleted(uint64_t id, bool cancelled = false, bool error = false);
 
-		uint64_t PendingCount() const;
-		uint64_t PendingCountByType(AsyncOperationType type) const;
+		[[nodiscard]] uint64_t PendingCount() const;
+		[[nodiscard]] uint64_t PendingCountByType(AsyncOperationType type) const;
 
-		std::vector<AsyncOperationInfo> GetPending() const;
-		std::vector<AsyncOperationInfo> GetStuck(std::chrono::steady_clock::duration threshold) const;
+		[[nodiscard]] std::vector<AsyncOperationInfo> GetPending() const;
+		[[nodiscard]] std::vector<AsyncOperationInfo> GetStuck(std::chrono::steady_clock::duration threshold) const;
 
 		void DumpPending() const;
 		void DumpStuck(std::chrono::steady_clock::duration threshold) const;

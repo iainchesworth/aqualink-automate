@@ -23,7 +23,7 @@ namespace AqualinkAutomate::Protocol
 		m_Generators.push_back({ std::move(generator), priority });
 
 		// Sort by priority (lower values = higher priority)
-		std::sort(m_Generators.begin(), m_Generators.end(),
+		std::ranges::sort(m_Generators,
 			[](const GeneratorEntry& a, const GeneratorEntry& b) {
 				return a.priority < b.priority;
 			});

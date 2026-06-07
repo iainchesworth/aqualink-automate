@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Jandy::Options
 	using JandyEmulatedDevice = std::pair<Devices::JandyEmulatedDeviceTypes, Devices::JandyDeviceType>;
 	using JandyEmulatedDeviceCollection = std::vector<JandyEmulatedDevice>;
 
-	typedef struct tagJandySettings
+	struct JandySettings
 	{
 		static const std::string& AreaName()
 		{
@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Jandy::Options
 			return AREA_NAME;
 		}
 
-		tagJandySettings() :
+		JandySettings() :
 			disable_emulation{ false },
 			emulated_devices{},
 			navigation_password{}
@@ -39,8 +39,7 @@ namespace AqualinkAutomate::Jandy::Options
 		bool disable_emulation;
 		JandyEmulatedDeviceCollection emulated_devices;
 		std::string navigation_password;  // 4-digit password for menu navigation
-	}
-	JandySettings;
+	};
 
 	class OptionsProcessor
 	{

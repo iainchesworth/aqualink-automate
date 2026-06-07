@@ -36,10 +36,10 @@ namespace AqualinkAutomate::Protocol
 		ExpectedProtocolMessage GenerateMessage(boost::circular_buffer<uint8_t>& buffer);
 
 		/// Check if any generators are registered.
-		bool HasGenerators() const;
+		[[nodiscard]] bool HasGenerators() const;
 
 		/// Get the number of registered generators.
-		std::size_t GeneratorCount() const;
+		[[nodiscard]] std::size_t GeneratorCount() const;
 
 	private:
 		MessageGeneratorRegistry() = default;

@@ -121,19 +121,15 @@ namespace AqualinkAutomate::Utility
 			{
 				TimeElement last_time_element = std::get<TimeElement>(history.back());
 
-				history.erase(
-					std::remove_if(
-						history.begin(),
-						history.end(),
-						[this, last_time_element](const HistoryElement& element)
-						{
-							auto diff = last_time_element - std::get<TimeElement>(element);
-							auto to_be_pruned = diff > m_StatsDuration;
+				std::erase_if(
+					history,
+					[this, last_time_element](const HistoryElement& element)
+					{
+						auto diff = last_time_element - std::get<TimeElement>(element);
+						auto to_be_pruned = diff > m_StatsDuration;
 
-							return to_be_pruned;
-						}
-					),
-					history.end()
+						return to_be_pruned;
+					}
 				);
 			}
 		}

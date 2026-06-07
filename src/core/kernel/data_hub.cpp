@@ -9,8 +9,7 @@
 namespace AqualinkAutomate::Kernel
 {
 	
-	DataHub::DataHub() :
-		IHub()
+	DataHub::DataHub()
 	{
 	}
 

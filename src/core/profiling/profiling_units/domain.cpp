@@ -8,15 +8,15 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	inline void Domain::Start() const
+	void Domain::Start() const
 	{
 	}
 
-	inline void Domain::End() const
+	void Domain::End() const
 	{
 	}
 
-	inline void Domain::Mark() const
+	void Domain::Mark() const
 	{
 	}
 

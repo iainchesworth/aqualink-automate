@@ -33,10 +33,10 @@ namespace AqualinkAutomate::Developer
 		uint64_t OnConnected(const std::string& description, const std::source_location& location = std::source_location::current());
 		void OnDisconnected(uint64_t id);
 
-		uint64_t ActiveCount() const;
+		[[nodiscard]] uint64_t ActiveCount() const;
 
-		std::vector<SignalConnectionInfo> GetActive() const;
-		std::vector<SignalConnectionInfo> GetOlderThan(std::chrono::steady_clock::duration threshold) const;
+		[[nodiscard]] std::vector<SignalConnectionInfo> GetActive() const;
+		[[nodiscard]] std::vector<SignalConnectionInfo> GetOlderThan(std::chrono::steady_clock::duration threshold) const;
 
 		void DumpActive() const;
 		void DumpOlderThan(std::chrono::steady_clock::duration threshold) const;

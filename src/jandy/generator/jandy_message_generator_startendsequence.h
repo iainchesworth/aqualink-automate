@@ -8,8 +8,8 @@
 namespace AqualinkAutomate::Generators
 {
 
-	const std::array<uint8_t, 2> PACKET_START_SEQUENCE = { Messages::HEADER_BYTE_DLE, Messages::HEADER_BYTE_STX };
-	const std::array<uint8_t, 2> PACKET_END_SEQUENCE = { Messages::HEADER_BYTE_DLE, Messages::HEADER_BYTE_ETX };
+	inline constexpr std::array<uint8_t, 2> PACKET_START_SEQUENCE = { Messages::HEADER_BYTE_DLE, Messages::HEADER_BYTE_STX };
+	inline constexpr std::array<uint8_t, 2> PACKET_END_SEQUENCE = { Messages::HEADER_BYTE_DLE, Messages::HEADER_BYTE_ETX };
 
 }
 // namespace AqualinkAutomate::Generators

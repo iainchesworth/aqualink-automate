@@ -3,8 +3,7 @@
 namespace AqualinkAutomate::Kernel
 {
 
-	PreferencesHub::PreferencesHub() :
-		IHub()
+	PreferencesHub::PreferencesHub()
 	{
 	}
 

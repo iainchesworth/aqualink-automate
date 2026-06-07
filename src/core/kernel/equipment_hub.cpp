@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Kernel
 		}
 		else if (EquipmentExists(equipment_to_add))
 		{
-			LogDebug(Channel::Devices, std::format("Failed to register equipment with equipment hub; equipment id already registered"));
+			LogDebug(Channel::Devices, "Failed to register equipment with equipment hub; equipment id already registered");
 		}
 		else if (auto [_, was_inserted] = m_ActiveEquipment.emplace(typeid(decltype(equipment_to_add)::element_type), std::move(equipment_to_add)); !was_inserted)
 		{
@@ -79,7 +79,7 @@ namespace AqualinkAutomate::Kernel
 		}
 		else if (auto [it, inserted] = m_ActiveDevices.insert(std::move(device_to_add)); !inserted)
 		{
-			LogTrace(Channel::Devices, std::format("Failed to register device with with equipment hub; insertion into unordered_set failed"));
+			LogTrace(Channel::Devices, "Failed to register device with equipment hub; insertion into unordered_set failed");
 		}
 		else
 		{
