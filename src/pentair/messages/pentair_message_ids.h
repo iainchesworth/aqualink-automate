@@ -21,6 +21,10 @@ namespace AqualinkAutomate::Pentair::Messages
 		Pump_Remote  = 0x04, // Take/release remote (local) control.
 		Pump_Power   = 0x06, // Pump power on/off.
 		Pump_Status  = 0x07, // Pump status broadcast (RPM / watts / GPM).
+
+		// IntelliChlor salt-water generator (chlorinator) commands.
+		Chlorinator_SetOutput = 0x11, // Set chlorinator output percentage.
+		Chlorinator_Status    = 0x12, // Chlorinator status (salt PPM / output / health).
 	};
 
 }

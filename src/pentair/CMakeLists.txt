@@ -10,6 +10,7 @@ add_library(libaqualink-pentair)
 target_sources(
 	libaqualink-pentair
 	PRIVATE
+	devices/pentair_chlorinator_device.cpp
 	devices/pentair_device.cpp
 	devices/pentair_device_id.cpp
 	devices/pentair_vsp_pump_device.cpp
@@ -18,6 +19,8 @@ target_sources(
 	generator/pentair_message_generator.cpp
 	messages/pentair_message.cpp
 	messages/pentair_message_unknown.cpp
+	messages/chlorinator/pentair_chlorinator_message_setoutput.cpp
+	messages/chlorinator/pentair_chlorinator_message_status.cpp
 	messages/pump/pentair_pump_message_power.cpp
 	messages/pump/pentair_pump_message_speed.cpp
 	messages/pump/pentair_pump_message_status.cpp

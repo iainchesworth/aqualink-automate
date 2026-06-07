@@ -1,6 +1,7 @@
 #include <format>
 #include <functional>
 
+#include "devices/pentair_chlorinator_device.h"
 #include "devices/pentair_device_id.h"
 #include "devices/pentair_vsp_pump_device.h"
 #include "equipment/equipment_status.h"
@@ -26,6 +27,10 @@ namespace AqualinkAutomate::Pentair::Equipment
 		m_MessageConnections.push_back(
 			Messages::PentairPumpMessage_Status::GetSignal()->connect(
 				std::bind(&PentairEquipment::IdentifyAndAddPump, this, std::placeholders::_1)));
+
+		m_MessageConnections.push_back(
+			Messages::PentairChlorinatorMessage_Status::GetSignal()->connect(
+				std::bind(&PentairEquipment::IdentifyAndAddChlorinator, this, std::placeholders::_1)));
 	}
 
 	PentairEquipment::~PentairEquipment()
@@ -62,6 +67,27 @@ namespace AqualinkAutomate::Pentair::Equipment
 
 		auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
 		m_EquipmentHub->AddDevice(std::make_unique<Devices::PentairVSPPumpDevice>(device_id, m_HubLocator));
+	}
+
+	void PentairEquipment::IdentifyAndAddChlorinator(const Messages::PentairChlorinatorMessage_Status& message)
+	{
+		if (nullptr == m_EquipmentHub)
+		{
+			return;
+		}
+
+		const uint8_t address = message.From();
+
+		Devices::PentairDeviceId candidate_id(address);
+		if (m_EquipmentHub->DeviceExists(candidate_id))
+		{
+			return;
+		}
+
+		LogInfo(Channel::Equipment, std::format("Adding new Pentair IntelliChlor device at address 0x{:02x}", address));
+
+		auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
+		m_EquipmentHub->AddDevice(std::make_unique<Devices::PentairChlorinatorDevice>(device_id, m_HubLocator));
 	}
 
 }

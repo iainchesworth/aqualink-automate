@@ -60,9 +60,10 @@ namespace AqualinkAutomate::Pentair::Messages
 	// DEVICE ADDRESSES
 	//-------------------------------------------------------------------------
 
-	constexpr uint8_t CONTROLLER_ADDRESS = 0x10; // Controller / master (IntelliCenter, EasyTouch).
-	constexpr uint8_t PUMP_ADDRESS_BASE  = 0x60; // VSP pumps occupy 0x60 - 0x6F.
-	constexpr uint8_t PUMP_ADDRESS_LAST  = 0x6F;
+	constexpr uint8_t CONTROLLER_ADDRESS  = 0x10; // Controller / master (IntelliCenter, EasyTouch).
+	constexpr uint8_t CHLORINATOR_ADDRESS = 0x50; // IntelliChlor salt-water generator.
+	constexpr uint8_t PUMP_ADDRESS_BASE   = 0x60; // VSP pumps occupy 0x60 - 0x6F.
+	constexpr uint8_t PUMP_ADDRESS_LAST   = 0x6F;
 
 }
 // namespace AqualinkAutomate::Pentair::Messages
