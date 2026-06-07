@@ -70,11 +70,13 @@ target_sources(
 	unit/mqtt/test_mqtt_options.cpp
 	unit/protocol/test_protocol_handler.cpp
 	unit/protocol/test_mock_replay_validation.cpp
+	unit/protocol/test_record_replay_roundtrip.cpp
 	unit/protocol/test_pentair_message_generator.cpp
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp
 	unit/support/unit_test_circularbuffermaker.cpp
 	unit/support/unit_test_httprequestresponse.cpp
 	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_loadfixture.cpp
 	unit/support/unit_test_mockreplayharness.cpp
 	unit/support/unit_test_onetouchdevice.cpp
 	unit/support/unit_test_ostream_support.cpp 	
@@ -137,6 +139,7 @@ target_sources(
 	unit/profiling/test_profiling_noop.cpp
 	unit/options/test_options_settings.cpp
 	unit/serial/test_mock_serial_port_impl.cpp
+	unit/serial/test_mock_serial_replay_format.cpp
 	unit/serial/test_test_serial_port_impl.cpp
 )
 
@@ -254,6 +257,8 @@ target_sources(
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_testserialportimpl.cpp
 	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_loadfixture.cpp
+	unit/support/unit_test_mockreplayharness.cpp
 	unit/support/unit_test_ostream_support.cpp
 	unit/support/unit_test_protocolmessagebuilder.cpp
 	unit/support/unit_test_httprequestresponse.cpp
@@ -352,8 +357,29 @@ endif(ENABLE_BENCHMARKS)
 #------------------------------------------------------------------------------
 
 add_custom_command(
-	TARGET testaqualink-automate 
+	TARGET testaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
 	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)
+
+#------------------------------------------------------------------------------
+#
+#  Record/replay capture fixtures must be available next to the test exe so that
+#  LoadFixture("fixtures/<name>.cap") resolves against the test working dir.
+#
+#------------------------------------------------------------------------------
+
+add_custom_command(
+	TARGET testaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying capture fixtures to test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${PROJECT_SOURCE_DIR}/test/fixtures" "${CMAKE_CURRENT_BINARY_DIR}/fixtures"
+)
+
+add_custom_command(
+	TARGET intaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying capture fixtures to integration test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${PROJECT_SOURCE_DIR}/test/fixtures" "${CMAKE_CURRENT_BINARY_DIR}/fixtures"
 )

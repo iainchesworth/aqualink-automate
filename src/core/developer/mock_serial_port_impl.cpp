@@ -1,4 +1,9 @@
+#include <cctype>
+#include <charconv>
+#include <deque>
 #include <filesystem>
+#include <string>
+#include <string_view>
 
 #include "developer/mock_serial_port_impl.h"
 
@@ -338,56 +343,39 @@ namespace AqualinkAutomate::Developer
 
 		auto ec = boost::system::error_code{};
 
-		auto read_single_value_from_file = [](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
+		// Hand back a single replay byte.  Bytes are decoded a whole line at a
+		// time into m_PendingReplayBytes (so a recording line can span several
+		// reads and several lines can coalesce into one read); when that buffer
+		// drains we pull the next *usable* line from the file.  Comment/header
+		// ('#') lines, blank lines and W-direction (app-output) lines yield no
+		// replay bytes and are transparently skipped here.
+		auto read_single_value_from_file = [this](auto& source_stream, uint8_t& output_buffer) -> FileReadErrors
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MockSerialPortImpl::HandleFileRead -> read_single_value", std::source_location::current());
 
-				FileReadErrors return_value = NoDataWasRead;
+				while (m_PendingReplayBytes.empty())
+				{
+					if (source_stream.eof())
+					{
+						return ErrorFileReachedEOF;
+					}
 
-				if (source_stream.eof())
-				{
-					return_value = ErrorFileReachedEOF;
-				}
-				else
-				{
 					std::string line;
+					if (!std::getline(source_stream, line))
+					{
+						// No more lines: EOF (clean) vs a genuine stream error.
+						return source_stream.eof() ? ErrorFileReachedEOF : ErrorDuringRead;
+					}
 
-					if (std::getline(source_stream, line, '|'); source_stream.eof() || source_stream.fail() || source_stream.bad())
-					{
-						LogTrace(Channel::Serial, "Failed to read data from the source file; either an error occurred or file reached eof.");
-						return_value = source_stream.eof() ? ErrorFileReachedEOF : ErrorDuringRead;
-					}
-					else if (4 != line.size())
-					{
-						// Expected format is 0x## (4 chars); skip malformed entries.
-						LogWarning(Channel::Serial, std::format("Read data from the source file however it was not in the expected format (0x##); sequence -> {}", line));
-					}
-					else
-					{
-						uint8_t converted_value = 0;
-
-						auto [p, conv_ec] = std::from_chars(line.data() + 2, line.data() + 4, converted_value, 16);
-						if (std::errc() == conv_ec)
-						{
-							output_buffer = converted_value;
-							return_value = ReadSuccessfully;
-						}
-						else if (conv_ec == std::errc::result_out_of_range)
-						{
-							LogTrace(Channel::Serial, std::format("Could not convert data read from file (out-of-range); sequence -> {}", line));
-						}
-						else if (conv_ec == std::errc::invalid_argument)
-						{
-							LogTrace(Channel::Serial, std::format("Could not convert data read from file (invalid argument); sequence -> {}", line));
-						}
-						else
-						{
-							LogTrace(Channel::Serial, std::format("Could not convert data read from file (unknown error); sequence -> {}", line));
-						}
-					}
+					// DecodeReplayLine refills m_PendingReplayBytes for R/legacy
+					// data lines and leaves it empty for skipped lines; loop on to
+					// the next line in the latter case rather than reporting EOF.
+					(void)DecodeReplayLine(line, m_PendingReplayBytes);
 				}
 
-				return return_value;
+				output_buffer = m_PendingReplayBytes.front();
+				m_PendingReplayBytes.pop_front();
+				return ReadSuccessfully;
 			};
 
 		auto read_from_file = [&](auto& source_stream, uint8_t* output_buffer, std::size_t number_of_elems, boost::system::error_code& ec) -> std::size_t
@@ -421,6 +409,16 @@ namespace AqualinkAutomate::Developer
 
 				} while (keep_reading && (number_of_elems > elems_read));
 
+				// read_some semantics: hand back whatever we managed to read this
+				// call and only surface EOF/abort once NO bytes are available.
+				// Otherwise the caller (HandleFileRead) discards a partially-filled
+				// buffer, dropping the tail of any recording shorter than the read
+				// chunk (lossless replay regardless of recording size).
+				if (ec && (elems_read > 0))
+				{
+					ec = make_error_code(boost::system::errc::success);
+				}
+
 				return elems_read;
 			};
 
@@ -433,6 +431,120 @@ namespace AqualinkAutomate::Developer
 		}
 
 		return length_read;
+	}
+
+	bool MockSerialPortImpl::DecodeReplayLine(const std::string& line, std::deque<uint8_t>& out)
+	{
+		// Trim leading whitespace so indented lines and the leading '[' / '0x'
+		// can be classified uniformly.
+		std::string_view sv{ line };
+		const auto first = sv.find_first_not_of(" \t\r\n");
+		if (std::string_view::npos == first)
+		{
+			// Blank / whitespace-only line: nothing to replay, not an error.
+			return true;
+		}
+		sv.remove_prefix(first);
+
+		// '#'-prefixed comment / header / metadata lines carry no wire bytes.
+		if ('#' == sv.front())
+		{
+			return true;
+		}
+
+		// Recorder data line:  [<timestamp_ms>] <DIR> 0x##|0x##|...
+		// Strip the "[...]" timestamp and the single direction character, keeping
+		// ONLY R-direction bytes (bytes received from the device).  W-direction
+		// bytes are the application's own past output and must NOT be replayed as
+		// input, so a W line decodes to zero bytes (skipped).
+		if ('[' == sv.front())
+		{
+			const auto close_bracket = sv.find(']');
+			if (std::string_view::npos == close_bracket)
+			{
+				LogWarning(Channel::Serial, std::format("Replay line has '[' but no closing ']'; skipping -> {}", line));
+				return false;
+			}
+
+			sv.remove_prefix(close_bracket + 1);
+			const auto dir_pos = sv.find_first_not_of(" \t");
+			if (std::string_view::npos == dir_pos)
+			{
+				// "[ts]" with no direction/payload (e.g. a metadata-only line that
+				// happened to start with a timestamp): nothing to replay.
+				return true;
+			}
+			sv.remove_prefix(dir_pos);
+
+			const char direction = sv.front();
+			if ('W' == direction)
+			{
+				// App output captured during recording: not part of the input stream.
+				return true;
+			}
+			if ('R' != direction)
+			{
+				LogWarning(Channel::Serial, std::format("Replay line has unknown direction '{}' (expected R or W); skipping -> {}", direction, line));
+				return false;
+			}
+
+			// Advance past the direction char and any following whitespace; the
+			// remainder is the bare 0x##|... token list handled below.
+			sv.remove_prefix(1);
+			const auto bytes_pos = sv.find_first_not_of(" \t");
+			sv = (std::string_view::npos == bytes_pos) ? std::string_view{} : sv.substr(bytes_pos);
+		}
+
+		// At this point sv is a (possibly empty) bare pipe-delimited token list:
+		//   0x##|0x##|...   (legacy format, or the payload of an R data line)
+		// Trim a trailing CR (already covered by remove_prefix above for leading
+		// whitespace, but getline on a CRLF file leaves the '\r' at the end).
+		while (!sv.empty() && (('\r' == sv.back()) || ('\n' == sv.back()) || (' ' == sv.back()) || ('\t' == sv.back())))
+		{
+			sv.remove_suffix(1);
+		}
+
+		if (sv.empty())
+		{
+			return true;
+		}
+
+		bool all_tokens_ok = true;
+		std::size_t token_start = 0;
+		while (token_start <= sv.size())
+		{
+			const auto pipe = sv.find('|', token_start);
+			const std::string_view token = sv.substr(token_start, (std::string_view::npos == pipe) ? std::string_view::npos : (pipe - token_start));
+
+			// Expected token format is exactly 0x## (4 chars).
+			if ((4 == token.size()) && ('0' == token[0]) && (('x' == token[1]) || ('X' == token[1])))
+			{
+				uint8_t converted_value = 0;
+				auto [p, conv_ec] = std::from_chars(token.data() + 2, token.data() + 4, converted_value, 16);
+				if (std::errc() == conv_ec)
+				{
+					out.push_back(converted_value);
+				}
+				else
+				{
+					all_tokens_ok = false;
+					LogWarning(Channel::Serial, std::format("Could not convert replay token '{}'; skipping token in line -> {}", token, line));
+				}
+			}
+			else if (!token.empty())
+			{
+				all_tokens_ok = false;
+				LogWarning(Channel::Serial, std::format("Replay token not in expected 0x## format ('{}'); skipping token in line -> {}", token, line));
+			}
+
+			if (std::string_view::npos == pipe)
+			{
+				break;
+			}
+			token_start = pipe + 1;
+		}
+
+		return all_tokens_ok;
 	}
 
 	std::expected<std::size_t, boost::system::error_code> MockSerialPortImpl::HandleFileWrite(const boost::asio::const_buffer& buffer)

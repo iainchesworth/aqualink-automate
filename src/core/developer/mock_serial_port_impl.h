@@ -4,11 +4,13 @@
 #include <charconv>
 #include <chrono>
 #include <cstddef>
+#include <deque>
 #include <expected>
 #include <format>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <system_error>
@@ -75,6 +77,22 @@ namespace AqualinkAutomate::Developer
 		std::expected<std::size_t, boost::system::error_code> HandleFileRead(const boost::asio::mutable_buffer& buffer);
 		std::expected<std::size_t, boost::system::error_code> HandleFileWrite(const boost::asio::const_buffer& buffer);
 
+		// Decode the replayable read-bytes of a single recording line into out.
+		//
+		// Understands BOTH on-disk formats produced/consumed by the developer
+		// serial tooling:
+		//   * Legacy bare pipe-delimited tokens:        0x10|0x02|0x48|...
+		//   * Recorder format (RecordingSerialPortImpl): [<ts>] <DIR> 0x10|0x02|...
+		//     where <DIR> is R (read = bytes that arrived FROM the device) or
+		//     W (write = bytes the app sent TO the device).
+		//
+		// Only R-direction bytes (and legacy bare lines) represent the incoming
+		// stream and are decoded into out; W-lines, '#' comment/header lines and
+		// blank lines are skipped (out left empty, returns true).  Returns false
+		// only when the line could not be interpreted at all (logged + skipped by
+		// the caller).
+		static bool DecodeReplayLine(const std::string& line, std::deque<uint8_t>& out);
+
 	private:
 		Developer::SerialPortOptions m_Options;
 
@@ -88,6 +106,10 @@ namespace AqualinkAutomate::Developer
 
 	private:
 		boost::iostreams::stream<boost::iostreams::file_source> m_File;
+		// Replay bytes decoded from the current recording line but not yet handed
+		// to a read_some() caller.  Lets a single recording line span multiple
+		// reads (and multiple lines coalesce into one read) transparently.
+		std::deque<uint8_t> m_PendingReplayBytes;
 
 	private:
 		Profiling::DomainPtr m_ProfilingDomain;
