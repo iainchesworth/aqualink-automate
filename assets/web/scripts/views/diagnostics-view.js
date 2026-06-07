@@ -60,7 +60,10 @@ function diagnosticsView() {
 
             this._fetchLogLevels();
             this.fetchEmulatedDevices();
-            _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
+            // Guard against a leaked interval if initChart() runs again before destroyChart().
+            if (!_diag.emuDeviceTimer) {
+                _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
+            }
         },
 
         _createChart() {
@@ -197,6 +200,27 @@ function diagnosticsView() {
             if (v < 50) return 'var(--gauge-good)';
             if (v < 80) return 'var(--gauge-warn)';
             return 'var(--gauge-bad)';
+        },
+
+        // Maps a device operating_state to a badge severity class.
+        // NOTE: these string values are C++ enum names emitted verbatim by
+        // magic_enum::enum_name() over OperatingStates in DescribeDiagnostics().
+        // They form a cross-boundary contract — keep in sync if the C++ enum
+        // names ever change.
+        operatingStateClass(state) {
+            switch (state) {
+                case 'NormalOperation':
+                case 'Scraping':
+                    return 'badge-status-normal';
+                case 'StartUp':
+                case 'ColdStart':
+                    return 'badge-status-warn';
+                case 'FaultHasOccurred':
+                case 'ScrapingFaulted':
+                    return 'badge-status-danger';
+                default:
+                    return '';
+            }
         },
 
         formatUptime(secs) {

@@ -1,9 +1,14 @@
+#include <format>
+#include <source_location>
+
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_diagnostics_devices.h"
 #include "http/server/server_fields.h"
 #include "interfaces/idescribable.h"
+#include "interfaces/iemulateddevice.h"
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -12,13 +17,47 @@ namespace AqualinkAutomate::HTTP
 
 	WebRoute_Diagnostics_Devices::WebRoute_Diagnostics_Devices(Kernel::HubLocator& hub_locator)
 	{
+		// HubLocator::Find throws Hub_NotFound if the hub is not registered,
+		// so a successfully-constructed route always has a valid hub pointer.
 		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
+	}
+
+	nlohmann::json WebRoute_Diagnostics_Devices::CollectEmulatedDiagnostics() const
+	{
+		nlohmann::json result = nlohmann::json::array();
+
+		m_EquipmentHub->ForEachDevice([&result](const Interfaces::IDevice& device)
+			{
+				// This endpoint reports only *emulated* devices. Real
+				// bus-discovered devices share the same concrete classes, so
+				// filter on emulation state rather than on the describable
+				// type alone (the type is necessary but not sufficient).
+				auto emulated = dynamic_cast<const Interfaces::IEmulatedDevice*>(&device);
+				if ((nullptr == emulated) || (!emulated->IsEmulated()))
+				{
+					return;
+				}
+
+				auto describable = dynamic_cast<const Interfaces::IDescribable*>(&device);
+				if (nullptr == describable)
+				{
+					return;
+				}
+
+				result.push_back(describable->DescribeDiagnostics());
+			});
+
+		return result;
 	}
 
 	boost::beast::http::message_generator WebRoute_Diagnostics_Devices::OnRequest(const HTTP::Request& req)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Devices::OnRequest", std::source_location::current());
+
 		if (req.method() != Verbs::get)
 		{
+			LogDebug(Channel::Web, "Rejected non-GET request to the emulated-devices diagnostics endpoint");
+
 			HTTP::Response resp{ HTTP::Status::method_not_allowed, req.version() };
 			resp.set(boost::beast::http::field::server, ServerFields::Server());
 			resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
@@ -28,20 +67,9 @@ namespace AqualinkAutomate::HTTP
 			return resp;
 		}
 
-		nlohmann::json result = nlohmann::json::array();
+		const auto result = CollectEmulatedDiagnostics();
 
-		m_EquipmentHub->ForEachDevice([&result](const Interfaces::IDevice& device)
-			{
-				// Only emulated devices inherit IDescribable, so this cast
-				// implicitly filters to emulated devices.
-				auto describable = dynamic_cast<const Interfaces::IDescribable*>(&device);
-				if (!describable)
-				{
-					return;
-				}
-
-				result.push_back(describable->DescribeDiagnostics());
-			});
+		LogTrace(Channel::Web, std::format("Serving emulated-device diagnostics for {} device(s)", result.size()));
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };
 		resp.set(boost::beast::http::field::server, ServerFields::Server());
@@ -49,6 +77,8 @@ namespace AqualinkAutomate::HTTP
 		resp.keep_alive(req.keep_alive());
 		resp.body() = result.dump();
 		resp.prepare_payload();
+
+		zone->Value(resp.body().size());
 
 		return resp;
 	}

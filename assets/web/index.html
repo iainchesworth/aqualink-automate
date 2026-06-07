@@ -11,7 +11,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles/app.css">
-    <link rel="stylesheet" href="/styles/pool-graphic.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script defer src="/vendor/alpine.min.js"></script>
     <script defer src="/vendor/chart.umd.min.js"></script>
@@ -501,11 +500,7 @@
                                 <span class="emu-device-type" x-text="dev.device_type"></span>
                                 <code class="emu-device-id" x-text="dev.device_id"></code>
                                 <span class="emu-state-badge" x-text="dev.operating_state"
-                                      :class="{
-                                          'badge-status-normal': dev.operating_state === 'NormalOperation' || dev.operating_state === 'Scraping',
-                                          'badge-status-warn': dev.operating_state === 'StartUp' || dev.operating_state === 'ColdStart',
-                                          'badge-status-danger': dev.operating_state === 'FaultHasOccurred' || dev.operating_state === 'ScrapingFaulted'
-                                      }"></span>
+                                      :class="operatingStateClass(dev.operating_state)"></span>
                                 <span class="emu-running-dot" :class="dev.is_running ? 'connected' : 'disconnected'"
                                       :title="dev.is_running ? 'Watchdog running' : 'Watchdog stopped'"></span>
                             </div>

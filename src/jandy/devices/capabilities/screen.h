@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <list>
 
+#include <nlohmann/json.hpp>
+
 #include "utility/screen_data_page.h"
 #include "utility/screen_data_page_processor.h"
 #include "utility/screen_data_page_updater.h"
@@ -25,6 +27,12 @@ namespace AqualinkAutomate::Devices::Capabilities
 	public:
 		Utility::ScreenDataPage const& DisplayedPage() const;
 		Utility::ScreenDataPageTypes DisplayedPageType() const;
+
+	public:
+		// Serialise the current screen (page type, mode, line text) as JSON
+		// for diagnostics consumers — single source of truth for every device
+		// that exposes a screen.
+		nlohmann::json DescribeScreen() const;
 
 	private:
 		Utility::ScreenDataPage m_DisplayedPage;

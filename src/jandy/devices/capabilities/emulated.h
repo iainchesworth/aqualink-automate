@@ -6,6 +6,7 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include "interfaces/iemulateddevice.h"
 #include "messages/jandy_message_ack.h"
 #include "logging/logging.h"
 
@@ -14,7 +15,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices::Capabilities
 {
 
-	class Emulated
+	class Emulated : public Interfaces::IEmulatedDevice
 	{
 	protected:
 		Emulated(bool is_emulated);

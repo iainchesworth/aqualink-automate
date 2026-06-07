@@ -12,7 +12,6 @@ namespace AqualinkAutomate::HTTP
 		SystemStatusChange,
 		SystemStateUpdate,
 		ButtonStateChange,
-		EmulatedDeviceUpdate,
 
 		Unknown
 	};

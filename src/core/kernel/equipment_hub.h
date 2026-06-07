@@ -57,6 +57,12 @@ namespace AqualinkAutomate::Kernel
 
 		Interfaces::IDevice* FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const;
 
+		// NOTE: The equipment hub is intentionally unsynchronised. Device
+		// registration (from the protocol task) and iteration (from the
+		// HTTP/diagnostics handlers) both run on the single application thread
+		// driven by the main poll() loop, so no locking is required. If a
+		// multi-threaded execution model is ever reintroduced, this container
+		// must be guarded before concurrent iteration/mutation.
 		template<typename Func>
 		void ForEachDevice(Func&& func) const
 		{

@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <nlohmann/json.hpp>
+
 #include "interfaces/iwebroute.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
@@ -18,6 +20,11 @@ namespace AqualinkAutomate::HTTP
 
 	public:
 		HTTP::Message OnRequest(const HTTP::Request& req) final;
+
+		// Collect diagnostic JSON for every *emulated* device in the hub.
+		// Exposed and side-effect free so the emulation filter can be unit
+		// tested without driving a full HTTP request/response cycle.
+		nlohmann::json CollectEmulatedDiagnostics() const;
 
 	private:
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;
