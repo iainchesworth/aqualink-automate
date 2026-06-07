@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Traits_FailedToSet();
-		Traits_FailedToSet(const std::string& message);
 	};
 
 }

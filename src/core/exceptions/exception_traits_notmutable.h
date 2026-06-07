@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Traits_NotMutable();
-		Traits_NotMutable(const std::string& message);
 	};
 
 }

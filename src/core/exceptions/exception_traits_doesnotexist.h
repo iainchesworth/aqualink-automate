@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Traits_DoesNotExist();
-		Traits_DoesNotExist(const std::string& message);
 	};
 
 }
