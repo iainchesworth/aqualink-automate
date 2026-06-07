@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Developer_OptionKeyNotProvided::Developer_OptionKeyNotProvided(const std::string& message) :
-		GenericAqualinkException(DEVELOPER_OPTIONS_KEY_NOT_PROVIDED_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Developer_OptionKeyNotProvided exception was constructed");
 	}
