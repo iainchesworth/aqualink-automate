@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <format>
 #include <string>
@@ -44,7 +43,7 @@ namespace AqualinkAutomate::Utility
 		uint64_t Count() const;
 
 	private:
-		std::atomic_uint_fast64_t m_Count;
+		std::uint64_t m_Count;
 		StatsSignal& m_StatsSignal;
 	};
 

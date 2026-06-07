@@ -20,7 +20,6 @@ namespace AqualinkAutomate::Protocol
 
 	void MessageGeneratorRegistry::Register(MessageGeneratorFunc generator, int priority)
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Generators.push_back({ std::move(generator), priority });
 
 		// Sort by priority (lower values = higher priority)
@@ -34,7 +33,6 @@ namespace AqualinkAutomate::Protocol
 
 	void MessageGeneratorRegistry::Clear()
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Generators.clear();
 		LogDebug(Channel::Protocol, "Cleared all message generators");
 	}
@@ -43,8 +41,6 @@ namespace AqualinkAutomate::Protocol
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MessageGeneratorRegistry::GenerateMessage", std::source_location::current());
 		zone->Value(buffer.size());
-
-		std::shared_lock lock(m_Mutex);
 
 		if (m_Generators.empty())
 		{
@@ -79,13 +75,11 @@ namespace AqualinkAutomate::Protocol
 
 	bool MessageGeneratorRegistry::HasGenerators() const
 	{
-		std::shared_lock lock(m_Mutex);
 		return !m_Generators.empty();
 	}
 
 	std::size_t MessageGeneratorRegistry::GeneratorCount() const
 	{
-		std::shared_lock lock(m_Mutex);
 		return m_Generators.size();
 	}
 

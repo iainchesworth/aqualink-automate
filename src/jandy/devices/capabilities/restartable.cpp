@@ -27,13 +27,13 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Restartable::Start()
 	{
-		if (m_IsRunning.load())
+		if (m_IsRunning)
 		{
 			LogTrace(Channel::Devices, "Attempted to start watchdog that is already running; ignoring start request");
 		}
 		else
 		{
-			m_IsRunning.store(true);
+			m_IsRunning = true;
 
 			// Note the order here....if m_Running is _NOT_ true, Kick() will not action the request...
 			
@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Restartable::Kick()
 	{
-		if (m_IsRunning.load())
+		if (m_IsRunning)
 		{
 			/*m_WatchdogTimer.expires_from_now(m_TimeoutDuration);
 			m_WatchdogTimer.async_wait
@@ -55,7 +55,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 					case boost::system::errc::success:
 						// There's not been a message with the <timeout duration> so mark this device as not operating...
 						LogWarning(Channel::Devices, "Device timeout: device watchdog has expired");
-						m_IsRunning.store(false);
+						m_IsRunning = false;
 						WatchdogTimeoutOccurred();
 						break;
 
@@ -82,7 +82,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 	{
 		try
 		{
-			m_IsRunning.store(false);
+			m_IsRunning = false;
 			//m_WatchdogTimer.cancel();
 		}
 		catch (const boost::system::system_error& ex_bse)
@@ -98,7 +98,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	bool Restartable::IsRunning() const
 	{
-		return m_IsRunning.load();
+		return m_IsRunning;
 	}
 
 }

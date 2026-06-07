@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <memory>
-#include <shared_mutex>
 #include <vector>
 
 #include <boost/circular_buffer.hpp>
@@ -56,7 +55,11 @@ namespace AqualinkAutomate::Protocol
 			int priority;
 		};
 
-		mutable std::shared_mutex m_Mutex;
+		// NOTE: This registry is intentionally unsynchronised. Registration
+		// (at startup) and message generation (from the protocol task) both run
+		// on the single application thread driven by the main poll() loop, so no
+		// locking is required. If a multi-threaded execution model is ever
+		// reintroduced, m_Generators must be guarded before concurrent access.
 		std::vector<GeneratorEntry> m_Generators;
 	};
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 
 namespace AqualinkAutomate::Devices::Capabilities
@@ -31,7 +30,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		//boost::asio::steady_timer m_WatchdogTimer;
 
 	private:
-		std::atomic<bool> m_IsRunning;
+		bool m_IsRunning;
 	};
 
 }

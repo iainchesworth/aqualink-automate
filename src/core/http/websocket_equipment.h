@@ -2,7 +2,6 @@
 
 #include <deque>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -44,7 +43,11 @@ namespace AqualinkAutomate::HTTP
 		boost::signals2::connection m_ConfigChangeSlot;
 		boost::signals2::connection m_StatusChangeSlot;
 
-		std::mutex m_Mutex;
+		// NOTE: The connection/message-queue map is intentionally unsynchronised.
+		// Signal-driven broadcasts, connection lifecycle, and message dequeuing
+		// all run on the single application thread driven by the main poll() loop,
+		// so no locking is required. If a multi-threaded execution model is ever
+		// reintroduced, m_Connections must be guarded before concurrent access.
 		std::unordered_map<ConnectionId, std::deque<std::string>> m_Connections;
 		ConnectionId m_NextConnectionId{ 1 };
 

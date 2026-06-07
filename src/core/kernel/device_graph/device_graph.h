@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
-#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -82,8 +81,6 @@ namespace AqualinkAutomate::Kernel
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByTraitImpl", std::source_location::current());
 
-			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto fg = MakeFilteredView(trait_filter);
 
 			auto range = boost::make_iterator_range(boost::vertices(fg));
@@ -98,8 +95,6 @@ namespace AqualinkAutomate::Kernel
 
 			std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
 
-			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto fg = MakeFilteredView(trait_filter);
 
 			for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
@@ -113,13 +108,17 @@ namespace AqualinkAutomate::Kernel
 			return found_devices;
 		}
 	
+		// NOTE: The device graph is intentionally unsynchronised. Device
+		// registration (from the protocol task) and queries (from the
+		// HTTP/diagnostics handlers) both run on the single application thread
+		// driven by the main poll() loop, so no locking is required. If a
+		// multi-threaded execution model is ever reintroduced, this container
+		// must be guarded before concurrent iteration/mutation.
+
 	private:
 		DevicesGraphType m_DevicesGraph;
 		DeviceVertexType m_RootVertexId;
-
-	private:
-		mutable std::shared_mutex m_GraphWriteLockMutex{};
-	};	
+	};
 	
 
 }

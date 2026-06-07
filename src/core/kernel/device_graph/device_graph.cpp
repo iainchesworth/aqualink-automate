@@ -20,8 +20,6 @@ namespace AqualinkAutomate::Kernel
 
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
-			std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto target_vertex = boost::add_vertex(ptr, m_DevicesGraph);
 			auto edge = boost::add_edge(source_vertex, target_vertex, m_DevicesGraph);
 		};
@@ -50,8 +48,6 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto verts = boost::make_iterator_range(boost::vertices(m_DevicesGraph));
 			auto iter = std::ranges::find_if(verts,
 				[this, &device](const auto& vertex)
@@ -76,8 +72,6 @@ namespace AqualinkAutomate::Kernel
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Remove", std::source_location::current());
 
-		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 		for (auto vp = boost::vertices(m_DevicesGraph); vp.first != vp.second; ++vp.first)
 		{
 			if (m_DevicesGraph[*vp.first] == device)
@@ -95,8 +89,6 @@ namespace AqualinkAutomate::Kernel
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
 
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
 		auto range = boost::make_iterator_range(boost::vertices(fg));
@@ -109,8 +101,6 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
-
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
@@ -129,8 +119,6 @@ namespace AqualinkAutomate::Kernel
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
 
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
 		auto range = boost::make_iterator_range(boost::vertices(fg));
@@ -142,8 +130,6 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
-
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
 
 		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
 
