@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "jandy/utility/jandy_checksum.h"
+#include "pentair/utility/pentair_checksum.h"
 
 namespace AqualinkAutomate::Test
 {
@@ -106,6 +107,50 @@ namespace AqualinkAutomate::Test
 		static std::vector<uint8_t> CreateMessageWithChecksum(uint8_t destination, uint8_t command, const std::vector<uint8_t>& payload)
 		{
 			return CreateValidChecksummedMessage(destination, command, payload);
+		}
+	};
+
+	// Builds a fully-framed Pentair RS-485 frame WITH a valid 16-bit checksum.
+	//
+	// Wire layout:
+	//   [0xFF][0x00][0xFF][0xA5][FROM][DEST][CMD][LEN][DATA...][CHK_HI][CHK_LO]
+	//
+	// The checksum is the 16-bit sum over the checksummed region (the 0xA5 SOF
+	// through the last DATA byte), encoded big-endian.  LEN is set automatically
+	// from the supplied payload.  A frame produced here passes the real Pentair
+	// decode pipeline unmodified.
+	class PentairMessageBuilder
+	{
+	public:
+		static std::vector<uint8_t> CreateValidChecksummedFrame(uint8_t from, uint8_t dest, uint8_t command, const std::vector<uint8_t>& payload)
+		{
+			std::vector<uint8_t> frame;
+
+			// Preamble (excluded from the checksum).
+			frame.push_back(0xFF);
+			frame.push_back(0x00);
+			frame.push_back(0xFF);
+
+			// Checksummed region starts at the 0xA5 SOF.
+			const std::size_t region_start = frame.size();
+			frame.push_back(0xA5);
+			frame.push_back(from);
+			frame.push_back(dest);
+			frame.push_back(command);
+			frame.push_back(static_cast<uint8_t>(payload.size())); // LEN
+
+			for (auto byte : payload)
+			{
+				frame.push_back(byte);
+			}
+
+			// 16-bit big-endian checksum over [0xA5 .. last DATA byte].
+			const std::vector<uint8_t> region(frame.begin() + static_cast<std::ptrdiff_t>(region_start), frame.end());
+			const uint16_t checksum = Pentair::Utility::PentairPacket_CalculateChecksum_FromRange(region);
+			frame.push_back(static_cast<uint8_t>((checksum >> 8) & 0xFF));
+			frame.push_back(static_cast<uint8_t>(checksum & 0xFF));
+
+			return frame;
 		}
 	};
 

@@ -7,10 +7,15 @@
 
 add_library(libaqualink-pentair)
 
-target_sources( 
+target_sources(
 	libaqualink-pentair
-	PRIVATE 
+	PRIVATE
+	factories/pentair_message_factory.cpp
+	generator/pentair_message_generator.cpp
+	messages/pentair_message.cpp
+	messages/pentair_message_unknown.cpp
 	options/options_pentair.cpp
+	protocol/pentair_protocol_registration.cpp
 	pentair.cpp
 )
 
