@@ -35,6 +35,33 @@ option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" OFF
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" OFF)
 
+# ---------------------------------------------------------------------------
+# Ensure the vcpkg submodule is checked out BEFORE project() loads the vcpkg
+# toolchain, which requires deps/vcpkg/.vcpkg-root. Without this, a fresh clone
+# or an IDE "Open Folder" fails configuration with "Could not find .vcpkg-root"
+# (and then "CMAKE_C_COMPILER not set") before the compiler is even detected.
+# ---------------------------------------------------------------------------
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/vcpkg/.vcpkg-root")
+	find_package(Git QUIET)
+	if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+		message(STATUS "vcpkg: deps/vcpkg not initialised; running 'git submodule update --init --recursive deps/vcpkg'")
+		execute_process(
+			COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive deps/vcpkg
+			WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+			RESULT_VARIABLE AQ_VCPKG_SUBMODULE_RESULT)
+		if(NOT AQ_VCPKG_SUBMODULE_RESULT EQUAL 0)
+			message(FATAL_ERROR
+				"Failed to initialise the vcpkg submodule (deps/vcpkg).\n"
+				"Run manually:  git submodule update --init --recursive")
+		endif()
+	endif()
+	if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/vcpkg/.vcpkg-root")
+		message(FATAL_ERROR
+			"The vcpkg submodule (deps/vcpkg) is not populated -- 'deps/vcpkg/.vcpkg-root' is missing.\n"
+			"Run:  git submodule update --init --recursive")
+	endif()
+endif()
+
 project(
 	aqualink-automate
 	VERSION ${DERIVED_VERSION_SEMVER}
