@@ -1,5 +1,8 @@
+#include <memory>
+
 #include "kernel/equipment_hub.h"
 #include "logging/logging.h"
+#include "equipment/pentair_equipment.h"
 #include "options/options_pentair.h"
 #include "pentair.h"
 
@@ -35,6 +38,11 @@ namespace AqualinkAutomate::Pentair
 		//---------------------------------------------------------------------
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::PentairEquipment...");
+
+		// PentairEquipment subscribes to decoded Pentair messages and discovers
+		// devices (VSP pumps, chlorinator, controller) as their traffic appears,
+		// mirroring how JandyEquipment discovers Jandy devices.
+		equipment_hub->AddEquipment(std::make_unique<Equipment::PentairEquipment>(hub_locator));
 	}
 
 }
