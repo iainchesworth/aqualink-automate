@@ -187,7 +187,6 @@ target_sources(
 	profiling/factories/profiler_factory.cpp
 	profiling/factories/profiler_factory_registration.cpp
 	profiling/factories/profiling_unit_factory.cpp 
-	profiling/factories/profiling_unit_factory_registration.cpp 
 	profiling/formatters/profiling_formatters.cpp
 	profiling/profiling_units/domain.cpp 
 	profiling/profiling_units/frame.cpp 
