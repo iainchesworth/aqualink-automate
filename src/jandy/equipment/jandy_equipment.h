@@ -10,7 +10,6 @@
 #include "devices/jandy_device.h"
 #include "devices/jandy_device_id.h"
 #include "generator/jandy_message_generator.h"
-#include "generator/jandy_rawdata_generator.h"
 #include "messages/jandy_message.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"

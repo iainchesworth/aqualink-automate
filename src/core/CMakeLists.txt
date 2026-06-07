@@ -12,22 +12,15 @@ target_sources(
 	PRIVATE
 	application/application_defaults.cpp 	 
 	certificates/certificate_management.cpp 
-	certificates/certificate_verification.cpp 
 	concepts/is_c_array.cpp
-	concepts/is_one_of.cpp 
 	concepts/is_option_processor.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
 	developer/async_operation_tracker.cpp
-	developer/chrono_clocks.cpp
 	developer/coroutine_lifetime_tracker.cpp
 	developer/debug_tools.cpp
-	developer/firewall_manager.cpp
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp
-	developer/serial_port_options.cpp
 	developer/signal_connection_tracker.cpp
-	devices/device_status.cpp 
-	equipment/equipment_status.cpp
 	errors/message_errors.cpp
 	errors/protocol_errors.cpp
 	exceptions/exception_certificate_invalidformat.cpp 
@@ -125,7 +118,6 @@ target_sources(
 	kernel/auxillary_traits/auxillary_traits_types.cpp 
 	kernel/circulation.cpp
 	kernel/data_hub.cpp
-	kernel/data_hub_command.cpp
 	kernel/equipment_hub.cpp
 	kernel/equipment_versions.cpp
 	kernel/flow_rate.cpp 
@@ -186,9 +178,7 @@ target_sources(
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:profiling/uprof_profiler.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/vtune_profiler.cpp>
 	profiling/factories/profiler_factory.cpp
-	profiling/factories/profiler_factory_registration.cpp
 	profiling/factories/profiling_unit_factory.cpp 
-	profiling/factories/profiling_unit_factory_registration.cpp 
 	profiling/formatters/profiling_formatters.cpp
 	profiling/profiling_units/domain.cpp 
 	profiling/profiling_units/frame.cpp 
@@ -200,7 +190,6 @@ target_sources(
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/profiling_units/vtune_frame.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_zone.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_frame.cpp>
-	profiling/profiling_units/timed_zone.cpp 
 	profiling/profiling_units/zone.cpp 
 	profiling/types/profiling_types.cpp
 	protocol/message_generator_registry.cpp
@@ -214,26 +203,19 @@ target_sources(
 	serial/serial_initialise.cpp
 	serial/serial_port.cpp	
 	serial/serial_port_config.cpp	
-	serial/serial_types.cpp	
 	serial/port_types/network_serial_port_impl.cpp
 	serial/port_types/physical_serial_port_impl.cpp
-	serial/rfc2217/rfc2217_constants.cpp
 	serial/rfc2217/rfc2217_protocol_handler.cpp
 	serial/rfc2217/rfc2217_protocol_handler_byteprocessor.cpp
-	serial/rfc2217/rfc2217_types.cpp
 	types/units_electric_potential.cpp
 	types/units_dimensionless.cpp
 	types/units_flow_rate.cpp 
 	utility/bandwidth_utilisation.cpp 
 	utility/case_insensitive_comparision.cpp 
-	utility/circular_buffer_wrapping_iterator.cpp
 	utility/endpoint_parser.cpp
-	utility/enumerate.cpp 
 	utility/get_terminal_column_width.cpp
-	utility/is_in_variant.cpp 	
 	utility/overloaded_variant_visitor.cpp 
 	utility/signalling_stats_counter.cpp 
-	utility/singular_bytes_from_range.cpp
 	utility/timeout_duration_string_converter.cpp
 	utility/to_number.cpp
 	utility/to_string.cpp 

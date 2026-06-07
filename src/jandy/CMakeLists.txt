@@ -36,7 +36,6 @@ target_sources(
 	devices/pda_device.cpp 
 	devices/serial_adapter_device.cpp 
 	devices/keypad/keypad_messageprocessors.cpp 
-	devices/keypad/keypad_pageprocessors.cpp 
 	devices/onetouch/onetouch_messageprocessors.cpp
 	devices/onetouch/onetouch_pageprocessors.cpp
 	devices/onetouch/onetouch_statusprocessors.cpp
@@ -50,7 +49,6 @@ target_sources(
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
 	devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	equipment/jandy_equipment.cpp
-	equipment/jandy_equipment_versions.cpp 
 	errors/jandy_errors_auxillary_factory.cpp 
 	errors/jandy_errors_messages.cpp
 	errors/jandy_errors_protocol.cpp
@@ -66,12 +64,8 @@ target_sources(
 	formatters/stats_counter_formatter.cpp	 
 	generator/jandy_message_generator.cpp
 	generator/jandy_message_generator_buffercleanup.cpp
-	generator/jandy_message_generator_buffervalidation.cpp
 	generator/jandy_message_generator_packetprocessing.cpp
 	generator/jandy_message_generator_packetvalidation.cpp
-	generator/jandy_message_generator_startendsequence.cpp
-	generator/jandy_rawdata_generator.cpp 
-	messages/aqualink_touch/aqualink_touch_message.cpp
 	messages/chemlink/chemlink_message.cpp
 	messages/chemlink/chemlink_message_response.cpp
 	messages/epump/epump_message.cpp
@@ -134,7 +128,6 @@ target_sources(
 	utility/screen_data_page_graph.cpp 
 	utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
 	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp 
-	utility/screen_data_page_graph/screen_data_page_graph_validator.cpp
 	utility/screen_data_page_graph/screen_data_page_graph_vertex.cpp 
 	utility/screen_data_page_processor.cpp 
 	utility/screen_data_page_updater.cpp

@@ -10,7 +10,6 @@
 #include <boost/graph/graph_utility.hpp>
 
 #include "utility/screen_data_page_graph/screen_data_page_graph_edge.h"
-#include "utility/screen_data_page_graph/screen_data_page_graph_validator.h"
 #include "utility/screen_data_page_graph/screen_data_page_graph_vertex.h"
 #include "logging/logging.h"
 
