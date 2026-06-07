@@ -11,6 +11,7 @@
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
 #include "messages/chlorinator/pentair_chlorinator_message_status.h"
+#include "messages/controller/pentair_controller_message_status.h"
 #include "messages/pump/pentair_pump_message_status.h"
 
 namespace AqualinkAutomate::Pentair::Equipment
@@ -29,6 +30,7 @@ namespace AqualinkAutomate::Pentair::Equipment
 	private:
 		void IdentifyAndAddPump(const Messages::PentairPumpMessage_Status& message);
 		void IdentifyAndAddChlorinator(const Messages::PentairChlorinatorMessage_Status& message);
+		void IdentifyAndAddController(const Messages::PentairControllerMessage_Status& message);
 
 	private:
 		std::vector<boost::signals2::connection> m_MessageConnections;

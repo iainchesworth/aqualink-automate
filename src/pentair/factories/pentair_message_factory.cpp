@@ -2,6 +2,7 @@
 #include "messages/pentair_message_unknown.h"
 #include "messages/chlorinator/pentair_chlorinator_message_setoutput.h"
 #include "messages/chlorinator/pentair_chlorinator_message_status.h"
+#include "messages/controller/pentair_controller_message_status.h"
 #include "messages/pump/pentair_pump_message_power.h"
 #include "messages/pump/pentair_pump_message_speed.h"
 #include "messages/pump/pentair_pump_message_status.h"
@@ -13,6 +14,10 @@ namespace AqualinkAutomate::Pentair::Factory
 	{
 		switch (id)
 		{
+		// IntelliCenter / EasyTouch controller (B4).
+		case Messages::PentairMessageIds::Controller_Status:
+			return std::make_shared<Messages::PentairControllerMessage_Status>();
+
 		// VSP pump (IntelliFlo) commands (B2).
 		case Messages::PentairMessageIds::Pump_Status:
 			return std::make_shared<Messages::PentairPumpMessage_Status>();
@@ -29,9 +34,6 @@ namespace AqualinkAutomate::Pentair::Factory
 
 		case Messages::PentairMessageIds::Chlorinator_SetOutput:
 			return std::make_shared<Messages::PentairChlorinatorMessage_SetOutput>();
-
-		// Further message types are added here as each is implemented
-		// (B4: controller).
 
 		case Messages::PentairMessageIds::Unknown:
 		default:

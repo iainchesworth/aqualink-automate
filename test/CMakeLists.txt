@@ -104,6 +104,7 @@ target_sources(
 	unit/devices/test_devices_iaq.cpp
 	unit/devices/test_pentair_vsp_pump.cpp
 	unit/devices/test_pentair_chlorinator.cpp
+	unit/devices/test_pentair_controller.cpp
 	unit/messages/test_iaq_messages.cpp
 	unit/messages/test_iaq_message_main_status.cpp
 	unit/formatters/test_formatters_jandy_messages.cpp

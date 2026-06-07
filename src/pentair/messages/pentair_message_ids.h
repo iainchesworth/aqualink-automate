@@ -16,6 +16,9 @@ namespace AqualinkAutomate::Pentair::Messages
 	{
 		Unknown = 0x00,
 
+		// IntelliCenter / EasyTouch controller broadcasts.
+		Controller_Status = 0x02, // Controller status (clock / temps / equipment).
+
 		// Variable-speed pump (IntelliFlo) commands.
 		Pump_Speed   = 0x01, // Set pump speed (RPM).
 		Pump_Remote  = 0x04, // Take/release remote (local) control.
