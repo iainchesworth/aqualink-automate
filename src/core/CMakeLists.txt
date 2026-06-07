@@ -15,11 +15,8 @@ target_sources(
 	concepts/is_c_array.cpp
 	concepts/is_option_processor.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
-	developer/async_operation_tracker.cpp
-	developer/coroutine_lifetime_tracker.cpp
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp
-	developer/signal_connection_tracker.cpp
 	errors/message_errors.cpp
 	errors/protocol_errors.cpp
 	exceptions/exception_certificate_invalidformat.cpp 
@@ -42,7 +39,6 @@ target_sources(
 	exceptions/exception_traits_notmutable.cpp 
 	exceptions/exception_webserver.cpp 
 	formatters/array_standard_formatter.cpp
-	formatters/asio_buffer_standard_formatter.cpp 
 	formatters/asio_endpoint_formatter.cpp
 	formatters/beast_stringview_formatter.cpp 
 	formatters/circular_buffer_standard_formatter.cpp
@@ -217,7 +213,6 @@ target_sources(
 	utility/signalling_stats_counter.cpp 
 	utility/timeout_duration_string_converter.cpp
 	utility/to_number.cpp
-	utility/to_string.cpp 
 	utility/value_debouncer.cpp 
 	version/version.cpp 
 	version/version_cmake.cpp 

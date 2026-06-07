@@ -6,7 +6,6 @@
 #include <string_view>
 
 #include "kernel/temperature.h"
-#include "utility/to_string.h"
 
 namespace AqualinkAutomate::Formatters
 {

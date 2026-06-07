@@ -4,7 +4,6 @@
 #include <boost/asio/write.hpp>
 #include <magic_enum/magic_enum.hpp>
 
-#include "formatters/asio_buffer_standard_formatter.h"
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 #include "serial/serial_port_config.h"

@@ -12,9 +12,6 @@ target_sources(
 	PRIVATE
 	unit/test_main.cpp 
 	unit/concepts/test_concept_is_c_array.cpp 
-	unit/developer/test_async_operation_tracker.cpp
-	unit/developer/test_coroutine_lifetime_tracker.cpp
-	unit/developer/test_signal_connection_tracker.cpp
 	unit/errors/test_error_categories.cpp
 	unit/devices/test_devices_id.cpp
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
