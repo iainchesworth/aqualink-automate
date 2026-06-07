@@ -20,7 +20,6 @@ target_sources(
 	developer/async_operation_tracker.cpp
 	developer/chrono_clocks.cpp
 	developer/coroutine_lifetime_tracker.cpp
-	developer/debug_tools.cpp
 	developer/firewall_manager.cpp
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp
