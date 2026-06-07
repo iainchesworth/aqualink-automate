@@ -53,9 +53,10 @@ target_sources(
 	unit/messages/test_message_message_long.cpp 	 
 	unit/messages/test_message_pda_highlight.cpp 
 	unit/messages/test_message_probe.cpp 
-	unit/messages/test_message_status.cpp 
-	unit/messages/test_message_structure.cpp 
-	unit/messages/test_message_unknown.cpp 
+	unit/messages/test_message_status.cpp
+	unit/messages/test_message_structure.cpp
+	unit/messages/test_message_dle_stuffing.cpp
+	unit/messages/test_message_unknown.cpp
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
@@ -112,11 +113,14 @@ target_sources(
 	unit/serial/test_serial_port.cpp
 	unit/messages/test_epump_messages.cpp
 	unit/messages/test_heater_messages.cpp
+	unit/messages/test_light_message_status.cpp
 	unit/messages/test_pda_messages.cpp
 	unit/messages/test_serial_adapter_messages.cpp
 	unit/devices/test_devices_onetouch.cpp
 	unit/devices/test_devices_pda.cpp
 	unit/devices/test_devices_keypad.cpp
+	unit/devices/test_devices_lights.cpp
+	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
 	unit/kernel/test_kernel_equipment_versions.cpp

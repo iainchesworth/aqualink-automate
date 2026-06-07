@@ -20,6 +20,7 @@
 #include "messages/epump/epump_message_watts.h"
 #include "messages/heater/heater_message_request.h"
 #include "messages/heater/heater_message_status.h"
+#include "messages/light/light_message_status.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
@@ -83,6 +84,9 @@ namespace AqualinkAutomate::Factory
 		// Register the Heater message types
 		REGISTER_MESSAGE(Messages::HeaterMessage_Request, Messages::JandyMessageIds::Heater_Request),
 		REGISTER_MESSAGE(Messages::HeaterMessage_Status, Messages::JandyMessageIds::Heater_Status),
+
+		// Register the Jandy Light message types
+		REGISTER_MESSAGE(Messages::LightMessage_Status, Messages::JandyMessageIds::Light_Status),
 
 		// Register the Aquarite message types
 		REGISTER_MESSAGE(Messages::AquariteMessage_GetId, Messages::JandyMessageIds::AQUARITE_GetId),

@@ -314,6 +314,11 @@ namespace AqualinkAutomate::Kernel
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 	}
 
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Lights() const
+	{
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Light);
+	}
+
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Pumps() const
 	{
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);

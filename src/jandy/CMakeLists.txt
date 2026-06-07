@@ -31,8 +31,9 @@ target_sources(
 	devices/capabilities/restartable.cpp
 	devices/capabilities/scrapeable.cpp
 	devices/capabilities/screen.cpp 
-	devices/keypad_device.cpp 
-	devices/onetouch_device.cpp 
+	devices/keypad_device.cpp
+	devices/lights_device.cpp
+	devices/onetouch_device.cpp
 	devices/pda_device.cpp 
 	devices/serial_adapter_device.cpp 
 	devices/keypad/keypad_messageprocessors.cpp 
@@ -75,6 +76,8 @@ target_sources(
 	messages/heater/heater_message.cpp
 	messages/heater/heater_message_request.cpp
 	messages/heater/heater_message_status.cpp
+	messages/light/light_message.cpp
+	messages/light/light_message_status.cpp
 	messages/aquarite/aquarite_message.cpp
 	messages/aquarite/aquarite_message_getid.cpp
 	messages/aquarite/aquarite_message_percent.cpp
