@@ -49,7 +49,6 @@ BOOST_AUTO_TEST_CASE(TestConstruction_WithInitialValues)
 {
 	AquariteDevice device(device_type, *this, 50, 45, 3200);
 
-	auto requested = device.RequestedGeneratingLevel();
 	auto reported = device.ReportedGeneratingLevel();
 	auto salt = device.ReportedSaltConcentration();
 

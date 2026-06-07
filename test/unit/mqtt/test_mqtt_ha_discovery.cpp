@@ -579,7 +579,7 @@ BOOST_AUTO_TEST_CASE(Test_DeviceDiscoveryPayload_AllComponentsHavePlatform)
 
 		auto platform = cmp["p"].get<std::string>();
 		BOOST_CHECK_MESSAGE(platform == "sensor" || platform == "binary_sensor" || platform == "number" || platform == "switch",
-			"Component has unexpected platform '" + platform + "': " + key);
+			std::string("Component has unexpected platform '").append(platform).append("': ").append(key));
 	}
 }
 
