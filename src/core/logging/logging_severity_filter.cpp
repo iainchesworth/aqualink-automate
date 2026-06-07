@@ -14,6 +14,8 @@ namespace AqualinkAutomate::Logging
 		std::map<Channel, Severity> MinimumSeverityLevelPerChannel =
 		{
 			{Channel::Certificates, DEFAULT_SEVERITY},
+			{Channel::Coroutines, DEFAULT_SEVERITY},
+			{Channel::Developer, DEFAULT_SEVERITY},
 			{Channel::Devices, DEFAULT_SEVERITY},
 			{Channel::Equipment, DEFAULT_SEVERITY},
 			{Channel::Exceptions, DEFAULT_SEVERITY},
@@ -47,12 +49,17 @@ namespace AqualinkAutomate::Logging
 
 		Severity GetChannelFilterLevel(Channel channel)
 		{
-			return MinimumSeverityLevelPerChannel[channel];
+			if (const auto it = MinimumSeverityLevelPerChannel.find(channel); it != MinimumSeverityLevelPerChannel.end())
+			{
+				return it->second;
+			}
+
+			return DEFAULT_SEVERITY;
 		}
 
 		bool ShouldLog(Channel channel, Severity severity)
 		{
-			return severity >= MinimumSeverityLevelPerChannel[channel];
+			return severity >= GetChannelFilterLevel(channel);
 		}
 
 		bool PerChannelTest(boost::log::value_ref<Channel, tag::channel> const& channel, boost::log::value_ref<Severity, tag::severity> const& severity)

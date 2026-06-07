@@ -2,7 +2,7 @@
 
 #include <expected>
 #include <format>
-#include <iostream>
+#include <ostream>
 #include <string>
 
 #include "core/formatters/temperature_formatter.h"
