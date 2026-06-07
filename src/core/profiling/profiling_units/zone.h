@@ -1,9 +1,7 @@
 #pragma once
 
-#include <chrono>
 #include <memory>
 #include <source_location>
-#include <string>
 
 #include "interfaces/iprofilingunit.h"
 #include "profiling/profiling_units/unit_colours.h"

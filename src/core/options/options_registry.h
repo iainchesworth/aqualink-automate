@@ -2,10 +2,9 @@
 
 #include <expected>
 #include <format>
+#include <functional>
 #include <memory>
-#include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <boost/program_options/parsers.hpp>

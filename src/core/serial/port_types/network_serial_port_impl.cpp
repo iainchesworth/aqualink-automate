@@ -1,5 +1,6 @@
-#include <boost/asio.hpp>
 #include <boost/asio/basic_socket.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
 

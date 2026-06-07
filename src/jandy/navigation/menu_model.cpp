@@ -1,9 +1,7 @@
 #include "navigation/menu_model.h"
 
 #include <algorithm>
-#include <numeric>
 #include <queue>
-#include <ranges>
 
 #include "logging/logging.h"
 

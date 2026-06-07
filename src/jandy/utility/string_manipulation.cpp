@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 
 #include "utility/string_manipulation.h"
 

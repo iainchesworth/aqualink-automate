@@ -8,7 +8,6 @@
 #include "options/options_app_options.h"
 #include "options/options_option_type.h"
 #include "options/helpers/conflicting_options_helper.h"
-#include "options/helpers/option_dependency_helper.h"
 #include "utility/get_terminal_column_width.h"
 #include "version/version.h"
 

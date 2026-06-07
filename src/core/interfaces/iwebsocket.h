@@ -4,14 +4,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <boost/beast/core/flat_buffer.hpp>
 
 #include "concepts/is_c_array.h"
-#include "logging/logging.h"
-
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Interfaces
 {

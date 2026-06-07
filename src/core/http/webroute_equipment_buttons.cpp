@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <format>
-#include <ranges>
 
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <string_view>
 
 #include "concepts/is_c_array.h"

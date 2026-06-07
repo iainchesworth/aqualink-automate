@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <execution>
 #include <format>
 #include <memory>
 #include <ranges>

@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstring>
 
 #include <tracy/Tracy.hpp>

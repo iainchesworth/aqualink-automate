@@ -1,8 +1,6 @@
-#include <algorithm>
 #include <format>
 #include <functional>
 #include <numeric>
-#include <type_traits>
 #include <utility>
 
 #include <magic_enum/magic_enum.hpp>

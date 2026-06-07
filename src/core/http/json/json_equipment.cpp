@@ -1,5 +1,4 @@
 #include <format>
-#include <functional>
 
 #include "http/json/json_data_hub.h"
 #include "http/json/json_equipment.h"

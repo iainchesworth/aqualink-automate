@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <format>
 
 #include "errors/message_errors.h"
 #include "errors/protocol_errors.h"

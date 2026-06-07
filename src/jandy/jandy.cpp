@@ -11,7 +11,6 @@
 #include "devices/serial_adapter_device.h"
 #include "options/options_jandy.h"
 #include "equipment/jandy_equipment.h"
-#include "messages/jandy_message_ack.h"
 #include "jandy.h"
 
 using namespace AqualinkAutomate::Logging;
