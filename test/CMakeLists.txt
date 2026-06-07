@@ -70,6 +70,7 @@ target_sources(
 	unit/mqtt/test_mqtt_options.cpp
 	unit/protocol/test_protocol_handler.cpp
 	unit/protocol/test_mock_replay_validation.cpp
+	unit/protocol/test_pentair_message_generator.cpp
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp
 	unit/support/unit_test_circularbuffermaker.cpp
 	unit/support/unit_test_httprequestresponse.cpp
@@ -103,6 +104,9 @@ target_sources(
 	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp
 	unit/devices/test_devices_iaq.cpp
+	unit/devices/test_pentair_vsp_pump.cpp
+	unit/devices/test_pentair_chlorinator.cpp
+	unit/devices/test_pentair_controller.cpp
 	unit/messages/test_iaq_messages.cpp
 	unit/messages/test_iaq_message_main_status.cpp
 	unit/formatters/test_formatters_jandy_messages.cpp

@@ -2,6 +2,7 @@
 
 #include "protocol/message_generator_registry.h"
 #include "jandy/protocol/jandy_protocol_registration.h"
+#include "pentair/protocol/pentair_protocol_registration.h"
 
 #include "support/unit_test_mockreplayharness.h"
 
@@ -23,11 +24,14 @@ namespace AqualinkAutomate::Test
 		// queued errors) rather than the base mock's random-data generator.
 		m_SerialImplPtr->EnableTestMode(true);
 
-		// Register the real Jandy message generator so raw bytes are parsed by
-		// the exact same code path the application uses.  Clear any generators
-		// left over from a previous harness/test first for isolation.
+		// Register the real Jandy and Pentair message generators so raw bytes are
+		// parsed by the exact same code path the application uses.  Clear any
+		// generators left over from a previous harness/test first for isolation.
+		// Both are registered so a single harness can replay either protocol's
+		// frames (and exercise their coexistence/auto-detection).
 		Protocol::MessageGeneratorRegistry::Instance().Clear();
 		Jandy::Protocol::RegisterMessageGenerator();
+		Pentair::Protocol::RegisterMessageGenerator();
 
 		// The protocol task is the production driver: it reads from the serial
 		// port, runs the generator, and fires message signals to device slots.

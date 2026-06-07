@@ -62,8 +62,10 @@
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
 
+// Shared device capabilities
+#include "devices/capabilities/restartable.h"
+
 // Jandy protocol
-#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
@@ -73,6 +75,7 @@
 
 // Pentair protocol
 #include "pentair/options/options_pentair.h"
+#include "pentair/protocol/pentair_protocol_registration.h"
 #include "pentair/pentair.h"
 
 #include "aqualink-automate.h"
@@ -302,8 +305,14 @@ int main(int argc, char* argv[])
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::ProtocolHandler...");
 
-		// Register protocol-specific message generators before starting the handler
+		// Register protocol-specific message generators before starting the handler.
+		// Both are registered so Jandy and Pentair traffic can be auto-detected on
+		// the same serial stream (Jandy frames on DLE/STX, Pentair on a 0xFF/0xA5
+		// preamble).  The registry tries generators in priority order; the Pentair
+		// generator registers at priority 0 (it is non-destructive and defers on
+		// non-Pentair buffers) ahead of Jandy at priority 1.
 		Jandy::Protocol::RegisterMessageGenerator();
+		Pentair::Protocol::RegisterMessageGenerator();
 
 		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub);
 		protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();

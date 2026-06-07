@@ -5,7 +5,7 @@
 #include "interfaces/idevice.h"
 #include "interfaces/istatuspublisher.h"
 #include "devices/jandy_device_types.h"
-#include "utility/slot_connection_manager.h"
+#include "utility/jandy_slot_connection_manager.h"
 
 namespace AqualinkAutomate::Devices
 {
@@ -20,7 +20,7 @@ namespace AqualinkAutomate::Devices
 		const Devices::JandyDeviceType& DeviceId() const;
 
 	protected:
-		Utility::SlotConnectionManager m_SlotManager;
+		Utility::JandySlotConnectionManager m_SlotManager;
 	};
 
 }
