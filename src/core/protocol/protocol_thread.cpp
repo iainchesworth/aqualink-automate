@@ -134,7 +134,7 @@ namespace AqualinkAutomate::Protocol
 				LogWarning(Channel::Protocol, std::format("Serial circular buffer overflow - {} bytes discarded", bytes_discarded));
 			}
 			m_SerialBuffer.insert(m_SerialBuffer.end(),
-				m_ReadBuffer.begin(), m_ReadBuffer.begin() + bytes_read);
+				m_ReadBuffer.begin(), m_ReadBuffer.begin() + static_cast<std::ptrdiff_t>(bytes_read));
 		}
 
 		if (total_bytes_read > 0)
@@ -231,7 +231,7 @@ namespace AqualinkAutomate::Protocol
 				if (elapsed_us > 2000)
 				{
 					LogWarning(Channel::Protocol, std::format(
-						"Slow message processing: took {:.2f} ms", elapsed_us / 1000.0));
+						"Slow message processing: took {:.2f} ms", static_cast<double>(elapsed_us) / 1000.0));
 				}
 			}
 			else

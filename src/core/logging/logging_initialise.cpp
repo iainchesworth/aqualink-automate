@@ -27,7 +27,7 @@ void Initialise()
 
 	sink->set_formatter(&Formatter);
 
-	auto severity_filter = boost::phoenix::bind(&SeverityFiltering::PerChannelTest, channel.or_default(SeverityFiltering::DEFAULT_CHANNEL), severity.or_default(SeverityFiltering::DEFAULT_SEVERITY));
+	auto severity_filter = boost::phoenix::bind(&SeverityFiltering::PerChannelTest, channel_type::or_default(SeverityFiltering::DEFAULT_CHANNEL), severity_type::or_default(SeverityFiltering::DEFAULT_SEVERITY));
 	sink->set_filter(severity_filter);
 
 	boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());

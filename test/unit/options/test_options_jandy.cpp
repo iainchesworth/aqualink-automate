@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_WhitespaceAroundComma)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_InvalidType_Throws)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=bogus" }), boost::program_options::validation_error);
+	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=bogus" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
 }
 
 //=============================================================================
@@ -137,12 +137,12 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_TwoDeviceIds)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_InvalidHex_Throws)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=0xZZ" }), boost::program_options::validation_error);
+	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=0xZZ" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
 }
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_MissingPrefix_Throws)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=A1" }), boost::program_options::validation_error);
+	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=A1" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
 }
 
 //=============================================================================

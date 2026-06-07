@@ -53,7 +53,7 @@ namespace
         // checksum index is size-3: [.. payload ..][checksum][DLE][ETX]
         BOOST_REQUIRE(raw.size() >= 7); // DLE,STX,dest,id,chk,DLE,ETX minimal
         const std::size_t checksum_index = raw.size() - 3;
-        const auto expected = JandyPacket_CalculateChecksum(raw.begin(), raw.begin() + checksum_index);
+        const auto expected = JandyPacket_CalculateChecksum(raw.begin(), raw.begin() + static_cast<std::ptrdiff_t>(checksum_index));
         raw[checksum_index] = expected;
     }
 }
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(Size_TooLarge_Fails)
     const std::size_t chk_index = raw.size() - 3;
     if (raw.size() <= max_len)
     {
-        raw.insert(raw.begin() + chk_index, (max_len + 10) - raw.size(), 0x41);
+        raw.insert(raw.begin() + static_cast<std::ptrdiff_t>(chk_index), (max_len + 10) - raw.size(), 0x41);
     }
 
     recalc_checksum_in_raw(raw);
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(Checksum_Recalc_Then_Succeeds)
 
     // Mutate payload (insert one byte) then fix checksum and check success
     const std::size_t checksum_index = raw.size() - 3;
-    raw.insert(raw.begin() + checksum_index, 0x42); // add payload byte before checksum
+    raw.insert(raw.begin() + static_cast<std::ptrdiff_t>(checksum_index), 0x42); // add payload byte before checksum
 
     recalc_checksum_in_raw(raw);
     wire = escape(raw);

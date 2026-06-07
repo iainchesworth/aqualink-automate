@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE(TestRecomputeLimit_MaxRecomputes_CausesFailed)
 
 	// Navigate to System (already there) - should succeed immediately
 	nav.NavigateTo(PageId::System);
-	auto cmd = nav.OnPageUpdate(system_content, 0);
+	nav.OnPageUpdate(system_content, 0);
 
 	// Should arrive at destination
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::AtDestination));
