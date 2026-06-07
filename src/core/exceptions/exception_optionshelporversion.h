@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		OptionsHelpOrVersion();
-		OptionsHelpOrVersion(const std::string& message);
 	};
 
 }

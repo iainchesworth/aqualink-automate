@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	SignallingStatsCounter_BadAccess::SignallingStatsCounter_BadAccess(const std::string& message) :
-		GenericAqualinkException(BAD_ACCESS_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "SignallingStatsCounter_BadAccess exception was constructed");
 	}

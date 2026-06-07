@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Traits_DoesNotExist::Traits_DoesNotExist(const std::string& message) :
-		GenericAqualinkException(TRAIT_DOES_NOT_EXIST_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Traits_DoesNotExist exception was constructed");
 	}

@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	NotImplemented::NotImplemented(const std::string& message) :
-		GenericAqualinkException(NOT_IMPLEMENTED_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "NotImplemented exception was constructed");
 	}

@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Traits_InvalidTraitValue::Traits_InvalidTraitValue(const std::string& message) :
-		GenericAqualinkException(TRAIT_INVALID_TRAIT_VALUE_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Traits_InvalidTraitValue exception was constructed");
 	}

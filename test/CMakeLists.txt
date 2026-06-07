@@ -22,7 +22,8 @@ target_sources(
 	unit/devices/test_devices_screendatapage_processor.cpp 
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
-	unit/exceptions/test_genericaqualinkexception.cpp 
+	unit/exceptions/test_genericaqualinkexception.cpp
+	unit/exceptions/test_exception_message_forwarding.cpp
 	unit/formatters/test_formatters.cpp
 	unit/factories/test_factories_jandy_auxillary.cpp	 	
 	unit/factories/test_factories_jandy_messages.cpp

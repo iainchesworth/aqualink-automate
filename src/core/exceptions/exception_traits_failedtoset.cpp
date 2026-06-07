@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Traits_FailedToSet::Traits_FailedToSet(const std::string& message) :
-		GenericAqualinkException(TRAIT_FAILED_TO_SET_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Traits_FailedToSet exception was constructed");
 	}

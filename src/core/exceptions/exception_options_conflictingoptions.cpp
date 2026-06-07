@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Options_ConflictingOptions::Options_ConflictingOptions(const std::string& message) :
-		OptionParsingFailed(OPTION_CONFLICTING_OPTIONS_MESSAGE)
+		OptionParsingFailed(message)
 	{
 		LogTrace(Channel::Exceptions, "Options_ConflictingOptions exception was constructed");
 	}

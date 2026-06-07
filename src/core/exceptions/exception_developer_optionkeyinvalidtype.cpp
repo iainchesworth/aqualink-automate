@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Developer_OptionKeyInvalidType::Developer_OptionKeyInvalidType(const std::string& message) :
-		GenericAqualinkException(DEVELOPER_OPTIONS_KEY_INVALID_TYPE_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Developer_OptionKeyInvalidType exception was constructed");
 	}

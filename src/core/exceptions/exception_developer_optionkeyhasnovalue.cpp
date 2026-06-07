@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Developer_OptionKeyHasNoValue::Developer_OptionKeyHasNoValue(const std::string& message) :
-		GenericAqualinkException(DEVELOPER_OPTIONS_KEY_HAS_NO_VALUE_MESSAGE)
+		GenericAqualinkException(message)
 	{
 		LogTrace(Channel::Exceptions, "Developer_OptionKeyHasNoValue exception was constructed");
 	}
