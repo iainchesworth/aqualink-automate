@@ -95,6 +95,7 @@ target_sources(
 	unit/navigation/test_spider_engine.cpp
 	unit/messages/test_chemlink_message_response.cpp
 	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp
 	unit/devices/test_devices_iaq.cpp
 	unit/messages/test_iaq_messages.cpp

@@ -62,6 +62,7 @@
 #include "serial/serial_port.h"
 
 // Jandy protocol
+#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
@@ -434,6 +435,9 @@ int main(int argc, char* argv[])
 
 			// Advance subsystems
 			bool had_work = protocol_task->Poll();
+
+			// Drive per-device watchdog deadline checks.
+			Devices::Capabilities::Restartable::PollAll();
 
 			if (http_server)
 			{

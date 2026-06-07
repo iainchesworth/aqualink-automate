@@ -1,4 +1,4 @@
-#include <boost/system/error_code.hpp>
+#include <algorithm>
 
 #include "devices/capabilities/restartable.h"
 #include "logging/logging.h"
@@ -9,11 +9,15 @@ namespace AqualinkAutomate::Devices::Capabilities
 {
 	const std::chrono::seconds Restartable::DEFAULT_WATCHDOG_TIMEOUT{ std::chrono::seconds(30) };
 
+	std::vector<Restartable*> Restartable::s_Instances;
+
 	Restartable::Restartable(std::chrono::seconds timeout_in_seconds, bool delayed_start) :
 		m_TimeoutDuration(timeout_in_seconds),
-		//m_WatchdogTimer(co_await boost::cobalt::this_coro::executor),
-		m_IsRunning(false)
+		m_IsRunning(false),
+		m_LastKick()
 	{
+		s_Instances.push_back(this);
+
 		if (!delayed_start)
 		{
 			Start();
@@ -23,6 +27,16 @@ namespace AqualinkAutomate::Devices::Capabilities
 	Restartable::~Restartable()
 	{
 		Stop();
+		std::erase(s_Instances, this);
+	}
+
+	void Restartable::PollAll()
+	{
+		// A copy is not required: CheckWatchdog() never adds or removes instances.
+		for (auto* instance : s_Instances)
+		{
+			instance->CheckWatchdog();
+		}
 	}
 
 	void Restartable::Start()
@@ -36,7 +50,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			m_IsRunning = true;
 
 			// Note the order here....if m_Running is _NOT_ true, Kick() will not action the request...
-			
+
 			Kick();
 		}
 	}
@@ -45,32 +59,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 	{
 		if (m_IsRunning)
 		{
-			/*m_WatchdogTimer.expires_from_now(m_TimeoutDuration);
-			m_WatchdogTimer.async_wait
-			(
-				[this](const boost::system::error_code& ec)
-				{
-					switch (ec.value())
-					{
-					case boost::system::errc::success:
-						// There's not been a message with the <timeout duration> so mark this device as not operating...
-						LogWarning(Channel::Devices, "Device timeout: device watchdog has expired");
-						m_IsRunning = false;
-						WatchdogTimeoutOccurred();
-						break;
-
-					case boost::asio::error::operation_aborted:
-						// IGNORE THIS RESPONSE...  When expires_after() sets the expiry time, any pending asynchronous wait operations will be cancelled and the 
-						// handler for each cancelled operation will be invoked with the boost::asio::error::operation_aborted error code.
-						break;
-
-					default:
-						LogDebug(Channel::Devices, std::format("Device timeout; timer async_wait failed; error -> {}, message -> {}", ec.value(), ec.message()));
-						break;
-					}
-					
-				}
-			);*/
+			m_LastKick = Now();
 		}
 		else
 		{
@@ -80,14 +69,17 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Restartable::Stop()
 	{
-		try
+		m_IsRunning = false;
+	}
+
+	void Restartable::CheckWatchdog()
+	{
+		if (m_IsRunning && ((Now() - m_LastKick) > m_TimeoutDuration))
 		{
+			// No message has arrived within the timeout duration; mark this device as not operating.
+			LogWarning(Channel::Devices, "Device timeout: device watchdog has expired");
 			m_IsRunning = false;
-			//m_WatchdogTimer.cancel();
-		}
-		catch (const boost::system::system_error& ex_bse)
-		{
-			LogDebug(Channel::Devices, std::format("Exception thrown while attempting to cancel watchdog timer; error was -> {}", ex_bse.what()));
+			WatchdogTimeoutOccurred();
 		}
 	}
 
@@ -99,6 +91,11 @@ namespace AqualinkAutomate::Devices::Capabilities
 	bool Restartable::IsRunning() const
 	{
 		return m_IsRunning;
+	}
+
+	std::chrono::steady_clock::time_point Restartable::Now() const
+	{
+		return std::chrono::steady_clock::now();
 	}
 
 }
