@@ -177,6 +177,7 @@ namespace AqualinkAutomate::Kernel
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Auxillaries() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Chlorinators() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Heaters() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Lights() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Pumps() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> FilterPumps() const;
 

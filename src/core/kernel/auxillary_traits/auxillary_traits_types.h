@@ -30,6 +30,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		Chlorinator,
 		Cleaner,
 		Heater,
+		Light,
 		Pump,
 		Spillover,
 		Sprinkler,

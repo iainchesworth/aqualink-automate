@@ -39,6 +39,15 @@ namespace AqualinkAutomate::Messages
 		EPUMP_RPM = 0x44,
 		EPUMP_Watts = 0x45,
 
+		// Jandy Light commands
+		// Jandy colored-light controllers occupy device ids 0xF0-0xF4 on the
+		// RS-485 bus.  The light's status reply carries its on/off state and
+		// the active colour/show mode.  AqualinkD documents only the device-id
+		// range for these controllers (their wire payload is not otherwise
+		// reverse-engineered), so this status command byte models the reply so
+		// the decode can be extended once a live capture is available.
+		Light_Status = 0x19,
+
 		// Chemlink commands
 		Chemlink_Response = 0x21,
 

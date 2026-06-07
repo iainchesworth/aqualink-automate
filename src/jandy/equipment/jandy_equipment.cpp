@@ -13,6 +13,7 @@
 #include "devices/heater_device.h"
 #include "devices/iaq_device.h"
 #include "devices/keypad_device.h"
+#include "devices/lights_device.h"
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
@@ -31,6 +32,7 @@
 #include "messages/epump/epump_message_watts.h"
 #include "messages/heater/heater_message_request.h"
 #include "messages/heater/heater_message_status.h"
+#include "messages/light/light_message_status.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
@@ -92,6 +94,7 @@ namespace AqualinkAutomate::Equipment
 		m_MessageConnections.push_back(Messages::EPumpMessage_Watts::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::HeaterMessage_Request::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::HeaterMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
+		m_MessageConnections.push_back(Messages::LightMessage_Status::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_GetId::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_Percent::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
 		m_MessageConnections.push_back(Messages::AquariteMessage_PPM::GetSignal()->connect(std::bind(&JandyEquipment::IdentifyAndAddDevice, this, std::placeholders::_1)));
@@ -212,6 +215,11 @@ namespace AqualinkAutomate::Equipment
 			case Devices::DeviceClasses::Chemlink:
 				LogInfo(Channel::Equipment, std::format("Adding new Chemlink device with id: {}", message.Destination().Id()));
 				m_EquipmentHub->AddDevice(std::make_unique<Devices::ChemlinkDevice>(std::move(device_id)));
+				break;
+
+			case Devices::DeviceClasses::Jandy_Light:
+				LogInfo(Channel::Equipment, std::format("Adding new Jandy Light device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::LightsDevice>(std::move(device_id), m_HubLocator));
 				break;
 
 			default:
