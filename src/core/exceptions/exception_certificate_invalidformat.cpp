@@ -14,11 +14,5 @@ namespace AqualinkAutomate::Exceptions
 		LogTrace(Channel::Exceptions, "Certificate_InvalidFormat exception was constructed");
 	}
 
-	Certificate_InvalidFormat::Certificate_InvalidFormat(const std::string& message) :
-		GenericAqualinkException(CERTIFICATE_INVALID_FORMAT_MESSAGE)
-	{
-		LogTrace(Channel::Exceptions, "Certificate_InvalidFormat exception was constructed");
-	}
-
 }
 // namespace AqualinkAutomate::Exceptions

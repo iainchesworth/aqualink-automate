@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Certificate_InvalidFormat();
-		Certificate_InvalidFormat(const std::string& message);
 	};
 
 }

@@ -14,11 +14,5 @@ namespace AqualinkAutomate::Exceptions
 		LogTrace(Channel::Exceptions, "Certificate_NotFound exception was constructed");
 	}
 
-	Certificate_NotFound::Certificate_NotFound(const std::string& message) :
-		GenericAqualinkException(CERTIFICATE_NOT_FOUND_MESSAGE)
-	{
-		LogTrace(Channel::Exceptions, "Certificate_NotFound exception was constructed");
-	}
-
 }
 // namespace AqualinkAutomate::Exceptions

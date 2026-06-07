@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Hub_NotFound();
-		Hub_NotFound(const std::string& message);
 	};
 
 }
