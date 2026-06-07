@@ -1,10 +1,7 @@
 #include <algorithm>
-#include <charconv>
-#include <cstdint>
 #include <format>
-#include <limits>
 #include <ranges>
-#include <sstream>
+#include <vector>
 
 #include <boost/program_options.hpp>
 #include <magic_enum/magic_enum.hpp>
@@ -15,7 +12,6 @@
 #include "options/options_jandy.h"
 #include "options/helpers/conflicting_options_helper.h"
 #include "options/helpers/option_dependency_helper.h"
-#include "utility/case_insensitive_comparision.h"
 #include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate::Devices;
@@ -39,88 +35,6 @@ namespace AqualinkAutomate::Jandy::Options
 			case JandyEmulatedDeviceTypes::SerialAdapter:	return JandyDeviceId{ 0x48 };
 			default:										return JandyDeviceId{ 0xFF };
 			}
-		}
-
-		std::vector<JandyEmulatedDeviceTypes> ParseDeviceTypes(const std::string& csv)
-		{
-			std::vector<JandyEmulatedDeviceTypes> result;
-			std::istringstream stream(csv);
-			std::string token;
-
-			while (std::getline(stream, token, ','))
-			{
-				// Trim whitespace
-				auto start = token.find_first_not_of(" \t");
-				auto end = token.find_last_not_of(" \t");
-
-				if (start == std::string::npos)
-				{
-					LogDebug(Channel::Options, "Invalid conversion of emulated device type: empty token in comma-separated list");
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-
-				auto trimmed = token.substr(start, end - start + 1);
-
-				if (auto enum_value = magic_enum::enum_cast<JandyEmulatedDeviceTypes>(trimmed, Utility::case_insensitive_comparision); enum_value.has_value())
-				{
-					result.push_back(enum_value.value());
-				}
-				else
-				{
-					LogDebug(Channel::Options, std::format("Invalid conversion of emulated device type -> provided string was: {}", trimmed));
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-			}
-
-			return result;
-		}
-
-		std::vector<JandyDeviceId> ParseDeviceIds(const std::string& csv)
-		{
-			std::vector<JandyDeviceId> result;
-			std::istringstream stream(csv);
-			std::string token;
-
-			while (std::getline(stream, token, ','))
-			{
-				// Trim whitespace
-				auto start = token.find_first_not_of(" \t");
-				auto end = token.find_last_not_of(" \t");
-
-				if (start == std::string::npos)
-				{
-					LogDebug(Channel::Options, "Invalid conversion of emulated device id: empty token in comma-separated list");
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-
-				auto trimmed = token.substr(start, end - start + 1);
-
-				if (trimmed.length() < 3 || trimmed.length() > 4 || std::tolower(trimmed[1]) != 'x')
-				{
-					LogDebug(Channel::Options, std::format("Invalid conversion of emulated device id: incorrectly formatted -> {}", trimmed));
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-
-				auto hex_part = trimmed.substr(2);
-				uint32_t temporary_device_id = 0;
-				auto [ptr, ec] = std::from_chars(hex_part.data(), hex_part.data() + hex_part.size(), temporary_device_id, 16);
-
-				if (std::errc() != ec || ptr != (hex_part.data() + hex_part.size()))
-				{
-					LogDebug(Channel::Options, std::format("Invalid conversion of emulated device id: invalid hex value -> {}", trimmed));
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-
-				if (temporary_device_id > std::numeric_limits<uint8_t>::max())
-				{
-					LogDebug(Channel::Options, std::format("Invalid conversion of emulated device id: value too large -> {}", trimmed));
-					throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-				}
-
-				result.push_back(JandyDeviceId{ static_cast<uint8_t>(temporary_device_id) });
-			}
-
-			return result;
 		}
 	}
 	// anonymous namespace
@@ -185,12 +99,14 @@ namespace AqualinkAutomate::Jandy::Options
 		}
 		else
 		{
-			auto device_types = ParseDeviceTypes(OPTION_EMULATEDDEVICETYPE->As<std::string>(vm));
+			// Device types and IDs are parsed and validated by boost::program_options via the
+			// type-specific validators (multitoken, space-separated values on the command line).
+			auto device_types = OPTION_EMULATEDDEVICETYPE->As<std::vector<JandyEmulatedDeviceTypes>>(vm);
 			std::vector<Devices::JandyDeviceId> device_ids;
 
 			if (OPTION_EMULATEDDEVICEID->IsPresent(vm))
 			{
-				device_ids = ParseDeviceIds(OPTION_EMULATEDDEVICEID->As<std::string>(vm));
+				device_ids = OPTION_EMULATEDDEVICEID->As<std::vector<Devices::JandyDeviceId>>(vm);
 			}
 
 			// Assign default device IDs for any types that don't have an explicit ID.

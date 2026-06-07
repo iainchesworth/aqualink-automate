@@ -42,12 +42,12 @@ namespace
 BOOST_AUTO_TEST_SUITE(TestSuite_OptionsJandy)
 
 //=============================================================================
-// CSV DEVICE TYPES: comma-separated parsing
+// DEVICE TYPES: space-separated (multitoken) parsing via the boost::po validator
 //=============================================================================
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_SingleDeviceType)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=IAQ" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "IAQ" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_SingleDeviceType)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_TwoDeviceTypes)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=iaq,onetouch" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq", "onetouch" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_TwoDeviceTypes)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_CaseInsensitive)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=iaq" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -85,32 +85,36 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_CaseInsensitive)
 	BOOST_CHECK(devices[0].first == Devices::JandyEmulatedDeviceTypes::IAQ);
 }
 
-BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_WhitespaceAroundComma)
+BOOST_AUTO_TEST_CASE(Test_Jandy_ThreeDeviceTypes)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=iaq, onetouch" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq", "onetouch", "serialadapter" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
 	BOOST_REQUIRE(jandy.has_value());
 
 	const auto& devices = jandy.value().get().emulated_devices;
-	BOOST_REQUIRE_EQUAL(devices.size(), 2);
+	BOOST_REQUIRE_EQUAL(devices.size(), 3);
 	BOOST_CHECK(devices[0].first == Devices::JandyEmulatedDeviceTypes::IAQ);
 	BOOST_CHECK(devices[1].first == Devices::JandyEmulatedDeviceTypes::OneTouch);
+	BOOST_CHECK(devices[2].first == Devices::JandyEmulatedDeviceTypes::SerialAdapter);
 }
 
-BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_InvalidType_Throws)
+BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_InvalidType_ReturnsError)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=bogus" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
+	// The validator throws validation_error during parsing; the pipeline converts
+	// that into a clean OptionsParsingFailed result (rather than an uncaught throw).
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "bogus" });
+	BOOST_CHECK(!result.has_value());
 }
 
 //=============================================================================
-// CSV DEVICE IDS: comma-separated parsing
+// DEVICE IDS: space-separated (multitoken) parsing via the boost::po validator
 //=============================================================================
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_SingleDeviceId)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=0xA1" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "IAQ", "--jandy-device-id", "0xA1" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -123,7 +127,7 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_SingleDeviceId)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_TwoDeviceIds)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=iaq,onetouch", "--jandy-device-id=0xa1,0x41" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq", "onetouch", "--jandy-device-id", "0xa1", "0x41" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
@@ -135,14 +139,16 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_TwoDeviceIds)
 	BOOST_CHECK_EQUAL(devices[1].second.Id()(), 0x41);
 }
 
-BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_InvalidHex_Throws)
+BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_InvalidHex_ReturnsError)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=0xZZ" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "IAQ", "--jandy-device-id", "0xZZ" });
+	BOOST_CHECK(!result.has_value());
 }
 
-BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_MissingPrefix_Throws)
+BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_MissingPrefix_ReturnsError)
 {
-	BOOST_CHECK_THROW((void)RunFullPipeline({ "program", "--jandy-device-type=IAQ", "--jandy-device-id=A1" }), boost::program_options::validation_error); // NOLINT(bugprone-unused-return-value)
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "IAQ", "--jandy-device-id", "A1" });
+	BOOST_CHECK(!result.has_value());
 }
 
 //=============================================================================
@@ -151,7 +157,7 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_MissingPrefix_Throws)
 
 BOOST_AUTO_TEST_CASE(Test_Jandy_DefaultIds_Assigned)
 {
-	auto result = RunFullPipeline({ "program", "--jandy-device-type=iaq,onetouch" });
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq", "onetouch" });
 	BOOST_REQUIRE(result.has_value());
 
 	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
