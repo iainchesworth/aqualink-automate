@@ -317,25 +317,6 @@ namespace AqualinkAutomate::Serial::RFC2217
 		}
 	}
 
-	std::vector<uint8_t> ProtocolHandler::EscapeIACBytes(std::span<const uint8_t> data_to_escape)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("RFC2217_ProtocolHandler::EscapeIACBytes", std::source_location::current());
-
-		std::vector<uint8_t> escaped_data;
-		escaped_data.reserve(data_to_escape.size());
-
-		for (const uint8_t byte : data_to_escape)
-		{
-			escaped_data.push_back(byte);
-			if (byte == Constants::IAC)
-			{
-				escaped_data.push_back(Constants::IAC); // Double the IAC byte
-			}
-		}
-
-		return escaped_data;
-	}
-
 	constexpr std::array<uint8_t, 4> ProtocolHandler::EncodeBaudRate(uint32_t baud_rate) noexcept
 	{
 		// RFC2217 uses network byte order (big-endian)
@@ -346,22 +327,6 @@ namespace AqualinkAutomate::Serial::RFC2217
 			static_cast<uint8_t>((baud_rate >> 8) & 0xFF),
 			static_cast<uint8_t>(baud_rate & 0xFF)
 		};
-	}
-
-	constexpr boost::asio::const_buffer ProtocolHandler::ToConstBuffer(const SerialisedBuffer& buffer) noexcept
-	{
-		return std::visit([](auto&& data) -> boost::asio::const_buffer
-			{
-				if constexpr (std::is_same_v<std::decay_t<decltype(data)>, boost::asio::const_buffer>)
-				{
-					return data;
-				}
-				else
-				{
-					return boost::asio::buffer(data);
-				}
-			}, 
-			buffer);
 	}
 
 }

@@ -116,7 +116,6 @@ namespace AqualinkAutomate::Kernel
 	private:
 		DevicesGraphType m_DevicesGraph;
 		DeviceVertexType m_RootVertexId;
-		DeviceMap m_DevicesMap;
 
 	private:
 		mutable std::shared_mutex m_GraphWriteLockMutex{};

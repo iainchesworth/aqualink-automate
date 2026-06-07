@@ -6,7 +6,6 @@
 #include <optional>
 #include <span>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include <boost/asio/buffer.hpp>
@@ -19,8 +18,6 @@
 
 namespace AqualinkAutomate::Serial::RFC2217
 {
-	using SerialisedBuffer = std::variant<boost::asio::const_buffer, std::vector<uint8_t>>;
-
 	class ProtocolHandler : public Interfaces::ISerialPortProtocol
 	{
 	public:
@@ -41,8 +38,6 @@ namespace AqualinkAutomate::Serial::RFC2217
 		void SendCommand(uint8_t command, std::span<const uint8_t> data = {});
 		void HandleCommand(uint8_t command, std::span<const uint8_t> params);
 
-		[[nodiscard]] static constexpr boost::asio::const_buffer ToConstBuffer(const SerialisedBuffer& buffer) noexcept;
-		[[nodiscard]] static std::vector<uint8_t> EscapeIACBytes(std::span<const uint8_t> data_to_escape);
 		[[nodiscard]] static constexpr std::array<uint8_t, 4> EncodeBaudRate(uint32_t baud_rate) noexcept;
 
 		[[nodiscard]] std::optional<uint8_t> ProcessByte(uint8_t byte);

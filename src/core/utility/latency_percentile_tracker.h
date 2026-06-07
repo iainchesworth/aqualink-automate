@@ -84,7 +84,6 @@ namespace AqualinkAutomate::Utility
 
 			// Update running statistics
 			m_TotalSamples++;
-			m_TotalLatency += latency;
 
 			if (m_TotalSamples == 1 || latency < m_AlltimeMin) { m_AlltimeMin = latency; }
 			if (latency > m_AlltimeMax) { m_AlltimeMax = latency; }
@@ -147,7 +146,6 @@ namespace AqualinkAutomate::Utility
 			m_Samples.clear();
 			m_SortedLatencies.clear();
 			m_TotalSamples = 0;
-			m_TotalLatency = Duration{ 0 };
 			m_AlltimeMin = Duration{ 0 };
 			m_AlltimeMax = Duration{ 0 };
 		}
@@ -213,7 +211,6 @@ namespace AqualinkAutomate::Utility
 
 		// Running statistics
 		std::size_t m_TotalSamples{ 0 };
-		Duration m_TotalLatency{ 0 };
 		Duration m_AlltimeMin{ 0 };
 		Duration m_AlltimeMax{ 0 };
 	};

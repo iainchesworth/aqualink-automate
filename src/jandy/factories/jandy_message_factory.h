@@ -229,31 +229,10 @@ namespace AqualinkAutomate::Factory
 			return registry_size;
 		}
 
-		[[nodiscard]] static consteval std::size_t HotPathCount() noexcept 
+		[[nodiscard]] static consteval std::size_t HotPathCount() noexcept
 		{
 			return hot_message_count;
 		}
-
-		static void RegisteredMessages() noexcept
-		{
-			LogDebug(Channel::Messages, "Registering message types with message factory");
-
-			for (const auto& e : hot_cache)
-			{
-				if (e.creator != nullptr)
-				{
-					LogDebug(Channel::Messages, std::format("Assigned message type {} to HOT-PATH table", e.id));
-				}
-			}
-
-			for (const auto& e : cold_table)
-			{
-				if (e.creator != nullptr)
-				{
-					LogDebug(Channel::Messages, std::format("Assigned message type {} to COLD-PATH table", e.id));
-				}
-			}
-		};
 	};
 
 }

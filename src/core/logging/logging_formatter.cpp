@@ -18,7 +18,7 @@ namespace AqualinkAutomate::Logging
 	{
 		const auto current_severity_level = SeverityFiltering::GetChannelFilterLevel(rec[channel].get<Channel>());
 
-		auto debug_and_trace_formatter = [](auto& rec, auto& strm) -> std::string 
+		auto debug_and_trace_formatter = [](auto& rec) -> std::string
 		{
 			return std::format(
 				"{:08}: <{}>\t({}) [{}:{}] {}",
@@ -29,8 +29,8 @@ namespace AqualinkAutomate::Logging
 				rec[source_line].template get<uint32_t>(),
 				rec[boost::log::expressions::smessage].template get<std::string>());
 		};
-		
-		auto all_other_levels_formatter = [](auto& rec, auto& strm) -> std::string
+
+		auto all_other_levels_formatter = [](auto& rec) -> std::string
 		{
 			return std::format(
 				"{:08}: <{}>\t({}) {}",
@@ -44,7 +44,7 @@ namespace AqualinkAutomate::Logging
 		{
 		case Severity::Trace:
 		case Severity::Debug:
-			strm << debug_and_trace_formatter(rec, strm);
+			strm << debug_and_trace_formatter(rec);
 			break;
 
 		case Severity::Info:
@@ -53,7 +53,7 @@ namespace AqualinkAutomate::Logging
 		case Severity::Error:
 		case Severity::Fatal:
 		default:
-			strm << all_other_levels_formatter(rec, strm);
+			strm << all_other_levels_formatter(rec);
 			break;
 		}
 	}

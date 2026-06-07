@@ -61,25 +61,6 @@ namespace AqualinkAutomate::Protocol
 	/// Expected type for protocol message results.
 	using ExpectedProtocolMessage = std::expected<ProtocolMessagePtr, ProtocolErrorCode>;
 
-	/// Interface for a protocol message generator.
-	/// Implementations parse raw serial data and generate protocol-specific messages.
-	class IMessageGenerator
-	{
-	public:
-		virtual ~IMessageGenerator() = default;
-
-		/// Attempt to generate a message from the given buffer.
-		/// May consume bytes from the buffer if a message is found.
-		/// Returns an expected containing the message or an error code.
-		virtual ExpectedProtocolMessage GenerateFromBuffer(std::vector<uint8_t>& buffer) = 0;
-
-		/// Get the name of the protocol this generator handles.
-		virtual std::string ProtocolName() const = 0;
-	};
-
-	/// Shared pointer to a message generator.
-	using MessageGeneratorPtr = std::shared_ptr<IMessageGenerator>;
-
 }
 // namespace AqualinkAutomate::Protocol
 

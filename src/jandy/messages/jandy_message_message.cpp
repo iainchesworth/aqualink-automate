@@ -13,9 +13,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	//const Factory::JandyMessageRegistration<Messages::JandyMessage_Message> JandyMessage_Message::g_JandyMessage_Message_Registration(JandyMessageIds::Message);
-
-	JandyMessage_Message::JandyMessage_Message() noexcept : 
+	JandyMessage_Message::JandyMessage_Message() noexcept :
 		JandyMessage_Message(std::string())
 	{
 		m_Line.reserve(MAXIMUM_MESSAGE_LENGTH);

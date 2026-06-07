@@ -11,8 +11,6 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Messages
 {
 
-	//const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> JandyMessage_MessageLong::g_JandyMessage_MessageLong_Registration(JandyMessageIds::MessageLong);
-
 	JandyMessage_MessageLong::JandyMessage_MessageLong() noexcept :
 		JandyMessage_MessageLong(0, std::string())
 	{

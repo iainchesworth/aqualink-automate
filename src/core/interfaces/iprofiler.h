@@ -3,12 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <optional>
-#include <unordered_map>
-
-#include <boost/functional/hash.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
 
 #include "profiling/profiling_units/domain.h"
 #include "profiling/profiling_units/frame.h"
@@ -39,9 +33,6 @@ namespace AqualinkAutomate::Interfaces
 		virtual void SetThreadName(const char* name) const;
 		virtual void AppInfo(std::string_view text) const;
 		virtual void EmitFrameMark(const char* name) const;
-
-	private:
-		mutable std::unordered_map<boost::uuids::uuid, Profiling::DomainPtr, boost::hash<boost::uuids::uuid>> m_Domains;
 	};
 
 }

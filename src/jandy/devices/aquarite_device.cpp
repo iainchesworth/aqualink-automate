@@ -123,7 +123,6 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, "Aquarite device received a AquariteMessage_PPM signal.");
 		LogDebug(Channel::Devices, std::format("Aquarite Device: received new reported status and salt concentration -> {} and {} PPM", magic_enum::enum_name(msg.Status()), msg.SaltConcentrationPPM()));
 		ReportedSaltConcentration(msg.SaltConcentrationPPM());
-		m_AquariteStatus = msg.Status();
 
 		PushPPMToDataHub(msg);
 

@@ -58,15 +58,6 @@ namespace AqualinkAutomate::HTTP::Routing
         std::array<std::string_view, N> ids_storage_;
         const std::size_t size_{ N };
 
-        matches_storage(std::string_view matches[N], std::string_view ids[N], std::size_t n)
-        {
-            for (std::size_t i = 0; i < n; ++i)
-            {
-                matches_storage_[i] = matches[i];
-                ids_storage_[i] = ids[i];
-            }
-        }
-
     public:
         matches_storage() = default;
 

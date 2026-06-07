@@ -6,12 +6,8 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include <boost/functional/hash.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_traits.hpp>
 #include <boost/signals2.hpp>
 
 #include "interfaces/ihub.h"

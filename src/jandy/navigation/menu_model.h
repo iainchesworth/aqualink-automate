@@ -172,9 +172,6 @@ namespace AqualinkAutomate::Navigation
 		// Returns empty vector if no path exists
 		std::vector<const MenuEdge*> FindPath(PageId from, PageId to) const;
 
-		// Find path to a specific menu item on a page
-		std::vector<const MenuEdge*> FindPathToItem(PageId from, PageId target_page, uint8_t menu_line) const;
-
 		// Find a global system event edge that matches a detected page
 		std::optional<MenuEdge> FindSystemEvent(PageId detected_page) const;
 

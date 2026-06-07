@@ -249,21 +249,6 @@ namespace AqualinkAutomate::HTTP
 		return resp;
 	}
 
-	HTTP::Message WebRoute_Equipment_Button::Report_ButtonIsInactive(const HTTP::Request& req, const std::string& button_id)
-	{
-		LogInfo(Channel::Web, std::format("Button '{}' is currently inactive; rejecting button request", button_id));
-
-		HTTP::Response resp{ HTTP::Status::conflict, req.version() };
-
-		resp.set(boost::beast::http::field::server, ServerFields::Server());
-		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
-		resp.keep_alive(req.keep_alive());
-		resp.body() = std::format("Button '{}' is currently inactive", button_id);
-		resp.prepare_payload();
-
-		return resp;
-	}
-
 	HTTP::Message WebRoute_Equipment_Button::Report_SystemIsInactive(const HTTP::Request& req)
 	{
 		LogInfo(Channel::Web, "Aqualink Automate has not yet initialised (PoolConfiguration == Unknown); rejecting button action request");

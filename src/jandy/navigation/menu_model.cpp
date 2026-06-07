@@ -240,13 +240,6 @@ namespace AqualinkAutomate::Navigation
 		return {}; // No path found
 	}
 
-	std::vector<const MenuEdge*> MenuModel::FindPathToItem(PageId from, PageId target_page, uint8_t menu_line) const
-	{
-		// First find path to the target page
-		// The Navigator will handle cursor positioning once we arrive at the page.
-		return FindPath(from, target_page);
-	}
-
 	std::vector<const MenuEdge*> MenuModel::GetIncomingSelectEdges(PageId target) const
 	{
 		std::vector<const MenuEdge*> result;

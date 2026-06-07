@@ -24,11 +24,6 @@ namespace AqualinkAutomate::Kernel
 
 			auto target_vertex = boost::add_vertex(ptr, m_DevicesGraph);
 			auto edge = boost::add_edge(source_vertex, target_vertex, m_DevicesGraph);
-
-			if (auto [_, was_inserted] = m_DevicesMap.try_emplace(target_vertex, ptr); !was_inserted)
-			{
-				LogDebug(Channel::Equipment, "DataHub: Failed to add device to device unordered_map");
-			}
 		};
 
 		if (nullptr == device)

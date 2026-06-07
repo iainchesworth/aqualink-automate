@@ -64,9 +64,6 @@ namespace AqualinkAutomate::Messages
 		Kernel::HeaterStatuses m_PoolHeater;
 		Kernel::HeaterStatuses m_SolarHeater;
 		Kernel::HeaterStatuses m_SpaHeater;
-
-	private:
-		//static const Factory::JandyMessageRegistration<Messages::JandyMessage_Status> g_JandyMessage_Status_Registration;
 	};
 
 }

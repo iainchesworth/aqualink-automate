@@ -73,9 +73,7 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_PoolHeat(const Utility::ScreenDataPage& page);
 		void PageProcessor_SpaHeat(const Utility::ScreenDataPage& page);
 		void PageProcessor_AquaPure(const Utility::ScreenDataPage& page);
-		void PageProcessor_AuxLabel(const Utility::ScreenDataPage& page);
 		void PageProcessor_FreezeProtect(const Utility::ScreenDataPage& page);
-		void PageProcessor_Settings(const Utility::ScreenDataPage& page);
 		void PageProcessor_EquipmentStatus(const Utility::ScreenDataPage& page);
 		void PageProcessor_Boost(const Utility::ScreenDataPage& page);
 		void PageProcessor_FirmwareVersion(const Utility::ScreenDataPage& page);

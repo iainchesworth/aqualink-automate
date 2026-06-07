@@ -123,9 +123,6 @@ namespace AqualinkAutomate::Navigation
 		// Move cursor to the target line for the current step
 		std::optional<NavKeyCommand> MoveCursorToTarget();
 
-		// Find the line that is currently highlighted
-		std::optional<uint8_t> FindHighlightedLine(const Utility::ScreenDataPage& content) const;
-
 		// Content-based line resolution: find the screen line whose text starts with the given label
 		std::optional<uint8_t> FindLineByLabel(const std::string& label) const;
 

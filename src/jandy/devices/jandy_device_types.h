@@ -36,21 +36,6 @@ namespace AqualinkAutomate::Devices
 		Unknown
 	};
 
-	/*
-		enum class Pentair_Pump_DeviceIds : uint8_t
-		{
-			Pentair_Pump_A = 0x60,
-			Pentair_Pump_B = 0x61,
-			Pentair_Pump_C = 0x62,
-			Pentair_Pump_D = 0x63,
-			Pentair_Pump_E = 0x64,
-			Pentair_Pump_F = 0x65,
-			Pentair_Pump_G = 0x66,
-			Pentair_Pump_H = 0x67,
-			Pentair_Pump_I = 0x67
-		};
-	*/
-
 	class JandyDeviceType : public Interfaces::IDeviceIdentifier
 	{
 		using DeviceId = JandyDeviceId;

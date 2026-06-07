@@ -1,11 +1,6 @@
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <string_view>
-#include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"

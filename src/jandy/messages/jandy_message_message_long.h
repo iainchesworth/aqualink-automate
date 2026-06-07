@@ -40,9 +40,6 @@ namespace AqualinkAutomate::Messages
 	private:
 		uint8_t m_LineId;
 		std::string m_Line;
-
-	private:
-		//static const Factory::JandyMessageRegistration<Messages::JandyMessage_MessageLong> g_JandyMessage_MessageLong_Registration;
 	};
 
 }

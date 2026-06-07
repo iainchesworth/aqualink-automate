@@ -304,31 +304,26 @@ namespace AqualinkAutomate::Kernel
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Auxillaries() const
 	{
-		using DeviceType = decltype(Auxillaries())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Chlorinators() const
 	{
-		using DeviceType = decltype(Chlorinators())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Heaters() const
 	{
-		using DeviceType = decltype(Heaters())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Pumps() const
 	{
-		using DeviceType = decltype(Pumps())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::FilterPumps() const
 	{
-		using DeviceType = decltype(Pumps())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::PumpTypeTrait{}, PumpTypes::FilterCirculation);
 	}
 

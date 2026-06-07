@@ -1,11 +1,6 @@
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <string_view>
-#include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "interfaces/icommanddispatcher.h"
 #include "interfaces/iwebroute.h"
@@ -30,7 +25,6 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		HTTP::Message Report_ButtonDoesntExist(const HTTP::Request& req, const std::string& button_id);
-		HTTP::Message Report_ButtonIsInactive(const HTTP::Request& req, const std::string& button_id);
 		HTTP::Message Report_SystemIsInactive(const HTTP::Request& req);
 
 	private:
