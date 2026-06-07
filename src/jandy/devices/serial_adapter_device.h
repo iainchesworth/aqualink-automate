@@ -8,6 +8,7 @@
 #include "auxillaries/jandy_auxillary_status.h"
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "messages/jandy_message_ack.h"
@@ -23,7 +24,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
@@ -38,6 +39,9 @@ namespace AqualinkAutomate::Devices
 	public:
 		SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated);
 		~SerialAdapterDevice() override;
+
+	public:
+		nlohmann::json DescribeDiagnostics() const override;
 
 	public:
 		void QueueCommand(uint8_t ack_type, uint8_t ack_data_value);

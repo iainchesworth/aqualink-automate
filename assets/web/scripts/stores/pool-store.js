@@ -57,7 +57,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         _touch(field) {
-            this._timestamps = { ...this._timestamps, [field]: Date.now() };
+            this._timestamps[field] = Date.now();
         },
 
         age(field) {
@@ -128,6 +128,7 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (e) {
                 console.error('Failed to fetch equipment:', e);
+                Alpine.store('toast').show('Failed to load equipment data', 'error');
             }
         },
 
@@ -144,6 +145,7 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (e) {
                 console.error('Failed to fetch buttons:', e);
+                Alpine.store('toast').show('Failed to load equipment controls', 'error');
             }
             this.buttonsLoading = false;
         },
@@ -169,6 +171,7 @@ document.addEventListener('alpine:init', () => {
                 if (data.uptime_seconds != null) sys.uptimeSeconds = data.uptime_seconds;
             } catch (e) {
                 console.error('Failed to fetch version:', e);
+                Alpine.store('toast').show('Failed to load version info', 'warn');
             }
         },
 
@@ -288,6 +291,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 console.error('Failed to adjust setpoint:', e);
                 this._setCommandState(key, 'rejected');
+                Alpine.store('toast').show('Setpoint change failed — check connection', 'error');
             }
         },
 
@@ -317,6 +321,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 console.error('Failed to toggle button:', e);
                 this._setCommandState(id, 'rejected');
+                Alpine.store('toast').show('Command failed — check connection', 'error');
             }
         }
     });

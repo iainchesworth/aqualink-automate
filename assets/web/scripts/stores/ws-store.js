@@ -39,6 +39,7 @@ document.addEventListener('alpine:init', () => {
 
                 this._equipmentWs.onclose = () => {
                     this.connected = false;
+                    Alpine.store('toast').show('Connection lost — retrying...', 'warn');
                     this._scheduleReconnect('equipment');
                 };
 

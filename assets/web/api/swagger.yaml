@@ -399,6 +399,59 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET or POST."
 
+  /api/diagnostics/emulated-devices:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get emulated device diagnostics
+      description: |
+        Returns diagnostic state for all active emulated devices. Each device
+        reports its internal operating state, screen content, navigation progress,
+        command queues, and other device-specific information.
+      operationId: getEmulatedDevices
+      responses:
+        '200':
+          description: Array of emulated device diagnostic objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmulatedDeviceDiagnostics'
+              example:
+                - device_type: "OneTouch"
+                  device_id: "0x41"
+                  operating_state: "Scraping"
+                  screen:
+                    page_type: "Page_System"
+                    mode: "Normal"
+                    lines: ["Equipment ON/OFF", "Filter Pump  OFF", ""]
+                  navigator:
+                    state: "Navigating"
+                    current_page: "System"
+                    target_page: "EquipmentStatus"
+                    cursor_line: 3
+                    synced: true
+                  spider_engine:
+                    state: "NavigatingToNext"
+                    visited_count: 12
+                    current_target: "SetTemperature"
+                  scraping_stall_counter: 0
+                  highlighted_line: 3
+                  pending_key_command: "NoKeyCommand"
+                  ack_type: "V2_Normal"
+                  is_running: true
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
 components:
   schemas:
     VersionInfo:
@@ -891,6 +944,110 @@ components:
           type: string
           description: Severity level to set for the channel
           example: "Trace"
+
+    EmulatedDeviceDiagnostics:
+      type: object
+      required:
+        - device_type
+        - device_id
+      properties:
+        device_type:
+          type: string
+          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA)
+          example: "OneTouch"
+        device_id:
+          type: string
+          description: Hex device address on the RS-485 bus
+          example: "0x41"
+        operating_state:
+          type: string
+          description: Current operating state of the device
+          example: "Scraping"
+        is_running:
+          type: boolean
+          description: Whether the watchdog timer is running
+        screen:
+          type: object
+          description: Current screen content (devices with display capability)
+          properties:
+            page_type:
+              type: string
+              description: Detected page type
+              example: "Page_System"
+            mode:
+              type: string
+              description: Screen update state (Normal, Updating, UpdateComplete)
+              example: "Normal"
+            lines:
+              type: array
+              items:
+                type: string
+              description: Screen line contents
+        navigator:
+          type: object
+          description: Navigator state (OneTouch only)
+          properties:
+            state:
+              type: string
+              example: "Navigating"
+            current_page:
+              type: string
+              example: "System"
+            target_page:
+              type: string
+              example: "EquipmentStatus"
+            cursor_line:
+              type: integer
+            synced:
+              type: boolean
+        spider_engine:
+          type: object
+          description: Spider engine state (OneTouch only)
+          properties:
+            state:
+              type: string
+              example: "NavigatingToNext"
+            visited_count:
+              type: integer
+            current_target:
+              type: string
+              example: "SetTemperature"
+        scraping_stall_counter:
+          type: integer
+          description: OneTouch stall counter
+        highlighted_line:
+          type: integer
+          description: Currently highlighted line index
+        pending_key_command:
+          type: string
+          description: Pending key command to send
+        ack_type:
+          type: string
+          description: ACK type for next response
+        pending_command:
+          type: string
+          description: IAQ pending command hex value
+        command_queue_depth:
+          type: integer
+          description: IAQ command queue depth
+        awaiting_control_ready:
+          type: boolean
+          description: IAQ control ready wait flag
+        control_data_value:
+          type: string
+          description: IAQ control data value to send
+        status_collection_count:
+          type: integer
+          description: SerialAdapter status type count
+        status_message_received:
+          type: boolean
+          description: SerialAdapter status received flag
+        has_pending_command:
+          type: boolean
+          description: SerialAdapter pending command flag
+        scrape_state:
+          type: string
+          description: PDA scrape state
 
   responses:
     NotFound:

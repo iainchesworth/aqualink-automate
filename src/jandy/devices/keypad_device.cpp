@@ -1,4 +1,8 @@
+#include <format>
 #include <functional>
+
+#include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
 #include "devices/keypad_device.h"
@@ -32,6 +36,34 @@ namespace AqualinkAutomate::Devices
 
 	void KeypadDevice::WatchdogTimeoutOccurred()
 	{
+	}
+
+	nlohmann::json KeypadDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "Keypad";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+
+		// Screen content
+		{
+			nlohmann::json screen;
+			screen["page_type"] = std::string(magic_enum::enum_name(DisplayedPageType()));
+			screen["mode"] = std::string(magic_enum::enum_name(ScreenMode()));
+
+			nlohmann::json lines = nlohmann::json::array();
+			const auto& page = DisplayedPage();
+			for (std::size_t i = 0; i < page.Size(); ++i)
+			{
+				lines.push_back(page[i].Text);
+			}
+			screen["lines"] = lines;
+			j["screen"] = screen;
+		}
+
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

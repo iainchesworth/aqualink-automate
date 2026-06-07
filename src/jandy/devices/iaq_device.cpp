@@ -2,6 +2,7 @@
 #include <functional>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
 #include "devices/device_status.h"
@@ -196,6 +197,39 @@ namespace AqualinkAutomate::Devices
 			LogDebug(Channel::Devices, std::format("IAQ ({}): Signalling control data response: '{}'", DeviceId(), ascii_data));
 			data_msg->Signal_MessageToSend();
 		}
+	}
+
+	nlohmann::json IAQDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "IAQ";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+		j["operating_state"] = std::string(magic_enum::enum_name(m_OpState));
+
+		// Screen content
+		{
+			nlohmann::json screen;
+			screen["page_type"] = std::string(magic_enum::enum_name(DisplayedPageType()));
+			screen["mode"] = std::string(magic_enum::enum_name(ScreenMode()));
+
+			nlohmann::json lines = nlohmann::json::array();
+			const auto& page = DisplayedPage();
+			for (std::size_t i = 0; i < page.Size(); ++i)
+			{
+				lines.push_back(page[i].Text);
+			}
+			screen["lines"] = lines;
+			j["screen"] = screen;
+		}
+
+		j["pending_command"] = std::format("0x{:02x}", m_PendingCommand);
+		j["command_queue_depth"] = static_cast<uint32_t>(m_CommandQueue.size());
+		j["awaiting_control_ready"] = m_AwaitingControlReady;
+		j["control_data_value"] = m_ControlDataValue;
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

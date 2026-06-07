@@ -1,6 +1,7 @@
 #include <functional>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
 #include "devices/device_status.h"
@@ -439,6 +440,61 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));
+	}
+
+	nlohmann::json OneTouchDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "OneTouch";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+		j["operating_state"] = std::string(magic_enum::enum_name(m_OpState));
+
+		// Screen content
+		{
+			nlohmann::json screen;
+			screen["page_type"] = std::string(magic_enum::enum_name(DisplayedPageType()));
+			screen["mode"] = std::string(magic_enum::enum_name(ScreenMode()));
+
+			nlohmann::json lines = nlohmann::json::array();
+			const auto& page = DisplayedPage();
+			for (std::size_t i = 0; i < page.Size(); ++i)
+			{
+				lines.push_back(page[i].Text);
+			}
+			screen["lines"] = lines;
+			j["screen"] = screen;
+		}
+
+		// Navigator state
+		if (m_Navigator)
+		{
+			nlohmann::json nav;
+			nav["state"] = std::string(magic_enum::enum_name(m_Navigator->GetState()));
+			nav["current_page"] = std::string(magic_enum::enum_name(m_Navigator->GetCurrentPage()));
+			nav["target_page"] = std::string(magic_enum::enum_name(m_Navigator->GetTargetPage()));
+			nav["cursor_line"] = m_Navigator->GetCursorLine();
+			nav["synced"] = m_Navigator->IsSynced();
+			j["navigator"] = nav;
+		}
+
+		// Spider engine state
+		if (m_SpiderEngine)
+		{
+			nlohmann::json spider;
+			spider["state"] = std::string(magic_enum::enum_name(m_SpiderEngine->GetState()));
+			spider["visited_count"] = static_cast<uint32_t>(m_SpiderEngine->GetVisitedPages().size());
+			spider["current_target"] = std::string(magic_enum::enum_name(m_SpiderEngine->GetCurrentTarget()));
+			j["spider_engine"] = spider;
+		}
+
+		j["scraping_stall_counter"] = m_ScrapingStallCounter;
+		j["highlighted_line"] = m_HighlightedLine;
+		j["pending_key_command"] = std::string(magic_enum::enum_name(m_KeyCommand_ToSend));
+		j["ack_type"] = std::string(magic_enum::enum_name(m_AckType_ToSend));
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

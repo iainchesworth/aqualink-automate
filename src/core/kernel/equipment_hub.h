@@ -57,6 +57,15 @@ namespace AqualinkAutomate::Kernel
 
 		Interfaces::IDevice* FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const;
 
+		template<typename Func>
+		void ForEachDevice(Func&& func) const
+		{
+			for (const auto& device : m_ActiveDevices)
+			{
+				func(*device);
+			}
+		}
+
 	private:
 		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;
 		std::unordered_set<std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
