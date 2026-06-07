@@ -42,6 +42,7 @@
 #include "http/server/routing/routing.h"
 #include "http/webroute_diagnostics_devices.h"
 #include "http/webroute_diagnostics_logging.h"
+#include "http/webroute_diagnostics_options.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
@@ -335,6 +336,7 @@ int main(int argc, char* argv[])
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));

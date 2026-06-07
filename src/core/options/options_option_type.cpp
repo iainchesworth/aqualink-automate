@@ -1,7 +1,19 @@
+#include <map>
+#include <vector>
+
 #include "options/options_option_type.h"
 
 namespace AqualinkAutomate::Options
 {
+	namespace
+	{
+		std::map<std::string, OptionMetadata>& MetadataRegistry()
+		{
+			static std::map<std::string, OptionMetadata> registry;
+			return registry;
+		}
+	}
+
 	AppOption::AppOption(const std::string& long_name, const std::string& description) :
 		AppOption(long_name, description, new boost::program_options::untyped_value(true))
 	{
@@ -13,6 +25,7 @@ namespace AqualinkAutomate::Options
 		m_ShortName(),
 		m_Description(description)
 	{
+		MetadataRegistry()[m_LongName] = OptionMetadata{ m_LongName, m_ShortName, m_Description };
 	}
 
 	AppOption::AppOption(const std::string& long_name, const std::string& short_name, const std::string& description) :
@@ -26,6 +39,7 @@ namespace AqualinkAutomate::Options
 		m_ShortName(short_name),
 		m_Description(description)
 	{
+		MetadataRegistry()[m_LongName] = OptionMetadata{ m_LongName, m_ShortName, m_Description };
 	}
 
 	boost::shared_ptr<boost::program_options::option_description> AppOption::operator()()
@@ -41,6 +55,17 @@ namespace AqualinkAutomate::Options
 	bool AppOption::IsPresentAndNotJustDefaulted(boost::program_options::variables_map& vm) const
 	{
 		return (IsPresent(vm) && !(vm[m_LongName].defaulted()));
+	}
+
+	std::vector<OptionMetadata> AppOption::RegisteredOptions()
+	{
+		std::vector<OptionMetadata> result;
+		result.reserve(MetadataRegistry().size());
+		for (const auto& [key, meta] : MetadataRegistry())
+		{
+			result.push_back(meta);
+		}
+		return result;
 	}
 
 }

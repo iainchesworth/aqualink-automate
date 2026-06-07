@@ -50,6 +50,7 @@ target_sources(
 	formatters/url_segments_encoded_view_formatter.cpp 
 	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
+	http/webroute_diagnostics_options.cpp
 	http/webroute_equipment.cpp
 	http/webroute_equipment_button.cpp 
 	http/webroute_equipment_buttons.cpp 

@@ -399,6 +399,51 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET or POST."
 
+  /api/diagnostics/options:
+    get:
+      tags:
+        - Diagnostics
+      summary: List configured CLI/application options
+      description: Returns the metadata (long name, short name, description) for every CLI/application option registered during option parsing
+      operationId: getOptions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        short_name:
+                          type: string
+                        description:
+                          type: string
+              example:
+                options:
+                  - name: "help"
+                    short_name: "h"
+                    description: "Displays the help information"
+                  - name: "version-detail"
+                    short_name: ""
+                    description: "Displays detailed version information (including git commit)"
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
   /api/diagnostics/emulated-devices:
     get:
       tags:

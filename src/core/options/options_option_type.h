@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <format>
 #include <string>
+#include <vector>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -17,6 +18,15 @@
 
 namespace AqualinkAutomate::Options
 {
+	// Snapshot of an option's user-facing metadata, captured at construction so it can be
+	// introspected (e.g. by the /api/diagnostics/options route) after parsing has finished.
+	struct OptionMetadata
+	{
+		std::string long_name;
+		std::string short_name;
+		std::string description;
+	};
+
 	class AppOption : public boost::program_options::option_description, public boost::enable_shared_from_this<AppOption>
 	{
 		inline static const std::string SEPERATOR{ "," };
@@ -37,6 +47,15 @@ namespace AqualinkAutomate::Options
 	public:
 		bool IsPresent(boost::program_options::variables_map& vm) const;
 		bool IsPresentAndNotJustDefaulted(boost::program_options::variables_map& vm) const;
+
+	public:
+		const std::string& LongName() const { return m_LongName; }
+		const std::string& ShortName() const { return m_ShortName; }
+		const std::string& Description() const { return m_Description; }
+
+		// Metadata for every AppOption constructed so far, one entry per long name, ordered
+		// by long name. Populated as options are constructed during option parsing.
+		static std::vector<OptionMetadata> RegisteredOptions();
 
 	public:
 		template<typename T>
