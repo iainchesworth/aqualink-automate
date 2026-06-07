@@ -123,7 +123,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; failed to identify heat line", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; incorrect token count returned", DeviceId()));
 		}
@@ -146,7 +146,7 @@ namespace AqualinkAutomate::Devices
 			}
 
 			// The status is either going to be 'Heating' because only POOL HEAT was matched or 'Enabled' because POOL HEAT ENA was matched
-			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_PoolHeat setting Pool Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
 			auto heater = m_DataHub->Devices.FindByLabel(pool_heater_label).front();
@@ -182,7 +182,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; failed to identify heat line", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; incorrect token count returned", DeviceId()));
 		}
@@ -205,7 +205,7 @@ namespace AqualinkAutomate::Devices
 			}
 
 			// The status is either going to be 'Heating' because only SPA HEAT was matched or 'Enabled' because SPA HEAT ENA was matched
-			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SpaHeat setting Spa Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
 			auto heater = m_DataHub->Devices.FindByLabel(spa_heater_label).front();
@@ -241,7 +241,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; failed to identify heat line", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; incorrect token count returned", DeviceId()));
 		}
@@ -264,7 +264,7 @@ namespace AqualinkAutomate::Devices
 			}
 
 			// The status is either going to be 'Heating' because only SOLAR HEAT was matched or 'Enabled' because SOLAR HEAT ENA was matched
-			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SolarHeat setting Solar Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
 			auto heater = m_DataHub->Devices.FindByLabel(solar_heater_label).front();
@@ -300,7 +300,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; failed to identify heat line", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; incorrect token count returned", DeviceId()));
 		}
@@ -323,7 +323,7 @@ namespace AqualinkAutomate::Devices
 			}
 
 			// The status is either going to be 'Heating' because only HEAT PUMP was matched or 'Enabled' because HEAT PUMP ENA was matched
-			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump setting Heat Pump Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
 			auto heater = m_DataHub->Devices.FindByLabel(heat_pump_label).front();
@@ -359,7 +359,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; failed to identify chiller line", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; incorrect token count returned", DeviceId()));
 		}
@@ -382,7 +382,7 @@ namespace AqualinkAutomate::Devices
 			}
 
 			// The status is either going to be 'Heating' because only CHILLER was matched or 'Enabled' because CHILLER ENA was matched
-			const auto heater_status = (false == matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
+			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller setting Chiller Cooling status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
 			auto chiller = m_DataHub->Devices.FindByLabel(chiller_label).front();
@@ -418,7 +418,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; failed to identify percentage", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; incorrect token count returned", DeviceId()));
 		}
@@ -472,7 +472,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; failed to identify salt level", DeviceId()));
 		}
-		else if (false == matches[1].matched)
+		else if (!matches[1].matched)
 		{
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; incorrect token count returned", DeviceId()));
 		}

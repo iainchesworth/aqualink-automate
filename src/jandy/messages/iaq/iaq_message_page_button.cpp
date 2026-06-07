@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <format>
 
 #include <magic_enum/magic_enum.hpp>
@@ -86,7 +87,7 @@ namespace AqualinkAutomate::Messages
 
 			const auto length_to_copy = message_bytes.size() - Index_ButtonNameText - 3;
 			const auto start_index = message_bytes.begin() + Index_ButtonNameText;
-			const auto end_index = start_index + length_to_copy;
+			const auto end_index = start_index + static_cast<std::ptrdiff_t>(length_to_copy);
 
 			m_ButtonName.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_ButtonName),

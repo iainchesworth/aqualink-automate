@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <functional>
 #include <format>
 #include <memory>
@@ -165,7 +166,7 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =    ^^ More vv
 		*/
 
-		for (uint8_t row_index = 0; row_index < (page.Size() - 1); row_index++)
+		for (std::size_t row_index = 0; row_index < (page.Size() - 1); row_index++)
 		{
 			auto new_aux_state = Utility::AuxillaryStateStringConverter(Utility::TrimWhitespace(page[row_index].Text));
 
@@ -241,7 +242,7 @@ namespace AqualinkAutomate::Devices
 		{
 			// Ignore line 0 on every page as it's the "Equipment Status" title line...
 
-			for (uint8_t line_id = 1; line_id < page.Size(); ++line_id)
+			for (std::size_t line_id = 1; line_id < page.Size(); ++line_id)
 			{
 				if (page[line_id].Text.empty())
 				{
@@ -249,7 +250,7 @@ namespace AqualinkAutomate::Devices
 				}
 				else
 				{
-					matcher_processor(page, line_id);
+					matcher_processor(page, static_cast<uint8_t>(line_id));
 				}
 			}
 		}
@@ -299,9 +300,6 @@ namespace AqualinkAutomate::Devices
 		{
 			JandyController::m_DataHub->SpaTempSetpoint(temperature().value());
 		}
-
-		auto is_maintained = Utility::TrimWhitespace(page[5].Text);
-		auto maintenance_hours = Utility::TrimWhitespace(page[6].Text);
 	}
 
 	void OneTouchDevice::PageProcessor_SetTime(const Utility::ScreenDataPage& page)

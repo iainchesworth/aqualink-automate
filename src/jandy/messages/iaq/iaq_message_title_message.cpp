@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <format>
 
 #include "messages/iaq/iaq_message_title_message.h"
@@ -53,7 +54,7 @@ namespace AqualinkAutomate::Messages
 		{
 			const auto length_to_copy = message_bytes.size() - Index_TitleText - 3;
 			const auto start_index = message_bytes.begin() + Index_TitleText;
-			const auto end_index = start_index + length_to_copy;
+			const auto end_index = start_index + static_cast<std::ptrdiff_t>(length_to_copy);
 
 			m_Title.clear();
 			std::transform(start_index, end_index, std::back_inserter(m_Title),

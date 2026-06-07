@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Devices
 		{
 			switch (status)
 			{
-			case Messages::AquariteStatuses::On:                     return Kernel::ChlorinatorHealth::Ok;
+			case Messages::AquariteStatuses::On:
 			case Messages::AquariteStatuses::Off:                    return Kernel::ChlorinatorHealth::Ok;
 			case Messages::AquariteStatuses::TurningOff:             return Kernel::ChlorinatorHealth::TurningOff;
 			case Messages::AquariteStatuses::Warning_NoFlow:         return Kernel::ChlorinatorHealth::Warning_NoFlow;
