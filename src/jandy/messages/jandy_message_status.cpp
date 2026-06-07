@@ -135,9 +135,6 @@ namespace AqualinkAutomate::Messages
 			m_Mode = magic_enum::enum_cast<ComboModes>((message_bytes[6] & 0x04) >> 2).value_or(ComboModes::Unknown);
 			m_Aux1 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[6] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
 
-			uint8_t tempx = ((message_bytes[7] & 0x40) >> 6); // ENA?
-			uint8_t tempy = ((message_bytes[8] & 0x04) >> 2); // ENA?
-
 			m_Aux6 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x40) >> 6).value_or(Kernel::AuxillaryStatuses::Unknown);
 			m_Aux4 = magic_enum::enum_cast<Kernel::AuxillaryStatuses>((message_bytes[7] & 0x01) >> 0).value_or(Kernel::AuxillaryStatuses::Unknown);
 

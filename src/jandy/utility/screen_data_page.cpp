@@ -103,7 +103,7 @@ namespace AqualinkAutomate::Utility
 			auto end = m_Rows.begin() + end_id + 1;
 
 			// Calculate the offset for the rotation
-			const int offset = (direction == ShiftDirections::Up) ? lines_to_shift : (end - start) - lines_to_shift;
+			const auto offset = (direction == ShiftDirections::Up) ? static_cast<RowCollection::difference_type>(lines_to_shift) : (end - start) - lines_to_shift;
 
 			// Rotate the range left or right by the specified number of elements
 			std::rotate(start, start + offset, end);
