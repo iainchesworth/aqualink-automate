@@ -240,28 +240,78 @@ namespace AqualinkAutomate::Navigation
 		});
 
 		// Label Aux List (scrollable - "^^ More vv" indicator)
-		// Edge labels must match screen content for FindLineByLabel to work.
-		// Primary aux (1-7) are always present at fixed lines 2-8.
-		// B/C/D series depend on power centers and require scrolling (future enhancement).
-		// NOTE: Labels are empty because the screen shows user-configured custom labels
-		// (e.g. "Swim Jet", "Pool Light"), not device IDs. Navigation uses trigger_line position.
+		//
+		// Dynamic-scrolling aux discovery:
+		//   The list shows one Select edge per installable aux output.  Power
+		//   center A's aux outputs (Aux1-Aux7) fit on the first screen, but the
+		//   B/C/D power centers (Aux B1-D8) appear AFTER them and only become
+		//   visible by scrolling the list.  Because each aux is a separate
+		//   incoming Select edge to the multi-instance LabelAux page, the
+		//   SpiderEngine visits every one in turn; for each, the Navigator
+		//   resolves the row by its LABEL via FindLineByLabel and, when the row
+		//   is below the fold, scrolls (PageDown) until it appears
+		//   (NavigateToItem / MAX_ITEM_SCROLL_ATTEMPTS).  This is what makes the
+		//   B/C/D auxes discoverable without fixed line positions.
+		//
+		//   The label here is the controller's DEFAULT row text (e.g. "Aux B1").
+		//   The "Label Aux" list always renders these default Aux IDs (the
+		//   user-assigned custom name is shown on the LabelAux detail page, not
+		//   in this list), so a case-insensitive prefix match by FindLineByLabel
+		//   reliably locates each row regardless of any custom naming.
+		//
+		//   trigger_line is a starting cursor hint AND the per-edge identity key
+		//   used by the SpiderEngine's multi-instance visited set
+		//   ({source, trigger_line}); it must therefore be UNIQUE per edge.  The
+		//   B/C/D rows are off-screen until scrolled, so their hint values are
+		//   synthetic monotonic indices (>= the screen height) - the actual line
+		//   is always resolved from on-screen content at run time.
+		//
+		//   Controllers without a given power center simply never render those
+		//   rows; the Navigator fails to find them after scrolling and the
+		//   SpiderEngine treats that as a benign per-edge skip (NOT a crawl
+		//   failure) and moves on to the next aux.
 		model.RegisterPage({
 			.id = PageId::LabelAuxList,
 			.name = "LabelAuxList",
 			.page_type = ScreenDataPageTypes::Page_LabelAuxList,
 			.detectors = {{ 0, "Label Aux" }},
 			.edges = {
-				// Primary aux devices (always present, position-based navigation)
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     2, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     3, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     4, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     5, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     6, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     7, "" },
-				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     8, "" },
-				// TODO: B/C/D power center aux devices require dynamic scrolling discovery.
-				// They appear after the primary 7 and show custom labels. Position-based
-				// navigation won't work because their line positions shift with scrolling.
+				// Power center A aux devices (always present, fixed lines 2-8).
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     2, "Aux1" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     3, "Aux2" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     4, "Aux3" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     5, "Aux4" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     6, "Aux5" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     7, "Aux6" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     8, "Aux7" },
+				// Power center B aux devices (discovered by scrolling). Synthetic,
+				// unique trigger_line hints; real position resolved from content.
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     9,  "Aux B1" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     10, "Aux B2" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     11, "Aux B3" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     12, "Aux B4" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     13, "Aux B5" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     14, "Aux B6" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     15, "Aux B7" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     16, "Aux B8" },
+				// Power center C aux devices (discovered by scrolling).
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     17, "Aux C1" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     18, "Aux C2" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     19, "Aux C3" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     20, "Aux C4" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     21, "Aux C5" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     22, "Aux C6" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     23, "Aux C7" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     24, "Aux C8" },
+				// Power center D aux devices (discovered by scrolling).
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     25, "Aux D1" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     26, "Aux D2" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     27, "Aux D3" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     28, "Aux D4" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     29, "Aux D5" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     30, "Aux D6" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     31, "Aux D7" },
+				{ EdgeTrigger::Select,   PageId::LabelAuxList, PageId::LabelAux,     32, "Aux D8" },
 				// Navigation
 				{ EdgeTrigger::Back,     PageId::LabelAuxList, PageId::SystemSetup,  0, "" },
 				{ EdgeTrigger::LineUp,   PageId::LabelAuxList, PageId::LabelAuxList, 0, "" },

@@ -93,27 +93,48 @@ namespace AqualinkAutomate::Navigation
 				}
 				else
 				{
-					// Navigation failed
-					m_NavigationFailures++;
-					LogWarning(Channel::Scraping, std::format("SpiderEngine: Navigation to page {} failed ({}/{})",
-						static_cast<uint32_t>(m_CurrentTarget), m_NavigationFailures, MAX_NAVIGATION_FAILURES));
-
-					if (m_NavigationFailures >= MAX_NAVIGATION_FAILURES)
-					{
-						LogError(Channel::Scraping, "SpiderEngine: Max navigation failures exceeded - crawl failed");
-						m_State = State::Failed;
-						return std::nullopt;
-					}
-
-					// For multi-instance pages, mark the current edge as visited so we skip it
+					// Navigation failed.
 					if (m_CurrentMultiEdge.has_value())
 					{
+						// A failed multi-instance edge is a BENIGN, EXPECTED outcome:
+						// it means that particular instance does not exist on this
+						// controller (e.g. an "Aux B1" row when no power center B is
+						// installed - the Navigator scrolled the list and never found
+						// it). This must NOT count toward the crawl-wide failure budget,
+						// otherwise a controller with only power center A would abort the
+						// whole crawl after the first few absent B/C/D auxes. Mark just
+						// this edge visited and move on to the next aux.
 						auto edge = m_CurrentMultiEdge.value();
+						LogDebug(Channel::Scraping, std::format("SpiderEngine: Multi-instance edge (source={}, line={} '{}') not reachable - skipping (instance absent on this controller)",
+							static_cast<uint32_t>(edge->source), edge->trigger_line, edge->label));
 						m_VisitedMultiEdges[m_CurrentTarget].insert({ edge->source, edge->trigger_line });
 						m_CurrentMultiEdge = std::nullopt;
+
+						// If this was the last incoming edge for the page, the page is
+						// now fully visited even though this final instance was skipped.
+						// (The success path marks the page visited in CapturingPage; the
+						// skip path must do the same so the page isn't left perpetually
+						// "unvisited" when its last instance is absent.)
+						if (!HasUnvisitedMultiEdges(m_CurrentTarget))
+						{
+							m_Visited.insert(m_CurrentTarget);
+							LogInfo(Channel::Scraping, std::format("SpiderEngine: All instances of multi-instance page {} processed (last one absent)",
+								static_cast<uint32_t>(m_CurrentTarget)));
+						}
 					}
 					else
 					{
+						m_NavigationFailures++;
+						LogWarning(Channel::Scraping, std::format("SpiderEngine: Navigation to page {} failed ({}/{})",
+							static_cast<uint32_t>(m_CurrentTarget), m_NavigationFailures, MAX_NAVIGATION_FAILURES));
+
+						if (m_NavigationFailures >= MAX_NAVIGATION_FAILURES)
+						{
+							LogError(Channel::Scraping, "SpiderEngine: Max navigation failures exceeded - crawl failed");
+							m_State = State::Failed;
+							return std::nullopt;
+						}
+
 						// Skip this page and try the next target
 						m_Visited.insert(m_CurrentTarget);  // Mark as visited to skip it
 					}

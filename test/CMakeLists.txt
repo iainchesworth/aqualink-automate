@@ -96,6 +96,7 @@ target_sources(
 	unit/navigation/test_navigation_navigator_edgecases.cpp
 	unit/navigation/test_navigation_visit_policies.cpp
 	unit/navigation/test_spider_engine.cpp
+	unit/navigation/test_navigation_aux_scrolling_discovery.cpp
 	unit/messages/test_chemlink_message_response.cpp
 	unit/devices/test_devices_aquarite.cpp
 	unit/devices/test_devices_capabilities_restartable.cpp

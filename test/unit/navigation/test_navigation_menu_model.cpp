@@ -259,15 +259,43 @@ BOOST_AUTO_TEST_CASE(TestLabelAuxListPageSelectEdgeLineNumbers)
 	BOOST_REQUIRE(aux_list_page != nullptr);
 
 	auto select_edges = GetSelectEdges(aux_list_page);
-	BOOST_REQUIRE_GE(select_edges.size(), 7);  // AUX 1-7 (B/C/D require dynamic scrolling - future enhancement)
 
-	// AUX items should start at line 2 (line 0 = title, line 1 = blank)
-	// Labels are empty because the screen shows user-configured custom labels,
-	// not device IDs. Navigation uses trigger_line position.
+	// Power center A aux outputs (Aux1-Aux7) plus the B/C/D power centers
+	// (Aux B1-D8, 24 outputs) discovered by dynamic scrolling = 31 edges.
+	BOOST_REQUIRE_EQUAL(select_edges.size(), 31);
+
+	// Power center A items start at line 2 (line 0 = title, line 1 = blank) and
+	// carry their default row labels so FindLineByLabel can resolve them.
+	const char* primary_labels[] = { "Aux1", "Aux2", "Aux3", "Aux4", "Aux5", "Aux6", "Aux7" };
 	for (size_t i = 0; i < 7; ++i)
 	{
-		BOOST_CHECK_EQUAL(select_edges[i]->label, "");
+		BOOST_CHECK_EQUAL(select_edges[i]->label, primary_labels[i]);
 		BOOST_CHECK_EQUAL(select_edges[i]->trigger_line, static_cast<uint8_t>(i + 2));
+	}
+
+	// Power center B/C/D items carry their default "Aux <X><n>" labels (used for
+	// content-based discovery while scrolling) and UNIQUE synthetic trigger_line
+	// hints (the multi-instance visited key is {source, trigger_line}).
+	const char* scrolled_labels[] = {
+		"Aux B1", "Aux B2", "Aux B3", "Aux B4", "Aux B5", "Aux B6", "Aux B7", "Aux B8",
+		"Aux C1", "Aux C2", "Aux C3", "Aux C4", "Aux C5", "Aux C6", "Aux C7", "Aux C8",
+		"Aux D1", "Aux D2", "Aux D3", "Aux D4", "Aux D5", "Aux D6", "Aux D7", "Aux D8"
+	};
+	for (size_t i = 0; i < 24; ++i)
+	{
+		BOOST_CHECK_EQUAL(select_edges[7 + i]->label, scrolled_labels[i]);
+		// Synthetic monotonic hints start at 9 (just past the 8th visible line).
+		BOOST_CHECK_EQUAL(select_edges[7 + i]->trigger_line, static_cast<uint8_t>(9 + i));
+	}
+
+	// Every trigger_line must be unique (the multi-instance visited key relies on
+	// {source, trigger_line} to distinguish one aux edge from another).
+	std::set<uint8_t> seen_lines;
+	for (const auto* edge : select_edges)
+	{
+		BOOST_CHECK_MESSAGE(seen_lines.insert(edge->trigger_line).second,
+			"Duplicate trigger_line " << static_cast<uint32_t>(edge->trigger_line)
+			<< " on LabelAuxList Select edge");
 	}
 
 	// All AUX Select edges should target LabelAux page
