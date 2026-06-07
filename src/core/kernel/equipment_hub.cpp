@@ -29,7 +29,7 @@ namespace AqualinkAutomate::Kernel
 		{
 			LogDebug(Channel::Devices, std::format("Failed to register equipment with equipment hub; equipment id already registered"));
 		}
-		else if (auto [_, was_inserted] = m_ActiveEquipment.emplace(std::move(typeid(decltype(equipment_to_add)::element_type)), std::move(equipment_to_add)); !was_inserted)
+		else if (auto [_, was_inserted] = m_ActiveEquipment.emplace(typeid(decltype(equipment_to_add)::element_type), std::move(equipment_to_add)); !was_inserted)
 		{
 			LogDebug(Channel::Devices, "Failed to add equipment to equipment hub; internal error while adding equipment object");
 		}

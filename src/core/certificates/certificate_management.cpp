@@ -61,9 +61,6 @@ namespace AqualinkAutomate::Certificates
                     LogWarning(Channel::Certificates, std::format("Certificates::LoadCertificates Failure: Cannot Load CA Chain Certificate File - Error: {}", ec.message()));
                     throw Exceptions::Certificate_InvalidFormat();
                 }
-                else
-                {
-                }
 
                 LogDebug(Channel::Certificates, "Certificates::LoadCertificates - webserver certificates loaded successfully");
             }

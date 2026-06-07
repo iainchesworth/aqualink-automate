@@ -11,9 +11,6 @@
 #include "interfaces/iserialportimpl.h"
 #include "profiling/profiling.h"
 
-using namespace AqualinkAutomate::Profiling;
-
-
 namespace AqualinkAutomate::Serial::PortTypes
 {
 

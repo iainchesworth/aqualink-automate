@@ -308,7 +308,7 @@ namespace AqualinkAutomate::Developer
 
 				default:
 					LogWarning(Channel::Serial, "Attempted to convert an invalid parity value; assuming none (0)");
-					return 0;;
+					return 0;
 				}
 			};
 
@@ -366,17 +366,17 @@ namespace AqualinkAutomate::Developer
 					{
 						uint8_t converted_value = 0;
 
-						auto [p, ec] = std::from_chars(line.data() + 2, line.data() + 4, converted_value, 16);
-						if (std::errc() == ec)
+						auto [p, conv_ec] = std::from_chars(line.data() + 2, line.data() + 4, converted_value, 16);
+						if (std::errc() == conv_ec)
 						{
 							output_buffer = converted_value;
 							return_value = ReadSuccessfully;
 						}
-						else if (ec == std::errc::result_out_of_range)
+						else if (conv_ec == std::errc::result_out_of_range)
 						{
 							LogTrace(Channel::Serial, std::format("Could not convert data read from file (out-of-range); sequence -> {}", line));
 						}
-						else if (ec == std::errc::invalid_argument)
+						else if (conv_ec == std::errc::invalid_argument)
 						{
 							LogTrace(Channel::Serial, std::format("Could not convert data read from file (invalid argument); sequence -> {}", line));
 						}

@@ -160,58 +160,58 @@ namespace AqualinkAutomate::Equipment
 			{
 			case Devices::DeviceClasses::IAQ:
 				LogInfo(Channel::Equipment, std::format("Adding new IAQ device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::IAQDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::OneTouchDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::PDA:
 				LogInfo(Channel::Equipment, std::format("Adding new PDA device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::PDADevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::RS_Keypad:
 				LogInfo(Channel::Equipment, std::format("Adding new RS Keypad device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::KeypadDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(std::move(device_id), m_HubLocator, false)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::LX_Heater:
 				LogInfo(Channel::Equipment, std::format("Adding new LX Heater device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::HeaterDevice>(std::move(device_id)));
 				break;
 
 			case Devices::DeviceClasses::JXi_Heater:
 				LogInfo(Channel::Equipment, std::format("Adding new JXi Heater device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::HeaterDevice>(std::move(device_id)));
 				break;
 
 			case Devices::DeviceClasses::HeatPump:
 				LogInfo(Channel::Equipment, std::format("Adding new Heat Pump device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::HeaterDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::HeaterDevice>(std::move(device_id)));
 				break;
 
 			case Devices::DeviceClasses::SWG_Aquarite:
 				LogInfo(Channel::Equipment, std::format("Adding new SWG device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::AquariteDevice>(std::move(device_id), m_HubLocator)));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::AquariteDevice>(std::move(device_id), m_HubLocator));
 				break;
 
 			case Devices::DeviceClasses::Jandy_ePump:
 			case Devices::DeviceClasses::Jandy_ePump_Ext:
 				LogInfo(Channel::Equipment, std::format("Adding new ePump device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::EPumpDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::EPumpDevice>(std::move(device_id)));
 				break;
 
 			case Devices::DeviceClasses::Chemlink:
 				LogInfo(Channel::Equipment, std::format("Adding new Chemlink device with id: {}", message.Destination().Id()));
-				m_EquipmentHub->AddDevice(std::move(std::make_unique<Devices::ChemlinkDevice>(std::move(device_id))));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::ChemlinkDevice>(std::move(device_id)));
 				break;
 
 			default:

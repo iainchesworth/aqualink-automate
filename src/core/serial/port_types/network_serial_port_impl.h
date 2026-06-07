@@ -17,9 +17,6 @@
 #include "profiling/profiling.h"
 #include "serial/rfc2217/rfc2217_types.h"
 
-using namespace AqualinkAutomate::Logging;
-using namespace AqualinkAutomate::Profiling;
-
 namespace AqualinkAutomate::Serial::PortTypes
 {
 

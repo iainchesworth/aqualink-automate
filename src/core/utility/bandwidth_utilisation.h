@@ -169,7 +169,7 @@ namespace AqualinkAutomate::Utility
 				return utilization;
 			}
 
-			return 0.0f;
+			return 0.0;
 		}
 
 	public:

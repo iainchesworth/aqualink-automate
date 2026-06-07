@@ -17,8 +17,8 @@ namespace AqualinkAutomate::Devices
 
 	SerialAdapterDevice::SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
-		Capabilities::Emulated(is_emulated),
 		Capabilities::Restartable(SERIALADAPTER_TIMEOUT_DURATION),
+		Capabilities::Emulated(is_emulated),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
 		m_StatusMessageReceived(false),

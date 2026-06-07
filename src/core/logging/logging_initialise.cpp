@@ -34,7 +34,7 @@ void Initialise()
 	sink->locked_backend()->add_stream(stream);
 
 	boost::log::add_common_attributes();
-	boost::log::core::get()->add_global_attribute("Scope", boost::log::attributes::named_scope());;
+	boost::log::core::get()->add_global_attribute("Scope", boost::log::attributes::named_scope());
 }
 
 }

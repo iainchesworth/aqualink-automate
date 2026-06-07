@@ -43,7 +43,7 @@ namespace AqualinkAutomate::Interfaces
         virtual ~IWebSocket() = default;
 
 	public:
-        const std::string_view Route() const
+        virtual const std::string_view Route() const final
         {
             return ROUTE_URL;
         }

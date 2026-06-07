@@ -27,7 +27,7 @@ namespace AqualinkAutomate::Devices
 	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
-		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
+		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0 };
 
 	public:
 		struct PendingCommand

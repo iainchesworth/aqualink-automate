@@ -25,12 +25,6 @@ namespace AqualinkAutomate::Factory
 
 	void ProfilingUnitFactory::SetDesired(Types::ProfilerTypes type)
 	{
-		// Self-registration schemes suck...there's no cross-platform way to make it work so:
-		if (!m_DesiredProfiler.has_value())
-		{
-			// Only register the available 
-		}
-
 		m_DesiredProfiler = type;
 	}
 

@@ -78,7 +78,7 @@ namespace AqualinkAutomate::Utility
 		}
 		else
 		{
-			return JANDY_EQUIPMENT_CONFIGURATIONS.at(panel_type);
+			return it->second;
 		}
 
 		return JANDY_EQUIPMENT_CONFIGURATIONS.at(UNKNOWN_POOL_CONFIG_KEY);

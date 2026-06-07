@@ -72,23 +72,23 @@ namespace AqualinkAutomate::Jandy
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:

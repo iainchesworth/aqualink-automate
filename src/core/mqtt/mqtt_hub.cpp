@@ -622,7 +622,7 @@ namespace AqualinkAutomate::Mqtt
 
 		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
-			for (const auto& [msg_id, counter] : statistics_hub->MessageCounts)
+			for ([[maybe_unused]] const auto& [msg_id, counter] : statistics_hub->MessageCounts)
 			{
 				messages.push_back({
 					{"count", counter.Count()}

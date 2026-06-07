@@ -41,9 +41,9 @@ namespace AqualinkAutomate::Messages
 
 	public:
 		const Devices::JandyDeviceType Destination() const;
-		const uint8_t RawId() const;
-		const uint8_t MessageLength() const;
-		const uint8_t ChecksumValue() const;
+		uint8_t RawId() const;
+		uint8_t MessageLength() const;
+		uint8_t ChecksumValue() const;
 
 	public:
 		uint8_t MaxPermittedPacketLength() const override;

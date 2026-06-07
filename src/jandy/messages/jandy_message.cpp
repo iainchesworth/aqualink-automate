@@ -33,17 +33,17 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 		return m_Destination;
 	}
 
-	const uint8_t JandyMessage::RawId() const
+	uint8_t JandyMessage::RawId() const
 	{
 		return m_RawId;
 	}
 
-	const uint8_t JandyMessage::MessageLength() const
+	uint8_t JandyMessage::MessageLength() const
 	{
 		return m_MessageLength;
 	}
 
-	const uint8_t JandyMessage::ChecksumValue() const
+	uint8_t JandyMessage::ChecksumValue() const
 	{
 		return m_ChecksumValue;
 	}

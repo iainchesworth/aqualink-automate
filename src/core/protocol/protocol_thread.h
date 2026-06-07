@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Protocol
 		/// Advance the protocol task.  Returns true if work was performed
 		/// (messages parsed or writes pending), signalling the caller that
 		/// sleeping can be skipped for tighter response latency.
-		bool Poll();
+		[[nodiscard]] bool Poll();
 
 		void EnqueueWrite(std::vector<uint8_t> buffer);
 
