@@ -14,6 +14,8 @@ target_sources(
 	certificates/certificate_management.cpp 
 	concepts/is_c_array.cpp
 	concepts/is_option_processor.cpp
+	devices/capabilities/restartable.cpp
+	utility/slot_connection_manager.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp

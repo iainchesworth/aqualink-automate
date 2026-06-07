@@ -6,6 +6,12 @@
 namespace AqualinkAutomate::Devices::Capabilities
 {
 
+	// Protocol-agnostic watchdog capability.  A device that mixes in Restartable
+	// is "alive" only while it keeps Kick()-ing the watchdog within the timeout
+	// window; once the deadline elapses without a Kick(), WatchdogTimeoutOccurred()
+	// fires.  Used by both Jandy and Pentair device handlers (and any future
+	// protocol), so it lives in the shared core library rather than in a
+	// protocol-specific one.
 	class Restartable
 	{
 		static const std::chrono::seconds DEFAULT_WATCHDOG_TIMEOUT;

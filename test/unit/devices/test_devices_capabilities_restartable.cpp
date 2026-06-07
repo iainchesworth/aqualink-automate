@@ -2,7 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/devices/capabilities/restartable.h"
+#include "devices/capabilities/restartable.h"
 
 using namespace AqualinkAutomate::Devices::Capabilities;
 

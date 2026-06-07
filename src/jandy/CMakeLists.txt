@@ -28,7 +28,6 @@ target_sources(
 	devices/jandy_device_types.cpp
 	devices/jandy_emulated_device_types.cpp 
 	devices/capabilities/emulated.cpp
-	devices/capabilities/restartable.cpp
 	devices/capabilities/scrapeable.cpp
 	devices/capabilities/screen.cpp 
 	devices/keypad_device.cpp 
@@ -136,8 +135,8 @@ target_sources(
 	utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
 	utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
 	utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
-	utility/slot_connection_manager.cpp
-	utility/string_manipulation.cpp 
+	utility/jandy_slot_connection_manager.cpp
+	utility/string_manipulation.cpp
 	utility/string_conversion/auxillary_state_string_converter.cpp 
 	utility/string_conversion/chemistry_string_converter.cpp 
 	utility/string_conversion/temperature_string_converter.cpp 

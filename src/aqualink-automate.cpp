@@ -62,8 +62,10 @@
 #include "serial/serial_initialise.h"
 #include "serial/serial_port.h"
 
+// Shared device capabilities
+#include "devices/capabilities/restartable.h"
+
 // Jandy protocol
-#include "jandy/devices/capabilities/restartable.h"
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/jandy.h"
