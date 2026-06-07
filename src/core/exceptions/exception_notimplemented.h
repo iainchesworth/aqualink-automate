@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		NotImplemented();
-		NotImplemented(const std::string& message);
 	};
 
 }

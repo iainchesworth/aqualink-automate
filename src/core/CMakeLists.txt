@@ -17,7 +17,6 @@ target_sources(
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
 	developer/async_operation_tracker.cpp
 	developer/coroutine_lifetime_tracker.cpp
-	developer/debug_tools.cpp
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp
 	developer/signal_connection_tracker.cpp

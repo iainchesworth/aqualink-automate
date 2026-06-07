@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		SignallingStatsCounter_BadAccess();
-		SignallingStatsCounter_BadAccess(const std::string& message);
 	};
 
 }

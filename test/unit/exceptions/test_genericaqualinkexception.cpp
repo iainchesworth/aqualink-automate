@@ -3,6 +3,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "exceptions/exception_developer_optionkeyhasnovalue.h"
+#include "exceptions/exception_developer_optionkeyinvalidtype.h"
 #include "exceptions/exception_genericaqualinkexception.h"
 #include "exceptions/exception_hubnotfound.h"
 
@@ -100,6 +102,34 @@ BOOST_AUTO_TEST_CASE(Test_Exceptions_DerivedTypeCatchableViaStdException)
 	}
 
 	BOOST_CHECK(caught_as_std_exception);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_DeveloperOptionKeyHasNoValue_PreservesMessage)
+{
+	using AqualinkAutomate::Exceptions::Developer_OptionKeyHasNoValue;
+
+	// Regression: the (const std::string&) constructor previously dropped its argument and
+	// forwarded the hardcoded DEVELOPER_OPTIONS_KEY_HAS_NO_VALUE_MESSAGE placeholder to the
+	// base class, so the formatted detail built at the call site (options_option_type.h) was lost.
+	const std::string exception_message{ "Option pool-temp is present but has no value (empty)." };
+	Developer_OptionKeyHasNoValue ex(exception_message);
+
+	BOOST_CHECK_EQUAL(exception_message, ex.What());
+	BOOST_CHECK_EQUAL(exception_message, std::string(ex.what()));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Exceptions_DeveloperOptionKeyInvalidType_PreservesMessage)
+{
+	using AqualinkAutomate::Exceptions::Developer_OptionKeyInvalidType;
+
+	// Regression: the (const std::string&) constructor previously dropped its argument and
+	// forwarded the hardcoded DEVELOPER_OPTIONS_KEY_INVALID_TYPE_MESSAGE placeholder to the
+	// base class, so the formatted detail built at the call site (options_option_type.h) was lost.
+	const std::string exception_message{ "Type mismatch for option pool-temp; requested type: int" };
+	Developer_OptionKeyInvalidType ex(exception_message);
+
+	BOOST_CHECK_EQUAL(exception_message, ex.What());
+	BOOST_CHECK_EQUAL(exception_message, std::string(ex.what()));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

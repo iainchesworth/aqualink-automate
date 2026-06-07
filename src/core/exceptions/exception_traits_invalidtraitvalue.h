@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Traits_InvalidTraitValue();
-		Traits_InvalidTraitValue(const std::string& message);
 	};
 
 }

@@ -13,7 +13,6 @@ namespace AqualinkAutomate::Exceptions
 
 	public:
 		Certificate_NotFound();
-		Certificate_NotFound(const std::string& message);
 	};
 
 }

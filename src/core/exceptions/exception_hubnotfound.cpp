@@ -14,11 +14,5 @@ namespace AqualinkAutomate::Exceptions
 		LogTrace(Channel::Exceptions, "Hub_NotFound exception was constructed");
 	}
 
-	Hub_NotFound::Hub_NotFound(const std::string& message) :
-		GenericAqualinkException(message)
-	{
-		LogTrace(Channel::Exceptions, "Hub_NotFound exception was constructed");
-	}
-
 }
 // namespace AqualinkAutomate::Exceptions
