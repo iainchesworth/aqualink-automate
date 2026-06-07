@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "jandy/utility/jandy_checksum.h"
+
 namespace AqualinkAutomate::Test
 {
 
@@ -67,11 +69,43 @@ namespace AqualinkAutomate::Test
 			return data;
 		}
 
+		// Build a fully-framed Jandy RS-485 packet WITH a valid checksum byte.
+		//
+		// Wire layout: [DLE=0x10][STX=0x02][dest][cmd][payload...][checksum][DLE=0x10][ETX=0x03]
+		//
+		// The checksum is the low byte of the sum over every byte from the leading
+		// DLE up to (and including) the last payload byte — i.e. everything that
+		// precedes the checksum byte itself.  This mirrors exactly what the Jandy
+		// message generator validates in PacketValidation_ChecksumIsValid, so a
+		// frame produced here passes the real decode pipeline unmodified.
+		static std::vector<uint8_t> CreateValidChecksummedMessage(uint8_t destination, uint8_t command, const std::vector<uint8_t>& payload)
+		{
+			std::vector<uint8_t> message;
+			message.push_back(0x10); // Header DLE
+			message.push_back(0x02); // Header STX
+			message.push_back(destination);
+			message.push_back(command);
+
+			for (auto byte : payload)
+			{
+				message.push_back(byte);
+			}
+
+			// Checksum covers [DLE .. last payload byte] (the whole frame so far).
+			const uint8_t checksum = Utility::JandyPacket_CalculateChecksum_FromRange(message);
+			message.push_back(checksum);
+
+			message.push_back(0x10); // Footer DLE
+			message.push_back(0x03); // Footer ETX
+
+			return message;
+		}
+
+		// Retained for backwards compatibility; now produces a genuinely
+		// checksummed frame rather than the previous unchecksummed placeholder.
 		static std::vector<uint8_t> CreateMessageWithChecksum(uint8_t destination, uint8_t command, const std::vector<uint8_t>& payload)
 		{
-			// For now, same as CreateValidMessage
-			// Add checksum calculation if your protocol requires it
-			return CreateValidMessage(destination, command, payload);
+			return CreateValidChecksummedMessage(destination, command, payload);
 		}
 	};
 

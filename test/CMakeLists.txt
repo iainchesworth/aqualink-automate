@@ -67,12 +67,14 @@ target_sources(
 	unit/mqtt/test_mqtt_hub.cpp
 	unit/mqtt/test_mqtt_integration.cpp
 	unit/mqtt/test_mqtt_options.cpp
-	unit/protocol/test_protocol_handler.cpp 
-	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
+	unit/protocol/test_protocol_handler.cpp
+	unit/protocol/test_mock_replay_validation.cpp
+	unit/statuses/test_statusupdate_equipmentanddevices.cpp
 	unit/support/unit_test_circularbuffermaker.cpp
 	unit/support/unit_test_httprequestresponse.cpp
-	unit/support/unit_test_hublocatorinjector.cpp 
-	unit/support/unit_test_onetouchdevice.cpp 	 
+	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_mockreplayharness.cpp
+	unit/support/unit_test_onetouchdevice.cpp
 	unit/support/unit_test_ostream_support.cpp 	
 	unit/support/unit_test_protocolmessagebuilder.cpp
 	unit/support/unit_test_wsrequestresponse.cpp
