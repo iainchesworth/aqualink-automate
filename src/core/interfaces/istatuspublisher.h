@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <memory>
+#include <type_traits>
 
 #include <boost/signals2.hpp>
 
@@ -51,33 +52,43 @@ namespace AqualinkAutomate::Interfaces
 	// STATUS COMPARE FUNCTIONS
 	//---------------------------------------------------------------------
 
-	// To support status publishing, there needs to be a mechanism to compare statuses
+	// To support status publishing, there needs to be a mechanism to compare statuses.
+	//
+	// Two concrete IStatus types are considered "the same status" iff they are the
+	// same C++ type.  This is a compile-time, type-only relation: it inspects no
+	// runtime field, so it is exposed as a named constexpr predicate rather than as
+	// an operator==.  Modelling it as operator== was misleading — it silently applied
+	// to any pair of IStatus subtypes and returned a value-blind result that read like
+	// a value comparison.
 
 	template<typename THIS_STATUS, typename THAT_STATUS>
-		requires std::derived_from<THIS_STATUS, Interfaces::IStatus>&& std::derived_from<THAT_STATUS, Interfaces::IStatus>
-	bool operator==(const THIS_STATUS&, const THAT_STATUS&)
+		requires std::derived_from<THIS_STATUS, Interfaces::IStatus> && std::derived_from<THAT_STATUS, Interfaces::IStatus>
+	[[nodiscard]] constexpr bool IsSameStatusType() noexcept
 	{
 		return std::same_as<std::remove_cvref_t<THIS_STATUS>, std::remove_cvref_t<THAT_STATUS>>;
 	}
 
-	template<typename THIS_STATUS, typename THAT_STATUS>
-		requires std::derived_from<THIS_STATUS, Interfaces::IStatus>&& std::derived_from<THAT_STATUS, Interfaces::IStatus>
-	bool operator!=(const THIS_STATUS& this_status, const THAT_STATUS& that_status)
-	{
-		return !(operator==(this_status, that_status));
-	}
-
-	// Enable comparisons of the std::weak_ptr type with a status type.
+	// Enable real (category) comparisons of a concrete status type against the
+	// published std::weak_ptr status.  This is genuine runtime equality — it locks
+	// the weak_ptr and checks whether the live published status is-a THIS_STATUS —
+	// so it remains an operator==.
 
 	template<typename THIS_STATUS>
 		requires std::derived_from<THIS_STATUS, Interfaces::IStatus>
-	bool operator==(const THIS_STATUS&, IStatusPublisher::StatusType that_status)
+	[[nodiscard]] bool operator==(const THIS_STATUS&, IStatusPublisher::StatusType that_status)
 	{
 		if (auto locked = that_status.lock())
 		{
 			return dynamic_cast<const THIS_STATUS*>(locked.get()) != nullptr;
 		}
 		return false;
+	}
+
+	template<typename THIS_STATUS>
+		requires std::derived_from<THIS_STATUS, Interfaces::IStatus>
+	[[nodiscard]] bool operator!=(const THIS_STATUS& this_status, IStatusPublisher::StatusType that_status)
+	{
+		return !(this_status == that_status);
 	}
 
 }
