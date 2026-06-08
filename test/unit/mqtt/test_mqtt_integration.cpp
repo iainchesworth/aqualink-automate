@@ -306,11 +306,36 @@ BOOST_AUTO_TEST_CASE(Test_DefaultCommands_RegisteredWhenEnabled)
 	auto hub = integration.GetMqttHub();
 	BOOST_REQUIRE(hub != nullptr);
 
-	// Should have "status", "device", and "refresh" default commands
+	// Should have "status" and "refresh" default commands before hubs are connected.
 	BOOST_CHECK(hub->HasCommand("status"));
-	BOOST_CHECK(hub->HasCommand("device"));
 	BOOST_CHECK(hub->HasCommand("refresh"));
-	BOOST_CHECK_GE(hub->CommandCount(), 3u);
+	BOOST_CHECK_GE(hub->CommandCount(), 2u);
+
+	// The "device" command is NOT registered until the command dispatcher is available
+	// (it used to be registered here as a dead placeholder that only echoed "acknowledged").
+	BOOST_CHECK(!hub->HasCommand("device"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeviceCommand_RegisteredAfterHubsConnected)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeEnabledSettings();
+	Mqtt::MqttIntegration integration(ioc, settings);
+
+	auto hub = integration.GetMqttHub();
+	BOOST_REQUIRE(hub != nullptr);
+
+	// Before connecting hubs, the "device" command handler should not exist.
+	BOOST_CHECK(!hub->HasCommand("device"));
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto equip_hub = std::make_shared<Kernel::EquipmentHub>();
+	auto stats_hub = std::make_shared<Kernel::StatisticsHub>();
+	integration.ConnectHubs(data_hub, equip_hub, stats_hub);
+
+	// After connecting hubs, the real "device" and "setpoint" handlers are registered.
+	BOOST_CHECK(hub->HasCommand("device"));
+	BOOST_CHECK(hub->HasCommand("setpoint"));
 }
 
 BOOST_AUTO_TEST_CASE(Test_DefaultCommands_NotRegisteredWhenDisabled)
