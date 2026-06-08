@@ -2,6 +2,7 @@
 
 #include "messages/iaq/iaq_message_device_id.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -33,7 +34,7 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_DeviceId::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_DeviceId type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_DeviceId type", message_bytes.size()); });
 
 		m_DeviceId.clear();
 
@@ -49,12 +50,14 @@ namespace AqualinkAutomate::Messages
 		const std::size_t payload_end = message_bytes.size() - PACKET_FOOTER_LENGTH;
 		for (std::size_t i = Index_DataStart; i < payload_end; ++i)
 		{
-			const uint8_t byte = message_bytes[i];
+			const uint8_t byte = Text::ReadU8(message_bytes, i);
 			if (byte == 0x00)
 			{
 				break;  // NUL terminator
 			}
-			m_DeviceId.push_back(static_cast<char>(byte));
+			// Sanitise wire-sourced id text to printable ASCII before it is surfaced
+			// to logs / UI (the bytes are otherwise an arbitrary device-controlled string).
+			m_DeviceId.push_back(Text::SanitisePrintableAsciiByte(byte));
 		}
 
 		return true;

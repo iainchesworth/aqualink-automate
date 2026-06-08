@@ -1,7 +1,9 @@
 #include <format>
+#include <span>
 
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -52,16 +54,18 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_AuxStatus::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_AuxStatus type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_AuxStatus type", message_bytes.size()); });
 
-		if (message_bytes.size() <= 4 + 3)
+		if (message_bytes.size() <= JandyMessage::PACKET_HEADER_LENGTH + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_AuxStatus is too short to contain any payload.");
 			return false;
 		}
 
-		// Extract raw payload (between 4-byte header and 3-byte footer) for backward compatibility.
-		m_RawPayload.assign(message_bytes.begin() + 4, message_bytes.end() - 3);
+		// Extract raw payload (between the header and the footer) for backward compatibility.
+		m_RawPayload.assign(
+			message_bytes.begin() + JandyMessage::PACKET_HEADER_LENGTH,
+			message_bytes.end() - JandyMessage::PACKET_FOOTER_LENGTH);
 
 		const auto& payload = m_RawPayload;
 		const size_t payload_size = payload.size();
@@ -95,7 +99,7 @@ namespace AqualinkAutomate::Messages
 			// Need at least 5 bytes: status(1) + type(1) + pad(2) + name_len(1)
 			if (pos + 5 > payload_size)
 			{
-				LogDebug(Channel::Messages, std::format("IAQMessage_AuxStatus payload too short for device {} header.", i));
+				LogDebug(Channel::Messages, [i]() { return std::format("IAQMessage_AuxStatus payload too short for device {} header.", i); });
 				return false;
 			}
 
@@ -115,17 +119,19 @@ namespace AqualinkAutomate::Messages
 
 			if (pos + name_len > payload_size)
 			{
-				LogDebug(Channel::Messages, std::format("IAQMessage_AuxStatus payload too short for device {} name (need {} bytes).", i, name_len));
+				LogDebug(Channel::Messages, [i, name_len]() { return std::format("IAQMessage_AuxStatus payload too short for device {} name (need {} bytes).", i, name_len); });
 				return false;
 			}
 
-			info.name.assign(payload.begin() + static_cast<ptrdiff_t>(pos), payload.begin() + static_cast<ptrdiff_t>(pos + name_len));
+			// Sanitise wire-sourced aux device name to printable ASCII before it is
+			// copied into the label/UI (control / escape bytes would otherwise pass through).
+			Text::AppendSanitisedAscii(info.name, std::span<const uint8_t>(payload).subspan(pos, name_len));
 			pos += name_len;
 
 			m_Devices.push_back(std::move(info));
 		}
 
-		LogDebug(Channel::Messages, std::format("Deserialised IAQMessage_AuxStatus: {} devices", m_Devices.size()));
+		LogDebug(Channel::Messages, [this]() { return std::format("Deserialised IAQMessage_AuxStatus: {} devices", m_Devices.size()); });
 
 		return true;
 	}

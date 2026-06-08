@@ -3,9 +3,10 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "messages/aquarite/aquarite_message_ppm.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate::Logging; 
+using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Messages
 {
@@ -44,25 +45,30 @@ namespace AqualinkAutomate::Messages
 
 	bool AquariteMessage_PPM::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into AquariteMessage_PPM type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_PPM)
+		if (!Text::RequireIndex(message_bytes, Index_PPM, "AquariteMessage_PPM", "PPM"))
 		{
-			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise PPM.");
-		}
-		else if (message_bytes.size() <= Index_Status)
-		{
-			LogDebug(Channel::Messages, "AquariteMessage_PPM is too short to deserialise Status.");
-		}
-		else
-		{
-			m_PPM = static_cast<uint16_t>(message_bytes[Index_PPM]) * 100;
-			m_Status = magic_enum::enum_cast<AquariteStatuses>(static_cast<uint8_t>(message_bytes[Index_Status])).value_or(AquariteStatuses::Unknown);
-
-			return true;
+			return false;
 		}
 
-		return false;
+		if (!Text::RequireIndex(message_bytes, Index_Status, "AquariteMessage_PPM", "Status"))
+		{
+			return false;
+		}
+
+		m_PPM = static_cast<uint16_t>(Text::ReadU8(message_bytes, Index_PPM) * 100);
+
+		// NOTE: AquariteStatuses is partly a bit-flag set (Warning_NoFlow=0x01,
+		// Warning_LowSalt=0x02, Warning_HighSalt=0x04, ...), so a received byte can
+		// carry several flags ORed together (e.g. 0x06 = LowSalt|HighSalt).  A single
+		// enum_cast cannot represent such a combination and falls back to Unknown.
+		// The bit-by-bit warning interpretation belongs to the consuming device
+		// (AquariteDevice), which has the kernel health model to express it; here we
+		// keep the single best-effort enumerator for the existing status API.
+		m_Status = magic_enum::enum_cast<AquariteStatuses>(Text::ReadU8(message_bytes, Index_Status)).value_or(AquariteStatuses::Unknown);
+
+		return true;
 	}
 
 }
