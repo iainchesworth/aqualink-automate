@@ -30,22 +30,25 @@ namespace AqualinkAutomate::Factory
 
 	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateDomain(std::string_view name, const std::source_location& src_loc, Profiling::UnitColours colour)
 	{
-		auto& generators = Get();
-		auto domain_generator = std::get<0>(generators);
+		const auto& generators = Get();
+		const auto& domain_generator = std::get<0>(generators);
 		return domain_generator(name, src_loc, colour);
 	}
 
 	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateFrame(std::string_view name, const std::source_location& src_loc, Profiling::UnitColours colour)
 	{
-		auto& generators = Get();
-		auto frame_generator = std::get<1>(generators);
+		const auto& generators = Get();
+		const auto& frame_generator = std::get<1>(generators);
 		return frame_generator(name, src_loc, colour);
 	}
 
 	Types::ProfilingUnitTypePtr ProfilingUnitFactory::CreateZone(std::string_view name, const std::source_location& src_loc, Profiling::UnitColours colour)
 	{
-		auto& generators = Get();
-		auto zone_generator = std::get<2>(generators);
+		// CreateZone runs on the per-message hot path. Bind the generator by const reference
+		// to avoid copying the std::function (which can heap-allocate / touch a refcount) on
+		// every zone creation.
+		const auto& generators = Get();
+		const auto& zone_generator = std::get<2>(generators);
 		return zone_generator(name, src_loc, colour);
 	}
 

@@ -147,6 +147,7 @@ target_sources(
 	unit/utility/test_utility_auxillary_state_converter.cpp
 	unit/http/test_http_server_fields.cpp
 	unit/profiling/test_profiling_noop.cpp
+	unit/profiling/test_profiling_factories.cpp
 	unit/options/test_options_settings.cpp
 	unit/serial/test_mock_serial_port_impl.cpp
 	unit/serial/test_mock_serial_replay_format.cpp

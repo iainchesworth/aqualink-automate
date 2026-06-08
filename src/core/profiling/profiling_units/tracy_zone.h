@@ -13,7 +13,7 @@
 namespace AqualinkAutomate::Profiling
 {
 
-	class TracyZone : public Profiling::Zone
+	class TracyZone final : public Profiling::Zone
 	{
 	public:
 		TracyZone(std::string_view name, const std::source_location& src_loc = std::source_location::current(), UnitColours colour = UnitColours::NotSpecified);
