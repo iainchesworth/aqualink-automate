@@ -9,6 +9,7 @@
 
 #include "errors/message_errors.h"
 #include "errors/protocol_errors.h"
+#include "messages/pentair_message.h"
 #include "messages/pentair_message_constants.h"
 #include "messages/pentair_message_ids.h"
 #include "types/pentair_types.h"
@@ -35,8 +36,7 @@ namespace AqualinkAutomate::Pentair::Factory
 		[[nodiscard]] static Types::PentairMessageTypePtr CreateMessageFromCommand(Messages::PentairMessageIds id) noexcept;
 
 	public:
-		template <std::ranges::random_access_range MESSAGE_BYTES_RANGE>
-			requires std::same_as<std::ranges::range_value_t<MESSAGE_BYTES_RANGE>, uint8_t>
+		template <Messages::PentairRawMessageRange MESSAGE_BYTES_RANGE>
 		[[nodiscard]] static Types::PentairExpectedMessageType CreateFromSerialData(const MESSAGE_BYTES_RANGE& message_bytes)
 		{
 			boost::system::error_code return_value;
@@ -55,7 +55,7 @@ namespace AqualinkAutomate::Pentair::Factory
 					magic_enum::enum_cast<Messages::PentairMessageIds>(raw_command)
 						.value_or(Messages::PentairMessageIds::Unknown));
 
-				LogTrace(Channel::Messages, std::format("Generating: Pentair message --> {} (0x{:02x})", magic_enum::enum_name(command_id), raw_command));
+				LogTrace(Channel::Messages, [&]() { return std::format("Generating: Pentair message --> {} (0x{:02x})", magic_enum::enum_name(command_id), raw_command); });
 
 				if (Types::PentairMessageTypePtr message = CreateMessageFromCommand(command_id); !message)
 				{
@@ -69,7 +69,7 @@ namespace AqualinkAutomate::Pentair::Factory
 				}
 				else
 				{
-					LogTrace(Channel::Messages, std::format("Pentair Message Contents -> {{{}}}", message->ToString()));
+					LogTrace(Channel::Messages, [&]() { return std::format("Pentair Message Contents -> {{{}}}", message->ToString()); });
 					return message;
 				}
 			}
