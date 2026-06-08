@@ -47,19 +47,23 @@ exactly as if they had arrived from a real device. `--replay-filename` requires
 A real bus delivers bytes at a fixed rate; a capture file does not, so by
 default the replayer paces itself to roughly the bus's natural inter-frame
 period instead of consuming the whole file as fast as the parser will accept it.
-Pacing is applied in the protocol read/parse loop (one serial chunk read per
-cycle, then a sleep) — never by blocking the serial read — so framing/sync is
-identical to a live port. As a side effect it also keeps the read aligned with
-the fixed-size circular buffer; an unpaced replay of a long capture slurps the
-whole file in one cycle and overruns the buffer, losing everything but the tail.
+
+The application already runs a fixed-period **frame loop** (it steps every
+subsystem once per frame). Replay reuses it: the loop steps at the configured
+processing period, and within each frame the protocol task reads just one serial
+chunk. Pacing is therefore the frame loop's job — the serial read is never
+blocked, so framing/sync is identical to a live port. The per-frame read bound
+also keeps the read aligned with the fixed-size circular buffer; an unpaced
+replay of a long capture slurps the whole file in one frame and overruns the
+buffer, losing everything but the tail.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--replay-frame-period <ms>` | `15` | Wall-clock period between read/parse cycles. `0` = unpaced (as fast as possible — the old behaviour). |
-| `--replay-speed <factor>` | `1.0` | Scales the period: `>1` faster, `<1` slower (e.g. `--replay-speed 10` ≈ 1.5 ms/cycle). |
+| `--replay-frame-period <ms>` | `15` | Wall-clock period per replay frame. `0` = unpaced (free-running, as fast as possible — the old behaviour). |
+| `--replay-speed <factor>` | `1.0` | Scales the period: `>1` faster, `<1` slower (e.g. `--replay-speed 10` ≈ 1.5 ms/frame). |
 
 ```sh
-# Default ≈15 ms/cycle pacing
+# Default ≈15 ms/frame pacing
 aqualink-automate --dev-mode --replay-filename session.cap
 
 # 10x faster (still paced; no buffer overflow)
@@ -70,7 +74,8 @@ aqualink-automate --dev-mode --replay-filename session.cap --replay-frame-period
 ```
 
 Pacing applies only to the `--replay-filename` path; real serial ports already
-self-pace, and the unit-test replay harness runs unpaced for speed.
+self-pace (the frame loop keeps its normal adaptive, low-latency step), and the
+unit-test replay harness runs unbounded for speed.
 
 ---
 

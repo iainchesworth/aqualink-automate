@@ -2,7 +2,6 @@
 #include <array>
 #include <chrono>
 #include <format>
-#include <thread>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/error.hpp>
@@ -24,11 +23,11 @@ namespace AqualinkAutomate::Protocol
 
 	ProtocolTask::ProtocolTask(std::shared_ptr<Serial::SerialPort> serial_port,
 							   std::shared_ptr<Kernel::StatisticsHub> statistics_hub,
-							   std::chrono::microseconds replay_frame_period)
+							   bool single_read_per_poll)
 		: m_SerialPort(std::move(serial_port))
 		, m_StatisticsHub(std::move(statistics_hub))
 		, m_SerialBuffer(Constants::SERIAL_CIRCULAR_BUFFER_SIZE)
-		, m_ReplayFramePeriod(replay_frame_period)
+		, m_SingleReadPerPoll(single_read_per_poll)
 	{
 	}
 
@@ -139,14 +138,14 @@ namespace AqualinkAutomate::Protocol
 			m_SerialBuffer.insert(m_SerialBuffer.end(),
 				m_ReadBuffer.begin(), m_ReadBuffer.begin() + static_cast<std::ptrdiff_t>(bytes_read));
 
-			// Paced capture replay: deliver only one chunk per Poll() cycle so the
-			// poll loop's inter-cycle sleep (see Poll()) spaces frame delivery at
-			// the bus rate.  Without this bound a replayed file is consumed in a
-			// single cycle — defeating pacing AND overflowing the circular buffer,
-			// since nothing is parsed/consumed between back-to-back reads.  A real
-			// serial port self-paces (read_some reports would_block once the OS
-			// buffer drains), so production replay_frame_period stays zero here.
-			if (m_ReplayFramePeriod > std::chrono::microseconds::zero())
+			// Capture-replay pacing: deliver only one chunk per Poll() so the
+			// application's frame loop (which steps at a fixed processing period)
+			// spaces frame delivery at the bus rate.  Without this bound a replayed
+			// file is consumed in a single frame — defeating pacing AND overflowing
+			// the circular buffer, since nothing is parsed/consumed between
+			// back-to-back reads.  A real serial port self-paces (read_some reports
+			// would_block once the OS buffer drains), so production leaves this off.
+			if (m_SingleReadPerPoll)
 			{
 				break;
 			}
@@ -167,13 +166,9 @@ namespace AqualinkAutomate::Protocol
 	bool ProtocolTask::Poll()
 	{
 		// Tight loop: read → process → write, so responses are sent in
-		// the same frame as the message that triggered them.
-
-		// Stamp the cycle start up front so paced capture replay can sleep the
-		// remainder of the fixed period AFTER the read+parse work below.  Pacing
-		// here — never inside read_some — keeps the async read / frame-sync intact
-		// (blocking the read breaks framing and decodes zero frames).
-		const auto cycle_start = std::chrono::steady_clock::now();
+		// the same frame as the message that triggered them.  Pacing (if any) is
+		// owned by the caller's frame loop — never inside read_some, which would
+		// break the async read / frame-sync and decode zero frames.
 
 		// 1. Drain any writes queued from the previous frame first.
 		DrainWrites();
@@ -213,16 +208,6 @@ namespace AqualinkAutomate::Protocol
 			profiler->PlotValue("Generator Failures", static_cast<int64_t>(m_StatisticsHub->MessageErrors.GeneratorFailures));
 			profiler->PlotValue("Overlapping Packets", static_cast<int64_t>(m_StatisticsHub->MessageErrors.OverlappingPackets));
 			profiler->PlotValue("Buffer Overflows", static_cast<int64_t>(m_StatisticsHub->MessageErrors.BufferOverflows));
-		}
-
-		// 4. Paced capture replay: sleep the remainder of the fixed period so this
-		// read+parse cycle, together with the single chunk read in DrainReads(),
-		// delivers frames at roughly the bus's natural inter-frame rate.  Anchored
-		// to cycle_start so processing time is absorbed into the period; if a cycle
-		// already overran the period, sleep_until returns immediately (no debt).
-		if (m_ReplayFramePeriod > std::chrono::microseconds::zero())
-		{
-			std::this_thread::sleep_until(cycle_start + m_ReplayFramePeriod);
 		}
 
 		return (messages_parsed > 0) || !m_WriteQueue.empty();

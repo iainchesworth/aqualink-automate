@@ -341,11 +341,13 @@ int main(int argc, char* argv[])
 		Jandy::Protocol::RegisterMessageGenerator();
 		Pentair::Protocol::RegisterMessageGenerator();
 
-		// Capture-replay pacing: when replaying a capture file in developer mode,
-		// pace the protocol read/parse loop to roughly the bus's natural inter-frame
-		// rate (replay_frame_period_ms, scaled by replay_speed) instead of consuming
-		// the file as fast as the parser will accept it.  Stays zero (unpaced) for
-		// real ports and when --replay-frame-period is 0.
+		// Capture-replay pacing: when replaying a capture file in developer mode the
+		// application's frame loop (below) steps at a fixed processing period
+		// (replay_frame_period_ms, scaled by replay_speed) and the protocol task
+		// reads one serial chunk per frame, so frames are delivered at roughly the
+		// bus's natural inter-frame rate instead of as fast as the parser will accept
+		// them.  Stays unpaced (free-running, as for real ports) when not replaying
+		// or when --replay-frame-period is 0.
 		std::chrono::microseconds replay_frame_period{ 0 };
 		if (auto developer_settings_result = settings.Get<Options::Developer::DeveloperSettings>(); developer_settings_result)
 		{
@@ -356,7 +358,7 @@ int main(int argc, char* argv[])
 				{
 					const double effective_us = (static_cast<double>(developer_settings.replay_frame_period_ms) * 1000.0) / developer_settings.replay_speed;
 					replay_frame_period = std::chrono::microseconds(static_cast<std::chrono::microseconds::rep>(effective_us));
-					LogInfo(Channel::Main, std::format("Capture replay pacing enabled: {:.3g} ms/cycle (period {} ms, speed {:.3g})",
+					LogInfo(Channel::Main, std::format("Capture replay pacing enabled: {:.3g} ms/frame (period {} ms, speed {:.3g})",
 						static_cast<double>(replay_frame_period.count()) / 1000.0, developer_settings.replay_frame_period_ms, developer_settings.replay_speed));
 				}
 				else
@@ -365,8 +367,9 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
+		const bool replay_paced = (replay_frame_period > std::chrono::microseconds::zero());
 
-		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub, replay_frame_period);
+		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub, replay_paced);
 		protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
 		protocol_task->ConnectWriteSignal<Messages::IAQMessage_ControlDataResponse>();
 
@@ -478,7 +481,10 @@ int main(int argc, char* argv[])
 		profiler.Get()->Message("Application starting", static_cast<uint32_t>(Profiling::UnitColours::Green));
 
 		using clock = std::chrono::steady_clock;
-		constexpr auto FRAME_PERIOD = std::chrono::milliseconds(1);
+		// One application frame/step.  Real-time operation steps at ~1 ms with an
+		// adaptive skip (see below) for low response latency; capture replay steps
+		// at the fixed processing period so playback runs at the bus's natural rate.
+		const auto frame_period = replay_paced ? replay_frame_period : std::chrono::microseconds(1000);
 
 		bool shutdown = false;
 		boost::asio::signal_set shutdown_signals(io_context, SIGINT, SIGTERM);
@@ -518,13 +524,13 @@ int main(int argc, char* argv[])
 				mqtt_integration->Poll();
 			}
 
-			// Adaptive sleep: skip the sleep when the protocol task had
-			// work to do so that the next read/process/write cycle starts
-			// immediately — giving near-zero response latency under load.
-			// When idle, sleep to avoid busy-spinning.
-			if (!had_work)
+			// Pace the frame.  Capture replay always sleeps to the processing
+			// period (a fixed step, so playback runs at the bus rate).  Real-time
+			// operation sleeps only when idle — when the protocol task had work we
+			// loop straight back for near-zero response latency under load.
+			if (replay_paced || !had_work)
 			{
-				std::this_thread::sleep_until(frame_start + FRAME_PERIOD);
+				std::this_thread::sleep_until(frame_start + frame_period);
 			}
 
 			profiler.Get()->EmitFrameMark("MainLoop");

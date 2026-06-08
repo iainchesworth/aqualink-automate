@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -51,11 +50,13 @@ namespace AqualinkAutomate::Test
 	class MockReplayHarness
 	{
 	public:
-		// replay_frame_period is forwarded to the ProtocolTask to pace its
-		// read/parse loop exactly as --replay-filename does.  It DEFAULTS TO ZERO
-		// (unpaced) so the test suite stays fast and deterministic; only tests that
-		// specifically exercise replay pacing pass a non-zero period.
-		explicit MockReplayHarness(std::chrono::microseconds replay_frame_period = std::chrono::microseconds::zero());
+		// single_read_per_poll is forwarded to the ProtocolTask: when true it reads
+		// one serial chunk per Poll() exactly as paced --replay-filename does.  It
+		// DEFAULTS TO FALSE (drain everything per poll) so the test suite stays fast
+		// and deterministic; only tests that exercise replay's per-frame read bound
+		// pass true.  (The pacing *sleep* lives in the application frame loop, not
+		// here, so the harness drives Poll() at full speed regardless.)
+		explicit MockReplayHarness(bool single_read_per_poll = false);
 		~MockReplayHarness();
 
 		MockReplayHarness(const MockReplayHarness&) = delete;

@@ -1,4 +1,3 @@
-#include <chrono>
 #include <cstdint>
 #include <vector>
 
@@ -14,25 +13,23 @@
 using namespace AqualinkAutomate;
 
 //=============================================================================
-// Capture-replay pacing (ProtocolTask).
+// Capture-replay per-frame read bound (ProtocolTask).
 //
 // --replay-filename feeds a capture file through a MockSerialPortImpl whose
 // read_some hands back the whole file as fast as the parser asks for it.  With
-// no pacing the ProtocolTask drains the ENTIRE capture in a single Poll() — that
-// both defeats any notion of bus-rate delivery AND overruns the fixed-size
-// circular buffer (only the tail survives, so frames in the middle of a long
-// capture are silently lost).
+// no bound the ProtocolTask drains the ENTIRE capture in a single Poll() — that
+// overruns the fixed-size circular buffer (only the tail survives, so frames in
+// the middle of a long capture are silently lost) and there is nothing left for
+// the application's frame loop to pace.
 //
-// Pacing fixes both: when a non-zero replay_frame_period is configured the poll
-// loop reads at most ONE serial chunk per Poll() and then sleeps the remainder
-// of the period, so successive cycles are spaced at roughly the bus's natural
-// inter-frame rate and the buffer never accumulates more than a chunk.
-//
-// These tests drive the REAL ProtocolTask via the MockReplayHarness, asserting
-// the per-cycle read bound (deterministic), the no-overflow guarantee under
-// high volume (deterministic) and that the per-cycle sleep actually happens
-// (a robust lower-bound timing check).  The harness defaults to UNPACED, so the
-// rest of the suite is unaffected.
+// Pacing is owned by the application frame loop (it steps at a fixed processing
+// period; see src/aqualink-automate.cpp); the ProtocolTask's part is to read at
+// most ONE serial chunk per Poll() so each frame advances the capture by a
+// bounded amount.  These tests drive the REAL ProtocolTask via MockReplayHarness
+// and assert that per-frame read bound and the no-overflow guarantee it gives —
+// both deterministic.  The harness defaults to the unbounded (drain-per-poll)
+// behaviour, so the rest of the suite is unaffected; the per-frame sleep itself
+// lives in the main loop and is covered by manual capture replay, not here.
 //=============================================================================
 
 namespace
@@ -51,16 +48,15 @@ namespace
 BOOST_AUTO_TEST_SUITE(TestSuite_ReplayPacing)
 
 //-----------------------------------------------------------------------------
-// Per-cycle read bound: a paced Poll() consumes exactly one serial read.
+// Per-frame read bound: a single-read-per-poll Poll() consumes exactly one read.
 //-----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(PacedReplay_ReadsAtMostOneChunkPerPoll)
 {
-	using namespace std::chrono_literals;
-	Test::MockReplayHarness harness(10ms);   // paced
+	Test::MockReplayHarness harness(/*single_read_per_poll=*/true);
 	auto& serial = harness.SerialImpl();
 
 	// Five chunks are available right now plus a would_block sentinel that an
-	// UNPACED drain would run all the way to.
+	// unbounded drain would run all the way to.
 	for (int i = 0; i < 5; ++i)
 	{
 		serial.QueueReadData(std::vector<std::uint8_t>(64, FILLER));
@@ -71,18 +67,18 @@ BOOST_AUTO_TEST_CASE(PacedReplay_ReadsAtMostOneChunkPerPoll)
 	(void)harness.ProtocolTask().Poll();
 	const auto reads_after = serial.GetReadCallCount();
 
-	// Exactly one read_some this cycle — the remaining chunks wait for later polls.
+	// Exactly one read_some this frame — the remaining chunks wait for later polls.
 	BOOST_CHECK_EQUAL(reads_after - reads_before, 1u);
 	BOOST_TEST(harness.StatisticsHub()->MessageErrors.BufferOverflows == 0u);
 }
 
 //-----------------------------------------------------------------------------
-// Default (unpaced) behaviour is unchanged: one Poll() drains everything that is
-// available, stopping only at the would_block sentinel.
+// Default (unbounded) behaviour is unchanged: one Poll() drains everything that
+// is available, stopping only at the would_block sentinel.
 //-----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(UnpacedReplay_DrainsAllAvailableInOnePoll)
 {
-	Test::MockReplayHarness harness;   // default = unpaced (period 0)
+	Test::MockReplayHarness harness;   // default = drain per poll
 	auto& serial = harness.SerialImpl();
 
 	for (int i = 0; i < 5; ++i)
@@ -100,15 +96,12 @@ BOOST_AUTO_TEST_CASE(UnpacedReplay_DrainsAllAvailableInOnePoll)
 }
 
 //-----------------------------------------------------------------------------
-// No overflow under high volume: paced reads keep the circular buffer bounded
-// even when far more than a buffer's worth of bytes is waiting.
+// No overflow under high volume: the per-frame read bound keeps the circular
+// buffer bounded even when far more than a buffer's worth of bytes is waiting.
 //-----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(PacedReplay_DoesNotOverflowCircularBufferUnderHighVolume)
 {
-	// A 1us period keeps the bounded-read path active while making the per-cycle
-	// sleep effectively free (the deadline has already passed by the time the
-	// read+parse work finishes), so the drain loop below stays fast.
-	Test::MockReplayHarness harness(std::chrono::microseconds(1));   // paced
+	Test::MockReplayHarness harness(/*single_read_per_poll=*/true);
 	auto& serial = harness.SerialImpl();
 
 	for (std::size_t i = 0; i < CHUNKS_TO_OVERFLOW; ++i)
@@ -131,12 +124,12 @@ BOOST_AUTO_TEST_CASE(PacedReplay_DoesNotOverflowCircularBufferUnderHighVolume)
 }
 
 //-----------------------------------------------------------------------------
-// The bug being fixed, pinned: the UNPACED path slurps the same high volume in a
-// single Poll() and overruns the circular buffer.
+// The bug being fixed, pinned: the unbounded path slurps the same high volume in
+// a single Poll() and overruns the circular buffer.
 //-----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(UnpacedReplay_SlurpsAndOverflowsCircularBuffer)
 {
-	Test::MockReplayHarness harness;   // default = unpaced (period 0)
+	Test::MockReplayHarness harness;   // default = drain per poll
 	auto& serial = harness.SerialImpl();
 
 	for (std::size_t i = 0; i < CHUNKS_TO_OVERFLOW; ++i)
@@ -147,33 +140,8 @@ BOOST_AUTO_TEST_CASE(UnpacedReplay_SlurpsAndOverflowsCircularBuffer)
 
 	(void)harness.ProtocolTask().Poll();
 
-	// One cycle read past the buffer's capacity, discarding the surplus.
+	// One Poll() read past the buffer's capacity, discarding the surplus.
 	BOOST_TEST(harness.StatisticsHub()->MessageErrors.BufferOverflows > 0u);
-}
-
-//-----------------------------------------------------------------------------
-// The pacing sleep actually happens: a paced Poll() takes at least (most of) one
-// period.  Lower-bound only — sleep_until never returns early — so this stays
-// robust under load.
-//-----------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE(PacedReplay_SleepsAtLeastOnePeriodPerPoll)
-{
-	using namespace std::chrono;
-	constexpr auto period = milliseconds(25);
-	Test::MockReplayHarness harness(period);   // paced
-	auto& serial = harness.SerialImpl();
-
-	// No data to parse — just a would_block so the cycle does its read, finds
-	// nothing, and proceeds to the pacing sleep.
-	serial.QueueReadData({}, boost::asio::error::would_block);
-
-	const auto start = steady_clock::now();
-	(void)harness.ProtocolTask().Poll();
-	const auto elapsed = steady_clock::now() - start;
-
-	// Conservative lower bound (period minus slack) to avoid coupling to clock
-	// granularity while still proving the cycle slept.
-	BOOST_CHECK_GE(duration_cast<milliseconds>(elapsed).count(), 20);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
