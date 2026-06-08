@@ -1,5 +1,6 @@
 ﻿// Standard library
 #include <chrono>
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -135,8 +136,12 @@ int main(int argc, char* argv[])
 				| Add(Pentair::Options::OptionsProcessor{})
 				| Parse(argc, argv)
 				| ParseConfigFile()
-				| Validate()
+				// CheckHelpAndVersion MUST run before Validate: --help/--version
+				// short-circuit (they throw OptionsHelpOrVersion, caught in main as
+				// EXIT_SUCCESS) and must not be blocked by a conflict/dependency
+				// validation failure on the rest of the command line.
 				| CheckHelpAndVersion()
+				| Validate()
 				| Process(
 					Options::App::OptionsProcessor{},
 					Options::Developer::OptionsProcessor{},
@@ -500,8 +505,10 @@ int main(int argc, char* argv[])
 		{
 			auto frame_start = clock::now();
 
-			// Process any pending Asio handlers (signal_set, etc.)
-			io_context.poll();
+			// Process any Asio handlers already pending at frame start (signal_set,
+			// inbound HTTP/WS reads, MQTT socket completions, etc.).  io_context::poll
+			// returns the number of handlers it ran this call.
+			std::size_t handlers_run = io_context.poll();
 
 			// Advance subsystems
 			bool had_work = protocol_task->Poll();
@@ -509,6 +516,10 @@ int main(int argc, char* argv[])
 			// Drive per-device watchdog deadline checks.
 			Devices::Capabilities::Restartable::PollAll();
 
+			// The HTTP/WS/MQTT Poll() calls queue fresh async work (notably
+			// WebSocket outbound writes).  Drain it now so egress is not capped at
+			// one message per frame, and so its handler count contributes to the
+			// idle decision below.
 			if (http_server)
 			{
 				http_server->Poll();
@@ -524,10 +535,18 @@ int main(int argc, char* argv[])
 				mqtt_integration->Poll();
 			}
 
+			handlers_run += io_context.poll();
+
+			// Any Asio handler that ran (HTTP/WebSocket/MQTT activity) counts as
+			// work for pacing, so network activity keeps the loop hot rather than
+			// being throttled to one frame period per message.
+			had_work = had_work || (handlers_run > 0);
+
 			// Pace the frame.  Capture replay always sleeps to the processing
 			// period (a fixed step, so playback runs at the bus rate).  Real-time
-			// operation sleeps only when idle — when the protocol task had work we
-			// loop straight back for near-zero response latency under load.
+			// operation sleeps only when fully idle — when the protocol task or any
+			// subsystem had work we loop straight back for near-zero response
+			// latency under load.
 			if (replay_paced || !had_work)
 			{
 				std::this_thread::sleep_until(frame_start + frame_period);
@@ -573,15 +592,25 @@ int main(int argc, char* argv[])
 			http_server.reset();
 		}
 
-		// 5. Clear HTTP routing tables
+		// 5. Clear HTTP routing tables (destroys the diagnostics-recording route,
+		//    which cached the non-owning IRecordingController handle).
 		LogInfo(Channel::Main, "Clearing HTTP routing tables...");
 		HTTP::Routing::Clear();
 
-		// 6. Clear message generator registry
+		// 6. Drop the non-owning IRecordingController handle and tear the serial
+		//    chain down deterministically.  The handle registered with the
+		//    HubLocator is a null-deleter shared_ptr aliasing a SerialPort-owned
+		//    RecordingSerialPortImpl, so it MUST be removed before the SerialPort
+		//    (and the object it aliases) is destroyed — otherwise the HubLocator
+		//    would briefly hold a dangling alias during scope-exit destruction.
+		hub_locator.Unregister<Interfaces::IRecordingController>();
+		serial_port.reset();
+
+		// 7. Clear message generator registry
 		LogInfo(Channel::Main, "Clearing message generator registry...");
 		Protocol::MessageGeneratorRegistry::Instance().Clear();
 
-		// 7. Stop profiling last
+		// 8. Stop profiling last
 		profiler.Get()->StopProfiling();
 
 		return_value = EXIT_SUCCESS;

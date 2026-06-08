@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "exceptions/exception_optionshelporversion.h"
 #include "kernel/pool_configurations.h"
 #include "options/options.h"
 #include "jandy/options/options_jandy.h"
@@ -573,6 +574,73 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_EquipmentArgs_Dual)
 	const auto& s = equipment.value().get();
 	BOOST_CHECK(s.pool_configuration == Kernel::PoolConfigurations::DualBody_DualEquipment);
 	BOOST_CHECK(s.pool_configuration_is_user_specified);
+}
+
+//=============================================================================
+// HELP/VERSION ORDERING (regression: main composes CheckHelpAndVersion BEFORE
+// Validate, so --help/--version short-circuit even when the rest of the command
+// line would fail conflict/dependency validation).
+//=============================================================================
+
+namespace
+{
+	/// Runs the pipeline through CheckHelpAndVersion in the SAME order that
+	/// main() now uses: ... | Parse | CheckHelpAndVersion | Validate | ...
+	/// CheckHelpAndVersion throws Exceptions::OptionsHelpOrVersion when --help or
+	/// --version is present (and writes the help/version text to stdout).
+	auto RunPipelineWithHelpCheckBeforeValidate(const std::vector<const char*>& args)
+		-> std::expected<Options::Settings, AqualinkAutomate::ErrorCodes::Options_ErrorCodes>
+	{
+		return Options::Initialise()
+			| Options::Add(Options::App::OptionsProcessor{})
+			| Options::Add(Options::Developer::OptionsProcessor{})
+			| Options::Add(Options::Equipment::OptionsProcessor{})
+			| Options::Add(Options::Mqtt::OptionsProcessor{})
+			| Options::Add(Options::Serial::OptionsProcessor{})
+			| Options::Add(Options::Web::OptionsProcessor{})
+			| Options::Add(Jandy::Options::OptionsProcessor{})
+			| Options::Add(Pentair::Options::OptionsProcessor{})
+			| Options::Parse(static_cast<int>(args.size()), const_cast<char**>(args.data()))
+			| Options::CheckHelpAndVersion()
+			| Options::Validate()
+			| Options::Process(
+				Options::App::OptionsProcessor{},
+				Options::Developer::OptionsProcessor{},
+				Options::Equipment::OptionsProcessor{},
+				Options::Mqtt::OptionsProcessor{},
+				Options::Serial::OptionsProcessor{},
+				Options::Web::OptionsProcessor{},
+				Jandy::Options::OptionsProcessor{},
+				Pentair::Options::OptionsProcessor{})
+			| Options::Finalise();
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_HelpShortCircuitsBeforeValidationFailure)
+{
+	// --help combined with a conflicting pair (--disable-https + --https-port).
+	// Because CheckHelpAndVersion runs BEFORE Validate, the help request must
+	// short-circuit (throw OptionsHelpOrVersion) rather than be masked by the
+	// validation failure on the conflicting options.
+	BOOST_CHECK_THROW(
+		RunPipelineWithHelpCheckBeforeValidate({ "program", "--help", "--disable-https", "--https-port=8443" }),
+		Exceptions::OptionsHelpOrVersion);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_VersionShortCircuitsBeforeValidationFailure)
+{
+	// Same ordering guarantee for --version.
+	BOOST_CHECK_THROW(
+		RunPipelineWithHelpCheckBeforeValidate({ "program", "--version", "--disable-https", "--https-port=8443" }),
+		Exceptions::OptionsHelpOrVersion);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_ValidationStillFailsWithoutHelp)
+{
+	// Without --help/--version the same conflicting options must still fail
+	// validation (the reordering must not weaken validation when help is absent).
+	auto result = RunPipelineWithHelpCheckBeforeValidate({ "program", "--disable-https", "--https-port=8443" });
+	BOOST_CHECK(!result.has_value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
