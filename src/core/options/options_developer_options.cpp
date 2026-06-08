@@ -65,6 +65,8 @@ namespace AqualinkAutomate::Options::Developer
 		if (OPTION_DEVREPLAYFILE->IsPresent(vm)) { settings.replay_file = OPTION_DEVREPLAYFILE->As<std::string>(vm); }
 		if (OPTION_DEVRECORDFILE->IsPresent(vm)) { settings.recording_file = OPTION_DEVRECORDFILE->As<std::string>(vm); }
 		if (OPTION_DECODE_TO_MASTER->IsPresent(vm)) { settings.decode_to_master_enabled = OPTION_DECODE_TO_MASTER->As<bool>(vm); }
+		if (OPTION_REPLAY_FRAME_PERIOD->IsPresent(vm)) { settings.replay_frame_period_ms = OPTION_REPLAY_FRAME_PERIOD->As<std::uint32_t>(vm); }
+		if (OPTION_REPLAY_SPEED->IsPresent(vm)) { settings.replay_speed = OPTION_REPLAY_SPEED->As<double>(vm); }
 
 		if (OPTION_LOGLEVEL_MAIN->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Main, OPTION_LOGLEVEL_MAIN->As<Severity>(vm)); }
 		if (OPTION_LOGLEVEL_CERTIFICATES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Certificates, OPTION_LOGLEVEL_CERTIFICATES->As<Severity>(vm)); }

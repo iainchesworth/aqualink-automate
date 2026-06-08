@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <expected>
 #include <string>
 #include <vector>
@@ -29,7 +30,9 @@ namespace AqualinkAutomate::Options::Developer
 			debug_logging_enabled{ false },
 			trace_logging_enabled{ false },
 			dev_mode_enabled{ false },
-			decode_to_master_enabled{ false }
+			decode_to_master_enabled{ false },
+			replay_frame_period_ms{ 15 },
+			replay_speed{ 1.0 }
 		{
 		}
 
@@ -39,6 +42,15 @@ namespace AqualinkAutomate::Options::Developer
 		bool decode_to_master_enabled;
 		std::string replay_file;
 		std::string recording_file;
+
+		// Capture-replay pacing (developer mode only; see --replay-filename).
+		// replay_frame_period_ms is the wall-clock period between successive
+		// read/parse cycles when replaying a capture, so frames are delivered at
+		// roughly the bus's natural inter-frame rate instead of as fast as the
+		// parser will accept them (0 = unpaced / as fast as possible).
+		// replay_speed scales that period (>1 faster, <1 slower).
+		std::uint32_t replay_frame_period_ms;
+		double replay_speed;
 	}
 	DeveloperSettings;
 
@@ -49,6 +61,8 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_DEVREPLAYFILE{ make_appoption("replay-filename", "Developer replay file from which to source test data", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DEVRECORDFILE{ make_appoption("record-serial", "Record serial port data to file for later replay", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DECODE_TO_MASTER{ make_appoption("decode-to-master", "DEV: decode and log RS-485 frames addressed TO the master (0x00); observe-only, no emulation/replay", boost::program_options::bool_switch()->default_value(false)) };
+		AppOptionPtr OPTION_REPLAY_FRAME_PERIOD{ make_appoption("replay-frame-period", "DEV: capture-replay inter-frame period in milliseconds (paces --replay-filename to the bus's natural rate; 0 = unpaced / as fast as possible)", boost::program_options::value<std::uint32_t>()->default_value(15)) };
+		AppOptionPtr OPTION_REPLAY_SPEED{ make_appoption("replay-speed", "DEV: capture-replay speed factor scaling --replay-frame-period (>1 faster, <1 slower)", boost::program_options::value<double>()->default_value(1.0)) };
 		AppOptionPtr OPTION_LOGLEVEL_MAIN{ make_appoption("loglevel-main", "Set the logging level for Channel::Main", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_CERTIFICATES{ make_appoption("loglevel-certificates", "Set the logging level for Channel::Certificates", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_COROUTINES{ make_appoption("loglevel-coroutines", "Set the logging level for Channel::Coroutines", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -74,6 +88,8 @@ namespace AqualinkAutomate::Options::Developer
 			OPTION_DEVREPLAYFILE,
 			OPTION_DEVRECORDFILE,
 			OPTION_DECODE_TO_MASTER,
+			OPTION_REPLAY_FRAME_PERIOD,
+			OPTION_REPLAY_SPEED,
 			OPTION_LOGLEVEL_MAIN,
 			OPTION_LOGLEVEL_CERTIFICATES,
 			OPTION_LOGLEVEL_COROUTINES,

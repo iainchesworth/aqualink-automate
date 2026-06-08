@@ -9,7 +9,7 @@
 namespace AqualinkAutomate::Test
 {
 
-	MockReplayHarness::MockReplayHarness()
+	MockReplayHarness::MockReplayHarness(std::chrono::microseconds replay_frame_period)
 		: m_HubLocator()
 		, m_SerialImplPtr(new Test::TestSerialPortImpl())
 		, m_SerialPort(std::make_shared<Serial::SerialPort>(
@@ -35,7 +35,9 @@ namespace AqualinkAutomate::Test
 
 		// The protocol task is the production driver: it reads from the serial
 		// port, runs the generator, and fires message signals to device slots.
-		m_ProtocolTask = std::make_shared<Protocol::ProtocolTask>(m_SerialPort, m_StatisticsHub);
+		// replay_frame_period is zero by default (unpaced) so existing tests run
+		// at full speed; pacing tests pass a non-zero period.
+		m_ProtocolTask = std::make_shared<Protocol::ProtocolTask>(m_SerialPort, m_StatisticsHub, replay_frame_period);
 	}
 
 	MockReplayHarness::~MockReplayHarness()

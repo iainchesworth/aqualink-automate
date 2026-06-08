@@ -40,6 +40,7 @@ target_sources(
 	unit/logging/test_logging_severity_filter_defaults.cpp 
 	unit/options/test_option_metadata.cpp
 	unit/options/test_options_config_file.cpp
+	unit/options/test_options_developer.cpp
 	unit/options/test_options_equipment.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
@@ -72,6 +73,7 @@ target_sources(
 	unit/mqtt/test_mqtt_options.cpp
 	unit/protocol/test_protocol_handler.cpp
 	unit/protocol/test_mock_replay_validation.cpp
+	unit/protocol/test_replay_pacing.cpp
 	unit/protocol/test_record_replay_roundtrip.cpp
 	unit/protocol/test_record_runtime_toggle.cpp
 	unit/protocol/test_pentair_message_generator.cpp

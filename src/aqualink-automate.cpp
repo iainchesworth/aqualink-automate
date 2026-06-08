@@ -341,7 +341,32 @@ int main(int argc, char* argv[])
 		Jandy::Protocol::RegisterMessageGenerator();
 		Pentair::Protocol::RegisterMessageGenerator();
 
-		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub);
+		// Capture-replay pacing: when replaying a capture file in developer mode,
+		// pace the protocol read/parse loop to roughly the bus's natural inter-frame
+		// rate (replay_frame_period_ms, scaled by replay_speed) instead of consuming
+		// the file as fast as the parser will accept it.  Stays zero (unpaced) for
+		// real ports and when --replay-frame-period is 0.
+		std::chrono::microseconds replay_frame_period{ 0 };
+		if (auto developer_settings_result = settings.Get<Options::Developer::DeveloperSettings>(); developer_settings_result)
+		{
+			const auto& developer_settings = developer_settings_result.value().get();
+			if (developer_settings.dev_mode_enabled && !developer_settings.replay_file.empty() && (developer_settings.replay_frame_period_ms > 0))
+			{
+				if (developer_settings.replay_speed > 0.0)
+				{
+					const double effective_us = (static_cast<double>(developer_settings.replay_frame_period_ms) * 1000.0) / developer_settings.replay_speed;
+					replay_frame_period = std::chrono::microseconds(static_cast<std::chrono::microseconds::rep>(effective_us));
+					LogInfo(Channel::Main, std::format("Capture replay pacing enabled: {:.3g} ms/cycle (period {} ms, speed {:.3g})",
+						static_cast<double>(replay_frame_period.count()) / 1000.0, developer_settings.replay_frame_period_ms, developer_settings.replay_speed));
+				}
+				else
+				{
+					LogWarning(Channel::Main, std::format("Ignoring invalid --replay-speed {:.3g} (must be > 0); capture replay will be unpaced", developer_settings.replay_speed));
+				}
+			}
+		}
+
+		auto protocol_task = std::make_shared<AqualinkAutomate::Protocol::ProtocolTask>(serial_port, statistics_hub, replay_frame_period);
 		protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
 		protocol_task->ConnectWriteSignal<Messages::IAQMessage_ControlDataResponse>();
 

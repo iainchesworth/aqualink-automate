@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -50,7 +51,11 @@ namespace AqualinkAutomate::Test
 	class MockReplayHarness
 	{
 	public:
-		MockReplayHarness();
+		// replay_frame_period is forwarded to the ProtocolTask to pace its
+		// read/parse loop exactly as --replay-filename does.  It DEFAULTS TO ZERO
+		// (unpaced) so the test suite stays fast and deterministic; only tests that
+		// specifically exercise replay pacing pass a non-zero period.
+		explicit MockReplayHarness(std::chrono::microseconds replay_frame_period = std::chrono::microseconds::zero());
 		~MockReplayHarness();
 
 		MockReplayHarness(const MockReplayHarness&) = delete;

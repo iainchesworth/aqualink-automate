@@ -42,6 +42,36 @@ The app feeds the capture's **R-direction** bytes into the decode pipeline
 exactly as if they had arrived from a real device. `--replay-filename` requires
 `--dev-mode`.
 
+### Replay pacing
+
+A real bus delivers bytes at a fixed rate; a capture file does not, so by
+default the replayer paces itself to roughly the bus's natural inter-frame
+period instead of consuming the whole file as fast as the parser will accept it.
+Pacing is applied in the protocol read/parse loop (one serial chunk read per
+cycle, then a sleep) — never by blocking the serial read — so framing/sync is
+identical to a live port. As a side effect it also keeps the read aligned with
+the fixed-size circular buffer; an unpaced replay of a long capture slurps the
+whole file in one cycle and overruns the buffer, losing everything but the tail.
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--replay-frame-period <ms>` | `15` | Wall-clock period between read/parse cycles. `0` = unpaced (as fast as possible — the old behaviour). |
+| `--replay-speed <factor>` | `1.0` | Scales the period: `>1` faster, `<1` slower (e.g. `--replay-speed 10` ≈ 1.5 ms/cycle). |
+
+```sh
+# Default ≈15 ms/cycle pacing
+aqualink-automate --dev-mode --replay-filename session.cap
+
+# 10x faster (still paced; no buffer overflow)
+aqualink-automate --dev-mode --replay-filename session.cap --replay-speed 10
+
+# Unpaced — consume the capture as fast as possible
+aqualink-automate --dev-mode --replay-filename session.cap --replay-frame-period 0
+```
+
+Pacing applies only to the `--replay-filename` path; real serial ports already
+self-pace, and the unit-test replay harness runs unpaced for speed.
+
 ---
 
 ## 3. Capture file format
@@ -68,7 +98,8 @@ Line kinds:
 | `0x##\|0x##\|...`                  | legacy bare format (no timestamp/direction)         | **replayed** (back-compat) |
 
 - `<ts>` is milliseconds since recording start (informational; replay does not
-  honour timing — frames are delivered back-to-back).
+  reproduce the recorded timestamps — it paces to a fixed `--replay-frame-period`
+  instead; see *Replay pacing* above).
 - Each byte token is exactly `0x##` (two hex digits). Pipe-separated.
 - **Only `R` lines and legacy bare lines are replayed.** `W` lines are the
   application's *past output*; feeding them back as input would corrupt the
