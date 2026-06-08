@@ -1,12 +1,9 @@
 #pragma once
 
-#include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include <numeric>
-#include <ranges>
+#include <deque>
 #include <tuple>
-#include <vector>
 
 #include "developer/chrono_clocks.h"
 #include "developer/serial_port_options.h"
@@ -20,7 +17,7 @@ namespace AqualinkAutomate::Utility
 		using TimeElement = typename CLOCK_TYPE::time_point;
 		using BytesElement = uint64_t;
 		using HistoryElement = std::tuple<TimeElement, BytesElement>;
-		using HistoryCollection = std::vector<HistoryElement>;
+		using HistoryCollection = std::deque<HistoryElement>;
 
 	public:
 		UtilisationOverPeriod(std::chrono::seconds duration) :
@@ -36,33 +33,14 @@ namespace AqualinkAutomate::Utility
 		{
 		}
 
-		UtilisationOverPeriod(const UtilisationOverPeriod& other) :
-			m_History(other.m_History),
-			m_ReferenceTime(other.m_ReferenceTime),
-			m_StatsDuration(other.m_StatsDuration),
-			m_MaxBandwidthBytesPerSec(other.m_MaxBandwidthBytesPerSec)
-		{
-		}
-
 		~UtilisationOverPeriod() = default;
 
-	public:
-		UtilisationOverPeriod& operator=(const UtilisationOverPeriod& other)
-		{
-			if (this == &other)  // Check for self-assignment
-			{
-				// Do nothing...
-			}
-			else
-			{
-				m_History = other.m_History;
-				m_ReferenceTime = other.m_ReferenceTime;
-				m_StatsDuration = other.m_StatsDuration;
-				m_MaxBandwidthBytesPerSec = other.m_MaxBandwidthBytesPerSec;
-			}
-
-			return *this;
-		}
+		// Rule-of-zero: the implicitly generated copy/move special members are
+		// correct for the value-semantic members held here.
+		UtilisationOverPeriod(const UtilisationOverPeriod&) = default;
+		UtilisationOverPeriod& operator=(const UtilisationOverPeriod&) = default;
+		UtilisationOverPeriod(UtilisationOverPeriod&&) noexcept = default;
+		UtilisationOverPeriod& operator=(UtilisationOverPeriod&&) noexcept = default;
 
 	public:
 		const HistoryCollection& History() const
@@ -82,90 +60,60 @@ namespace AqualinkAutomate::Utility
 
 		double Utilisation() const
 		{
-			return CalculateCurrentUtilization(m_History);
+			return CalculateCurrentUtilization();
 		}
 
 	public:
-		UtilisationOverPeriod operator+(BytesElement bytes)
+		/// Returns a copy with the supplied bytes added.
+		/// NOTE: deep-copies the entire history; prefer operator+= on the hot path.
+		UtilisationOverPeriod operator+(BytesElement bytes) const
 		{
 			auto updated_this = *this;
-			
-			updated_this.UpdateHistory(updated_this.m_History, bytes);
-
+			updated_this.UpdateHistory(bytes);
 			return updated_this;
 		}
 
 		UtilisationOverPeriod& operator+=(BytesElement bytes)
 		{
-			UpdateHistory(m_History, bytes);
+			UpdateHistory(bytes);
 			return *this;
 		}
 
 	private:
-		void UpdateHistory(HistoryCollection& history, BytesElement bytes)
+		void UpdateHistory(BytesElement bytes)
 		{
 			auto now_time = CLOCK_TYPE::now();
 
-			history.push_back(std::make_tuple(now_time, bytes));
+			m_History.push_back(std::make_tuple(now_time, bytes));
+			m_RunningTotalBytes += bytes;
 
-			PruneHistory(history, now_time);
+			PruneHistory(now_time);
 		}
 
-		void PruneHistory(HistoryCollection& history, TimeElement& now_time)
+		void PruneHistory(const TimeElement& now_time)
 		{
-			if (history.empty())
+			// Elements are appended in monotonic time order, so any sample that
+			// has aged out of the window is at the front. Prune from the front
+			// and keep the running total in step (amortised O(1) per insert).
+			while (!m_History.empty() && ((now_time - std::get<TimeElement>(m_History.front())) > m_StatsDuration))
 			{
-				// Nothing to clean up.
-			}
-			else
-			{
-				TimeElement last_time_element = std::get<TimeElement>(history.back());
-
-				std::erase_if(
-					history,
-					[this, last_time_element](const HistoryElement& element)
-					{
-						auto diff = last_time_element - std::get<TimeElement>(element);
-						auto to_be_pruned = diff > m_StatsDuration;
-
-						return to_be_pruned;
-					}
-				);
+				m_RunningTotalBytes -= std::get<BytesElement>(m_History.front());
+				m_History.pop_front();
 			}
 		}
 
-		double CalculateCurrentUtilization(const HistoryCollection& history) const
+		double CalculateCurrentUtilization() const
 		{
-			if (history.empty())
+			if (m_History.empty())
 			{
 				// Nothing to count so the utilisation is zero.
-			}
-			else
-			{
-				TimeElement last_time_element = std::get<TimeElement>(history.back());
-
-				auto history_elements = history
-					| std::views::filter(
-						[this, last_time_element](const auto& element)
-						{
-							auto time_diff = last_time_element - std::get<TimeElement>(element);
-							return std::chrono::duration_cast<std::chrono::seconds>(time_diff) <= m_StatsDuration;
-						})
-					| std::views::transform(
-						[](const auto& element)
-						{
-							return std::get<uint64_t>(element);
-						});
-
-				std::size_t total_bytes = std::accumulate(history_elements.begin(), history_elements.end(), 0ULL);
-
-				double bandwidth = static_cast<double>(total_bytes) / m_StatsDuration.count();
-				double utilization = (bandwidth / m_MaxBandwidthBytesPerSec) * 100;
-
-				return utilization;
+				return 0.0;
 			}
 
-			return 0.0;
+			const double bandwidth = static_cast<double>(m_RunningTotalBytes) / static_cast<double>(m_StatsDuration.count());
+			const double utilization = (bandwidth / m_MaxBandwidthBytesPerSec) * 100;
+
+			return utilization;
 		}
 
 	public:
@@ -188,6 +136,7 @@ namespace AqualinkAutomate::Utility
 		HistoryCollection m_History;
 		TimeElement m_ReferenceTime;
 		std::chrono::seconds m_StatsDuration;
+		BytesElement m_RunningTotalBytes{ 0 };
 
 	private:
 		double m_MaxBandwidthBytesPerSec;
@@ -198,28 +147,14 @@ namespace AqualinkAutomate::Utility
 	public:
 		FlowStatistics() = default;
 
-		FlowStatistics(const FlowStatistics& other) :
-			TotalBytes(other.TotalBytes),
-			Average_OneSecond(other.Average_OneSecond),
-			Average_ThirtySecond(other.Average_ThirtySecond),
-			Average_FiveMinute(other.Average_FiveMinute)
-		{
-		}
+		// Rule-of-zero: implicit copy/move are correct for the held members.
+		FlowStatistics(const FlowStatistics&) = default;
+		FlowStatistics& operator=(const FlowStatistics&) = default;
+		FlowStatistics(FlowStatistics&&) noexcept = default;
+		FlowStatistics& operator=(FlowStatistics&&) noexcept = default;
+		~FlowStatistics() = default;
 
 	public:
-		FlowStatistics operator+(const uint64_t bytes)
-		{
-			FlowStatistics new_this = *this;
-
-			new_this.TotalBytes += bytes;
-
-			new_this.Average_OneSecond += bytes;
-			new_this.Average_ThirtySecond += bytes;
-			new_this.Average_FiveMinute += bytes;
-
-			return new_this;
-		}
-
 		FlowStatistics& operator+=(const uint64_t bytes)
 		{
 			TotalBytes += bytes;
@@ -230,14 +165,14 @@ namespace AqualinkAutomate::Utility
 
 			return *this;
 		}
-	
+
 	public:
 		uint64_t TotalBytes{ 0 };
 
 	public:
 		UtilisationOverPeriod<> Average_OneSecond{ std::chrono::seconds(1) };
 		UtilisationOverPeriod<> Average_ThirtySecond{ std::chrono::seconds(30) };
-		UtilisationOverPeriod<> Average_FiveMinute{ std::chrono::minutes(5) };	
+		UtilisationOverPeriod<> Average_FiveMinute{ std::chrono::minutes(5) };
 	};
 
 	class BandwidthMetricsCollection
