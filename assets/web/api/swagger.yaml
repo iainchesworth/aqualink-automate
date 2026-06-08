@@ -9,6 +9,20 @@ info:
     This API provides endpoints for retrieving equipment status, managing buttons/devices,
     controlling temperature setpoints, and managing diagnostics.
 
+    ## Authentication
+
+    Authentication is **optional and disabled by default**. When the server is
+    started without an API auth token (the `--api-auth-token` CLI flag /
+    `api-auth-token` config key is unset), every endpoint is reachable without
+    credentials and the documented `401` responses never occur — fully
+    backward-compatible behaviour.
+
+    When an API auth token is configured, every API request (and the WebSocket
+    upgrade) must carry an `Authorization: Bearer <token>` header. A request with
+    a missing or mismatched token is rejected with `401`. This is the
+    `bearerAuth` security scheme below; the top-level `security` requirement is
+    declared as optional (`{}` alternative) to reflect that auth is opt-in.
+
     ## WebSocket Endpoints
 
     These are not part of the OpenAPI spec but are documented here for reference:
@@ -39,6 +53,14 @@ tags:
   - name: Diagnostics
     description: Diagnostics and logging configuration
 
+# Authentication is optional (opt-in). The empty requirement object `{}` permits
+# unauthenticated access (the default when no API auth token is configured);
+# `bearerAuth` applies the `Authorization: Bearer <token>` scheme when a token is
+# set. A request with a missing/mismatched token (when auth is enabled) gets 401.
+security:
+  - {}
+  - bearerAuth: []
+
 paths:
   /api/version:
     get:
@@ -66,6 +88,8 @@ paths:
                   uncommitted_changes: false
                 server_start_time: "2024-01-15T10:30:00Z"
                 uptime_seconds: 3600
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment:
     get:
@@ -81,6 +105,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EquipmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/buttons:
     get:
@@ -106,6 +132,8 @@ paths:
                     label: "Spa Jets"
                     status: "On"
                     device_type: "Auxillary"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Buttons
@@ -119,6 +147,8 @@ paths:
             text/html:
               schema:
                 type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/buttons/{button_id}:
     get:
@@ -147,6 +177,8 @@ paths:
                 id: "550e8400-e29b-41d4-a716-446655440000"
                 label: "Pool Light"
                 status: "Off"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Button not found
           content:
@@ -183,6 +215,8 @@ paths:
                 label: "Pool Light"
                 status: "On"
                 command: "toggled"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Button not found
           content:
@@ -221,6 +255,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DevicesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/version:
     get:
@@ -236,6 +272,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EquipmentVersionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/setpoints:
     get:
@@ -258,6 +296,8 @@ paths:
                 spa_setpoint:
                   celsius: 38.0
                   fahrenheit: 100.4
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Setpoints
@@ -265,6 +305,10 @@ paths:
       description: |
         Set pool and/or spa temperature setpoints. Values are in Celsius.
         Either or both fields may be provided; omitted fields are left unchanged.
+
+        Each provided value must be a finite JSON number within the accepted
+        Celsius range (-10.0 to 50.0). A non-numeric, non-finite, or out-of-range
+        value is rejected with `400` before any command is dispatched.
       operationId: setSetpoints
       requestBody:
         required: true
@@ -277,7 +321,7 @@ paths:
               spa: 38.0
       responses:
         '200':
-          description: Setpoints updated (per-field status)
+          description: All provided setpoints accepted and dispatched (per-field status)
           content:
             application/json:
               schema:
@@ -290,12 +334,42 @@ paths:
                   status: "success"
                   celsius: 38.0
         '400':
-          description: Invalid JSON in request body
+          description: |
+            Invalid request. Returned for malformed JSON, a setpoint field that is
+            not a number, or a numeric value that is non-finite or outside the
+            accepted Celsius range (-10.0 to 50.0). No command is dispatched.
           content:
             text/plain:
               schema:
                 type: string
-              example: "Invalid JSON"
+              examples:
+                invalid_json:
+                  summary: Request body is not valid JSON
+                  value: "Invalid JSON"
+                not_a_number:
+                  summary: A setpoint field is not a JSON number
+                  value: "Setpoint 'pool' must be a number"
+                out_of_range:
+                  summary: A setpoint value is non-finite or out of range
+                  value: "Setpoint 'spa' out of range"
+                invalid_payload:
+                  summary: JSON type/access error while reading a field
+                  value: "Invalid setpoint payload"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: |
+            At least one accepted setpoint could not be dispatched to the
+            equipment. The per-field response body still reports each field's
+            individual `status` ("success" or "error").
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetpointsPostResponse'
+              example:
+                pool:
+                  status: "error"
+                  celsius: 26.5
         '503':
           description: Command dispatcher not available
           content:
@@ -329,6 +403,8 @@ paths:
                   - "Info"
                   - "Warning"
                   - "Error"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Diagnostics
@@ -366,6 +442,8 @@ paths:
                   status:
                     type: string
                     example: "ok"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '400':
           description: Invalid request (bad JSON, invalid severity/channel name, or missing fields)
           content:
@@ -433,6 +511,8 @@ paths:
                   - name: "version-detail"
                     short_name: ""
                     description: "Displays detailed version information (including git commit)"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '405':
           description: HTTP method not allowed
           content:
@@ -486,6 +566,8 @@ paths:
                   pending_key_command: "NoKeyCommand"
                   ack_type: "V2_Normal"
                   is_running: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '405':
           description: HTTP method not allowed
           content:
@@ -504,10 +586,13 @@ paths:
       summary: Get serial-recording status
       description: |
         Returns the current state of on-demand serial-traffic recording: whether
-        a capture is in progress, the active capture file path, and the number of
-        wire bytes written so far. Recording is OFF by default and is controlled
-        at runtime via the POST endpoint. The captured file is in the recorder
-        format (replayable with `--dev-mode --replay-filename`).
+        a capture is in progress, the active capture file's basename, and the
+        number of wire bytes written so far. Recording is OFF by default and is
+        controlled at runtime via the POST endpoint. The captured file is in the
+        recorder format (replayable with `--dev-mode --replay-filename`).
+
+        Only the file's basename is returned; the absolute server-side path is
+        never disclosed.
       operationId: getRecording
       responses:
         '200':
@@ -518,8 +603,10 @@ paths:
                 $ref: '#/components/schemas/RecordingStatus'
               example:
                 recording: true
-                file: "/tmp/capture.cap"
+                file: "capture.cap"
                 bytes: 4096
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Diagnostics
@@ -528,6 +615,11 @@ paths:
         Start or stop recording the raw RS-485 serial traffic exchanged with the
         hardware. Provide `{"action":"start","filename":"..."}` to begin a capture
         or `{"action":"stop"}` to end it. Returns the resulting recording status.
+
+        The `filename` must be a bare `*.cap` basename. It is jailed to a fixed
+        server-side capture directory: path separators, drive letters, leading
+        separators, and `..` are rejected with `400`. The capture is always
+        written inside that directory, never to a client-chosen path.
       operationId: setRecording
       requestBody:
         required: true
@@ -542,7 +634,7 @@ paths:
                 summary: Start recording
                 value:
                   action: "start"
-                  filename: "/tmp/capture.cap"
+                  filename: "capture.cap"
               stop:
                 summary: Stop recording
                 value:
@@ -556,10 +648,15 @@ paths:
                 $ref: '#/components/schemas/RecordingStatus'
               example:
                 recording: true
-                file: "/tmp/capture.cap"
+                file: "capture.cap"
                 bytes: 0
         '400':
-          description: Invalid request (bad JSON, missing/invalid action, or missing filename)
+          description: |
+            Invalid request: bad JSON; missing/invalid action; a missing, empty,
+            or rejected filename. The filename must be a bare `*.cap` basename
+            (no path separators, drive letter, leading separator, or `..`): it is
+            jailed to a fixed server-side capture directory, so any path-traversal
+            attempt is rejected here rather than written to disk.
           content:
             application/json:
               schema:
@@ -577,9 +674,18 @@ paths:
                 missing_filename:
                   value:
                     error: "'start' action requires a string 'filename'"
+                empty_filename:
+                  value:
+                    error: "'filename' must not be empty"
+                invalid_filename:
+                  summary: Filename contains a path separator, drive letter, '..', or wrong extension
+                  value:
+                    error: "'filename' must be a bare *.cap name with no path separators or '..'"
                 invalid_action:
                   value:
                     error: "'action' must be 'start' or 'stop'"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '409':
           description: Conflicting state (already recording on start, or not recording on stop)
           content:
@@ -1030,16 +1136,23 @@ components:
 
     SetpointsPostRequest:
       type: object
-      description: Set one or both temperature setpoints. Values are in Celsius.
+      description: |
+        Set one or both temperature setpoints. Values are in Celsius and must be
+        finite numbers within the accepted range (-10.0 to 50.0); out-of-range or
+        non-numeric values are rejected with 400.
       properties:
         pool:
           type: number
           format: double
+          minimum: -10.0
+          maximum: 50.0
           description: Pool temperature setpoint in Celsius
           example: 26.5
         spa:
           type: number
           format: double
+          minimum: -10.0
+          maximum: 50.0
           description: Spa temperature setpoint in Celsius
           example: 38.0
 
@@ -1118,8 +1231,8 @@ components:
           example: true
         file:
           type: string
-          description: Path of the active capture file (empty when not recording)
-          example: "/tmp/capture.cap"
+          description: Basename of the active capture file (empty when not recording). The absolute server-side path is never disclosed.
+          example: "capture.cap"
         bytes:
           type: integer
           description: Number of wire bytes (read + write) written to the active capture
@@ -1137,8 +1250,13 @@ components:
           description: Begin a new capture
         filename:
           type: string
-          description: Path of the capture file to write
-          example: "/tmp/capture.cap"
+          pattern: '^[^/\\:]+\.cap$'
+          description: |
+            Bare basename of the capture file to write (must end in `.cap`). Path
+            separators, drive letters, leading separators, and `..` are rejected
+            with 400; the file is created inside a fixed server-side capture
+            directory.
+          example: "capture.cap"
 
     RecordingStop:
       type: object
@@ -1254,7 +1372,30 @@ components:
           type: string
           description: PDA scrape state
 
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Optional shared API auth token. Enabled only when the server is started
+        with an API auth token configured (`--api-auth-token` /
+        `api-auth-token`); unset by default, in which case no authentication is
+        required and this scheme has no effect. When enabled, supply the token as
+        `Authorization: Bearer <token>` on every API request and on the WebSocket
+        upgrade.
+
   responses:
+    Unauthorized:
+      description: |
+        Missing or invalid `Authorization: Bearer <token>` header. Only returned
+        when an API auth token is configured on the server; when auth is disabled
+        (the default) this response never occurs.
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "Unauthorized"
+
     NotFound:
       description: The specified resource was not found
       content:
