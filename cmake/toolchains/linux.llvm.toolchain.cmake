@@ -7,35 +7,31 @@ message(STATUS "Configuring Linux Toolchain (LLVM/Clang Variant)")
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
-# Find LLVM/Clang compilers
+# Find LLVM/Clang compilers and linker. All three searches share the same
+# install locations, so the hint list is defined once and reused.
+set(_LLVM_BIN_HINTS
+    "/usr/bin"
+    "/usr/local/bin"
+    "/opt/llvm/bin"
+    "$ENV{LLVM_ROOT}/bin"
+)
+
 find_program(CMAKE_C_COMPILER
     NAMES clang-21 clang clang-18 clang-17 clang-16 clang-15
-    HINTS
-        "/usr/bin"
-        "/usr/local/bin"
-        "/opt/llvm/bin"
-        "$ENV{LLVM_ROOT}/bin"
+    HINTS ${_LLVM_BIN_HINTS}
     REQUIRED
 )
 
 find_program(CMAKE_CXX_COMPILER
     NAMES clang++-21 clang++ clang++-18 clang++-17 clang++-16 clang++-15
-    HINTS
-        "/usr/bin"
-        "/usr/local/bin"
-        "/opt/llvm/bin"
-        "$ENV{LLVM_ROOT}/bin"
+    HINTS ${_LLVM_BIN_HINTS}
     REQUIRED
 )
 
 # Use lld linker if available
 find_program(CMAKE_LINKER
     NAMES ld.lld-21 ld.lld ld.lld-18 ld.lld-17 ld.lld-16 ld.lld-15
-    HINTS
-        "/usr/bin"
-        "/usr/local/bin"
-        "/opt/llvm/bin"
-        "$ENV{LLVM_ROOT}/bin"
+    HINTS ${_LLVM_BIN_HINTS}
 )
 
 if(CMAKE_LINKER)
@@ -49,6 +45,16 @@ set(CMAKE_CXX_FLAGS_INIT "-m64")
 
 # Enable color diagnostics and better error messages
 add_compile_options(-fcolor-diagnostics -fdiagnostics-show-template-tree)
+
+# Opt-in raised-ISA baseline for release/benchmark builds (default OFF).
+# Targets the x86-64-v2 microarchitecture level (SSE4.2/POPCNT) so the hot
+# byte-scan and checksum loops can autovectorise. Left OFF by default to keep
+# the shipped binary runnable on generic x86-64 hardware; only enable for
+# builds validated against the benchmark suite.
+if(ENABLE_NATIVE_ARCH)
+    add_compile_options(-march=x86-64-v2 -mtune=generic)
+    message(STATUS "Raised-ISA baseline enabled (-march=x86-64-v2)")
+endif()
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
 if(CMAKE_LINKER)

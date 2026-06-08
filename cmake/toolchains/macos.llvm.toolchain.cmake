@@ -6,13 +6,15 @@ message(STATUS "Configuring macOS Toolchain (LLVM/Clang Variant)")
 
 set(CMAKE_SYSTEM_NAME Darwin)
 
-# Determine target architecture from vcpkg triplet or auto-detect
+# Determine target architecture from vcpkg triplet or auto-detect.
+# _MACOS_ARCH holds the canonical clang/Mach-O arch name (arm64 / x86_64); the
+# raw -arch compiler flag and CMAKE_OSX_ARCHITECTURES are both derived from it.
 if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64")
     set(CMAKE_SYSTEM_PROCESSOR arm64)
-    set(_MACOS_ARCH_FLAG "-arch arm64")
+    set(_MACOS_ARCH "arm64")
 elseif(VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
     set(CMAKE_SYSTEM_PROCESSOR x86_64)
-    set(_MACOS_ARCH_FLAG "-arch x86_64")
+    set(_MACOS_ARCH "x86_64")
 else()
     # Auto-detect host architecture
     execute_process(
@@ -22,39 +24,45 @@ else()
     )
     if(_HOST_ARCH STREQUAL "arm64")
         set(CMAKE_SYSTEM_PROCESSOR arm64)
-        set(_MACOS_ARCH_FLAG "-arch arm64")
+        set(_MACOS_ARCH "arm64")
     else()
         set(CMAKE_SYSTEM_PROCESSOR x86_64)
-        set(_MACOS_ARCH_FLAG "-arch x86_64")
+        set(_MACOS_ARCH "x86_64")
     endif()
 endif()
 
+set(_MACOS_ARCH_FLAG "-arch ${_MACOS_ARCH}")
+
+# Drive the architecture through CMAKE_OSX_ARCHITECTURES as well as the raw
+# -arch flag. Without this CMake selects the SDK/host architecture for its own
+# checks while only the compile flags carry -arch, risking an arch/SDK mismatch
+# (e.g. cross-building x86_64 on an arm64 host).
+set(CMAKE_OSX_ARCHITECTURES "${_MACOS_ARCH}" CACHE STRING "Target macOS architecture")
+
 message(STATUS "Target architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
-# Find LLVM/Clang compilers (prefer Homebrew LLVM, then MacPorts, then system)
+# Find LLVM/Clang compilers (prefer Homebrew LLVM, then MacPorts, then system).
+# Both searches share the same install locations, so the hint list is defined
+# once and reused.
+set(_LLVM_BIN_HINTS
+    "/opt/homebrew/opt/llvm/bin"
+    "/usr/local/opt/llvm/bin"
+    "/opt/local/libexec/llvm-21/bin"
+    "/opt/local/bin"
+    "/opt/homebrew/bin"
+    "/usr/local/bin"
+    "/usr/bin"
+)
+
 find_program(CMAKE_C_COMPILER
     NAMES clang-21 clang
-    HINTS
-        "/opt/homebrew/opt/llvm/bin"
-        "/usr/local/opt/llvm/bin"
-        "/opt/local/libexec/llvm-21/bin"
-        "/opt/local/bin"
-        "/opt/homebrew/bin"
-        "/usr/local/bin"
-        "/usr/bin"
+    HINTS ${_LLVM_BIN_HINTS}
     REQUIRED
 )
 
 find_program(CMAKE_CXX_COMPILER
     NAMES clang++-21 clang++
-    HINTS
-        "/opt/homebrew/opt/llvm/bin"
-        "/usr/local/opt/llvm/bin"
-        "/opt/local/libexec/llvm-21/bin"
-        "/opt/local/bin"
-        "/opt/homebrew/bin"
-        "/usr/local/bin"
-        "/usr/bin"
+    HINTS ${_LLVM_BIN_HINTS}
     REQUIRED
 )
 
@@ -117,6 +125,17 @@ endif()
 
 # Enable color diagnostics
 add_compile_options(-fcolor-diagnostics)
+
+# Opt-in raised-ISA baseline for release/benchmark builds (default OFF).
+# x86_64 only — targets the x86-64-v2 microarchitecture level so the hot
+# byte-scan and checksum loops can autovectorise. The arm64 baseline already
+# exceeds this, so the flag is skipped there. Left OFF by default to keep the
+# shipped binary runnable on generic hardware; only enable for builds
+# validated against the benchmark suite.
+if(ENABLE_NATIVE_ARCH AND _MACOS_ARCH STREQUAL "x86_64")
+    add_compile_options(-march=x86-64-v2 -mtune=generic)
+    message(STATUS "Raised-ISA baseline enabled (-march=x86-64-v2)")
+endif()
 
 message(STATUS "Using LLVM/Clang at: ${CMAKE_CXX_COMPILER}")
 message(STATUS "macOS deployment target: ${CMAKE_OSX_DEPLOYMENT_TARGET}")
