@@ -1,4 +1,3 @@
-#include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
@@ -35,12 +34,6 @@ namespace AqualinkAutomate::Kernel
 	std::string_view DataHub_ConfigEvent_ButtonStateChange::Label() const
 	{
 		return m_Label;
-	}
-
-	boost::uuids::uuid DataHub_ConfigEvent_ButtonStateChange::Id() const
-	{
-		static boost::uuids::uuid id{ boost::uuids::random_generator()() };
-		return id;
 	}
 
 	nlohmann::json DataHub_ConfigEvent_ButtonStateChange::ToJSON() const

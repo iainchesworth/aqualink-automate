@@ -2,7 +2,6 @@
 
 #include <optional>
 
-#include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
 #include "kernel/orp.h"
@@ -30,7 +29,6 @@ namespace AqualinkAutomate::Kernel
 		void SaltLevel(const Units::ppm_quantity& salt_level_in_ppm);
 
 	public:
-		boost::uuids::uuid Id() const override;
 		nlohmann::json ToJSON() const override;
 
 	private:
