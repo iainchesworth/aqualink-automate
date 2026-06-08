@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -34,12 +33,14 @@ namespace AqualinkAutomate::Profiling
 		void EmitFrameMark(const char* name) const override;
 
 	private:
-		static const char* GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, std::mutex& mutex, const std::string& name);
+		// Tracy holds raw pointers to plot/frame name buffers for the program lifetime, so
+		// each unique name is cached once and the stable pointer is reused. The application
+		// runs on a single-threaded cooperative loop, so no synchronisation is required.
+		static const char* GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, const std::string& name);
 
 	private:
 		std::unordered_map<std::string, std::unique_ptr<char[]>> m_PlotNameCache;
 		mutable std::unordered_map<std::string, std::unique_ptr<char[]>> m_FrameNameCache;
-		mutable std::mutex m_CacheMutex;
 	};
 
 }
