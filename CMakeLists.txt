@@ -34,6 +34,7 @@ option(ENABLE_CLANG_TIDY "DevTools: Enable static analysis using clang-tidy" OFF
 option(ENABLE_PVS_STUDIO "DevTools: Enable static analysis using PVS-Studio" OFF)
 option(ENABLE_ASIO_TRACKING "DevTools: Debug using ASIO connection tracking" OFF)
 option(ENABLE_SANITIZERS "DevTools: Enable sanitizer tooling" OFF)
+option(ENABLE_IPO "Enable interprocedural optimisation (LTO) for Release builds when supported" ON)
 
 # ---------------------------------------------------------------------------
 # Ensure the vcpkg submodule is checked out BEFORE project() loads the vcpkg
@@ -81,6 +82,28 @@ endif()
 
 option(USE_SONARQUBE "Use SonarQube for coverage of unit tests" OFF)
 
+# ---------------------------------------------------------------------------
+# Interprocedural optimisation (LTO/IPO)
+# ---------------------------------------------------------------------------
+# Detect once whether the active toolchain supports IPO. When supported, it is
+# enabled for the Release configuration only (via INTERPROCEDURAL_OPTIMIZATION_
+# RELEASE per target after the targets are created) so cross-TU / cross-library
+# inlining of the hot byte-scan and checksum paths is available in release
+# builds. Debug/coverage/sanitizer builds are intentionally left unoptimised.
+# Honour an explicit opt-out via ENABLE_IPO (declared with the other options
+# before project() so a preset can override it).
+
+set(AQ_IPO_SUPPORTED OFF)
+if(ENABLE_IPO)
+	include(CheckIPOSupported)
+	check_ipo_supported(RESULT AQ_IPO_SUPPORTED OUTPUT AQ_IPO_OUTPUT LANGUAGES C CXX)
+	if(AQ_IPO_SUPPORTED)
+		message(STATUS "IPO/LTO: supported by the active toolchain; enabled for Release builds")
+	else()
+		message(STATUS "IPO/LTO: not supported by the active toolchain (${AQ_IPO_OUTPUT}); continuing without it")
+	endif()
+endif()
+
 #------------------------------------------------------------------------------
 #
 #
@@ -90,7 +113,22 @@ option(USE_SONARQUBE "Use SonarQube for coverage of unit tests" OFF)
 
 add_subdirectory(deps)
 
-find_package(benchmark REQUIRED)
+# benchmark is only consumed by the performance-test target (test/CMakeLists.txt),
+# which itself is gated on ENABLE_BENCHMARKS. Only require the package when it can
+# actually be linked so a benchmarks-off configure does not fail for a missing dep.
+if(ENABLE_BENCHMARKS)
+	find_package(benchmark REQUIRED)
+endif()
+
+# Boost COMPONENTS list:
+#   - graph                : header-only (device_graph / screen_data_page_graph)
+#   - iostreams/log/log_setup/program_options/url : compiled libs linked in src/core
+#   - regex                : compiled lib (jandy onetouch + string converters)
+#   - system               : compiled lib (core serial / errors / http)
+#   - unit_test_framework  : compiled lib linked in test/
+# regex/system are currently pulled in transitively; the explicit per-target link
+# edits live in WU-CORE-CMAKE-CLEANUP (src/core/CMakeLists.txt). This COMPONENTS
+# list is the single source of truth for what is requested.
 find_package(Boost REQUIRED COMPONENTS graph iostreams log log_setup program_options regex system unit_test_framework url)
 find_package(magic_enum REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -189,6 +227,23 @@ add_subdirectory(src)
 
 #------------------------------------------------------------------------------
 #
+#    INTERPROCEDURAL OPTIMISATION (LTO/IPO)
+#    ======================================
+#
+#    Enable IPO for the Release configuration on the application targets when the
+#    toolchain supports it. Applied per-config so debug/coverage/sanitizer builds
+#    (CMAKE_BUILD_TYPE != Release) are unaffected.
+#
+#------------------------------------------------------------------------------
+
+if(AQ_IPO_SUPPORTED)
+	foreach(_aq_ipo_target IN ITEMS libaqualink-automate libaqualink-jandy libaqualink-pentair aqualink-automate)
+		set_target_properties(${_aq_ipo_target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+	endforeach()
+endif()
+
+#------------------------------------------------------------------------------
+#
 #    STATIC ANALYSIS CONFIGURATION
 #    =============================
 #
@@ -245,7 +300,13 @@ endif(ENABLE_TESTS)
 
 if(ENABLE_SANITIZERS)
 
+# Instrument the protocol-decode libraries too: the wire-parsing hot paths
+# (Jandy/Pentair framing, checksum, byte-scan) are exactly where OOB reads and
+# UB are most likely, so they must carry the sanitizer flags rather than relying
+# on the application/core target alone.
 target_enable_sanitizers(libaqualink-automate)
+target_enable_sanitizers(libaqualink-jandy)
+target_enable_sanitizers(libaqualink-pentair)
 target_enable_sanitizers(aqualink-automate)
 
 endif(ENABLE_SANITIZERS)
