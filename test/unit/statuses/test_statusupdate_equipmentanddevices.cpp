@@ -21,7 +21,10 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatus)
     BOOST_CHECK_EQUAL(device_status_initializing.StatusType(), "Initializing");
     BOOST_CHECK_EQUAL(device_status_normal.StatusType(), "Normal");
 
-    BOOST_CHECK(device_status_initializing != device_status_normal);
+    // Type-only "same status type" relation is now a named predicate rather than
+    // the previous value-blind operator==/operator!=.
+    BOOST_CHECK((!Interfaces::IsSameStatusType<Devices::DeviceStatus_Initializing, Devices::DeviceStatus_Normal>()));
+    BOOST_CHECK((Interfaces::IsSameStatusType<Devices::DeviceStatus_Initializing, Devices::DeviceStatus_Initializing>()));
 }
 
 BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatusPublisher)
@@ -67,6 +70,50 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_EquipmentStatus)
 {
     Equipment::EquipmentStatus_Unknown equipment_status;
     BOOST_CHECK_EQUAL(equipment_status.StatusType(), "Unknown");
+}
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IsSameStatusType)
+{
+    // Type-only relation: same type -> true, different type -> false.
+    BOOST_CHECK((Interfaces::IsSameStatusType<Devices::DeviceStatus_Normal, Devices::DeviceStatus_Normal>()));
+    BOOST_CHECK((!Interfaces::IsSameStatusType<Devices::DeviceStatus_Normal, Devices::DeviceStatus_Initializing>()));
+
+    // Crosses categories: device vs equipment statuses are never the same type.
+    BOOST_CHECK((!Interfaces::IsSameStatusType<Devices::DeviceStatus_Unknown, Equipment::EquipmentStatus_Unknown>()));
+
+    // It is a compile-time constant expression.
+    static_assert(Interfaces::IsSameStatusType<Devices::DeviceStatus_Normal, Devices::DeviceStatus_Normal>());
+    static_assert(!Interfaces::IsSameStatusType<Devices::DeviceStatus_Normal, Devices::DeviceStatus_Unknown>());
+}
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_PublishedStatusCategoryCompare)
+{
+    // operator== / operator!= against the published (weak_ptr) status do REAL
+    // category equality: they must reflect the type currently held by the publisher.
+    Devices::DeviceStatus_Initializing device_status_initializing;
+    Interfaces::IStatusPublisher status_publisher(device_status_initializing);
+
+    BOOST_CHECK(Devices::DeviceStatus_Initializing{} == status_publisher.Status());
+    BOOST_CHECK(!(Devices::DeviceStatus_Normal{} == status_publisher.Status()));
+    BOOST_CHECK(Devices::DeviceStatus_Normal{} != status_publisher.Status());
+
+    status_publisher.Status(Devices::DeviceStatus_Normal{});
+
+    BOOST_CHECK(Devices::DeviceStatus_Normal{} == status_publisher.Status());
+    BOOST_CHECK(Devices::DeviceStatus_Initializing{} != status_publisher.Status());
+}
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_SourceTypeAndName)
+{
+    // SourceType() still reflects the category; SourceName() no longer returns the
+    // old frozen "my_device"/"my_source" placeholders.
+    Devices::DeviceStatus_Normal device_status;
+    BOOST_CHECK_EQUAL(device_status.SourceType(), "device");
+    BOOST_CHECK_NE(device_status.SourceName(), "my_device");
+
+    Equipment::EquipmentStatus_Unknown equipment_status;
+    BOOST_CHECK_EQUAL(equipment_status.SourceType(), "equipment");
+    BOOST_CHECK_NE(equipment_status.SourceName(), "my_source");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

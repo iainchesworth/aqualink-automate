@@ -1,8 +1,7 @@
-#pragma once 
+#pragma once
 
-#include <format>
+#include <concepts>
 #include <memory>
-#include <type_traits>
 
 #include <boost/signals2.hpp>
 
@@ -19,6 +18,10 @@ namespace AqualinkAutomate::Interfaces
 		virtual void Signal_MessageWasReceived() = 0;
 	};
 
+	// CRTP base: a concrete message type T derives from IMessageSignalRecv<T>,
+	// so the most-derived object of any IMessageSignalRecv<MESSAGE_TYPE> instance
+	// is always a MESSAGE_TYPE.  That static guarantee lets the per-message
+	// dispatch use static_cast instead of a runtime dynamic_cast on the hot path.
 	template<typename MESSAGE_TYPE>
 	class IMessageSignalRecv : public IMessageSignalRecvBase
 	{
@@ -42,19 +45,23 @@ namespace AqualinkAutomate::Interfaces
 	public:
 		void Signal_MessageWasReceived() final
 		{
+			// CRTP precondition: MESSAGE_TYPE must derive from this base so the
+			// static_cast below is well-defined.  Checked here (rather than in the
+			// class body) because MESSAGE_TYPE is incomplete while the template is
+			// being defined.
+			static_assert(std::derived_from<MESSAGE_TYPE, IMessageSignalRecv<MESSAGE_TYPE>>,
+				"IMessageSignalRecv<MESSAGE_TYPE> requires MESSAGE_TYPE to derive from it (CRTP)");
+
 			if (auto signal_ptr = GetSignal(); nullptr == signal_ptr)
 			{
 				LogTrace(Channel::Signals, "Could not retrieve signal shared_ptr from IMessageSignalRecv::GetSignal()");
 			}
-			else if (auto upcast_ptr = dynamic_cast<MESSAGE_TYPE *>(this); nullptr == upcast_ptr)
-			{
-				const std::type_info& src_type = typeid(this);
-				const std::type_info& dst_type = typeid(MESSAGE_TYPE*);
-
-				LogDebug(Channel::Signals, std::format("Could not convert from 'this' to the target message pointer type: src -> {}, dst -> {}", src_type.name(), dst_type.name()));
-			}
 			else
 			{
+				// CRTP guarantees 'this' is a MESSAGE_TYPE subobject, so the cast
+				// cannot fail; no dynamic_cast / failure branch is required.
+				MESSAGE_TYPE* const upcast_ptr = static_cast<MESSAGE_TYPE*>(this);
+
 				LogTrace(Channel::Signals, "Signalling all registered slots for received message");
 				(*signal_ptr)(*upcast_ptr);
 			}
