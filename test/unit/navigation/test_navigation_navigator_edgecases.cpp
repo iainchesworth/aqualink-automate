@@ -169,6 +169,29 @@ BOOST_AUTO_TEST_CASE(TestCursorMovement_LineUp_WhenAboveTarget)
 	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
 }
 
+// Regression: a clear-all highlight (line id 0xFF) means "no line highlighted" on the device.
+// Treating that literal value as a real row index would leave the navigator chasing a
+// non-existent line; the previously known cursor line must be retained instead.
+BOOST_AUTO_TEST_CASE(TestCursorMovement_ClearAllHighlight_RetainsPreviousCursor)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	auto system_content = MakePage({{0, "Equipment ON/OFF"}});
+
+	// Establish a known cursor line.
+	nav.OnPageUpdate(system_content, 3);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
+
+	// A clear-all (0xFF) arrives; the cursor line must NOT become 0xFF.
+	nav.OnPageUpdate(system_content, Navigator::CURSOR_LINE_NONE);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
+
+	// A subsequent real highlight updates the cursor normally.
+	nav.OnPageUpdate(system_content, 4);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 4);
+}
+
 // =============================================================================
 // Recovery
 // =============================================================================
@@ -311,8 +334,12 @@ BOOST_AUTO_TEST_CASE(TestPassword_NoPassword_BacksOut)
 	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
 }
 
-BOOST_AUTO_TEST_CASE(TestPassword_ValidPassword_SendsSelect)
+BOOST_AUTO_TEST_CASE(TestPassword_ConfiguredPassword_BacksOutUnsupported)
 {
+	// Regression: automated PIN entry over RS-485 is not implemented (it requires reading the
+	// on-screen digit value, which has not been decoded). The previous placeholder blindly
+	// pressed Select per digit and reported success without ever setting a value (and logged the
+	// PIN). The navigator must now back out honestly even when a password is configured.
 	auto model = BuildTestModel();
 	Navigator nav(model);
 	nav.SetPassword("1234");
@@ -332,9 +359,12 @@ BOOST_AUTO_TEST_CASE(TestPassword_ValidPassword_SendsSelect)
 	auto password_content = MakePage({{0, "Enter Password"}});
 	auto cmd = nav.OnPageUpdate(password_content, 0);
 
-	// Should enter password with Select commands
+	// Automated password entry is unsupported -> back out (NOT a blind Select that fakes success)
 	BOOST_REQUIRE(cmd.has_value());
-	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Select));
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
+
+	// The navigator must NOT enter the (removed) EnteringPassword state.
+	BOOST_CHECK(nav.GetState() != Navigator::State::EnteringPassword);
 }
 
 // =============================================================================

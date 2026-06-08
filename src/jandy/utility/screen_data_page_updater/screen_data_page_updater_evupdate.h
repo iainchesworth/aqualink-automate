@@ -19,7 +19,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 
 	public:
 		ScreenDataPageLine::first_type Id() const;
-		ScreenDataPageLine::second_type Text() const;
+		const ScreenDataPageLine::second_type& Text() const;
 
 	private:
 		const ScreenDataPageLine m_Line;

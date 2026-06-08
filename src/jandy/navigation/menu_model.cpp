@@ -44,15 +44,18 @@ namespace AqualinkAutomate::Navigation
 
 	void MenuModel::RegisterPage(MenuPage page)
 	{
-		LogTrace(Channel::Navigation, std::format("MenuModel: Registering page '{}' (id={})",
-			page.name, static_cast<uint32_t>(page.id)));
+		LogTrace(Channel::Navigation, [&] { return std::format("MenuModel: Registering page '{}' (id={})",
+			page.name, static_cast<uint32_t>(page.id)); });
 		m_Pages[page.id] = std::move(page);
+
+		// A new page may introduce new incoming-Select edges; invalidate the memoised index.
+		m_IncomingSelectEdgesValid = false;
 	}
 
 	void MenuModel::RegisterGlobalEdge(MenuEdge edge)
 	{
-		LogTrace(Channel::Navigation, std::format("MenuModel: Registering global edge '{}' -> page {}",
-			edge.label, static_cast<uint32_t>(edge.target)));
+		LogTrace(Channel::Navigation, [&] { return std::format("MenuModel: Registering global edge '{}' -> page {}",
+			edge.label, static_cast<uint32_t>(edge.target)); });
 		m_GlobalEdges.push_back(std::move(edge));
 	}
 
@@ -124,8 +127,8 @@ namespace AqualinkAutomate::Navigation
 					total_pattern_length += d.pattern.length();
 				}
 
-				LogTrace(Channel::Navigation, std::format("MenuModel: Page '{}' matched with {} detectors (pattern_len={})",
-					page.name, page.detectors.size(), total_pattern_length));
+				LogTrace(Channel::Navigation, [&] { return std::format("MenuModel: Page '{}' matched with {} detectors (pattern_len={})",
+					page.name, page.detectors.size(), total_pattern_length); });
 
 				// Prefer matches with more detectors, then longer patterns as tiebreaker
 				if (page.detectors.size() > best_detector_count ||
@@ -141,16 +144,16 @@ namespace AqualinkAutomate::Navigation
 		if (best_match != PageId::Unknown)
 		{
 			const MenuPage* matched_page = GetPage(best_match);
-			LogTrace(Channel::Navigation, std::format("MenuModel: Best match -> '{}' (id={}) with {} detectors",
-				matched_page->name, static_cast<uint32_t>(best_match), best_detector_count));
+			LogTrace(Channel::Navigation, [&] { return std::format("MenuModel: Best match -> '{}' (id={}) with {} detectors",
+				matched_page->name, static_cast<uint32_t>(best_match), best_detector_count); });
 
 			// Log the detector patterns that matched
 			for (const auto& detector : matched_page->detectors)
 			{
 				if (detector.line < content.Size())
 				{
-					LogTrace(Channel::Navigation, std::format("  Detector: line {} pattern '{}' matched in '{}'",
-						detector.line, detector.pattern, content[detector.line].Text));
+					LogTrace(Channel::Navigation, [&] { return std::format("  Detector: line {} pattern '{}' matched in '{}'",
+						detector.line, detector.pattern, content[detector.line].Text); });
 				}
 			}
 		}
@@ -161,7 +164,7 @@ namespace AqualinkAutomate::Navigation
 			{
 				if (!content[i].Text.empty())
 				{
-					LogTrace(Channel::Navigation, std::format("  Line {}: '{}'", i, content[i].Text));
+					LogTrace(Channel::Navigation, [&] { return std::format("  Line {}: '{}'", i, content[i].Text); });
 				}
 			}
 		}
@@ -189,19 +192,23 @@ namespace AqualinkAutomate::Navigation
 			return {}; // Already at destination
 		}
 
-		// BFS to find shortest path using edges
-		std::queue<PathNode> queue;
-		std::unordered_map<PageId, bool> visited;
+		// BFS to find the shortest path using edges. Rather than carrying (and deep-copying)
+		// the accumulated path on each frontier node, record the edge that first reached each
+		// page in a predecessor map and reconstruct the path once on success. This keeps the
+		// BFS allocation-light: one map entry per visited page instead of an O(depth) vector
+		// copy per expanded edge.
+		std::queue<PageId> queue;
+		std::unordered_map<PageId, const MenuEdge*> predecessor; // page -> edge that reached it
 
-		queue.push({ from, {} });
-		visited[from] = true;
+		queue.push(from);
+		predecessor[from] = nullptr; // sentinel marks the start (and "visited")
 
 		while (!queue.empty())
 		{
-			PathNode current = std::move(queue.front());
+			const PageId current = queue.front();
 			queue.pop();
 
-			const MenuPage* page = GetPage(current.page_id);
+			const MenuPage* page = GetPage(current);
 			if (!page)
 			{
 				continue;
@@ -215,47 +222,71 @@ namespace AqualinkAutomate::Navigation
 					continue; // Skip self-loops (LineUp, LineDown, PageUp, PageDown)
 				}
 
-				if (visited.count(edge.target))
+				if (predecessor.contains(edge.target))
 				{
-					continue;
+					continue; // Already visited
 				}
 
-				std::vector<const MenuEdge*> new_path = current.path;
-				new_path.push_back(&edge);
+				predecessor[edge.target] = &edge;
 
 				if (edge.target == to)
 				{
-					LogDebug(Channel::Navigation, std::format("MenuModel: Found path from {} to {} with {} steps",
-						static_cast<uint32_t>(from), static_cast<uint32_t>(to), new_path.size()));
-					return new_path;
+					// Reconstruct the path by walking predecessors back to the start.
+					std::vector<const MenuEdge*> path;
+					for (const MenuEdge* e = &edge; e != nullptr; e = predecessor.at(e->source))
+					{
+						path.push_back(e);
+					}
+					std::ranges::reverse(path);
+
+					LogDebug(Channel::Navigation, [&] { return std::format("MenuModel: Found path from {} to {} with {} steps",
+						static_cast<uint32_t>(from), static_cast<uint32_t>(to), path.size()); });
+					return path;
 				}
 
-				visited[edge.target] = true;
-				queue.push({ edge.target, std::move(new_path) });
+				queue.push(edge.target);
 			}
 		}
 
-		LogTrace(Channel::Navigation, std::format("MenuModel: No path found from {} to {}",
-			static_cast<uint32_t>(from), static_cast<uint32_t>(to)));
+		LogTrace(Channel::Navigation, [&] { return std::format("MenuModel: No path found from {} to {}",
+			static_cast<uint32_t>(from), static_cast<uint32_t>(to)); });
 		return {}; // No path found
 	}
 
-	std::vector<const MenuEdge*> MenuModel::GetIncomingSelectEdges(PageId target) const
+	void MenuModel::RebuildIncomingSelectEdges() const
 	{
-		std::vector<const MenuEdge*> result;
+		m_IncomingSelectEdges.clear();
 
 		for (const auto& [id, page] : m_Pages)
 		{
 			for (const auto& edge : page.edges)
 			{
-				if (edge.target == target && edge.trigger == EdgeTrigger::Select && edge.IsPageTransition())
+				if (edge.trigger == EdgeTrigger::Select && edge.IsPageTransition())
 				{
-					result.push_back(&edge);
+					m_IncomingSelectEdges[edge.target].push_back(&edge);
 				}
 			}
 		}
 
-		return result;
+		m_IncomingSelectEdgesValid = true;
+	}
+
+	std::vector<const MenuEdge*> MenuModel::GetIncomingSelectEdges(PageId target) const
+	{
+		// The index is built once over the whole page set and reused across crawl steps,
+		// rather than rescanning every page+edge (and allocating a fresh vector) per call.
+		if (!m_IncomingSelectEdgesValid)
+		{
+			RebuildIncomingSelectEdges();
+		}
+
+		const auto it = m_IncomingSelectEdges.find(target);
+		if (it == m_IncomingSelectEdges.end())
+		{
+			return {};
+		}
+
+		return it->second;
 	}
 
 	std::optional<MenuEdge> MenuModel::FindSystemEvent(PageId detected_page) const

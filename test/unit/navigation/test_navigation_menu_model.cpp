@@ -819,6 +819,53 @@ BOOST_AUTO_TEST_CASE(TestEdgePointersAccessLabelAndTriggerLine)
 }
 
 // =============================================================================
+// GetIncomingSelectEdges: cached index correctness + invalidation on registration
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestGetIncomingSelectEdgesCacheMatchesFreshScan)
+{
+	MenuModel model;
+
+	MenuPage system_page;
+	system_page.id = PageId::System;
+	system_page.name = "System";
+	system_page.edges = {
+		{ EdgeTrigger::Select, PageId::System, PageId::MenuHelp, 11, "Menu/Help" }
+	};
+	model.RegisterPage(std::move(system_page));
+
+	MenuPage help_page;
+	help_page.id = PageId::MenuHelp;
+	help_page.name = "Menu/Help";
+	help_page.edges = {
+		{ EdgeTrigger::Select, PageId::MenuHelp, PageId::SystemSetup, 3, "System Setup" }
+	};
+	model.RegisterPage(std::move(help_page));
+
+	// First query populates the lazy index.
+	auto into_help = model.GetIncomingSelectEdges(PageId::MenuHelp);
+	BOOST_REQUIRE_EQUAL(into_help.size(), 1);
+	BOOST_CHECK(into_help[0]->source == PageId::System);
+	BOOST_CHECK(into_help[0]->target == PageId::MenuHelp);
+
+	// A page with no incoming Select edges returns empty.
+	BOOST_CHECK(model.GetIncomingSelectEdges(PageId::System).empty());
+
+	// Registering a NEW page with another incoming Select edge must invalidate the cache so the
+	// next query reflects it (rather than returning the stale memoised result).
+	MenuPage setup_page;
+	setup_page.id = PageId::SystemSetup;
+	setup_page.name = "System Setup";
+	setup_page.edges = {
+		{ EdgeTrigger::Select, PageId::SystemSetup, PageId::MenuHelp, 0, "Back to Help" }
+	};
+	model.RegisterPage(std::move(setup_page));
+
+	auto into_help_after = model.GetIncomingSelectEdges(PageId::MenuHelp);
+	BOOST_CHECK_EQUAL(into_help_after.size(), 2);
+}
+
+// =============================================================================
 // Navigator Syncing State Tests
 // =============================================================================
 

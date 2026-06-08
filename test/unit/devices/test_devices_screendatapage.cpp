@@ -138,4 +138,78 @@ BOOST_AUTO_TEST_CASE(TestOutOfRangeLineId)
     BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 10, 11, 1));
 }
 
+// Regression: a shift larger than the [start, end] span pushed the std::rotate pivot
+// (start + offset) and the subsequent clear range outside the span, causing an out-of-bounds
+// std::rotate / std::for_each over m_Rows. The shift count must be clamped/rejected.
+BOOST_AUTO_TEST_CASE(TestShiftLinesOversizedShiftIsRejected)
+{
+    ScreenDataPage page(5);
+
+    page[0].Text = "A";
+    page[1].Text = "B";
+    page[2].Text = "C";
+    page[3].Text = "D";
+    page[4].Text = "E";
+
+    // span = lines 1..3 (3 rows). A shift of 4 exceeds the span -> must be a safe no-op.
+    BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 1, 3, 4));
+
+    BOOST_CHECK_EQUAL(page[0].Text, "A");
+    BOOST_CHECK_EQUAL(page[1].Text, "B");
+    BOOST_CHECK_EQUAL(page[2].Text, "C");
+    BOOST_CHECK_EQUAL(page[3].Text, "D");
+    BOOST_CHECK_EQUAL(page[4].Text, "E");
+
+    // Same for the Down direction (offset would go negative -> pivot before start).
+    BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Down, 1, 3, 4));
+
+    BOOST_CHECK_EQUAL(page[0].Text, "A");
+    BOOST_CHECK_EQUAL(page[1].Text, "B");
+    BOOST_CHECK_EQUAL(page[2].Text, "C");
+    BOOST_CHECK_EQUAL(page[3].Text, "D");
+    BOOST_CHECK_EQUAL(page[4].Text, "E");
+}
+
+// A shift exactly equal to the span size is the maximum legal shift and must still be a no-op
+// in effect (rotating a range by its full length leaves it unchanged) without going OOB.
+BOOST_AUTO_TEST_CASE(TestShiftLinesFullSpanShiftIsSafe)
+{
+    ScreenDataPage page(5);
+
+    page[0].Text = "A";
+    page[1].Text = "B";
+    page[2].Text = "C";
+    page[3].Text = "D";
+    page[4].Text = "E";
+
+    // span = lines 1..3 (3 rows); shift of 3 == span size: the whole span is cleared.
+    BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 1, 3, 3));
+
+    BOOST_CHECK_EQUAL(page[0].Text, "A");
+    BOOST_CHECK_EQUAL(page[1].Text, "");
+    BOOST_CHECK_EQUAL(page[2].Text, "");
+    BOOST_CHECK_EQUAL(page[3].Text, "");
+    BOOST_CHECK_EQUAL(page[4].Text, "E");
+}
+
+// A zero-line shift is a no-op (and previously still ran the rotate machinery).
+BOOST_AUTO_TEST_CASE(TestShiftLinesZeroShiftIsNoOp)
+{
+    ScreenDataPage page(5);
+
+    page[0].Text = "A";
+    page[1].Text = "B";
+    page[2].Text = "C";
+    page[3].Text = "D";
+    page[4].Text = "E";
+
+    BOOST_CHECK_NO_THROW(page.ShiftLines(ScreenDataPage::ShiftDirections::Up, 1, 3, 0));
+
+    BOOST_CHECK_EQUAL(page[0].Text, "A");
+    BOOST_CHECK_EQUAL(page[1].Text, "B");
+    BOOST_CHECK_EQUAL(page[2].Text, "C");
+    BOOST_CHECK_EQUAL(page[3].Text, "D");
+    BOOST_CHECK_EQUAL(page[4].Text, "E");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

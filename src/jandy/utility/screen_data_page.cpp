@@ -96,7 +96,14 @@ namespace AqualinkAutomate::Utility
 			// Span is not the correct range; cannot rotate.
 			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index must preceed end index by at least 1; start index -> {}, end index -> {}", start_id, end_id));
 		}
-		else 
+		else if (const auto span_size = static_cast<std::size_t>(end_id - start_id) + 1; (lines_to_shift == 0) || (lines_to_shift > span_size))
+		{
+			// A shift of 0 lines is a no-op; a shift larger than the span would push the
+			// rotate pivot (start + offset) or the clear range outside [start, end), causing
+			// std::rotate / std::for_each to read/write out of bounds. Reject both.
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, number of shifts out of range; shifts -> {}, span size -> {} (start -> {}, end -> {})", lines_to_shift, span_size, start_id, end_id));
+		}
+		else
 		{
 			// Get iterators to the start and end of the range
 			auto start = m_Rows.begin() + start_id;

@@ -48,6 +48,12 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_CURSOR_MOVES = 15;         // Max cursor moves before declaring wrap
 		static constexpr uint32_t SYNC_REQUIRED_CONSISTENT_COUNT = 3; // Consecutive consistent detections needed for sync
 
+		// Sentinel highlighted-line value meaning "no line is highlighted". The device sends a
+		// clear-all highlight (0xFF) to drop the cursor; treating that literal value as a real
+		// row index would leave the navigator chasing a non-existent line. When this arrives we
+		// retain the previously known cursor line rather than overwriting it with the sentinel.
+		static constexpr uint8_t CURSOR_LINE_NONE = 0xFF;
+
 	public:
 		explicit Navigator(const MenuModel& model);
 
@@ -99,9 +105,9 @@ namespace AqualinkAutomate::Navigation
 		void Reset();
 
 	private:
-		// Handle the Syncing state: detect page with consistency requirement
-		std::optional<NavKeyCommand> HandleSyncing(
-			const Utility::ScreenDataPage& content);
+		// Handle the Syncing state: apply the consistency requirement to the already-resolved
+		// detected page id (DetectPage is run once per content update by OnPageUpdate).
+		std::optional<NavKeyCommand> HandleSyncing(PageId detected);
 
 		// Compute navigation path from current to target
 		void ComputePath();
@@ -123,6 +129,14 @@ namespace AqualinkAutomate::Navigation
 
 		// Move cursor to the target line for the current step
 		std::optional<NavKeyCommand> MoveCursorToTarget();
+
+		// Wrap-recovery helpers for MoveCursorToTarget. AttemptWrapRecovery tries to retarget
+		// the cursor via content-based label resolution after a wrap is detected; it returns
+		// true (setting 'recovered_at_target' when the cursor already sits on the new target)
+		// if a fresh target was found. GiveUpCursorMove abandons the move, either failing the
+		// navigation (NavigateToItem) or accepting the current line as the target.
+		bool AttemptWrapRecovery(bool& recovered_at_target);
+		std::optional<NavKeyCommand> GiveUpCursorMove();
 
 		// Content-based line resolution: find the screen line whose text starts with the given label
 		std::optional<uint8_t> FindLineByLabel(const std::string& label) const;

@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 		return m_Line.first;
 	}
 
-	evUpdate::ScreenDataPageLine::second_type evUpdate::Text() const
+	const evUpdate::ScreenDataPageLine::second_type& evUpdate::Text() const
 	{
 		return m_Line.second;
 	}

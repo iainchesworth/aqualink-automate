@@ -15,8 +15,9 @@ target_sources(
 	unit/errors/test_error_categories.cpp
 	unit/devices/test_devices_id.cpp
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
-	unit/devices/test_devices_screendatapage.cpp 
-	unit/devices/test_devices_screendatapage_processor.cpp 
+	unit/devices/test_devices_screendatapage.cpp
+	unit/devices/test_devices_screendatapage_processor.cpp
+	unit/devices/test_devices_screendatapage_updater.cpp
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
 	unit/exceptions/test_genericaqualinkexception.cpp
