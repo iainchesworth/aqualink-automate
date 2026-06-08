@@ -23,74 +23,71 @@ namespace AqualinkAutomate::Kernel
     class Traits
     {
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         TraitValueProxy<Traits, TRAIT_TYPE> Get(const TRAIT_TYPE& trait_type)
         {
-            if (!m_Traits.contains(trait_type.Name()))
+            auto it = m_Traits.find(trait_type.Name());
+            if (m_Traits.end() == it)
             {
                 throw Exceptions::Traits_DoesNotExist();
             }
 
-            return TraitValueProxy<Traits, TRAIT_TYPE>(*this, m_Traits.at(trait_type.Name()));
+            return TraitValueProxy<Traits, TRAIT_TYPE>(*this, it->second);
         }
 
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         const ConstTraitValueProxy<Traits, TRAIT_TYPE> Get(const TRAIT_TYPE& trait_type) const
         {
-            if (!m_Traits.contains(trait_type.Name()))
+            auto it = m_Traits.find(trait_type.Name());
+            if (m_Traits.end() == it)
             {
                 throw Exceptions::Traits_DoesNotExist();
             }
 
-            return ConstTraitValueProxy<Traits, TRAIT_TYPE>(*this, m_Traits.at(trait_type.Name()));
+            return ConstTraitValueProxy<Traits, TRAIT_TYPE>(*this, it->second);
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         TraitValueProxy<Traits, TRAIT_TYPE> operator[](const TRAIT_TYPE& trait_type)
         {
             return Get(trait_type);
         }
 
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         const ConstTraitValueProxy<Traits, TRAIT_TYPE> operator[](const TRAIT_TYPE& trait_type) const
         {
             return Get(trait_type);
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         bool Has(TRAIT_TYPE trait_type) const
         {
             return m_Traits.contains(trait_type.Name());
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         bool Remove(TRAIT_TYPE trait_type)
         {
-            if (!m_Traits.contains(trait_type.Name()))
+            if (!trait_type.IsMutable())
             {
-                // IMPOSSIBLE -> Trait does not exist in the collection.
-            }
-            else if (!trait_type.IsMutable())
-            {
-                // NOT PERMITTED -> Trait is immutable so cannot be removed
-            }
-            else
-            {
-                // PERMITTED -> mutable trait...remove it.
-                return (0 < m_Traits.erase(trait_type.Name()));
+                // NOT PERMITTED -> Trait is immutable so cannot be removed (also covers the
+                // "does not exist" case, which simply erases nothing).
+                return false;
             }
 
-            return false;
+            // PERMITTED -> mutable trait...remove it (no-op if it does not exist).
+            return (0 < m_Traits.erase(trait_type.Name()));
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         void Set(const TRAIT_TYPE& trait_type, TRAIT_TYPE::TraitValue trait_value)
         {
-            if (!m_Traits.contains(trait_type.Name()))
+            auto it = m_Traits.find(trait_type.Name());
+            if (m_Traits.end() == it)
             {
                 // PERMITTED -> Adding the trait for the first time
                 auto [_, was_inserted] = m_Traits.emplace(trait_type.Name(), std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value));
@@ -102,7 +99,7 @@ namespace AqualinkAutomate::Kernel
             else if (trait_type.IsMutable())
             {
                 // PERMITTED -> The trait is mutable so the value can be changed.
-                m_Traits.at(trait_type.Name()) = std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value);
+                it->second = std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value);
             }
             else
             {
@@ -112,16 +109,16 @@ namespace AqualinkAutomate::Kernel
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         std::optional<typename TRAIT_TYPE::TraitValue> TryGet(const TRAIT_TYPE& trait_type) const
         {
             if (auto it = m_Traits.find(trait_type.Name()); m_Traits.end() == it)
             {
-                LogTrace(Channel::Devices, std::format("Requested device trait ({}) does not exist", trait_type.Name()));
+                LogTrace(Channel::Devices, [&]() { return std::format("Requested device trait ({}) does not exist", trait_type.Name()); });
             }
             else if (!(it->second.has_value()))
             {
-                LogDebug(Channel::Devices, std::format("Requested device trait ({}) does not have an associated value", trait_type.Name()));
+                LogDebug(Channel::Devices, [&]() { return std::format("Requested device trait ({}) does not have an associated value", trait_type.Name()); });
             }
             else
             {
@@ -129,9 +126,9 @@ namespace AqualinkAutomate::Kernel
                 {
                     return std::any_cast<typename TRAIT_TYPE::TraitValue>(it->second);
                 }
-                catch (const std::bad_any_cast& exBAC)
+                catch (const std::bad_any_cast&)
                 {
-                    LogDebug(Channel::Devices, std::format("Requested device trait ({}) associated value is the incorrect type", trait_type.Name()));
+                    LogDebug(Channel::Devices, [&]() { return std::format("Requested device trait ({}) associated value is the incorrect type", trait_type.Name()); });
                 }
             }
 
@@ -139,10 +136,11 @@ namespace AqualinkAutomate::Kernel
         }
 
     public:
-        template<typename TRAIT_TYPE>
+        template<IsTraitType TRAIT_TYPE>
         std::expected<std::reference_wrapper<Traits>, boost::system::error_code> TrySet(const TRAIT_TYPE& trait_type, TRAIT_TYPE::TraitValue trait_value)
         {
-            if (!m_Traits.contains(trait_type.Name()))
+            auto it = m_Traits.find(trait_type.Name());
+            if (m_Traits.end() == it)
             {
                 // PERMITTED -> Adding the trait for the first time
                 auto [_, was_inserted] = m_Traits.emplace(trait_type.Name(), std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value));
@@ -155,7 +153,7 @@ namespace AqualinkAutomate::Kernel
             else if (trait_type.IsMutable())
             {
                 // PERMITTED -> The trait is mutable so the value can be changed.
-                m_Traits.at(trait_type.Name()) = std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value);
+                it->second = std::make_any<typename TRAIT_TYPE::TraitValue>(trait_value);
             }
             else
             {

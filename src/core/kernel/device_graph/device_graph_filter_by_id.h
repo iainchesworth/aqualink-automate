@@ -18,7 +18,9 @@ namespace AqualinkAutomate::Kernel
 
 	private:
 		const DevicesGraphType& m_Graph;
-		const boost::uuids::uuid& m_DeviceId;
+		// Stored by value: a filter may outlive the caller-supplied uuid (e.g. a temporary),
+		// so holding a reference here was a dangling-reference hazard.
+		const boost::uuids::uuid m_DeviceId;
 	};
 
 }

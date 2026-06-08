@@ -58,7 +58,7 @@ namespace AqualinkAutomate::HTTP
 					button["label"] = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
 				}
 				
-				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::StatusTrait{}))
+				if (Kernel::AuxillaryTraitsTypes::HasStatus(device))
 				{
 					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}

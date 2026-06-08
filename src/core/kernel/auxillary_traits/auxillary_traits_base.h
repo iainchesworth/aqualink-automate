@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <string>
 
 namespace AqualinkAutomate::Kernel
@@ -15,6 +16,16 @@ namespace AqualinkAutomate::Kernel
     public:
         virtual TraitKey Name() const = 0;
         virtual bool IsMutable() const = 0;
+    };
+
+    /// Concept constraining types usable as trait descriptors (the Traits store key/value and
+    /// the device-graph trait filters). Models the TraitType<> contract.
+    template<typename T>
+    concept IsTraitType = requires(T t) {
+        typename T::TraitValue;
+        typename T::TraitKey;
+        { t.Name() } -> std::convertible_to<std::string>;
+        { t.IsMutable() } -> std::same_as<bool>;
     };
 
     template<typename TRAIT_TYPE>
