@@ -2,6 +2,7 @@
 #include <format>
 
 #include "messages/pentair_message_constants.h"
+#include "messages/pentair_message_decode_helpers.h"
 #include "messages/pentair_message_ids.h"
 #include "messages/pump/pentair_pump_message_status.h"
 #include "logging/logging.h"
@@ -65,17 +66,16 @@ namespace AqualinkAutomate::Pentair::Messages
 
 	bool PentairPumpMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		const uint8_t data_length = message_bytes[Offset_Length];
-		const std::size_t data_start = Offset_DataStart;
+		const uint8_t data_length = DataLengthOf(message_bytes);
 
 		auto data_at = [&](uint8_t data_index) -> uint8_t
 		{
-			return (data_index < data_length) ? message_bytes[data_start + data_index] : static_cast<uint8_t>(0);
+			return DataByteAt(message_bytes, data_index);
 		};
 
 		if (data_length <= Data_Index_GPM)
 		{
-			LogDebug(Channel::Messages, std::format("PentairPumpMessage_Status DATA too short ({} bytes) to decode all fields; missing fields default to zero", data_length));
+			LogDebug(Channel::Messages, [data_length] { return std::format("PentairPumpMessage_Status DATA too short ({} bytes) to decode all fields; missing fields default to zero", data_length); });
 		}
 
 		m_Watts = static_cast<uint16_t>((static_cast<uint16_t>(data_at(Data_Index_Watts_High)) << 8) | data_at(Data_Index_Watts_Low));

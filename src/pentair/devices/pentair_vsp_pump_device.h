@@ -3,7 +3,10 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
+
+#include <boost/uuid/uuid.hpp>
 
 #include "devices/capabilities/restartable.h"
 #include "devices/pentair_device.h"
@@ -28,13 +31,15 @@ namespace AqualinkAutomate::Pentair::Devices
 	{
 		inline static const std::chrono::seconds PUMP_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		// Controller / master address used as the FROM of emitted commands.
-		static constexpr uint8_t CONTROLLER_ADDRESS = 0x10;
-
 	public:
-		using TimestampedRPM = std::pair<uint16_t, std::chrono::time_point<std::chrono::system_clock>>;
-		using TimestampedWatts = std::pair<uint16_t, std::chrono::time_point<std::chrono::system_clock>>;
-		using TimestampedGPM = std::pair<uint8_t, std::chrono::time_point<std::chrono::system_clock>>;
+		// A single timestamped-reading alias parameterised on the value type, in
+		// place of three near-identical RPM/Watts/GPM pair aliases.
+		template<typename VALUE>
+		using Timestamped = std::pair<VALUE, std::chrono::time_point<std::chrono::system_clock>>;
+
+		using TimestampedRPM = Timestamped<uint16_t>;
+		using TimestampedWatts = Timestamped<uint16_t>;
+		using TimestampedGPM = Timestamped<uint8_t>;
 
 	public:
 		PentairVSPPumpDevice(const std::shared_ptr<PentairDeviceId>& device_id, Kernel::HubLocator& hub_locator);
@@ -53,14 +58,21 @@ namespace AqualinkAutomate::Pentair::Devices
 		// Emit a power on/off command (controller -> this pump).
 		void SetPower(bool power_on) const;
 
-	private:
+	protected:
+		// Resets the live operating point and the DataHub pump status/flow when the
+		// pump stops reporting.  Protected (matching the Restartable base contract)
+		// so a focused test can drive the timeout deterministically.
 		void WatchdogTimeoutOccurred() override;
 
 	private:
 		void Slot_Pump_Status(const Messages::PentairPumpMessage_Status& msg);
 
 	private:
-		void EnsurePumpDeviceExists();
+		// Returns the cached DataHub pump auxillary for this device, creating it on
+		// first use.  The handle is cached by uuid so subsequent status frames do a
+		// single O(1) FindById() instead of scanning Pumps() and comparing a freshly
+		// formatted label string each time.
+		std::shared_ptr<Kernel::AuxillaryDevice> ResolvePumpDevice();
 		void PushStatusToDataHub(const Messages::PentairPumpMessage_Status& msg);
 
 	private:
@@ -70,6 +82,9 @@ namespace AqualinkAutomate::Pentair::Devices
 		TimestampedGPM m_GPM;
 		bool m_IsRunning{ false };
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+
+		// Identity of the DataHub pump auxillary this device owns; resolved once.
+		std::optional<boost::uuids::uuid> m_PumpDeviceId;
 	};
 
 }

@@ -1,7 +1,9 @@
 #include <format>
+#include <source_location>
 
 #include "devices/pentair_controller_device.h"
 #include "kernel/temperature.h"
+#include "profiling/profiling.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -34,19 +36,23 @@ namespace AqualinkAutomate::Pentair::Devices
 
 	void PentairControllerDevice::WatchdogTimeoutOccurred()
 	{
-		LogWarning(Channel::Devices, std::format("Pentair controller (0x{:02x}) watchdog expired", m_Address));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PentairControllerDevice::WatchdogTimeoutOccurred", std::source_location::current());
+
+		LogWarning(Channel::Devices, [this] { return std::format("Pentair controller (0x{:02x}) watchdog expired", m_Address); });
 	}
 
 	void PentairControllerDevice::Slot_Controller_Status(const Messages::PentairControllerMessage_Status& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PentairControllerDevice::Slot_Controller_Status", std::source_location::current());
+
 		// Controller status is broadcast by the controller; match on FROM.
 		if (msg.From() != m_Address)
 		{
 			return;
 		}
 
-		LogDebug(Channel::Devices, std::format("Pentair controller (0x{:02x}) status: {:02}:{:02}, water {}F, air {}F, pool-heat {}, spa-heat {}",
-			m_Address, msg.Hour(), msg.Minute(), msg.WaterTempF(), msg.AirTempF(), msg.PoolHeaterOn(), msg.SpaHeaterOn()));
+		LogDebug(Channel::Devices, [this, &msg] { return std::format("Pentair controller (0x{:02x}) status: {:02}:{:02}, water {}F, air {}F, pool-heat {}, spa-heat {}",
+			m_Address, msg.Hour(), msg.Minute(), msg.WaterTempF(), msg.AirTempF(), msg.PoolHeaterOn(), msg.SpaHeaterOn()); });
 
 		m_PoolHeaterOn = msg.PoolHeaterOn();
 		m_SpaHeaterOn = msg.SpaHeaterOn();
@@ -66,12 +72,18 @@ namespace AqualinkAutomate::Pentair::Devices
 		// The Pentair controller reports temperatures in Fahrenheit.
 		m_DataHub->SystemTemperatureUnits(Kernel::TemperatureUnits::Fahrenheit);
 
-		if (msg.HasAirTemp())
+		// A reported 0 degrees Fahrenheit is treated conservatively as a
+		// sensor-unavailable sentinel (the controller reports 0 when no probe is
+		// attached / the reading is not yet valid) rather than publishing a bogus
+		// 0F reading.  This mirrors how the Jandy RSSA path filters absent sensors.
+		// CAPTURE-GATED: the exact unavailable encoding is not confirmed against a
+		// live capture, so only the unambiguous 0 case is suppressed.
+		if (msg.HasAirTemp() && (0 != msg.AirTempF()))
 		{
 			m_DataHub->AirTemp(Kernel::Temperature::ConvertToTemperatureInFahrenheit(static_cast<double>(msg.AirTempF())));
 		}
 
-		if (msg.HasWaterTemp())
+		if (msg.HasWaterTemp() && (0 != msg.WaterTempF()))
 		{
 			// Route the single water-temperature reading to the active body: when
 			// the spa circuit is on it is the spa temperature, otherwise the pool.

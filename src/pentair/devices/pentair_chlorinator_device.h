@@ -23,8 +23,6 @@ namespace AqualinkAutomate::Pentair::Devices
 	{
 		inline static const std::chrono::seconds CHLORINATOR_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 
-		static constexpr uint8_t CONTROLLER_ADDRESS = 0x10;
-
 	public:
 		PentairChlorinatorDevice(const std::shared_ptr<PentairDeviceId>& device_id, Kernel::HubLocator& hub_locator);
 		~PentairChlorinatorDevice() override = default;
