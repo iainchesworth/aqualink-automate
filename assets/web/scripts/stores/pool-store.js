@@ -13,6 +13,38 @@
  *   SystemStatusChange → serialised IStatus
  *   ButtonStateChange  → { button_id, status, label? }
  */
+
+// How long a terminal command state ('applied'/'rejected'/'blocked'/'timedout')
+// stays visible before it auto-clears, and how long an in-flight 'sending'
+// command waits before it is considered timed out.
+const COMMAND_STATE_CLEAR_MS = 3000;
+const COMMAND_SENDING_TIMEOUT_MS = 5000;
+
+// Re-fetch interval when the buttons endpoint reports it is not yet ready.
+const BUTTONS_RETRY_MS = 5000;
+
+// Normalise the several system-status vocabularies (REST 'operational',
+// WS SystemStatusChange status_type like 'Normal'/'Initializing', and the
+// initial 'unknown') down to one human-readable label for display.
+function _normaliseSystemStatus(raw) {
+    switch (String(raw || '').toLowerCase()) {
+        case 'operational':
+        case 'normal':
+            return 'Operational';
+        case 'initializing':
+        case 'starting':
+            return 'Starting';
+        case 'service':
+        case 'service_mode':
+            return 'Service Mode';
+        case '':
+        case 'unknown':
+            return 'Unknown';
+        default:
+            return String(raw);
+    }
+}
+
 document.addEventListener('alpine:init', () => {
     Alpine.store('pool', {
         poolTemp: '--',
@@ -30,7 +62,7 @@ document.addEventListener('alpine:init', () => {
 
         buttons: [],
         commandStates: {},   // { [buttonId|'setpoint:pool'|'setpoint:spa']: { state, timer } }
-        systemStatus: 'unknown',
+        systemStatus: 'Unknown',
         equipmentVersion: [],
         softwareVersion: '--',
         gitCommit: '',
@@ -114,16 +146,13 @@ document.addEventListener('alpine:init', () => {
                     });
                 }
 
-                this.systemStatus = 'operational';
+                this.systemStatus = _normaliseSystemStatus('operational');
 
                 // Update system store if pool configuration is known
                 if (data.configuration && data.configuration.pool_configuration &&
                     data.configuration.pool_configuration !== 'Unknown') {
                     const sys = Alpine.store('system');
-                    if (sys.backendState === 'starting') {
-                        sys._prevBackendState = sys.backendState;
-                        sys.backendState = 'ready';
-                    }
+                    sys.markReadyIfStarting();
                     sys.poolConfiguration = data.configuration.pool_configuration;
                 }
             } catch (e) {
@@ -140,7 +169,7 @@ document.addEventListener('alpine:init', () => {
                 if (data && Array.isArray(data.buttons)) {
                     this.buttons = data.buttons;
                 } else if (data && data.buttons === null) {
-                    setTimeout(() => this._fetchButtons(), 5000);
+                    setTimeout(() => this._fetchButtons(), BUTTONS_RETRY_MS);
                     return;
                 }
             } catch (e) {
@@ -198,12 +227,14 @@ document.addEventListener('alpine:init', () => {
                     }
                     break;
 
-                case 'SystemStatusChange':
-                    this.systemStatus = msg.payload?.status_type || 'unknown';
-                    if (this.systemStatus === 'Normal' && this.buttons.length === 0) {
+                case 'SystemStatusChange': {
+                    const statusType = msg.payload?.status_type;
+                    this.systemStatus = _normaliseSystemStatus(statusType);
+                    if (statusType === 'Normal' && this.buttons.length === 0) {
                         this._fetchButtons();
                     }
                     break;
+                }
 
                 case 'ButtonStateChange':
                     if (msg.payload?.button_id != null) {
@@ -221,28 +252,34 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // Clear a command state after COMMAND_STATE_CLEAR_MS and notify Alpine.
+        _scheduleClear(key) {
+            return setTimeout(() => this._clearCommandState(key), COMMAND_STATE_CLEAR_MS);
+        },
+
+        _clearCommandState(key) {
+            const { [key]: _removed, ...rest } = this.commandStates;
+            this.commandStates = rest;
+        },
+
         _setCommandState(key, state) {
             const prev = this.commandStates[key];
             if (prev?.timer) clearTimeout(prev.timer);
 
-            let timer = null;
-            if (state !== 'sending') {
-                timer = setTimeout(() => {
-                    delete this.commandStates[key];
-                    this.commandStates = { ...this.commandStates };
-                }, 3000);
-            } else {
-                // Timeout for in-flight commands
+            let timer;
+            if (state === 'sending') {
+                // In-flight command: if it has not resolved by the timeout,
+                // surface a distinct 'timedout' state (then auto-clear it).
                 timer = setTimeout(() => {
                     if (this.commandStates[key]?.state === 'sending') {
-                        this.commandStates[key] = { state: 'timedout' };
-                        this.commandStates = { ...this.commandStates };
-                        setTimeout(() => {
-                            delete this.commandStates[key];
-                            this.commandStates = { ...this.commandStates };
-                        }, 3000);
+                        console.warn(`Command '${key}' timed out after ${COMMAND_SENDING_TIMEOUT_MS}ms`);
+                        Alpine.store('toast').show('Command timed out — no response from server', 'warn');
+                        this.commandStates = { ...this.commandStates, [key]: { state: 'timedout', timer: this._scheduleClear(key) } };
                     }
-                }, 5000);
+                }, COMMAND_SENDING_TIMEOUT_MS);
+            } else {
+                // Terminal state ('applied'/'rejected'/'blocked'/'timedout'): auto-clear.
+                timer = this._scheduleClear(key);
             }
 
             this.commandStates = { ...this.commandStates, [key]: { state, timer } };
@@ -263,7 +300,11 @@ document.addEventListener('alpine:init', () => {
                 const current = target === 'pool' ? this.poolSetpoint : this.spaSetpoint;
                 const currentCelsius = typeof current === 'object' ? current.celsius : parseFloat(current);
                 if (isNaN(currentCelsius)) return;
-                const newTemp = currentCelsius + delta;
+                // The backend quantizes setpoints to whole degrees (std::round in
+                // webroute_equipment_setpoints.cpp); round the optimistic value the
+                // same way so the UI never shows a fractional value the controller
+                // will not honour.
+                const newTemp = Math.round(currentCelsius + delta);
                 const body = {};
                 body[target] = newTemp;
 
@@ -275,24 +316,58 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify(body)
                 });
 
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data) {
-                        if (target === 'pool' && typeof this.poolSetpoint === 'object') {
-                            this.poolSetpoint = { ...this.poolSetpoint, celsius: newTemp };
-                        } else if (target === 'spa' && typeof this.spaSetpoint === 'object') {
-                            this.spaSetpoint = { ...this.spaSetpoint, celsius: newTemp };
-                        }
+                if (!resp.ok) {
+                    const reason = await this._readErrorReason(resp);
+                    // A rejected command is an expected operational outcome (e.g.
+                    // controller not ready), not a UI fault — warn, don't error.
+                    console.warn(`Setpoint change rejected (HTTP ${resp.status}):`, reason);
+                    this._setCommandState(key, 'rejected');
+                    Alpine.store('toast').show(`Setpoint change failed — ${reason}`, 'error');
+                    return;
+                }
+
+                // The POST always returns 200; the per-target result carries the
+                // real outcome. Treat the command as applied only when the server
+                // confirms status === 'success' for this target.
+                let data = null;
+                try { data = await resp.json(); } catch (_) { /* tolerate empty/non-JSON body */ }
+                const targetResult = data?.[target];
+                if (targetResult?.status === 'success') {
+                    // Prefer the server's authoritative (quantized) celsius value.
+                    const applied = targetResult.celsius != null ? targetResult.celsius : newTemp;
+                    if (target === 'pool' && typeof this.poolSetpoint === 'object') {
+                        this.poolSetpoint = { ...this.poolSetpoint, celsius: applied };
+                    } else if (target === 'spa' && typeof this.spaSetpoint === 'object') {
+                        this.spaSetpoint = { ...this.spaSetpoint, celsius: applied };
                     }
                     this._setCommandState(key, 'applied');
                 } else {
+                    console.warn(`Setpoint change for '${target}' was not applied:`, targetResult);
                     this._setCommandState(key, 'rejected');
+                    Alpine.store('toast').show('Setpoint change was not applied by the controller', 'error');
                 }
             } catch (e) {
                 console.error('Failed to adjust setpoint:', e);
                 this._setCommandState(key, 'rejected');
                 Alpine.store('toast').show('Setpoint change failed — check connection', 'error');
             }
+        },
+
+        // Best-effort extraction of a human-readable failure reason from a
+        // non-ok response (structured JSON {error|message} or plain text),
+        // falling back to the HTTP status text.
+        async _readErrorReason(resp) {
+            try {
+                const text = await resp.text();
+                if (text) {
+                    try {
+                        const j = JSON.parse(text);
+                        if (j && (j.error || j.message)) return String(j.error || j.message);
+                    } catch (_) { /* not JSON — use raw text */ }
+                    return text;
+                }
+            } catch (_) { /* body unreadable */ }
+            return resp.statusText || `HTTP ${resp.status}`;
         },
 
         async toggleButton(id) {
@@ -306,18 +381,28 @@ document.addEventListener('alpine:init', () => {
 
                 const resp = await fetch(`/api/equipment/buttons/${id}`, { method: 'POST' });
 
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data) {
-                        const idx = this.buttons.findIndex(b => b.id === id);
-                        if (idx !== -1) {
-                            this.buttons[idx] = { ...this.buttons[idx], status: data.status };
-                        }
-                    }
-                    this._setCommandState(id, 'applied');
-                } else {
+                if (!resp.ok) {
+                    const reason = await this._readErrorReason(resp);
+                    // A rejected command is an expected operational outcome (e.g.
+                    // controller not ready), not a UI fault — warn, don't error.
+                    console.warn(`Command for button '${id}' rejected (HTTP ${resp.status}):`, reason);
                     this._setCommandState(id, 'rejected');
+                    Alpine.store('toast').show(`Command failed — ${reason}`, 'error');
+                    return;
                 }
+
+                let data = null;
+                try { data = await resp.json(); } catch (_) { /* tolerate empty/non-JSON body */ }
+                // Apply the optimistic status only when the server actually
+                // reported one; otherwise leave the existing status untouched
+                // rather than overwriting it with undefined.
+                if (data && data.status != null) {
+                    const idx = this.buttons.findIndex(b => b.id === id);
+                    if (idx !== -1) {
+                        this.buttons[idx] = { ...this.buttons[idx], status: data.status };
+                    }
+                }
+                this._setCommandState(id, 'applied');
             } catch (e) {
                 console.error('Failed to toggle button:', e);
                 this._setCommandState(id, 'rejected');

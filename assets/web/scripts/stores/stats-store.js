@@ -45,6 +45,19 @@ document.addEventListener('alpine:init', () => {
         messageErrors: null,
         lastUpdate: null,
 
+        /**
+         * Reset frequency-tracking baselines. Called when a fresh stats socket
+         * opens, since the new connection may be a restarted server whose message
+         * counters have reset — carrying the old baselines forward would yield a
+         * large negative delta and corrupt the EMA.
+         */
+        resetFrequency() {
+            _freq.prevCounts = {};
+            _freq.prevFreqs = {};
+            _freq.lastSeen = {};
+            _freq.prevTime = null;
+        },
+
         handleEvent(msg) {
             if (!msg || msg.type !== 'StatisticsUpdate' || !msg.payload) return;
             this.lastUpdate = new Date();
@@ -96,7 +109,11 @@ document.addEventListener('alpine:init', () => {
                     const prev = _freq.prevCounts[key];
                     let frequency = _freq.prevFreqs[key] || 0;
                     if (prev != null && dtSec > 0) {
-                        const instantaneous = (stat.count - prev) / dtSec;
+                        // Counters are monotonic on a given socket, but a server
+                        // restart resets them to a lower value. Clamp the delta so
+                        // a reset cannot drive the instantaneous rate negative and
+                        // spike the EMA.
+                        const instantaneous = Math.max(0, (stat.count - prev) / dtSec);
                         frequency = alpha * instantaneous + (1 - alpha) * frequency;
                     }
                     // Only update lastSeen when the count has actually increased

@@ -8,6 +8,10 @@
  *
  * Debounce prevents redundant fetches on rapid tab switching.
  */
+
+// Interval (ms) for the WS-down fallback poll of equipment data.
+const EQUIPMENT_FALLBACK_POLL_MS = 30000;
+
 function app() {
     return {
         route: 'dashboard',
@@ -35,7 +39,7 @@ function app() {
                 if (!Alpine.store('ws').connected) {
                     Alpine.store('pool')._fetchEquipment();
                 }
-            }, 30000);
+            }, EQUIPMENT_FALLBACK_POLL_MS);
         },
 
         _getRouteFromHash() {

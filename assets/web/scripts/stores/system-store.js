@@ -73,6 +73,20 @@ document.addEventListener('alpine:init', () => {
             this._serviceModalDismissed = true;
         },
 
+        /**
+         * Single source of truth for the inferred 'starting' -> 'ready' transition.
+         * Called from both this store (SystemStatusChange) and the pool store
+         * (initial /api/equipment load) so the inference lives in one place.
+         */
+        markReadyIfStarting() {
+            if (this.backendState === 'starting') {
+                this._prevBackendState = this.backendState;
+                this.backendState = 'ready';
+                return true;
+            }
+            return false;
+        },
+
         handleEvent(msg) {
             if (!msg || !msg.type) return;
 
@@ -99,10 +113,7 @@ document.addEventListener('alpine:init', () => {
                 // Device status transitions: Initializing → Normal
                 // When any device reports Normal, system is operational
                 if (p.status_type === 'Normal') {
-                    if (this.backendState === 'starting') {
-                        this._prevBackendState = this.backendState;
-                        this.backendState = 'ready';
-                    }
+                    this.markReadyIfStarting();
                 }
 
                 // Track per-device status for diagnostics
