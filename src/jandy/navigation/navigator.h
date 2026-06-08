@@ -44,6 +44,7 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_BACK_PRESSES = 10;
 		static constexpr uint32_t MAX_RECOMPUTE_COUNT = 50;      // Prevent infinite recompute loops
 		static constexpr uint32_t MAX_WAIT_CYCLES = 100;         // Timeout after this many page updates with no progress
+		static constexpr uint32_t MAX_TRANSIENT_WAITS = 20;      // Page updates to wait for a transient (splash) page to auto-clear
 		static constexpr uint32_t MAX_CURSOR_MOVES = 15;         // Max cursor moves before declaring wrap
 		static constexpr uint32_t SYNC_REQUIRED_CONSISTENT_COUNT = 3; // Consecutive consistent detections needed for sync
 
@@ -135,6 +136,9 @@ namespace AqualinkAutomate::Navigation
 		// Check if current page is a blocking special page
 		bool IsBlockingPage(PageId page) const;
 
+		// Check if a page is a transient splash/cold-start page that auto-advances
+		bool IsTransientPage(PageId page) const;
+
 	private:
 		const MenuModel& m_Model;
 		State m_State{ State::Idle };
@@ -182,6 +186,9 @@ namespace AqualinkAutomate::Navigation
 
 		// Recompute tracking (to prevent infinite loops)
 		uint32_t m_RecomputeCount{ 0 };
+
+		// Transient-page wait tracking (the cold-start splash auto-advances on its own)
+		uint32_t m_TransientWaitCount{ 0 };
 
 		// Sync state tracking
 		PageId m_SyncDetectedPage{ PageId::Unknown };

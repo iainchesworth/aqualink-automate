@@ -609,7 +609,8 @@ namespace AqualinkAutomate::Navigation
 			.page_type = ScreenDataPageTypes::Page_StartUp,
 			.detectors = {{ 7, "REV " }, { 5, "-" }},
 			.edges = {},  // Transient page - controller auto-transitions to a default page
-			.max_content_lines = 4
+			.max_content_lines = 4,
+			.transient = true   // controller auto-advances off the splash; navigator waits rather than failing
 		});
 
 		// Service Mode page

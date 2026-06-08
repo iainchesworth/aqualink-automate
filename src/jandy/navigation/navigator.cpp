@@ -21,6 +21,7 @@ namespace AqualinkAutomate::Navigation
 		m_CurrentPage = PageId::Unknown;
 		m_SyncDetectedPage = PageId::Unknown;
 		m_SyncConsistentCount = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::NavigateTo(PageId target)
@@ -47,6 +48,7 @@ namespace AqualinkAutomate::Navigation
 		m_RecomputeCount = 0;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::NavigateToItem(PageId page, uint8_t menu_item_line, const std::string& item_label, PageId select_target)
@@ -67,6 +69,7 @@ namespace AqualinkAutomate::Navigation
 		m_RecomputeCount = 0;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::OnStatusMessageReceived()
@@ -289,6 +292,7 @@ namespace AqualinkAutomate::Navigation
 		m_PasswordDigitIndex = 0;
 		m_WaitCycleCount = 0;
 		m_RecomputeCount = 0;
+		m_TransientWaitCount = 0;
 		m_SyncDetectedPage = PageId::Unknown;
 		m_SyncConsistentCount = 0;
 		m_pCurrentContent = nullptr;
@@ -758,6 +762,29 @@ namespace AqualinkAutomate::Navigation
 		const MenuPage* actual_page = m_Model.GetPage(actual);
 		const MenuPage* target_page = m_Model.GetPage(m_TargetPage);
 
+		// Transient pages (e.g. the cold-start StartUp splash) auto-advance to a real
+		// page on their own with no keypress. They have no edges, so navigating or
+		// recovering from them is impossible and previously failed the whole startup
+		// crawl. Instead, WAIT for the controller to transition and re-evaluate on the
+		// next page update. Bounded by MAX_TRANSIENT_WAITS so a page that never clears
+		// falls through to normal unexpected-page handling/recovery.
+		if ((actual != PageId::Unknown) && IsTransientPage(actual))
+		{
+			m_CurrentPage = actual;
+			if (++m_TransientWaitCount <= MAX_TRANSIENT_WAITS)
+			{
+				LogInfo(Channel::Navigation, std::format("Navigator: On transient page {}({}); waiting for controller auto-transition ({}/{})",
+					static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown",
+					m_TransientWaitCount, MAX_TRANSIENT_WAITS));
+				m_State = State::WaitingForPage;
+				m_PendingStatusMessages = 0;
+				return;
+			}
+
+			LogWarning(Channel::Navigation, std::format("Navigator: Transient page {}({}) did not clear after {} waits; treating as unexpected",
+				static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown", MAX_TRANSIENT_WAITS));
+		}
+
 		LogWarning(Channel::Navigation, std::format("Navigator: Handling unexpected page {}({}) while navigating to {}({})",
 			static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown",
 			static_cast<uint32_t>(m_TargetPage), target_page ? target_page->name : "Unknown"));
@@ -1077,6 +1104,12 @@ namespace AqualinkAutomate::Navigation
 	bool Navigator::IsBlockingPage(PageId page) const
 	{
 		return page == PageId::Service || page == PageId::TimeOut;
+	}
+
+	bool Navigator::IsTransientPage(PageId page) const
+	{
+		const MenuPage* p = m_Model.GetPage(page);
+		return (p != nullptr) && p->transient;
 	}
 
 }

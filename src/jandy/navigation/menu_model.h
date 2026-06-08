@@ -70,6 +70,11 @@ namespace AqualinkAutomate::Navigation
 		// the same PageId shows different content depending on which menu item was selected.
 		bool multi_instance = false;
 
+		// When true, this page is a transient splash/cold-start screen the controller
+		// auto-advances off on its own (no keypress). It has no navigation edges; the
+		// navigator waits for it to clear rather than trying to navigate/recover from it.
+		bool transient = false;
+
 		// Convenience: find the Back edge target (nullopt if no Back edge)
 		std::optional<PageId> BackTarget() const;
 
