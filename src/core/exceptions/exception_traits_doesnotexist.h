@@ -1,19 +1,13 @@
 #pragma once
 
-#include <string>
+#include <source_location>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
 namespace AqualinkAutomate::Exceptions
 {
 
-	class Traits_DoesNotExist : public GenericAqualinkException
-	{
-		static const std::string TRAIT_DOES_NOT_EXIST_MESSAGE;
-
-	public:
-		Traits_DoesNotExist();
-	};
+	AQ_DECLARE_EXCEPTION(Traits_DoesNotExist);
 
 }
 // namespace AqualinkAutomate::Exceptions
