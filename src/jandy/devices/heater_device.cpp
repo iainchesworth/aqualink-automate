@@ -1,10 +1,13 @@
 #include <format>
 #include <functional>
+#include <source_location>
 
 #include <magic_enum/magic_enum.hpp>
 
+#include "devices/device_status.h"
 #include "devices/heater_device.h"
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -26,6 +29,11 @@ namespace AqualinkAutomate::Devices
 
 	void HeaterDevice::WatchdogTimeoutOccurred()
 	{
+		LogWarning(Channel::Devices, [this]() { return std::format("Heater (0x{:02x}): Watchdog timeout occurred - marking device as having lost communications.", DeviceId().Id()()); });
+
+		// Publish a LostComms status so downstream consumers (WebSocket/MQTT/diagnostics)
+		// can observe that this critical equipment device has gone silent on the bus.
+		Status(Devices::DeviceStatus_LostComms{});
 	}
 
 	HeaterDevice::TimestampedMode HeaterDevice::OperatingMode() const
@@ -60,8 +68,10 @@ namespace AqualinkAutomate::Devices
 
 	void HeaterDevice::Slot_Heater_Request(const Messages::HeaterMessage_Request& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HeaterDevice::Slot_Heater_Request", std::source_location::current());
+
 		LogDebug(Channel::Devices, "Heater device received a HeaterMessage_Request signal.");
-		LogDebug(Channel::Devices, std::format("Heater Device: mode={}, pool setpoint={}, spa setpoint={}, water temp={}", magic_enum::enum_name(msg.OperatingMode()), msg.PoolSetpoint(), msg.SpaSetpoint(), msg.WaterTemperature()));
+		LogDebug(Channel::Devices, [&msg]() { return std::format("Heater Device: mode={}, pool setpoint={}, spa setpoint={}, water temp={}", magic_enum::enum_name(msg.OperatingMode()), msg.PoolSetpoint(), msg.SpaSetpoint(), msg.WaterTemperature()); });
 
 		m_OperatingMode = std::make_pair(msg.OperatingMode(), std::chrono::system_clock::now());
 		m_PoolSetpoint = std::make_pair(msg.PoolSetpoint(), std::chrono::system_clock::now());
@@ -74,8 +84,10 @@ namespace AqualinkAutomate::Devices
 
 	void HeaterDevice::Slot_Heater_Status(const Messages::HeaterMessage_Status& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("HeaterDevice::Slot_Heater_Status", std::source_location::current());
+
 		LogDebug(Channel::Devices, "Heater device received a HeaterMessage_Status signal.");
-		LogDebug(Channel::Devices, std::format("Heater Device: state={}, error={}", magic_enum::enum_name(msg.HeaterState()), magic_enum::enum_name(msg.ErrorCode())));
+		LogDebug(Channel::Devices, [&msg]() { return std::format("Heater Device: state={}, error={}", magic_enum::enum_name(msg.HeaterState()), magic_enum::enum_name(msg.ErrorCode())); });
 
 		m_HeaterState = std::make_pair(msg.HeaterState(), std::chrono::system_clock::now());
 		m_ErrorCode = std::make_pair(msg.ErrorCode(), std::chrono::system_clock::now());

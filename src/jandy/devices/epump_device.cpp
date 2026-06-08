@@ -1,8 +1,11 @@
 #include <format>
 #include <functional>
+#include <source_location>
 
+#include "devices/device_status.h"
 #include "devices/epump_device.h"
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -21,6 +24,9 @@ namespace AqualinkAutomate::Devices
 
 	void EPumpDevice::WatchdogTimeoutOccurred()
 	{
+		LogWarning(Channel::Devices, [this]() { return std::format("ePump (0x{:02x}): Watchdog timeout occurred - marking device as having lost communications.", DeviceId().Id()()); });
+
+		Status(Devices::DeviceStatus_LostComms{});
 	}
 
 	EPumpDevice::TimestampedRPM EPumpDevice::ReportedRPM() const
@@ -35,7 +41,9 @@ namespace AqualinkAutomate::Devices
 
 	void EPumpDevice::Slot_EPump_Status(const Messages::EPumpMessage_Status& msg)
 	{
-		LogDebug(Channel::Devices, std::format("ePump device received a EPumpMessage_Status signal. SubCommand: 0x{:02x}", msg.SubCommand()));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("EPumpDevice::Slot_EPump_Status", std::source_location::current());
+
+		LogDebug(Channel::Devices, [&msg]() { return std::format("ePump device received a EPumpMessage_Status signal. SubCommand: 0x{:02x}", msg.SubCommand()); });
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
@@ -43,7 +51,9 @@ namespace AqualinkAutomate::Devices
 
 	void EPumpDevice::Slot_EPump_RPM(const Messages::EPumpMessage_RPM& msg)
 	{
-		LogDebug(Channel::Devices, std::format("ePump device received a EPumpMessage_RPM signal. RPM: {}", msg.RPM()));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("EPumpDevice::Slot_EPump_RPM", std::source_location::current());
+
+		LogDebug(Channel::Devices, [&msg]() { return std::format("ePump device received a EPumpMessage_RPM signal. RPM: {}", msg.RPM()); });
 		m_RPM = std::make_pair(msg.RPM(), std::chrono::system_clock::now());
 
 		// Kick the watchdog to indicate that this device is alive.
@@ -52,7 +62,9 @@ namespace AqualinkAutomate::Devices
 
 	void EPumpDevice::Slot_EPump_Watts(const Messages::EPumpMessage_Watts& msg)
 	{
-		LogDebug(Channel::Devices, std::format("ePump device received a EPumpMessage_Watts signal. Watts: {}", msg.Watts()));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("EPumpDevice::Slot_EPump_Watts", std::source_location::current());
+
+		LogDebug(Channel::Devices, [&msg]() { return std::format("ePump device received a EPumpMessage_Watts signal. Watts: {}", msg.Watts()); });
 		m_Watts = std::make_pair(msg.Watts(), std::chrono::system_clock::now());
 
 		// Kick the watchdog to indicate that this device is alive.

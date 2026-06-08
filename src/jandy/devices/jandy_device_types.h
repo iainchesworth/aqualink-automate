@@ -45,7 +45,7 @@ namespace AqualinkAutomate::Devices
 		inline static const DeviceClasses UNKNOWN_DEVICE_CLASS{ DeviceClasses::Unknown };
 		inline static const DeviceId UNKNOWN_DEVICE_RAWID{ 0xFF };
 
-		const DeviceClassAndIdsList m_KnownDeviceIdsList =
+		inline static const DeviceClassAndIdsList m_KnownDeviceIdsList =
 		{
 			{DeviceClasses::AqualinkMaster, {0x00, 0x01, 0x02, 0x03}},
 			{DeviceClasses::RS_Keypad,		{0x08, 0x09, 0x0A, 0x0B}},
@@ -74,10 +74,10 @@ namespace AqualinkAutomate::Devices
 		JandyDeviceType(DeviceId device_id);
 
 	public:
-		JandyDeviceType(const JandyDeviceType& other);
-		JandyDeviceType& operator=(const JandyDeviceType& other);
-		JandyDeviceType(JandyDeviceType&& other) noexcept;
-		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept;
+		JandyDeviceType(const JandyDeviceType& other) = default;
+		JandyDeviceType& operator=(const JandyDeviceType& other) = default;
+		JandyDeviceType(JandyDeviceType&& other) noexcept = default;
+		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept = default;
 
 	public:
 		bool operator==(const JandyDeviceType& other) const;

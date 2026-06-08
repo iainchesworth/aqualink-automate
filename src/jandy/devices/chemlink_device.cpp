@@ -1,10 +1,13 @@
 #include <format>
 #include <functional>
+#include <source_location>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "devices/chemlink_device.h"
+#include "devices/device_status.h"
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -23,6 +26,9 @@ namespace AqualinkAutomate::Devices
 
 	void ChemlinkDevice::WatchdogTimeoutOccurred()
 	{
+		LogWarning(Channel::Devices, [this]() { return std::format("Chemlink (0x{:02x}): Watchdog timeout occurred - marking device as having lost communications.", DeviceId().Id()()); });
+
+		Status(Devices::DeviceStatus_LostComms{});
 	}
 
 	ChemlinkDevice::TimestampedORP ChemlinkDevice::ORPMillivolts() const
@@ -47,7 +53,9 @@ namespace AqualinkAutomate::Devices
 
 	void ChemlinkDevice::Slot_Chemlink_Response(const Messages::ChemlinkMessage_Response& msg)
 	{
-		LogDebug(Channel::Devices, std::format("Chemlink device received a ChemlinkMessage_Response signal. DataTag: {}, RawValue: {}", magic_enum::enum_name(msg.DataTag()), msg.RawValue()));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ChemlinkDevice::Slot_Chemlink_Response", std::source_location::current());
+
+		LogDebug(Channel::Devices, [&msg]() { return std::format("Chemlink device received a ChemlinkMessage_Response signal. DataTag: {}, RawValue: {}", magic_enum::enum_name(msg.DataTag()), msg.RawValue()); });
 
 		switch (msg.DataTag())
 		{
@@ -68,7 +76,7 @@ namespace AqualinkAutomate::Devices
 			break;
 
 		default:
-			LogDebug(Channel::Devices, std::format("Chemlink device received unknown data tag: 0x{:02x}", static_cast<uint8_t>(msg.DataTag())));
+			LogDebug(Channel::Devices, [&msg]() { return std::format("Chemlink device received unknown data tag: 0x{:02x}", static_cast<uint8_t>(msg.DataTag())); });
 			break;
 		}
 
