@@ -2,34 +2,42 @@
  * Chemistry Gauge — Semi-circular SVG arc gauge component
  *
  * Three-tier bands: Good / Okay / Bad
- * Configurable via localStorage key 'chemistryBands'.
+ * Configurable via localStorage (see ui-constants.js CHEMISTRY_BANDS_KEY).
+ *
+ * Band defaults + the localStorage key are the single source of truth in
+ * scripts/config/ui-constants.js (shared with settings-view.js); the
+ * display-only fields (min/max/unit/decimals/label) live here.
  */
+
+// Arc geometry: a 180-degree arc of radius r has length PI * r.
+const GAUGE_ARC_RADIUS = 45;
+const GAUGE_ARC_CIRCUMFERENCE = Math.PI * GAUGE_ARC_RADIUS;
+
 function chemistryGauge(type) {
-    const defaults = {
-        ph: {
-            label: 'pH', min: 6.5, max: 8.5, unit: '', decimals: 1,
-            goodMin: 7.4, goodMax: 7.6,
-            okayMin: 7.2, okayMax: 7.8,
-            badMin:  7.0, badMax:  8.0
-        },
-        orp: {
-            label: 'ORP', min: 400, max: 900, unit: ' mV', decimals: 0,
-            goodMin: 700, goodMax: 750,
-            okayMin: 650, okayMax: 700,
-            badMin:  650, badMax:  800
-        },
-        salt: {
-            label: 'Salt', min: 0, max: 6000, unit: ' ppm', decimals: 0,
-            goodMin: 3500, goodMax: 4000,
-            okayMin: 2700, okayMax: 3500,
-            badMin:  2700, badMax:  4500
-        }
+    // Display-only configuration (not user-editable; kept local to the gauge).
+    const display = {
+        ph:   { label: 'pH',   min: 6.5, max: 8.5,  unit: '',     decimals: 1 },
+        orp:  { label: 'ORP',  min: 400, max: 900,  unit: ' mV',  decimals: 0 },
+        salt: { label: 'Salt', min: 0,   max: 6000, unit: ' ppm', decimals: 0 }
     };
 
+    // Band defaults from the shared config (fall back to a local copy so the
+    // gauge still renders if ui-constants.js is not loaded).
+    const ui = (typeof window !== 'undefined' && window.AquaUI) || {};
+    const bandsKey = ui.CHEMISTRY_BANDS_KEY || 'chemistryBands';
+    const bandDefaults = (ui.CHEMISTRY_BAND_DEFAULTS) || {
+        ph:   { goodMin: 7.4,  goodMax: 7.6,  okayMin: 7.2,  okayMax: 7.8,  badMin: 7.0,  badMax: 8.0 },
+        orp:  { goodMin: 700,  goodMax: 750,  okayMin: 650,  okayMax: 700,  badMin: 650,  badMax: 800 },
+        salt: { goodMin: 3500, goodMax: 4000, okayMin: 2700, okayMax: 3500, badMin: 2700, badMax: 4500 }
+    };
+
+    const displayCfg = display[type] || display.ph;
+    const bandCfg = bandDefaults[type] || bandDefaults.ph;
+
     // Load overrides from localStorage
-    const stored = JSON.parse(localStorage.getItem('chemistryBands') || '{}');
+    const stored = JSON.parse(localStorage.getItem(bandsKey) || '{}');
     const overrides = stored[type] || {};
-    const cfg = { ...(defaults[type] || defaults.ph), ...overrides };
+    const cfg = { ...displayCfg, ...bandCfg, ...overrides };
 
     return {
         cfg,
@@ -66,9 +74,8 @@ function chemistryGauge(type) {
         },
 
         get dashOffset() {
-            // Arc circumference for r=45, 180deg arc = PI * 45 = ~141.37
-            const circumference = 141.37;
-            return circumference - (this.percentage / 100) * circumference;
+            // 180-degree arc circumference derived from the radius (no magic literal).
+            return GAUGE_ARC_CIRCUMFERENCE - (this.percentage / 100) * GAUGE_ARC_CIRCUMFERENCE;
         },
 
         /** Three-tier band: 'good', 'okay', or 'bad' */
