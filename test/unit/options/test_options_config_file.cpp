@@ -328,4 +328,37 @@ BOOST_AUTO_TEST_CASE(Test_ConfigFile_FullPipeline_EndToEnd)
 	BOOST_CHECK(!web.value().get().https_server_is_enabled);
 }
 
+//=============================================================================
+// API AUTH TOKEN via config file (config-file key == option long name)
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_ConfigFile_ApiAuthToken_Loaded)
+{
+	TempConfigFile config("api-auth-token = config-file-token\n");
+
+	auto result = RunPipelineWithConfigFile({ "program", "--config", config.path().c_str() });
+	BOOST_REQUIRE(result.has_value());
+
+	auto web = result.value().Get<Options::Web::WebSettings>();
+	BOOST_REQUIRE(web.has_value());
+	BOOST_REQUIRE(web.value().get().ApiAuthToken.has_value());
+	BOOST_CHECK_EQUAL(web.value().get().ApiAuthToken.value(), "config-file-token");
+}
+
+//=============================================================================
+// EMPTY LOG-LEVEL CONFIG VALUE must fail cleanly (regression for the
+// severity-validator out-of-bounds read on a bare `loglevel-main =` line).
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_ConfigFile_EmptyLogLevelValue_FailsCleanly)
+{
+	TempConfigFile config("loglevel-main = \n");
+
+	auto result = RunPipelineWithConfigFile({ "program", "--config", config.path().c_str() });
+
+	// The empty value must be rejected by the validator (pipeline returns an
+	// error) rather than crash with an out-of-bounds read.
+	BOOST_CHECK(!result.has_value());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

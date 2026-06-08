@@ -1,44 +1,20 @@
-#include <format>
+#include <string>
+#include <vector>
 
-#include <boost/program_options.hpp>
-#include <magic_enum/magic_enum.hpp>
+#include <boost/any.hpp>
 
-#include "logging/logging.h"
+#include "logging/logging_channels.h"
 #include "options/validators/profiler_type_validator.h"
-#include "utility/case_insensitive_comparision.h"
-
-using namespace AqualinkAutomate::Logging;
-
-namespace AqualinkAutomate::Options::Validators
-{
-
-	// NOTHING HERE
-
-}
-// namespace AqualinkAutomate::Options::Validators
+#include "options/validators/validate_enum_option.h"
 
 namespace AqualinkAutomate::Types
 {
 
-	void validate(boost::any& v, std::vector<std::string> const& values, ProfilerTypes* target_type, int)
+	void validate(boost::any& v, std::vector<std::string> const& values, ProfilerTypes* /* target_type */, int)
 	{
-		std::string profiler_string;
-
-		boost::program_options::validators::check_first_occurrence(v);
-		profiler_string = boost::program_options::validators::get_single_string(values);
-
-		// To accomodate the enum_from_string needing to have the string match the enum exactly, including case,
-		// the provided level needs to be case-insensitively compared e.g. vtune -> VTune or tracy -> Tracy
-
-		if (auto enum_value = magic_enum::enum_cast<ProfilerTypes>(profiler_string, Utility::case_insensitive_comparision); enum_value.has_value())
-		{
-			v = boost::any(enum_value.value());
-		}
-		else
-		{
-			LogDebug(Channel::Main, std::format("Invalid conversion of profiler -> provided string was: {}", profiler_string));
-			throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
-		}
+		// Delegate to the shared, empty-safe, case-insensitive enum validator.
+		// (ProfilerTypes enumerators are PascalCase, e.g. tracy/TRACY -> Tracy.)
+		Options::Validators::ValidateEnumOption<ProfilerTypes>(v, values, AqualinkAutomate::Logging::Channel::Main, "profiler");
 	}
 
 }

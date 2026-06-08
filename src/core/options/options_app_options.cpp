@@ -7,8 +7,8 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options_app_options.h"
 #include "options/options_option_type.h"
+#include "options/helpers/build_options_description.h"
 #include "options/helpers/conflicting_options_helper.h"
-#include "utility/get_terminal_column_width.h"
 #include "version/version.h"
 
 using namespace AqualinkAutomate;
@@ -19,15 +19,7 @@ namespace AqualinkAutomate::Options::App
 
 	boost::program_options::options_description OptionsProcessor::Options() const
 	{
-		boost::program_options::options_description options(SettingsType::AreaName(), Utility::get_terminal_column_width());
-
-		LogDebug(Channel::Options, std::format("Adding {} options from the {} set", AppOptionsCollection.size(), SettingsType::AreaName()));
-		for (auto& option : AppOptionsCollection)
-		{
-			options.add((*option)());
-		}
-
-		return options;
+		return BuildOptionsDescription(SettingsType::AreaName(), AppOptionsCollection);
 	}
 
 	void OptionsProcessor::Validate(const boost::program_options::variables_map& vm) const
@@ -64,8 +56,9 @@ namespace AqualinkAutomate::Options::App
 
 	void HandleHelp(boost::program_options::variables_map& vm, boost::program_options::options_description& options)
 	{
-		auto option_help = make_appoption("help", "h", "Displays the help information");
-		if (option_help->IsPresent(vm))
+		// Query the variables_map directly by the declared option long name
+		// rather than reconstructing a throwaway AppOption from string literals.
+		if (0 < vm.count("help"))
 		{
 			// Display the help information to the user.
 			std::cout << options << '\n';
@@ -81,10 +74,7 @@ namespace AqualinkAutomate::Options::App
 
 	void HandleVersion(boost::program_options::variables_map& vm)
 	{
-		auto option_versiondetails = make_appoption("version-detail", "Displays detailed version information (including git commit)");
-		auto option_version = make_appoption("version", "v", "Displays the version information");
-
-		if (option_versiondetails->IsPresent(vm))
+		if (0 < vm.count("version-detail"))
 		{
 			// Display the version information to the user.
 			std::cout << Version::VersionDetails() << '\n' << Version::GitCommitDetails() << '\n';
@@ -92,7 +82,7 @@ namespace AqualinkAutomate::Options::App
 			// Terminate the application...
 			throw Exceptions::OptionsHelpOrVersion();
 		}
-		else if (option_version->IsPresent(vm))
+		else if (0 < vm.count("version"))
 		{
 			const auto version_info = std::format
 			(

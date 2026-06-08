@@ -4,6 +4,7 @@
 #include <format>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -147,20 +148,44 @@ namespace AqualinkAutomate::Options
 			};
 	}
 
-	template<typename... Processors>
+	template<Concepts::IsOptionProcessor... Processors>
 	[[nodiscard]] auto Process(Processors... processors) -> Transform
 	{
 		return [... ps = std::move(processors)](State state) -> Result
 			{
 				auto& [desc, vm, settings, validators] = state;
-				(..., [&](auto& p)
+
+				// Short-circuit the fold: the first processor whose Process()
+				// reports an error aborts the whole pipeline with that error
+				// (previously the error was silently swallowed and the missing
+				// settings area only surfaced as a downstream Get() failure).
+				std::optional<Error> first_error;
+
+				const auto run_one = [&](auto& p)
 					{
+						if (first_error.has_value())
+						{
+							return;
+						}
+
 						auto result = p.Process(vm);
 						if (result)
 						{
 							settings.Set(p.Name(), std::any{ std::move(*result) });
 						}
-					}(ps));
+						else
+						{
+							LogError(Channel::Options, std::format("Processing options for the '{}' area failed", p.Name()));
+							first_error = result.error();
+						}
+					};
+
+				(..., run_one(ps));
+
+				if (first_error.has_value())
+				{
+					return std::unexpected(*first_error);
+				}
 
 				return state;
 			};

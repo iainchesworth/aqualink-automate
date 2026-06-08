@@ -110,4 +110,41 @@ BOOST_AUTO_TEST_CASE(Test_DeveloperOptions_ReplayPacing_BothTogether)
 	BOOST_CHECK_CLOSE(result.value().replay_speed, 0.5, 0.0001);
 }
 
+//-----------------------------------------------------------------------------
+// DATA-DRIVEN PER-CHANNEL LOG LEVELS (enumerated over Logging::Channel)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_DeveloperOptions_LogLevel_KnownChannelParses)
+{
+	// A representative channel option must still parse and Process cleanly.
+	Options::Developer::OptionsProcessor processor;
+	auto vm = ParseDeveloperOptions(processor, { "program", "--loglevel-protocol=Trace" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeveloperOptions_LogLevel_DeveloperChannelNowExists)
+{
+	// Regression: the per-channel options are now generated from the Channel
+	// enum, so every channel — including Channel::Developer, which had no manual
+	// option before — gets a --loglevel-<channel> flag.
+	Options::Developer::OptionsProcessor processor;
+	auto vm = ParseDeveloperOptions(processor, { "program", "--loglevel-developer=Debug" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeveloperOptions_LogLevel_EmptyValueDoesNotCrash)
+{
+	// Regression for the severity-validator out-of-bounds read: an empty value
+	// for a log-level option must fail parsing cleanly (it propagates as a
+	// boost program_options error from the validator), not read out of bounds.
+	Options::Developer::OptionsProcessor processor;
+	BOOST_CHECK_THROW(
+		(void)ParseDeveloperOptions(processor, { "program", "--loglevel-main", "" }),
+		boost::program_options::error);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
