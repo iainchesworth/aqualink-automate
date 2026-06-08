@@ -163,11 +163,17 @@ function(GetGitState _working_dir)
 
     RunGitCommand(show -s "--format=%an" ${object})
     if(exit_code EQUAL 0)
+        # Escape backslashes then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
+        string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_AUTHOR_NAME} "${output}")
     endif()
 
     RunGitCommand(show -s "--format=%ae" ${object})
     if(exit_code EQUAL 0)
+        # Escape backslashes then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
+        string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_AUTHOR_EMAIL} "${output}")
     endif()
 
@@ -178,7 +184,8 @@ function(GetGitState _working_dir)
 
     RunGitCommand(show -s "--format=%s" ${object})
     if(exit_code EQUAL 0)
-        # Escape quotes
+        # Escape backslashes first, then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
         string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_COMMIT_SUBJECT} "${output}")
     endif()
