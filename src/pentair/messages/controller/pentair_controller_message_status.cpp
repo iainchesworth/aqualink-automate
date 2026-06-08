@@ -2,6 +2,7 @@
 #include <format>
 
 #include "messages/pentair_message_constants.h"
+#include "messages/pentair_message_decode_helpers.h"
 #include "messages/pentair_message_ids.h"
 #include "messages/controller/pentair_controller_message_status.h"
 #include "logging/logging.h"
@@ -63,12 +64,11 @@ namespace AqualinkAutomate::Pentair::Messages
 
 	bool PentairControllerMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		const uint8_t data_length = message_bytes[Offset_Length];
-		const std::size_t data_start = Offset_DataStart;
+		const uint8_t data_length = DataLengthOf(message_bytes);
 
 		auto data_at = [&](uint8_t data_index) -> uint8_t
 		{
-			return (data_index < data_length) ? message_bytes[data_start + data_index] : static_cast<uint8_t>(0);
+			return DataByteAt(message_bytes, data_index);
 		};
 
 		m_Hour = data_at(Data_Index_Hour);

@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstdint>
+#include <format>
+#include <functional>
+#include <memory>
+#include <string_view>
 #include <vector>
 
 #include <boost/signals2.hpp>
@@ -10,6 +15,8 @@
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
+#include "logging/logging.h"
+#include "devices/pentair_device_id.h"
 #include "messages/chlorinator/pentair_chlorinator_message_status.h"
 #include "messages/controller/pentair_controller_message_status.h"
 #include "messages/pump/pentair_pump_message_status.h"
@@ -31,6 +38,38 @@ namespace AqualinkAutomate::Pentair::Equipment
 		void IdentifyAndAddPump(const Messages::PentairPumpMessage_Status& message);
 		void IdentifyAndAddChlorinator(const Messages::PentairChlorinatorMessage_Status& message);
 		void IdentifyAndAddController(const Messages::PentairControllerMessage_Status& message);
+
+	private:
+		// Shared device-discovery helper.  Validates the wire FROM address against
+		// the supplied predicate (so only addresses inside the device's documented
+		// range can ever create a device — an out-of-range / spoofed FROM is
+		// dropped rather than spawning an unbounded number of phantom devices),
+		// skips creation if a device already exists at that address, and otherwise
+		// constructs DEVICE and registers it with the EquipmentHub.
+		template<typename DEVICE, typename ADDRESS_PREDICATE>
+		void IdentifyAndAdd(uint8_t address, std::string_view human_readable_kind, ADDRESS_PREDICATE&& address_is_valid)
+		{
+			if (nullptr == m_EquipmentHub)
+			{
+				return;
+			}
+
+			if (!address_is_valid(address))
+			{
+				return;
+			}
+
+			Devices::PentairDeviceId candidate_id(address);
+			if (m_EquipmentHub->DeviceExists(candidate_id))
+			{
+				return;
+			}
+
+			LogInfo(Logging::Channel::Equipment, [human_readable_kind, address] { return std::format("Adding new Pentair {} at address 0x{:02x}", human_readable_kind, address); });
+
+			auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
+			m_EquipmentHub->AddDevice(std::make_unique<DEVICE>(device_id, m_HubLocator));
+		}
 
 	private:
 		std::vector<boost::signals2::connection> m_MessageConnections;

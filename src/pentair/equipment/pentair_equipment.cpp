@@ -48,72 +48,33 @@ namespace AqualinkAutomate::Pentair::Equipment
 
 	void PentairEquipment::IdentifyAndAddPump(const Messages::PentairPumpMessage_Status& message)
 	{
-		if (nullptr == m_EquipmentHub)
-		{
-			return;
-		}
-
 		// Status frames are broadcast by the pump, so FROM is the pump address.
-		const uint8_t address = message.From();
-
-		const bool in_pump_range = (Messages::PUMP_ADDRESS_BASE <= address) && (address <= Messages::PUMP_ADDRESS_LAST);
-		if (!in_pump_range)
-		{
-			return;
-		}
-
-		Devices::PentairDeviceId candidate_id(address);
-		if (m_EquipmentHub->DeviceExists(candidate_id))
-		{
-			return;
-		}
-
-		LogInfo(Channel::Equipment, std::format("Adding new Pentair VSP pump device at address 0x{:02x}", address));
-
-		auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
-		m_EquipmentHub->AddDevice(std::make_unique<Devices::PentairVSPPumpDevice>(device_id, m_HubLocator));
+		// VSP pumps occupy the 0x60-0x6F address block.
+		IdentifyAndAdd<Devices::PentairVSPPumpDevice>(
+			message.From(),
+			"VSP pump device",
+			[](uint8_t address) { return (Messages::PUMP_ADDRESS_BASE <= address) && (address <= Messages::PUMP_ADDRESS_LAST); });
 	}
 
 	void PentairEquipment::IdentifyAndAddChlorinator(const Messages::PentairChlorinatorMessage_Status& message)
 	{
-		if (nullptr == m_EquipmentHub)
-		{
-			return;
-		}
-
-		const uint8_t address = message.From();
-
-		Devices::PentairDeviceId candidate_id(address);
-		if (m_EquipmentHub->DeviceExists(candidate_id))
-		{
-			return;
-		}
-
-		LogInfo(Channel::Equipment, std::format("Adding new Pentair IntelliChlor device at address 0x{:02x}", address));
-
-		auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
-		m_EquipmentHub->AddDevice(std::make_unique<Devices::PentairChlorinatorDevice>(device_id, m_HubLocator));
+		// The IntelliChlor SWG always reports from the dedicated chlorinator
+		// address; reject any other FROM so a malformed/spoofed frame cannot spawn
+		// a phantom chlorinator device.
+		IdentifyAndAdd<Devices::PentairChlorinatorDevice>(
+			message.From(),
+			"IntelliChlor device",
+			[](uint8_t address) { return address == Messages::CHLORINATOR_ADDRESS; });
 	}
 
 	void PentairEquipment::IdentifyAndAddController(const Messages::PentairControllerMessage_Status& message)
 	{
-		if (nullptr == m_EquipmentHub)
-		{
-			return;
-		}
-
-		const uint8_t address = message.From();
-
-		Devices::PentairDeviceId candidate_id(address);
-		if (m_EquipmentHub->DeviceExists(candidate_id))
-		{
-			return;
-		}
-
-		LogInfo(Channel::Equipment, std::format("Adding new Pentair controller device at address 0x{:02x}", address));
-
-		auto device_id = std::make_shared<Devices::PentairDeviceId>(address);
-		m_EquipmentHub->AddDevice(std::make_unique<Devices::PentairControllerDevice>(device_id, m_HubLocator));
+		// The controller (IntelliCenter / EasyTouch) broadcasts from the fixed
+		// controller/master address; reject any other FROM for the same reason.
+		IdentifyAndAdd<Devices::PentairControllerDevice>(
+			message.From(),
+			"controller device",
+			[](uint8_t address) { return address == Messages::CONTROLLER_ADDRESS; });
 	}
 
 }

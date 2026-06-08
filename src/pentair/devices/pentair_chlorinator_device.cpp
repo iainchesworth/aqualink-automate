@@ -1,9 +1,12 @@
 #include <format>
+#include <source_location>
 
 #include "devices/pentair_chlorinator_device.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "messages/chlorinator/pentair_chlorinator_message_setoutput.h"
+#include "messages/pentair_message_constants.h"
+#include "profiling/profiling.h"
 #include "types/units_dimensionless.h"
 #include "logging/logging.h"
 
@@ -52,26 +55,32 @@ namespace AqualinkAutomate::Pentair::Devices
 
 	void PentairChlorinatorDevice::SetOutput(uint8_t output_percent) const
 	{
-		LogInfo(Channel::Devices, std::format("Pentair IntelliChlor (0x{:02x}): emitting set-output command -> {}%", m_Address, output_percent));
-		Messages::PentairChlorinatorMessage_SetOutput command(CONTROLLER_ADDRESS, m_Address, output_percent);
+		// CAPTURE-GATED: validated by round-trip unit tests but not yet wired to a
+		// production caller; retained for the command plumbing.
+		LogInfo(Channel::Devices, [this, output_percent] { return std::format("Pentair IntelliChlor (0x{:02x}): emitting set-output command -> {}%", m_Address, output_percent); });
+		Messages::PentairChlorinatorMessage_SetOutput command(Messages::CONTROLLER_ADDRESS, m_Address, output_percent);
 		command.Signal_MessageToSend();
 	}
 
 	void PentairChlorinatorDevice::WatchdogTimeoutOccurred()
 	{
-		LogWarning(Channel::Devices, std::format("Pentair IntelliChlor (0x{:02x}) watchdog expired", m_Address));
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PentairChlorinatorDevice::WatchdogTimeoutOccurred", std::source_location::current());
+
+		LogWarning(Channel::Devices, [this] { return std::format("Pentair IntelliChlor (0x{:02x}) watchdog expired", m_Address); });
 	}
 
 	void PentairChlorinatorDevice::Slot_Chlorinator_Status(const Messages::PentairChlorinatorMessage_Status& msg)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("PentairChlorinatorDevice::Slot_Chlorinator_Status", std::source_location::current());
+
 		// Chlorinator status is broadcast by the SWG; match on the FROM address.
 		if (msg.From() != m_Address)
 		{
 			return;
 		}
 
-		LogDebug(Channel::Devices, std::format("Pentair IntelliChlor (0x{:02x}) status: salt {} PPM, output {}%, flags 0x{:02x}",
-			m_Address, msg.SaltPPM(), msg.OutputPercent(), msg.StatusFlags()));
+		LogDebug(Channel::Devices, [this, &msg] { return std::format("Pentair IntelliChlor (0x{:02x}) status: salt {} PPM, output {}%, flags 0x{:02x}",
+			m_Address, msg.SaltPPM(), msg.OutputPercent(), msg.StatusFlags()); });
 
 		m_SaltPPM = msg.SaltPPM();
 		m_OutputPercent = msg.OutputPercent();

@@ -41,9 +41,16 @@ namespace AqualinkAutomate::Pentair::Protocol
 
 	void UnregisterMessageGenerator()
 	{
-		LogInfo(Channel::Protocol, "Unregistering Pentair message generator");
-		// The registry does not yet support individual unregistration; it is
-		// cleared wholesale during shutdown.
+		// No-op by design (and currently unreferenced).  The shared
+		// MessageGeneratorRegistry only supports wholesale Clear() — which the
+		// application bootstrap already invokes during shutdown
+		// (aqualink-automate.cpp: MessageGeneratorRegistry::Instance().Clear()) —
+		// so there is nothing per-generator to undo here.
+		//
+		// TODO: if the registry ever gains per-generator removal (returning a
+		// handle from Register()), unregister this generator's handle here and have
+		// RegisterMessageGenerator() retain it.
+		LogInfo(Channel::Protocol, "Unregistering Pentair message generator (no-op: registry is cleared wholesale at shutdown)");
 	}
 
 }
