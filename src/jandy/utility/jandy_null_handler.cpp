@@ -67,6 +67,17 @@ namespace AqualinkAutomate::Utility
 
 			if (!should_skip)
 			{
+				// Bound the write so a caller-supplied output span that is
+				// smaller than the (de-stuffed) input can never overflow.  On
+				// the production path the output buffer is sized to
+				// MAXIMUM_PACKET_LENGTH and de-stuffing only ever removes
+				// bytes, so this clamp is purely defensive; if it ever trips
+				// the returned size is clamped to what actually fits.
+				if (out_pos >= output.size())
+				{
+					break;
+				}
+
 				output[out_pos++] = byte;
 			}
 		}
