@@ -38,7 +38,13 @@ namespace AqualinkAutomate::Equipment
 	private:
 		Kernel::HubLocator& m_HubLocator;
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
-		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub{ nullptr };
+		// Raw (non-owning) pointer, NOT a shared_ptr: the EquipmentHub OWNS this
+		// JandyEquipment (held by unique_ptr in the hub), so a shared_ptr back to
+		// the hub forms a reference cycle that leaks the hub + all equipment and
+		// devices at shutdown, and leaves this object's static message-signal
+		// slots connected with a dangling HubLocator reference (use-after-free on
+		// a later emission). The hub always outlives the equipment.
+		Kernel::EquipmentHub* m_EquipmentHub{ nullptr };
 		std::shared_ptr<Kernel::StatisticsHub> m_StatsHub{ nullptr };
 
 	private:

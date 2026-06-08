@@ -74,7 +74,7 @@ namespace AqualinkAutomate::Equipment
 		m_DecodeToMaster(decode_to_master)
 	{
 		m_DataHub = m_HubLocator.Find<Kernel::DataHub>();
-		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>();
+		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>().get();
 		m_StatsHub = m_HubLocator.Find<Kernel::StatisticsHub>();
 
 		magic_enum::enum_for_each<Messages::JandyMessageIds>([this](auto id)

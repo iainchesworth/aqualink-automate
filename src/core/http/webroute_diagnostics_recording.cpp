@@ -25,7 +25,11 @@ namespace AqualinkAutomate::HTTP
 		{
 			nlohmann::json result;
 			result["recording"] = status.recording;
-			result["file"] = status.file;
+			// Report only the basename, never the absolute server path: the value
+			// is jailed into a fixed capture directory, and echoing the resolved
+			// path back to an unauthenticated client would leak the install
+			// location.
+			result["file"] = std::filesystem::path(status.file).filename().string();
 			result["bytes"] = status.bytes_written;
 			return result;
 		}

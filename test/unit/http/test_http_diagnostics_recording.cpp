@@ -174,7 +174,10 @@ BOOST_AUTO_TEST_CASE(Test_Recording_PostStart_StartsAndReportsStatus)
 
 	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
 	BOOST_CHECK_EQUAL(controller->start_calls, 1);
-	BOOST_CHECK_EQUAL(controller->last_start_filename, "session.cap");
+	// The filename is jailed into the capture directory before reaching the
+	// controller, so it receives the safe absolute path (not the bare name).
+	BOOST_CHECK(controller->last_start_filename.ends_with("session.cap"));
+	BOOST_CHECK(controller->last_start_filename.find("captures") != std::string::npos);
 	BOOST_CHECK(controller->IsRecording());
 
 	auto json = nlohmann::json::parse(resp.body());

@@ -22,7 +22,7 @@ namespace AqualinkAutomate::Pentair::Equipment
 		m_HubLocator(hub_locator)
 	{
 		m_DataHub = m_HubLocator.Find<Kernel::DataHub>();
-		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>();
+		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>().get();
 		m_StatsHub = m_HubLocator.Find<Kernel::StatisticsHub>();
 
 		m_MessageConnections.push_back(

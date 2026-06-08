@@ -77,7 +77,14 @@ namespace AqualinkAutomate::Pentair::Equipment
 	private:
 		Kernel::HubLocator& m_HubLocator;
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
-		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub{ nullptr };
+		// Raw (non-owning) pointer, NOT a shared_ptr: the EquipmentHub OWNS this
+		// PentairEquipment (it is held by unique_ptr in the hub), so a shared_ptr
+		// back to the hub forms a reference cycle that leaks the hub + all
+		// equipment/devices at shutdown. Worse, because this object's static
+		// message-signal slots are then never disconnected, a later signal
+		// emission invokes them with a dangling HubLocator reference (use-after-
+		// free). The hub always outlives the equipment, so a raw pointer is safe.
+		Kernel::EquipmentHub* m_EquipmentHub{ nullptr };
 		std::shared_ptr<Kernel::StatisticsHub> m_StatsHub{ nullptr };
 	};
 
