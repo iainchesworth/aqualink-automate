@@ -81,6 +81,7 @@ target_sources(
 	unit/mqtt/test_mqtt_integration.cpp
 	unit/mqtt/test_mqtt_options.cpp
 	unit/mqtt/test_mqtt_payload_parsing.cpp
+	unit/mqtt/test_mqtt_topic_scheme.cpp
 	unit/protocol/test_protocol_handler.cpp
 	unit/protocol/test_mock_replay_validation.cpp
 	unit/protocol/test_replay_pacing.cpp

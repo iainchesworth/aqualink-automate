@@ -21,8 +21,11 @@ namespace AqualinkAutomate::Mqtt
 	/// Fixed sensors point HA at granular topics:
 	///   {prefix}/pool/temperatures, {prefix}/pool/chemistry,
 	///   {prefix}/pool/circulation, {prefix}/system/status.
-	/// Dynamic devices (pumps, heaters, etc.) get per-device state topics at
-	/// {prefix}/ha/{slug}.
+	/// Dynamic devices (pumps, heaters, etc.) get per-device short-string state topics
+	/// at {prefix}/ha/{category}_{slug}; richer entities that need decoded fields (the
+	/// chlorinator's generating %, boost, health) read the JSON status blob at
+	/// {prefix}/device/{slug}. All these topics are constructed via the shared
+	/// Mqtt::TopicScheme so a component's state_topic always matches the publisher.
 	class HomeAssistantDiscovery
 	{
 	public:
@@ -85,6 +88,10 @@ namespace AqualinkAutomate::Mqtt
 		void AddCirculationComponents(nlohmann::json& cmps);
 		void AddSystemComponents(nlohmann::json& cmps);
 		void AddDynamicDeviceComponents(nlohmann::json& cmps);
+
+		/// Add the chlorinator's extra entities (generating %, boost, health, setpoint,
+		/// boost switch) that read the device's JSON status blob.
+		void AddChlorinatorComponents(nlohmann::json& cmps, const std::shared_ptr<Kernel::AuxillaryDevice>& dev);
 
 		std::string SetpointCommandTopic(const std::string& target) const;
 		std::string DeviceCommandTopic(const std::string& slug) const;
