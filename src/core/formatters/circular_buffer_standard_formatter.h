@@ -1,11 +1,14 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <limits>
 #include <ostream>
 
 #include <boost/circular_buffer.hpp>
+
+#include "formatters/formatter_helpers.h"
 
 namespace AqualinkAutomate::Formatters
 {
@@ -116,29 +119,16 @@ struct std::formatter<boost::circular_buffer<uint8_t>>
 
 			case Mode::HexBytes:
 			{
-				const std::size_t size = buffer.size();
-				std::size_t count = size;
+				std::size_t count = buffer.size();
 
 				if (m_HasPrecisionLimit && m_PrecisionLimit < count)
 				{
 					count = m_PrecisionLimit;
 				}
 
-				bool first = true;
-
-				for (std::size_t i = 0; i < count; ++i)
-				{
-					if (!first)
-					{
-						*out++ = ' ';
-					}
-					first = false;
-
-					const uint8_t byte = buffer[i];
-					out = std::format_to(out, "0x{:02x}", byte);
-				}
-
-				return out;
+				// Render only the leading `count` bytes; reuse the shared hex-dump helper so the
+				// per-byte loop is identical to the array/span/vector formatters.
+				return AqualinkAutomate::Formatters::FormatHexBytes(buffer.begin(), buffer.begin() + static_cast<boost::circular_buffer<uint8_t>::difference_type>(count), out);
 			}
 		}
 

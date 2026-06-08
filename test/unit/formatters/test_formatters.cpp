@@ -89,6 +89,28 @@ BOOST_AUTO_TEST_CASE(Test_Volt_DefaultFormat)
 	BOOST_CHECK_EQUAL(std::format("{}", val), "12V");
 }
 
+// Regression: the shared QuantityFormatter must thread the base formatter's returned iterator and
+// then append the suffix. With a precision-bearing spec the formatted value is wider than its
+// literal source, so a discarded iterator (the previous behaviour) would corrupt the output.
+
+BOOST_AUTO_TEST_CASE(Test_PPM_Format_WithPrecisionSpec)
+{
+	Units::ppm_quantity val = 3200.0 * Units::ppm;
+	BOOST_CHECK_EQUAL(std::format("{:.2f}", val), "3200.00 ppm");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Millivolt_Format_WithPrecisionSpec)
+{
+	Units::millivolt_quantity val = 500.0 * Units::millivolt;
+	BOOST_CHECK_EQUAL(std::format("{:.1f}", val), "500.0mV");
+}
+
+BOOST_AUTO_TEST_CASE(Test_Volt_Format_EmbeddedInLargerString)
+{
+	Units::volt_quantity val = 12.0 * Units::volt;
+	BOOST_CHECK_EQUAL(std::format("[{}]", val), "[12V]");
+}
+
 // --- Hex byte formatters: no trailing space ---
 
 BOOST_AUTO_TEST_CASE(Test_VectorUint8_Format_NoTrailingSpace)
@@ -126,6 +148,16 @@ BOOST_AUTO_TEST_CASE(Test_SpanUint8_Format_NoTrailingSpace)
 {
 	std::vector<uint8_t> backing = { 0xde, 0xad, 0xbe, 0xef };
 	std::span<uint8_t> data(backing);
+	auto result = std::format("{}", data);
+	BOOST_CHECK_EQUAL(result, "0xde 0xad 0xbe 0xef");
+}
+
+// The unified ByteRange formatter now also covers std::span<const uint8_t>, which the previous
+// per-type specialisations did not.
+BOOST_AUTO_TEST_CASE(Test_SpanConstUint8_Format)
+{
+	const std::vector<uint8_t> backing = { 0xde, 0xad, 0xbe, 0xef };
+	std::span<const uint8_t> data(backing);
 	auto result = std::format("{}", data);
 	BOOST_CHECK_EQUAL(result, "0xde 0xad 0xbe 0xef");
 }

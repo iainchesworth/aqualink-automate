@@ -3,6 +3,7 @@
 #include <format>
 #include <ostream>
 #include <string>
+#include <string_view>
 
 #include "kernel/ph.h"
 
