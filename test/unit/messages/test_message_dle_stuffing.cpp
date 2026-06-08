@@ -101,6 +101,77 @@ BOOST_AUTO_TEST_CASE(NullHandler_SpanDeStuff_MatchesInPlace)
 }
 
 // ---------------------------------------------------------------------------
+// 1c. Regression: when the output span is SMALLER than the de-stuffed input,
+//     the span de-stuffer must never write past output.size().  Previously the
+//     write was unbounded (latent OOB write).  Here the input has no escape
+//     pairs to remove, so every byte is a candidate write — the function must
+//     stop once the output is full and report the clamped count.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(NullHandler_SpanDeStuff_ClampsWhenOutputTooSmall)
+{
+	// 16 distinct, escape-free bytes (no 0x10 0x00 pair) so de-stuffing removes
+	// nothing and the writer would otherwise emit all 16 bytes.
+	std::vector<uint8_t> input;
+	for (uint8_t value = 0; value < 16; ++value)
+	{
+		input.push_back(static_cast<uint8_t>(0x20 + value));
+	}
+
+	// A guarded output buffer: a 4-byte writable window flanked by sentinel
+	// bytes.  If the function overruns, a sentinel changes and the test fails.
+	constexpr uint8_t sentinel = 0xEE;
+	constexpr std::size_t window = 4;
+	std::vector<uint8_t> guarded(window + 4, sentinel);
+	std::span<uint8_t> output(guarded.data() + 2, window);
+
+	const std::size_t written = JandyPacket_NullCharHandler_DeserializationToSpan(
+		std::span<const uint8_t>(input), output);
+
+	// Exactly the window's worth of bytes were written and the count is clamped.
+	BOOST_CHECK_EQUAL(written, window);
+
+	// The written window matches the first `window` input bytes...
+	for (std::size_t i = 0; i < window; ++i)
+	{
+		BOOST_CHECK_EQUAL(output[i], input[i]);
+	}
+
+	// ...and the guard sentinels on BOTH sides are untouched (no OOB write).
+	BOOST_CHECK_EQUAL(guarded.front(), sentinel);
+	BOOST_CHECK_EQUAL(guarded[1], sentinel);
+	BOOST_CHECK_EQUAL(guarded[guarded.size() - 2], sentinel);
+	BOOST_CHECK_EQUAL(guarded.back(), sentinel);
+}
+
+// ---------------------------------------------------------------------------
+// 1d. Regression: an output span that is exactly one byte too small to hold the
+//     de-stuffed result (escape pair present) must clamp to output.size() and
+//     not overflow.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(NullHandler_SpanDeStuff_ClampsAtBoundaryWithEscape)
+{
+	// Wire form contains one 0x10 0x00 escape pair, so the de-stuffed result is
+	// one byte shorter than the input.
+	std::vector<uint8_t> raw = { 0x10, 0x02, 0x42, 0x03, 0x10, 0x00, 0x10, 0x03 };
+	std::vector<uint8_t> wire = raw;
+	JandyPacket_NullCharHandler_Serialization(wire);
+
+	BOOST_REQUIRE(JandyPacket_NeedsNullCharHandling(std::span<const uint8_t>(wire)));
+
+	// Size the output one byte SHORTER than the correct de-stuffed length.
+	BOOST_REQUIRE(raw.size() >= 1u);
+	const std::size_t too_small = raw.size() - 1u;
+
+	std::vector<uint8_t> out(too_small, 0x00);
+	const std::size_t written = JandyPacket_NullCharHandler_DeserializationToSpan(
+		std::span<const uint8_t>(wire), std::span<uint8_t>(out));
+
+	// The function never reports more bytes than the output could hold.
+	BOOST_CHECK_EQUAL(written, too_small);
+	BOOST_CHECK_LE(written, out.size());
+}
+
+// ---------------------------------------------------------------------------
 // 2 + 3. Full stack: Serialize() a message whose payload contains 0x10, prove
 //        the escape appears on the wire, then parse it back through the message
 //        generator and prove the decoded payload matches the original.
