@@ -26,9 +26,15 @@ namespace AqualinkAutomate::HTTP
 			m_ConfigChangeSlot = m_DataHub->ConfigUpdateSignal.connect(
 				[this](const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event)
 				{
+					// Skip all serialisation work when no client is connected.
+					if (m_Connections.empty())
+					{
+						return;
+					}
+
 					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment::on_config_event", std::source_location::current());
-					auto payload = HTTP::WebSocket_Event(event).Payload();
-					zone->Value(payload.size());
+					auto payload = std::make_shared<const std::string>(HTTP::WebSocket_Event(event).Payload());
+					zone->Value(payload->size());
 					Broadcast(payload);
 				});
 		}
@@ -38,22 +44,38 @@ namespace AqualinkAutomate::HTTP
 			m_StatusChangeSlot = m_EquipmentHub->EquipmentStatusChangeSignal.connect(
 				[this](const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event)
 				{
+					// Skip all serialisation work when no client is connected.
+					if (m_Connections.empty())
+					{
+						return;
+					}
+
 					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment::on_status_event", std::source_location::current());
-					auto payload = HTTP::WebSocket_Event(event).Payload();
-					zone->Value(payload.size());
+					auto payload = std::make_shared<const std::string>(HTTP::WebSocket_Event(event).Payload());
+					zone->Value(payload->size());
 					Broadcast(payload);
 				});
 		}
 	}
 
-	void WebSocket_Equipment::Broadcast(const std::string& payload)
+	void WebSocket_Equipment::Broadcast(const std::shared_ptr<const std::string>& payload)
 	{
 		for (auto& [id, queue] : m_Connections)
 		{
 			if (queue.size() >= MAX_MESSAGE_QUEUE_SIZE)
 			{
 				queue.pop_front();
+
+				if ((++m_DroppedMessageCount % DROPPED_MESSAGE_LOG_INTERVAL) == 1)
+				{
+					LogWarning(Channel::Web, [count = m_DroppedMessageCount]
+						{
+							return std::format("WebSocket_Equipment: connection queue full; dropped {} state update(s) so far", count);
+						});
+				}
 			}
+
+			// shared_ptr copy: a single serialised payload is shared across all queues.
 			queue.push_back(payload);
 		}
 	}
@@ -68,7 +90,7 @@ namespace AqualinkAutomate::HTTP
 
 		auto msg = std::move(it->second.front());
 		it->second.pop_front();
-		return msg;
+		return *msg;
 	}
 
 	WebSocket_Equipment::ConnectionId WebSocket_Equipment::OnOpen()
@@ -92,7 +114,7 @@ namespace AqualinkAutomate::HTTP
 			state_payload["pool_configuration"] = std::string{ magic_enum::enum_name(m_DataHub->PoolConfiguration) };
 			state_payload["equipment_mode"] = std::string{ magic_enum::enum_name(m_DataHub->Mode) };
 
-			auto payload = WebSocket_Event(WebSocket_EventTypes::SystemStateUpdate, state_payload).Payload();
+			auto payload = std::make_shared<const std::string>(WebSocket_Event(WebSocket_EventTypes::SystemStateUpdate, state_payload).Payload());
 
 			auto& queue = m_Connections[connId];
 			if (queue.size() >= MAX_MESSAGE_QUEUE_SIZE)
