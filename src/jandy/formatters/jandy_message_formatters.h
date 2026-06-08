@@ -20,25 +20,19 @@
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
 
-namespace AqualinkAutomate::Formatters
-{
-
-	// NOTHING HERE
-
-}
-// AqualinkAutomate::Formatters
-
-namespace std 
+namespace std
 {
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageIds& obj);
 
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Ack& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Message& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_MessageLong& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Probe& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Status& obj);
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessage_Unknown& obj);
+	// A single constrained overload streams JandyMessage and every derived
+	// message type (their virtual ToString() supplies the concrete payload),
+	// replacing the previously hand-written per-type operator<< overloads.
+	template <std::derived_from<AqualinkAutomate::Messages::JandyMessage> T>
+	std::ostream& operator<<(std::ostream& os, const T& obj)
+	{
+		os << std::format("{}", static_cast<const AqualinkAutomate::Messages::JandyMessage&>(obj));
+		return os;
+	}
 
 }
 // namespace std
@@ -73,4 +67,14 @@ struct std::formatter<AqualinkAutomate::Messages::JandyMessage>
 		const auto v{ msg.ToString() };
 		return std::format_to(ctx.out(), "{}", v);
 	}
+};
+
+// Every concrete JandyMessage-derived type formats via the base formatter; its
+// virtual ToString() dispatches to the derived payload, so one constrained
+// partial specialisation replaces the per-type formatter skeletons.  The
+// explicit std::formatter<JandyMessage> above is more specialised and continues
+// to win for the base type itself.
+template <std::derived_from<AqualinkAutomate::Messages::JandyMessage> T>
+struct std::formatter<T> : std::formatter<AqualinkAutomate::Messages::JandyMessage>
+{
 };
