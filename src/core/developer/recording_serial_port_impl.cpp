@@ -1,5 +1,6 @@
 #include "developer/recording_serial_port_impl.h"
 
+#include <filesystem>
 #include <format>
 #include <iomanip>
 
@@ -80,6 +81,24 @@ namespace AqualinkAutomate::Developer
 	bool RecordingSerialPortImpl::OpenRecordingFile(const std::string& recording_file_path)
 	{
 		// Caller holds m_FileMutex.
+
+		// Defence in depth: the diagnostics HTTP route already jails the untrusted
+		// web filename to a fixed capture directory, but this opener is also reached
+		// from `--record-serial <file>` and the start-at-boot ctor.  Reject any path
+		// that contains a parent-directory ("..") component so a traversal value can
+		// never reach the truncating open() below.  Inspect the RAW components (not
+		// the lexically-normalised form) so a "tmp/../x" cannot be silently
+		// collapsed past this guard.
+		for (const auto& component : std::filesystem::path{ recording_file_path })
+		{
+			if (component == "..")
+			{
+				LogError(Channel::Serial, std::format("Refusing to record to a path containing '..': {}", recording_file_path));
+				m_RecordingFilePath.clear();
+				return false;
+			}
+		}
+
 		LogInfo(Channel::Serial, std::format("Serial recording enabled, output file: {}", recording_file_path));
 
 		m_RecordingFile.open(recording_file_path, std::ios::out | std::ios::trunc);

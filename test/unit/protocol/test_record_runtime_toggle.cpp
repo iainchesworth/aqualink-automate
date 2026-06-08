@@ -238,4 +238,29 @@ BOOST_AUTO_TEST_CASE(StartStop_StateMachine)
 	BOOST_REQUIRE(recorder.StopRecording());
 }
 
+//-----------------------------------------------------------------------------
+// SECURITY REGRESSION (defence in depth): even reached directly (e.g. via
+// `--record-serial`), the opener refuses a path containing a parent-directory
+// ("..") component rather than truncating an arbitrary file.  An ordinary
+// absolute temp path (no "..") still records normally.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(OpenRecordingFile_RejectsParentTraversalPath)
+{
+	auto wrapped = std::make_unique<Test::TestSerialPortImpl>();
+	wrapped->EnableTestMode(true);
+
+	Developer::RecordingSerialPortImpl recorder(std::move(wrapped));
+
+	// A traversal path must be refused and must not leave the recorder enabled.
+	const std::string traversal = (std::filesystem::temp_directory_path() / ".." / "aa_evil_traversal.cap").string();
+	BOOST_CHECK(!recorder.StartRecording(traversal));
+	BOOST_CHECK(!recorder.IsRecording());
+
+	// A clean absolute path (no "..") still records.
+	TempRecordingPath ok;
+	BOOST_REQUIRE(recorder.StartRecording(ok.path.string()));
+	BOOST_CHECK(recorder.IsRecording());
+	BOOST_REQUIRE(recorder.StopRecording());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

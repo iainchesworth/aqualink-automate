@@ -317,11 +317,99 @@ BOOST_AUTO_TEST_CASE(Test_Recording_PostStart_ControllerRefuses_Conflict)
 
 	HTTP::WebRoute_Diagnostics_Recording route(hub_locator);
 
-	auto req = MakePost(R"({"action":"start","filename":"/no/such/dir/x.cap"})");
+	// A valid bare basename so the request passes the path jail and actually
+	// reaches the controller, which then refuses (e.g. file could not be opened).
+	auto req = MakePost(R"({"action":"start","filename":"x.cap"})");
 	auto resp = InvokeRoute(route, req);
 
 	BOOST_CHECK_EQUAL(boost::beast::http::status::conflict, resp.result());
 	BOOST_CHECK_EQUAL(controller->start_calls, 1);
+}
+
+//-----------------------------------------------------------------------------
+// SECURITY REGRESSION: the recording filename is an unauthenticated,
+// attacker-controlled value.  Path-traversal / absolute / drive-letter forms
+// must be rejected with 400 BEFORE the controller is ever asked to open a file,
+// so the route cannot be used as an arbitrary file-write/truncate sink.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(Test_Recording_PostStart_PathTraversal_Rejected)
+{
+	Kernel::HubLocator hub_locator;
+	auto controller = std::make_shared<FakeRecordingController>();
+	hub_locator.Register<Interfaces::IRecordingController>(controller);
+
+	HTTP::WebRoute_Diagnostics_Recording route(hub_locator);
+
+	const std::string malicious[] =
+	{
+		R"({"action":"start","filename":"../escape.cap"})",            // parent traversal
+		R"({"action":"start","filename":"../../etc/passwd.cap"})",     // deep POSIX traversal
+		R"({"action":"start","filename":"sub/dir/file.cap"})",         // nested separator
+		R"({"action":"start","filename":"/etc/cron.d/evil.cap"})",     // absolute POSIX
+		R"({"action":"start","filename":"\\windows\\system32\\x.cap"})", // backslash separators
+		R"({"action":"start","filename":"C:\\windows\\evil.cap"})",    // drive letter
+		R"({"action":"start","filename":"..\\escape.cap"})",           // windows parent traversal
+		R"({"action":"start","filename":"good..\\..\\escape.cap"})",   // embedded dot-dot
+	};
+
+	for (const auto& body : malicious)
+	{
+		auto req = MakePost(body);
+		auto resp = InvokeRoute(route, req);
+		BOOST_CHECK_MESSAGE(boost::beast::http::status::bad_request == resp.result(),
+			"Expected 400 for malicious filename body: " << body);
+	}
+
+	// The controller must never have been asked to open any of these.
+	BOOST_CHECK_EQUAL(controller->start_calls, 0);
+	BOOST_CHECK(!controller->IsRecording());
+}
+
+//-----------------------------------------------------------------------------
+// SECURITY REGRESSION: a filename without the required .cap extension is
+// rejected, so the sink cannot be steered at an arbitrary name inside the
+// capture directory.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(Test_Recording_PostStart_WrongExtension_Rejected)
+{
+	Kernel::HubLocator hub_locator;
+	auto controller = std::make_shared<FakeRecordingController>();
+	hub_locator.Register<Interfaces::IRecordingController>(controller);
+
+	HTTP::WebRoute_Diagnostics_Recording route(hub_locator);
+
+	auto req = MakePost(R"({"action":"start","filename":"config.conf"})");
+	auto resp = InvokeRoute(route, req);
+
+	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, resp.result());
+	BOOST_CHECK_EQUAL(controller->start_calls, 0);
+}
+
+//-----------------------------------------------------------------------------
+// A legitimate bare basename passes the jail and reaches the controller; the
+// path handed to the controller is confined to the capture directory (the
+// route hands an absolute, jailed path to the controller, not the raw input).
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(Test_Recording_PostStart_BareName_IsJailedIntoCaptureDir)
+{
+	Kernel::HubLocator hub_locator;
+	auto controller = std::make_shared<FakeRecordingController>();
+	hub_locator.Register<Interfaces::IRecordingController>(controller);
+
+	HTTP::WebRoute_Diagnostics_Recording route(hub_locator);
+
+	auto req = MakePost(R"({"action":"start","filename":"capture.cap"})");
+	auto resp = InvokeRoute(route, req);
+
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+	BOOST_CHECK_EQUAL(controller->start_calls, 1);
+
+	// The controller was handed a jailed path, not the raw input, and that path
+	// is inside the fixed "captures" directory and keeps the basename.
+	const std::filesystem::path handed{ controller->last_start_filename };
+	BOOST_CHECK_EQUAL(handed.filename().string(), "capture.cap");
+	const auto parent = handed.parent_path().filename().string();
+	BOOST_CHECK_EQUAL(parent, "captures");
 }
 
 //-----------------------------------------------------------------------------
