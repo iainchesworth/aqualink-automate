@@ -166,6 +166,17 @@ namespace AqualinkAutomate::Equipment
 				m_EquipmentHub->AddDevice(std::make_unique<Devices::IAQDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
+			case Devices::DeviceClasses::AqualinkTouch:
+				// Passively snoop a real iAqualink2's UI half (AqualinkTouch, 0x30-0x33).
+				// The rich status (MainStatus/AuxStatus/pages) is sent to this address,
+				// whereas the 0xA0-0xA3 IAQ side only carries the heartbeat. Created
+				// NON-emulated, so it never transmits (ACKs are gated by IsEmulated in
+				// emulated.h) -- it only decodes the stream into the DataHub. This lets us
+				// "use" a real iAqualink2 by watching what it does, without bus contention.
+				LogInfo(Channel::Equipment, std::format("Adding new AqualinkTouch (iAqualink2 UI) device with id: {}", message.Destination().Id()));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::IAQDevice>(std::move(device_id), m_HubLocator, false));
+				break;
+
 			case Devices::DeviceClasses::OneTouch:
 				LogInfo(Channel::Equipment, std::format("Adding new OneTouch device with id: {}", message.Destination().Id()));
 				m_EquipmentHub->AddDevice(std::make_unique<Devices::OneTouchDevice>(std::move(device_id), m_HubLocator, false));
