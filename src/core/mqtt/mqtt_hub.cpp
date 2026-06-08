@@ -8,6 +8,7 @@
 #include "http/json/json_data_hub.h"
 #include "logging/logging.h"
 #include "mqtt/mqtt_hub.h"
+#include "mqtt/mqtt_topic_scheme.h"
 #include "profiling/factories/profiler_factory.h"
 #include "profiling/factories/profiling_unit_factory.h"
 #include "utility/json_serialization_helpers.h"
@@ -122,6 +123,20 @@ namespace AqualinkAutomate::Mqtt
 
 		auto now = std::chrono::steady_clock::now();
 
+		// On-change publish (debounced). A hub change during protocol decode flags a
+		// pending publish; here we flush it once the debounce window has elapsed,
+		// coalescing a burst of changes into a single publish.
+		if (m_OnChangePending && now >= m_OnChangeDeadline)
+		{
+			m_OnChangePending = false;
+			PublishSystemStatus();
+			PublishPoolStatus();
+			PublishDeviceStatus();
+			// Re-arm the periodic timer so the change-driven publish also satisfies the
+			// next scheduled interval (avoids a redundant publish moments later).
+			m_NextStatusPublish = now + m_Settings.status_publish_interval;
+		}
+
 		// Periodic status publish
 		if (now >= m_NextStatusPublish)
 		{
@@ -234,22 +249,40 @@ namespace AqualinkAutomate::Mqtt
 
 	void MqttHub::OnDataHubConfigChanged(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::OnDataHubConfigChanged", std::source_location::current());
+
 		if (!IsRunning() || !event || !m_Settings.publish_on_change)
 		{
 			return;
 		}
 
-		LogTrace(Channel::Mqtt, "Data Hub config changed, publishing update");
+		LogTrace(Channel::Mqtt, "Data Hub config changed, scheduling on-change publish");
+		RequestOnChangePublish();
 	}
 
 	void MqttHub::OnEquipmentStatusChanged(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::OnEquipmentStatusChanged", std::source_location::current());
+
 		if (!IsRunning() || !event || !m_Settings.publish_on_change)
 		{
 			return;
 		}
 
-		LogTrace(Channel::Mqtt, "Equipment status changed, publishing update");
+		LogTrace(Channel::Mqtt, "Equipment status changed, scheduling on-change publish");
+		RequestOnChangePublish();
+	}
+
+	void MqttHub::RequestOnChangePublish()
+	{
+		// Debounce: the first change in a quiet window arms the deadline; subsequent
+		// changes within the window keep the existing (earlier) deadline so a burst
+		// coalesces into a single deferred publish flushed by Poll().
+		if (!m_OnChangePending)
+		{
+			m_OnChangePending = true;
+			m_OnChangeDeadline = std::chrono::steady_clock::now() + ON_CHANGE_DEBOUNCE;
+		}
 	}
 
 	void MqttHub::PublishStaticTopics()
@@ -353,17 +386,19 @@ namespace AqualinkAutomate::Mqtt
 
 			if (auto data_hub = m_DataHub.lock())
 			{
-				auto publish_device = [&](const std::string& type, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+				auto publish_device = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
 				{
 					if (!device)
 					{
 						return;
 					}
 
+					const std::string type{ TopicScheme::CategoryName(category) };
+
 					auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
 					if (!label.has_value())
 					{
-						LogDebug(Channel::Mqtt, std::format("Skipping {} device with no label trait", type));
+						LogDebug(Channel::Mqtt, [&] { return std::format("Skipping {} device with no label trait", type); });
 						return;
 					}
 
@@ -380,7 +415,7 @@ namespace AqualinkAutomate::Mqtt
 
 					auto payload = j.dump();
 					total_size += payload.size();
-					m_Client->Publish(m_Client->BuildTopic(std::format("device/{}", slug)), payload, /*retain=*/true);
+					m_Client->Publish(m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug)), payload, /*retain=*/true);
 					++device_count;
 				};
 
@@ -389,27 +424,27 @@ namespace AqualinkAutomate::Mqtt
 				auto pumps = data_hub->Pumps();
 				auto chlorinators = data_hub->Chlorinators();
 
-				LogDebug(Channel::Mqtt, std::format("Publishing device status: {} auxillaries, {} heaters, {} pumps, {} chlorinators",
-					auxillaries.size(), heaters.size(), pumps.size(), chlorinators.size()));
+				LogDebug(Channel::Mqtt, [&] { return std::format("Publishing device status: {} auxillaries, {} heaters, {} pumps, {} chlorinators",
+					auxillaries.size(), heaters.size(), pumps.size(), chlorinators.size()); });
 
 				for (const auto& device : auxillaries)
 				{
-					publish_device("auxillary", device);
+					publish_device(TopicScheme::DeviceCategory::Auxillary, device);
 				}
 
 				for (const auto& device : heaters)
 				{
-					publish_device("heater", device);
+					publish_device(TopicScheme::DeviceCategory::Heater, device);
 				}
 
 				for (const auto& device : pumps)
 				{
-					publish_device("pump", device);
+					publish_device(TopicScheme::DeviceCategory::Pump, device);
 				}
 
 				for (const auto& device : chlorinators)
 				{
-					publish_device("chlorinator", device);
+					publish_device(TopicScheme::DeviceCategory::Chlorinator, device);
 				}
 			}
 

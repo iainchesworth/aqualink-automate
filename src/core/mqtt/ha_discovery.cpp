@@ -1,10 +1,14 @@
 #include <algorithm>
 #include <format>
+#include <memory>
+#include <optional>
+#include <string>
 
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 #include "mqtt/ha_discovery.h"
+#include "mqtt/mqtt_topic_scheme.h"
 #include "utility/slugify.h"
 #include "version/version_cmake.h"
 
@@ -28,27 +32,37 @@ namespace AqualinkAutomate::Mqtt
 
 	void HomeAssistantDiscovery::PublishDiscoveryConfigs()
 	{
-		LogDebug(Channel::Mqtt, "Publishing Home Assistant device discovery payload");
+		// Guard the whole discovery build/publish: a single bad device (e.g. a JSON
+		// build throwing) must not abort discovery for every entity, which would surface
+		// in Home Assistant as silent/unavailable entities with no diagnostic trail.
+		try
+		{
+			LogDebug(Channel::Mqtt, "Publishing Home Assistant device discovery payload");
 
-		nlohmann::json payload;
-		payload["dev"] = BuildDeviceObject();
-		payload["o"] = BuildOriginObject();
-		payload["availability"] = BuildAvailability();
+			nlohmann::json payload;
+			payload["dev"] = BuildDeviceObject();
+			payload["o"] = BuildOriginObject();
+			payload["availability"] = BuildAvailability();
 
-		nlohmann::json cmps = nlohmann::json::object();
-		AddTemperatureSensorComponents(cmps);
-		AddSetpointComponents(cmps);
-		AddChemistrySensorComponents(cmps);
-		AddCirculationComponents(cmps);
-		AddSystemComponents(cmps);
-		AddDynamicDeviceComponents(cmps);
-		payload["cmps"] = std::move(cmps);
+			nlohmann::json cmps = nlohmann::json::object();
+			AddTemperatureSensorComponents(cmps);
+			AddSetpointComponents(cmps);
+			AddChemistrySensorComponents(cmps);
+			AddCirculationComponents(cmps);
+			AddSystemComponents(cmps);
+			AddDynamicDeviceComponents(cmps);
+			payload["cmps"] = std::move(cmps);
 
-		auto topic = std::format("{}/device/{}/config",
-			m_Settings.ha_discovery_prefix, m_Settings.ha_device_id);
-		m_Client->Publish(topic, payload.dump(), /*retain=*/true);
+			auto topic = std::format("{}/device/{}/config",
+				m_Settings.ha_discovery_prefix, m_Settings.ha_device_id);
+			m_Client->Publish(topic, payload.dump(), /*retain=*/true);
 
-		LogDebug(Channel::Mqtt, "Home Assistant device discovery payload published");
+			LogDebug(Channel::Mqtt, "Home Assistant device discovery payload published");
+		}
+		catch (const std::exception& ex)
+		{
+			LogError(Channel::Mqtt, [&] { return std::format("Failed to publish HA discovery configs: {}", ex.what()); });
+		}
 	}
 
 	void HomeAssistantDiscovery::PublishOnline()
@@ -65,51 +79,60 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
-		std::size_t device_count = 0;
-
-		auto publish_device_state = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+		// Guard the whole sweep: a malformed device must not abort state publishing for
+		// the remaining devices (which would leave their HA entities stuck unavailable).
+		try
 		{
-			if (!device)
+			std::size_t device_count = 0;
+
+			auto publish_device_state = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
 			{
-				return;
+				if (!device)
+				{
+					return;
+				}
+
+				auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+				if (!label.has_value())
+				{
+					LogDebug(Channel::Mqtt, [&] { return std::format("Skipping HA state for {} device with no label trait", TopicScheme::CategoryName(category)); });
+					return;
+				}
+
+				auto slug = Slugify(label.value());
+				auto state_topic = m_Client->BuildTopic(TopicScheme::DeviceStateSubtopic(category, slug));
+				auto state = std::string(Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device));
+
+				m_Client->Publish(state_topic, state, /*retain=*/true);
+				++device_count;
+			};
+
+			for (const auto& device : data_hub->Pumps())
+			{
+				publish_device_state(TopicScheme::DeviceCategory::Pump, device);
 			}
 
-			auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
-			if (!label.has_value())
+			for (const auto& device : data_hub->Heaters())
 			{
-				LogDebug(Channel::Mqtt, std::format("Skipping HA state for {} device with no label trait", category));
-				return;
+				publish_device_state(TopicScheme::DeviceCategory::Heater, device);
 			}
 
-			auto slug = Slugify(label.value());
-			auto state_topic = m_Client->BuildTopic(std::format("ha/{}_{}", category, slug));
-			auto state = std::string(Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device));
+			for (const auto& device : data_hub->Chlorinators())
+			{
+				publish_device_state(TopicScheme::DeviceCategory::Chlorinator, device);
+			}
 
-			m_Client->Publish(state_topic, state, /*retain=*/true);
-			++device_count;
-		};
+			for (const auto& device : data_hub->Auxillaries())
+			{
+				publish_device_state(TopicScheme::DeviceCategory::Auxillary, device);
+			}
 
-		for (const auto& device : data_hub->Pumps())
-		{
-			publish_device_state("pump", device);
+			LogTrace(Channel::Mqtt, [&] { return std::format("Published HA device states ({} devices)", device_count); });
 		}
-
-		for (const auto& device : data_hub->Heaters())
+		catch (const std::exception& ex)
 		{
-			publish_device_state("heater", device);
+			LogError(Channel::Mqtt, [&] { return std::format("Failed to publish HA device states: {}", ex.what()); });
 		}
-
-		for (const auto& device : data_hub->Chlorinators())
-		{
-			publish_device_state("chlorinator", device);
-		}
-
-		for (const auto& device : data_hub->Auxillaries())
-		{
-			publish_device_state("aux", device);
-		}
-
-		LogTrace(Channel::Mqtt, std::format("Published HA device states ({} devices)", device_count));
 	}
 
 	//=========================================================================
@@ -288,6 +311,27 @@ namespace AqualinkAutomate::Mqtt
 		};
 	}
 
+	namespace
+	{
+		/// Read a device's label trait, returning std::nullopt (so the caller skips it)
+		/// when the device is null or unlabelled.
+		std::optional<std::string> DeviceLabel(const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
+		{
+			if (!dev)
+			{
+				return std::nullopt;
+			}
+
+			auto label = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			if (!label.has_value())
+			{
+				return std::nullopt;
+			}
+
+			return label.value();
+		}
+	}
+
 	void HomeAssistantDiscovery::AddDynamicDeviceComponents(nlohmann::json& cmps)
 	{
 		auto data_hub = m_DataHub.lock();
@@ -296,23 +340,18 @@ namespace AqualinkAutomate::Mqtt
 			return;
 		}
 
-		auto add_switch = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev,
+		auto add_switch = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev,
 			const std::string& state_on, const std::string& state_off)
 		{
-			if (!dev)
-			{
-				return;
-			}
-
-			auto label = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			auto label = DeviceLabel(dev);
 			if (!label.has_value())
 			{
 				return;
 			}
 
 			auto slug = Slugify(label.value());
-			auto key = std::format("{}_{}", category, slug);
-			auto state_topic = m_Client->BuildTopic(std::format("ha/{}", key));
+			auto key = std::format("{}_{}", TopicScheme::CategoryName(category), slug);
+			auto state_topic = m_Client->BuildTopic(TopicScheme::DeviceStateSubtopic(category, slug));
 
 			cmps[key] = {
 				{"p", "switch"},
@@ -327,22 +366,17 @@ namespace AqualinkAutomate::Mqtt
 			};
 		};
 
-		auto add_sensor = [&](const std::string& category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
+		auto add_sensor = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
 		{
-			if (!dev)
-			{
-				return;
-			}
-
-			auto label = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			auto label = DeviceLabel(dev);
 			if (!label.has_value())
 			{
 				return;
 			}
 
 			auto slug = Slugify(label.value());
-			auto key = std::format("{}_{}", category, slug);
-			auto state_topic = m_Client->BuildTopic(std::format("ha/{}", key));
+			auto key = std::format("{}_{}", TopicScheme::CategoryName(category), slug);
+			auto state_topic = m_Client->BuildTopic(TopicScheme::DeviceStateSubtopic(category, slug));
 
 			cmps[key] = {
 				{"p", "sensor"},
@@ -355,93 +389,115 @@ namespace AqualinkAutomate::Mqtt
 		// Pumps -> switch (Running / Off)
 		for (const auto& dev : data_hub->Pumps())
 		{
-			add_switch("pump", dev, "Running", "Off");
+			add_switch(TopicScheme::DeviceCategory::Pump, dev, "Running", "Off");
 		}
 
-		// Chlorinators -> switch (On / Off) + sensor entities for generating %, boost mode, status
+		// Chlorinators -> switch (On / Off) + extra entities reading the JSON state blob.
 		for (const auto& dev : data_hub->Chlorinators())
 		{
-			add_switch("chlorinator", dev, "On", "Off");
-
-			auto label = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
-			if (!label.has_value())
-			{
-				continue;
-			}
-
-			auto slug = Slugify(label.value());
-			auto state_topic = DeviceStateTopic(slug);
-
-			auto generating_key = std::format("chlorinator_{}_generating", slug);
-			cmps[generating_key] = {
-				{"p", "sensor"},
-				{"name", std::format("{} Generating %", label.value())},
-				{"unique_id", UniqueId(generating_key)},
-				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.generating_percentage }}"},
-				{"unit_of_measurement", "%"},
-				{"state_class", "measurement"}
-			};
-
-			auto boost_key = std::format("chlorinator_{}_boost", slug);
-			cmps[boost_key] = {
-				{"p", "sensor"},
-				{"name", std::format("{} Boost Mode", label.value())},
-				{"unique_id", UniqueId(boost_key)},
-				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.boost_mode }}"}
-			};
-
-			auto health_key = std::format("chlorinator_{}_health", slug);
-			cmps[health_key] = {
-				{"p", "sensor"},
-				{"name", std::format("{} Health", label.value())},
-				{"unique_id", UniqueId(health_key)},
-				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.chlorinator_health }}"}
-			};
-
-			auto pct_cmd_key = std::format("chlorinator_{}_pct_cmd", slug);
-			cmps[pct_cmd_key] = {
-				{"p", "number"},
-				{"name", std::format("{} Generating Setpoint", label.value())},
-				{"unique_id", UniqueId(pct_cmd_key)},
-				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.generating_percentage }}"},
-				{"command_topic", ChlorinatorCommandTopic("percentage")},
-				{"min", 0},
-				{"max", 100},
-				{"step", 1},
-				{"unit_of_measurement", "%"},
-				{"mode", "slider"}
-			};
-
-			auto boost_cmd_key = std::format("chlorinator_{}_boost_cmd", slug);
-			cmps[boost_cmd_key] = {
-				{"p", "switch"},
-				{"name", std::format("{} Boost", label.value())},
-				{"unique_id", UniqueId(boost_cmd_key)},
-				{"state_topic", state_topic},
-				{"value_template", "{{ value_json.boost_mode }}"},
-				{"command_topic", ChlorinatorCommandTopic("boost")},
-				{"payload_on", "ON"},
-				{"payload_off", "OFF"},
-				{"state_on", "Boost"},
-				{"state_off", "Off"}
-			};
+			add_switch(TopicScheme::DeviceCategory::Chlorinator, dev, "On", "Off");
+			AddChlorinatorComponents(cmps, dev);
 		}
 
 		// Auxiliaries -> switch (On / Off)
 		for (const auto& dev : data_hub->Auxillaries())
 		{
-			add_switch("aux", dev, "On", "Off");
+			add_switch(TopicScheme::DeviceCategory::Auxillary, dev, "On", "Off");
 		}
 
 		// Heaters -> sensor (multi-state: Off/Heating/Enabled)
 		for (const auto& dev : data_hub->Heaters())
 		{
-			add_sensor("heater", dev);
+			add_sensor(TopicScheme::DeviceCategory::Heater, dev);
 		}
+	}
+
+	void HomeAssistantDiscovery::AddChlorinatorComponents(nlohmann::json& cmps, const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
+	{
+		auto label = DeviceLabel(dev);
+		if (!label.has_value())
+		{
+			return;
+		}
+
+		auto slug = Slugify(label.value());
+
+		// The chlorinator's rich attributes ride the full JSON status blob published by
+		// MqttHub to the device topic (TopicScheme::DeviceJsonSubtopic), so these entities
+		// point there via value_json templates rather than at the short-string ha/ topic.
+		auto state_topic = DeviceStateTopic(slug);
+
+		// Read-only sensors: name suffix + the value_json field they extract.
+		struct ChlorinatorSensor
+		{
+			const char* key_suffix;
+			const char* name_suffix;
+			const char* value_template;
+			const char* unit;        // nullptr => no unit_of_measurement
+			bool measurement;        // true => state_class "measurement"
+		};
+
+		static constexpr ChlorinatorSensor sensors[] = {
+			{ "generating", "Generating %", "{{ value_json.generating_percentage }}", "%", true },
+			{ "boost",      "Boost Mode",   "{{ value_json.boost_mode }}",            nullptr, false },
+			{ "health",     "Health",       "{{ value_json.chlorinator_health }}",    nullptr, false },
+		};
+
+		for (const auto& sensor : sensors)
+		{
+			auto key = std::format("chlorinator_{}_{}", slug, sensor.key_suffix);
+
+			nlohmann::json component = {
+				{"p", "sensor"},
+				{"name", std::format("{} {}", label.value(), sensor.name_suffix)},
+				{"unique_id", UniqueId(key)},
+				{"state_topic", state_topic},
+				{"value_template", sensor.value_template}
+			};
+
+			if (sensor.unit != nullptr)
+			{
+				component["unit_of_measurement"] = sensor.unit;
+			}
+
+			if (sensor.measurement)
+			{
+				component["state_class"] = "measurement";
+			}
+
+			cmps[key] = std::move(component);
+		}
+
+		// Generating-percentage setpoint (number with command topic).
+		auto pct_cmd_key = std::format("chlorinator_{}_pct_cmd", slug);
+		cmps[pct_cmd_key] = {
+			{"p", "number"},
+			{"name", std::format("{} Generating Setpoint", label.value())},
+			{"unique_id", UniqueId(pct_cmd_key)},
+			{"state_topic", state_topic},
+			{"value_template", "{{ value_json.generating_percentage }}"},
+			{"command_topic", ChlorinatorCommandTopic("percentage")},
+			{"min", 0},
+			{"max", 100},
+			{"step", 1},
+			{"unit_of_measurement", "%"},
+			{"mode", "slider"}
+		};
+
+		// Boost switch (command topic).
+		auto boost_cmd_key = std::format("chlorinator_{}_boost_cmd", slug);
+		cmps[boost_cmd_key] = {
+			{"p", "switch"},
+			{"name", std::format("{} Boost", label.value())},
+			{"unique_id", UniqueId(boost_cmd_key)},
+			{"state_topic", state_topic},
+			{"value_template", "{{ value_json.boost_mode }}"},
+			{"command_topic", ChlorinatorCommandTopic("boost")},
+			{"payload_on", "ON"},
+			{"payload_off", "OFF"},
+			{"state_on", "Boost"},
+			{"state_off", "Off"}
+		};
 	}
 
 	//=========================================================================
@@ -538,7 +594,8 @@ namespace AqualinkAutomate::Mqtt
 
 	std::string HomeAssistantDiscovery::DeviceStateTopic(const std::string& slug) const
 	{
-		return m_Client->BuildTopic(std::format("device/{}", slug));
+		// Routed through TopicScheme so this matches the JSON-blob topic MqttHub publishes.
+		return m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug));
 	}
 
 	std::string HomeAssistantDiscovery::ChlorinatorCommandTopic(const std::string& command) const

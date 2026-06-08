@@ -136,6 +136,11 @@ namespace AqualinkAutomate::Mqtt
 		void OnDataHubConfigChanged(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event);
 		void OnEquipmentStatusChanged(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& event);
 
+		/// Mark that a hub change occurred so the next Poll() flushes an on-change
+		/// publish (debounced). Called from the hub-change signal handlers, which fire
+		/// on the protocol-decode hot path; the actual publish is deferred to Poll().
+		void RequestOnChangePublish();
+
 		//---------------------------------------------------------------------
 		// PUBLISHING METHODS
 		//---------------------------------------------------------------------
@@ -197,6 +202,16 @@ namespace AqualinkAutomate::Mqtt
 		// Periodic publish timers (using steady_clock comparisons)
 		std::chrono::steady_clock::time_point m_NextStatusPublish;
 		std::chrono::steady_clock::time_point m_NextStatsPublish;
+
+		// On-change publishing (debounced). A hub-change signal sets m_OnChangePending
+		// and records the earliest time the deferred publish may fire; Poll() flushes it.
+		bool m_OnChangePending{ false };
+		std::chrono::steady_clock::time_point m_OnChangeDeadline;
+
+		// Minimum spacing between two on-change publishes, so a burst of hub changes
+		// during protocol decode coalesces into a single publish rather than flooding
+		// the broker.
+		static constexpr std::chrono::milliseconds ON_CHANGE_DEBOUNCE{ 250 };
 
 		// Topic prefixes
 		static constexpr const char* STATUS_PREFIX = "status";
