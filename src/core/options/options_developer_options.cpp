@@ -5,6 +5,7 @@
 
 #include <boost/program_options/value_semantic.hpp>
 #include <magic_enum/magic_enum.hpp>
+#include <magic_enum/magic_enum_utility.hpp>
 
 #include "logging/logging.h"
 #include "logging/logging_severity_filter.h"

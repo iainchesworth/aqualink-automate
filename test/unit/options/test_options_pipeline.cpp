@@ -678,7 +678,7 @@ namespace
 
 		std::expected<SettingsType, AqualinkAutomate::ErrorCodes::Options_ErrorCodes> Process(boost::program_options::variables_map&) const
 		{
-			return std::unexpected(AqualinkAutomate::ErrorCodes::OptionsHandlingFailed);
+			return std::unexpected(AqualinkAutomate::ErrorCodes::Options_ErrorCodes::OptionsHandlingFailed);
 		}
 	};
 }
@@ -697,7 +697,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_ProcessError_PropagatesAndShortCircuits)
 		| Options::Finalise();
 
 	BOOST_REQUIRE(!result.has_value());
-	BOOST_CHECK(result.error() == AqualinkAutomate::ErrorCodes::OptionsHandlingFailed);
+	BOOST_CHECK(result.error() == AqualinkAutomate::ErrorCodes::Options_ErrorCodes::OptionsHandlingFailed);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

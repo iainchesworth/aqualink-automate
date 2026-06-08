@@ -23,6 +23,7 @@
 #include "http/server/server_types.h"
 #include "http/server/static_file_handler.h"
 
+using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::HTTP;
 
 namespace

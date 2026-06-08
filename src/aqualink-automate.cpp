@@ -403,6 +403,12 @@ int main(int argc, char* argv[])
 		{
 			const auto& web_settings = web_settings_result.value().get();
 
+			// Wire the opt-in control-plane security policy from the Web settings.
+			// AuthToken unset (the default) leaves every knob disabled, so the
+			// historical no-auth behaviour is preserved exactly unless the operator
+			// passes --api-auth-token.
+			HTTP::Routing::SecurityConfig security_config{ .AuthToken = web_settings.ApiAuthToken };
+
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
@@ -435,14 +441,14 @@ int main(int argc, char* argv[])
 				Certificates::LoadSslCertificates(web_settings, ssl_context);
 
 				auto endpoint = boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(web_settings.bind_address), web_settings.https_port };
-				https_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint, std::ref(ssl_context));
+				https_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint, std::ref(ssl_context), security_config);
 				https_server->Start();
 			}
 
 			if (web_settings.http_server_is_enabled)
 			{
 				auto endpoint = boost::asio::ip::tcp::endpoint{ boost::asio::ip::make_address(web_settings.bind_address), web_settings.http_port };
-				http_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint);
+				http_server = std::make_unique<HTTP::HttpServer>(io_context, endpoint, std::nullopt, security_config);
 				http_server->Start();
 			}
 		}
