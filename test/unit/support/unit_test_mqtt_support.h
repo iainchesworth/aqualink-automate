@@ -45,6 +45,11 @@ public:
 		return client.EncodePingreq();
 	}
 
+	static std::vector<uint8_t> EncodeSubscribe(Mqtt::MqttClient& client, const std::string& topic_filter, uint8_t qos)
+	{
+		return client.EncodeSubscribe(topic_filter, qos);
+	}
+
 	static bool ParseConnack(Mqtt::MqttClient& client, const std::vector<uint8_t>& data)
 	{
 		return client.ParseConnack(data);
@@ -56,6 +61,20 @@ public:
 	{
 		client.m_State = Mqtt::MqttClient::State::Connected;
 		client.m_Running = true;
+	}
+
+	//-------------------------------------------------------------------------
+	// Outbound write-buffer inspection (partial-write / per-packet offset tests)
+	//-------------------------------------------------------------------------
+
+	static const std::vector<uint8_t>& GetWriteBuffer(const Mqtt::MqttClient& client)
+	{
+		return client.m_WriteBuffer;
+	}
+
+	static std::size_t GetWriteOffset(const Mqtt::MqttClient& client)
+	{
+		return client.m_WriteOffset;
 	}
 };
 
