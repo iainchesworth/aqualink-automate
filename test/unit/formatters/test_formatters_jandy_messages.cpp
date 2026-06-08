@@ -110,4 +110,39 @@ BOOST_AUTO_TEST_CASE(TestOstream_JandyMessage_Unknown)
 	BOOST_CHECK(!oss.str().empty());
 }
 
+// =============================================================================
+// Unified constrained std::formatter / operator<< (WU-JANDY-FORMATTERS)
+//
+// The per-type operator<< overloads and per-type std::formatter skeletons were
+// collapsed into a single constrained template covering every type derived from
+// JandyMessage.  These regression tests pin both halves of that unification:
+//   * std::format("{}", derivedObject) now resolves via the partial
+//     std::formatter<T> specialisation (previously no such formatter existed).
+//   * the derived-type operator<< produces exactly the same text as the base
+//     ToString(), i.e. the virtual ToString() drives the rendering.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestFormat_DerivedMessage_ResolvesViaTemplateFormatter)
+{
+	JandyMessage_Ack message;
+	auto formatted = std::format("{}", message);
+	BOOST_CHECK_EQUAL(formatted, message.ToString());
+}
+
+BOOST_AUTO_TEST_CASE(TestFormat_DerivedMessage_MatchesBaseSlice)
+{
+	JandyMessage_Status message;
+	auto via_derived = std::format("{}", message);
+	auto via_base = std::format("{}", static_cast<const JandyMessage&>(message));
+	BOOST_CHECK_EQUAL(via_derived, via_base);
+}
+
+BOOST_AUTO_TEST_CASE(TestOstream_DerivedMessage_MatchesToString)
+{
+	JandyMessage_Ack message;
+	std::ostringstream oss;
+	oss << message;
+	BOOST_CHECK_EQUAL(oss.str(), message.ToString());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
