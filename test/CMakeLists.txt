@@ -139,6 +139,7 @@ target_sources(
 	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
+	unit/kernel/test_kernel_device_graph.cpp
 	unit/kernel/test_kernel_equipment_hub.cpp
 	unit/kernel/test_kernel_equipment_versions.cpp
 	unit/kernel/test_kernel_body_of_water.cpp
