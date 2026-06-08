@@ -3,6 +3,7 @@
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "errors/enum_error_category.h"
 #include "errors/message_errors.h"
 #include "errors/protocol_errors.h"
 
@@ -12,6 +13,10 @@ BOOST_AUTO_TEST_SUITE(TestSuite_ErrorCategories)
 
 // =====================================================
 // Message Error Category
+//
+// message() now returns a human-readable description (previously it returned
+// the C++ enumerator spelling).  These expectations were updated as part of
+// the CRTP EnumErrorCategory refactor; the change is observable in logs/API.
 // =====================================================
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_Name)
@@ -23,43 +28,43 @@ BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_Name)
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_InvalidMessageData)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_InvalidMessageData), "Message_ErrorCodes::Error_InvalidMessageData");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_InvalidMessageData)), "The serial data did not form a valid message and could not be decoded");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_CannotFindGenerator)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_CannotFindGenerator), "Message_ErrorCodes::Error_CannotFindGenerator");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_CannotFindGenerator)), "No registered message generator recognised the serial data");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_UnknownMessageType)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_UnknownMessageType), "Message_ErrorCodes::Error_UnknownMessageType");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_UnknownMessageType)), "The message type is not recognised by the factory");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_GeneratorFailed)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_GeneratorFailed), "Message_ErrorCodes::Error_GeneratorFailed");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_GeneratorFailed)), "The message generator failed to produce a message from the serial data");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_FailedToSerialize)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_FailedToSerialize), "Message_ErrorCodes::Error_FailedToSerialize");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_FailedToSerialize)), "The message could not be serialised to wire bytes");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_FailedToDeserialize)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Message_ErrorCodes::Error_FailedToDeserialize), "Message_ErrorCodes::Error_FailedToDeserialize");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Message_ErrorCodes::Error_FailedToDeserialize)), "The serial data could not be deserialised into the message");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_UnknownCode)
 {
 	const auto& cat = Message_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(9999), "Message_ErrorCodes - Unknown Error Code");
+	BOOST_CHECK_EQUAL(cat.message(9999), "AqualinkAutomate::Message Error Category - unknown error code (9999)");
 }
 
 BOOST_AUTO_TEST_CASE(Test_MessageErrorCategory_Singleton)
@@ -96,43 +101,43 @@ BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_Name)
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_DataAvailableToProcess)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::DataAvailableToProcess), "Protocol_ErrorCodes::DataAvailableToProcess");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::DataAvailableToProcess)), "A complete frame is available in the buffer and ready to process");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_WaitingForMoreData)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::WaitingForMoreData), "Protocol_ErrorCodes::WaitingForMoreData");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::WaitingForMoreData)), "Not enough data has been received yet to decode a frame");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_InvalidPacketFormat)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::InvalidPacketFormat), "Protocol_ErrorCodes::InvalidPacketFormat");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::InvalidPacketFormat)), "The packet structure does not match the expected protocol format");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_UnknownFailure)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::UnknownFailure), "Protocol_ErrorCodes::UnknownFailure");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::UnknownFailure)), "An unspecified protocol processing failure occurred");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_ChecksumFailure)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::ChecksumFailure), "Protocol_ErrorCodes::ChecksumFailure");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::ChecksumFailure)), "The packet checksum did not match the computed value");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_OverlappingPackets)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(Protocol_ErrorCodes::OverlappingPackets), "Protocol_ErrorCodes::OverlappingPackets");
+	BOOST_CHECK_EQUAL(cat.message(static_cast<int>(Protocol_ErrorCodes::OverlappingPackets)), "Overlapping packet boundaries were detected in the buffer");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_UnknownCode)
 {
 	const auto& cat = Protocol_ErrorCategory::Instance();
-	BOOST_CHECK_EQUAL(cat.message(9999), "Protocol_ErrorCodes - Unknown Error Code");
+	BOOST_CHECK_EQUAL(cat.message(9999), "AqualinkAutomate::Protocol Error Category - unknown error code (9999)");
 }
 
 BOOST_AUTO_TEST_CASE(Test_ProtocolErrorCategory_Singleton)
@@ -165,6 +170,34 @@ BOOST_AUTO_TEST_CASE(Test_CategoriesAreDistinct)
 	const auto& msg_cat = Message_ErrorCategory::Instance();
 	const auto& proto_cat = Protocol_ErrorCategory::Instance();
 	BOOST_CHECK_NE(&msg_cat, static_cast<const boost::system::error_category*>(&proto_cat));
+}
+
+// =====================================================
+// CRTP base: error_code values, categories and cross-category comparison
+//
+// Regression coverage for the consume-or-defer registry contract that relies
+// on whole-error_code (value AND category) equality.  A 2001 from one category
+// must NOT compare equal to a 2001 from another.
+// =====================================================
+
+BOOST_AUTO_TEST_CASE(Test_MakeErrorCode_PreservesEnumValue)
+{
+	BOOST_CHECK_EQUAL(make_error_code(Protocol_ErrorCodes::WaitingForMoreData).value(), 2001);
+	BOOST_CHECK_EQUAL(make_error_code(Message_ErrorCodes::Error_CannotFindGenerator).value(), 1001);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SameCode_ComparesEqual)
+{
+	const auto a = make_error_code(Protocol_ErrorCodes::WaitingForMoreData);
+	const auto b = make_error_code(Protocol_ErrorCodes::WaitingForMoreData);
+	BOOST_CHECK(a == b);
+}
+
+BOOST_AUTO_TEST_CASE(Test_DifferentCodeSameCategory_ComparesUnequal)
+{
+	const auto a = make_error_code(Protocol_ErrorCodes::WaitingForMoreData);
+	const auto b = make_error_code(Protocol_ErrorCodes::ChecksumFailure);
+	BOOST_CHECK(a != b);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

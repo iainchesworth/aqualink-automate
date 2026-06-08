@@ -1,13 +1,15 @@
 #pragma once
 
-#include <string>
-
-#include <boost/system/error_code.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::ErrorCodes
 {
-	enum Options_ErrorCodes
+	// Options_ErrorCodes is used purely as the error type of the option-pipeline
+	// std::expected results (std::expected<Settings, Options_ErrorCodes>).  It is
+	// never converted into a boost::system::error_code, so it deliberately has no
+	// error_category / make_error_code machinery (that boilerplate was previously
+	// declared but never defined, i.e. dead, unlinkable code).
+	enum class Options_ErrorCodes : int
 	{
 		OptionsAreaAlreadyRegistered = 101,
 		OptionsValidationFailed,
@@ -16,34 +18,13 @@ namespace AqualinkAutomate::ErrorCodes
 		UnknownOptionsError
 	};
 
-	class Options_ErrorCategory : public boost::system::error_category
-	{
-	public:
-		static const Options_ErrorCategory& Instance();
-
-	public:
-		const char* name() const noexcept override;
-		std::string message(int ev) const override;
-	};
-
 }
 // namespace AqualinkAutomate::ErrorCodes
-
-namespace boost::system
-{
-	template<>
-	struct is_error_code_enum<AqualinkAutomate::ErrorCodes::Options_ErrorCodes> : public std::true_type
-	{
-	};
-}
-
-boost::system::error_code make_error_code(const AqualinkAutomate::ErrorCodes::Options_ErrorCodes e);
-boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Options_ErrorCodes e);
 
 template <>
 struct magic_enum::customize::enum_range<AqualinkAutomate::ErrorCodes::Options_ErrorCodes>
 {
 	static constexpr int min = 101;
-	static constexpr int max = 199;
+	static constexpr int max = 105;
 	// (max - min) must be less than UINT16_MAX.
 };
