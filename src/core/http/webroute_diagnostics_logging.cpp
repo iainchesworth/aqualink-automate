@@ -5,11 +5,12 @@
 #include <nlohmann/json.hpp>
 
 #include "http/webroute_diagnostics_logging.h"
-#include "http/server/server_fields.h"
+#include "http/server/make_response.h"
 #include "logging/logging.h"
 #include "logging/logging_channels.h"
 #include "logging/logging_severity_filter.h"
 #include "logging/logging_severity_levels.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -18,6 +19,8 @@ namespace AqualinkAutomate::HTTP
 
 	boost::beast::http::message_generator WebRoute_Diagnostics_Logging::OnRequest(const HTTP::Request& req)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Logging::OnRequest", std::source_location::current());
+
 		switch (req.method())
 		{
 		case Verbs::get:
@@ -27,13 +30,7 @@ namespace AqualinkAutomate::HTTP
 			return HandlePost(req);
 
 		default:
-			HTTP::Response resp{ HTTP::Status::method_not_allowed, req.version() };
-			resp.set(boost::beast::http::field::server, ServerFields::Server());
-			resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-			resp.keep_alive(req.keep_alive());
-			resp.body() = R"({"error":"Method not allowed. Use GET or POST."})";
-			resp.prepare_payload();
-			return resp;
+			return MakeJsonResponse(req, HTTP::Status::method_not_allowed, R"({"error":"Method not allowed. Use GET or POST."})");
 		}
 	}
 
@@ -60,14 +57,7 @@ namespace AqualinkAutomate::HTTP
 
 		result["severity_levels"] = levels;
 
-		HTTP::Response resp{ HTTP::Status::ok, req.version() };
-		resp.set(boost::beast::http::field::server, ServerFields::Server());
-		resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-		resp.keep_alive(req.keep_alive());
-		resp.body() = result.dump();
-		resp.prepare_payload();
-
-		return resp;
+		return MakeJsonResponse(req, HTTP::Status::ok, result.dump());
 	}
 
 	boost::beast::http::message_generator WebRoute_Diagnostics_Logging::HandlePost(const HTTP::Request& req)
@@ -83,13 +73,7 @@ namespace AqualinkAutomate::HTTP
 
 				if (!severity.has_value())
 				{
-					HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
-					resp.set(boost::beast::http::field::server, ServerFields::Server());
-					resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-					resp.keep_alive(req.keep_alive());
-					resp.body() = R"({"error":"Invalid severity level"})";
-					resp.prepare_payload();
-					return resp;
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Invalid severity level"})");
 				}
 
 				SeverityFiltering::SetGlobalFilterLevel(severity.value());
@@ -106,13 +90,7 @@ namespace AqualinkAutomate::HTTP
 
 				if (!channel.has_value() || !severity.has_value())
 				{
-					HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
-					resp.set(boost::beast::http::field::server, ServerFields::Server());
-					resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-					resp.keep_alive(req.keep_alive());
-					resp.body() = R"({"error":"Invalid channel or severity level"})";
-					resp.prepare_payload();
-					return resp;
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Invalid channel or severity level"})");
 				}
 
 				SeverityFiltering::SetChannelFilterLevel(channel.value(), severity.value());
@@ -121,34 +99,14 @@ namespace AqualinkAutomate::HTTP
 			}
 			else
 			{
-				HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
-				resp.set(boost::beast::http::field::server, ServerFields::Server());
-				resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-				resp.keep_alive(req.keep_alive());
-				resp.body() = R"({"error":"Request must contain 'global' or both 'channel' and 'level'"})";
-				resp.prepare_payload();
-				return resp;
+				return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Request must contain 'global' or both 'channel' and 'level'"})");
 			}
 
-			HTTP::Response resp{ HTTP::Status::ok, req.version() };
-			resp.set(boost::beast::http::field::server, ServerFields::Server());
-			resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-			resp.keep_alive(req.keep_alive());
-			resp.body() = R"({"status":"ok"})";
-			resp.prepare_payload();
-
-			return resp;
+			return MakeJsonResponse(req, HTTP::Status::ok, R"({"status":"ok"})");
 		}
 		catch (const nlohmann::json::exception&)
 		{
-			HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
-			resp.set(boost::beast::http::field::server, ServerFields::Server());
-			resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-			resp.keep_alive(req.keep_alive());
-			resp.body() = R"({"error":"Invalid JSON in request body"})";
-			resp.prepare_payload();
-
-			return resp;
+			return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Invalid JSON in request body"})");
 		}
 	}
 

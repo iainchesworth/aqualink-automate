@@ -6,6 +6,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "http/webroute_equipment_button.h"
+#include "http/server/make_response.h"
 #include "http/server/parse_query_string.h"
 #include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
@@ -112,15 +113,7 @@ namespace AqualinkAutomate::HTTP
 					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}
 
-				HTTP::Response resp{ HTTP::Status::ok, req.version() };
-
-				resp.set(boost::beast::http::field::server, ServerFields::Server());
-				resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-				resp.keep_alive(req.keep_alive());
-				resp.body() = button.dump();
-				resp.prepare_payload();
-
-				return resp;
+				return MakeJsonResponse(req, HTTP::Status::ok, button.dump());
 			}
 		}
 		catch (const std::runtime_error& ex_re)
@@ -179,13 +172,7 @@ namespace AqualinkAutomate::HTTP
 
 						button["command"] = "toggled";
 
-						HTTP::Response resp{ HTTP::Status::ok, req.version() };
-						resp.set(boost::beast::http::field::server, ServerFields::Server());
-						resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-						resp.keep_alive(req.keep_alive());
-						resp.body() = button.dump();
-						resp.prepare_payload();
-						return resp;
+						return MakeJsonResponse(req, HTTP::Status::ok, button.dump());
 					}
 
 					case Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter:
@@ -197,27 +184,13 @@ namespace AqualinkAutomate::HTTP
 					case Interfaces::ICommandDispatcher::CommandResult::UnknownEquipmentType:
 					{
 						LogWarning(Channel::Web, std::format("Cannot toggle device '{}': unknown equipment type", button_id.value()));
-
-						HTTP::Response resp{ HTTP::Status::unprocessable_entity, req.version() };
-						resp.set(boost::beast::http::field::server, ServerFields::Server());
-						resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
-						resp.keep_alive(req.keep_alive());
-						resp.body() = "Device type cannot be mapped to a control command";
-						resp.prepare_payload();
-						return resp;
+						return MakeResponse(req, HTTP::Status::unprocessable_entity, ContentTypes::TEXT_PLAIN, "Device type cannot be mapped to a control command");
 					}
 
 					case Interfaces::ICommandDispatcher::CommandResult::InvalidValue:
 					{
 						LogWarning(Channel::Web, std::format("Cannot toggle device '{}': invalid value", button_id.value()));
-
-						HTTP::Response resp{ HTTP::Status::bad_request, req.version() };
-						resp.set(boost::beast::http::field::server, ServerFields::Server());
-						resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
-						resp.keep_alive(req.keep_alive());
-						resp.body() = "Invalid value for device command";
-						resp.prepare_payload();
-						return resp;
+						return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "Invalid value for device command");
 					}
 					}
 
@@ -237,14 +210,8 @@ namespace AqualinkAutomate::HTTP
 	{
 		LogInfo(Channel::Web, std::format("Received an invalid button id ('{}'); rejecting button request", button_id));
 
-		HTTP::Response resp{ HTTP::Status::not_found, req.version() };
-
-		resp.set(boost::beast::http::field::server, ServerFields::Server());
-		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+		auto resp = MakeResponse(req, HTTP::Status::not_found, ContentTypes::TEXT_PLAIN, std::format("'{}' is an invalid button id", button_id));
 		resp.set(boost::beast::http::field::content_encoding, "none");
-		resp.keep_alive(req.keep_alive());
-		resp.body() = std::format("'{}' is an invalid button id", button_id);
-		resp.prepare_payload();
 
 		return resp;
 	}
@@ -253,14 +220,8 @@ namespace AqualinkAutomate::HTTP
 	{
 		LogInfo(Channel::Web, "Aqualink Automate has not yet initialised (PoolConfiguration == Unknown); rejecting button action request");
 
-		HTTP::Response resp{ HTTP::Status::service_unavailable, req.version() };
-
-		resp.set(boost::beast::http::field::server, ServerFields::Server());
-		resp.set(boost::beast::http::field::content_type, ContentTypes::TEXT_PLAIN);
+		auto resp = MakeResponse(req, HTTP::Status::service_unavailable, ContentTypes::TEXT_PLAIN, "Service is not initialised; cannot action button");
 		resp.set(boost::beast::http::field::retry_after, ServerFields::RetryAfter());
-		resp.keep_alive(req.keep_alive());
-		resp.body() = "Service is not initialised; cannot action button";
-		resp.prepare_payload();
 
 		return resp;
 	}

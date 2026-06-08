@@ -38,12 +38,12 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_UninitialisedDataHub)
 		{
 			nlohmann::json json_response = nlohmann::json::parse(res_body);
 
-			BOOST_REQUIRE(json_response.contains("buttons"));
+			// The dead GenerateJson_Equipment_Buttons stub (and its empty "buttons"
+			// field) was removed; the /api/equipment response no longer carries it.
+			BOOST_CHECK(!json_response.contains("buttons"));
 			BOOST_REQUIRE(json_response.contains("devices"));
 			BOOST_REQUIRE(json_response.contains("stats"));
 			BOOST_REQUIRE(json_response.contains("version"));
-
-			BOOST_CHECK(json_response["buttons"].is_null());
 
 			BOOST_REQUIRE(json_response["devices"].contains("auxillaries"));
 			BOOST_REQUIRE(json_response["devices"].contains("heaters"));
@@ -112,12 +112,12 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 		{
 			nlohmann::json json_response = nlohmann::json::parse(res_body);
 
-			BOOST_REQUIRE(json_response.contains("buttons"));
+			// The dead GenerateJson_Equipment_Buttons stub (and its empty "buttons"
+			// field) was removed; the /api/equipment response no longer carries it.
+			BOOST_CHECK(!json_response.contains("buttons"));
 			BOOST_REQUIRE(json_response.contains("devices"));
 			BOOST_REQUIRE(json_response.contains("stats"));
 			BOOST_REQUIRE(json_response.contains("version"));
-
-			BOOST_CHECK(json_response["buttons"].is_null());
 
 			BOOST_REQUIRE(json_response["devices"].contains("auxillaries"));
 			BOOST_REQUIRE(json_response["devices"].contains("heaters"));

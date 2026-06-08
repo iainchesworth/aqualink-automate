@@ -31,6 +31,7 @@ target_sources(
 	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp
 	unit/http/test_http_security.cpp
+	unit/http/test_http_make_response.cpp
 	unit/http/test_http_sessions.cpp
 	unit/http/test_http_setpoints.cpp
 	unit/http/test_http_static_file.cpp
@@ -107,6 +108,7 @@ target_sources(
 	unit/utility/test_utility_latencytracker.cpp
 	unit/utility/test_utility_signallingstatscounter.cpp
 	unit/utility/test_utility_temperature.cpp
+	unit/utility/test_utility_temperature_conversion.cpp
 	unit/utility/test_utility_timeoutdurationstringconverter.cpp
 	unit/utility/test_utility_tonumber.cpp
 	unit/utility/test_utility_valuedebouncer.cpp
