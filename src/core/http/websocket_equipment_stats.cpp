@@ -24,7 +24,6 @@ namespace AqualinkAutomate::HTTP
 			m_StatsSlot = m_StatisticsHub->MessageCounts.Signal().connect(
 				[this](uint64_t)
 				{
-					std::lock_guard lock(m_Mutex);
 					for (auto& [id, conn] : m_Connections)
 					{
 						conn.dirty = true;
@@ -35,7 +34,6 @@ namespace AqualinkAutomate::HTTP
 
 	std::optional<std::string> WebSocket_Equipment_Stats::DequeueMessage(ConnectionId connId)
 	{
-		std::lock_guard lock(m_Mutex);
 		auto it = m_Connections.find(connId);
 		if (it == m_Connections.end())
 		{
@@ -63,7 +61,6 @@ namespace AqualinkAutomate::HTTP
 
 	WebSocket_Equipment_Stats::ConnectionId WebSocket_Equipment_Stats::OnOpen()
 	{
-		std::lock_guard lock(m_Mutex);
 		auto connId = m_NextConnectionId++;
 		m_Connections[connId] = {};
 		LogDebug(Channel::Web, std::format("WebSocket_Equipment_Stats: connection {} opened ({} total)", connId, m_Connections.size()));
@@ -80,14 +77,12 @@ namespace AqualinkAutomate::HTTP
 
 	void WebSocket_Equipment_Stats::OnClose(ConnectionId connId)
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Connections.erase(connId);
 		LogDebug(Channel::Web, std::format("WebSocket_Equipment_Stats: connection {} closed ({} remaining)", connId, m_Connections.size()));
 	}
 
 	void WebSocket_Equipment_Stats::OnError(ConnectionId connId)
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Connections.erase(connId);
 		LogDebug(Channel::Web, std::format("WebSocket_Equipment_Stats: connection {} error ({} remaining)", connId, m_Connections.size()));
 	}

@@ -34,17 +34,18 @@ namespace AqualinkAutomate::HTTP
 		WebSocket_Event(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event);
 
 	public:
-		WebSocket_Event& operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange>& button_config_event);
-		WebSocket_Event& operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry>& chem_config_event);
-		WebSocket_Event& operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event);
-		WebSocket_Event& operator=(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event);
-
-	public:
 		WebSocket_EventTypes Type() const;
 		std::string Payload() const;
 
 	public:
 		std::string operator()() const;
+
+	private:
+		// Shared assignment path for every event-derived constructor: null-checks the
+		// event, sets the type field, and moves the event's ToJSON() result into the
+		// payload field. Templated so a single body covers all hub-event types.
+		template<typename EVENT_TYPE>
+		void SetFromEvent(WebSocket_EventTypes event_type, const std::shared_ptr<EVENT_TYPE>& event);
 
 	private:
 		WebSocket_EventTypes m_EventType;
