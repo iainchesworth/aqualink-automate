@@ -21,6 +21,13 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Protocol
 {
 
+	namespace
+	{
+		// A single message taking longer than this to parse + dispatch is flagged
+		// as slow.  Lifted from a bare literal so the threshold has one named home.
+		constexpr long long SLOW_MESSAGE_THRESHOLD_US = 2000;
+	}
+
 	ProtocolTask::ProtocolTask(std::shared_ptr<Serial::SerialPort> serial_port,
 							   std::shared_ptr<Kernel::StatisticsHub> statistics_hub,
 							   bool single_read_per_poll)
@@ -57,7 +64,7 @@ namespace AqualinkAutomate::Protocol
 					{
 						break;  // Try again next iteration
 					}
-					LogWarning(Channel::Protocol, std::format("Serial write error: {}", ec.message()));
+					LogWarning(Channel::Serial, [&] { return std::format("Serial write error: {}", ec.message()); });
 					if (m_StatisticsHub) { ++m_StatisticsHub->Serial.TransmissionFailures; }
 					break;
 				}
@@ -71,13 +78,13 @@ namespace AqualinkAutomate::Protocol
 
 			if (m_WriteOffset >= buffer.size())
 			{
-				LogTrace(Channel::Protocol, std::format("Successfully wrote all {} bytes to serial port", buffer.size()));
+				LogTrace(Channel::Serial, [&] { return std::format("Successfully wrote all {} bytes to serial port", buffer.size()); });
 				m_WriteQueue.pop_front();
 				m_WriteOffset = 0;
 			}
 			else if (bytes_written_this_call > 0)
 			{
-				LogDebug(Channel::Protocol, std::format("Write incomplete: wrote {} of {} bytes", m_WriteOffset, buffer.size()));
+				LogDebug(Channel::Serial, [&] { return std::format("Write incomplete: wrote {} of {} bytes", m_WriteOffset, buffer.size()); });
 				break;  // Partial write; retry remainder next iteration
 			}
 			else
@@ -108,15 +115,15 @@ namespace AqualinkAutomate::Protocol
 				}
 				else if (ec == boost::asio::error::operation_aborted)
 				{
-					LogTrace(Channel::Protocol, "Serial read cancelled (shutdown)");
+					LogTrace(Channel::Serial, "Serial read cancelled (shutdown)");
 				}
 				else if (ec == boost::asio::error::eof)
 				{
-					LogWarning(Channel::Protocol, "Serial port connection closed by peer");
+					LogWarning(Channel::Serial, "Serial port connection closed by peer");
 				}
 				else
 				{
-					LogTrace(Channel::Protocol, std::format("Serial read returned: {}", ec.message()));
+					LogTrace(Channel::Serial, [&] { return std::format("Serial read returned: {}", ec.message()); });
 				}
 				break;
 			}
@@ -126,17 +133,28 @@ namespace AqualinkAutomate::Protocol
 				break;
 			}
 
-			total_bytes_read += bytes_read;
-
+			// Bound the copy to the space that actually fits.  The circular buffer
+			// would otherwise EVICT bytes from its FRONT — i.e. the in-flight packet
+			// currently being assembled — to make room for the newest bytes,
+			// silently corrupting a partially-buffered frame.  Instead, drop the
+			// EXCESS NEW bytes (the tail of this read) and count only what is truly
+			// discarded.  These dropped bytes are recoverable: a well-formed frame
+			// that does not fit now is re-sent by the bus / re-read next poll once
+			// the parser has drained the buffer.
 			const auto space_available = m_SerialBuffer.capacity() - m_SerialBuffer.size();
+			const auto bytes_to_insert = std::min(bytes_read, space_available);
+
 			if (bytes_read > space_available)
 			{
 				const auto bytes_discarded = bytes_read - space_available;
 				if (m_StatisticsHub) { m_StatisticsHub->MessageErrors.BufferOverflows += bytes_discarded; }
-				LogWarning(Channel::Protocol, std::format("Serial circular buffer overflow - {} bytes discarded", bytes_discarded));
+				LogWarning(Channel::Protocol, [bytes_discarded] { return std::format("Serial circular buffer full - {} new bytes dropped (in-flight packet preserved)", bytes_discarded); });
 			}
+
+			total_bytes_read += bytes_to_insert;
+
 			m_SerialBuffer.insert(m_SerialBuffer.end(),
-				m_ReadBuffer.begin(), m_ReadBuffer.begin() + static_cast<std::ptrdiff_t>(bytes_read));
+				m_ReadBuffer.begin(), m_ReadBuffer.begin() + static_cast<std::ptrdiff_t>(bytes_to_insert));
 
 			// Capture-replay pacing: deliver only one chunk per Poll() so the
 			// application's frame loop (which steps at a fixed processing period)
@@ -159,7 +177,7 @@ namespace AqualinkAutomate::Protocol
 			profiler->PlotValue("Serial Bytes Read", static_cast<int64_t>(total_bytes_read));
 			profiler->PlotValue("Serial Buffer Fill", static_cast<int64_t>(m_SerialBuffer.size()));
 
-			LogDebug(Channel::Protocol, std::format("Read {} bytes from serial port", total_bytes_read));
+			LogDebug(Channel::Serial, [total_bytes_read] { return std::format("Read {} bytes from serial port", total_bytes_read); });
 		}
 	}
 
@@ -222,12 +240,20 @@ namespace AqualinkAutomate::Protocol
 	{
 		std::size_t messages_parsed = 0;
 
+		const auto profiler = Factory::ProfilerFactory::Instance().Get();
+
 		// Keep trying to parse messages from the buffer until we need more data
 		while (!circular_buffer.empty())
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolThread::ProcessMessages", std::source_location::current());
 
 			auto msg_processing_start = std::chrono::steady_clock::now();
+
+			// Snapshot the buffer size BEFORE generation so we can enforce the
+			// consume-or-defer invariant: a "keep processing" error code must have
+			// shrunk the buffer, otherwise the loop would spin forever within one
+			// frame.  See MessageGeneratorRegistry::GenerateMessage for the contract.
+			const std::size_t size_before = circular_buffer.size();
 
 			auto message = MessageGeneratorRegistry::Instance().GenerateMessage(circular_buffer);
 			if (message)
@@ -237,17 +263,22 @@ namespace AqualinkAutomate::Protocol
 				// Successfully parsed a message — fire the signal
 				ProtocolHandler_ReadOp_MessageHandler(*message, m_StatisticsHub);
 
+				const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+					std::chrono::steady_clock::now() - msg_processing_start).count();
+
 				if (m_StatisticsHub)
 				{
 					m_StatisticsHub->LatencyMetrics.MessageProcessingLatency.RecordSince(msg_processing_start);
 				}
 
-				auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
-					std::chrono::steady_clock::now() - msg_processing_start).count();
-				if (elapsed_us > 2000)
+				// Surface per-message processing latency on the profiler timeline so
+				// slow handlers are visible alongside the other per-frame plots.
+				profiler->PlotValue("Message Processing (us)", static_cast<int64_t>(elapsed_us));
+
+				if (elapsed_us > SLOW_MESSAGE_THRESHOLD_US)
 				{
-					LogWarning(Channel::Protocol, std::format(
-						"Slow message processing: took {:.2f} ms", static_cast<double>(elapsed_us) / 1000.0));
+					LogWarning(Channel::Protocol, [elapsed_us] { return std::format(
+						"Slow message processing: took {:.2f} ms", static_cast<double>(elapsed_us) / 1000.0); });
 				}
 			}
 			else
@@ -255,14 +286,40 @@ namespace AqualinkAutomate::Protocol
 				const auto& error = message.error();
 				ProtocolHandler_ReadOp_ErrorHandler(error, m_StatisticsHub);
 
-				// These errors mean the generator cleaned up bad data but there
-				// may be another packet behind it — keep processing.
-				auto ev = error.value();
-				if (ev == ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess
-					|| ev == ErrorCodes::Protocol_ErrorCodes::ChecksumFailure
-					|| ev == ErrorCodes::Protocol_ErrorCodes::OverlappingPackets)
+				// "Keep processing" codes: the generator either cleaned up bad data
+				// (and there may be another packet behind it) or signalled that an
+				// identified-but-incomplete frame is awaiting more bytes.  Either way
+				// we may continue ONLY IF the buffer actually shrank.
+				const bool keep_processing =
+					(error == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
+					|| (error == make_error_code(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure))
+					|| (error == make_error_code(ErrorCodes::Protocol_ErrorCodes::OverlappingPackets));
+
+				if (keep_processing)
 				{
-					continue;
+					if (circular_buffer.size() < size_before)
+					{
+						// Forward progress was made — another packet may follow.
+						continue;
+					}
+
+					// Bounded recovery: the buffer did NOT shrink.  Two cases:
+					//   * DataAvailableToProcess -> a generator positively claimed an
+					//     incomplete frame still arriving across reads.  This is the
+					//     normal partial-frame deferral; await the next read quietly.
+					//   * Anything else -> a non-conforming generator returned a
+					//     "keep processing" code without consuming.  Looping would
+					//     hang within this frame, so break and log the contract
+					//     violation so the offending generator is diagnosable.
+					if (error == make_error_code(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess))
+					{
+						LogTrace(Channel::Protocol, "Identified frame incomplete; awaiting more serial data");
+					}
+					else
+					{
+						LogError(Channel::Protocol, [v = error.value()] { return std::format(
+							"Generator returned a keep-processing code ({}) without consuming any bytes; breaking to avoid an infinite parse loop", v); });
+					}
 				}
 
 				break;
