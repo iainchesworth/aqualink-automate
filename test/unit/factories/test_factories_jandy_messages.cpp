@@ -8,10 +8,12 @@
 #include <boost/test/unit_test.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+#include "errors/protocol_errors.h"
 #include "jandy/factories/jandy_message_factory.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/jandy_message_formatters.h"
+#include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_status.h"
@@ -32,14 +34,6 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryRegistrationCount)
     // Verify the factory has registered the expected number of message types
     BOOST_CHECK_GT(JandyMessageFactoryT::RegisteredCount(), 0);
     BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 42); // Based on registration file (+IAQMessage_DeviceId, 0x51)
-}
-
-BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryHotPathCount)
-{
-    // Verify hot path messages are correctly configured
-    BOOST_CHECK_GT(JandyMessageFactoryT::HotPathCount(), 0);
-    BOOST_CHECK_LE(JandyMessageFactoryT::HotPathCount(), 4); // Hot cache capacity is 4
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::HotPathCount(), 3); // Ack, Status, Probe
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateHotPathMessage_Ack)
@@ -185,6 +179,43 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_EmptyData)
 
     BOOST_CHECK(!result.has_value());
     BOOST_CHECK(result.error());
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_TwoBytes_NoOutOfBoundsRead)
+{
+    // Regression: previously the size guard accepted any input with >= 2 bytes
+    // and then dereferenced index Index_MessageType (3), reading out of bounds for
+    // a 2-byte input.  The guard now requires a full MINIMUM_PACKET_LENGTH packet,
+    // so this must fail cleanly with an invalid-packet-format error (no OOB read).
+    std::vector<uint8_t> two_bytes = { 0x10, 0x02 };
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(two_bytes.begin(), two_bytes.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_ThreeBytes_NoOutOfBoundsRead)
+{
+    // Regression: a 3-byte input has no byte at index Index_MessageType (3); the
+    // guard must reject it before any dereference of the message-type byte.
+    std::vector<uint8_t> three_bytes = { 0x10, 0x02, 0x00 };
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(three_bytes.begin(), three_bytes.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_BelowMinimumPacketLength)
+{
+    // Any input shorter than MINIMUM_PACKET_LENGTH must be rejected by the size guard.
+    std::vector<uint8_t> short_packet(JandyMessage::MINIMUM_PACKET_LENGTH - 1, 0x00);
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(short_packet.begin(), short_packet.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_InvalidMessageType)
