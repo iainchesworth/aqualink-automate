@@ -146,6 +146,7 @@ target_sources(
 	unit/options/test_options_settings.cpp
 	unit/serial/test_mock_serial_port_impl.cpp
 	unit/serial/test_mock_serial_replay_format.cpp
+	unit/serial/test_rfc2217_inbound_filter.cpp
 	unit/serial/test_test_serial_port_impl.cpp
 )
 
