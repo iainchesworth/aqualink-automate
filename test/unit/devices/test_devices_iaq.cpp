@@ -22,6 +22,16 @@ namespace
 
 		std::shared_ptr<JandyDeviceType> device_type;
 	};
+
+	// Exposes the protected watchdog/update hooks so the start-up state machine can be
+	// driven directly. The IAQDevice ctor arms its watchdog on the real clock, so the
+	// tests invoke WatchdogTimeoutOccurred() rather than waiting on wall-clock time.
+	struct TestIAQDevice : public IAQDevice
+	{
+		using IAQDevice::IAQDevice;
+		void TriggerWatchdogTimeout() { WatchdogTimeoutOccurred(); }
+		void SimulateAddressedTraffic() { ProcessControllerUpdates(); }
+	};
 }
 
 BOOST_FIXTURE_TEST_SUITE(IAQDevice_TestSuite, IAQDeviceFixture)
@@ -128,6 +138,37 @@ BOOST_AUTO_TEST_CASE(TestDestruction_AfterQueuing)
 	}
 	// If we reach here without crash, destruction is clean
 	BOOST_CHECK(true);
+}
+
+// =============================================================================
+// Start-up watchdog states (regression for the live iAqualink2 capture)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestWatchdog_NeverAddressedEmulated_BecomesNotPresentNotFault)
+{
+	// An emulated IAQ id the master never addresses (e.g. the default 0xa1 on a
+	// panel with no iAqualink2 configured there) must settle to NotPresent, NOT
+	// fault -- nothing went wrong, the id simply isn't on the bus.
+	TestIAQDevice device(device_type, *this, /*is_emulated=*/true);
+	BOOST_REQUIRE(!device.IsFaulted());
+	BOOST_REQUIRE(!device.IsNotPresent());
+
+	device.TriggerWatchdogTimeout();   // 30s elapsed with no traffic ever addressed
+
+	BOOST_CHECK(device.IsNotPresent());
+	BOOST_CHECK(!device.IsFaulted());
+}
+
+BOOST_AUTO_TEST_CASE(TestWatchdog_AddressedThenSilent_Faults)
+{
+	// A device that WAS receiving traffic addressed to its id and then went silent
+	// is a genuine fault, distinct from "never present".
+	TestIAQDevice device(device_type, *this, /*is_emulated=*/true);
+	device.SimulateAddressedTraffic();   // traffic seen -> m_HasReceivedData = true
+	device.TriggerWatchdogTimeout();     // ...then it stopped
+
+	BOOST_CHECK(device.IsFaulted());
+	BOOST_CHECK(!device.IsNotPresent());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -61,11 +61,17 @@ namespace AqualinkAutomate::Devices
 		void QueueChlorinatorPercentage(uint8_t percentage);
 		void QueueChlorinatorBoost(bool enable);
 
-	private:
+	public:
+		// Operating-state queries (also exercised by the device tests).
+		bool IsInNormalOperation() const { return m_OpState == OperatingStates::NormalOperation; }
+		bool IsFaulted() const { return m_OpState == OperatingStates::FaultHasOccurred; }
+		bool IsNotPresent() const { return m_OpState == OperatingStates::NotPresent; }
+
+	protected:
 		void ProcessControllerUpdates() override;
 		void ProcessControllerUpdates(bool is_poll_message);
 
-	private:
+	protected:
 		void WatchdogTimeoutOccurred() override;
 
 	private:
