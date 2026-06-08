@@ -95,6 +95,7 @@ target_sources(
 	unit/units/test_units_ph.cpp 
 	unit/utility/test_utility_auxillarystate.cpp
 	unit/utility/test_utility_bandwidthutilisation.cpp
+	unit/utility/test_utility_caseinsensitivecomparison.cpp
 	unit/utility/test_utility_chemistry.cpp
 	unit/utility/test_utility_endpointparser.cpp
 	unit/utility/test_utility_jandychecksum.cpp

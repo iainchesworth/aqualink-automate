@@ -181,4 +181,35 @@ BOOST_AUTO_TEST_CASE(Test_ReassignFromString_Overwrites)
 	BOOST_CHECK_EQUAL(converter().count(), 1800);
 }
 
+// --- Regression: an invalid reassignment must NOT retain the previous duration ---
+
+BOOST_AUTO_TEST_CASE(Test_ReassignInvalid_ResetsToZero_BadLength)
+{
+	// Previously, a parse failure left m_TimeoutDuration unchanged, so a valid value
+	// followed by an invalid string silently kept reporting the old (stale) duration.
+	TimeoutDurationStringConverter converter("01:00:00");
+	BOOST_CHECK_EQUAL(converter().count(), 3600);
+
+	converter = std::string("garbage");
+	BOOST_CHECK_EQUAL(converter().count(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReassignInvalid_ResetsToZero_BadDelimiter)
+{
+	TimeoutDurationStringConverter converter("02:15:30");
+	BOOST_CHECK(converter().count() > 0);
+
+	converter = std::string("02-15-30");
+	BOOST_CHECK_EQUAL(converter().count(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReassignInvalid_ResetsToZero_OutOfRange)
+{
+	TimeoutDurationStringConverter converter("01:30:45");
+	BOOST_CHECK(converter().count() > 0);
+
+	converter = std::string("01:60:00");
+	BOOST_CHECK_EQUAL(converter().count(), 0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

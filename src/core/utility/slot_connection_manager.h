@@ -3,14 +3,13 @@
 #include <format>
 #include <functional>
 #include <memory>
+#include <typeinfo>
 #include <variant>
 #include <vector>
 
 #include <boost/signals2.hpp>
 
 #include "logging/logging.h"
-
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
@@ -50,7 +49,7 @@ namespace AqualinkAutomate::Utility
 		template<typename MESSAGE_TYPE>
 		bool RegisterSlot(std::function<void(const MESSAGE_TYPE& msg)> handler)
 		{
-			LogDebug(Channel::Signals, std::format("Registering general handler for messages of type: {}", typeid(MESSAGE_TYPE*).name()));
+			LogDebug(Logging::Channel::Signals, std::format("Registering general handler for messages of type: {}", typeid(MESSAGE_TYPE*).name()));
 
 			ConnectionVariant connection = MESSAGE_TYPE::GetSignal()->connect(handler);
 			auto it = m_Connections.insert(m_Connections.cend(), connection);

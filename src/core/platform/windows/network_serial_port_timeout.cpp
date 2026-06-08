@@ -1,5 +1,7 @@
 #include <WinSock2.h>
 
+#include <boost/asio/error.hpp>
+
 #include "logging/logging.h"
 #include "serial/port_types/network_serial_port_impl.h"
 
@@ -22,9 +24,16 @@ namespace AqualinkAutomate::Serial::PortTypes
 
         LogDebug(Channel::Serial, std::format("Setting read timeout: {}ms", timeout.count()));
 
-        DWORD timeout_ms = static_cast<DWORD>(timeout.count());
-        setsockopt(m_Socket.native_handle(), SOL_SOCKET, SO_RCVTIMEO,
-            reinterpret_cast<const char*>(&timeout_ms), sizeof(timeout_ms));
+        const DWORD timeout_ms = static_cast<DWORD>(timeout.count());
+
+        if (SOCKET_ERROR == setsockopt(m_Socket.native_handle(), SOL_SOCKET, SO_RCVTIMEO,
+            reinterpret_cast<const char*>(&timeout_ms), sizeof(timeout_ms)))
+        {
+            const int wsa_error = ::WSAGetLastError();
+            LogWarning(Channel::Serial, std::format("Failed to set socket read timeout; WSAGetLastError() -> {}", wsa_error));
+            ec.assign(wsa_error, boost::asio::error::get_system_category());
+            return;
+        }
 
         ec = {};
     }

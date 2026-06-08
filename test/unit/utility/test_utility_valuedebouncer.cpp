@@ -190,4 +190,39 @@ BOOST_AUTO_TEST_CASE(Test_OperatorCall_RValue)
 	BOOST_CHECK_EQUAL(debouncer(), 66);
 }
 
+// Regression: after the lvalue/rvalue Update overloads were unified into one
+// forwarding template, committing moves out of the internal m_FutureValue member.
+// A subsequent distinct string value must still be tracked and committed correctly
+// (the moved-from member is reset before reuse), with no use of stale state.
+BOOST_AUTO_TEST_CASE(Test_CommitThenDistinctValue_AfterUnifiedUpdate_String)
+{
+	ValueDebouncer<std::string> debouncer(1);
+
+	// Commit "first" (sets future, then reaches threshold).
+	debouncer(std::string("first"));
+	debouncer(std::string("first"));
+	BOOST_CHECK_EQUAL(debouncer(), "first");
+
+	// Now drive a distinct value through; it must commit cleanly.
+	debouncer(std::string("second"));
+	debouncer(std::string("second"));
+	BOOST_CHECK_EQUAL(debouncer(), "second");
+}
+
+BOOST_AUTO_TEST_CASE(Test_LValueAndRValue_ResolveToSameBehaviour)
+{
+	ValueDebouncer<std::string> lvalue_debouncer(2);
+	ValueDebouncer<std::string> rvalue_debouncer(2);
+
+	const std::string value{ "stable" };
+	for (int i = 0; i < 3; ++i)
+	{
+		lvalue_debouncer(value);                 // lvalue path
+		rvalue_debouncer(std::string("stable")); // rvalue path
+	}
+
+	BOOST_CHECK_EQUAL(lvalue_debouncer(), "stable");
+	BOOST_CHECK_EQUAL(rvalue_debouncer(), "stable");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
