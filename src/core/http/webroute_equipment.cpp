@@ -2,7 +2,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "http/json/json_equipment.h"
-#include "http/server/server_fields.h"
+#include "http/server/make_response.h"
 #include "http/webroute_equipment.h"
 #include "profiling/factories/profiling_unit_factory.h"
 #include "utility/json_serialization_helpers.h"
@@ -55,22 +55,15 @@ namespace AqualinkAutomate::HTTP
 			jandy_equipment_json["configuration"] = std::move(config);
 		}
 
-		jandy_equipment_json["buttons"] = JSON::GenerateJson_Equipment_Buttons(m_DataHub);
 		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub);
 		jandy_equipment_json["stats"] = JSON::GenerateJson_Equipment_Stats(m_StatisticsHub);
 		jandy_equipment_json["version"] = JSON::GenerateJson_Equipment_Version(m_DataHub);
 
-		HTTP::Response resp{HTTP::Status::ok, req.version()};
+		auto resp = MakeJsonResponse(req, HTTP::Status::ok, jandy_equipment_json.dump());
 
-        resp.set(boost::beast::http::field::server, ServerFields::Server());
-        resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
-        resp.keep_alive(req.keep_alive());
-        resp.body() = jandy_equipment_json.dump();
-        resp.prepare_payload();
+		zone->Value(resp.body().size());
 
-        zone->Value(resp.body().size());
-
-        return resp;
+		return resp;
 	}
 
 }

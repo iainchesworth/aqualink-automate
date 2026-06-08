@@ -68,8 +68,9 @@ target_sources(
 	http/json/json_data_hub.cpp 
 	http/json/json_equipment.cpp 
 	http/server/http_server.cpp
-	http/server/parse_query_string.cpp 
-	http/server/server_fields.cpp 
+	http/server/make_response.cpp
+	http/server/parse_query_string.cpp
+	http/server/server_fields.cpp
 	http/server/server_types.cpp 
 	http/server/static_file_handler.cpp	 	
 	http/server/responses/response_staticfile.cpp

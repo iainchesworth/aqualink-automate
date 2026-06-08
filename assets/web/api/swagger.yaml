@@ -72,7 +72,7 @@ paths:
       tags:
         - Equipment
       summary: Get all equipment information
-      description: Returns comprehensive equipment data including temperatures, chemistry, configuration, buttons, devices, statistics, and version
+      description: Returns comprehensive equipment data including temperatures, chemistry, configuration, devices, statistics, and version
       operationId: getEquipment
       responses:
         '200':
@@ -871,11 +871,6 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/BodyOfWater'
-        buttons:
-          type: array
-          description: Equipment buttons data (from GenerateJson_Equipment_Buttons)
-          items:
-            type: object
         devices:
           type: object
           description: Equipment devices data

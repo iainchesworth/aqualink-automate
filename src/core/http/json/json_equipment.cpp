@@ -11,14 +11,6 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP::JSON
 {
 
-	nlohmann::json GenerateJson_Equipment_Buttons(const std::shared_ptr<Kernel::DataHub>& data_hub)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Buttons", std::source_location::current());
-		LogTrace(Channel::Web, "Generating equipment buttons JSON");
-		nlohmann::json je_buttons;
-		return je_buttons;
-	}
-
 	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Devices", std::source_location::current());
