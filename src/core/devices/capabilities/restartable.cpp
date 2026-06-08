@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <format>
+#include <string>
 
 #include "devices/capabilities/restartable.h"
 #include "logging/logging.h"
@@ -32,10 +34,14 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	void Restartable::PollAll()
 	{
+		// Read the clock once per sweep and share it across every instance instead of having
+		// each instance re-read steady_clock::now() during its own deadline evaluation.
+		const std::chrono::steady_clock::time_point now{ std::chrono::steady_clock::now() };
+
 		// A copy is not required: CheckWatchdog() never adds or removes instances.
 		for (auto* instance : s_Instances)
 		{
-			instance->CheckWatchdog();
+			instance->CheckWatchdog(now);
 		}
 	}
 
@@ -72,12 +78,16 @@ namespace AqualinkAutomate::Devices::Capabilities
 		m_IsRunning = false;
 	}
 
-	void Restartable::CheckWatchdog()
+	void Restartable::CheckWatchdog(std::chrono::steady_clock::time_point now)
 	{
-		if (m_IsRunning && ((Now() - m_LastKick) > m_TimeoutDuration))
+		if (m_IsRunning && ((now - m_LastKick) > m_TimeoutDuration))
 		{
 			// No message has arrived within the timeout duration; mark this device as not operating.
-			LogWarning(Channel::Devices, "Device timeout: device watchdog has expired");
+			LogWarning(Channel::Devices, [this]()
+				{
+					return std::format("Device timeout: watchdog for {} expired (no activity for {} seconds)", WatchdogName(), m_TimeoutDuration.count());
+				});
+
 			m_IsRunning = false;
 			WatchdogTimeoutOccurred();
 		}
@@ -91,6 +101,12 @@ namespace AqualinkAutomate::Devices::Capabilities
 	bool Restartable::IsRunning() const
 	{
 		return m_IsRunning;
+	}
+
+	std::string Restartable::WatchdogName() const
+	{
+		// Generic fallback; device handlers override this to report their class and bus id.
+		return "unidentified device";
 	}
 
 	std::chrono::steady_clock::time_point Restartable::Now() const
