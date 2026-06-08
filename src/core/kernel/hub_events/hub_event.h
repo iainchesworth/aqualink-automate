@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
 #include "kernel/hub_events/hub_eventtypes.h"
@@ -18,7 +17,6 @@ namespace AqualinkAutomate::Kernel
 		Hub_EventTypes Type() const;
 
 	public:
-		virtual boost::uuids::uuid Id() const = 0;
 		virtual nlohmann::json ToJSON() const = 0;
 
 	private:

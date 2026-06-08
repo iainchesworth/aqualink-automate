@@ -23,7 +23,6 @@ namespace AqualinkAutomate::Kernel
 		std::string_view Label() const;
 
 	public:
-		boost::uuids::uuid Id() const override;
 		nlohmann::json ToJSON() const override;
 
 	private:

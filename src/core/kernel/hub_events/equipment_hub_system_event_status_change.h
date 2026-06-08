@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
 #include "interfaces/istatus.h"
@@ -16,7 +15,6 @@ namespace AqualinkAutomate::Kernel
 		~EquipmentHub_SystemEvent_StatusChange() override = default;
 
 	public:
-		boost::uuids::uuid Id() const override;
 		nlohmann::json ToJSON() const override;
 
 	private:

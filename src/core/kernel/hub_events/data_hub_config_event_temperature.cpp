@@ -1,6 +1,5 @@
 #include <format>
 
-#include <boost/uuid/uuid_generators.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #include "formatters/temperature_formatter.h"
@@ -69,12 +68,6 @@ namespace AqualinkAutomate::Kernel
 	void DataHub_ConfigEvent_Temperature::SpaSetpoint(const Kernel::Temperature& spa_setpoint)
 	{
 		m_SpaSetpoint = spa_setpoint;
-	}
-
-	boost::uuids::uuid DataHub_ConfigEvent_Temperature::Id() const
-	{
-		static boost::uuids::uuid id{ boost::uuids::random_generator()() };
-		return id;
 	}
 
 	nlohmann::json DataHub_ConfigEvent_Temperature::ToJSON() const
