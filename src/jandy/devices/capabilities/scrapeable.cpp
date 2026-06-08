@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		m_Stack_WaitingForMessage.pop();
 	}
 
-	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
+	std::expected<Scrapeable::KeyCommand, ErrorCodes::Scrapeable_ErrorCodes> Scrapeable::ScrapingNext()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingNext", std::source_location::current());
 
@@ -89,7 +89,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 					m_ActiveScrape = std::nullopt;
 					return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::NoStepPossible);
 				}
-				else if (auto key_command = std::get<Utility::ScreenDataPageGraphImpl::Edge>(*it).key_command; !key_command.has_value())
+				else if (auto key_command = std::get<Utility::ScreenDataPageGraphImpl::Edge>(*it).key_command; KeyCommand::NoKeyCommand == key_command)
 				{
 					LogDebug(Channel::Devices, "Attempted to retrieve the next key command; key command had no value");
 					return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
@@ -112,7 +112,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		}
 	}
 
-	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+	std::expected<Scrapeable::KeyCommand, ErrorCodes::Scrapeable_ErrorCodes>
 		Scrapeable::ScrapingNextWithValidation(Utility::ScreenDataPageTypes current_page)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::ScrapingNextWithValidation", std::source_location::current());
@@ -179,14 +179,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 			// 6. Get current vertex's expected page (the source vertex)
 			auto current_vertex = std::get<Utility::ScreenDataPageGraphImpl::Vertex>(*it);
-			try
-			{
-				m_ExpectedSource = std::any_cast<Utility::ScreenDataPageTypes>(current_vertex.page);
-			}
-			catch (const std::bad_any_cast&)
-			{
-				m_ExpectedSource = Utility::ScreenDataPageTypes::Page_Unknown;
-			}
+			m_ExpectedSource = current_vertex.page;
 
 			// Move to next step
 			if (++it; ScraperIter::end(m_ScraperGraphs.at(id)) == it)
@@ -200,7 +193,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			auto edge = std::get<Utility::ScreenDataPageGraphImpl::Edge>(*it);
 			auto target_vertex = std::get<Utility::ScreenDataPageGraphImpl::Vertex>(*it);
 
-			if (!edge.key_command.has_value())
+			if (KeyCommand::NoKeyCommand == edge.key_command)
 			{
 				LogDebug(Channel::Scraping, "Attempted to retrieve the next key command; key command had no value");
 				return std::unexpected(ErrorCodes::Scrapeable_ErrorCodes::UnknownScrapeError);
@@ -217,14 +210,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 			LogDebug(Channel::Scraping, std::format("Pre-command validation passed: page={}", magic_enum::enum_name(current_page)));
 
 			// 8. Extract expected destination from target vertex
-			try
-			{
-				m_ExpectedDestination = std::any_cast<Utility::ScreenDataPageTypes>(target_vertex.page);
-			}
-			catch (const std::bad_any_cast&)
-			{
-				m_ExpectedDestination = Utility::ScreenDataPageTypes::Page_Unknown;
-			}
+			m_ExpectedDestination = target_vertex.page;
 			m_ScrapeState = ScrapeState::AwaitingPostValidation;
 
 			LogDebug(Channel::Scraping, std::format("Sending command, expecting destination={}",
@@ -311,7 +297,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		m_RecoveryBackPresses = 0;
 	}
 
-	std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+	std::expected<Scrapeable::KeyCommand, ErrorCodes::Scrapeable_ErrorCodes>
 		Scrapeable::RecoveryNext(Utility::ScreenDataPageTypes current_page)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Scrapeable::RecoveryNext", std::source_location::current());
