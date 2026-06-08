@@ -1,24 +1,21 @@
 #pragma once
 
-#include <concepts>
+#include <type_traits>
 
 namespace AqualinkAutomate::Concepts
 {
 
-	template<typename T, std::size_t N>
-	constexpr std::true_type is_c_array_impl(const T(&)[N]) { return {}; }
-
+	// Satisfied when T is (or is a reference to) a C-style bounded array - e.g.
+	// int[5], const char[N], or const char(&)[N] (the form a `const auto&` NTTP
+	// binds to). Built directly on std::is_bounded_array_v rather than the previous
+	// overload-resolution SFINAE helpers; reference and cv-qualifiers are stripped
+	// first so it accepts the same set of types as the original concept.
 	template<typename T>
-	constexpr std::false_type is_c_array_impl(const T&) { return {}; }
+	concept CArray = std::is_bounded_array_v<std::remove_cvref_t<T>>;
 
+	// Satisfied when T is a reference to a C-style bounded array (e.g. int(&)[5]).
 	template<typename T>
-	constexpr auto is_c_array() -> decltype(is_c_array_impl(std::declval<const T&>())) { return {}; }
-
-	template<typename T>
-	concept CArray = (bool)is_c_array<const T>();
-
-	template<typename T>
-	concept CArrayRef = (bool)is_c_array<const T&>() && std::is_reference_v<T>;
+	concept CArrayRef = std::is_reference_v<T> && std::is_bounded_array_v<std::remove_reference_t<T>>;
 
 }
 // namespace AqualinkAutomate::Concepts

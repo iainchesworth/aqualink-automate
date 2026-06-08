@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <functional>
 #include <type_traits>
@@ -58,41 +59,21 @@ namespace AqualinkAutomate::Utility
 		}
 
 	private:
-		void Update(const DEBOUNCED_VALUE_TYPE& future_value)
+		// Single forwarding implementation for both the lvalue and rvalue overloads.
+		// FUTURE_VALUE_TYPE is deduced to const&/&& and forwarded only at the one site
+		// that consumes future_value (the reset branch). On commit we move out of our
+		// own m_FutureValue member: it is internal state that is always overwritten
+		// before reuse (a matching value short-circuits through the current-value
+		// branch), so the move is observably identical to the previous copy.
+		template<typename FUTURE_VALUE_TYPE>
+		requires std::convertible_to<FUTURE_VALUE_TYPE&&, DEBOUNCED_VALUE_TYPE>
+		void Update(FUTURE_VALUE_TYPE&& future_value)
 		{
 			if (m_ValueComparator(future_value, m_CurrentValue))
 			{
 				// The future value is the same as the current value so let's ignore it.
 			}
 			else if (m_ValueComparator(future_value, m_FutureValue))
-			{
-				m_UpdateCount++;
-
-				if (m_Threshold > m_UpdateCount)
-				{
-					// The future value is different and is stable however there have not enough updates yet so don't change current value.
-				}
-				else
-				{
-					m_CurrentValue = m_FutureValue;
-					m_UpdateCount = 0;
-				}
-			}
-			else 
-			{
-				/// The future value is different to both current and future values so let's reset and track this value for the debounce count.
-				m_FutureValue = future_value;
-				m_UpdateCount = 0;
-			}
-		}
-
-		void Update(DEBOUNCED_VALUE_TYPE&& future_value)
-		{
-			if (m_ValueComparator(future_value, m_CurrentValue))
-			{
-				// The future value is the same as the current value so let's ignore it.
-			}
-			else if (m_ValueComparator(future_value,  m_FutureValue))
 			{
 				m_UpdateCount++;
 
@@ -109,7 +90,7 @@ namespace AqualinkAutomate::Utility
 			else
 			{
 				/// The future value is different to both current and future values so let's reset and track this value for the debounce count.
-				m_FutureValue = std::move(future_value);
+				m_FutureValue = std::forward<FUTURE_VALUE_TYPE>(future_value);
 				m_UpdateCount = 0;
 			}
 		}

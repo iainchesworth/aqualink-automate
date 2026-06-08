@@ -1,7 +1,6 @@
 #include <charconv>
 #include <format>
-
-#include <magic_enum/magic_enum.hpp>
+#include <system_error>
 
 #include "utility/timeout_duration_string_converter.h"
 #include "logging/logging.h"
@@ -65,6 +64,10 @@ namespace AqualinkAutomate::Utility
 	{
 		int8_t hours{ 0 }, minutes{ 0 }, seconds{ 0 };
 
+		// Any parse failure leaves the duration at zero rather than silently retaining a
+		// previously-set value (which would happen when reassigning an invalid string).
+		m_TimeoutDuration = 0s;
+
 		// Check 1 - validate string format and length
 
 		if (EXPECTED_STRING_LENGTH != timeout_string.length())
@@ -81,15 +84,15 @@ namespace AqualinkAutomate::Utility
 		}
 		else if (auto [_, ec] = std::from_chars(timeout_string.data() + HOURS_INDEX_START, timeout_string.data() + HOURS_INDEX_END, hours); std::errc() != ec)
 		{
-			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert hours to number: error -> {}", magic_enum::enum_name(ec)));
+			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert hours to number: error -> {}", std::make_error_code(ec).message()));
 		}
 		else if (auto [_, ec] = std::from_chars(timeout_string.data() + MINS_INDEX_START, timeout_string.data() + MINS_INDEX_END, minutes); std::errc() != ec)
 		{
-			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert minutes to number: error -> {}", magic_enum::enum_name(ec)));
+			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert minutes to number: error -> {}", std::make_error_code(ec).message()));
 		}
 		else if (auto [_, ec] = std::from_chars(timeout_string.data() + SECS_INDEX_START, timeout_string.data() + SECS_INDEX_END, seconds); std::errc() != ec)
 		{
-			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert seconds to number: error -> {}", magic_enum::enum_name(ec)));
+			LogDebug(Channel::Devices, std::format("Failed to convert timeout duration; could not convert seconds to number: error -> {}", std::make_error_code(ec).message()));
 		}
 		else
 		{

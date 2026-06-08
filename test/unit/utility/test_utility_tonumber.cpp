@@ -135,4 +135,39 @@ BOOST_AUTO_TEST_CASE(Test_ToNumber_TrailingDot_Rejected)
 	BOOST_CHECK(!result.has_value());
 }
 
+// --- Floating-point path (broadened Number concept now permits this) ---
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_ValidDouble)
+{
+	auto result = ToNumber<double>("3.14");
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_CLOSE(result.value(), 3.14, 0.0001);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_ValidFloat_Negative)
+{
+	auto result = ToNumber<float>("-0.5");
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_CLOSE(result.value(), -0.5f, 0.0001f);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_ValidDouble_Integer)
+{
+	auto result = ToNumber<double>("100");
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_CLOSE(result.value(), 100.0, 0.0001);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_Double_NonNumeric_Rejected)
+{
+	auto result = ToNumber<double>("abc");
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_ToNumber_Double_PartialParse_Rejected)
+{
+	auto result = ToNumber<double>("3.14xyz");
+	BOOST_CHECK(!result.has_value());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
