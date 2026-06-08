@@ -88,12 +88,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		auto range = boost::make_iterator_range(boost::vertices(fg));
-
-		return std::distance(range.begin(), range.end());
+		return CountFilteredView(filter);
 	}
 
 	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
@@ -101,16 +96,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		auto [begin, end] = boost::vertices(fg);
-		if (begin != end)
-		{
-			return m_DevicesGraph[*begin];
-		}
-
-		return nullptr;
+		return FindFirstInFilteredView(filter);
 	}
 
 	uint32_t DevicesGraph::CountByLabel(std::string_view device_label) const
@@ -118,11 +104,15 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
+		return CountFilteredView(filter);
+	}
 
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
+	bool DevicesGraph::HasAnyByLabel(std::string_view device_label) const
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::HasAnyByLabel", std::source_location::current());
 
-		auto range = boost::make_iterator_range(boost::vertices(fg));
-		return std::distance(range.begin(), range.end());
+		DeviceLabelFilter filter(m_DevicesGraph, device_label);
+		return AnyInFilteredView(filter);
 	}
 
 	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(std::string_view device_label) const
@@ -130,17 +120,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
-
-		for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
-		{
-			found_devices.push_back(m_DevicesGraph[vp]);
-		}
-
-		return found_devices;
+		return CollectFilteredView(filter);
 	}
 
 }
