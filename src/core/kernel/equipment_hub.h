@@ -1,14 +1,12 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <typeindex>
+#include <typeinfo>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 #include <boost/signals2.hpp>
-
-#include <functional>
 
 #include "interfaces/idevice.h"
 #include "interfaces/ideviceidentifier.h"
@@ -54,7 +52,24 @@ namespace AqualinkAutomate::Kernel
 		bool DeviceExists(std::unique_ptr<Interfaces::IDevice> const& device) const;
 		bool AddDevice(std::unique_ptr<Interfaces::IDevice> device);
 
-		Interfaces::IDevice* FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const;
+		// FindDevice returns the first registered device satisfying the
+		// predicate, or nullptr.  The predicate is taken by forwarding
+		// reference so it can be a lambda passed without the per-call
+		// std::function heap allocation the previous std::function-by-value
+		// signature incurred on the command-dispatch path.
+		template<typename Predicate>
+		Interfaces::IDevice* FindDevice(Predicate&& predicate) const
+		{
+			for (const auto& [identifier_type, device] : m_ActiveDevices)
+			{
+				if (predicate(*device))
+				{
+					return device.get();
+				}
+			}
+
+			return nullptr;
+		}
 
 		// NOTE: The equipment hub is intentionally unsynchronised. Device
 		// registration (from the protocol task) and iteration (from the
@@ -65,15 +80,29 @@ namespace AqualinkAutomate::Kernel
 		template<typename Func>
 		void ForEachDevice(Func&& func) const
 		{
-			for (const auto& device : m_ActiveDevices)
+			for (const auto& [identifier_type, device] : m_ActiveDevices)
 			{
 				func(*device);
 			}
 		}
 
 	private:
+		// Equipment is keyed by the *runtime pointee* type so that distinct
+		// concrete IEquipment subclasses (e.g. JandyEquipment and
+		// PentairEquipment) each register exactly once.  Keying by the static
+		// IEquipment type (the historical bug) collapsed every subclass onto a
+		// single slot, silently dropping the second protocol's equipment.
 		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;
-		std::unordered_set<std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
+
+		// Devices are bucketed by the runtime type of their IDeviceIdentifier
+		// (typeid(device->DeviceId())).  This bounds the per-id existence scan
+		// to devices that share an identifier type rather than scanning every
+		// device in the system.  A perfect O(1) by-id map is not possible at
+		// this layer because IDeviceIdentifier (src/core/interfaces) exposes
+		// only Equals() with no hash or stable scalar key; promoting this to a
+		// full O(1) lookup would require adding a hash hook to that interface,
+		// which is outside this change's scope.
+		std::unordered_multimap<std::type_index, std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
 
 	};
 
