@@ -147,6 +147,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_DeveloperDefaults)
 
 	const auto& s = dev.value().get();
 	BOOST_CHECK(!s.dev_mode_enabled);
+	BOOST_CHECK(!s.decode_to_master_enabled);
 	BOOST_CHECK(s.replay_file.empty());
 }
 
@@ -311,6 +312,17 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_DeveloperArgs_DevMode)
 	BOOST_REQUIRE(dev.has_value());
 
 	BOOST_CHECK(dev.value().get().dev_mode_enabled);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_DeveloperArgs_DecodeToMaster)
+{
+	auto result = RunFullPipeline({ "program", "--decode-to-master" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto dev = result.value().Get<Options::Developer::DeveloperSettings>();
+	BOOST_REQUIRE(dev.has_value());
+
+	BOOST_CHECK(dev.value().get().decode_to_master_enabled);
 }
 
 BOOST_AUTO_TEST_CASE(Test_Pipeline_JandyArgs_DisableEmulation)

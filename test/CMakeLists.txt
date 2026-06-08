@@ -58,6 +58,7 @@ target_sources(
 	unit/messages/test_message_structure.cpp
 	unit/messages/test_message_dle_stuffing.cpp
 	unit/messages/test_message_unknown.cpp
+	unit/messages/test_to_master_decode.cpp
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 

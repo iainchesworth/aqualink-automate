@@ -9,6 +9,7 @@
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "options/options_developer_options.h"
 #include "options/options_jandy.h"
 #include "equipment/jandy_equipment.h"
 #include "jandy.h"
@@ -49,7 +50,17 @@ namespace AqualinkAutomate::Jandy
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator));
+		bool decode_to_master = false;
+		if (auto dev_settings_result = settings.Get<AqualinkAutomate::Options::Developer::DeveloperSettings>(); dev_settings_result)
+		{
+			decode_to_master = dev_settings_result.value().get().decode_to_master_enabled;
+			if (decode_to_master)
+			{
+				LogInfo(Channel::Main, "Developer: decode-to-master enabled; frames addressed to the master (0x00) will be decoded and logged on Channel::Messages (observe-only)");
+			}
+		}
+
+		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator, decode_to_master));
 
 		if (jandy_settings.disable_emulation)
 		{

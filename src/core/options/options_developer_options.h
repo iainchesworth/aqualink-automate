@@ -28,13 +28,15 @@ namespace AqualinkAutomate::Options::Developer
 		tagDeveloperSettings() :
 			debug_logging_enabled{ false },
 			trace_logging_enabled{ false },
-			dev_mode_enabled{ false }
+			dev_mode_enabled{ false },
+			decode_to_master_enabled{ false }
 		{
 		}
 
 		bool debug_logging_enabled;
 		bool trace_logging_enabled;
 		bool dev_mode_enabled;
+		bool decode_to_master_enabled;
 		std::string replay_file;
 		std::string recording_file;
 	}
@@ -46,6 +48,7 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_DEVMODE{ make_appoption("dev-mode", "Enable developer mode", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_DEVREPLAYFILE{ make_appoption("replay-filename", "Developer replay file from which to source test data", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DEVRECORDFILE{ make_appoption("record-serial", "Record serial port data to file for later replay", boost::program_options::value<std::string>()) };
+		AppOptionPtr OPTION_DECODE_TO_MASTER{ make_appoption("decode-to-master", "DEV: decode and log RS-485 frames addressed TO the master (0x00); observe-only, no emulation/replay", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_LOGLEVEL_MAIN{ make_appoption("loglevel-main", "Set the logging level for Channel::Main", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_CERTIFICATES{ make_appoption("loglevel-certificates", "Set the logging level for Channel::Certificates", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
 		AppOptionPtr OPTION_LOGLEVEL_COROUTINES{ make_appoption("loglevel-coroutines", "Set the logging level for Channel::Coroutines", boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken()) };
@@ -70,6 +73,7 @@ namespace AqualinkAutomate::Options::Developer
 			OPTION_DEVMODE,
 			OPTION_DEVREPLAYFILE,
 			OPTION_DEVRECORDFILE,
+			OPTION_DECODE_TO_MASTER,
 			OPTION_LOGLEVEL_MAIN,
 			OPTION_LOGLEVEL_CERTIFICATES,
 			OPTION_LOGLEVEL_COROUTINES,

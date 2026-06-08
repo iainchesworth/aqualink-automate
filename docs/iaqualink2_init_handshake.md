@@ -56,6 +56,9 @@ device requests MainStatus, which returns as `0x70` / `0x73`.
 ## TODO
 
 - Decode `0x50` / `0x61` / `0x59` / `0x52` structurally, with **no invented semantics**.
+- The iAqualink2's *actuation* commands travel **TO** the master (`0x00`), not on the `0xa3`
+  side. Use the `--decode-to-master` developer tool (see `docs/to_master_decoding.md`) to
+  capture and decode them — live, or offline by replaying the labelled portal captures.
 - Emulation: a panel-configured virtual iAqualink2 must answer the probe (`0x00`), the init
   messages (`0x50`/`0x51`/…), and the heartbeat (`0x53`) to be adopted. Requires the
   panel-config step on the controller + iteration against the live wire.

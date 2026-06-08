@@ -18,6 +18,7 @@
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
 #include "equipment/jandy_equipment.h"
+#include "equipment/master_traffic_snoop.h"
 #include "formatters/jandy_device_formatters.h"
 #include "formatters/stats_counter_formatter.h"
 #include "messages/jandy_message_ack.h"
@@ -65,11 +66,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Equipment
 {
-	JandyEquipment::JandyEquipment(Kernel::HubLocator& hub_locator) :
+	JandyEquipment::JandyEquipment(Kernel::HubLocator& hub_locator, bool decode_to_master) :
 		IEquipment(),
 		IStatusPublisher(Equipment::EquipmentStatus_Unknown{}),
 		m_MessageConnections(),
-		m_HubLocator(hub_locator)
+		m_HubLocator(hub_locator),
+		m_DecodeToMaster(decode_to_master)
 	{
 		m_DataHub = m_HubLocator.Find<Kernel::DataHub>();
 		m_EquipmentHub = m_HubLocator.Find<Kernel::EquipmentHub>();
@@ -234,7 +236,16 @@ namespace AqualinkAutomate::Equipment
 				break;
 
 			default:
-				LogDebug(Channel::Equipment, std::format("Device class ({}, {}) not supported.", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()));
+				if (m_DecodeToMaster && (Devices::DeviceClasses::AqualinkMaster == message.Destination().Class()))
+				{
+					// --decode-to-master: observe-only decode of frames addressed TO the master (0x00).
+					// Never transmits / emulates / replays -- it only surfaces the decode for analysis.
+					LogInfo(Channel::Messages, FormatToMasterTraffic(message));
+				}
+				else
+				{
+					LogDebug(Channel::Equipment, std::format("Device class ({}, {}) not supported.", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()));
+				}
 				break;
 			}
 		}

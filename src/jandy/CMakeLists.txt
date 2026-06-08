@@ -49,7 +49,8 @@ target_sources(
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
 	devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	equipment/jandy_equipment.cpp
-	errors/jandy_errors_auxillary_factory.cpp 
+	equipment/master_traffic_snoop.cpp
+	errors/jandy_errors_auxillary_factory.cpp
 	errors/jandy_errors_messages.cpp
 	errors/jandy_errors_protocol.cpp
 	errors/jandy_errors_scrapeable.cpp 
