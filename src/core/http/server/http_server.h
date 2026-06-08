@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -17,6 +18,7 @@
 #include <boost/beast/ssl/ssl_stream.hpp>
 #include <boost/beast/websocket/stream.hpp>
 
+#include "http/server/routing/routing.h"
 #include "http/server/server_types.h"
 #include "interfaces/iwebsocket.h"
 
@@ -63,6 +65,31 @@ namespace AqualinkAutomate::HTTP
 		void DoClose();
 		void MarkDone();
 
+		// Re-arm the per-operation idle timeout on whichever HTTP-phase stream
+		// (TLS or plain TCP) is currently active. Centralises the SSL-vs-TCP
+		// branch that previously appeared at every async stage.
+		void ArmTimeout();
+
+		// Invoke fn with the active HTTP-phase stream (SslStream or TcpStream).
+		// Returns false when neither is present (the session is being torn down).
+		template<typename FN>
+		bool WithHttpStream(FN&& fn)
+		{
+			if (m_SslStream) { fn(*m_SslStream); return true; }
+			if (m_TcpStream) { fn(*m_TcpStream); return true; }
+			return false;
+		}
+
+		// Invoke fn with the active WebSocket stream (WsSslStream or WsStream).
+		// Returns false when neither is present.
+		template<typename FN>
+		bool WithWsStream(FN&& fn)
+		{
+			if (m_WsSslStream) { fn(*m_WsSslStream); return true; }
+			if (m_WsStream) { fn(*m_WsStream); return true; }
+			return false;
+		}
+
 	private:
 		bool m_Done{ false };
 		bool m_WsActive{ false };
@@ -85,6 +112,13 @@ namespace AqualinkAutomate::HTTP
 		std::string m_WsWriteBuffer;
 
 		static constexpr auto SESSION_TIMEOUT = std::chrono::seconds(30);
+
+		// Cap an inbound WebSocket message. HTTP request bodies are already limited
+		// to 10 KB (body_limit), but the WebSocket read previously relied solely on
+		// Beast's 16 MB default, allowing a single frame to allocate far more than
+		// the control-plane protocol ever needs. 64 KB is generous for our JSON
+		// command messages while bounding per-connection memory.
+		static constexpr std::uint64_t WS_READ_MESSAGE_MAX = 64U * 1024U;
 	};
 
 	/// Async HTTP server.
@@ -97,7 +131,8 @@ namespace AqualinkAutomate::HTTP
 	public:
 		HttpServer(boost::asio::io_context& io_context,
 				   boost::asio::ip::tcp::endpoint endpoint,
-				   std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context = std::nullopt);
+				   std::optional<std::reference_wrapper<boost::asio::ssl::context>> ssl_context = std::nullopt,
+				   Routing::SecurityConfig security_config = {});
 		~HttpServer();
 
 		HttpServer(const HttpServer&) = delete;
@@ -115,6 +150,11 @@ namespace AqualinkAutomate::HTTP
 		boost::asio::ip::tcp::endpoint m_Endpoint;
 		std::optional<TcpAcceptor> m_Acceptor;
 		std::optional<std::reference_wrapper<boost::asio::ssl::context>> m_SslContext;
+
+		// Opt-in security policy (bearer token / Origin allow-list / CSRF header).
+		// Default-constructed = disabled = historical behaviour. Installed into the
+		// shared Routing module on Start() so every session enforces it uniformly.
+		Routing::SecurityConfig m_SecurityConfig;
 
 		std::vector<std::shared_ptr<HttpSessionState>> m_Sessions;
 		bool m_Running{ false };
