@@ -67,7 +67,7 @@ namespace AqualinkAutomate::HTTP::Routing
 
 		void insert_impl(std::string_view path, HANDLER_TYPE* v)
 		{
-			LogTrace(Channel::Web, std::format("Inserting route {} into core routing impl", path));
+			LogTrace(Channel::Web, [&] { return std::format("Inserting route {} into core routing impl", path); });
 
 			// Parse dynamic route segments
 			if (path.starts_with("/"))
@@ -191,7 +191,13 @@ namespace AqualinkAutomate::HTTP::Routing
 			cur->path_template = path;
 		}
 
-		HANDLER_TYPE* find_impl(boost::urls::segments_encoded_view path, std::string_view*& matches, std::string_view*& ids) const
+		// matches_end / ids_end mark one-past-the-last writable slot of the caller's
+		// fixed-size capture arrays (see matches.h, default 20). They bound every
+		// capture write performed during matching so a route template with more
+		// replacement fields than the caller provisioned can never write out of
+		// bounds. In practice no registered route approaches the limit; the bound is
+		// a hard safety net against memory corruption.
+		HANDLER_TYPE* find_impl(boost::urls::segments_encoded_view path, std::string_view*& matches, std::string_view*& ids, std::string_view* matches_end = nullptr, std::string_view* ids_end = nullptr) const
 		{
 			// parse_path is inconsistent for empty paths
 			if (path.empty())
@@ -200,7 +206,7 @@ namespace AqualinkAutomate::HTTP::Routing
 			}
 
 			// Iterate nodes from the root
-			if (auto p = try_match(path.begin(), path.end(), &nodes_.front(), 0, matches, ids); nullptr != p)
+			if (auto p = try_match(path.begin(), path.end(), &nodes_.front(), 0, matches, ids, matches_end, ids_end); nullptr != p)
 			{
 				return p->resource;
 			}
@@ -209,7 +215,33 @@ namespace AqualinkAutomate::HTTP::Routing
 		}
 
 	private:
-		node<HANDLER_TYPE> const* try_match(boost::urls::segments_encoded_view::const_iterator it, boost::urls::segments_encoded_view::const_iterator end, node<HANDLER_TYPE> const* cur, int level, std::string_view*& matches, std::string_view*& ids) const
+		// Bounded capture write: assert in debug, and never dereference past the
+		// caller's array end. When end is nullptr the caller opted out of bound
+		// checking (legacy callers) and the historical unchecked behaviour is kept.
+		// On overflow the write is dropped and the cursor is clamped at end so the
+		// invariant it <= end holds and subsequent bookmark arithmetic stays in range.
+		static void WriteCapture(std::string_view*& it, std::string_view* end, std::string_view value)
+		{
+			BOOST_ASSERT(end == nullptr || it != end);
+			if (end == nullptr || it != end)
+			{
+				*it = value;
+				++it;
+			}
+		}
+
+		// Bounded write to an already-claimed slot (e.g. a rewind bookmark). Guards
+		// the dereference without advancing the cursor.
+		static void WriteCaptureAt(std::string_view* slot, std::string_view* end, std::string_view value)
+		{
+			BOOST_ASSERT(end == nullptr || slot < end);
+			if (end == nullptr || slot < end)
+			{
+				*slot = value;
+			}
+		}
+
+		node<HANDLER_TYPE> const* try_match(boost::urls::segments_encoded_view::const_iterator it, boost::urls::segments_encoded_view::const_iterator end, node<HANDLER_TYPE> const* cur, int level, std::string_view*& matches, std::string_view*& ids, std::string_view* matches_end, std::string_view* ids_end) const
 		{
 			while (it != end)
 			{
@@ -303,7 +335,7 @@ namespace AqualinkAutomate::HTTP::Routing
 							// next segment
 							if (branch)
 							{
-								r = try_match(std::next(it), end, &c, level, matches, ids);
+								r = try_match(std::next(it), end, &c, level, matches, ids, matches_end, ids_end);
 								if (r)
 								{
 									break;
@@ -324,9 +356,9 @@ namespace AqualinkAutomate::HTTP::Routing
 							{
 								auto matches0 = matches;
 								auto ids0 = ids;
-								*matches++ = *it;
-								*ids++ = c.seg.id();
-								r = try_match(std::next(it), end, &c, level, matches, ids);
+								WriteCapture(matches, matches_end, *it);
+								WriteCapture(ids, ids_end, c.seg.id());
+								r = try_match(std::next(it), end, &c, level, matches, ids, matches_end, ids_end);
 								if (r)
 								{
 									break;
@@ -341,8 +373,8 @@ namespace AqualinkAutomate::HTTP::Routing
 							else
 							{
 								// only path possible
-								*matches++ = *it;
-								*ids++ = c.seg.id();
+								WriteCapture(matches, matches_end, *it);
+								WriteCapture(ids, ids_end, c.seg.id());
 								cur = &c;
 								match_any = true;
 								break;
@@ -359,9 +391,9 @@ namespace AqualinkAutomate::HTTP::Routing
 							// match
 							auto matches0 = matches;
 							auto ids0 = ids;
-							*matches++ = *it;
-							*ids++ = c.seg.id();
-							r = try_match(std::next(it), end, &c, level, matches, ids);
+							WriteCapture(matches, matches_end, *it);
+							WriteCapture(ids, ids_end, c.seg.id());
+							r = try_match(std::next(it), end, &c, level, matches, ids, matches_end, ids_end);
 							if (r)
 							{
 								break;
@@ -371,9 +403,9 @@ namespace AqualinkAutomate::HTTP::Routing
 							ids = ids0;
 							// try complete continuation
 							// consuming no segment
-							*matches++ = {};
-							*ids++ = c.seg.id();
-							r = try_match(it, end, &c, level, matches, ids);
+							WriteCapture(matches, matches_end, {});
+							WriteCapture(ids, ids_end, c.seg.id());
+							r = try_match(it, end, &c, level, matches, ids, matches_end, ids_end);
 							if (r)
 								break;
 							// rewind
@@ -414,8 +446,8 @@ namespace AqualinkAutomate::HTTP::Routing
 							// segments
 							auto matches0 = matches;
 							auto ids0 = ids;
-							*matches++ = *it;
-							*ids++ = c.seg.id();
+							WriteCapture(matches, matches_end, *it);
+							WriteCapture(ids, ids_end, c.seg.id());
 
 							// if this is a plus seg, we
 							// already consumed the first
@@ -437,11 +469,16 @@ namespace AqualinkAutomate::HTTP::Routing
 							auto start = end;
 							while (start != first)
 							{
-								r = try_match(start, end, &c, level, matches, ids);
+								r = try_match(start, end, &c, level, matches, ids, matches_end, ids_end);
 								if (r)
 								{
-									std::string_view prev = *std::prev(start);
-									*matches0 = { matches0->data(), prev.data() + prev.size() };
+									// matches0 was claimed by the WriteCapture above; only
+									// coalesce the captured range when that slot is in bounds.
+									if (matches_end == nullptr || matches0 < matches_end)
+									{
+										std::string_view prev = *std::prev(start);
+										*matches0 = std::string_view{ matches0->data(), prev.data() + prev.size() };
+									}
 									break;
 								}
 
@@ -458,12 +495,12 @@ namespace AqualinkAutomate::HTTP::Routing
 							// start == first
 							matches = matches0 + 1;
 							ids = ids0 + 1;
-							r = try_match(start, end, &c, level, matches, ids);
+							r = try_match(start, end, &c, level, matches, ids, matches_end, ids_end);
 							if (r)
 							{
 								if (!c.seg.is_plus())
 								{
-									*matches0 = {};
+									WriteCaptureAt(matches0, matches_end, std::string_view{});
 								}
 								break;
 							}
@@ -500,13 +537,13 @@ namespace AqualinkAutomate::HTTP::Routing
 				// still have child optional segments
 				// with resources we can reach without
 				// consuming any input
-				return find_optional_resource(cur, nodes_, matches, ids);
+				return find_optional_resource(cur, nodes_, matches, ids, matches_end, ids_end);
 			}
 
 			return cur;
 		}
-		
-		static node<HANDLER_TYPE> const* find_optional_resource(const node<HANDLER_TYPE>* root, std::vector<node<HANDLER_TYPE>> const& ns, std::string_view*& matches, std::string_view*& ids)
+
+		static node<HANDLER_TYPE> const* find_optional_resource(const node<HANDLER_TYPE>* root, std::vector<node<HANDLER_TYPE>> const& ns, std::string_view*& matches, std::string_view*& ids, std::string_view* matches_end, std::string_view* ids_end)
 		{
 			BOOST_ASSERT(root);
 			if (root->resource)
@@ -526,9 +563,9 @@ namespace AqualinkAutomate::HTTP::Routing
 				// Child nodes are also potentially optional.
 				auto matches0 = matches;
 				auto ids0 = ids;
-				*matches++ = {};
-				*ids++ = c.seg.id();
-				auto n = find_optional_resource(&c, ns, matches, ids);
+				WriteCapture(matches, matches_end, {});
+				WriteCapture(ids, ids_end, c.seg.id());
+				auto n = find_optional_resource(&c, ns, matches, ids, matches_end, ids_end);
 				if (n)
 				{
 					return n;

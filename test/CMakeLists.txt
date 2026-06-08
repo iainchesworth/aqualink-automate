@@ -30,10 +30,12 @@ target_sources(
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp
+	unit/http/test_http_security.cpp
 	unit/http/test_http_sessions.cpp
 	unit/http/test_http_setpoints.cpp
 	unit/http/test_routing_matches.cpp
-	unit/http/test_ws_equipment.cpp 
+	unit/http/test_routing_node_bounds.cpp
+	unit/http/test_ws_equipment.cpp
 	unit/kernel/test_auxillary_traits.cpp
 	unit/kernel/test_auxillary_traits_status.cpp
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
