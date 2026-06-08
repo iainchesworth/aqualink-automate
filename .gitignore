@@ -367,3 +367,11 @@ cicd/packer/*.pkrvars.hcl
 !cicd/packer/*.pkrvars.hcl.example
 cicd/packer/ISOs/
 cicd/packer/packer_cache/
+
+# Playwright end-to-end UI tests (Node tooling + run artifacts)
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+/build

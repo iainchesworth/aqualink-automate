@@ -1,0 +1,21 @@
+{
+  "name": "playwright",
+  "version": "1.0.0",
+  "description": "A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool controllers with Smart Homes without the need for cloud services and platforms. It exposes local control options via a Web UI or via MQTT and HTTP APIs allowing you to have more intuitive control over your Aqualink RS system.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}
