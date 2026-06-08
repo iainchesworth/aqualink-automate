@@ -240,6 +240,20 @@ namespace AqualinkAutomate::Devices
 		// IAQ_Poll (0x30) which can carry commands.
 		Signal_AckMessage(static_cast<uint8_t>(0x1f), static_cast<uint8_t>(0x00));
 
+		// A heartbeat proves a real (non-emulated) iAqualink2 is alive and present.
+		// Its rich status (MainStatus/AuxStatus) is carried on the AqualinkTouch 0x33
+		// side, not here on 0xA0-0xA3, so the heartbeat is the only start-up signal a
+		// snooped 0xa3 device ever sees. Treat it as valid activity so the device
+		// reaches NormalOperation instead of sitting in StartUp until the watchdog
+		// eventually faults it (which is exactly the "IAQ didn't start up properly"
+		// symptom on a system with a real iAqualink2).
+		if (!IsEmulated() && (m_OpState == OperatingStates::StartUp))
+		{
+			LogInfo(Channel::Devices, std::format("IAQ ({}): Heartbeat received during StartUp -> entering NormalOperation", DeviceId()));
+			m_OpState = OperatingStates::NormalOperation;
+			Status(Devices::DeviceStatus_Normal{});
+		}
+
 		Restartable::Kick();
 	}
 

@@ -45,7 +45,8 @@ namespace AqualinkAutomate::Devices
 		{
 			StartUp,
 			NormalOperation,
-			FaultHasOccurred
+			FaultHasOccurred,
+			NotPresent          // an id the master never addresses (e.g. an emulated iAqualink2 the panel isn't configured for)
 		};
 
 	public:
@@ -102,6 +103,7 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
+		bool m_HasReceivedData{ false };   // has any traffic ever been addressed to this id? (distinguishes "not present" from "went silent")
 		uint8_t m_PendingCommand{ 0x00 };
 		std::deque<uint8_t> m_CommandQueue;
 		bool m_AwaitingControlReady{ false };

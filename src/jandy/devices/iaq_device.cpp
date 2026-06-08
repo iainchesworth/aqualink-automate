@@ -119,6 +119,10 @@ namespace AqualinkAutomate::Devices
 		LogTrace(Channel::Devices, std::format("IAQ ({}): ProcessControllerUpdates called: state={}, is_poll={}, pending_cmd=0x{:02x}",
 			DeviceId(), magic_enum::enum_name(m_OpState), is_poll_message, m_PendingCommand));
 
+		// This id has been addressed on the bus (poll/status), so any later watchdog
+		// timeout is a genuine drop-out rather than "never present".
+		m_HasReceivedData = true;
+
 		// Non-emulated devices skip straight to NormalOperation on the first update.
 		if (!IsEmulated() && m_OpState == OperatingStates::StartUp)
 		{
@@ -174,13 +178,33 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::WatchdogTimeoutOccurred", std::source_location::current());
 
+		if (m_OpState == OperatingStates::NotPresent)
+		{
+			// Already determined this id is not present on the bus -- stay quiet.
+			return;
+		}
+
 		LogWarning(Channel::Devices, std::format("IAQ ({}): Watchdog timeout occurred: state={}, timeout_duration={}s", DeviceId(), magic_enum::enum_name(m_OpState), IAQ_TIMEOUT_DURATION.count()));
 
 		if (m_OpState == OperatingStates::StartUp)
 		{
-			LogWarning(Channel::Devices, std::format("IAQ ({}): No valid data received during StartUp -> entering FaultHasOccurred", DeviceId()));
-			m_OpState = OperatingStates::FaultHasOccurred;
-			Status(Devices::DeviceStatus_FaultOccurred{});
+			if (m_HasReceivedData)
+			{
+				// Traffic addressed to this id was being received and then stopped -- a
+				// genuine fault (the device was present but went silent).
+				LogWarning(Channel::Devices, std::format("IAQ ({}): No valid data received during StartUp -> entering FaultHasOccurred", DeviceId()));
+				m_OpState = OperatingStates::FaultHasOccurred;
+				Status(Devices::DeviceStatus_FaultOccurred{});
+			}
+			else
+			{
+				// This id was never addressed on the bus: the master is not polling an
+				// iAqualink2 here (e.g. an emulated id the panel isn't configured for).
+				// That is "not present", not a fault -- settle quietly rather than alarm.
+				LogInfo(Channel::Devices, std::format("IAQ ({}): No traffic ever addressed to this id -> marking NotPresent (master is not polling an iAqualink2 here)", DeviceId()));
+				m_OpState = OperatingStates::NotPresent;
+				Status(Devices::DeviceStatus_Initializing{});
+			}
 		}
 	}
 
