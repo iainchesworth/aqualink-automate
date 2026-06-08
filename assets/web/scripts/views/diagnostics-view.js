@@ -11,7 +11,8 @@ const _diag = {
     chart: null,
     statsListener: null,
     windowSeconds: 60,
-    emuDeviceTimer: null
+    emuDeviceTimer: null,
+    recordingTimer: null
 };
 
 function diagnosticsView() {
@@ -41,6 +42,12 @@ function diagnosticsView() {
         showLogLevels: false,
         showDeviceStatus: false,
         showEmulatedDevices: true,
+        showRecording: false,
+
+        // Serial recording control state
+        recording: { recording: false, file: '', bytes: 0 },
+        recordingFilename: 'capture.cap',
+        recordingBusy: false,
 
         // Emulated device diagnostics
         emulatedDevices: [],
@@ -60,9 +67,13 @@ function diagnosticsView() {
 
             this._fetchLogLevels();
             this.fetchEmulatedDevices();
+            this.fetchRecordingStatus();
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
                 _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
+            }
+            if (!_diag.recordingTimer) {
+                _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
             }
         },
 
@@ -159,6 +170,11 @@ function diagnosticsView() {
                 _diag.emuDeviceTimer = null;
             }
 
+            if (_diag.recordingTimer) {
+                clearInterval(_diag.recordingTimer);
+                _diag.recordingTimer = null;
+            }
+
             if (_diag.statsListener) {
                 window.removeEventListener('stats-updated', _diag.statsListener);
                 _diag.statsListener = null;
@@ -177,6 +193,62 @@ function diagnosticsView() {
                 this.emulatedDevices = await resp.json();
             } catch (e) {
                 // Silently fail — endpoint may not be available
+            }
+        },
+
+        async fetchRecordingStatus() {
+            try {
+                const resp = await fetch('/api/diagnostics/recording');
+                if (!resp.ok) return;
+                this.recording = await resp.json();
+            } catch (e) {
+                // Silently fail — endpoint may not be available
+            }
+        },
+
+        async startRecording() {
+            if (this.recordingBusy || !this.recordingFilename) return;
+            this.recordingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/recording', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'start', filename: this.recordingFilename })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    this.recording = data;
+                    Alpine.store('toast').show('Serial recording started', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to start recording', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to start recording', 'error');
+            } finally {
+                this.recordingBusy = false;
+            }
+        },
+
+        async stopRecording() {
+            if (this.recordingBusy) return;
+            this.recordingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/recording', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'stop' })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    this.recording = data;
+                    Alpine.store('toast').show('Serial recording stopped', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to stop recording', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to stop recording', 'error');
+            } finally {
+                this.recordingBusy = false;
             }
         },
 

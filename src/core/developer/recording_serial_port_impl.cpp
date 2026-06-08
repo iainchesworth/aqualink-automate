@@ -8,59 +8,142 @@
 namespace AqualinkAutomate::Developer
 {
 
+	RecordingSerialPortImpl::RecordingSerialPortImpl(std::unique_ptr<Interfaces::ISerialPortImpl> wrapped_impl)
+		: m_WrappedImpl(std::move(wrapped_impl))
+		, m_StartTime(std::chrono::steady_clock::now())
+	{
+		// Pass-through by default: recording stays OFF until StartRecording() is
+		// called (e.g. by the diagnostics route).  No file is opened here.
+		LogDebug(Channel::Serial, "Serial recording decorator installed (recording is OFF)");
+	}
+
 	RecordingSerialPortImpl::RecordingSerialPortImpl(
 		std::unique_ptr<Interfaces::ISerialPortImpl> wrapped_impl,
 		const std::string& recording_file_path)
 		: m_WrappedImpl(std::move(wrapped_impl))
-		, m_RecordingFilePath(recording_file_path)
 		, m_StartTime(std::chrono::steady_clock::now())
 	{
-		LogInfo(Channel::Serial, std::format("Serial recording enabled, output file: {}", recording_file_path));
-
-		m_RecordingFile.open(recording_file_path, std::ios::out | std::ios::trunc);
-		if (m_RecordingFile.is_open())
-		{
-			m_RecordingEnabled = true;
-
-			// Write header with timestamp
-			auto now = std::chrono::system_clock::now();
-			auto time_t_now = std::chrono::system_clock::to_time_t(now);
-			char time_buf[26]{};
-			Platform::SafeCtime(&time_t_now, time_buf, sizeof(time_buf));
-			m_RecordingFile << "# Serial recording started at: " << time_buf;
-			m_RecordingFile << "# Format: [timestamp_ms] direction byte|byte|byte|...\n";
-			m_RecordingFile << "# Direction: R=read (from device), W=write (to device)\n";
-			m_RecordingFile << "#\n";
-			m_RecordingFile.flush();
-
-			LogDebug(Channel::Serial, "Serial recording file opened successfully");
-		}
-		else
-		{
-			LogError(Channel::Serial, std::format("Failed to open serial recording file: {}", recording_file_path));
-		}
+		// Start-at-boot path (preserves `--record-serial <file>`).
+		StartRecording(recording_file_path);
 	}
 
 	RecordingSerialPortImpl::~RecordingSerialPortImpl()
 	{
+		std::lock_guard<std::mutex> lock(m_FileMutex);
+		CloseRecordingFile();
+	}
+
+	bool RecordingSerialPortImpl::StartRecording(const std::string& filename)
+	{
+		std::lock_guard<std::mutex> lock(m_FileMutex);
+
+		if (m_RecordingEnabled.load(std::memory_order_relaxed))
+		{
+			LogWarning(Channel::Serial, std::format("Serial recording already in progress (file: {}); ignoring start request for {}", m_RecordingFilePath, filename));
+			return false;
+		}
+
+		return OpenRecordingFile(filename);
+	}
+
+	bool RecordingSerialPortImpl::StopRecording()
+	{
+		std::lock_guard<std::mutex> lock(m_FileMutex);
+
+		if (!m_RecordingEnabled.load(std::memory_order_relaxed))
+		{
+			LogDebug(Channel::Serial, "Stop recording requested but no recording is in progress");
+			return false;
+		}
+
+		LogInfo(Channel::Serial, std::format("Stopping serial recording ({} bytes written to {})", m_BytesWritten, m_RecordingFilePath));
+		CloseRecordingFile();
+		return true;
+	}
+
+	bool RecordingSerialPortImpl::IsRecording() const
+	{
+		return m_RecordingEnabled.load(std::memory_order_relaxed);
+	}
+
+	Interfaces::IRecordingController::Status RecordingSerialPortImpl::RecordingStatus() const
+	{
+		std::lock_guard<std::mutex> lock(m_FileMutex);
+
+		Interfaces::IRecordingController::Status status;
+		status.recording = m_RecordingEnabled.load(std::memory_order_relaxed);
+		status.file = m_RecordingFilePath;
+		status.bytes_written = m_BytesWritten;
+		return status;
+	}
+
+	bool RecordingSerialPortImpl::OpenRecordingFile(const std::string& recording_file_path)
+	{
+		// Caller holds m_FileMutex.
+		LogInfo(Channel::Serial, std::format("Serial recording enabled, output file: {}", recording_file_path));
+
+		m_RecordingFile.open(recording_file_path, std::ios::out | std::ios::trunc);
+		if (!m_RecordingFile.is_open())
+		{
+			LogError(Channel::Serial, std::format("Failed to open serial recording file: {}", recording_file_path));
+			m_RecordingFilePath.clear();
+			return false;
+		}
+
+		m_RecordingFilePath = recording_file_path;
+		m_BytesWritten = 0;
+		m_StartTime = std::chrono::steady_clock::now();
+
+		// Write header with timestamp.
+		auto now = std::chrono::system_clock::now();
+		auto time_t_now = std::chrono::system_clock::to_time_t(now);
+		char time_buf[26]{};
+		Platform::SafeCtime(&time_t_now, time_buf, sizeof(time_buf));
+		m_RecordingFile << "# Serial recording started at: " << time_buf;
+		m_RecordingFile << "# Format: [timestamp_ms] direction byte|byte|byte|...\n";
+		m_RecordingFile << "# Direction: R=read (from device), W=write (to device)\n";
+		m_RecordingFile << "#\n";
+		m_RecordingFile.flush();
+
+		// Publish "on" only AFTER the file and header are ready, so the read/write
+		// fast path never sees recording-enabled with an unwritten header.
+		m_RecordingEnabled.store(true, std::memory_order_release);
+
+		LogDebug(Channel::Serial, "Serial recording file opened successfully");
+		return true;
+	}
+
+	void RecordingSerialPortImpl::CloseRecordingFile()
+	{
+		// Caller holds m_FileMutex.
+
+		// Stop the fast path BEFORE touching the stream so an in-flight reader/
+		// writer that already passed the gate finishes under the lock we hold.
+		m_RecordingEnabled.store(false, std::memory_order_release);
+
 		if (m_RecordingFile.is_open())
 		{
 			m_RecordingFile << "# Recording ended\n";
 			m_RecordingFile.close();
 			LogInfo(Channel::Serial, std::format("Serial recording file closed: {}", m_RecordingFilePath));
 		}
+
+		m_RecordingFilePath.clear();
 	}
 
 	void RecordingSerialPortImpl::open(const std::string& device_name)
 	{
 		m_WrappedImpl->open(device_name);
 
-		if (m_RecordingEnabled)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed))
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Opened device: " << device_name << "\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Opened device: " << device_name << "\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -68,12 +151,15 @@ namespace AqualinkAutomate::Developer
 	{
 		m_WrappedImpl->open(device_name, ec);
 
-		if (m_RecordingEnabled && !ec)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && !ec)
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Opened device: " << device_name << "\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Opened device: " << device_name << "\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -96,12 +182,15 @@ namespace AqualinkAutomate::Developer
 	{
 		m_WrappedImpl->close();
 
-		if (m_RecordingEnabled)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed))
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Device closed\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Device closed\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -109,12 +198,15 @@ namespace AqualinkAutomate::Developer
 	{
 		m_WrappedImpl->close(ec);
 
-		if (m_RecordingEnabled && !ec)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && !ec)
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Device closed\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Device closed\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -122,12 +214,15 @@ namespace AqualinkAutomate::Developer
 	{
 		m_WrappedImpl->set_baud_rate(rate, ec);
 
-		if (m_RecordingEnabled && !ec)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && !ec)
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Set baud rate: " << rate << "\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Set baud rate: " << rate << "\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -135,12 +230,15 @@ namespace AqualinkAutomate::Developer
 	{
 		m_WrappedImpl->set_character_size(bits, ec);
 
-		if (m_RecordingEnabled && !ec)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && !ec)
 		{
 			std::lock_guard<std::mutex> lock(m_FileMutex);
-			WriteTimestamp();
-			m_RecordingFile << "# Set character size: " << static_cast<int>(bits) << "\n";
-			m_RecordingFile.flush();
+			if (m_RecordingFile.is_open())
+			{
+				WriteTimestamp();
+				m_RecordingFile << "# Set character size: " << static_cast<int>(bits) << "\n";
+				m_RecordingFile.flush();
+			}
 		}
 	}
 
@@ -168,7 +266,7 @@ namespace AqualinkAutomate::Developer
 	{
 		auto bytes_read = m_WrappedImpl->read_some(buffer);
 
-		if (m_RecordingEnabled && bytes_read > 0)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && bytes_read > 0)
 		{
 			RecordReadData(static_cast<const uint8_t*>(buffer.data()), bytes_read);
 		}
@@ -180,7 +278,7 @@ namespace AqualinkAutomate::Developer
 	{
 		auto bytes_read = m_WrappedImpl->read_some(buffer, ec);
 
-		if (m_RecordingEnabled && bytes_read > 0 && !ec)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && bytes_read > 0 && !ec)
 		{
 			RecordReadData(static_cast<const uint8_t*>(buffer.data()), bytes_read);
 		}
@@ -190,7 +288,7 @@ namespace AqualinkAutomate::Developer
 
 	std::size_t RecordingSerialPortImpl::write_some(const boost::asio::const_buffer& buffer)
 	{
-		if (m_RecordingEnabled && buffer.size() > 0)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && buffer.size() > 0)
 		{
 			RecordWriteData(static_cast<const uint8_t*>(buffer.data()), buffer.size());
 		}
@@ -200,7 +298,7 @@ namespace AqualinkAutomate::Developer
 
 	std::size_t RecordingSerialPortImpl::write_some(const boost::asio::const_buffer& buffer, boost::system::error_code& ec)
 	{
-		if (m_RecordingEnabled && buffer.size() > 0)
+		if (m_RecordingEnabled.load(std::memory_order_relaxed) && buffer.size() > 0)
 		{
 			RecordWriteData(static_cast<const uint8_t*>(buffer.data()), buffer.size());
 		}
@@ -210,30 +308,27 @@ namespace AqualinkAutomate::Developer
 
 	void RecordingSerialPortImpl::RecordReadData(const uint8_t* data, std::size_t length)
 	{
-		std::lock_guard<std::mutex> lock(m_FileMutex);
-
-		WriteTimestamp();
-		m_RecordingFile << "R ";
-
-		for (std::size_t i = 0; i < length; ++i)
-		{
-			m_RecordingFile << "0x" << std::hex << std::setw(2) << std::setfill('0')
-				<< static_cast<int>(data[i]) << std::dec;
-			if (i < length - 1)
-			{
-				m_RecordingFile << "|";
-			}
-		}
-		m_RecordingFile << "\n";
-		m_RecordingFile.flush();
+		RecordDataLine('R', data, length);
 	}
 
 	void RecordingSerialPortImpl::RecordWriteData(const uint8_t* data, std::size_t length)
 	{
+		RecordDataLine('W', data, length);
+	}
+
+	void RecordingSerialPortImpl::RecordDataLine(char direction, const uint8_t* data, std::size_t length)
+	{
 		std::lock_guard<std::mutex> lock(m_FileMutex);
 
+		// Recording may have been stopped between the fast-path gate check and
+		// acquiring the lock; re-check the open file before writing.
+		if (!m_RecordingFile.is_open())
+		{
+			return;
+		}
+
 		WriteTimestamp();
-		m_RecordingFile << "W ";
+		m_RecordingFile << direction << " ";
 
 		for (std::size_t i = 0; i < length; ++i)
 		{
@@ -246,6 +341,8 @@ namespace AqualinkAutomate::Developer
 		}
 		m_RecordingFile << "\n";
 		m_RecordingFile.flush();
+
+		m_BytesWritten += length;
 	}
 
 	void RecordingSerialPortImpl::WriteTimestamp()

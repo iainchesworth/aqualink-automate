@@ -16,6 +16,7 @@
 #include "exceptions/exception_optionparsingfailed.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "interfaces/icommanddispatcher.h"
+#include "interfaces/irecordingcontroller.h"
 #include "interfaces/iserialportimpl.h"
 #include "logging/logging.h"
 #include "logging/logging_initialise.h"
@@ -43,6 +44,7 @@
 #include "http/webroute_diagnostics_devices.h"
 #include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_diagnostics_options.h"
+#include "http/webroute_diagnostics_recording.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
@@ -243,6 +245,39 @@ int main(int argc, char* argv[])
 
 				auto executor = io_context.get_executor();
 
+				// Always place the runtime-controllable recording decorator in the
+				// PRODUCTION serial chain (physical AND remote).  It defaults to OFF
+				// (a transparent pass-through) and is toggled at runtime via the
+				// /api/diagnostics/recording route, which resolves it from the
+				// HubLocator as an IRecordingController.  If `--record-serial <file>`
+				// was supplied it starts recording at boot (legacy behaviour).  The
+				// decorator is owned by the SerialPort (lifetime = whole app); the
+				// HubLocator holds a non-owning handle (null deleter).
+				auto install_recording_decorator =
+					[&hub_locator, &developer_settings](std::unique_ptr<Interfaces::ISerialPortImpl> base) -> std::unique_ptr<Interfaces::ISerialPortImpl>
+					{
+						std::unique_ptr<AqualinkAutomate::Developer::RecordingSerialPortImpl> recorder;
+						if (!developer_settings.recording_file.empty())
+						{
+							LogInfo(Channel::Serial, std::format("Enabling serial recording to: {}", developer_settings.recording_file));
+							recorder = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(base), developer_settings.recording_file);
+						}
+						else
+						{
+							recorder = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(base));
+						}
+
+						// Register a non-owning handle so the diagnostics route can
+						// toggle recording at runtime.  The null deleter keeps the
+						// SerialPort as the sole owner.
+						std::shared_ptr<Interfaces::IRecordingController> controller_handle(
+							static_cast<Interfaces::IRecordingController*>(recorder.get()),
+							[](Interfaces::IRecordingController*) { /* non-owning */ });
+						hub_locator.Register<Interfaces::IRecordingController>(controller_handle);
+
+						return recorder;
+					};
+
 				if ((developer_settings.dev_mode_enabled) && (!developer_settings.replay_file.empty()))
 				{
 					LogInfo(Channel::Main, "Enabling developer mode");
@@ -257,11 +292,7 @@ int main(int argc, char* argv[])
 
 					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::PhysicalSerialPortImpl>(executor);
 
-					if (!developer_settings.recording_file.empty())
-					{
-						LogInfo(Channel::Serial, std::format("Enabling serial recording to: {}", developer_settings.recording_file));
-						serial_port_impl = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(serial_port_impl), developer_settings.recording_file);
-					}
+					serial_port_impl = install_recording_decorator(std::move(serial_port_impl));
 
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
 
@@ -277,11 +308,7 @@ int main(int argc, char* argv[])
 
 					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
 
-					if (!developer_settings.recording_file.empty())
-					{
-						LogInfo(Channel::Serial, std::format("Enabling serial recording to: {}", developer_settings.recording_file));
-						serial_port_impl = std::make_unique<AqualinkAutomate::Developer::RecordingSerialPortImpl>(std::move(serial_port_impl), developer_settings.recording_file);
-					}
+					serial_port_impl = install_recording_decorator(std::move(serial_port_impl));
 
 					serial_port = std::make_shared<AqualinkAutomate::Serial::SerialPort>(std::move(serial_port_impl), hub_locator);
 
@@ -346,6 +373,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Recording>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));

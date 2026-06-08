@@ -53,6 +53,7 @@ target_sources(
 	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
 	http/webroute_diagnostics_options.cpp
+	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp
 	http/webroute_equipment_button.cpp 
 	http/webroute_equipment_buttons.cpp 
@@ -91,7 +92,8 @@ target_sources(
 	interfaces/imessagesignal_recv.cpp
 	interfaces/imessagesignal_send.cpp
 	interfaces/iprofiler.cpp
-	interfaces/iprofilingunit.cpp 	 
+	interfaces/iprofilingunit.cpp
+	interfaces/irecordingcontroller.cpp
 	interfaces/iserializable.cpp
 	interfaces/iserialport.cpp	 
 	interfaces/iserialportimpl.cpp

@@ -497,6 +497,126 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET."
 
+  /api/diagnostics/recording:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get serial-recording status
+      description: |
+        Returns the current state of on-demand serial-traffic recording: whether
+        a capture is in progress, the active capture file path, and the number of
+        wire bytes written so far. Recording is OFF by default and is controlled
+        at runtime via the POST endpoint. The captured file is in the recorder
+        format (replayable with `--dev-mode --replay-filename`).
+      operationId: getRecording
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingStatus'
+              example:
+                recording: true
+                file: "/tmp/capture.cap"
+                bytes: 4096
+    post:
+      tags:
+        - Diagnostics
+      summary: Start or stop serial recording
+      description: |
+        Start or stop recording the raw RS-485 serial traffic exchanged with the
+        hardware. Provide `{"action":"start","filename":"..."}` to begin a capture
+        or `{"action":"stop"}` to end it. Returns the resulting recording status.
+      operationId: setRecording
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/RecordingStart'
+                - $ref: '#/components/schemas/RecordingStop'
+            examples:
+              start:
+                summary: Start recording
+                value:
+                  action: "start"
+                  filename: "/tmp/capture.cap"
+              stop:
+                summary: Stop recording
+                value:
+                  action: "stop"
+      responses:
+        '200':
+          description: Recording started/stopped successfully; returns the new status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingStatus'
+              example:
+                recording: true
+                file: "/tmp/capture.cap"
+                bytes: 0
+        '400':
+          description: Invalid request (bad JSON, missing/invalid action, or missing filename)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                invalid_json:
+                  value:
+                    error: "Invalid JSON in request body"
+                missing_action:
+                  value:
+                    error: "Request must contain a string 'action' of 'start' or 'stop'"
+                missing_filename:
+                  value:
+                    error: "'start' action requires a string 'filename'"
+                invalid_action:
+                  value:
+                    error: "'action' must be 'start' or 'stop'"
+        '409':
+          description: Conflicting state (already recording on start, or not recording on stop)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                already_recording:
+                  value:
+                    error: "Could not start recording: already recording or file could not be opened"
+                not_recording:
+                  value:
+                    error: "Not currently recording"
+        '503':
+          description: Recording is not available in the current mode (e.g. dev-mode/replay)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Recording is not available in this mode"
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET or POST."
+
 components:
   schemas:
     VersionInfo:
@@ -989,6 +1109,51 @@ components:
           type: string
           description: Severity level to set for the channel
           example: "Trace"
+
+    RecordingStatus:
+      type: object
+      required:
+        - recording
+        - file
+        - bytes
+      properties:
+        recording:
+          type: boolean
+          description: True while a capture is in progress
+          example: true
+        file:
+          type: string
+          description: Path of the active capture file (empty when not recording)
+          example: "/tmp/capture.cap"
+        bytes:
+          type: integer
+          description: Number of wire bytes (read + write) written to the active capture
+          example: 4096
+
+    RecordingStart:
+      type: object
+      required:
+        - action
+        - filename
+      properties:
+        action:
+          type: string
+          enum: [start]
+          description: Begin a new capture
+        filename:
+          type: string
+          description: Path of the capture file to write
+          example: "/tmp/capture.cap"
+
+    RecordingStop:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [stop]
+          description: Stop the active capture
 
     EmulatedDeviceDiagnostics:
       type: object
