@@ -12,8 +12,32 @@ const _diag = {
     statsListener: null,
     windowSeconds: 60,
     emuDeviceTimer: null,
-    recordingTimer: null
+    recordingTimer: null,
+    // One-shot guards so a persistently-degraded backend warns once per
+    // poller instead of flooding the console on every 2s tick.
+    warnedOnce: {}
 };
+
+/**
+ * Handle a poller fetch failure. 404 / absent endpoints are expected (the
+ * feature may not be compiled in) and stay quiet; 5xx or thrown errors mean a
+ * degraded backend and warn exactly once per poller key.
+ *
+ * @param {string} key     poller identifier (for the once-guard)
+ * @param {Response|null} resp  the fetch Response (null when fetch threw)
+ * @param {Error|null} err  the thrown error, if any
+ */
+function _handlePollFailure(key, resp, err) {
+    // Quiet for a plain 404 / not-found — endpoint simply isn't available.
+    if (resp && resp.status === 404) return;
+    if (_diag.warnedOnce[key]) return;
+    _diag.warnedOnce[key] = true;
+    if (resp) {
+        console.warn(`[diagnostics] ${key} poll failed: HTTP ${resp.status}`);
+    } else {
+        console.warn(`[diagnostics] ${key} poll failed:`, err);
+    }
+}
 
 function diagnosticsView() {
     return {
@@ -189,20 +213,22 @@ function diagnosticsView() {
         async fetchEmulatedDevices() {
             try {
                 const resp = await fetch('/api/diagnostics/emulated-devices');
-                if (!resp.ok) return;
+                if (!resp.ok) { _handlePollFailure('emulated-devices', resp, null); return; }
                 this.emulatedDevices = await resp.json();
+                _diag.warnedOnce['emulated-devices'] = false;
             } catch (e) {
-                // Silently fail — endpoint may not be available
+                _handlePollFailure('emulated-devices', null, e);
             }
         },
 
         async fetchRecordingStatus() {
             try {
                 const resp = await fetch('/api/diagnostics/recording');
-                if (!resp.ok) return;
+                if (!resp.ok) { _handlePollFailure('recording', resp, null); return; }
                 this.recording = await resp.json();
+                _diag.warnedOnce['recording'] = false;
             } catch (e) {
-                // Silently fail — endpoint may not be available
+                _handlePollFailure('recording', null, e);
             }
         },
 
@@ -306,50 +332,74 @@ function diagnosticsView() {
         async _fetchLogLevels() {
             try {
                 const resp = await fetch('/api/diagnostics/logging');
-                if (!resp.ok) return;
+                if (!resp.ok) { _handlePollFailure('logging', resp, null); return; }
                 const data = await resp.json();
                 this.logChannels = data.channels || {};
                 this.severityLevels = data.severity_levels || [];
-                if (this.severityLevels.length > 0) {
-                    // Determine global level: if all channels share the same level, show it
-                    const values = Object.values(this.logChannels);
-                    this.globalLevel = values.length > 0 && values.every(v => v === values[0]) ? values[0] : '';
-                }
+                this.globalLevel = this._computeGlobalLevel();
                 this.logLevelsLoaded = true;
+                _diag.warnedOnce['logging'] = false;
             } catch (e) {
-                // Silently fail — endpoint may not be available
+                _handlePollFailure('logging', null, e);
             }
         },
 
+        // Derive the global indicator: the shared level when every channel
+        // agrees, otherwise '' (Mixed). Guards against an empty channel map
+        // ([].every() is true, which would otherwise yield undefined).
+        _computeGlobalLevel() {
+            const values = Object.values(this.logChannels);
+            return values.length > 0 && values.every(v => v === values[0]) ? values[0] : '';
+        },
+
         async setChannelLevel(channel, level) {
-            this.logChannels[channel] = level;
+            const previous = this.logChannels[channel];
+            this.logChannels[channel] = level;            // optimistic
+            this.globalLevel = this._computeGlobalLevel();
             try {
-                await fetch('/api/diagnostics/logging', {
+                const resp = await fetch('/api/diagnostics/logging', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channel, level })
                 });
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
             } catch (e) {
-                // Silently fail
+                // Revert the optimistic mutation and surface the failure.
+                if (previous === undefined) {
+                    delete this.logChannels[channel];
+                } else {
+                    this.logChannels[channel] = previous;
+                }
+                this.globalLevel = this._computeGlobalLevel();
+                console.error(`[diagnostics] failed to set log level for ${channel}:`, e);
+                Alpine.store('toast').show(`Failed to set log level for ${channel}`, 'error');
             }
-            // Update global indicator
-            const values = Object.values(this.logChannels);
-            this.globalLevel = values.every(v => v === values[0]) ? values[0] : '';
         },
 
         async setGlobalLevel(level) {
-            this.globalLevel = level;
+            const previous = { ...this.logChannels };
+            const previousGlobal = this.globalLevel;
+            this.globalLevel = level;                     // optimistic
             for (const ch in this.logChannels) {
                 this.logChannels[ch] = level;
             }
             try {
-                await fetch('/api/diagnostics/logging', {
+                const resp = await fetch('/api/diagnostics/logging', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ global: level })
                 });
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
             } catch (e) {
-                // Silently fail
+                // Revert the optimistic mutation and surface the failure.
+                this.logChannels = previous;
+                this.globalLevel = previousGlobal;
+                console.error('[diagnostics] failed to set global log level:', e);
+                Alpine.store('toast').show('Failed to set global log level', 'error');
             }
         }
     };

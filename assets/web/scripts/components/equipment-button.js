@@ -32,10 +32,17 @@ const _deviceTypeIcons = {
 const _iconOverrides = JSON.parse(localStorage.getItem('iconOverrides') || '{}');
 
 function equipmentButton() {
+    // Shared active-status predicate (single source of truth in
+    // scripts/config/ui-constants.js); fall back to a local copy if absent.
+    const ui = (typeof window !== 'undefined' && window.AquaUI) || {};
+    const isActiveStatus = ui.isActiveStatus || ((status) => {
+        const s = String(status == null ? '' : status).toLowerCase();
+        return s === 'on' || s === 'running' || s === 'heating' || s === 'enabled';
+    });
+
     return {
         isActive(button) {
-            const s = String(button.status || '').toLowerCase();
-            return s === 'on' || s === 'enabled' || s === 'running' || s === 'heating';
+            return isActiveStatus(button.status);
         },
 
         statusLabel(button) {
