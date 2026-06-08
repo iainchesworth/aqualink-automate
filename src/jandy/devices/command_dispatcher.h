@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -21,6 +22,17 @@ namespace AqualinkAutomate::Devices
 	class CommandDispatcher : public Interfaces::ICommandDispatcher
 	{
 	public:
+		// Sane absolute bounds for a pool/spa water-temperature setpoint as it reaches the wire.
+		//
+		// The setpoint value arrives here already converted into the system's configured units
+		// (Fahrenheit or Celsius) by the caller, so this guard must accommodate both: valid
+		// Celsius setpoints (~4-40C) and valid Fahrenheit setpoints (~40-104F) both fall inside
+		// [SETPOINT_MIN_VALUE, SETPOINT_MAX_VALUE]. The range deliberately rejects the 0 value
+		// (sensor-unavailable sentinel) and anything above the maximum Fahrenheit setpoint so an
+		// attacker-controlled HTTP/MQTT payload cannot push an absurd value onto the RS-485 bus.
+		static constexpr uint8_t SETPOINT_MIN_VALUE{ 1 };
+		static constexpr uint8_t SETPOINT_MAX_VALUE{ 104 };
+
 		CommandDispatcher(std::shared_ptr<Kernel::DataHub> data_hub, std::shared_ptr<Kernel::EquipmentHub> equipment_hub);
 
 		CommandResult ToggleByUuid(const boost::uuids::uuid& uuid) override;

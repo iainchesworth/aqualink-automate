@@ -96,6 +96,71 @@ BOOST_AUTO_TEST_CASE(TestSetCirculationMode_NoSerialAdapter)
 }
 
 // =============================================================================
+// Pool/Spa Setpoint Range Validation (regression for WU-JANDY-COMMAND-DISPATCH)
+//
+// An out-of-range setpoint must be rejected BEFORE any serial-adapter lookup so it
+// never reaches the RS-485 wire. With no serial adapter present in the fixture, an
+// in-range value falls through to NoSerialAdapter while an out-of-range value short-
+// circuits with InvalidValue - which lets us distinguish the two paths.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_InvalidValue_Zero)
+{
+	// 0 is the sensor-unavailable sentinel and is rejected as out-of-range.
+	auto result = dispatcher.SetPoolSetpoint(0);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::InvalidValue));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_InvalidValue_AboveMax)
+{
+	auto result = dispatcher.SetPoolSetpoint(static_cast<uint8_t>(CommandDispatcher::SETPOINT_MAX_VALUE + 1));
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::InvalidValue));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_InvalidValue_MaxUint8)
+{
+	auto result = dispatcher.SetPoolSetpoint(255);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::InvalidValue));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_BoundaryValue_Min)
+{
+	// In-range boundary: not InvalidValue; falls through to NoSerialAdapter in this fixture.
+	auto result = dispatcher.SetPoolSetpoint(CommandDispatcher::SETPOINT_MIN_VALUE);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_BoundaryValue_Max)
+{
+	auto result = dispatcher.SetPoolSetpoint(CommandDispatcher::SETPOINT_MAX_VALUE);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetSpaSetpoint_InvalidValue_Zero)
+{
+	auto result = dispatcher.SetSpaSetpoint(0);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::InvalidValue));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetSpaSetpoint_InvalidValue_AboveMax)
+{
+	auto result = dispatcher.SetSpaSetpoint(static_cast<uint8_t>(CommandDispatcher::SETPOINT_MAX_VALUE + 1));
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::InvalidValue));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetSpaSetpoint_BoundaryValue_Min)
+{
+	auto result = dispatcher.SetSpaSetpoint(CommandDispatcher::SETPOINT_MIN_VALUE);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetSpaSetpoint_BoundaryValue_Max)
+{
+	auto result = dispatcher.SetSpaSetpoint(CommandDispatcher::SETPOINT_MAX_VALUE);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+// =============================================================================
 // Chlorinator Validation
 // =============================================================================
 

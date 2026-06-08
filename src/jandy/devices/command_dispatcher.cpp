@@ -75,6 +75,12 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
 	{
+		if ((temperature < SETPOINT_MIN_VALUE) || (temperature > SETPOINT_MAX_VALUE))
+		{
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Pool setpoint {} out of valid range [{}, {}]", static_cast<int>(temperature), static_cast<int>(SETPOINT_MIN_VALUE), static_cast<int>(SETPOINT_MAX_VALUE)));
+			return CommandResult::InvalidValue;
+		}
+
 		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
@@ -89,6 +95,12 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
 	{
+		if ((temperature < SETPOINT_MIN_VALUE) || (temperature > SETPOINT_MAX_VALUE))
+		{
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Spa setpoint {} out of valid range [{}, {}]", static_cast<int>(temperature), static_cast<int>(SETPOINT_MIN_VALUE), static_cast<int>(SETPOINT_MAX_VALUE)));
+			return CommandResult::InvalidValue;
+		}
+
 		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
