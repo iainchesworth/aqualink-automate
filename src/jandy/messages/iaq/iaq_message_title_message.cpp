@@ -3,6 +3,7 @@
 
 #include "messages/iaq/iaq_message_title_message.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -35,41 +36,22 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_TitleMessage::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_TitleMessage type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_TitleMessage type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_TitleText)
+		// The trailing ASCII payload runs from Index_TitleText up to (but not
+		// including) the 3-byte footer; ExtractTrailingAsciiPayload centralises
+		// the underflow guard and sanitises wire-sourced text to printable ASCII.
+		if (message_bytes.size() <= Index_TitleText + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
-			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short to deserialise Title.");
-		}
-		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1) > message_bytes.size())
-		{
-			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short to deserialise content of Title");
-		}
-		else if (message_bytes.size() < Index_TitleText + 3)
-		{
-			// Security: Prevent integer underflow in length calculation
 			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short for content extraction");
-		}
-		else
-		{
-			const auto length_to_copy = message_bytes.size() - Index_TitleText - 3;
-			const auto start_index = message_bytes.begin() + Index_TitleText;
-			const auto end_index = start_index + static_cast<std::ptrdiff_t>(length_to_copy);
-
-			m_Title.clear();
-			std::transform(start_index, end_index, std::back_inserter(m_Title),
-				[](const auto& elem)
-				{
-					return static_cast<char>(elem);
-				}
-			);
-
-			LogDebug(Channel::Messages, std::format("Deserialised IAQMessage_TitleMessage: Title -> '{}' ({} chars)", m_Title, m_Title.length()));
-
-			return true;
+			return false;
 		}
 
-		return false;
+		m_Title = Text::ExtractTrailingAsciiPayload(message_bytes, Index_TitleText);
+
+		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_TitleMessage: Title -> '{}' ({} chars)", m_Title, m_Title.length()); });
+
+		return true;
 	}
 
 }

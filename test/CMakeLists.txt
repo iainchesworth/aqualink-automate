@@ -132,6 +132,7 @@ target_sources(
 	unit/messages/test_iaq_messages.cpp
 	unit/messages/test_iaq_message_device_id.cpp
 	unit/messages/test_iaq_message_main_status.cpp
+	unit/messages/test_jandy_message_text_helpers.cpp
 	unit/formatters/test_formatters_jandy_messages.cpp
 	unit/formatters/test_formatters_jandy_devices.cpp
 	unit/formatters/test_formatters_screen_data_page.cpp
