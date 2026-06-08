@@ -167,6 +167,39 @@ BOOST_AUTO_TEST_CASE(Test_SerialOptions_RawtcpEnabled)
 	BOOST_CHECK_EQUAL(result.value().use_rawtcp, true);
 }
 
+BOOST_AUTO_TEST_CASE(Test_SerialOptions_NoRfc2217_DisablesRfc2217)
+{
+	// Regression: RFC2217 used to be a permanently-true bool_switch with no way
+	// to turn it off. --no-rfc2217 must now disable it.
+	Options::Serial::OptionsProcessor processor;
+	auto vm = ParseSerialOptions(processor, { "program", "--no-rfc2217" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().use_rfc2217, false);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SerialOptions_NoRfc2217NotPassed_LeavesRfc2217Default)
+{
+	// Without --no-rfc2217 the default (RFC2217 on for remote ports) is preserved.
+	Options::Serial::OptionsProcessor processor;
+	auto vm = ParseSerialOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK_EQUAL(result.value().use_rfc2217, true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SerialOptions_ConflictRfc2217AndNoRfc2217)
+{
+	Options::Serial::OptionsProcessor processor;
+	auto vm = ParseSerialOptions(processor, { "program", "--rfc2217", "--no-rfc2217" });
+
+	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_ConflictingOptions);
+}
+
 //-----------------------------------------------------------------------------
 // CONFLICT VALIDATION
 //-----------------------------------------------------------------------------

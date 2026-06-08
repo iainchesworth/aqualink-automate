@@ -11,8 +11,8 @@ namespace AqualinkAutomate::Options
 
 	void Helper_CheckForConflictingOptions(const boost::program_options::variables_map& vm, const AppOptionPtr& opt1, const AppOptionPtr& opt2)
 	{
-		const auto& opt1_long_name = (*((*opt1)())).long_name();
-		const auto& opt2_long_name = (*((*opt2)())).long_name();
+		const auto& opt1_long_name = opt1->LongName();
+		const auto& opt2_long_name = opt2->LongName();
 
 		if (vm.count(opt1_long_name) && !vm[opt1_long_name].defaulted() && vm.count(opt2_long_name) && !vm[opt2_long_name].defaulted())
 		{

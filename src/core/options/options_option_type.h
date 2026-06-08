@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <format>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/enable_shared_from_this.hpp>
@@ -99,7 +100,7 @@ namespace AqualinkAutomate::Options
 	template<typename...Args>
 	auto make_appoption(Args&&... args)
 	{
-		auto ao = new AppOption(args...);
+		auto ao = new AppOption(std::forward<Args>(args)...);
 		return AppOptionPtr(ao);
 	};
  }

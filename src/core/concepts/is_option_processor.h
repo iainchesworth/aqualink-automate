@@ -29,6 +29,7 @@ namespace AqualinkAutomate::Concepts
 		typename T::SettingsType;
 		requires HasAreaName<typename T::SettingsType>;
 
+		{ ct.Name() } -> std::convertible_to<std::string>;
 		{ ct.Options() } -> std::convertible_to<boost::program_options::options_description>;
 		{ ct.Validate(cvm) } -> std::same_as<void>;
 		{ ct.Process(vm) };

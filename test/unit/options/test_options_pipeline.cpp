@@ -1,7 +1,11 @@
+#include <expected>
+#include <string>
+
 #include <boost/test/unit_test.hpp>
 
 #include <boost/program_options.hpp>
 
+#include "errors/options_errors.h"
 #include "exceptions/exception_optionshelporversion.h"
 #include "kernel/pool_configurations.h"
 #include "options/options.h"
@@ -641,6 +645,59 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_ValidationStillFailsWithoutHelp)
 	// validation (the reordering must not weaken validation when help is absent).
 	auto result = RunPipelineWithHelpCheckBeforeValidate({ "program", "--disable-https", "--https-port=8443" });
 	BOOST_CHECK(!result.has_value());
+}
+
+//=============================================================================
+// PROCESS() ERROR PROPAGATION (regression: an error returned by a processor's
+// Process() must abort the pipeline instead of being silently swallowed).
+//=============================================================================
+
+namespace
+{
+	// Minimal OptionsProcessor whose Process() always reports an error. Used to
+	// prove the Process() fold short-circuits and surfaces the error.
+	struct FailingProcessor
+	{
+		struct SettingsType
+		{
+			static const std::string& AreaName()
+			{
+				static const std::string AREA_NAME{ "FailingArea" };
+				return AREA_NAME;
+			}
+		};
+
+		std::string Name() const { return SettingsType::AreaName(); }
+
+		boost::program_options::options_description Options() const
+		{
+			return boost::program_options::options_description{ SettingsType::AreaName() };
+		}
+
+		void Validate(const boost::program_options::variables_map&) const {}
+
+		std::expected<SettingsType, AqualinkAutomate::ErrorCodes::Options_ErrorCodes> Process(boost::program_options::variables_map&) const
+		{
+			return std::unexpected(AqualinkAutomate::ErrorCodes::OptionsHandlingFailed);
+		}
+	};
+}
+
+BOOST_AUTO_TEST_CASE(Test_Pipeline_ProcessError_PropagatesAndShortCircuits)
+{
+	const char* argv[] = { "program" };
+	int argc = 1;
+
+	auto result = Options::Initialise()
+		| Options::Add(FailingProcessor{})
+		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
+		| Options::Validate()
+		| Options::Process(FailingProcessor{})
+		| Options::Finalise();
+
+	BOOST_REQUIRE(!result.has_value());
+	BOOST_CHECK(result.error() == AqualinkAutomate::ErrorCodes::OptionsHandlingFailed);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
