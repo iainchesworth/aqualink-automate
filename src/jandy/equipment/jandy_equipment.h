@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include <boost/signals2.hpp>
@@ -9,6 +10,7 @@
 #include "interfaces/istatuspublisher.h"
 #include "devices/jandy_device.h"
 #include "devices/jandy_device_id.h"
+#include "devices/jandy_device_types.h"
 #include "generator/jandy_message_generator.h"
 #include "messages/jandy_message.h"
 #include "kernel/data_hub.h"
@@ -29,11 +31,31 @@ namespace AqualinkAutomate::Equipment
 	private:
 		void IdentifyAndAddDevice(const Messages::JandyMessage& message);
 
+		// Connect IdentifyAndAddDevice as a slot of every supplied message type's
+		// static signal in one fold expression, replacing the 38 byte-identical
+		// push_back(...->GetSignal()->connect(std::bind(...))) lines.  Each MSGS
+		// exposes a static GetSignal() (CRTP IMessageSignalRecv<MSGS>); the slot
+		// receives a 'const MSGS&' which binds to the 'const JandyMessage&'
+		// parameter via the public base.
+		template <typename... MSGS>
+		void ConnectIdentify()
+		{
+			(m_MessageConnections.push_back(
+				MSGS::GetSignal()->connect(
+					[this](const Messages::JandyMessage& message) { IdentifyAndAddDevice(message); })),
+				...);
+		}
+
 	private:
 		void DisplayUnknownMessages(const Messages::JandyMessage& message);
 
 	private:
 		std::vector<boost::signals2::connection> m_MessageConnections;
+
+		// Device classes already reported as unsupported, so the per-message
+		// dispatch emits a single Notify per distinct class instead of a Debug
+		// line on every message addressed to an unsupported class (rate limiting).
+		std::unordered_set<Devices::DeviceClasses> m_ReportedUnsupportedClasses;
 
 	private:
 		Kernel::HubLocator& m_HubLocator;
