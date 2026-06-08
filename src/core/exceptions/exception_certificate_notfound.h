@@ -1,19 +1,13 @@
 #pragma once
 
-#include <string>
+#include <source_location>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
 namespace AqualinkAutomate::Exceptions
 {
 
-	class Certificate_NotFound : public GenericAqualinkException
-	{
-		static const std::string CERTIFICATE_NOT_FOUND_MESSAGE;
-
-	public:
-		Certificate_NotFound();
-	};
+	AQ_DECLARE_EXCEPTION(Certificate_NotFound);
 
 }
 // namespace AqualinkAutomate::Exceptions

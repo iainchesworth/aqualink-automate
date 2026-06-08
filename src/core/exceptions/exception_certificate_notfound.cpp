@@ -1,18 +1,10 @@
 #include "exceptions/exception_certificate_notfound.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate::Logging;
-
 namespace AqualinkAutomate::Exceptions
 {
 
-	const std::string Certificate_NotFound::CERTIFICATE_NOT_FOUND_MESSAGE{ "CERTIFICATE_NOT_FOUND_MESSAGE" };
-
-	Certificate_NotFound::Certificate_NotFound() :
-		GenericAqualinkException(CERTIFICATE_NOT_FOUND_MESSAGE)
-	{
-		LogTrace(Channel::Exceptions, "Certificate_NotFound exception was constructed");
-	}
+	AQ_DEFINE_EXCEPTION(Certificate_NotFound, "The configured TLS certificate or key file could not be found.");
 
 }
 // namespace AqualinkAutomate::Exceptions

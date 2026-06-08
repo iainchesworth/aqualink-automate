@@ -1,18 +1,10 @@
 #include "exceptions/exception_signallingstatscounter_badaccess.h"
 #include "logging/logging.h"
 
-using namespace AqualinkAutomate::Logging;
-
 namespace AqualinkAutomate::Exceptions
 {
 
-	const std::string SignallingStatsCounter_BadAccess::BAD_ACCESS_MESSAGE{ "BAD_ACCESS_MESSAGE" };
-
-	SignallingStatsCounter_BadAccess::SignallingStatsCounter_BadAccess() :
-		GenericAqualinkException(BAD_ACCESS_MESSAGE)
-	{
-		LogTrace(Channel::Exceptions, "SignallingStatsCounter_BadAccess exception was constructed");
-	}
+	AQ_DEFINE_EXCEPTION(SignallingStatsCounter_BadAccess, "The requested statistics counter entry does not exist.");
 
 }
 // namespace AqualinkAutomate::Exceptions
