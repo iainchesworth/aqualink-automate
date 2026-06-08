@@ -68,6 +68,7 @@ namespace AqualinkAutomate::Messages
 		IAQ_AuxStatus = 0x72,
 		IAQ_Heartbeat = 0x53,
 		IAQ_CommandReady = 0x73,
+		IAQ_DeviceId = 0x51,
 
 		// Display protocol
 		DisplayUpdate = 0x05,

@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryRegistrationCount)
 {
     // Verify the factory has registered the expected number of message types
     BOOST_CHECK_GT(JandyMessageFactoryT::RegisteredCount(), 0);
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 41); // Based on registration file
+    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 42); // Based on registration file (+IAQMessage_DeviceId, 0x51)
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryHotPathCount)

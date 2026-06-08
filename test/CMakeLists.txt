@@ -112,6 +112,7 @@ target_sources(
 	unit/devices/test_pentair_chlorinator.cpp
 	unit/devices/test_pentair_controller.cpp
 	unit/messages/test_iaq_messages.cpp
+	unit/messages/test_iaq_message_device_id.cpp
 	unit/messages/test_iaq_message_main_status.cpp
 	unit/formatters/test_formatters_jandy_messages.cpp
 	unit/formatters/test_formatters_jandy_devices.cpp

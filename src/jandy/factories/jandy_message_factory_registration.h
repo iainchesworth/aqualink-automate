@@ -27,6 +27,7 @@
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
+#include "messages/iaq/iaq_message_device_id.h"
 #include "messages/iaq/iaq_message_heartbeat.h"
 #include "messages/iaq/iaq_message_main_status.h"
 #include "messages/iaq/iaq_message_message_long.h"
@@ -96,6 +97,7 @@ namespace AqualinkAutomate::Factory
 		// Register the IAQ message types
 		REGISTER_MESSAGE(Messages::IAQMessage_ControlReady, Messages::JandyMessageIds::IAQ_ControlReady),
 		REGISTER_MESSAGE(Messages::IAQMessage_Heartbeat, Messages::JandyMessageIds::IAQ_Heartbeat),
+		REGISTER_MESSAGE(Messages::IAQMessage_DeviceId, Messages::JandyMessageIds::IAQ_DeviceId),
 		REGISTER_MESSAGE(Messages::IAQMessage_MessageLong, Messages::JandyMessageIds::IAQ_MessageLong),
 		REGISTER_MESSAGE(Messages::IAQMessage_PageButton, Messages::JandyMessageIds::IAQ_PageButton),
 		REGISTER_MESSAGE(Messages::IAQMessage_PageContinue, Messages::JandyMessageIds::IAQ_PageContinue),
