@@ -10,7 +10,10 @@ namespace AqualinkAutomate::Generators
 {
 
 	void BufferCleanUp_ClearBytesFromBeginToPos(boost::circular_buffer<uint8_t>& serial_data, const boost::circular_buffer<uint8_t>::iterator& position);
-	void BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations);
+
+	// Returns true if the buffer was mutated (bytes erased), false otherwise. Callers can use this
+	// to skip the otherwise-mandatory full re-scan of the buffer when no iterators were invalidated.
+	bool BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations);
 
 }
 // namespace AqualinkAutomate::Generators

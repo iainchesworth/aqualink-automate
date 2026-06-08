@@ -45,10 +45,14 @@ namespace AqualinkAutomate::Generators
 		}
 
 		// Check if end-of-packet is within max distance; may erase data and invalidate iterators.
-		BufferCleanUp_HasEndOfPacketWithinMaxDistance(serial_data, locations);
+		const bool buffer_was_mutated = BufferCleanUp_HasEndOfPacketWithinMaxDistance(serial_data, locations);
 
-		// Re-scan after potential cleanup invalidation.
-		locations = PacketProcessing_FindAllPacketLocations(serial_data);
+		if (buffer_was_mutated)
+		{
+			// Cleanup erased bytes and invalidated the cached iterators; a fresh scan is required.
+			locations = PacketProcessing_FindAllPacketLocations(serial_data);
+		}
+
 		PacketProcessing_OutputSerialDataToConsole(serial_data, locations);
 
 		if (!locations.HasPacketStart)
@@ -67,7 +71,7 @@ namespace AqualinkAutomate::Generators
 
 			// There's an DLE,STX prior to this packets ETX,DLE...this is an error state.
 
-			LogTrace(Channel::Messages, std::format("Searching for overlapping packets: packet one end: {}, packet two start: {}", packet_one_end_index, packet_two_start_index));
+			LogTrace(Channel::Messages, [&] { return std::format("Searching for overlapping packets: packet one end: {}, packet two start: {}", packet_one_end_index, packet_two_start_index); });
 			LogTrace(Channel::Messages, "Found the start of a second packet before the current packet terminator bytes.");
 
 			// Clear all stored serial bytes up to the start of the new packet.

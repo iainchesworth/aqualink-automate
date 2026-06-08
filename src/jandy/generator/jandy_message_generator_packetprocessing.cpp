@@ -1,4 +1,9 @@
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <format>
+#include <iterator>
+#include <string>
 
 #include "generator/jandy_message_generator_packetprocessing.h"
 #include "generator/jandy_message_generator_startendsequence.h"
@@ -32,13 +37,18 @@ namespace AqualinkAutomate::Generators
 
 		loc.HasPacketStart = true;
 
-		// Search for end sequence and second start sequence from p1_start + 1
+		// Search for end sequence from p1_start + 1.
 		auto search_from = loc.p1_start + 1;
 		loc.p1_end = std::search(search_from, serial_data.end(), PACKET_END_SEQUENCE.begin(), PACKET_END_SEQUENCE.end());
-		loc.p2_start = std::search(search_from, serial_data.end(), PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end());
-
 		loc.HasPacketEnd = (serial_data.end() != loc.p1_end);
-		loc.HasSecondPacketStart = (serial_data.end() != loc.p2_start);
+
+		// Only an overlapping second packet-start that occurs *before* this packet's end matters to the
+		// caller (a start after the end belongs to the next, well-formed packet and is found on the next
+		// pass). Restrict the second-start search to [p1_start+1, p1_end): when an end was located this
+		// avoids scanning the remainder of the buffer; when it was not, p1_end == serial_data.end() and the
+		// search still spans the whole remaining buffer, preserving the original behaviour.
+		loc.p2_start = std::search(search_from, loc.p1_end, PACKET_START_SEQUENCE.begin(), PACKET_START_SEQUENCE.end());
+		loc.HasSecondPacketStart = (loc.p1_end != loc.p2_start);
 
 		return loc;
 	}
@@ -46,6 +56,16 @@ namespace AqualinkAutomate::Generators
 	void PacketProcessing_OutputSerialDataToConsole(const boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations)
 	{
 		auto zone1 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> output_to_console", std::source_location::current());
+
+		// This produces a hex dump of the entire serial buffer purely for diagnostics. Bail out before doing
+		// any work when the Messages channel is not emitting Trace records (the common production case);
+		// otherwise this runs on every single message parsed off the wire.
+		if (!Logging::SeverityFiltering::ShouldLog(Logging::Channel::Messages, Logging::Severity::Trace))
+		{
+			return;
+		}
+
+		static constexpr std::array<char, 16> HEX_DIGITS = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
 		thread_local std::string output_message = []()
 			{
@@ -77,20 +97,22 @@ namespace AqualinkAutomate::Generators
 					output_message.append("|| =>");
 				}
 
-				output_message.append(std::format("{:02x}", elem));
+				// Hex-format the byte via a nibble lookup; std::format("{:02x}", ...) per byte is far heavier.
+				output_message.push_back(HEX_DIGITS[(elem >> 4) & 0x0F]);
+				output_message.push_back(HEX_DIGITS[elem & 0x0F]);
 
 				if ((locations.HasPacketEnd) && (packet_one_end_pos == elem_position))
 				{
 					output_message.append("<-");
 				}
 
-				output_message.append(" ");
+				output_message.push_back(' ');
 				elem_position++;
 			}
 
 			{
 				auto zone3 = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::PacketProcessing -> output_to_console -> logging", std::source_location::current());
-				LogTrace(Channel::Messages, std::format("Serial Data: {}", output_message));
+				LogTrace(Channel::Messages, [&] { return std::format("Serial Data: {}", output_message); });
 			}
 		}
 	}
