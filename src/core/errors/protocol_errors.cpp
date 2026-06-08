@@ -2,40 +2,36 @@
 
 namespace AqualinkAutomate::ErrorCodes
 {
-	const Protocol_ErrorCategory& Protocol_ErrorCategory::Instance() {
+	const Protocol_ErrorCategory& Protocol_ErrorCategory::Instance()
+	{
 		static Protocol_ErrorCategory category;
 		return category;
 	}
 
-	const char* Protocol_ErrorCategory::name() const noexcept
+	std::string_view Protocol_ErrorCategory::Describe(Protocol_ErrorCodes e)
 	{
-		return "AqualinkAutomate::Protocol Error Category";
-	}
-
-	std::string Protocol_ErrorCategory::message(int ev) const
-	{
-		switch (ev)
+		switch (e)
 		{
 		case Protocol_ErrorCodes::DataAvailableToProcess:
-			return "Protocol_ErrorCodes::DataAvailableToProcess";
+			return "A complete frame is available in the buffer and ready to process";
 
 		case Protocol_ErrorCodes::WaitingForMoreData:
-			return "Protocol_ErrorCodes::WaitingForMoreData";
+			return "Not enough data has been received yet to decode a frame";
 
 		case Protocol_ErrorCodes::InvalidPacketFormat:
-			return "Protocol_ErrorCodes::InvalidPacketFormat";
+			return "The packet structure does not match the expected protocol format";
 
 		case Protocol_ErrorCodes::UnknownFailure:
-			return "Protocol_ErrorCodes::UnknownFailure";
+			return "An unspecified protocol processing failure occurred";
 
 		case Protocol_ErrorCodes::ChecksumFailure:
-			return "Protocol_ErrorCodes::ChecksumFailure";
+			return "The packet checksum did not match the computed value";
 
 		case Protocol_ErrorCodes::OverlappingPackets:
-			return "Protocol_ErrorCodes::OverlappingPackets";
+			return "Overlapping packet boundaries were detected in the buffer";
 
 		default:
-			return "Protocol_ErrorCodes - Unknown Error Code";
+			return "Unknown protocol error";
 		}
 	}
 
@@ -44,11 +40,10 @@ namespace AqualinkAutomate::ErrorCodes
 
 boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes e)
 {
-	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::MakeErrorCode(e);
 }
 
-boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes e)
+boost::system::error_condition make_error_condition(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes e)
 {
-	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::Protocol_ErrorCategory::MakeErrorCondition(e);
 }
-

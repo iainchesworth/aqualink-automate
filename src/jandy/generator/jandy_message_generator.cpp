@@ -3,7 +3,7 @@
 #include <iterator>
 #include <ranges>
 
-#include "errors/jandy_errors_protocol.h"
+#include "errors/protocol_errors.h"
 #include "factories/jandy_message_factory.h"
 #include "factories/jandy_message_factory_registration.h"
 #include "generator/jandy_message_generator.h"

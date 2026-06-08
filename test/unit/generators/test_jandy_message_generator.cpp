@@ -5,8 +5,8 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/errors/jandy_errors_messages.h"
-#include "jandy/errors/jandy_errors_protocol.h"
+#include "errors/message_errors.h"
+#include "errors/protocol_errors.h"
 #include "jandy/formatters/jandy_message_formatters.h"
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/generator/jandy_message_generator_packetvalidation.h"

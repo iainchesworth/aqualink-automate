@@ -12,8 +12,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "concepts/jandy_message_type.h"
-#include "errors/jandy_errors_messages.h"
-#include "errors/jandy_errors_protocol.h"
+#include "errors/message_errors.h"
+#include "errors/protocol_errors.h"
 #include "formatters/jandy_device_formatters.h"
 #include "formatters/jandy_message_formatters.h"
 #include "messages/jandy_message_ids.h"

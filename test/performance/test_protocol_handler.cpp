@@ -517,9 +517,9 @@ namespace
 			else
 			{
 				auto ev = result.error().value();
-				if (ev == ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess
-					|| ev == ErrorCodes::Protocol_ErrorCodes::ChecksumFailure
-					|| ev == ErrorCodes::Protocol_ErrorCodes::OverlappingPackets)
+				if (ev == static_cast<int>(ErrorCodes::Protocol_ErrorCodes::DataAvailableToProcess)
+					|| ev == static_cast<int>(ErrorCodes::Protocol_ErrorCodes::ChecksumFailure)
+					|| ev == static_cast<int>(ErrorCodes::Protocol_ErrorCodes::OverlappingPackets))
 				{
 					continue;
 				}
