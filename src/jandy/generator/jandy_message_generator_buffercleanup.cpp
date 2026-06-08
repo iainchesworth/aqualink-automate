@@ -19,13 +19,15 @@ namespace AqualinkAutomate::Generators
 		// Erase all bytes to the end of this packet.
 		auto packet_one_end_index = std::distance(serial_data.begin(), position);
 		LogTrace(Channel::Messages, "Packet processing complete; removing packet data from serial buffer.");
-		LogTrace(Channel::Messages, std::format("Clearing {} elements from the serial data.", packet_one_end_index));
+		LogTrace(Channel::Messages, [&] { return std::format("Clearing {} elements from the serial data.", packet_one_end_index); });
 		serial_data.erase(serial_data.begin(), serial_data.begin() + packet_one_end_index);
 	}
 
-	void BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations)
+	bool BufferCleanUp_HasEndOfPacketWithinMaxDistance(boost::circular_buffer<uint8_t>& serial_data, const PacketLocations& locations)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JandyMessageGenerator::BufferCleanUp -> has_end_of_packet", std::source_location::current());
+
+		bool buffer_was_mutated = false;
 
 		if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH >= serial_data.size() || !locations.HasPacketStart)
 		{
@@ -41,17 +43,24 @@ namespace AqualinkAutomate::Generators
 			}
 			else if (Messages::JandyMessage::MAXIMUM_PACKET_LENGTH < (distance_between_start_and_end + PACKET_END_SEQUENCE.size()))
 			{
-				LogDebug(Channel::Messages, std::format("Packet end sequence not present within {} bytes of start sequence; ignoring this particular packet", Messages::JandyMessage::MAXIMUM_PACKET_LENGTH));
+				LogDebug(Channel::Messages, [] { return std::format("Packet end sequence not present within {} bytes of start sequence; ignoring this particular packet", Messages::JandyMessage::MAXIMUM_PACKET_LENGTH); });
 
-				// The distance between the start and the end is larger than the maximum packet size...erase everything up to the end iterator (plus end bytes).
+				// The distance between the start and the end is larger than the maximum packet size...erase
+				// everything up to the end iterator. Only advance past the end-of-packet sequence bytes when an
+				// actual packet-end was located; otherwise p1_end == serial_data.end() and advancing would push
+				// the erase endpoint past end() (out-of-bounds).
 				auto serial_data_begin = serial_data.begin();
-				serial_data.erase(serial_data_begin, locations.p1_end + PACKET_END_SEQUENCE.size());
+				auto erase_end = locations.HasPacketEnd ? (locations.p1_end + PACKET_END_SEQUENCE.size()) : locations.p1_end;
+				serial_data.erase(serial_data_begin, erase_end);
+				buffer_was_mutated = true;
 			}
 			else
 			{
 				// Buffer seems okay...continue and process it.
 			}
 		}
+
+		return buffer_was_mutated;
 	}
 
 }
