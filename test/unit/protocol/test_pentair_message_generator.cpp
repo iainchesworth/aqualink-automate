@@ -66,11 +66,11 @@ BOOST_AUTO_TEST_CASE(Replay_ValidFrame_DecodesHeaderAndPayload)
 	Test::MockReplayHarness harness;
 
 	// Capture the decoded message off the static signal.
-	std::shared_ptr<const Messages::PentairMessage_Unknown> captured;
-	auto connection = Messages::PentairMessage_Unknown::GetSignal()->connect(
-		[&captured](const Messages::PentairMessage_Unknown& msg)
+	std::shared_ptr<const Pentair::Messages::PentairMessage_Unknown> captured;
+	auto connection = Pentair::Messages::PentairMessage_Unknown::GetSignal()->connect(
+		[&captured](const Pentair::Messages::PentairMessage_Unknown& msg)
 		{
-			captured = std::make_shared<Messages::PentairMessage_Unknown>(msg);
+			captured = std::make_shared<Pentair::Messages::PentairMessage_Unknown>(msg);
 		});
 
 	const std::vector<uint8_t> payload = { 0xAA, 0xBB, 0xCC };
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(Generator_IncompleteFrame_DefersWithoutConsuming)
 
 	// Deliver only the preamble + header (no DATA / checksum yet).
 	boost::circular_buffer<uint8_t> buffer(256);
-	for (std::size_t i = 0; i < 3 + Messages::HEADER_LENGTH; ++i) { buffer.push_back(frame[i]); }
+	for (std::size_t i = 0; i < 3 + Pentair::Messages::HEADER_LENGTH; ++i) { buffer.push_back(frame[i]); }
 
 	const std::size_t size_before = buffer.size();
 	auto result = Generators::GenerateMessageFromRawData(buffer);
@@ -242,8 +242,8 @@ BOOST_AUTO_TEST_CASE(Replay_TwoFrames_BothDecode)
 	Test::MockReplayHarness harness;
 
 	int decode_count = 0;
-	auto connection = Messages::PentairMessage_Unknown::GetSignal()->connect(
-		[&decode_count](const Messages::PentairMessage_Unknown&) { ++decode_count; });
+	auto connection = Pentair::Messages::PentairMessage_Unknown::GetSignal()->connect(
+		[&decode_count](const Pentair::Messages::PentairMessage_Unknown&) { ++decode_count; });
 
 	auto frame1 = Test::PentairMessageBuilder::CreateValidChecksummedFrame(CONTROLLER, PUMP_60, CMD_UNRECOGNISED, { 0x01 });
 	auto frame2 = Test::PentairMessageBuilder::CreateValidChecksummedFrame(PUMP_60, CONTROLLER, CMD_UNRECOGNISED, { 0x02, 0x03 });
@@ -272,12 +272,12 @@ BOOST_AUTO_TEST_CASE(Replay_LargeFrameSplitAcrossTwoReads_Decodes)
 {
 	Test::MockReplayHarness harness;
 
-	std::shared_ptr<const Messages::PentairMessage_Unknown> captured;
+	std::shared_ptr<const Pentair::Messages::PentairMessage_Unknown> captured;
 	int decode_count = 0;
-	auto connection = Messages::PentairMessage_Unknown::GetSignal()->connect(
-		[&captured, &decode_count](const Messages::PentairMessage_Unknown& msg)
+	auto connection = Pentair::Messages::PentairMessage_Unknown::GetSignal()->connect(
+		[&captured, &decode_count](const Pentair::Messages::PentairMessage_Unknown& msg)
 		{
-			captured = std::make_shared<Messages::PentairMessage_Unknown>(msg);
+			captured = std::make_shared<Pentair::Messages::PentairMessage_Unknown>(msg);
 			++decode_count;
 		});
 
@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(Replay_ValidJandyThenCorruptPentair_JandyStillDecodes)
 	// An AquaRite device so the leading Jandy frame decodes into observable state.
 	constexpr uint8_t SWG_DEVICE_ID = 0x50;
 	constexpr uint8_t MASTER_DEVICE_ID = 0x00;
-	const uint8_t CMD_AQUARITE_PPM = static_cast<uint8_t>(Messages::JandyMessageIds::AQUARITE_PPM);
+	const uint8_t CMD_AQUARITE_PPM = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::AQUARITE_PPM);
 	constexpr uint8_t AQUARITE_STATUS_ON = 0x00;
 
 	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(SWG_DEVICE_ID));
