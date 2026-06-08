@@ -26,6 +26,24 @@ namespace
 	};
 
 	class TestHubC : public IHub {};
+
+	// A derived hub used to verify exact-static-type keying: registering it under
+	// its own type must not satisfy a Find<> for its base interface and vice versa.
+	class DerivedHub : public TestHubA
+	{
+	public:
+		int extra{ 7 };
+	};
+
+	// A standalone polymorphic service interface that does NOT derive from IHub,
+	// mirroring ICommandDispatcher / IRecordingController which are registered in
+	// the same locator alongside the IHub state hubs.
+	class TestService
+	{
+	public:
+		virtual ~TestService() = default;
+		int token{ 99 };
+	};
 }
 
 BOOST_AUTO_TEST_SUITE(HubLocator_TestSuite)
@@ -169,6 +187,87 @@ BOOST_AUTO_TEST_CASE(TestChaining_UnregisterReturnsSelf)
 	locator.Unregister<TestHubA>().Unregister<TestHubB>();
 	BOOST_CHECK(locator.TryFind<TestHubA>() == nullptr);
 	BOOST_CHECK(locator.TryFind<TestHubB>() == nullptr);
+}
+
+// =============================================================================
+// Exact-static-type keying (resolution is by typeid(T), not by base interface)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestRegister_ResolutionIsByExactStaticType)
+{
+	HubLocator locator;
+	auto derived = std::make_shared<DerivedHub>();
+	locator.Register(derived);
+
+	// Registered as DerivedHub -> found as DerivedHub.
+	auto found_derived = locator.TryFind<DerivedHub>();
+	BOOST_CHECK(found_derived != nullptr);
+	BOOST_CHECK_EQUAL(found_derived->extra, 7);
+
+	// NOT resolvable via the base interfaces it derives from.
+	BOOST_CHECK(locator.TryFind<TestHubA>() == nullptr);
+	BOOST_CHECK(locator.TryFind<IHub>() == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(TestRegister_BaseAndDerivedAreDistinctKeys)
+{
+	HubLocator locator;
+	auto base = std::make_shared<TestHubA>();
+	base->name = "Base";
+	auto derived = std::make_shared<DerivedHub>();
+	derived->name = "Derived";
+
+	locator.Register(base);
+	locator.Register(derived);
+
+	// Both keys coexist independently.
+	BOOST_CHECK_EQUAL(locator.Find<TestHubA>()->name, "Base");
+	BOOST_CHECK_EQUAL(locator.Find<DerivedHub>()->name, "Derived");
+}
+
+// =============================================================================
+// Re-register overwrites the existing handle for the same type (no leak/dup)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestRegister_SameType_OverwritesWithoutUnregister)
+{
+	HubLocator locator;
+	auto first = std::make_shared<TestHubA>();
+	first->name = "First";
+	locator.Register(first);
+
+	auto second = std::make_shared<TestHubA>();
+	second->name = "Second";
+	locator.Register(second);
+
+	BOOST_CHECK_EQUAL(locator.Find<TestHubA>()->name, "Second");
+}
+
+// =============================================================================
+// Standalone (non-IHub) service interfaces register/resolve like hubs
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestRegister_NonHubServiceInterface_ResolvesAndIsDistinct)
+{
+	HubLocator locator;
+	auto service = std::make_shared<TestService>();
+	auto hub = std::make_shared<TestHubA>();
+
+	locator.Register(service).Register(hub);
+
+	auto found_service = locator.TryFind<TestService>();
+	BOOST_REQUIRE(found_service != nullptr);
+	BOOST_CHECK_EQUAL(found_service->token, 99);
+
+	// The service handle round-trips through the shared_ptr<void> erasure intact.
+	BOOST_CHECK(found_service.get() == service.get());
+
+	// Distinct key from the IHub-derived hub.
+	BOOST_CHECK(locator.TryFind<TestHubA>() != nullptr);
+
+	locator.Unregister<TestService>();
+	BOOST_CHECK(locator.TryFind<TestService>() == nullptr);
+	BOOST_CHECK(locator.TryFind<TestHubA>() != nullptr);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
