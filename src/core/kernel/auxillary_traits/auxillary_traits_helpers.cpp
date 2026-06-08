@@ -1,3 +1,5 @@
+#include <optional>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
@@ -6,42 +8,69 @@
 namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 {
 
+	namespace
+	{
+
+		// Maps a device's AuxillaryTypeTrait to the category-specific status trait and resolves it
+		// to a human-readable string. Returns std::nullopt when no status is available for the type.
+		std::optional<std::string_view> ResolveStatusString(const AuxillaryDevice& device, AuxillaryTypes type)
+		{
+			switch (type)
+			{
+			case AuxillaryTypes::Auxillary:
+			case AuxillaryTypes::Cleaner:
+			case AuxillaryTypes::Spillover:
+			case AuxillaryTypes::Sprinkler:
+				if (auto status = device.AuxillaryTraits.TryGet(AuxillaryStatusTrait{}); status.has_value())
+				{
+					return magic_enum::enum_name(status.value());
+				}
+				break;
+
+			case AuxillaryTypes::Chlorinator:
+				if (auto status = device.AuxillaryTraits.TryGet(ChlorinatorStatusTrait{}); status.has_value())
+				{
+					return magic_enum::enum_name(status.value());
+				}
+				break;
+
+			case AuxillaryTypes::Heater:
+				if (auto status = device.AuxillaryTraits.TryGet(HeaterStatusTrait{}); status.has_value())
+				{
+					return magic_enum::enum_name(status.value());
+				}
+				break;
+
+			case AuxillaryTypes::Pump:
+				if (auto status = device.AuxillaryTraits.TryGet(PumpStatusTrait{}); status.has_value())
+				{
+					return magic_enum::enum_name(status.value());
+				}
+				break;
+
+			case AuxillaryTypes::Light:
+			case AuxillaryTypes::Unknown:
+			default:
+				// No status mapping for this device type.
+				break;
+			}
+
+			return std::nullopt;
+		}
+
+	}
+	// anonymous namespace
+
 	std::string_view ConvertStatusToString(const AuxillaryDevice& device)
 	{
 		static const std::string UNKNOWN_STATUS{"Unknown"};
 
-		if (!device.AuxillaryTraits.Has(AuxillaryTypeTrait{}) || !device.AuxillaryTraits.Has(StatusTrait{}))
+		// Single trait lookup for the device type; ResolveStatusString does the second (category) lookup.
+		if (auto type = device.AuxillaryTraits.TryGet(AuxillaryTypeTrait{}); type.has_value())
 		{
-			// Cannot determine what type of device this is or what the status is...
-		}
-		else
-		{
-			switch (*(device.AuxillaryTraits[AuxillaryTypeTrait{}]))
+			if (auto status = ResolveStatusString(device, type.value()); status.has_value())
 			{
-			case AuxillaryTypes::Auxillary:
-				return magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryStatusTrait{}]));
-
-			case AuxillaryTypes::Chlorinator:
-				return magic_enum::enum_name(*(device.AuxillaryTraits[ChlorinatorStatusTrait{}]));
-
-			case AuxillaryTypes::Heater:
-				return magic_enum::enum_name(*(device.AuxillaryTraits[HeaterStatusTrait{}]));
-
-			case AuxillaryTypes::Pump:
-				return magic_enum::enum_name(*(device.AuxillaryTraits[PumpStatusTrait{}]));
-
-			case AuxillaryTypes::Cleaner:
-				[[fallthrough]];
-			case AuxillaryTypes::Spillover:
-				[[fallthrough]];
-			case AuxillaryTypes::Sprinkler:
-				return magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryStatusTrait{}]));
-
-			case AuxillaryTypes::Unknown:
-				[[fallthrough]];
-			default:
-				// Unknown device type...
-				break;
+				return status.value();
 			}
 		}
 
@@ -58,5 +87,22 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 
 		return ConvertStatusToString(*device);
 	}
+
+	bool HasStatus(const AuxillaryDevice& device)
+	{
+		// A device has a displayable status when its type maps to a populated category status trait.
+		if (auto type = device.AuxillaryTraits.TryGet(AuxillaryTypeTrait{}); type.has_value())
+		{
+			return ResolveStatusString(device, type.value()).has_value();
+		}
+
+		return false;
+	}
+
+	bool HasStatus(const std::shared_ptr<AuxillaryDevice>& device)
+	{
+		return (nullptr != device) && HasStatus(*device);
+	}
+
 }
 // namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes

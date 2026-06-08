@@ -1,22 +1,14 @@
 #pragma once
 
-#include <concepts>
 #include <optional>
-#include <string>
 
+#include "kernel/auxillary_traits/auxillary_traits_base.h"
 #include "kernel/device_graph/device_graph_types.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	/// Concept constraining types usable as trait filters on the device graph.
-	template<typename T>
-	concept IsTraitType = requires(T t) {
-		typename T::TraitValue;
-		typename T::TraitKey;
-		{ t.Name() } -> std::convertible_to<std::string>;
-		{ t.IsMutable() } -> std::same_as<bool>;
-	};
+	// IsTraitType is declared in auxillary_traits_base.h (shared with the Traits store).
 
 	template<IsTraitType TRAIT_TYPE>
 	class DeviceTraitFilter
@@ -40,25 +32,24 @@ namespace AqualinkAutomate::Kernel
 		bool operator()(const DevicesGraphType::edge_descriptor) const { return false; }
 		bool operator()(const DevicesGraphType::vertex_descriptor vd) const
 		{
-			if (auto device = m_Graph[vd]; nullptr == device)
+			auto device = m_Graph[vd];
+			if (nullptr == device)
 			{
 				// Invalid device pointer
-			}
-			else if (!device->AuxillaryTraits.Has(m_TraitType))
-			{
-				// Trait does not exist
-			}
-			else if (m_OptTraitValue.has_value() && (m_OptTraitValue.value() != *(device->AuxillaryTraits[m_TraitType])))
-			{
-				// Trait value didn't match
-			}
-			else
-			{
-				// Didn't need to validate trait value OR trait value matched.
-				return true;
+				return false;
 			}
 
-			return false;
+			// Single trait lookup (TryGet) instead of Has() + operator[] (which previously
+			// resolved the trait key twice and built the proxy on the second pass).
+			auto trait_value = device->AuxillaryTraits.TryGet(m_TraitType);
+			if (!trait_value.has_value())
+			{
+				// Trait does not exist (or held an incompatible value)
+				return false;
+			}
+
+			// Didn't need to validate trait value OR trait value matched.
+			return !m_OptTraitValue.has_value() || (m_OptTraitValue.value() == trait_value.value());
 		}
 
 	private:

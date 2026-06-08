@@ -5,10 +5,12 @@
 #include <vector>
 
 #include "exceptions/exception_traits_doesnotexist.h"
+#include "exceptions/exception_traits_invalidtraitvalue.h"
 #include "exceptions/exception_traits_notmutable.h"
 #include "kernel/auxillary_traits/auxillary_traits.h"
 #include "kernel/auxillary_traits/auxillary_traits_base.h"
 #include "kernel/auxillary_traits/auxillary_traits_proxy.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 
 BOOST_AUTO_TEST_SUITE(AuxillaryTraitsTestSuite)
 
@@ -190,6 +192,84 @@ BOOST_AUTO_TEST_CASE(Test_Traits_Get_Exceptions)
     BOOST_CHECK_THROW(const auto& ABC = *(traits.Get(TestTypesTrait_Complex{})), Traits_DoesNotExist);
     BOOST_CHECK_THROW((*(traits.Get(TestTypesTrait_Complex{}))).reserve(1), Traits_DoesNotExist);
     BOOST_CHECK_THROW(traits.Get(TestTypesTrait_Complex{})->reserve(1), Traits_DoesNotExist);
+}
+
+// Regression: the five status trait types (StatusTrait/AuxillaryStatusTrait/ChlorinatorStatusTrait/
+// HeaterStatusTrait/PumpStatusTrait) previously shared a single map key
+// ("StatusTrait_MultipleTraitTypes"). Storing two of them on the same Traits map therefore
+// overwrote each other and could provoke a bad_any_cast across incompatible value types. With
+// distinct Name()s they must coexist independently.
+BOOST_AUTO_TEST_CASE(Test_StatusTraits_DistinctKeys_NoCollision)
+{
+    using namespace AqualinkAutomate::Kernel;
+    using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+    // Distinct Name() per status trait.
+    BOOST_CHECK_NE(PumpStatusTrait{}.Name(), AuxillaryStatusTrait{}.Name());
+    BOOST_CHECK_NE(PumpStatusTrait{}.Name(), ChlorinatorStatusTrait{}.Name());
+    BOOST_CHECK_NE(PumpStatusTrait{}.Name(), HeaterStatusTrait{}.Name());
+    BOOST_CHECK_NE(AuxillaryStatusTrait{}.Name(), HeaterStatusTrait{}.Name());
+    BOOST_CHECK_NE(ChlorinatorStatusTrait{}.Name(), HeaterStatusTrait{}.Name());
+
+    Traits traits;
+
+    // Set two different status traits with different value types on the SAME map.
+    traits.Set(PumpStatusTrait{}, PumpStatuses::Running);
+    traits.Set(HeaterStatusTrait{}, HeaterStatuses::Heating);
+
+    // Both must remain independently retrievable - no overwrite, no cross-type any_cast failure.
+    auto pump_status = traits.TryGet(PumpStatusTrait{});
+    auto heater_status = traits.TryGet(HeaterStatusTrait{});
+
+    BOOST_REQUIRE(pump_status.has_value());
+    BOOST_REQUIRE(heater_status.has_value());
+    BOOST_CHECK(pump_status.value() == PumpStatuses::Running);
+    BOOST_CHECK(heater_status.value() == HeaterStatuses::Heating);
+}
+
+// The proxy still surfaces a genuine value-type mismatch (bad_any_cast -> Traits_InvalidTraitValue);
+// only the unreachable out_of_range catch was removed. We provoke a mismatch by injecting a value
+// of the wrong type under a trait's key via a second trait that reuses the same Name().
+BOOST_AUTO_TEST_CASE(Test_Traits_InvalidValueType_Throws)
+{
+    using namespace AqualinkAutomate::Exceptions;
+    using namespace AqualinkAutomate::Kernel;
+
+    class TraitA : public MutableTraitType<uint32_t>
+    {
+    public:
+        TraitKey Name() const final { return std::string{"SharedKeyForMismatchTest"}; }
+    };
+
+    class TraitB : public MutableTraitType<std::string>
+    {
+    public:
+        TraitKey Name() const final { return std::string{"SharedKeyForMismatchTest"}; }
+    };
+
+    Traits traits;
+    traits.Set(TraitA{}, 1234U);
+
+    // The trait key exists, so Get() succeeds and returns a proxy; the any_cast to the wrong
+    // value type then throws Traits_InvalidTraitValue (the surviving bad_any_cast path).
+    BOOST_CHECK_THROW((void)static_cast<std::string>(traits.Get(TraitB{})), Traits_InvalidTraitValue);
+
+    // TryGet swallows the mismatch and reports "no value" rather than throwing.
+    BOOST_CHECK(!traits.TryGet(TraitB{}).has_value());
+}
+
+// The Traits store methods are constrained on IsTraitType: the real trait descriptors model it.
+BOOST_AUTO_TEST_CASE(Test_IsTraitType_Concept)
+{
+    using namespace AqualinkAutomate::Kernel;
+    using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+    static_assert(IsTraitType<PumpStatusTrait>);
+    static_assert(IsTraitType<HeaterStatusTrait>);
+    static_assert(IsTraitType<AuxillaryTypeTrait>);
+    static_assert(IsTraitType<LabelTrait>);
+    static_assert(!IsTraitType<int>);
+    BOOST_CHECK(true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

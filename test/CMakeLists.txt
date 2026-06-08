@@ -34,7 +34,8 @@ target_sources(
 	unit/http/test_http_setpoints.cpp
 	unit/http/test_routing_matches.cpp
 	unit/http/test_ws_equipment.cpp 
-	unit/kernel/test_auxillary_traits.cpp 
+	unit/kernel/test_auxillary_traits.cpp
+	unit/kernel/test_auxillary_traits_status.cpp
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
