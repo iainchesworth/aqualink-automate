@@ -22,8 +22,7 @@ namespace AqualinkAutomate::Pentair::Messages
 		m_From(0),
 		m_Destination(0),
 		m_RawCommand(0),
-		m_DataLength(0),
-		m_ChecksumValue(0)
+		m_DataLength(0)
 	{
 	}
 
@@ -45,11 +44,6 @@ namespace AqualinkAutomate::Pentair::Messages
 	uint8_t PentairMessage::DataLength() const
 	{
 		return m_DataLength;
-	}
-
-	uint16_t PentairMessage::ChecksumValue() const
-	{
-		return m_ChecksumValue;
 	}
 
 	uint8_t PentairMessage::MaxPermittedPacketLength() const
@@ -104,10 +98,9 @@ namespace AqualinkAutomate::Pentair::Messages
 			message_bytes.size() - checksum_region_start);
 
 		const uint16_t checksum = Pentair::Utility::PentairPacket_CalculateChecksum_FromRange(checksum_region);
-		message_bytes.emplace_back(static_cast<uint8_t>((checksum >> 8) & 0xFF));
-		message_bytes.emplace_back(static_cast<uint8_t>(checksum & 0xFF));
+		Pentair::Utility::AppendBigEndianChecksum(message_bytes, checksum);
 
-		LogTrace(Channel::Messages, std::format("{} Pentair Message (Raw): {} bytes", magic_enum::enum_name(IMessage::Id()), message_bytes.size()));
+		LogTrace(Channel::Messages, [&] { return std::format("{} Pentair Message (Raw): {} bytes", magic_enum::enum_name(IMessage::Id()), message_bytes.size()); });
 
 		return true;
 	}
@@ -131,16 +124,28 @@ namespace AqualinkAutomate::Pentair::Messages
 			}
 		);
 
-		return DeserializeFromContiguousData(std::span<const uint8_t>(byte_buffer.data(), message_bytes.size()));
+		// The ISerializable byte-span path is NOT pre-validated by the generator, so
+		// it must verify the checksum itself.
+		return DeserializeFromContiguousData(std::span<const uint8_t>(byte_buffer.data(), message_bytes.size()), /* verify_checksum */ true);
 	}
 
-	bool PentairMessage::DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data)
+	bool PentairMessage::DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data, bool verify_checksum)
 	{
+		// CHECKSUM OWNERSHIP: on the hot (generator) path the frame has already been
+		// checksum-validated before this is reached, so the caller passes
+		// verify_checksum=false to avoid recomputing the 16-bit sum a second time
+		// per message.  The untrusted ISerializable byte-span path passes true.
+		//
+		// SIZE INVARIANT: FrameSizeIsValid guarantees the span is exactly
+		// HEADER_LENGTH + advertised LEN + CHECKSUM_LENGTH bytes, so the LEN-many
+		// DATA bytes a concrete DeserializeContents reads are always present.  This
+		// is the precondition every PentairMessage subclass relies on; it is
+		// established HERE (not by the caller) so DeserializeContents is bounds-safe.
 		if (!FrameSizeIsValid(contiguous_data))
 		{
 			LogDebug(Channel::Messages, "Cannot deserialise PentairMessage; frame size is not valid");
 		}
-		else if (!FrameChecksumIsValid(contiguous_data))
+		else if (verify_checksum && !FrameChecksumIsValid(contiguous_data))
 		{
 			LogDebug(Channel::Messages, "Cannot deserialise PentairMessage; frame checksum is not valid");
 		}
@@ -150,11 +155,6 @@ namespace AqualinkAutomate::Pentair::Messages
 			m_Destination = contiguous_data[Offset_Dest];
 			m_RawCommand = contiguous_data[Offset_Command];
 			m_DataLength = contiguous_data[Offset_Length];
-
-			const std::size_t checksum_hi_index = contiguous_data.size() - CHECKSUM_LENGTH;
-			m_ChecksumValue = static_cast<uint16_t>(
-				(static_cast<uint16_t>(contiguous_data[checksum_hi_index]) << 8) |
-				static_cast<uint16_t>(contiguous_data[checksum_hi_index + 1]));
 
 			return DeserializeContents(contiguous_data);
 		}
@@ -178,7 +178,7 @@ namespace AqualinkAutomate::Pentair::Messages
 			is_valid &= (expected_size == message_bytes.size());
 		}
 
-		LogTrace(Channel::Messages, std::format("Pentair frame size validation check passed: {}", is_valid));
+		LogTrace(Channel::Messages, [is_valid] { return std::format("Pentair frame size validation check passed: {}", is_valid); });
 
 		return is_valid;
 	}
@@ -195,15 +195,11 @@ namespace AqualinkAutomate::Pentair::Messages
 		// two trailing checksum bytes.
 		const std::span<const uint8_t> region_to_checksum(message_bytes.data(), message_bytes.size() - CHECKSUM_LENGTH);
 		const uint16_t expected_checksum = Pentair::Utility::PentairPacket_CalculateChecksum_FromRange(region_to_checksum);
-
-		const std::size_t checksum_hi_index = message_bytes.size() - CHECKSUM_LENGTH;
-		const uint16_t received_checksum = static_cast<uint16_t>(
-			(static_cast<uint16_t>(message_bytes[checksum_hi_index]) << 8) |
-			static_cast<uint16_t>(message_bytes[checksum_hi_index + 1]));
+		const uint16_t received_checksum = Pentair::Utility::ReadBigEndianChecksum(message_bytes);
 
 		const bool is_valid = (expected_checksum == received_checksum);
 
-		LogTrace(Channel::Messages, std::format("Pentair frame checksum validation check passed: {}", is_valid));
+		LogTrace(Channel::Messages, [is_valid] { return std::format("Pentair frame checksum validation check passed: {}", is_valid); });
 
 		return is_valid;
 	}
