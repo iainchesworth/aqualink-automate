@@ -1,0 +1,449 @@
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <boost/asio/error.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include "interfaces/icommanddispatcher.h"
+#include "kernel/circulation.h"
+#include "kernel/data_hub.h"
+#include "kernel/equipment_hub.h"
+#include "kernel/statistics_hub.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "protocol/message_generator_registry.h"
+#include "protocol/protocol_thread.h"
+#include "serial/serial_port.h"
+
+#include "jandy/protocol/jandy_protocol_registration.h"
+#include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
+#include "jandy/devices/command_dispatcher.h"
+#include "jandy/devices/iaq_device.h"
+#include "jandy/devices/serial_adapter_device.h"
+#include "jandy/devices/jandy_device_id.h"
+#include "jandy/devices/jandy_device_types.h"
+#include "jandy/messages/jandy_message_ack.h"
+#include "jandy/messages/jandy_message_ids.h"
+#include "jandy/messages/iaq/iaq_message_control_data_response.h"
+
+#include "mocks/mock_testserialportimpl.h"
+#include "support/unit_test_hublocatorinjector.h"
+
+using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::Devices;
+using namespace AqualinkAutomate::Interfaces;
+using namespace AqualinkAutomate::Kernel;
+
+//=============================================================================
+// Command-plumbing END-TO-END tests: ICommandDispatcher -> emulated device ->
+// Protocol::ProtocolTask -> Serial::SerialPort -> THE WIRE.
+//
+// Unlike test/integration/devices/test_*_device_commands.cpp (which capture the
+// outgoing JandyMessage_Ack at the *signal* level), these tests assert on the
+// raw bytes actually WRITTEN to the serial port, via Test::TestSerialPortImpl's
+// write capture (GetWrittenData / GetWriteCallCount).  That proves the full
+// chain a real command travels: a UI/MQTT caller drives ICommandDispatcher, the
+// dispatcher routes to the emulated SerialAdapter/IAQ device, the device emits a
+// message in response to a bus poll/status, ProtocolTask serializes+enqueues it,
+// and DrainWrites() pushes the framed+checksummed bytes onto the port.
+//
+// Wiring mirrors production (src/aqualink-automate.cpp):
+//   * The emulated devices live in the EquipmentHub (so the CommandDispatcher's
+//     FindSerialAdapter()/FindIAQDevice() resolve them, exactly as at runtime).
+//   * ProtocolTask::ConnectWriteSignal<JandyMessage_Ack>() and
+//     <IAQMessage_ControlDataResponse>() are connected, so emitted messages are
+//     serialized and written to the port — nothing is stubbed.
+//
+// Device ids: SerialAdapter 0x48 (DeviceClasses::SerialAdapter); IAQ 0x33
+// (DeviceClasses::AqualinkTouch — the class FindIAQDevice() matches).
+//=============================================================================
+
+namespace
+{
+	constexpr uint8_t SERIAL_ADAPTER_ID = 0x48;
+	constexpr uint8_t IAQ_ID = 0x33;
+
+	constexpr uint8_t DLE = 0x10;
+	constexpr uint8_t STX = 0x02;
+	constexpr uint8_t ETX = 0x03;
+
+	// Build a fully-framed+checksummed Jandy packet (same layout MessageBuilder
+	// uses) so it passes the real generator's validation when replayed.
+	std::vector<uint8_t> MakeFramedPacket(uint8_t dest, uint8_t msg_type, const std::vector<uint8_t>& payload = {})
+	{
+		std::vector<uint8_t> pkt = { DLE, STX, dest, msg_type };
+		pkt.insert(pkt.end(), payload.begin(), payload.end());
+		uint32_t sum = 0;
+		for (auto b : pkt) { sum += b; }
+		pkt.push_back(static_cast<uint8_t>(sum & 0xFF));
+		pkt.push_back(DLE);
+		pkt.push_back(ETX);
+		return pkt;
+	}
+
+	// The exact bytes ProtocolTask will write for a given ACK, computed by the
+	// SAME production serializer the write path uses.  Comparing the captured
+	// wire bytes against this proves the command reached the port intact.
+	std::vector<uint8_t> ExpectedAckWireBytes(uint8_t ack_type, uint8_t command)
+	{
+		Messages::JandyMessage_Ack ack(ack_type, command);
+		std::vector<uint8_t> bytes;
+		ack.Serialize(bytes);
+		return bytes;
+	}
+
+	std::vector<uint8_t> ExpectedControlDataWireBytes(const std::string& ascii)
+	{
+		Messages::IAQMessage_ControlDataResponse msg(ascii);
+		std::vector<uint8_t> bytes;
+		msg.Serialize(bytes);
+		return bytes;
+	}
+
+	//-------------------------------------------------------------------------
+	// Full-stack fixture: real hubs + serial port + protocol task + dispatcher,
+	// with the emulated devices registered in the EquipmentHub.
+	//-------------------------------------------------------------------------
+	struct CommandToWireFixture : public AqualinkAutomate::Test::HubLocatorInjector
+	{
+		CommandToWireFixture()
+			: data_hub(Find<DataHub>())
+			, equipment_hub(Find<EquipmentHub>())
+			, statistics_hub(Find<StatisticsHub>())
+			, serial_impl(new Test::TestSerialPortImpl())
+			, serial_port(std::make_shared<Serial::SerialPort>(
+				std::unique_ptr<Test::TestSerialPortImpl>(serial_impl), *this))
+			, dispatcher(std::make_shared<CommandDispatcher>(data_hub, equipment_hub))
+		{
+			serial_impl->EnableTestMode(true);
+
+			// Register the dispatcher in the HubLocator exactly as production does,
+			// so the web routes resolve it via TryFind<ICommandDispatcher>().
+			Register<Interfaces::ICommandDispatcher>(dispatcher);
+
+			// Register ONLY the Jandy generator (isolated from any leftover).
+			Protocol::MessageGeneratorRegistry::Instance().Clear();
+			Jandy::Protocol::RegisterMessageGenerator();
+
+			protocol_task = std::make_shared<Protocol::ProtocolTask>(serial_port, statistics_hub);
+
+			// Connect the write signals exactly as aqualink-automate.cpp does, so
+			// emitted ACK / control-data messages are serialized and written.
+			protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
+			protocol_task->ConnectWriteSignal<Messages::IAQMessage_ControlDataResponse>();
+
+			// Register the emulated devices in the EquipmentHub (is_emulated=true so
+			// they actively ACK).  The CommandDispatcher resolves them from here.
+			auto sa_id = std::make_shared<JandyDeviceType>(JandyDeviceId(SERIAL_ADAPTER_ID));
+			equipment_hub->AddDevice(std::make_unique<SerialAdapterDevice>(sa_id, *this, true));
+
+			auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_ID));
+			equipment_hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, true));
+		}
+
+		~CommandToWireFixture() override
+		{
+			protocol_task.reset();
+			Protocol::MessageGeneratorRegistry::Instance().Clear();
+			if (serial_impl != nullptr)
+			{
+				serial_impl->Reset();
+			}
+		}
+
+		// Replay one framed packet through the full protocol task (read -> parse ->
+		// fire signal -> device reacts -> write enqueued -> drained to the port).
+		void Replay(const std::vector<uint8_t>& frame)
+		{
+			serial_impl->QueueReadData(frame);
+			serial_impl->QueueReadData({}, boost::asio::error::would_block);
+			(void)protocol_task->Poll();
+		}
+
+		void ReplaySerialAdapterStatus()
+		{
+			Replay(MakeFramedPacket(SERIAL_ADAPTER_ID, static_cast<uint8_t>(Messages::JandyMessageIds::Status), { 0x00, 0x00, 0x00, 0x00, 0x00 }));
+		}
+
+		void ReplayIAQPoll()
+		{
+			Replay(MakeFramedPacket(IAQ_ID, static_cast<uint8_t>(Messages::JandyMessageIds::IAQ_Poll)));
+		}
+
+		void ReplayIAQControlReady()
+		{
+			Replay(MakeFramedPacket(IAQ_ID, static_cast<uint8_t>(Messages::JandyMessageIds::IAQ_ControlReady)));
+		}
+
+		const std::vector<uint8_t>& Wire() const { return serial_impl->GetWrittenData(); }
+		void ClearWire() { serial_impl->ClearWrittenData(); }
+
+		std::shared_ptr<DataHub> data_hub;
+		std::shared_ptr<EquipmentHub> equipment_hub;
+		std::shared_ptr<StatisticsHub> statistics_hub;
+
+		Test::TestSerialPortImpl* serial_impl;	// owned by serial_port
+		std::shared_ptr<Serial::SerialPort> serial_port;
+		std::shared_ptr<Protocol::ProtocolTask> protocol_task;
+		std::shared_ptr<CommandDispatcher> dispatcher;
+	};
+}
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_Integration_Flow_CommandToWire, CommandToWireFixture)
+
+//-----------------------------------------------------------------------------
+// Sanity: with NO command queued, a Status poll still produces a status-query
+// ACK on the wire (proves the write path is live end-to-end before we assert
+// specific command bytes below).
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(SerialAdapter_NoCommand_StillWritesQueryAck)
+{
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	BOOST_REQUIRE(!Wire().empty());
+	// A framed Jandy ACK packet is at least 8 bytes (DLE STX dest type t c chk DLE ETX).
+	BOOST_CHECK_GE(Wire().size(), 8u);
+	BOOST_CHECK_EQUAL(Wire().front(), DLE);
+	BOOST_CHECK_EQUAL(Wire().back(), ETX);
+}
+
+//=============================================================================
+// SerialAdapter-routed commands: SetPoolSetpoint / SetSpaSetpoint /
+// SetCirculationMode all queue a PendingCommand that the device emits as a
+// single ACK on the next Status poll.
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(SetPoolSetpoint_WritesPoolSetpointAckToWire)
+{
+	auto result = dispatcher->SetPoolSetpoint(82);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// POOLSP ack_type = 0x05, command = temperature (82 = 0x52).
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x05, 82));
+}
+
+BOOST_AUTO_TEST_CASE(SetSpaSetpoint_WritesSpaSetpointAckToWire)
+{
+	auto result = dispatcher->SetSpaSetpoint(100);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// SPASP ack_type = 0x07, command = temperature (100 = 0x64).
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x07, 100));
+}
+
+BOOST_AUTO_TEST_CASE(SetCirculationMode_Spa_WritesSpaOnAckToWire)
+{
+	auto result = dispatcher->SetCirculationMode(CirculationModes::Spa);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// SPA pump command ack_type = 0x0E, SetOn = 0x81.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0E, 0x81));
+}
+
+BOOST_AUTO_TEST_CASE(SetCirculationMode_Pool_WritesSpaOffAckToWire)
+{
+	auto result = dispatcher->SetCirculationMode(CirculationModes::Pool);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// Pool circulation = SPA pump OFF: ack_type = 0x0E, SetOff = 0x80.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0E, 0x80));
+}
+
+BOOST_AUTO_TEST_CASE(SetCirculationMode_Spillover_WritesSpilloverOnAckToWire)
+{
+	auto result = dispatcher->SetCirculationMode(CirculationModes::Spillover);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// SPILLOVER pump command ack_type = 0x0F, SetOn = 0x81.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0F, 0x81));
+}
+
+//=============================================================================
+// Aux/label/uuid-routed commands: ToggleByUuid / ToggleByLabel / CommandByUuid
+// / CommandByLabel route through DispatchCommand, which maps a hardware-aux
+// device to a QueueAuxCommand -> single ACK on the next Status poll.
+//=============================================================================
+
+namespace
+{
+	// Add a hardware-aux device (with a JandyAuxillaryId) to the DataHub so the
+	// uuid/label dispatch paths can find it and map it to an aux command.
+	std::shared_ptr<AuxillaryDevice> AddAuxDevice(DataHub& data_hub, const std::string& label, Auxillaries::JandyAuxillaryIds aux_id)
+	{
+		using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+		auto device = std::make_shared<AuxillaryDevice>();
+		device->AuxillaryTraits.Set(LabelTrait{}, label);
+		device->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Auxillary);
+		device->AuxillaryTraits.Set(Auxillaries::JandyAuxillaryId{}, aux_id);
+		data_hub.Devices.Add(device);
+		return device;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(CommandByUuid_On_WritesAuxOnAckToWire)
+{
+	auto device = AddAuxDevice(*data_hub, "Pool Light", Auxillaries::JandyAuxillaryIds::Aux_1);
+
+	auto result = dispatcher->CommandByUuid(device->Id(), ICommandDispatcher::DeviceAction::On);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// Aux_1 = 0x01 + SERIALADAPTER_AUX_ID_OFFSET(0x14) = 0x15; SetOn = 0x81.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x15, 0x81));
+}
+
+BOOST_AUTO_TEST_CASE(CommandByLabel_Off_WritesAuxOffAckToWire)
+{
+	AddAuxDevice(*data_hub, "Spa Light", Auxillaries::JandyAuxillaryIds::Aux_2);
+
+	auto result = dispatcher->CommandByLabel("Spa Light", ICommandDispatcher::DeviceAction::Off);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// Aux_2 = 0x02 + 0x14 = 0x16; SetOff = 0x80.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x16, 0x80));
+}
+
+BOOST_AUTO_TEST_CASE(ToggleByUuid_OffDevice_WritesAuxOnAckToWire)
+{
+	// A device with no status trait toggles to On (SetOn) by default.
+	auto device = AddAuxDevice(*data_hub, "Waterfall", Auxillaries::JandyAuxillaryIds::Aux_3);
+
+	auto result = dispatcher->ToggleByUuid(device->Id());
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// Aux_3 = 0x03 + 0x14 = 0x17; default toggle => SetOn = 0x81.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x17, 0x81));
+}
+
+BOOST_AUTO_TEST_CASE(ToggleByLabel_OnDevice_WritesAuxOffAckToWire)
+{
+	using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+	// A device currently On toggles to Off (SetOff).
+	auto device = AddAuxDevice(*data_hub, "Bubbler", Auxillaries::JandyAuxillaryIds::Aux_4);
+	device->AuxillaryTraits.Set(AuxillaryStatusTrait{}, AuxillaryStatuses::On);
+
+	auto result = dispatcher->ToggleByLabel("Bubbler");
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// Aux_4 = 0x04 + 0x14 = 0x18; On => toggle to SetOff = 0x80.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x18, 0x80));
+}
+
+//=============================================================================
+// IAQ-routed chlorinator commands: SetChlorinatorBoost emits a navigation
+// command sequence, one ACK per IAQ_Poll.  Each ACK must reach the wire.
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(SetChlorinatorBoost_Enable_WritesCommandSequenceToWire)
+{
+	auto result = dispatcher->SetChlorinatorBoost(true);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	// Boost-enable sequence: {0x02, 0x19, 0x13, 0x12}, one command per poll.
+	const std::vector<uint8_t> expected_commands = { 0x02, 0x19, 0x13, 0x12 };
+
+	for (auto cmd : expected_commands)
+	{
+		ClearWire();
+		ReplayIAQPoll();
+		// IAQ ACKs carry ack_type 0x00 and the command in the data byte.
+		BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, cmd));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(SetChlorinatorBoost_Disable_WritesCommandSequenceToWire)
+{
+	auto result = dispatcher->SetChlorinatorBoost(false);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	// Boost-disable sequence: {0x02, 0x19, 0x13, 0x13}.
+	const std::vector<uint8_t> expected_commands = { 0x02, 0x19, 0x13, 0x13 };
+
+	for (auto cmd : expected_commands)
+	{
+		ClearWire();
+		ReplayIAQPoll();
+		BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, cmd));
+	}
+}
+
+//-----------------------------------------------------------------------------
+// SetChlorinatorPercentage drives the full value-submit protocol to the wire:
+// 4 navigation ACKs over IAQ_Poll, then on IAQ_ControlReady the device writes a
+// full IAQMessage_ControlDataResponse carrying the ASCII "<button><value>".
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(SetChlorinatorPercentage_WritesNavSequenceThenControlDataToWire)
+{
+	auto result = dispatcher->SetChlorinatorPercentage(75);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	// Phase 1: navigation ACKs {0x02, 0x19, 0x11, 0x80}, one per poll.
+	const std::vector<uint8_t> expected_commands = { 0x02, 0x19, 0x11, 0x80 };
+	for (auto cmd : expected_commands)
+	{
+		ClearWire();
+		ReplayIAQPoll();
+		BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, cmd));
+	}
+
+	// Phase 2: the master sends IAQ_ControlReady; the device responds with the
+	// full control-data message carrying ASCII "1<percentage>" ("1" = Pool btn).
+	ClearWire();
+	ReplayIAQControlReady();
+	BOOST_CHECK(Wire() == ExpectedControlDataWireBytes("175"));
+}
+
+//-----------------------------------------------------------------------------
+// Pending commands are one-shot: after a command's ACK is written, the next
+// poll must NOT re-write the same command bytes.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(SerialAdapterPendingCommand_IsConsumedAfterSingleWrite)
+{
+	auto result = dispatcher->SetPoolSetpoint(82);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	auto setpoint_bytes = ExpectedAckWireBytes(0x05, 82);
+	BOOST_CHECK(Wire() == setpoint_bytes);
+
+	// Second poll must produce a DIFFERENT (status-query) ACK, not the setpoint.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_REQUIRE(!Wire().empty());
+	BOOST_CHECK(Wire() != setpoint_bytes);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

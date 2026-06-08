@@ -1,0 +1,33 @@
+# Serial recording started at: Sun Jun 08 12:30:00 2026
+# Format: [timestamp_ms] direction byte|byte|byte|...
+# Direction: R=read (from device), W=write (to device)
+#
+# -----------------------------------------------------------------------------
+# Richer captured RS-485 session for end-to-end replay tests: an AquaRite
+# salt-water generator (SWG, device id 0x50) that changes its generating level
+# and salt concentration over the course of the session.  Unlike
+# sample_session.cap (a single 40% / 3200 PPM snapshot) this fixture exercises
+# the decode pipeline across STATE TRANSITIONS so the final decoded DataHub
+# state reflects the LAST frame of each kind, proving the replay applies every
+# frame in order rather than just the first.
+#
+# Timeline:
+#   * GetId   (0x14) : Master -> SWG identification query.
+#   * Percent (0x11) : generating level 40% -> then 60% (final).
+#   * PPM     (0x16) : salt 3200 PPM -> then 3000 PPM (final), status On.
+#
+# Checksums are the low byte of the sum over [DLE .. last payload byte],
+# identical to what MessageBuilder::CreateValidChecksummedMessage produces, so
+# these frames pass the real Jandy generator's checksum validation unmodified.
+# The interleaved W line is the app's own past output and MUST be skipped on
+# replay (kept here to assert the replayer/LoadFixture ignore W-direction bytes).
+# -----------------------------------------------------------------------------
+#
+[         0] # Opened device: /dev/ttyUSB0
+[       100] W 0x10|0x02|0x50|0x14|0x76|0x10|0x03
+[       142] R 0x10|0x02|0x50|0x14|0x76|0x10|0x03
+[       310] R 0x10|0x02|0x50|0x11|0x28|0x9b|0x10|0x03
+[       512] R 0x10|0x02|0x00|0x16|0x20|0x00|0x48|0x10|0x03
+[      1100] R 0x10|0x02|0x50|0x11|0x3c|0xaf|0x10|0x03
+[      1512] R 0x10|0x02|0x00|0x16|0x1e|0x00|0x46|0x10|0x03
+# Recording ended

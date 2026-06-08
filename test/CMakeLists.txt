@@ -249,6 +249,8 @@ target_sources(
 	integration/flows/test_flow_serial_to_web.cpp
 	integration/flows/test_flow_mqtt_commands.cpp
 	integration/flows/test_flow_web_commands.cpp
+	integration/flows/test_flow_fixture_replay.cpp
+	integration/flows/test_flow_command_to_wire.cpp
 	# IAQ device tests
 	integration/devices/test_iaq_device_commands.cpp
 	# Serial Adapter device tests
