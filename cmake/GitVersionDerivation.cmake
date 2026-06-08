@@ -17,6 +17,21 @@
 #
 # Fallback: 0.0.0-dev when git is unavailable or no v* tag matches.
 
+# Macro: SetFallbackVersion
+# Description: assigns every DERIVED_VERSION_* variable to the 0.0.0-dev fallback
+#              in the calling function's PARENT_SCOPE. Centralises the six
+#              set(... PARENT_SCOPE) assignments so the three failure branches
+#              (git missing, describe failed, no v* tag) stay in lock-step.
+#              Relies on _fallback_* being defined in the calling function scope.
+macro(SetFallbackVersion)
+    set(DERIVED_VERSION_MAJOR ${_fallback_major} PARENT_SCOPE)
+    set(DERIVED_VERSION_MINOR ${_fallback_minor} PARENT_SCOPE)
+    set(DERIVED_VERSION_PATCH ${_fallback_patch} PARENT_SCOPE)
+    set(DERIVED_VERSION_PRERELEASE "${_fallback_prerelease}" PARENT_SCOPE)
+    set(DERIVED_VERSION_SEMVER "${_fallback_major}.${_fallback_minor}.${_fallback_patch}" PARENT_SCOPE)
+    set(DERIVED_VERSION_FULL "${_fallback_major}.${_fallback_minor}.${_fallback_patch}-${_fallback_prerelease}" PARENT_SCOPE)
+endmacro()
+
 function(DeriveVersionFromGit)
     set(_fallback_major 0)
     set(_fallback_minor 0)
@@ -26,12 +41,7 @@ function(DeriveVersionFromGit)
     find_package(Git QUIET)
     if(NOT GIT_FOUND)
         message(STATUS "GitVersionDerivation: git not found, using fallback 0.0.0-dev")
-        set(DERIVED_VERSION_MAJOR ${_fallback_major} PARENT_SCOPE)
-        set(DERIVED_VERSION_MINOR ${_fallback_minor} PARENT_SCOPE)
-        set(DERIVED_VERSION_PATCH ${_fallback_patch} PARENT_SCOPE)
-        set(DERIVED_VERSION_PRERELEASE "${_fallback_prerelease}" PARENT_SCOPE)
-        set(DERIVED_VERSION_SEMVER "${_fallback_major}.${_fallback_minor}.${_fallback_patch}" PARENT_SCOPE)
-        set(DERIVED_VERSION_FULL "${_fallback_major}.${_fallback_minor}.${_fallback_patch}-${_fallback_prerelease}" PARENT_SCOPE)
+        SetFallbackVersion()
         return()
     endif()
 
@@ -46,24 +56,30 @@ function(DeriveVersionFromGit)
 
     if(NOT _git_result EQUAL 0)
         message(STATUS "GitVersionDerivation: git describe failed, using fallback 0.0.0-dev")
-        set(DERIVED_VERSION_MAJOR ${_fallback_major} PARENT_SCOPE)
-        set(DERIVED_VERSION_MINOR ${_fallback_minor} PARENT_SCOPE)
-        set(DERIVED_VERSION_PATCH ${_fallback_patch} PARENT_SCOPE)
-        set(DERIVED_VERSION_PRERELEASE "${_fallback_prerelease}" PARENT_SCOPE)
-        set(DERIVED_VERSION_SEMVER "${_fallback_major}.${_fallback_minor}.${_fallback_patch}" PARENT_SCOPE)
-        set(DERIVED_VERSION_FULL "${_fallback_major}.${_fallback_minor}.${_fallback_patch}-${_fallback_prerelease}" PARENT_SCOPE)
+        SetFallbackVersion()
         return()
     endif()
 
     message(STATUS "GitVersionDerivation: git describe output: ${_git_describe}")
 
-    # Try to match: v<MAJOR>.<MINOR>.<PATCH>[-<prerelease>][-<distance>-g<hash>]
-    # Examples:
+    # git describe appends a "-<distance>-g<hash>" suffix once HEAD has moved past
+    # the matched tag. Strip that suffix first so the SemVer prerelease grammar
+    # below does not greedily swallow it (CMake regexes are greedy with no lazy
+    # quantifiers, and a SemVer prerelease legitimately contains '-').
+    #   v1.0.0-15-gabcdef1        -> v1.0.0
+    #   v1.0.0-beta.2-3-gabcdef1  -> v1.0.0-beta.2
+    set(_clean_describe "${_git_describe}")
+    string(REGEX REPLACE "-[0-9]+-g[0-9a-f]+$" "" _clean_describe "${_clean_describe}")
+
+    # Try to match: v<MAJOR>.<MINOR>.<PATCH>[-<prerelease>]
+    # The prerelease subexpression follows the SemVer grammar (dot-separated
+    # alphanumeric/hyphen identifiers) so common forms are accepted:
     #   v1.0.0                    -> 1.0.0
     #   v1.0.0-beta.2             -> 1.0.0, prerelease=beta.2
-    #   v1.0.0-15-gabcdef1        -> 1.0.0 (distance suffix ignored)
-    #   v1.0.0-beta.2-3-gabcdef1  -> 1.0.0, prerelease=beta.2
-    if(_git_describe MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)(-([a-zA-Z]+\\.[0-9]+))?(-[0-9]+-g[0-9a-f]+)?$")
+    #   v1.0.0-rc1                -> 1.0.0, prerelease=rc1
+    #   v1.0.0-alpha              -> 1.0.0, prerelease=alpha
+    #   v2.3.4-rc.1.2             -> 2.3.4, prerelease=rc.1.2
+    if(_clean_describe MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)(-([0-9A-Za-z.-]+))?$")
         set(_major "${CMAKE_MATCH_1}")
         set(_minor "${CMAKE_MATCH_2}")
         set(_patch "${CMAKE_MATCH_3}")
@@ -84,13 +100,8 @@ function(DeriveVersionFromGit)
         endif()
     else()
         # No matching v* tag — bare hash or unrecognised format
-        message(STATUS "GitVersionDerivation: no v* tag match (got '${_git_describe}'), using fallback 0.0.0-dev")
-        set(DERIVED_VERSION_MAJOR ${_fallback_major} PARENT_SCOPE)
-        set(DERIVED_VERSION_MINOR ${_fallback_minor} PARENT_SCOPE)
-        set(DERIVED_VERSION_PATCH ${_fallback_patch} PARENT_SCOPE)
-        set(DERIVED_VERSION_PRERELEASE "${_fallback_prerelease}" PARENT_SCOPE)
-        set(DERIVED_VERSION_SEMVER "${_fallback_major}.${_fallback_minor}.${_fallback_patch}" PARENT_SCOPE)
-        set(DERIVED_VERSION_FULL "${_fallback_major}.${_fallback_minor}.${_fallback_patch}-${_fallback_prerelease}" PARENT_SCOPE)
+        message(WARNING "GitVersionDerivation: could not parse a v<major>.<minor>.<patch> tag (got '${_git_describe}'), using fallback 0.0.0-dev")
+        SetFallbackVersion()
     endif()
 endfunction()
 
