@@ -27,6 +27,21 @@ namespace AqualinkAutomate::HTTP
         {
             LogWarning(Channel::Web, std::format("Specified static directory '{}' was invalid; error was -> {}", m_DocRoot.string(), ec.message()));
         }
+
+        // Canonicalise the fixed document root once at construction.  The root is
+        // operator-supplied (not client-controlled) and never changes, so the
+        // per-request canonicalisation in match() is redundant work; resolving it
+        // here also lets the path jail compare against a stable, normalised root.
+        std::error_code canon_ec;
+        auto canonical_root = std::filesystem::weakly_canonical(m_DocRoot, canon_ec);
+        if (canon_ec)
+        {
+            LogWarning(Channel::Web, std::format("Failed to canonicalise static directory '{}'; error was -> {}", m_DocRoot.string(), canon_ec.message()));
+        }
+        else
+        {
+            m_DocRoot = std::move(canonical_root);
+        }
     }
 
     bool StaticFileHandler::match(const boost::urls::url_view& target, std::filesystem::path& result)
@@ -62,10 +77,10 @@ namespace AqualinkAutomate::HTTP
                 result /= "index.html";
             }
 
-            // Security: Verify resolved path is within document root (path jail)
+            // Security: Verify resolved path is within document root (path jail).
+            // m_DocRoot is already canonicalised at construction.
             std::error_code canon_ec;
             auto canonical_result = std::filesystem::weakly_canonical(result, canon_ec);
-            auto canonical_root = std::filesystem::weakly_canonical(m_DocRoot, canon_ec);
 
             if (canon_ec)
             {
@@ -73,13 +88,16 @@ namespace AqualinkAutomate::HTTP
                 return false;
             }
 
-            // Ensure the resolved path starts with the document root
-            auto result_str = canonical_result.string();
-            auto root_str = canonical_root.string();
-            if (result_str.size() < root_str.size() ||
-                result_str.compare(0, root_str.size(), root_str) != 0)
+            // Compare on PATH COMPONENTS, not a raw string prefix.  A string-prefix
+            // test ("/srv/www" being a prefix of "/srv/wwwsecret/x") would let a
+            // sibling directory whose name merely starts with the root escape the
+            // jail.  lexically_relative() yields the route from the root to the
+            // resolved path in component terms; the result must stay inside the
+            // root, i.e. it must not be empty and must not begin with a "..".
+            const auto relative = canonical_result.lexically_relative(m_DocRoot);
+            if (relative.empty() || relative.begin()->native() == std::filesystem::path("..").native())
             {
-                LogWarning(Channel::Web, std::format("Path traversal attempt blocked: {} escapes {}", result_str, root_str));
+                LogWarning(Channel::Web, std::format("Path traversal attempt blocked: {} escapes {}", canonical_result.string(), m_DocRoot.string()));
                 return false;
             }
 
