@@ -1,5 +1,7 @@
 #include "formatters/temperature_formatter.h"
 
+#include "formatters/formatter_helpers.h"
+
 namespace AqualinkAutomate::Formatters
 {
 
@@ -13,8 +15,7 @@ namespace std
 
 	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Kernel::Temperature& obj)
 	{
-		os << std::format("{}", obj);
-		return os;
+		return AqualinkAutomate::Formatters::WriteFormatted(os, obj);
 	}
 
 }
