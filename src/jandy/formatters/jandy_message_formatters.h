@@ -20,22 +20,13 @@
 #include "messages/aquarite/aquarite_message_percent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
 
-namespace std
-{
-	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageIds& obj);
-
-	// A single constrained overload streams JandyMessage and every derived
-	// message type (their virtual ToString() supplies the concrete payload),
-	// replacing the previously hand-written per-type operator<< overloads.
-	template <std::derived_from<AqualinkAutomate::Messages::JandyMessage> T>
-	std::ostream& operator<<(std::ostream& os, const T& obj)
-	{
-		os << std::format("{}", static_cast<const AqualinkAutomate::Messages::JandyMessage&>(obj));
-		return os;
-	}
-
-}
-// namespace std
+// The std::formatter specialisations MUST be defined before the operator<<
+// template below: that operator streams via std::format("{}", <JandyMessage&>),
+// a non-dependent argument whose consteval format-string check is performed at
+// template-definition time and therefore needs formatter<JandyMessage> to be a
+// complete, declared specialisation at that point (otherwise the deleted primary
+// template is implicitly instantiated and the later explicit specialisation is
+// rejected as "specialisation after instantiation").
 
 template<>
 struct std::formatter<AqualinkAutomate::Messages::JandyMessageIds>
@@ -78,3 +69,20 @@ template <std::derived_from<AqualinkAutomate::Messages::JandyMessage> T>
 struct std::formatter<T> : std::formatter<AqualinkAutomate::Messages::JandyMessage>
 {
 };
+
+namespace std
+{
+	std::ostream& operator<<(std::ostream& os, const AqualinkAutomate::Messages::JandyMessageIds& obj);
+
+	// A single constrained overload streams JandyMessage and every derived
+	// message type (their virtual ToString() supplies the concrete payload),
+	// replacing the previously hand-written per-type operator<< overloads.
+	template <std::derived_from<AqualinkAutomate::Messages::JandyMessage> T>
+	std::ostream& operator<<(std::ostream& os, const T& obj)
+	{
+		os << std::format("{}", static_cast<const AqualinkAutomate::Messages::JandyMessage&>(obj));
+		return os;
+	}
+
+}
+// namespace std
