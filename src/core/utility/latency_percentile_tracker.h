@@ -3,19 +3,23 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <deque>
-#include <mutex>
-#include <optional>
-#include <set>
 #include <vector>
+
+#include <boost/circular_buffer.hpp>
 
 namespace AqualinkAutomate::Utility
 {
 
-	/// Tracks latency samples and computes percentiles (p1, p50, p99) in real-time.
-	/// Uses a sliding window approach to maintain recent samples for accurate percentile computation.
-	/// Thread-safe for concurrent access.
+	/// Tracks latency samples and computes percentiles (p1, p50, p99) on demand.
+	/// Uses a fixed-capacity ring buffer (bounded by max_samples) combined with a
+	/// time-based sliding window so that only recent samples contribute to the
+	/// window statistics.
+	///
+	/// NOTE: This type is NOT thread-safe. The application runs a single-threaded
+	/// cooperative poll() loop, so no synchronisation is required; recording a
+	/// sample is an amortised O(1) ring-buffer push with no per-sample allocation.
 	template<typename CLOCK_TYPE = std::chrono::steady_clock>
 	class LatencyPercentileTracker
 	{
@@ -25,8 +29,8 @@ namespace AqualinkAutomate::Utility
 
 		struct LatencySample
 		{
-			TimePoint timestamp;
-			Duration latency;
+			TimePoint timestamp{};
+			Duration latency{ 0 };
 		};
 
 		struct PercentileSnapshot
@@ -50,9 +54,10 @@ namespace AqualinkAutomate::Utility
 		explicit LatencyPercentileTracker(
 			std::size_t max_samples = 1000,
 			std::chrono::seconds window_duration = std::chrono::seconds(60))
-			: m_MaxSamples(max_samples)
+			: m_Samples(max_samples == 0 ? 1 : max_samples)
 			, m_WindowDuration(window_duration)
 		{
+			m_Scratch.reserve(m_Samples.capacity());
 		}
 
 		~LatencyPercentileTracker() = default;
@@ -67,22 +72,16 @@ namespace AqualinkAutomate::Utility
 		/// Records a latency sample with the current timestamp.
 		void Record(Duration latency)
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
+			const TimePoint now = CLOCK_TYPE::now();
 
-			auto now = CLOCK_TYPE::now();
+			// push_back on a full circular_buffer overwrites the oldest entry,
+			// which enforces the max-sample limit with no extra book-keeping.
 			m_Samples.push_back(LatencySample{ now, latency });
-			m_SortedLatencies.insert(latency);
 
-			// Prune old samples
+			// Prune samples that have fallen outside the time window.
 			PruneOldSamples(now);
 
-			// Enforce max sample limit
-			while (m_Samples.size() > m_MaxSamples)
-			{
-				RemoveOldest();
-			}
-
-			// Update running statistics
+			// Update running statistics.
 			m_TotalSamples++;
 
 			if (m_TotalSamples == 1 || latency < m_AlltimeMin) { m_AlltimeMin = latency; }
@@ -92,42 +91,45 @@ namespace AqualinkAutomate::Utility
 		/// Records a latency sample measured from a start time to now.
 		void RecordSince(TimePoint start_time)
 		{
-			auto now = CLOCK_TYPE::now();
-			auto latency = std::chrono::duration_cast<Duration>(now - start_time);
+			const TimePoint now = CLOCK_TYPE::now();
+			const Duration latency = std::chrono::duration_cast<Duration>(now - start_time);
 			Record(latency);
 		}
 
 		/// Computes and returns the current percentile snapshot.
 		PercentileSnapshot GetSnapshot() const
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
-
 			PercentileSnapshot snapshot;
 
-			if (m_SortedLatencies.empty())
+			if (m_Samples.empty())
 			{
 				return snapshot;
 			}
 
-			snapshot.sample_count = m_SortedLatencies.size();
-			snapshot.min = *m_SortedLatencies.begin();
-			snapshot.max = *m_SortedLatencies.rbegin();
+			// Copy current window latencies into reusable scratch storage and sort
+			// once so percentiles can be read by index (the existing interpolation
+			// semantics are preserved exactly).
+			m_Scratch.clear();
+			Duration sum{ 0 };
+			for (const auto& sample : m_Samples)
+			{
+				m_Scratch.push_back(sample.latency);
+				sum += sample.latency;
+			}
+
+			std::ranges::sort(m_Scratch);
+
+			snapshot.sample_count = m_Scratch.size();
+			snapshot.min = m_Scratch.front();
+			snapshot.max = m_Scratch.back();
 			snapshot.alltime_min = m_AlltimeMin;
 			snapshot.alltime_max = m_AlltimeMax;
+			snapshot.mean = sum / static_cast<Duration::rep>(m_Scratch.size());
 
-			// Compute percentiles by advancing an iterator through the sorted multiset
-			snapshot.p1 = ComputePercentileFromSorted(1);
-			snapshot.p50 = ComputePercentileFromSorted(50);
-			snapshot.p95 = ComputePercentileFromSorted(95);
-			snapshot.p99 = ComputePercentileFromSorted(99);
-
-			// Compute mean
-			Duration sum{ 0 };
-			for (const auto& latency : m_SortedLatencies)
-			{
-				sum += latency;
-			}
-			snapshot.mean = sum / m_SortedLatencies.size();
+			snapshot.p1 = ComputePercentileFromSorted(1.0);
+			snapshot.p50 = ComputePercentileFromSorted(50.0);
+			snapshot.p95 = ComputePercentileFromSorted(95.0);
+			snapshot.p99 = ComputePercentileFromSorted(99.0);
 
 			return snapshot;
 		}
@@ -135,79 +137,67 @@ namespace AqualinkAutomate::Utility
 		/// Returns the total number of samples ever recorded.
 		std::size_t TotalSampleCount() const
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
 			return m_TotalSamples;
 		}
 
 		/// Clears all recorded samples.
 		void Reset()
 		{
-			std::lock_guard<std::mutex> lock(m_Mutex);
 			m_Samples.clear();
-			m_SortedLatencies.clear();
+			m_Scratch.clear();
 			m_TotalSamples = 0;
 			m_AlltimeMin = Duration{ 0 };
 			m_AlltimeMax = Duration{ 0 };
 		}
 
 	private:
-		void RemoveOldest()
-		{
-			auto it = m_SortedLatencies.find(m_Samples.front().latency);
-			if (it != m_SortedLatencies.end())
-			{
-				m_SortedLatencies.erase(it);
-			}
-			m_Samples.pop_front();
-		}
-
 		void PruneOldSamples(TimePoint now)
 		{
 			while (!m_Samples.empty() && (now - m_Samples.front().timestamp) > m_WindowDuration)
 			{
-				RemoveOldest();
+				m_Samples.pop_front();
 			}
 		}
 
+		/// Computes a percentile from the sorted scratch buffer using linear
+		/// interpolation between the two nearest ranks.
 		Duration ComputePercentileFromSorted(double percentile) const
 		{
-			if (m_SortedLatencies.empty())
+			if (m_Scratch.empty())
 			{
 				return Duration{ 0 };
 			}
 
-			if (m_SortedLatencies.size() == 1)
+			if (m_Scratch.size() == 1)
 			{
-				return *m_SortedLatencies.begin();
+				return m_Scratch.front();
 			}
 
-			double rank = (percentile / 100.0) * (m_SortedLatencies.size() - 1);
-			std::size_t lower_idx = static_cast<std::size_t>(std::floor(rank));
-			std::size_t upper_idx = static_cast<std::size_t>(std::ceil(rank));
-			double fraction = rank - lower_idx;
+			const double rank = (percentile / 100.0) * static_cast<double>(m_Scratch.size() - 1);
+			const std::size_t lower_idx = static_cast<std::size_t>(std::floor(rank));
+			const std::size_t upper_idx = static_cast<std::size_t>(std::ceil(rank));
+			const double fraction = rank - static_cast<double>(lower_idx);
 
-			auto it = m_SortedLatencies.begin();
-			std::advance(it, lower_idx);
-			auto lower_val = it->count();
+			const Duration::rep lower_val = m_Scratch[lower_idx].count();
 
 			if (lower_idx == upper_idx)
 			{
-				return Duration{ static_cast<Duration::rep>(lower_val) };
+				return Duration{ lower_val };
 			}
 
-			std::advance(it, upper_idx - lower_idx);
-			auto upper_val = it->count();
+			const Duration::rep upper_val = m_Scratch[upper_idx].count();
 
-			auto interpolated = lower_val + fraction * (upper_val - lower_val);
+			const double interpolated = static_cast<double>(lower_val) + (fraction * static_cast<double>(upper_val - lower_val));
 			return Duration{ static_cast<Duration::rep>(interpolated) };
 		}
 
 	private:
-		mutable std::mutex m_Mutex;
-		std::deque<LatencySample> m_Samples;
-		std::multiset<Duration> m_SortedLatencies;
-		std::size_t m_MaxSamples;
+		boost::circular_buffer<LatencySample> m_Samples;
 		std::chrono::seconds m_WindowDuration;
+
+		// Reusable scratch storage for percentile computation; mutable so the
+		// const GetSnapshot() can borrow it without per-call allocation.
+		mutable std::vector<Duration> m_Scratch;
 
 		// Running statistics
 		std::size_t m_TotalSamples{ 0 };
@@ -262,7 +252,7 @@ namespace AqualinkAutomate::Utility
 		SerialLatencyMetrics() = default;
 		~SerialLatencyMetrics() = default;
 
-		// Non-copyable, non-movable (contains mutexes)
+		// Non-copyable, non-movable
 		SerialLatencyMetrics(const SerialLatencyMetrics&) = delete;
 		SerialLatencyMetrics& operator=(const SerialLatencyMetrics&) = delete;
 
