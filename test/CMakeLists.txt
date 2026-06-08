@@ -39,7 +39,8 @@ target_sources(
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
-	unit/logging/test_logging_severity_filter_defaults.cpp 
+	unit/logging/test_logging_severity_filter_defaults.cpp
+	unit/logging/test_logging_filter_and_helpers.cpp
 	unit/options/test_option_metadata.cpp
 	unit/options/test_options_config_file.cpp
 	unit/options/test_options_developer.cpp
