@@ -375,3 +375,6 @@ playwright-report/
 playwright/.cache/
 blob-report/
 /build
+
+# Local serial capture / replay scratch (recordings + decode logs; large, never source)
+captures/
