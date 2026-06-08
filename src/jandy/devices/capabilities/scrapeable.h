@@ -1,6 +1,5 @@
 #pragma once
 
-#include <any>
 #include <cstdint>
 #include <expected>
 #include <format>
@@ -27,6 +26,21 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Devices::Capabilities
 {
 
+	// Scrapeable is the GRAPH-DRIVEN screen-scraping engine: a device supplies one or
+	// more pre-computed ScreenDataPageGraphs (vertex = page, edge = key command) and the
+	// engine walks them deterministically, validating each transition.  It is used by the
+	// PDA device (Capabilities::Scrapeable).
+	//
+	// A second, separate engine lives under src/jandy/navigation (Navigator + SpiderEngine
+	// + MenuModel).  That one is DETECTOR/MODEL-DRIVEN: it discovers the menu structure at
+	// runtime from page-title detectors and computes paths on the fly, which the fixed graph
+	// here cannot do.  The two intentionally coexist for now because they solve different
+	// problems (static known-route scraping vs. autonomous menu crawling) and serve different
+	// devices (PDA vs. OneTouch/iAQ).  They DO duplicate the recovery / back-press /
+	// home-detection state machine (note the matching MAX_RECOVERY_ATTEMPTS / MAX_BACK_PRESSES
+	// constants in both Navigator and Scrapeable).  Folding Scrapeable into Navigator (a full
+	// migration) is deferred — see WU-NAV-SCREENDATA-GRAPH — because it touches the navigation
+	// subsystem owned by a separate work unit and changes PDA behaviour.
 	class Scrapeable
 	{
 	public:
@@ -42,6 +56,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		using ScrapeId = uint32_t;
 		using ScraperGraph = Utility::ScreenDataPageGraph;
 		using ScraperIter = Utility::ScreenDataPageGraphImpl::ForwardIterator;
+		using KeyCommand = Utility::ScreenDataPageGraphImpl::KeyCommand;
 
 	public:
 		static constexpr uint32_t MAX_RECOVERY_ATTEMPTS = 3;
@@ -49,7 +64,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 	public:
 		// Set the key command to use during recovery (should be the "Back" key for the device)
-		void SetRecoveryKeyCommand(std::any recovery_key) { m_RecoveryKeyCommand = recovery_key; }
+		void SetRecoveryKeyCommand(KeyCommand recovery_key) { m_RecoveryKeyCommand = recovery_key; }
 
 	public:
 		using GraphDataMap = std::unordered_map<ScrapeId, ScraperGraph>;
@@ -81,11 +96,11 @@ namespace AqualinkAutomate::Devices::Capabilities
 		void OnStatusMessageReceived();
 
 	public:
-		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes> ScrapingNext();
+		std::expected<KeyCommand, ErrorCodes::Scrapeable_ErrorCodes> ScrapingNext();
 
 	public:
 		// Main validation-aware scraping method
-		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+		std::expected<KeyCommand, ErrorCodes::Scrapeable_ErrorCodes>
 			ScrapingNextWithValidation(Utility::ScreenDataPageTypes current_page);
 
 		// Validation helpers
@@ -94,7 +109,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 		// Recovery
 		void InitiateRecovery();
-		std::expected<std::any, ErrorCodes::Scrapeable_ErrorCodes>
+		std::expected<KeyCommand, ErrorCodes::Scrapeable_ErrorCodes>
 			RecoveryNext(Utility::ScreenDataPageTypes current_page);
 
 		// State accessors
@@ -117,7 +132,7 @@ namespace AqualinkAutomate::Devices::Capabilities
 		uint32_t m_RecoveryBackPresses{ 0 };
 		Utility::ScreenDataPageTypes m_ExpectedDestination{ Utility::ScreenDataPageTypes::Page_Unknown };
 		Utility::ScreenDataPageTypes m_ExpectedSource{ Utility::ScreenDataPageTypes::Page_Unknown };
-		std::any m_RecoveryKeyCommand;  // Device-specific "Back" key command
+		KeyCommand m_RecoveryKeyCommand{ KeyCommand::NoKeyCommand };  // Device-specific "Back" key command
 	};
 
 }
