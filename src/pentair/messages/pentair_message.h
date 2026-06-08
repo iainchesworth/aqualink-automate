@@ -2,9 +2,11 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <concepts>
 #include <ranges>
 #include <span>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "interfaces/imessage.h"
@@ -14,14 +16,23 @@
 namespace AqualinkAutomate::Pentair::Messages
 {
 
+	// A Pentair raw-message range must be a CONTIGUOUS, sized range of uint8_t.
+	// Deserialize() forms a std::span over the range's data pointer, so plain
+	// random-access (e.g. std::deque) is not sufficient — contiguity is required
+	// for the span to be well-formed, not merely assumed.
 	template <typename Range>
-	concept PentairRawMessageRange = std::ranges::random_access_range<Range> && std::same_as<std::ranges::range_value_t<Range>, uint8_t>;
+	concept PentairRawMessageRange =
+		std::ranges::contiguous_range<Range> &&
+		std::ranges::sized_range<Range> &&
+		std::same_as<std::remove_cv_t<std::ranges::range_value_t<Range>>, uint8_t>;
 
 	// Base class for every Pentair RS-485 message.
 	//
-	// A PentairMessage owns the decoded frame header (FROM / DEST / CMD / LEN)
-	// plus the verified 16-bit checksum, and delegates payload decode/encode to
-	// the concrete subclass via (De)SerializeContents.  Deserialize() consumes a
+	// A PentairMessage owns the decoded frame header (FROM / DEST / CMD / LEN) and
+	// delegates payload decode/encode to the concrete subclass via
+	// (De)SerializeContents.  The 16-bit checksum is validated (not retained) by
+	// whichever layer owns verification — the generator on the hot path, or the
+	// ISerializable byte-span path itself.  Deserialize() consumes a
 	// CHECKSUMMED REGION span — the bytes from the 0xA5 SOF through the trailing
 	// two checksum bytes (the generator strips the 0xFF/0x00/0xFF preamble before
 	// handing the frame over).
@@ -36,7 +47,6 @@ namespace AqualinkAutomate::Pentair::Messages
 		uint8_t Destination() const;
 		uint8_t RawCommand() const;
 		uint8_t DataLength() const;
-		uint16_t ChecksumValue() const;
 
 	public:
 		uint8_t MaxPermittedPacketLength() const override;
@@ -54,17 +64,20 @@ namespace AqualinkAutomate::Pentair::Messages
 
 	public:
 		// Hot-path deserialise directly from a contiguous uint8_t range (the
-		// generator hands a linearised circular-buffer subrange).
+		// generator hands a linearised circular-buffer subrange).  The frame has
+		// ALREADY been checksum-validated by the generator before reaching here, so
+		// the redundant per-message checksum recompute is skipped on this path.
 		template <PentairRawMessageRange RAW_MESSAGE_RANGE>
 		[[nodiscard]] bool Deserialize(const RAW_MESSAGE_RANGE& raw_message)
 		{
-			const auto size = std::ranges::size(raw_message);
-			std::span<const uint8_t> raw_span(&*std::ranges::begin(raw_message), size);
-			return DeserializeFromContiguousData(raw_span);
+			// std::span(data, size) is well-formed because PentairRawMessageRange
+			// requires a contiguous, sized range (no &*begin() contiguity gamble).
+			const std::span<const uint8_t> raw_span(std::ranges::data(raw_message), std::ranges::size(raw_message));
+			return DeserializeFromContiguousData(raw_span, /* verify_checksum */ false);
 		}
 
 	private:
-		[[nodiscard]] bool DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data);
+		[[nodiscard]] bool DeserializeFromContiguousData(std::span<const uint8_t> contiguous_data, bool verify_checksum);
 
 	protected:
 		bool FrameSizeIsValid(std::span<const uint8_t> message_bytes) const;
@@ -75,7 +88,6 @@ namespace AqualinkAutomate::Pentair::Messages
 		uint8_t m_Destination;
 		uint8_t m_RawCommand;
 		uint8_t m_DataLength;
-		uint16_t m_ChecksumValue;
 	};
 
 }
