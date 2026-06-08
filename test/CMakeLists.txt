@@ -27,6 +27,7 @@ target_sources(
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/http/test_api_equipment.cpp
 	unit/http/test_http_diagnostics_devices.cpp
+	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp
 	unit/http/test_http_sessions.cpp 
 	unit/http/test_routing_matches.cpp 
@@ -71,6 +72,7 @@ target_sources(
 	unit/protocol/test_protocol_handler.cpp
 	unit/protocol/test_mock_replay_validation.cpp
 	unit/protocol/test_record_replay_roundtrip.cpp
+	unit/protocol/test_record_runtime_toggle.cpp
 	unit/protocol/test_pentair_message_generator.cpp
 	unit/statuses/test_statusupdate_equipmentanddevices.cpp
 	unit/support/unit_test_circularbuffermaker.cpp

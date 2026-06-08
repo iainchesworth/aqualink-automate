@@ -785,6 +785,51 @@
             <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2 p-2">Loading log levels...</div>
             </div>
 
+            <!-- Serial Recording -->
+            <button class="section-toggle mb-1" @click="showRecording = !showRecording"
+                    :aria-expanded="showRecording" aria-controls="diag-recording">
+                <span class="section-toggle-chevron" :class="{ open: showRecording }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Serial Recording</span>
+            </button>
+            <div id="diag-recording" x-show="showRecording" x-transition.opacity x-cloak>
+            <div class="card mb-2">
+                <div class="card-header card-header-split">
+                    <span>Capture Serial Traffic</span>
+                    <span class="badge"
+                          :class="recording.recording ? 'badge-freq' : 'badge-status-off'"
+                          x-text="recording.recording ? 'Recording' : 'Idle'"></span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-xs mt-0 mb-1">
+                        Record the raw RS-485 traffic to a capture file on the server.
+                        The file is in the replayable recorder format and can be dropped
+                        straight into <code>test/fixtures/</code>.
+                    </p>
+                    <div class="flex items-center gap-1 mb-1" x-show="!recording.recording">
+                        <label class="inline-label" for="recording-filename">File:</label>
+                        <input id="recording-filename" type="text" class="settings-input"
+                               x-model="recordingFilename"
+                               placeholder="capture.cap"
+                               aria-label="Capture file name">
+                        <button class="setpoint-btn"
+                                :disabled="recordingBusy || !recordingFilename"
+                                @click="startRecording()">Start</button>
+                    </div>
+                    <div class="flex items-center gap-1 mb-1" x-show="recording.recording">
+                        <button class="setpoint-btn"
+                                :disabled="recordingBusy"
+                                @click="stopRecording()">Stop</button>
+                    </div>
+                    <div class="emu-kv-grid" x-show="recording.recording || recording.bytes > 0">
+                        <span class="emu-kv-key">File</span>
+                        <span class="emu-kv-val"><code x-text="recording.file || '--'"></code></span>
+                        <span class="emu-kv-key">Bytes written</span>
+                        <span class="emu-kv-val" x-text="formatBytes(recording.bytes)"></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+
             <!-- Stats connection indicator -->
             <div class="text-muted text-center mt-2 text-2xs">
                 Stats WebSocket:
