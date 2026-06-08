@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <format>
 
 #include <magic_enum/magic_enum.hpp>
@@ -13,11 +14,20 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Devices
 {
 
+	namespace
+	{
+		// PDAMessage_Highlight uses 0xFF as a "clear all highlights" sentinel rather than
+		// addressing a real (0-based) line on the page. It must NOT be treated as an
+		// out-of-range line id.
+		constexpr uint8_t HIGHLIGHT_CLEAR_ALL{ 0xFF };
+	}
+	// namespace
+
 	void OneTouchDevice::Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Ack", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_Ack: raw_command=0x{:02x}", DeviceId(), msg.Command()));
+		LogTrace(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received JandyMessage_Ack: raw_command=0x{:02x}", DeviceId(), msg.Command()); });
 
 		KeyCommands key_press = msg.Command<KeyCommands>([](uint8_t command_id)
 			{
@@ -27,31 +37,31 @@ namespace AqualinkAutomate::Devices
 
 		if (key_press == KeyCommands::Unknown)
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Unknown key command received in ACK: 0x{:02x}", DeviceId(), msg.Command()));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): Unknown key command received in ACK: 0x{:02x}", DeviceId(), msg.Command()); });
 		}
 		else
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Decoded ACK key press: {} (0x{:02x})", DeviceId(), magic_enum::enum_name(key_press), msg.Command()));
+			LogDebug(Channel::Devices, [&]() { return std::format("OneTouch ({}): Decoded ACK key press: {} (0x{:02x})", DeviceId(), magic_enum::enum_name(key_press), msg.Command()); });
 		}
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (ACK)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (ACK)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_MessageLong(const Messages::JandyMessage_MessageLong& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_MessageLong", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_MessageLong: line_id={}, content_length={}", DeviceId(), msg.LineId(), msg.Line().length()));
+		LogTrace(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received JandyMessage_MessageLong: line_id={}, content_length={}", DeviceId(), msg.LineId(), msg.Line().length()); });
 
 		if (ONETOUCH_PAGE_LINES <= msg.LineId())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): MessageLong for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1, msg.Line()));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): MessageLong for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1, msg.Line()); });
 		}
 		else
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Processing MessageLong: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()));
+			LogDebug(Channel::Devices, [&]() { return std::format("OneTouch ({}): Processing MessageLong: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()); });
 
 			ScreenMode(Capabilities::ScreenModes::Updating);
 			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(msg.LineId(), msg.Line()));
@@ -62,32 +72,34 @@ namespace AqualinkAutomate::Devices
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (MessageLong)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (MessageLong)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_Probe(const Messages::JandyMessage_Probe& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Probe", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_Probe", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Received JandyMessage_Probe", DeviceId()); });
 
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (Probe)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (Probe)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_Status(const Messages::JandyMessage_Status& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Status", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_Status", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Received JandyMessage_Status", DeviceId()); });
 
 		if (Capabilities::ScreenModes::Updating == ScreenMode())
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Screen update complete - displaying page", DeviceId()));
-			LogDebug(Channel::Devices, std::format("\n{}", DisplayedPage()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Screen update complete - displaying page", DeviceId()); });
+			// DisplayedPage() renders the whole 12-line screen; only build it when the
+			// Debug level is actually enabled by deferring it inside the lazy lambda.
+			LogDebug(Channel::Devices, [this]() { return std::format("\n{}", DisplayedPage()); });
 
 			// The series of JandyMessage_MessageLong messages has finished.
 			ScreenMode(Capabilities::ScreenModes::UpdateComplete);
@@ -116,38 +128,46 @@ namespace AqualinkAutomate::Devices
 		// ACKed, switch to the next type.
 		if (Messages::AckTypes::V1_Normal == m_AckType_ToSend)
 		{
-			LogInfo(Channel::Devices, std::format("OneTouch ({}): Transitioning from V1_Normal to V2_Normal ACK type", DeviceId()));
+			LogInfo(Channel::Devices, [this]() { return std::format("OneTouch ({}): Transitioning from V1_Normal to V2_Normal ACK type", DeviceId()); });
 			m_AckType_ToSend = Messages::AckTypes::V2_Normal;
 		}
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (Status)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (Status)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_Clear(const Messages::PDAMessage_Clear& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Clear", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): Received PDAMessage_Clear - clearing screen", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Received PDAMessage_Clear - clearing screen", DeviceId()); });
 
 		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (Clear)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (Clear)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_Highlight(const Messages::PDAMessage_Highlight& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Highlight", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): Received PDAMessage_Highlight: line_id={}", DeviceId(), msg.LineId()));
+		LogDebug(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received PDAMessage_Highlight: line_id={}", DeviceId(), msg.LineId()); });
 
-		if (msg.LineId() >= ONETOUCH_PAGE_LINES)
+		if (HIGHLIGHT_CLEAR_ALL == msg.LineId())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Highlight for invalid line: line_id={} (max={})", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1));
+			// 0xFF is the "clear all highlights" sentinel, NOT an out-of-range line id.
+			// Record it so the Navigator (which resets m_HighlightedLine) observes that no
+			// line is currently highlighted, and forward it to the screen updater unchanged.
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Highlight clear-all received (no line highlighted)", DeviceId()); });
+			m_HighlightedLine = HIGHLIGHT_CLEAR_ALL;
+		}
+		else if (msg.LineId() >= ONETOUCH_PAGE_LINES)
+		{
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): Highlight for invalid line: line_id={} (max={})", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1); });
 		}
 		else
 		{
@@ -162,23 +182,23 @@ namespace AqualinkAutomate::Devices
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (Highlight)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (Highlight)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_HighlightChars(const Messages::PDAMessage_HighlightChars& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_HighlightChars", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): Received PDAMessage_HighlightChars: line_id={}, start={}, stop={}", DeviceId(), msg.LineId(), msg.StartIndex(), msg.StopIndex()));
+		LogDebug(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received PDAMessage_HighlightChars: line_id={}, start={}, stop={}", DeviceId(), msg.LineId(), msg.StartIndex(), msg.StopIndex()); });
 
 		if (msg.LineId() >= ONETOUCH_PAGE_LINES)
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): HighlightChars for invalid line: line_id={} (max={})", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): HighlightChars for invalid line: line_id={} (max={})", DeviceId(), msg.LineId(), ONETOUCH_PAGE_LINES - 1); });
 		}
 
 		if (msg.StartIndex() > msg.StopIndex())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): HighlightChars invalid range: start={} > stop={}", DeviceId(), msg.StartIndex(), msg.StopIndex()));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): HighlightChars invalid range: start={} > stop={}", DeviceId(), msg.StartIndex(), msg.StopIndex()); });
 		}
 
 		ScreenMode(Capabilities::ScreenModes::Updating);
@@ -188,7 +208,7 @@ namespace AqualinkAutomate::Devices
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (HighlightChars)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (HighlightChars)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_ShiftLines(const Messages::PDAMessage_ShiftLines& msg)
@@ -198,16 +218,16 @@ namespace AqualinkAutomate::Devices
 		auto direction = (0 > msg.LineShift()) ? Utility::ScreenDataPage::ShiftDirections::Up : Utility::ScreenDataPage::ShiftDirections::Down;
 		auto lines_to_shift = std::abs(msg.LineShift());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): Received PDAMessage_ShiftLines: first_line={}, last_line={}, shift={}, direction={}", DeviceId(), msg.FirstLineId(), msg.LastLineId(), lines_to_shift, magic_enum::enum_name(direction)));
+		LogDebug(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received PDAMessage_ShiftLines: first_line={}, last_line={}, shift={}, direction={}", DeviceId(), msg.FirstLineId(), msg.LastLineId(), lines_to_shift, magic_enum::enum_name(direction)); });
 
 		if (msg.FirstLineId() >= ONETOUCH_PAGE_LINES || msg.LastLineId() >= ONETOUCH_PAGE_LINES)
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): ShiftLines with invalid line range: first={}, last={} (max={})", DeviceId(), msg.FirstLineId(), msg.LastLineId(), ONETOUCH_PAGE_LINES - 1));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): ShiftLines with invalid line range: first={}, last={} (max={})", DeviceId(), msg.FirstLineId(), msg.LastLineId(), ONETOUCH_PAGE_LINES - 1); });
 		}
 
 		if (msg.FirstLineId() > msg.LastLineId())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): ShiftLines with invalid range: first={} > last={}", DeviceId(), msg.FirstLineId(), msg.LastLineId()));
+			LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): ShiftLines with invalid range: first={} > last={}", DeviceId(), msg.FirstLineId(), msg.LastLineId()); });
 		}
 
 		ScreenMode(Capabilities::ScreenModes::Updating);
@@ -218,33 +238,33 @@ namespace AqualinkAutomate::Devices
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (ShiftLines)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (ShiftLines)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_DisplayUpdate(const Messages::JandyMessage_DisplayUpdate& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_DisplayUpdate", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Received JandyMessage_DisplayUpdate", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Received JandyMessage_DisplayUpdate", DeviceId()); });
 
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (DisplayUpdate)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (DisplayUpdate)", DeviceId()); });
 	}
 
 	void OneTouchDevice::Slot_OneTouch_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Slot_Unknown", std::source_location::current(), Profiling::UnitColours::Red);
 
-		LogWarning(Channel::Devices, std::format("OneTouch ({}): Received unknown message type: 0x{:02x}", DeviceId(), msg.RawId()));
+		LogWarning(Channel::Devices, [&]() { return std::format("OneTouch ({}): Received unknown message type: 0x{:02x}", DeviceId(), msg.RawId()); });
 
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
-		LogTrace(Channel::Devices, std::format("OneTouch ({}): Watchdog kicked (Unknown)", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): Watchdog kicked (Unknown)", DeviceId()); });
 	}
 
 }

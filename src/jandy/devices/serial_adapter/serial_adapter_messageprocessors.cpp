@@ -1,3 +1,8 @@
+#include <algorithm>
+#include <format>
+#include <source_location>
+#include <variant>
+
 #include "logging/logging.h"
 #include "devices/serial_adapter_device.h"
 
@@ -67,10 +72,22 @@ namespace AqualinkAutomate::Devices
 			}
 		}
 
-		if (msg.Options().has_value())
+		if (msg.Options().has_value() && !m_StatusTypesCollection.empty())
 		{
-			m_StatusTypesCollection.erase(m_StatusTypesCollection.begin()); // Don't constantly check the OPTIONS.
-			m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin(); // Iterators were invalidated; reset to OPMODE.
+			// Stop polling OPTIONS now that it has been read, but ONLY if the front element
+			// is still the OPTIONS entry. Without this guard a second OPTIONS-bearing message
+			// (or any later one) would blindly erase whatever is now at the front (e.g. OPMODE),
+			// corrupting the poll rotation.
+			const auto& front = m_StatusTypesCollection.front();
+			const bool front_is_options =
+				std::holds_alternative<Messages::SerialAdapter_SystemConfigurationStatuses>(front) &&
+				std::get<Messages::SerialAdapter_SystemConfigurationStatuses>(front) == Messages::SerialAdapter_SystemConfigurationStatuses::OPTIONS;
+
+			if (front_is_options)
+			{
+				m_StatusTypesCollection.erase(m_StatusTypesCollection.begin()); // Don't constantly check the OPTIONS.
+				m_StatusTypesCollectionIter = m_StatusTypesCollection.cbegin(); // Iterators were invalidated; reset to OPMODE.
+			}
 		}
 
 		//
@@ -199,7 +216,7 @@ namespace AqualinkAutomate::Devices
 	void SerialAdapterDevice::Slot_SerialAdapter_Unknown(const Messages::JandyMessage_Unknown& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_Unknown", std::source_location::current());
-		LogDebug(Channel::Devices, std::format("Serial Adapter device received a JandyMessage_Unknown signal: type -> 0x{:02x}", msg.RawId()));
+		LogDebug(Channel::Devices, [&msg]() { return std::format("Serial Adapter device received a JandyMessage_Unknown signal: type -> 0x{:02x}", msg.RawId()); });
 
 		ProcessControllerUpdates();
 

@@ -24,7 +24,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessMainStatus", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
 			DeviceId(),
 			msg.PoolTemperature().InFahrenheit().value(),
 			msg.SpaTemperature().InFahrenheit().value(),
@@ -32,7 +32,7 @@ namespace AqualinkAutomate::Devices
 			msg.PumpOn(),
 			magic_enum::enum_name(msg.PoolHeaterStatus()),
 			magic_enum::enum_name(msg.SpaHeaterStatus()),
-			magic_enum::enum_name(msg.SolarHeaterStatus())));
+			magic_enum::enum_name(msg.SolarHeaterStatus())); });
 
 		// Update circulation mode from MainStatus spa mode flag.
 		m_DataHub->CirculationMode = msg.SpaMode()
@@ -82,7 +82,11 @@ namespace AqualinkAutomate::Devices
 
 		// Update filter pump status.
 		{
-			if (0 == m_DataHub->FilterPumps().size())
+			// Query the filtered pump view once; only re-query after creating a new pump
+			// (the Add invalidates the first snapshot).  Previously FilterPumps() ran a
+			// full device-graph scan twice per MainStatus even when a pump already existed.
+			auto filter_pumps = m_DataHub->FilterPumps();
+			if (filter_pumps.empty())
 			{
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Pump);
@@ -99,10 +103,11 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 
 				m_DataHub->Devices.Add(std::move(ptr));
+				filter_pumps = m_DataHub->FilterPumps();
 			}
 
 			const auto pump_status = msg.PumpOn() ? Kernel::PumpStatuses::Running : Kernel::PumpStatuses::Off;
-			for (auto& pump : m_DataHub->FilterPumps())
+			for (auto& pump : filter_pumps)
 			{
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, pump_status);
 
@@ -120,7 +125,11 @@ namespace AqualinkAutomate::Devices
 		// Helper to create/update a heater device in the DataHub.
 		auto update_heater = [this](const std::string& label, Kernel::HeaterStatuses status, Kernel::BodyOfWaterIds body_id)
 		{
-			if (0 == m_DataHub->Devices.FindByLabel(label).size())
+			// Query the label view once; only re-query after creating a new heater (the
+			// Add invalidates the first snapshot).  Previously FindByLabel() ran a full
+			// label scan up to three times per heater per MainStatus.
+			auto heaters = m_DataHub->Devices.FindByLabel(label);
+			if (heaters.empty())
 			{
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
@@ -128,9 +137,15 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 				m_DataHub->Devices.Add(std::move(ptr));
+				heaters = m_DataHub->Devices.FindByLabel(label);
 			}
 
-			auto heater = m_DataHub->Devices.FindByLabel(label).front();
+			if (heaters.empty())
+			{
+				return;
+			}
+
+			auto heater = heaters.front();
 			heater->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, status);
 
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
@@ -152,14 +167,14 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessAuxStatus", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Processing AuxStatus: {} devices", DeviceId(), msg.DeviceCount()));
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing AuxStatus: {} devices", DeviceId(), msg.DeviceCount()); });
 
 		for (const auto& info : msg.Devices())
 		{
 			auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(info.device_index);
 			if (!aux_id.has_value())
 			{
-				LogDebug(Channel::Devices, std::format("IAQ ({}): Unknown device_index {} in AuxStatus, skipping", DeviceId(), info.device_index));
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Unknown device_index {} in AuxStatus, skipping", DeviceId(), info.device_index); });
 				continue;
 			}
 
@@ -189,7 +204,7 @@ namespace AqualinkAutomate::Devices
 			}
 			else
 			{
-				LogDebug(Channel::Devices, std::format("IAQ ({}): Failed to create auxillary device for {}: {}", DeviceId(), magic_enum::enum_name(aux_id.value()), new_aux_ptr.error().message()));
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Failed to create auxillary device for {}: {}", DeviceId(), magic_enum::enum_name(aux_id.value()), new_aux_ptr.error().message()); });
 				continue;
 			}
 
@@ -228,8 +243,8 @@ namespace AqualinkAutomate::Devices
 			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, aux_label);
 			m_DataHub->ConfigUpdateSignal(update_event);
 
-			LogTrace(Channel::Devices, std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",
-				DeviceId(), magic_enum::enum_name(aux_id.value()), info.name, info.is_on ? "On" : "Off"));
+			LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",
+				DeviceId(), magic_enum::enum_name(aux_id.value()), info.name, info.is_on ? "On" : "Off"); });
 		}
 	}
 

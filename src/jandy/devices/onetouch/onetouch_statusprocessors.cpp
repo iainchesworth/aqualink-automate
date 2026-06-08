@@ -25,51 +25,41 @@ namespace AqualinkAutomate::Devices
 		//   - The format of text on the line eg. SALT XXXX PPM is fixed
 		//   - Hints are contiguous and the first two characters
 		//
+		// The hints are simply the (case-insensitive) first two characters that a line
+		// must start with for it to be worth running the full regex.  The previous
+		// implementation looped but unconditionally broke on the first iteration (so the
+		// index increment was dead code); this is the equivalent direct two-character
+		// compare.
 
-		using line_size_type = decltype(line_to_process)::size_type;
-		line_size_type first_char_position = 0;
-		bool skip_line_processing = true;
-
-		for (auto ch : line_to_process)
+		if (line_to_process.size() < 2)
 		{
-			if (line_to_process.size() <= first_char_position || hint_array[0] != std::tolower(static_cast<unsigned char>(ch)))
-			{
-				// At the end of the line or first hint didn't match...don't bother checking the rest
-				break;
-			}
-
-			if (line_to_process.size() > (first_char_position + 1) && hint_array[1] == std::tolower(static_cast<unsigned char>(line_to_process[first_char_position + 1])))
-			{
-				// It is worth processing the entire line.
-				skip_line_processing = false;
-			}
-
-			// No matter the outcome, there's no need to check the rest of the line.
-			break;
-
-			// Increment the index of the character we're looking at
-			++first_char_position;
+			// Too short to match a two-character hint -> skip processing.
+			return true;
 		}
 
-		return skip_line_processing;
+		const bool first_matches = (hint_array[0] == std::tolower(static_cast<unsigned char>(line_to_process[0])));
+		const bool second_matches = (hint_array[1] == std::tolower(static_cast<unsigned char>(line_to_process[1])));
+
+		// Worth processing the line only when BOTH hint characters match.
+		return !(first_matches && second_matches);
 	}
 
 	void OneTouchDevice::StatusProcessor_FilterPump(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_FilterPump", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_FilterPump status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_FilterPump status line.", DeviceId()); });
 
 		static const boost::regex re("filter pump", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'f', 'i' };
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_FilterPump skipping line processing; hints were not matched", DeviceId()));
-		} 
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_FilterPump skipping line processing; hints were not matched", DeviceId()); });
+		}
 		else if (!boost::regex_match(line_to_process, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_FilterPump status line; failed to identify pump line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_FilterPump status line; failed to identify pump line", DeviceId()); });
 		}
 		else
 		{
@@ -89,7 +79,7 @@ namespace AqualinkAutomate::Devices
 			{
 				// AquaLink RS Equipment Status shows a single "Filter Pump" line;
 				// individual pump identification requires Intelliflo-specific messages.
-				LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_FilterPump setting filter pump status trait to '{}'", DeviceId(), magic_enum::enum_name(Kernel::PumpStatuses::Running)));
+				LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_FilterPump setting filter pump status trait to '{}'", DeviceId(), magic_enum::enum_name(Kernel::PumpStatuses::Running)); });
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, Kernel::PumpStatuses::Running);
 
 				// Signal that a button state change has occurred.
@@ -109,7 +99,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_PoolHeat", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_PoolHeat status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_PoolHeat status line.", DeviceId()); });
 
 		static const boost::regex re("(pool heat)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'p', 'o' };
@@ -117,15 +107,15 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_PoolHeat skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_PoolHeat skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; failed to identify heat line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; failed to identify heat line", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_PoolHeat status line; incorrect token count returned", DeviceId()); });
 		}
 		else
 		{
@@ -148,7 +138,7 @@ namespace AqualinkAutomate::Devices
 			// The status is either going to be 'Heating' because only POOL HEAT was matched or 'Enabled' because POOL HEAT ENA was matched
 			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_PoolHeat setting Pool Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			LogTrace(Channel::Devices, [this, heater_status]() { return std::format("OneTouch ({}): StatusProcessor_PoolHeat setting Pool Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)); });
 			auto heater = m_DataHub->Devices.FindByLabel(pool_heater_label).front();
 			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
 
@@ -168,7 +158,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SpaHeat", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SpaHeat status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SpaHeat status line.", DeviceId()); });
 
 		static const boost::regex re("(spa heat)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'p' };
@@ -176,15 +166,15 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SpaHeat skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_SpaHeat skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; failed to identify heat line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; failed to identify heat line", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SpaHeat status line; incorrect token count returned", DeviceId()); });
 		}
 		else
 		{
@@ -207,7 +197,7 @@ namespace AqualinkAutomate::Devices
 			// The status is either going to be 'Heating' because only SPA HEAT was matched or 'Enabled' because SPA HEAT ENA was matched
 			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SpaHeat setting Spa Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			LogTrace(Channel::Devices, [this, heater_status]() { return std::format("OneTouch ({}): StatusProcessor_SpaHeat setting Spa Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)); });
 			auto heater = m_DataHub->Devices.FindByLabel(spa_heater_label).front();
 			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
 
@@ -227,7 +217,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SolarHeat", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SolarHeat status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SolarHeat status line.", DeviceId()); });
 
 		static const boost::regex re("(solar heat)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'o' };
@@ -235,15 +225,15 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SolarHeat skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_SolarHeat skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; failed to identify heat line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; failed to identify heat line", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SolarHeat status line; incorrect token count returned", DeviceId()); });
 		}
 		else 
 		{
@@ -266,7 +256,7 @@ namespace AqualinkAutomate::Devices
 			// The status is either going to be 'Heating' because only SOLAR HEAT was matched or 'Enabled' because SOLAR HEAT ENA was matched
 			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SolarHeat setting Solar Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			LogTrace(Channel::Devices, [this, heater_status]() { return std::format("OneTouch ({}): StatusProcessor_SolarHeat setting Solar Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)); });
 			auto heater = m_DataHub->Devices.FindByLabel(solar_heater_label).front();
 			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
 
@@ -286,7 +276,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_HeatPump", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_HeatPump status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_HeatPump status line.", DeviceId()); });
 
 		static const boost::regex re("(heat pump)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'h', 'e' };
@@ -294,15 +284,15 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_HeatPump skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; failed to identify heat line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; failed to identify heat line", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_HeatPump status line; incorrect token count returned", DeviceId()); });
 		}
 		else
 		{
@@ -325,7 +315,7 @@ namespace AqualinkAutomate::Devices
 			// The status is either going to be 'Heating' because only HEAT PUMP was matched or 'Enabled' because HEAT PUMP ENA was matched
 			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_HeatPump setting Heat Pump Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			LogTrace(Channel::Devices, [this, heater_status]() { return std::format("OneTouch ({}): StatusProcessor_HeatPump setting Heat Pump Heating status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)); });
 			auto heater = m_DataHub->Devices.FindByLabel(heat_pump_label).front();
 			heater->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
 
@@ -345,7 +335,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_Chiller", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_Chiller status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_Chiller status line.", DeviceId()); });
 
 		static const boost::regex re("(chiller)(?:\\s+(ena))?", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'c', 'h' };
@@ -353,15 +343,15 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_Chiller skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; failed to identify chiller line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; failed to identify chiller line", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_Chiller status line; incorrect token count returned", DeviceId()); });
 		}
 		else
 		{
@@ -384,7 +374,7 @@ namespace AqualinkAutomate::Devices
 			// The status is either going to be 'Heating' because only CHILLER was matched or 'Enabled' because CHILLER ENA was matched
 			const auto heater_status = (!matches[2].matched) ? Kernel::HeaterStatuses::Heating : Kernel::HeaterStatuses::Enabled;
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_Chiller setting Chiller Cooling status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)));
+			LogTrace(Channel::Devices, [this, heater_status]() { return std::format("OneTouch ({}): StatusProcessor_Chiller setting Chiller Cooling status trait to '{}'", DeviceId(), magic_enum::enum_name(heater_status)); });
 			auto chiller = m_DataHub->Devices.FindByLabel(chiller_label).front();
 			chiller->AuxillaryTraits.Set(HeaterStatusTrait{}, heater_status);
 
@@ -404,7 +394,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_AquaPurePercentage", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_AquaPurePercentage status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_AquaPurePercentage status line.", DeviceId()); });
 
 		static const boost::regex re("aquapure ([0-9]{1,2}|100)%", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'a', 'q' };
@@ -412,23 +402,23 @@ namespace AqualinkAutomate::Devices
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_AquaPurePercentage skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_AquaPurePercentage skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; failed to identify percentage", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; failed to identify percentage", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; incorrect token count returned", DeviceId()); });
 		}
 		else if (const auto percentage_dutycycle_string = matches[1].str(); percentage_dutycycle_string.empty())
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; sub-match is empty", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_AquaPurePercentage status line; sub-match is empty", DeviceId()); });
 		}
 		else if (const auto percentage_dutycycle = Utility::ToNumber<uint8_t>(percentage_dutycycle_string); !percentage_dutycycle.has_value())
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Percentage string-to-number conversation failed: original value was '{}'", DeviceId(), percentage_dutycycle_string));
+			LogDebug(Channel::Devices, [this, &percentage_dutycycle_string]() { return std::format("OneTouch ({}): Percentage string-to-number conversation failed: original value was '{}'", DeviceId(), percentage_dutycycle_string); });
 		}
 		else 
 		{
@@ -458,31 +448,31 @@ namespace AqualinkAutomate::Devices
 	void OneTouchDevice::StatusProcessor_SaltLevelPPM(const Utility::ScreenDataPage& page, const uint8_t line_id)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SaltLevelPPM", std::source_location::current());
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SaltLevelPPM status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SaltLevelPPM status line.", DeviceId()); });
 
 		static const boost::regex re("salt ([0-9]{1,4}) ppm", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'a' };
 		boost::smatch matches;
-		
+
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_SaltLevelPPM skipping line processing; hints were not matched", DeviceId()));
-		} 
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_SaltLevelPPM skipping line processing; hints were not matched", DeviceId()); });
+		}
 		else if (!boost::regex_match(line_to_process, matches, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; failed to identify salt level", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; failed to identify salt level", DeviceId()); });
 		}
 		else if (!matches[1].matched)
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; incorrect token count returned", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; incorrect token count returned", DeviceId()); });
 		}
 		else if (const auto salt_level_string = matches[1].str(); salt_level_string.empty())
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; sub-match is empty", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_SaltLevelPPM status line; sub-match is empty", DeviceId()); });
 		}
 		else  if (const auto salt_level = Utility::ToNumber<uint32_t>(salt_level_string); !salt_level.has_value())
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Salt level string-to-number conversation failed: original value was '{}'", DeviceId(), salt_level_string));
+			LogDebug(Channel::Devices, [this, &salt_level_string]() { return std::format("OneTouch ({}): Salt level string-to-number conversation failed: original value was '{}'", DeviceId(), salt_level_string); });
 		}
 		else
 		{
@@ -494,18 +484,18 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_CheckAquaPure", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_CheckAquaPure status line.", DeviceId()));
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_CheckAquaPure status line.", DeviceId()); });
 
 		static const boost::regex re("check aquapure", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'c', 'h' };
 
 		if (const auto line_to_process = Utility::TrimWhitespace(page[line_id].Text); StatusProcessor_ShouldSkipLineProcessing(hints, line_to_process))
 		{
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure skipping line processing; hints were not matched", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_CheckAquaPure skipping line processing; hints were not matched", DeviceId()); });
 		}
 		else if (!boost::regex_match(line_to_process, re))
 		{
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Failed while processing StatusProcessor_CheckAquaPure status line; failed to identify check line", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): Failed while processing StatusProcessor_CheckAquaPure status line; failed to identify check line", DeviceId()); });
 		}
 		else
 		{
@@ -530,7 +520,7 @@ namespace AqualinkAutomate::Devices
 			if (chlorinators.empty()) { return; }
 			auto chlorinator = chlorinators.front();
 
-			LogTrace(Channel::Devices, std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator health to GeneralFault (check system alert)", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("OneTouch ({}): StatusProcessor_CheckAquaPure setting chlorinator health to GeneralFault (check system alert)", DeviceId()); });
 			chlorinator->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::GeneralFault);
 
 			// Signal that a button state change has occurred.
