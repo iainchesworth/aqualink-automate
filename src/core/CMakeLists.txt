@@ -278,7 +278,7 @@ target_sources(
 	platform/posix/firewall_manager.cpp
 	platform/posix/network_serial_port_timeout.cpp
 	platform/posix/safe_ctime.cpp
-	platform/linux/get_terminal_column_width.cpp
+	platform/posix/get_terminal_column_width.cpp
 	platform/linux/physical_serial_port_timeout.cpp
 )
 endif(LINUX)
@@ -291,7 +291,7 @@ target_sources(
 	platform/posix/firewall_manager.cpp
 	platform/posix/network_serial_port_timeout.cpp
 	platform/posix/safe_ctime.cpp
-	platform/macos/get_terminal_column_width.cpp
+	platform/posix/get_terminal_column_width.cpp
 	platform/macos/physical_serial_port_timeout.cpp
 )
 endif(APPLE)
