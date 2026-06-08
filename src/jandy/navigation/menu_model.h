@@ -190,15 +190,19 @@ namespace AqualinkAutomate::Navigation
 		std::vector<const MenuEdge*> GetIncomingSelectEdges(PageId target) const;
 
 	private:
-		// BFS helper for pathfinding
-		struct PathNode
-		{
-			PageId page_id;
-			std::vector<const MenuEdge*> path;
-		};
+		// Rebuild the incoming-Select-edge index from the current page set. Cheap one-off
+		// scan performed lazily on first query after a page registration.
+		void RebuildIncomingSelectEdges() const;
 
 		std::unordered_map<PageId, MenuPage> m_Pages;
 		std::vector<MenuEdge> m_GlobalEdges;
+
+		// Incoming-Select-edge index: target page -> edges that Select-transition into it.
+		// Edge pointers are stable for the model's lifetime (page edge vectors are not
+		// mutated after registration). Built lazily and memoised; invalidated by RegisterPage.
+		// Marked mutable so the const query accessor can populate it on demand.
+		mutable std::unordered_map<PageId, std::vector<const MenuEdge*>> m_IncomingSelectEdges;
+		mutable bool m_IncomingSelectEdgesValid{ false };
 	};
 
 }
