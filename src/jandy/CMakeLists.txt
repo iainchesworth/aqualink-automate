@@ -9,10 +9,7 @@ add_library(libaqualink-jandy)
 
 target_sources( 
 	libaqualink-jandy
-	PRIVATE 
-	auxillaries/jandy_auxillary_id.cpp 
-	auxillaries/jandy_auxillary_status.cpp 
-	auxillaries/jandy_auxillary_traits_types.cpp 
+	PRIVATE
 	concepts/jandy_message_type.cpp
 	devices/aquarite_device.cpp
 	devices/command_dispatcher.cpp
@@ -53,10 +50,8 @@ target_sources(
 	errors/jandy_errors_auxillary_factory.cpp
 	errors/jandy_errors_scrapeable.cpp
 	errors/string_conversion_errors.cpp
-	factories/jandy_auxillary_factory.cpp 
-	factories/jandy_message_factory.cpp
-	factories/jandy_message_factory_registration.cpp
-	formatters/chemistry_formatter.cpp 
+	factories/jandy_auxillary_factory.cpp
+	formatters/chemistry_formatter.cpp
 	formatters/jandy_device_formatters.cpp 
 	formatters/jandy_message_formatters.cpp 
 	formatters/screen_data_page_formatter.cpp
@@ -109,8 +104,6 @@ target_sources(
 	messages/serial_adapter/serial_adapter_message_dev_status.cpp 
 	messages/jandy_message.cpp
 	messages/jandy_message_ack.cpp
-	messages/jandy_message_constants.cpp
-	messages/jandy_message_ids.cpp
 	messages/jandy_message_message.cpp
 	messages/jandy_message_message_long.cpp	
 	messages/jandy_message_display_update.cpp
