@@ -623,7 +623,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_HelpShortCircuitsBeforeValidationFailure)
 	// short-circuit (throw OptionsHelpOrVersion) rather than be masked by the
 	// validation failure on the conflicting options.
 	BOOST_CHECK_THROW(
-		RunPipelineWithHelpCheckBeforeValidate({ "program", "--help", "--disable-https", "--https-port=8443" }),
+		(void)RunPipelineWithHelpCheckBeforeValidate({ "program", "--help", "--disable-https", "--https-port=8443" }),
 		Exceptions::OptionsHelpOrVersion);
 }
 
@@ -631,7 +631,7 @@ BOOST_AUTO_TEST_CASE(Test_Pipeline_VersionShortCircuitsBeforeValidationFailure)
 {
 	// Same ordering guarantee for --version.
 	BOOST_CHECK_THROW(
-		RunPipelineWithHelpCheckBeforeValidate({ "program", "--version", "--disable-https", "--https-port=8443" }),
+		(void)RunPipelineWithHelpCheckBeforeValidate({ "program", "--version", "--disable-https", "--https-port=8443" }),
 		Exceptions::OptionsHelpOrVersion);
 }
 
