@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstddef>
+#include <iterator>
 #include <ranges>
 #include <string>
 #include <span>
 #include <type_traits>
 #include <vector>
+
+#include <boost/assert.hpp>
 
 #include "interfaces/imessage.h"
 #include "interfaces/iserializable.h"
@@ -51,6 +54,23 @@ namespace AqualinkAutomate::Messages
 		std::string ToString() const override;
 
 	public:
+		// Two Deserialize overloads coexist on this type.  They are NOT competing
+		// generic overloads — they form a single logical entry point split by an
+		// unambiguous, disjoint parameter domain, both forwarding into the one
+		// shared DeserializeFromContiguousData() implementation:
+		//
+		//   * Deserialize(std::span<const std::byte>&)  — the ISerializable
+		//     interface contract (cold path: tests / generic serialisation).
+		//   * Deserialize(const JandyRawMessageRange&)  — the hot path: a
+		//     contiguous uint8_t range (a linearised circular-buffer subrange).
+		//
+		// A std::byte span never satisfies JandyRawMessageRange (range_value_t is
+		// std::byte, not uint8_t) and a uint8_t range never converts to a
+		// std::byte span, so overload resolution can never be ambiguous between
+		// them.  Both names are intentional and load-bearing: the factory and the
+		// device unit tests call the templated uint8_t form, while the
+		// ISerializable interface (and the to-master decode test) call the
+		// std::byte form.  Do not rename one without updating those call sites.
 		bool Serialize(std::vector<uint8_t>& message_bytes) const final;
 		virtual bool SerializeContents(std::vector<uint8_t>& message_bytes) const = 0;
 		bool Deserialize(const std::span<const std::byte>& message_bytes) final;
@@ -72,11 +92,40 @@ namespace AqualinkAutomate::Messages
 		/// circular-buffer subrange).  After circular_buffer::linearize() the
 		/// iterators address contiguous storage, so we form a span directly
 		/// over the caller's memory — no heap copy required.
+		///
+		/// HARD PRECONDITION: the supplied range must be contiguous in memory.
+		/// The JandyRawMessageRange concept only requires random_access_range
+		/// (a boost::circular_buffer subrange is not statically a
+		/// std::contiguous_range, so the contiguity cannot be a static_assert);
+		/// the generator establishes it dynamically by calling
+		/// circular_buffer::linearize() before parsing.  A debug BOOST_ASSERT
+		/// verifies the storage really is contiguous so a future caller that
+		/// forgets to linearize fails loudly instead of forming a span over
+		/// non-contiguous memory.
 		template <JandyRawMessageRange RAW_MESSAGE_RANGE>
 		[[nodiscard]] bool Deserialize(const RAW_MESSAGE_RANGE& raw_message)
 		{
 			const auto size = std::ranges::size(raw_message);
-			std::span<const uint8_t> raw_span(&*std::ranges::begin(raw_message), size);
+
+			if (0 == size)
+			{
+				return DeserializeFromContiguousData(std::span<const uint8_t>{});
+			}
+
+			const auto first = std::ranges::begin(raw_message);
+			const uint8_t* const base = &*first;
+
+			// Verify the range really is laid out contiguously: the address of
+			// the last element (reached by random-access advance from the first)
+			// must equal base + (size - 1).  This catches a non-linearised
+			// circular-buffer subrange (split across the wrap point) in debug
+			// builds before a malformed span is constructed.  Advancing from
+			// begin avoids relying on the range's sentinel being an iterator.
+			BOOST_ASSERT_MSG(
+				(base + (size - 1)) == &*std::ranges::next(first, static_cast<std::ranges::range_difference_t<RAW_MESSAGE_RANGE>>(size - 1)),
+				"JandyMessage::Deserialize requires a contiguous range; the caller must linearize the circular buffer first");
+
+			std::span<const uint8_t> raw_span(base, size);
 			return DeserializeFromContiguousData(raw_span);
 		}
 
