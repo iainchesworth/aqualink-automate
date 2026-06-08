@@ -33,6 +33,7 @@ target_sources(
 	unit/http/test_http_security.cpp
 	unit/http/test_http_sessions.cpp
 	unit/http/test_http_setpoints.cpp
+	unit/http/test_http_static_file.cpp
 	unit/http/test_routing_matches.cpp
 	unit/http/test_routing_node_bounds.cpp
 	unit/http/test_ws_equipment.cpp
