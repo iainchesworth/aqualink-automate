@@ -38,9 +38,13 @@ namespace AqualinkAutomate::Devices::Capabilities
 	private:
 		void Signal_AckMessage_Impl(uint8_t ack_value, uint8_t data_value_to_send) const
 		{
-			if (!m_IsEmulated)
+			if (!m_IsEmulated || m_EmulationSuppressed)
 			{
-				// Don't send ACK messages for any equipment/devices that we're not emulating.
+				// Don't send ACK messages for any equipment/devices that we're not
+				// emulating, OR for which emulation has been suppressed at runtime
+				// (presence gating: a real device was detected answering at this
+				// address, so the emulated instance has gone permanently passive to
+				// avoid two transmitters colliding on the same bus address).
 			}
 			else
 			{
@@ -61,8 +65,23 @@ namespace AqualinkAutomate::Devices::Capabilities
 	public:
 		bool IsEmulated() const;
 
+	public:
+		// Presence gating (bus safety): an emulated device that detects a REAL
+		// device answering the master at the same bus address must permanently
+		// stop transmitting so the bus never has two transmitters on one address.
+		//
+		// SuppressEmulation() is one-way and idempotent: once a real device is
+		// observed the emulated instance becomes a passive decoder for the rest of
+		// its lifetime. IsEmulated() deliberately keeps reporting the construction
+		// intent (it is used at construction time to decide slot/ACK registration);
+		// IsEmulationActive() is the runtime "may I transmit?" predicate.
+		void SuppressEmulation();
+		bool IsEmulationSuppressed() const;
+		bool IsEmulationActive() const;
+
 	private:
 		const bool m_IsEmulated;
+		bool m_EmulationSuppressed{ false };
 	};
 
 }

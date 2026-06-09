@@ -24,6 +24,11 @@ namespace AqualinkAutomate::Messages
 		Toggle = 0xFF,	// Actually Unknown Value
 		SetOff = 0x80,
 		SetOn = 0x81,
+		// CAPTURE-GATED (AqualinkD source/serialadapter.c): the data value of the
+		// first of the two-step setpoint write -- readySP[] = {0x00,0x01,typeID,0x35}.
+		// The second step (setSP) carries data value 0x00 with the raw temperature
+		// supplied as the ack_type byte. Confirm against a live Brainboxes capture.
+		ReadySetpoint = 0x35,
 		Action = 0xFF,	// Actually Unknown Value
 		Unknown = 0xFF
 	};
