@@ -104,6 +104,13 @@ namespace AqualinkAutomate::Devices
 		// of the status it just decoded from MainStatus (+ DataHub aux state).
 		void RenderStatusScreen(const Messages::IAQMessage_MainStatus& msg);
 
+		// Render a fixed "Cloud Link" page for a heartbeat-only IAQ (the iAqualink2
+		// cloud interface on 0xA3) which receives ONLY the heartbeat (0x53) and never
+		// a MainStatus/AuxStatus or any navigable page.  Without this it would sit on
+		// the constructor-default Page_Unknown forever.  Mirrors RenderStatusScreen
+		// but the content is the heartbeat liveness, not decoded system status.
+		void RenderCloudLinkScreen();
+
 	private:
 		Utility::ScreenDataPage m_StatusPage;
 		Utility::ScreenDataPage m_TableInfo;
@@ -117,7 +124,8 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
-		bool m_HasReceivedData{ false };   // has any traffic ever been addressed to this id? (distinguishes "not present" from "went silent")
+		bool m_HasReceivedData{ false };       // has any traffic ever been addressed to this id? (distinguishes "not present" from "went silent")
+		bool m_HasReceivedMainStatus{ false }; // has a MainStatus ever decoded? (a 0x33 renders System Status; a heartbeat-only 0xA3 renders Cloud Link)
 		uint8_t m_PendingCommand{ 0x00 };
 		std::deque<uint8_t> m_CommandQueue;
 		bool m_AwaitingControlReady{ false };
