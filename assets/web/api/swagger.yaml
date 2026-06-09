@@ -561,6 +561,7 @@ paths:
                     state: "NavigatingToNext"
                     visited_count: 12
                     current_target: "SetTemperature"
+                    label_scrape_skipped: false
                   scraping_stall_counter: 0
                   highlighted_line: 3
                   pending_key_command: "NoKeyCommand"
@@ -1384,6 +1385,12 @@ components:
             current_target:
               type: string
               example: "SetTemperature"
+            label_scrape_skipped:
+              type: boolean
+              description: >-
+                True when aux labels were already present on the DataHub (e.g.
+                seeded by a real iAqualink2 on the bus) so the slow Label Aux
+                menu crawl was skipped at startup.
         scraping_stall_counter:
           type: integer
           description: OneTouch stall counter

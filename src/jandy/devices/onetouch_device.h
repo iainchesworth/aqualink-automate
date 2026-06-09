@@ -69,6 +69,12 @@ namespace AqualinkAutomate::Devices
 	public:
 		nlohmann::json DescribeDiagnostics() const override;
 
+		// True when the DataHub already carries one or more aux devices with a
+		// non-empty label (e.g. seeded passively by a real iAqualink2 on the bus).
+		// When so, the emulated OneTouch skips the slow "Label Aux" menu crawl at
+		// startup. Exposed for diagnostics and for validating the skip decision.
+		bool DataHubHasSeededAuxLabels() const;
+
 	private:
 		void ProcessControllerUpdates() override;
 		void ProcessControllerUpdates(bool is_status_message);

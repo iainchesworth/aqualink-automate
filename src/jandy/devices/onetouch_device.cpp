@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
+#include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
 #include "formatters/jandy_device_formatters.h"
@@ -270,6 +271,38 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	bool OneTouchDevice::DataHubHasSeededAuxLabels() const
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::DataHubHasSeededAuxLabels", std::source_location::current());
+
+		if (nullptr == JandyController::m_DataHub)
+		{
+			return false;
+		}
+
+		// A real iAqualink2 (AqualinkTouch 0x33) decodes aux NAMES from its AuxStatus
+		// (0x72) frames and sets LabelTrait on the matching DataHub aux devices
+		// passively. We treat any aux device carrying a non-empty label as evidence
+		// the labels are already known, so the emulated OneTouch can skip scraping
+		// them. Devices are keyed by JandyAuxillaryId so only Jandy auxes are
+		// considered (matching what the Label Aux crawl would have populated).
+		for (const auto& device : JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}))
+		{
+			if (nullptr == device)
+			{
+				continue;
+			}
+
+			if (auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+				label.has_value() && !Utility::TrimWhitespace(label.value()).empty())
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void OneTouchDevice::Scraping_ProcessStep_StartUp()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Scraping_ProcessStep_StartUp", std::source_location::current());
@@ -281,6 +314,20 @@ namespace AqualinkAutomate::Devices
 		// Start the SpiderEngine crawl if not already active
 		if (m_SpiderEngine->GetState() == Navigation::SpiderEngine::State::Idle)
 		{
+			// If a real iAqualink2 has already seeded aux labels onto the DataHub,
+			// skip the slow "Label Aux" crawl (~36 pages under a 30s watchdog) and
+			// reuse those labels. Otherwise fall back to the full scrape so non-IAQ
+			// systems still discover their aux labels.
+			const bool skip_label_pages = DataHubHasSeededAuxLabels();
+			if (skip_label_pages)
+			{
+				LogInfo(Channel::Scraping, std::format("OneTouch ({}): IAQ-seeded aux labels present on DataHub - skipping Label Aux scrape", DeviceId()));
+			}
+			else
+			{
+				LogDebug(Channel::Scraping, std::format("OneTouch ({}): No seeded aux labels found - performing full Label Aux scrape", DeviceId()));
+			}
+
 			// Use FullDiscoveryVisitPolicy for startup - visits all navigable pages
 			auto policy = std::make_unique<Navigation::FullDiscoveryVisitPolicy>(
 				[this](Navigation::PageId page, const Utility::ScreenDataPage& content)
@@ -291,7 +338,8 @@ namespace AqualinkAutomate::Devices
 				[this]()
 				{
 					LogInfo(Channel::Scraping, std::format("OneTouch ({}): SpiderEngine startup crawl complete", DeviceId()));
-				}
+				},
+				skip_label_pages
 			);
 			m_SpiderEngine->StartCrawl(std::move(policy));
 		}
@@ -471,6 +519,7 @@ namespace AqualinkAutomate::Devices
 			spider["state"] = std::string(magic_enum::enum_name(m_SpiderEngine->GetState()));
 			spider["visited_count"] = static_cast<uint32_t>(m_SpiderEngine->GetVisitedPages().size());
 			spider["current_target"] = std::string(magic_enum::enum_name(m_SpiderEngine->GetCurrentTarget()));
+			spider["label_scrape_skipped"] = DataHubHasSeededAuxLabels();
 			j["spider_engine"] = spider;
 		}
 
