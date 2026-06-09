@@ -247,6 +247,44 @@
                 </template>
             </div>
 
+            <!-- Chemistry / Chlorinator Card -->
+            <div class="section-title">Chemistry / Chlorinator</div>
+            <div class="chemistry-card card mb-2" x-data="chlorinatorCard()" role="region" aria-label="Chlorinator and water chemistry summary">
+                <div class="chemistry-card-grid">
+                    <!-- SWG output % — coloured by chlorinator health -->
+                    <div class="chemistry-metric">
+                        <span class="chemistry-metric-label">SWG Output</span>
+                        <span class="chemistry-metric-value" :style="`color:${healthColor}`" x-text="generatingPercent"></span>
+                        <span class="chemistry-metric-sub"
+                              x-show="present"
+                              :class="'gauge-band-' + (healthBand || '')"
+                              x-text="healthLabel"></span>
+                    </div>
+
+                    <!-- Salt PPM -->
+                    <div class="chemistry-metric">
+                        <span class="chemistry-metric-label">Salt</span>
+                        <span class="chemistry-metric-value" x-text="saltPpm"></span>
+                        <span class="chemistry-metric-sub" x-show="present" x-text="statusLabel"></span>
+                    </div>
+
+                    <!-- ORP — labelled placeholder; renders automatically once a sensor reports -->
+                    <div class="chemistry-metric">
+                        <span class="chemistry-metric-label">ORP</span>
+                        <span class="chemistry-metric-value" x-text="orp"></span>
+                        <span class="chemistry-metric-sub text-muted">sensor optional</span>
+                    </div>
+
+                    <!-- pH — labelled placeholder; renders automatically once a sensor reports -->
+                    <div class="chemistry-metric">
+                        <span class="chemistry-metric-label">pH</span>
+                        <span class="chemistry-metric-value" x-text="ph"></span>
+                        <span class="chemistry-metric-sub text-muted">sensor optional</span>
+                    </div>
+                </div>
+                <p class="text-muted text-2xs mt-1" x-show="!present" x-cloak>No chlorinator detected on the bus.</p>
+            </div>
+
             <!-- Heater Controls -->
             <template x-if="$store.pool.buttons.some(b => b.label && b.label.toLowerCase().includes('heat'))">
                 <div>
@@ -1130,6 +1168,7 @@
     <!-- Component scripts -->
     <script src="/scripts/components/pool-graphic.js"></script>
     <script src="/scripts/components/chemistry-gauge.js"></script>
+    <script src="/scripts/components/chlorinator-card.js"></script>
     <script src="/scripts/components/equipment-button.js"></script>
     <!-- View scripts -->
     <script src="/scripts/views/dashboard-view.js"></script>

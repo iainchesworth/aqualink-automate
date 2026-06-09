@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * test/fixtures/sample_session.cap, which replays an AquaRite salt-water
  * generator reporting 40% output / 3200 PPM salt.  The chlorinator chemistry
  * reaches the browser via the /ws/equipment WebSocket (ChemistryUpdate ->
- * salt_level) and/or the GET /api/equipment REST snapshot (chemistry.salt_in_ppm).
+ * salt_level) and/or the GET /api/equipment REST snapshot (chemistry.salt_ppm).
  *
  * The dashboard renders the salt value in a "Salt" chemistry gauge whose
  * displayed text is "<ppm> ppm" (see assets/web/scripts/components/chemistry-gauge.js
@@ -39,7 +39,7 @@ test('dashboard renders the replayed AquaRite salt reading (3200 ppm)', async ({
 
 /**
  * Cross-check the data path at the source: the REST snapshot the UI fetches on
- * load must itself carry salt_in_ppm = 3200.  This isolates a UI-rendering
+ * load must itself carry salt_ppm = 3200.  This isolates a UI-rendering
  * failure from a backend-decode failure if test 1 ever regresses.
  */
 test('REST /api/equipment exposes the replayed salt concentration', async ({ request }) => {
@@ -48,5 +48,5 @@ test('REST /api/equipment exposes the replayed salt concentration', async ({ req
 
   const body = await resp.json();
   expect(body).toHaveProperty('chemistry');
-  expect(body.chemistry.salt_in_ppm).toBe(3200);
+  expect(body.chemistry.salt_ppm).toBe(3200);
 });
