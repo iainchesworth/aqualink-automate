@@ -12,6 +12,7 @@ const _diag = {
     statsListener: null,
     windowSeconds: 60,
     emuDeviceTimer: null,
+    actualDeviceTimer: null,
     recordingTimer: null,
     // One-shot guards so a persistently-degraded backend warns once per
     // poller instead of flooding the console on every 2s tick.
@@ -66,6 +67,7 @@ function diagnosticsView() {
         showLogLevels: false,
         showDeviceStatus: false,
         showEmulatedDevices: true,
+        showActualDevices: true,
         showRecording: false,
 
         // Serial recording control state
@@ -75,6 +77,9 @@ function diagnosticsView() {
 
         // Emulated device diagnostics
         emulatedDevices: [],
+
+        // Actual (real, non-emulated) device diagnostics
+        actualDevices: [],
 
         // Log level control state
         logChannels: {},
@@ -91,10 +96,14 @@ function diagnosticsView() {
 
             this._fetchLogLevels();
             this.fetchEmulatedDevices();
+            this.fetchActualDevices();
             this.fetchRecordingStatus();
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
                 _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
+            }
+            if (!_diag.actualDeviceTimer) {
+                _diag.actualDeviceTimer = setInterval(() => this.fetchActualDevices(), 2000);
             }
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
@@ -194,6 +203,11 @@ function diagnosticsView() {
                 _diag.emuDeviceTimer = null;
             }
 
+            if (_diag.actualDeviceTimer) {
+                clearInterval(_diag.actualDeviceTimer);
+                _diag.actualDeviceTimer = null;
+            }
+
             if (_diag.recordingTimer) {
                 clearInterval(_diag.recordingTimer);
                 _diag.recordingTimer = null;
@@ -218,6 +232,17 @@ function diagnosticsView() {
                 _diag.warnedOnce['emulated-devices'] = false;
             } catch (e) {
                 _handlePollFailure('emulated-devices', null, e);
+            }
+        },
+
+        async fetchActualDevices() {
+            try {
+                const resp = await fetch('/api/diagnostics/actual-devices');
+                if (!resp.ok) { _handlePollFailure('actual-devices', resp, null); return; }
+                this.actualDevices = await resp.json();
+                _diag.warnedOnce['actual-devices'] = false;
+            } catch (e) {
+                _handlePollFailure('actual-devices', null, e);
             }
         },
 

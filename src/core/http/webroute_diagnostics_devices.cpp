@@ -15,25 +15,19 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP
 {
 
-	WebRoute_Diagnostics_Devices::WebRoute_Diagnostics_Devices(Kernel::HubLocator& hub_locator)
-	{
-		// HubLocator::Find throws Hub_NotFound if the hub is not registered,
-		// so a successfully-constructed route always has a valid hub pointer.
-		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
-	}
-
-	nlohmann::json WebRoute_Diagnostics_Devices::CollectEmulatedDiagnostics() const
+	nlohmann::json CollectDeviceDiagnostics(const Kernel::EquipmentHub& equipment_hub, bool want_emulated)
 	{
 		nlohmann::json result = nlohmann::json::array();
 
-		m_EquipmentHub->ForEachDevice([&result](const Interfaces::IDevice& device)
+		equipment_hub.ForEachDevice([&result, want_emulated](const Interfaces::IDevice& device)
 			{
-				// This endpoint reports only *emulated* devices. Real
-				// bus-discovered devices share the same concrete classes, so
-				// filter on emulation state rather than on the describable
-				// type alone (the type is necessary but not sufficient).
+				// Real bus-discovered devices share the same concrete classes
+				// as their emulated counterparts, so filter on emulation
+				// *state* rather than on the describable type alone. A device
+				// that is not an IEmulatedDevice is treated as non-emulated.
 				auto emulated = dynamic_cast<const Interfaces::IEmulatedDevice*>(&device);
-				if ((nullptr == emulated) || (!emulated->IsEmulated()))
+				const bool is_emulated = (nullptr != emulated) && emulated->IsEmulated();
+				if (is_emulated != want_emulated)
 				{
 					return;
 				}
@@ -48,6 +42,18 @@ namespace AqualinkAutomate::HTTP
 			});
 
 		return result;
+	}
+
+	WebRoute_Diagnostics_Devices::WebRoute_Diagnostics_Devices(Kernel::HubLocator& hub_locator)
+	{
+		// HubLocator::Find throws Hub_NotFound if the hub is not registered,
+		// so a successfully-constructed route always has a valid hub pointer.
+		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
+	}
+
+	nlohmann::json WebRoute_Diagnostics_Devices::CollectEmulatedDiagnostics() const
+	{
+		return CollectDeviceDiagnostics(*m_EquipmentHub, true);
 	}
 
 	boost::beast::http::message_generator WebRoute_Diagnostics_Devices::OnRequest(const HTTP::Request& req)

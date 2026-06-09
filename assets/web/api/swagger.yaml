@@ -579,6 +579,55 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET."
 
+  /api/diagnostics/actual-devices:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get actual (real, non-emulated) device diagnostics
+      description: |
+        Returns diagnostic state for all active *real* (non-emulated)
+        bus-discovered devices — e.g. a passively-snooped iAqualink2 (via the
+        0x33 AqualinkTouch snoop), a real OneTouch, and any others. Each device
+        reports its internal operating state, screen content, navigation
+        progress, command queues, and other device-specific information.
+
+        The response schema is identical to `/api/diagnostics/emulated-devices`
+        (shared `EmulatedDeviceDiagnostics` schema); the only difference is the
+        emulation filter (this endpoint emits only devices where
+        `IsEmulated() == false`). Real devices are passive snoopers and never
+        transmit on the RS-485 bus.
+      operationId: getActualDevices
+      responses:
+        '200':
+          description: Array of actual (non-emulated) device diagnostic objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmulatedDeviceDiagnostics'
+              example:
+                - device_type: "IAQ"
+                  device_id: "0x33"
+                  operating_state: "NormalOperation"
+                  screen:
+                    page_type: "Page_Home"
+                    mode: "Normal"
+                    lines: ["Pool 78", "Spa 0", "Air 81"]
+                  is_running: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
   /api/diagnostics/recording:
     get:
       tags:
