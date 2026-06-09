@@ -217,6 +217,42 @@ html.dark .gauge-card {
 .gauge-band-okay { background: rgba(245, 158, 11, 0.15); color: var(--gauge-warn); }
 .gauge-band-bad { background: rgba(239, 68, 68, 0.15); color: var(--gauge-bad); }
 
+/* Chemistry / Chlorinator summary card */
+.chemistry-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.chemistry-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.chemistry-metric-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.chemistry-metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.chemistry-metric-sub {
+    font-size: 0.65rem;
+    font-weight: 600;
+    align-self: flex-start;
+    padding: 0.1rem 0.4rem;
+    border-radius: 1rem;
+}
+
 /* Equipment Button Grid */
 .equipment-grid {
     display: grid;

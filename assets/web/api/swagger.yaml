@@ -999,20 +999,71 @@ components:
               $ref: '#/components/schemas/Temperature'
         chemistry:
           type: object
+          description: >-
+            Water chemistry and chlorinator (SWG) state. ORP / pH are placeholders
+            until a sensor is decoded on the wire and are null when no sensor is
+            present. The chlorinator block is null until a salt-water generator is
+            discovered on the bus.
           properties:
+            salt_ppm:
+              type: integer
+              description: Salt concentration in parts per million (0 when unknown)
+              example: 3200
+            orp_mv:
+              type: integer
+              nullable: true
+              description: Oxidation-Reduction Potential in mV; null when no ORP sensor is present
+              example: 650
             ph:
               type: number
               format: double
-              description: Water pH level
+              nullable: true
+              description: Water pH level; null when no pH sensor is present
               example: 7.4
-            orp:
-              type: integer
-              description: Oxidation-Reduction Potential in mV
-              example: 650
-            salt_in_ppm:
-              type: integer
-              description: Salt concentration in parts per million
-              example: 3200
+            chlorinator:
+              type: object
+              nullable: true
+              description: Salt-water generator (SWG) state; null when no chlorinator is discovered
+              properties:
+                generating_percent:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Chlorinator generating output percentage (0-100)
+                  example: 50
+                duty_cycle:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Chlorinator duty cycle percentage (0-100)
+                  example: 50
+                status:
+                  type: string
+                  description: Chlorinator operating status
+                  enum:
+                    - Off
+                    - On
+                    - Unknown
+                  example: On
+                health:
+                  type: string
+                  description: Chlorinator health / diagnostic status reported by the cell
+                  enum:
+                    - Ok
+                    - TurningOff
+                    - Warning_NoFlow
+                    - Warning_LowSalt
+                    - Warning_HighSalt
+                    - Warning_HighCurrent
+                    - Warning_CleanCell
+                    - Warning_LowVoltage
+                    - Warning_LowTemperature
+                    - Error_CheckPCB
+                    - GeneralFault
+                    - Unknown
+                  example: Ok
         configuration:
           type: object
           description: Pool configuration and body-of-water information

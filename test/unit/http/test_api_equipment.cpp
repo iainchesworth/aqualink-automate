@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include <boost/beast/core/buffers_to_string.hpp>
@@ -8,6 +9,10 @@
 
 #include "http/webroute_equipment.h"
 #include "http/server/routing/routing.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "types/units_dimensionless.h"
 
 #include "mocks/mock_beast_basicstream_with_timeout.h"
 #include "support/unit_test_httprequestresponse.h"
@@ -164,6 +169,98 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_InitialisedDataHub)
 			BOOST_CHECK_EQUAL("B0029221", json_response["version"]["model_number"]);
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_ChemistryNestedShape_NoChlorinator)
+{
+	HTTP::Routing::Clear();
+
+	// No chlorinator discovered, no ORP/pH sensor: chemistry block is nested,
+	// salt defaults to 0, ORP/pH are null placeholders and chlorinator is null.
+	auto route = std::make_unique<HTTP::WebRoute_Equipment>(*this);
+	BOOST_REQUIRE(nullptr != route);
+	const auto route_url = route->Route();
+	HTTP::Routing::Add(std::move(route));
+
+	auto resp = Test::PerformHttpRequestResponse(route_url);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	const auto json_response = nlohmann::json::parse(resp.body());
+
+	BOOST_REQUIRE(json_response.contains("chemistry"));
+	const auto& chemistry = json_response["chemistry"];
+
+	BOOST_REQUIRE(chemistry.contains("salt_ppm"));
+	BOOST_CHECK(chemistry["salt_ppm"].is_number());
+	BOOST_CHECK_EQUAL(0, chemistry["salt_ppm"]);
+
+	// ORP / pH are placeholders today — 0 on the wire is surfaced as null so the
+	// UI renders a "--" placeholder rather than a misleading zero.
+	BOOST_REQUIRE(chemistry.contains("orp_mv"));
+	BOOST_CHECK(chemistry["orp_mv"].is_null());
+	BOOST_REQUIRE(chemistry.contains("ph"));
+	BOOST_CHECK(chemistry["ph"].is_null());
+
+	// No chlorinator on the bus -> the chlorinator sub-object is null.
+	BOOST_REQUIRE(chemistry.contains("chlorinator"));
+	BOOST_CHECK(chemistry["chlorinator"].is_null());
+}
+
+BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_ChemistryNestedShape_WithChlorinator)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	HTTP::Routing::Clear();
+
+	// Seed a chlorinator AuxillaryDevice with the SWG traits the AquariteDevice
+	// would push, plus a salt level, then assert the nested chemistry payload
+	// surfaces them under chemistry.chlorinator + chemistry.salt_ppm.
+	{
+		auto chlorinator = std::make_shared<Kernel::AuxillaryDevice>();
+		chlorinator->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		chlorinator->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+		chlorinator->AuxillaryTraits.Set(GeneratingPercentageTrait{}, static_cast<uint8_t>(60));
+		chlorinator->AuxillaryTraits.Set(DutyCycleTrait{}, static_cast<uint8_t>(60));
+		chlorinator->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
+		chlorinator->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::Ok);
+		DataHub().Devices.Add(std::move(chlorinator));
+	}
+
+	DataHub().SaltLevel(3200 * Units::ppm);
+
+	auto route = std::make_unique<HTTP::WebRoute_Equipment>(*this);
+	BOOST_REQUIRE(nullptr != route);
+	const auto route_url = route->Route();
+	HTTP::Routing::Add(std::move(route));
+
+	auto resp = Test::PerformHttpRequestResponse(route_url);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	const auto json_response = nlohmann::json::parse(resp.body());
+
+	BOOST_REQUIRE(json_response.contains("chemistry"));
+	const auto& chemistry = json_response["chemistry"];
+
+	BOOST_REQUIRE(chemistry.contains("salt_ppm"));
+	BOOST_CHECK_EQUAL(3200, chemistry["salt_ppm"]);
+
+	// ORP / pH still null (no sensor seeded).
+	BOOST_CHECK(chemistry["orp_mv"].is_null());
+	BOOST_CHECK(chemistry["ph"].is_null());
+
+	// Nested chlorinator block populated from the DataHub traits.
+	BOOST_REQUIRE(chemistry.contains("chlorinator"));
+	const auto& chlorinator = chemistry["chlorinator"];
+	BOOST_REQUIRE(!chlorinator.is_null());
+
+	BOOST_REQUIRE(chlorinator.contains("generating_percent"));
+	BOOST_CHECK_EQUAL(60, chlorinator["generating_percent"]);
+	BOOST_REQUIRE(chlorinator.contains("duty_cycle"));
+	BOOST_CHECK_EQUAL(60, chlorinator["duty_cycle"]);
+	BOOST_REQUIRE(chlorinator.contains("status"));
+	BOOST_CHECK_EQUAL("On", chlorinator["status"]);
+	BOOST_REQUIRE(chlorinator.contains("health"));
+	BOOST_CHECK_EQUAL("Ok", chlorinator["health"]);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

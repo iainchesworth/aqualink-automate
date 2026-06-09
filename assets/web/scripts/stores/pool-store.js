@@ -3,6 +3,8 @@
  *
  * REST API field mapping:
  *   /api/equipment          → temperatures, chemistry, buttons, devices, stats, version
+ *                             chemistry = { salt_ppm, orp_mv, ph,
+ *                                           chlorinator: { generating_percent, duty_cycle, status, health } }
  *   /api/equipment/buttons  → { buttons: [{ id, label, status }] }
  *   /api/equipment/version  → { fields: [{ label, value }], model_number, fw_revision }
  *   /api/version            → { software_version: { name, version, description, homepage }, git_info: { ... } }
@@ -55,6 +57,14 @@ document.addEventListener('alpine:init', () => {
         ph: '--',
         orp: '--',
         saltPpm: '--',
+
+        // Chlorinator (SWG) state — sourced from the nested chemistry.chlorinator
+        // block of /api/equipment. Null/unknown until a chlorinator is discovered.
+        chlorinatorPresent: false,
+        swgGeneratingPercent: '--',
+        swgDutyCycle: '--',
+        chlorinatorStatus: '--',
+        chlorinatorHealth: '--',
 
         // Per-value timestamps for freshness tracking
         _timestamps: {},
@@ -118,11 +128,26 @@ document.addEventListener('alpine:init', () => {
                     if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
 
-                // Chemistry — all under 'chemistry' now (filter 0 as unknown)
+                // Chemistry — nested structure: { salt_ppm, orp_mv, ph,
+                // chlorinator: { generating_percent, duty_cycle, status, health } }.
+                // ORP/pH are null when no sensor is present (placeholders today);
+                // a value of 0 is also treated as unknown. The chlorinator block
+                // is null until a SWG is discovered on the wire.
                 if (data.chemistry) {
                     if (data.chemistry.ph != null && data.chemistry.ph !== '' && data.chemistry.ph !== 0) this.ph = data.chemistry.ph;
-                    if (data.chemistry.orp != null && data.chemistry.orp !== '' && data.chemistry.orp !== 0) this.orp = data.chemistry.orp;
-                    if (data.chemistry.salt_in_ppm != null && data.chemistry.salt_in_ppm !== '' && data.chemistry.salt_in_ppm !== 0) this.saltPpm = data.chemistry.salt_in_ppm;
+                    if (data.chemistry.orp_mv != null && data.chemistry.orp_mv !== '' && data.chemistry.orp_mv !== 0) this.orp = data.chemistry.orp_mv;
+                    if (data.chemistry.salt_ppm != null && data.chemistry.salt_ppm !== '' && data.chemistry.salt_ppm !== 0) this.saltPpm = data.chemistry.salt_ppm;
+
+                    const swg = data.chemistry.chlorinator;
+                    if (swg != null) {
+                        this.chlorinatorPresent = true;
+                        this.swgGeneratingPercent = (swg.generating_percent != null) ? swg.generating_percent : '--';
+                        this.swgDutyCycle = (swg.duty_cycle != null) ? swg.duty_cycle : '--';
+                        this.chlorinatorStatus = swg.status || '--';
+                        this.chlorinatorHealth = swg.health || '--';
+                    } else {
+                        this.chlorinatorPresent = false;
+                    }
                 }
 
                 // Equipment version — use generic fields array if available

@@ -1,14 +1,57 @@
+#include <cstdint>
+
 #include <nlohmann/json.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #include "http/json/json_equipment.h"
 #include "http/server/make_response.h"
 #include "http/webroute_equipment.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "profiling/factories/profiling_unit_factory.h"
 #include "utility/json_serialization_helpers.h"
 
 namespace AqualinkAutomate::HTTP
 {
+
+	namespace
+	{
+		// Build the chlorinator sub-object of the chemistry payload from the
+		// DataHub chlorinator AuxillaryDevice traits.  Returns a JSON null when
+		// no chlorinator (SWG) has been discovered so the UI can render the SWG
+		// fields as placeholders rather than fabricating zeroes.
+		nlohmann::json BuildChlorinatorJson(const std::shared_ptr<Kernel::DataHub>& data_hub)
+		{
+			using namespace Kernel::AuxillaryTraitsTypes;
+
+			auto chlorinators = data_hub->Chlorinators();
+			if (chlorinators.empty())
+			{
+				return nlohmann::json{};
+			}
+
+			const auto& device = chlorinators.front();
+			nlohmann::json chlorinator;
+
+			chlorinator["generating_percent"] = device->AuxillaryTraits.Has(GeneratingPercentageTrait{})
+				? nlohmann::json(static_cast<uint8_t>(*(device->AuxillaryTraits[GeneratingPercentageTrait{}])))
+				: nlohmann::json{};
+
+			chlorinator["duty_cycle"] = device->AuxillaryTraits.Has(DutyCycleTrait{})
+				? nlohmann::json(static_cast<uint8_t>(*(device->AuxillaryTraits[DutyCycleTrait{}])))
+				: nlohmann::json{};
+
+			chlorinator["status"] = device->AuxillaryTraits.Has(ChlorinatorStatusTrait{})
+				? nlohmann::json(std::string{ magic_enum::enum_name(*(device->AuxillaryTraits[ChlorinatorStatusTrait{}])) })
+				: nlohmann::json(std::string{ magic_enum::enum_name(Kernel::ChlorinatorStatuses::Unknown) });
+
+			chlorinator["health"] = device->AuxillaryTraits.Has(ChlorinatorHealthTrait{})
+				? nlohmann::json(std::string{ magic_enum::enum_name(*(device->AuxillaryTraits[ChlorinatorHealthTrait{}])) })
+				: nlohmann::json(std::string{ magic_enum::enum_name(Kernel::ChlorinatorHealth::Unknown) });
+
+			return chlorinator;
+		}
+	}
+	// namespace
 
 	WebRoute_Equipment::WebRoute_Equipment(Kernel::HubLocator& hub_locator) : 
 		Interfaces::IWebRoute<EQUIPMENT_ROUTE_URL>()
@@ -29,9 +72,25 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["temperatures"]["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
 		jandy_equipment_json["temperatures"]["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
 
-		jandy_equipment_json["chemistry"]["ph"] = static_cast<double>(m_DataHub->pH()());
-		jandy_equipment_json["chemistry"]["orp"] = static_cast<uint16_t>(m_DataHub->ORP()().value());
-		jandy_equipment_json["chemistry"]["salt_in_ppm"] = static_cast<uint16_t>(m_DataHub->SaltLevel().value());
+		// Nested chemistry payload.  Salt / SWG values come from the DataHub
+		// chlorinator AuxillaryDevice traits (+ SaltLevel); ORP / pH read the
+		// DataHub chemistry values, which are placeholders today (no sensor on
+		// the wire yet) but render automatically once a sensor is decoded.  A
+		// reported value of exactly 0 means "no sensor" and is emitted as null
+		// so the UI shows a "--" placeholder instead of a misleading zero.
+		{
+			const auto orp_mv = static_cast<uint16_t>(m_DataHub->ORP()().value());
+			const auto ph_value = static_cast<double>(m_DataHub->pH()());
+			const auto salt_ppm = static_cast<uint16_t>(m_DataHub->SaltLevel().value());
+
+			nlohmann::json chemistry;
+			chemistry["salt_ppm"] = salt_ppm;
+			chemistry["orp_mv"] = (0 == orp_mv) ? nlohmann::json{} : nlohmann::json(orp_mv);
+			chemistry["ph"] = (0.0 == ph_value) ? nlohmann::json{} : nlohmann::json(ph_value);
+			chemistry["chlorinator"] = BuildChlorinatorJson(m_DataHub);
+
+			jandy_equipment_json["chemistry"] = std::move(chemistry);
+		}
 
 		// Configuration section with body-of-water info.
 		{
