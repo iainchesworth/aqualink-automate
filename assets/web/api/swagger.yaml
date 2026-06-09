@@ -1368,6 +1368,18 @@ components:
         has_pending_command:
           type: boolean
           description: SerialAdapter pending command flag
+        pending_command_count:
+          type: integer
+          description: SerialAdapter count of queued pending command ACKs
+        is_emulated:
+          type: boolean
+          description: SerialAdapter constructed as an emulated (transmitting) device
+        emulation_suppressed:
+          type: boolean
+          description: >-
+            SerialAdapter emulation suppressed at runtime because a real serial
+            adapter was detected on the bus (presence gating). When true the
+            device is a passive decoder and never transmits.
         scrape_state:
           type: string
           description: PDA scrape state

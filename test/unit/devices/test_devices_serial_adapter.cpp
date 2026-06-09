@@ -163,4 +163,55 @@ BOOST_AUTO_TEST_CASE(TestConstruction_DifferentDeviceId)
 	BOOST_CHECK_NO_THROW(SerialAdapterDevice device(device_type_49, *this, true));
 }
 
+// =============================================================================
+// Presence gating: SuppressEmulation latch on the Emulated capability
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestPresenceGating_EmulatedDeviceStartsActiveNotSuppressed)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.IsEmulated());
+	BOOST_CHECK(!device.IsEmulationSuppressed());
+	BOOST_CHECK(device.IsEmulationActive());
+}
+
+BOOST_AUTO_TEST_CASE(TestPresenceGating_SuppressEmulationIsOneWayLatch)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+
+	device.SuppressEmulation();
+	BOOST_CHECK(device.IsEmulated());          // construction intent is unchanged
+	BOOST_CHECK(device.IsEmulationSuppressed());
+	BOOST_CHECK(!device.IsEmulationActive());
+
+	// Idempotent: calling again keeps it suppressed.
+	device.SuppressEmulation();
+	BOOST_CHECK(device.IsEmulationSuppressed());
+	BOOST_CHECK(!device.IsEmulationActive());
+}
+
+BOOST_AUTO_TEST_CASE(TestPresenceGating_NonEmulatedDeviceIsNeverActive)
+{
+	SerialAdapterDevice device(device_type, *this, false);
+	BOOST_CHECK(!device.IsEmulated());
+	BOOST_CHECK(!device.IsEmulationActive());
+}
+
+// =============================================================================
+// Capture-gated write methods (no-throw queuing)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestQueueSetpointWriteTwoStep_DoesNotThrow)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK_NO_THROW(device.QueueSetpointWrite_TwoStep(SerialAdapter_SystemTemperatureCommands::POOLSP, 82));
+}
+
+BOOST_AUTO_TEST_CASE(TestQueueAuxToggleWrite_DoesNotThrow)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK_NO_THROW(device.QueueAuxToggleWrite(AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_1, true));
+	BOOST_CHECK_NO_THROW(device.QueueAuxToggleWrite(AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_2, false));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

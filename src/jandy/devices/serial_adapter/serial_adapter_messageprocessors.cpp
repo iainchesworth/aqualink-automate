@@ -1,10 +1,12 @@
 #include <algorithm>
 #include <format>
 #include <source_location>
+#include <string_view>
 #include <variant>
 
 #include "logging/logging.h"
 #include "devices/serial_adapter_device.h"
+#include "formatters/jandy_device_formatters.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -25,6 +27,11 @@ namespace AqualinkAutomate::Devices
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_DevReady", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a SerialAdapterMessage_DevReady signal.");
 
+		// A DevReady (0x07) at this address is a response FROM a real adapter TO the
+		// master -- the emulated instance never sends one itself. Seeing it means a
+		// real Serial Adapter is present; go passive so we never double-transmit.
+		DetectRealAdapterAndSuppressEmulation("DevReady");
+
 		ProcessControllerUpdates();
 
 		// Kick the watchdog to indicate that this device is alive.
@@ -35,6 +42,12 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::Slot_DevStatus", std::source_location::current());
 		LogDebug(Channel::Devices, "Serial Adapter device received a SerialAdapterMessage_DevStatus signal.");
+
+		// A DevStatus (0x13) at this address is a real adapter's reply to the master
+		// (the emulated device replies to polls with ACKs, never with a DevStatus).
+		// Detecting it means a real adapter is present; latch emulation off so we
+		// only ever passively decode its replies from here on.
+		DetectRealAdapterAndSuppressEmulation("DevStatus");
 
 		if (msg.Options().has_value() && msg.Options().value().HasCleaner)
 		{
@@ -222,6 +235,30 @@ namespace AqualinkAutomate::Devices
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
+	}
+
+	void SerialAdapterDevice::DetectRealAdapterAndSuppressEmulation(std::string_view observed_message_kind)
+	{
+		// Presence gating (the core bus-safety guarantee): the only way an emulated
+		// instance ever sees a DevReady/DevStatus addressed to its own id is if a
+		// REAL Serial Adapter is answering the master there -- the emulated device
+		// only ever replies to polls with ACKs, it never emits these reply frames.
+		// So on the FIRST such observation we permanently suppress emulation: the
+		// instance keeps decoding (read path stays live) but stops transmitting,
+		// guaranteeing there are never two transmitters on this address.
+		//
+		// A non-emulated instance is already passive, so there is nothing to do.
+		if (!IsEmulated() || IsEmulationSuppressed())
+		{
+			return;
+		}
+
+		LogNotify(Channel::Devices, std::format("Serial Adapter ({}): a REAL adapter was observed ({} frame); suppressing emulation to avoid bus contention. This instance is now a passive decoder.", DeviceId(), observed_message_kind));
+
+		SuppressEmulation();
+
+		// Drop anything we might have queued -- a suppressed instance must not emit.
+		m_PendingCommands.clear();
 	}
 
 }
