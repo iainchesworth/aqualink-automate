@@ -15,10 +15,31 @@ namespace AqualinkAutomate::Navigation
 
 	FullDiscoveryVisitPolicy::FullDiscoveryVisitPolicy(
 		PageVisitCallback on_page,
-		CrawlCompleteCallback on_complete)
+		CrawlCompleteCallback on_complete,
+		bool skip_label_pages)
 		: m_OnPage(std::move(on_page))
 		, m_OnComplete(std::move(on_complete))
+		, m_SkipLabelPages(skip_label_pages)
 	{
+	}
+
+	bool FullDiscoveryVisitPolicy::IsLabelPage(PageId page)
+	{
+		// The "Label Aux" scraping sub-tree: the aux list, the per-aux detail page
+		// (multi-instance), and the label-category leaves reachable from it.
+		switch (page)
+		{
+		case PageId::LabelAuxList:
+		case PageId::LabelAux:
+		case PageId::GeneralLabels:
+		case PageId::LightLabels:
+		case PageId::WaterfallLabels:
+		case PageId::CustomLabel:
+			return true;
+
+		default:
+			return false;
+		}
 	}
 
 	bool FullDiscoveryVisitPolicy::ShouldVisit(PageId page, const MenuPage& info) const
@@ -34,8 +55,17 @@ namespace AqualinkAutomate::Navigation
 			return false;
 
 		default:
-			return true;
+			break;
 		}
+
+		// When aux labels are already seeded (e.g. by a real iAqualink2 on the bus),
+		// skip the slow Label Aux scrape sub-tree entirely.
+		if (m_SkipLabelPages && IsLabelPage(page))
+		{
+			return false;
+		}
+
+		return true;
 	}
 
 	void FullDiscoveryVisitPolicy::OnPageReached(PageId page, const Utility::ScreenDataPage& content)
