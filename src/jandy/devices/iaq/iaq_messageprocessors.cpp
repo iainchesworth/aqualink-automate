@@ -255,6 +255,16 @@ namespace AqualinkAutomate::Devices
 		}
 
 		Restartable::Kick();
+
+		// Distinguish the two IAQ ids that share this handler: the AqualinkTouch 0x33
+		// side carries MainStatus and renders a System Status page (and must KEEP it
+		// even if a heartbeat arrives), whereas the heartbeat-only 0xA3 cloud interface
+		// never sees a MainStatus -- render its Cloud Link page from the heartbeat so it
+		// shows live link liveness instead of the constructor-default Page_Unknown.
+		if (!m_HasReceivedMainStatus)
+		{
+			RenderCloudLinkScreen();
+		}
 	}
 
 }

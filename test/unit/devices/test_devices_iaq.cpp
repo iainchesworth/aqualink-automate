@@ -306,3 +306,100 @@ BOOST_AUTO_TEST_CASE(MainStatus_ScreenRefreshesOnSecondMessage)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// Cloud Link heartbeat screen rendering
+//
+// The heartbeat-only IAQ (the iAqualink2 cloud interface on 0xA3) receives ONLY
+// the heartbeat (0x53) -- no MainStatus/AuxStatus and no navigable page.  Without
+// a rendered page it would sit on the constructor-default Page_Unknown forever.
+// On a heartbeat it must render a fixed "Cloud Link" page carrying the heartbeat
+// liveness; a 0x33 that has decoded a MainStatus must KEEP its System Status page
+// even when a heartbeat arrives (the two ids share one handler).
+// =============================================================================
+
+namespace
+{
+	constexpr uint8_t IAQ_CLOUD_DEVICE_ID = 0xA3;   // iAqualink2 cloud interface (heartbeat-only).
+}
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_CloudLinkScreen_TestSuite)
+
+BOOST_AUTO_TEST_CASE(Heartbeat_OnHeartbeatOnlyDevice_RendersCloudLinkPage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_CLOUD_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_heartbeat = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_Heartbeat);
+	auto frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_CLOUD_DEVICE_ID, cmd_heartbeat, /*payload=*/{});
+	harness.Replay(frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	BOOST_REQUIRE(diagnostics.contains("screen"));
+
+	const auto& screen = diagnostics["screen"];
+	BOOST_REQUIRE(screen.contains("page_type"));
+	BOOST_REQUIRE(screen.contains("lines"));
+
+	// (a) A heartbeat-only device that never saw a MainStatus renders Cloud Link,
+	//     not the constructor-default Page_Unknown and not System Status.
+	const auto page_type = screen["page_type"].get<std::string>();
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_CloudLink"));
+	BOOST_CHECK_NE(page_type, std::string("Page_Unknown"));
+	BOOST_CHECK_NE(page_type, std::string("Page_SystemStatus"));
+
+	// (b) The rendered lines must mention the cloud link and the heartbeat liveness.
+	std::string joined;
+	for (const auto& line : screen["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	BOOST_CHECK(joined.find("Cloud Link") != std::string::npos);
+	BOOST_CHECK(joined.find("Heartbeat") != std::string::npos);
+	// A just-Kick()ed watchdog reports the link as active.
+	BOOST_CHECK(joined.find("active") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(Heartbeat_AfterMainStatus_KeepsSystemStatusPage)
+{
+	Test::MockReplayHarness harness;
+
+	// A device on the AqualinkTouch 0x33 side that HAS decoded a MainStatus must
+	// keep its System Status page even after a later heartbeat arrives -- it must
+	// NOT flip to Cloud Link just because a heartbeat was seen.
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	auto main_status_frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(main_status_frame);
+
+	// Sanity: System Status rendered from the MainStatus.
+	BOOST_REQUIRE_EQUAL(device.DescribeDiagnostics()["screen"]["page_type"].get<std::string>(), std::string("Page_SystemStatus"));
+
+	// Now a heartbeat addressed to the same id arrives.
+	const uint8_t cmd_heartbeat = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_Heartbeat);
+	auto heartbeat_frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_heartbeat, /*payload=*/{});
+	harness.Replay(heartbeat_frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	const auto page_type = diagnostics["screen"]["page_type"].get<std::string>();
+
+	// The page must STILL be System Status -- the heartbeat must not clobber it.
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_SystemStatus"));
+	BOOST_CHECK_NE(page_type, std::string("Page_CloudLink"));
+
+	std::string joined;
+	for (const auto& line : diagnostics["screen"]["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+	BOOST_CHECK(joined.find("System Status") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

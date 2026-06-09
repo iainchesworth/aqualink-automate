@@ -33,6 +33,11 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessMainStatus", std::source_location::current());
 
+		// This id carries rich status (it is the AqualinkTouch 0x33 side, not the
+		// heartbeat-only 0xA3 cloud interface).  Latch it so a later heartbeat keeps
+		// the System Status page rather than flipping the screen to Cloud Link.
+		m_HasReceivedMainStatus = true;
+
 		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
 			DeviceId(),
 			msg.PoolTemperature().InFahrenheit().value(),
@@ -244,6 +249,47 @@ namespace AqualinkAutomate::Devices
 		ScreenMode(Capabilities::ScreenModes::Normal);
 
 		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Rendered System Status screen ({} lines)", DeviceId(), DisplayedPage().Size()); });
+	}
+
+	void IAQDevice::RenderCloudLinkScreen()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::RenderCloudLinkScreen", std::source_location::current());
+
+		// A heartbeat-only IAQ (the iAqualink2 cloud interface on 0xA3) receives ONLY
+		// the heartbeat (0x53) -- no MainStatus/AuxStatus and no navigable page -- so
+		// its "screen" is a rendered reflection of the heartbeat liveness rather than
+		// of decoded system status.  Rebuild from scratch on every heartbeat so it
+		// tracks the live state and never accumulates stale lines.
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
+
+		// The watchdog (Restartable) is Kick()ed on each heartbeat; while it is still
+		// running the link is "active", otherwise the beacon has gone stale.
+		const bool heartbeat_active = IsRunning();
+
+		std::vector<std::string> lines;
+		lines.reserve(IAQ_STATUS_PAGE_LINES);
+
+		lines.emplace_back("iAqualink2 Cloud Link");
+		lines.emplace_back(std::format("Heartbeat: {}", heartbeat_active ? "active" : "stale"));
+		lines.emplace_back(std::format("Timeout: {}s", GetTimeout().count()));
+		// The heartbeat ACK is a constant presence beacon (Type=0x1f, Command=0x00);
+		// there is no MainStatus/AuxStatus on this id, so report the idle beacon state.
+		lines.emplace_back("ACK: 0x1f/0x00 (idle)");
+
+		const std::size_t line_count = std::min(static_cast<std::size_t>(IAQ_STATUS_PAGE_LINES), lines.size());
+		for (std::size_t line_id = 0; line_id < line_count; ++line_id)
+		{
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(static_cast<uint8_t>(line_id), lines[line_id]));
+		}
+
+		// Mark the page as a KNOWN, fixed Cloud Link view.  As with RenderStatusScreen
+		// there are no page processors for the IAQ, so set the type directly rather
+		// than calling ProcessScreenUpdates() (which would reset it to Page_Unknown).
+		DisplayedPageType(Utility::ScreenDataPageTypes::Page_CloudLink);
+		ScreenMode(Capabilities::ScreenModes::Normal);
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Rendered Cloud Link screen ({} lines)", DeviceId(), DisplayedPage().Size()); });
 	}
 
 	void IAQDevice::ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg)
