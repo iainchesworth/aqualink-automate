@@ -97,6 +97,14 @@ namespace AqualinkAutomate::Devices
 		void ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg);
 
 	private:
+		// Render the live decoded system status into the device's Screen capability
+		// as a fixed "System Status" page so the diagnostics "Actual Devices" card
+		// shows real data instead of Page_Unknown.  The IAQ (iAqualink2 cloud
+		// interface) has no navigable physical screen, so its screen is a reflection
+		// of the status it just decoded from MainStatus (+ DataHub aux state).
+		void RenderStatusScreen(const Messages::IAQMessage_MainStatus& msg);
+
+	private:
 		Utility::ScreenDataPage m_StatusPage;
 		Utility::ScreenDataPage m_TableInfo;
 

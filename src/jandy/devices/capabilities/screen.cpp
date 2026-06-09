@@ -101,6 +101,11 @@ namespace AqualinkAutomate::Devices::Capabilities
 		return m_DisplayedPageType;
 	}
 
+	void Screen::DisplayedPageType(Utility::ScreenDataPageTypes page_type)
+	{
+		m_DisplayedPageType = page_type;
+	}
+
 	nlohmann::json Screen::DescribeScreen() const
 	{
 		nlohmann::json screen;

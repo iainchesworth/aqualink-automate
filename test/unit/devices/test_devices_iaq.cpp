@@ -1,14 +1,21 @@
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <boost/test/unit_test.hpp>
+#include <nlohmann/json.hpp>
 
 #include "jandy/devices/iaq_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 #include "support/unit_test_hublocatorinjector.h"
+#include "support/unit_test_mockreplayharness.h"
+#include "support/unit_test_protocolmessagebuilder.h"
 
+using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Devices;
 
 namespace
@@ -169,6 +176,133 @@ BOOST_AUTO_TEST_CASE(TestWatchdog_AddressedThenSilent_Faults)
 
 	BOOST_CHECK(device.IsFaulted());
 	BOOST_CHECK(!device.IsNotPresent());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// System Status screen rendering
+//
+// Regression for the "Actual Devices" diagnostics card showing the IAQ as
+// "page unknown" with no content.  The IAQ (iAqualink2 cloud interface) has no
+// navigable physical screen, so after decoding a MainStatus (0x70) it must
+// render the live status into its Screen capability as a fixed System Status
+// page -- DescribeDiagnostics()/DescribeScreen() must then report a KNOWN page
+// type and lines that carry the decoded values.
+// =============================================================================
+
+namespace
+{
+	constexpr uint8_t IAQ_DEVICE_ID = 0x33;   // AqualinkTouch address carrying IAQ status.
+
+	// Build a current-format (no-sentinel) MainStatus (0x70) payload matching the
+	// wire layout exercised in test_iaq_message_main_status.cpp:
+	//   device_count, device_ids..., pump, pool_heat, spa_mode, spa_heat, solar,
+	//   pool_target(BE C), spa_target(BE C), air(BE C), water_current(BE C)
+	std::vector<uint8_t> MakeMainStatusPayload_CurrentFormat()
+	{
+		auto push_temp_be = [](std::vector<uint8_t>& v, uint16_t raw)
+		{
+			v.push_back(static_cast<uint8_t>(raw >> 8));
+			v.push_back(static_cast<uint8_t>(raw & 0xFF));
+		};
+
+		std::vector<uint8_t> payload;
+		payload.push_back(0x03);       // device_count = 3
+		payload.push_back(0x01);       // device IDs
+		payload.push_back(0x02);
+		payload.push_back(0x08);
+		payload.push_back(0x01);       // pump ON
+		payload.push_back(0x01);       // pool heater = Heating
+		payload.push_back(0x00);       // spa OFF (Pool mode)
+		payload.push_back(0x00);       // spa heater = Off
+		payload.push_back(0x00);       // solar = Off
+		push_temp_be(payload, 28);     // pool_target  = 28C -> reported as PoolTemp (== 82F)
+		push_temp_be(payload, 32);     // spa_target   = 32C
+		push_temp_be(payload, 24);     // air          = 24C (== 75F)
+		push_temp_be(payload, 27);     // water_current = 27C -> reported as SpaTemp (== 81F)
+		return payload;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_StatusScreen_TestSuite)
+
+BOOST_AUTO_TEST_CASE(MainStatus_RendersKnownSystemStatusPage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	// IAQDevice ctor takes (device_id, hub_locator, is_emulated); the harness's
+	// AddDevice<> appends the hub locator last, which would not match this middle-
+	// positioned hub_locator parameter, so construct the device directly against
+	// the harness's HubLocator and keep it alive for the replay.
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	auto frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	BOOST_REQUIRE(diagnostics.contains("screen"));
+
+	const auto& screen = diagnostics["screen"];
+	BOOST_REQUIRE(screen.contains("page_type"));
+	BOOST_REQUIRE(screen.contains("lines"));
+
+	// (a) The page type must no longer be the constructor-default Page_Unknown.
+	const auto page_type = screen["page_type"].get<std::string>();
+	BOOST_CHECK_NE(page_type, std::string("Page_Unknown"));
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_SystemStatus"));
+
+	// (b) The rendered lines must carry the decoded live status.
+	std::string joined;
+	for (const auto& line : screen["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	BOOST_CHECK(joined.find("System Status") != std::string::npos);
+	BOOST_CHECK(joined.find("Pool Temp") != std::string::npos);
+	BOOST_CHECK(joined.find("Pump: On") != std::string::npos);
+	// Current-format MainStatus reports PoolTemp = pool_target (28C == 82F) and
+	// SpaTemp = water_current (27C == 81F); both whole-degree values must render.
+	BOOST_CHECK(joined.find("82F") != std::string::npos);
+	BOOST_CHECK(joined.find("81F") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_ScreenRefreshesOnSecondMessage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+
+	// First MainStatus: pump ON.
+	auto frame_on = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(frame_on);
+
+	// Second MainStatus: same layout but pump OFF (byte after the 3 device IDs).
+	auto payload_off = MakeMainStatusPayload_CurrentFormat();
+	payload_off[4] = 0x00;   // pump OFF
+	auto frame_off = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, payload_off);
+	harness.Replay(frame_off);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	std::string joined;
+	for (const auto& line : diagnostics["screen"]["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	// The page must still be known and must reflect the LATEST state (pump off),
+	// proving the render is idempotent/refreshing rather than accumulating stale lines.
+	BOOST_CHECK_EQUAL(diagnostics["screen"]["page_type"].get<std::string>(), std::string("Page_SystemStatus"));
+	BOOST_CHECK(joined.find("Pump: Off") != std::string::npos);
+	BOOST_CHECK(joined.find("Pump: On") == std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

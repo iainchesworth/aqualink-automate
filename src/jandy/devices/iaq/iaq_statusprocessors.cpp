@@ -1,18 +1,27 @@
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <format>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "devices/capabilities/screen.h"
 #include "devices/iaq_device.h"
 #include "auxillaries/jandy_auxillary_id.h"
 #include "auxillaries/jandy_auxillary_status.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "factories/jandy_auxillary_factory.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/body_of_water_ids.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
+#include "utility/screen_data_page_processor.h"
+#include "utility/screen_data_page_updater.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -161,6 +170,80 @@ namespace AqualinkAutomate::Devices
 		update_heater("Pool Heat", msg.PoolHeaterStatus(), Kernel::BodyOfWaterIds::Pool);
 		update_heater("Spa Heat", msg.SpaHeaterStatus(), Kernel::BodyOfWaterIds::Spa);
 		update_heater("Solar Heat", msg.SolarHeaterStatus(), Kernel::BodyOfWaterIds::Shared);
+
+		// Now that the DataHub reflects the freshly-decoded MainStatus, render that
+		// live state into the device's Screen so the diagnostics "Actual Devices"
+		// card shows real data rather than a Page_Unknown blank.
+		RenderStatusScreen(msg);
+	}
+
+	void IAQDevice::RenderStatusScreen(const Messages::IAQMessage_MainStatus& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::RenderStatusScreen", std::source_location::current());
+
+		// The IAQ (iAqualink2 cloud interface) has no navigable physical screen; its
+		// "screen" is a rendered reflection of the system status it just decoded.
+		// Rebuild the whole page from scratch on every MainStatus so it tracks live
+		// state and never accumulates stale lines.
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
+
+		// Collect the human-readable summary lines first; only the lines that fit on
+		// the fixed-size page (IAQ_STATUS_PAGE_LINES) are pushed to the updater.
+		std::vector<std::string> lines;
+		lines.reserve(IAQ_STATUS_PAGE_LINES);
+
+		lines.emplace_back("System Status");
+		lines.emplace_back(std::format("Mode: {}", msg.SpaMode() ? "Spa" : "Pool"));
+		lines.emplace_back(std::format("Pool Temp: {:.0f}F", msg.PoolTemperature().InFahrenheit().value()));
+		lines.emplace_back(std::format("Spa Temp:  {:.0f}F", msg.SpaTemperature().InFahrenheit().value()));
+		lines.emplace_back(std::format("Air Temp:  {:.0f}F", msg.AirTemperature().InFahrenheit().value()));
+
+		if (auto setpoint = msg.HeaterSetpoint(); setpoint.has_value())
+		{
+			lines.emplace_back(std::format("{} Setpoint: {:.0f}F",
+				msg.SpaMode() ? "Spa" : "Pool",
+				setpoint->InFahrenheit().value()));
+		}
+
+		lines.emplace_back(std::format("Pump: {}", msg.PumpOn() ? "On" : "Off"));
+		lines.emplace_back(std::format("Pool Heat: {}", magic_enum::enum_name(msg.PoolHeaterStatus())));
+		lines.emplace_back(std::format("Spa Heat:  {}", magic_enum::enum_name(msg.SpaHeaterStatus())));
+		lines.emplace_back(std::format("Solar:     {}", magic_enum::enum_name(msg.SolarHeaterStatus())));
+
+		// Aux on/off summary, read from the DataHub (AuxStatus keeps these fresh).
+		auto auxillaries = m_DataHub->Auxillaries();
+		for (const auto& aux : auxillaries)
+		{
+			if (nullptr == aux)
+			{
+				continue;
+			}
+
+			auto label_opt = aux->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			auto status_opt = aux->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{});
+			if (!label_opt.has_value() || !status_opt.has_value())
+			{
+				continue;
+			}
+
+			const bool is_on = (status_opt.value() == Kernel::AuxillaryStatuses::On);
+			lines.emplace_back(std::format("{}: {}", label_opt.value(), is_on ? "On" : "Off"));
+		}
+
+		const std::size_t line_count = std::min(static_cast<std::size_t>(IAQ_STATUS_PAGE_LINES), lines.size());
+		for (std::size_t line_id = 0; line_id < line_count; ++line_id)
+		{
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(static_cast<uint8_t>(line_id), lines[line_id]));
+		}
+
+		// Mark the page as a KNOWN, fixed status view.  There are no page processors
+		// for the IAQ, so do NOT call ProcessScreenUpdates() (it would reset the type
+		// back to Page_Unknown); set the type directly instead.
+		DisplayedPageType(Utility::ScreenDataPageTypes::Page_SystemStatus);
+		ScreenMode(Capabilities::ScreenModes::Normal);
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Rendered System Status screen ({} lines)", DeviceId(), DisplayedPage().Size()); });
 	}
 
 	void IAQDevice::ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg)

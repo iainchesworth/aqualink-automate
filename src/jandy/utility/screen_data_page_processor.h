@@ -49,6 +49,7 @@ namespace AqualinkAutomate::Utility
 		Page_EnterPassword,
 		Page_HelpKeys,
 		Page_StartUp,
+		Page_SystemStatus,
 		Page_Unknown
 	};
 
