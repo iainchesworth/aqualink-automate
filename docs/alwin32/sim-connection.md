@@ -65,8 +65,45 @@ emulation enabled, the feeder's write-log captures the commands the app would tr
 harness is bidirectional.)
 
 **Net:** "generate `.cap` for specific devices/behaviours" is fully no-install today (the
-generator + this feeder, driving the real app). "Capture the *live* simulators" specifically is
-the one piece that needs com0com.
+generator + this feeder, driving the real app). "Capture the *live* simulators" needs com0com —
+**now done and VERIFIED**, see next section.
+
+## C. Live capture from the simulators (VERIFIED, com0com)
+
+With a com0com virtual pair (here `COM3 <-> COM5`), the **PowerCenter master sim** drives the
+bus and the app records it. Topology that works:
+
+```
+  Pwrcntr.exe  --Comm Port-> COM3   <--com0com-->   COM5  --serial-port--> aqualink-automate
+  (master, model PD-8 Combo)                                 (emulates a device + --record-serial)
+```
+
+Steps: in `Pwrcntr.exe` set **Comm Port → COM3** (menu); run the app on **COM5** emulating a
+device, e.g. OneTouch:
+```
+aqualink-automate --serial-port COM5 --record-serial pwrcenter.cap \
+    --jandy-device-type OneTouch --jandy-device-id 0x41 \
+    --disable-https --address 127.0.0.1 --http-port 18082 --doc-root assets/web \
+    --loglevel-messages info
+```
+The master polls (`cmd 0x00` to a schedule of addresses, **with the leading/trailing `0x00`
+pads on the wire** — confirming the §2 framing), the app's emulated OneTouch (0x41) Acks, and
+the master then drives it with the **real classic-OneTouch display protocol**. A 30 s capture
+(`test/fixtures/alwin32/pwrcenter_onetouch_live.cap`) decoded to genuine OneTouch screens:
+`PD-8 Combo` (model), `REV T.0.1` (firmware), `Air 72°F` (the `` ` ``→° glyph), `Spa Mode OFF`,
+the full menu tree (`Set Temp >`, `Diagnostics >`, …) — **live-validating** the model table
+([pwrcntr-behavior.md](pwrcntr-behavior.md) §1) and the OneTouch opcodes ([onetouch.md](onetouch.md)).
+
+**Gotchas learned:**
+- **Don't run the equipment sims alongside a COM-mode master** — they share `NetIO.dll`'s
+  in-memory net table and **deadlock** the COM-mode PowerCenter ("Not Responding"). Capture
+  device traffic by having the *app* emulate the device (`--jandy-device-type`), not by running
+  `Aquarite.exe`/`ePump.exe`. The valid emulation types are `OneTouch IAQ SerialAdapter`.
+- The **IAQ page protocol** (`0x23`–`0x28`, incl. the `0x26` fix) needs the app to emulate an
+  **AqualinkTouch at 0x33** that completes the iAQ handshake — a plain `IAQ`/`0x33` emulation
+  gets polled but doesn't yet respond, so the master never renders pages. That handshake is the
+  remaining piece to live-validate the page decode (and to drive an ePump capture for the
+  [epump.md](epump.md) reconciliation).
 
 ## Advanced (optional, not built): a shared-memory tap
 
