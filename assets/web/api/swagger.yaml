@@ -360,6 +360,7 @@ paths:
                 temperature_units: "Celsius"
                 alert: { salt_low_ppm: 2600, comms_timeout_seconds: 60, webhook_url: "" }
                 history: { retention_days: 90 }
+                label_overrides: { "Aux1": "Pool Light", "Aux2": "Waterfall" }
                 ui: { chemistryBands: {} }
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -371,7 +372,8 @@ paths:
         Validates and applies a partial preferences document, then persists it
         (when --preferences-file is set). Ranges enforced: salt_low_ppm 0..6000
         (0 disables), comms_timeout_seconds > 0, retention_days > 0, webhook_url
-        empty or absolute http/https, temperature_units Celsius|Fahrenheit. A
+        empty or absolute http/https, temperature_units Celsius|Fahrenheit,
+        label_overrides an object of canonical-label -> friendly-name strings. A
         single invalid field rejects the whole request (nothing is applied).
       operationId: updatePreferences
       requestBody:
@@ -1149,7 +1151,13 @@ components:
           example: "550e8400-e29b-41d4-a716-446655440000"
         label:
           type: string
-          description: Human-readable label for the button
+          description: Canonical label (drives command dispatch, MQTT and Home Assistant)
+          example: "Aux1"
+        display_label:
+          type: string
+          description: >
+            User-facing name to show in UIs: the preferences label_overrides entry
+            for this canonical label, or the canonical label itself when none is set.
           example: "Pool Light"
         status:
           type: string

@@ -80,6 +80,23 @@ BOOST_AUTO_TEST_CASE(ApplyJson_RejectionLeavesHubUnchanged)
 	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->AlertSaltLowPpm, 2600u);  // unchanged
 }
 
+BOOST_AUTO_TEST_CASE(ApplyJson_LabelOverridesRoundTripAndValidate)
+{
+	Options::Preferences::PreferencesSettings settings;
+	Preferences::PreferencesService service(*this, settings);
+	std::string error;
+
+	// A valid canonical->friendly map applies and round-trips.
+	BOOST_REQUIRE(service.ApplyJson(nlohmann::json{ { "label_overrides", { { "Aux1", "Pool Light" } } } }, error));
+	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->LabelOverrides["Aux1"], "Pool Light");
+	BOOST_CHECK_EQUAL(service.ToJson()["label_overrides"]["Aux1"], "Pool Light");
+
+	// A non-string value is rejected and leaves the prior map intact.
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "label_overrides", { { "Aux1", 5 } } } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "label_overrides", "not-an-object" } }, error));
+	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->LabelOverrides["Aux1"], "Pool Light");
+}
+
 BOOST_AUTO_TEST_CASE(FileRoundTrip_PersistsAndReloads)
 {
 	const auto path = (std::filesystem::temp_directory_path() / "aqualink_prefs_test.json").string();

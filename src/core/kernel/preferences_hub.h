@@ -36,6 +36,11 @@ namespace AqualinkAutomate::Kernel
 		std::string AlertWebhookUrl;
 		std::uint32_t HistoryRetentionDays{ 90 };
 
+		// User-friendly display names keyed by the device's canonical label
+		// (e.g. {"Aux1": "Pool Light"}). The canonical label is unchanged (it
+		// still drives dispatch / MQTT / HA); this only feeds a display_label.
+		nlohmann::json LabelOverrides{ nlohmann::json::object() };
+
 		nlohmann::json UiPreferences{ nlohmann::json::object() };
 	};
 

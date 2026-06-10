@@ -30,6 +30,28 @@ test('preferences API round-trips and validates', async ({ request }) => {
   expect(unchanged.alert.salt_low_ppm).toBe(2900);
 });
 
+test('label override produces a display_label on the buttons endpoint', async ({ request }) => {
+  const buttons = (await (await request.get('/api/equipment/buttons')).json()).buttons;
+  test.skip(!Array.isArray(buttons) || buttons.length === 0, 'no devices discovered in this fixture');
+
+  const target = buttons.find((b: any) => b.label);
+  test.skip(!target, 'no labelled device');
+  const canonical = target.label;
+
+  const put = await request.put('/api/preferences', { data: { label_overrides: { [canonical]: 'My Renamed Device' } } });
+  expect(put.ok()).toBeTruthy();
+
+  const after = (await (await request.get('/api/equipment/buttons')).json()).buttons;
+  const renamed = after.find((b: any) => b.label === canonical);
+  expect(renamed.display_label).toBe('My Renamed Device');
+  expect(renamed.label).toBe(canonical); // canonical label unchanged
+
+  // Clearing the override -> display_label falls back to the canonical label.
+  await request.put('/api/preferences', { data: { label_overrides: {} } });
+  const cleared = (await (await request.get('/api/equipment/buttons')).json()).buttons;
+  expect(cleared.find((b: any) => b.label === canonical).display_label).toBe(canonical);
+});
+
 test('Settings view shows and saves server preferences', async ({ page }) => {
   await page.goto('/');
   await page.locator('.nav-link', { hasText: 'Settings' }).click();
@@ -39,7 +61,7 @@ test('Settings view shows and saves server preferences', async ({ page }) => {
   // Change the temperature units and save -> a "Saved" confirmation appears.
   await page.locator('select[x-model="prefs.temperature_units"]').selectOption('Fahrenheit');
   await page.getByRole('button', { name: 'Save preferences' }).click();
-  await expect(page.getByText('Saved ✓')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText('Saved ✓').first()).toBeVisible({ timeout: 5_000 });
 
   // The change is reflected by the API.
   const prefs = await (await page.request.get('/api/preferences')).json();

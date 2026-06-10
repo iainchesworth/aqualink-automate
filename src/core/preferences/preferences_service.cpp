@@ -63,6 +63,7 @@ namespace AqualinkAutomate::Preferences
 			{ "webhook_url", m_Hub->AlertWebhookUrl },
 		};
 		json["history"] = { { "retention_days", m_Hub->HistoryRetentionDays } };
+		json["label_overrides"] = m_Hub->LabelOverrides;
 		json["ui"] = m_Hub->UiPreferences;
 		return json;
 	}
@@ -86,6 +87,7 @@ namespace AqualinkAutomate::Preferences
 		auto comms = m_Hub->AlertCommsTimeoutSeconds;
 		auto webhook = m_Hub->AlertWebhookUrl;
 		auto retention = m_Hub->HistoryRetentionDays;
+		auto label_overrides = m_Hub->LabelOverrides;
 		auto ui = m_Hub->UiPreferences;
 
 		if (json.contains("temperature_units"))
@@ -146,6 +148,24 @@ namespace AqualinkAutomate::Preferences
 			}
 		}
 
+		if (json.contains("label_overrides"))
+		{
+			if (!json["label_overrides"].is_object())
+			{
+				error = "label_overrides must be an object of canonical->display strings";
+				return false;
+			}
+			for (const auto& [canonical, display] : json["label_overrides"].items())
+			{
+				if (!display.is_string())
+				{
+					error = "label_overrides values must be strings";
+					return false;
+				}
+			}
+			label_overrides = json["label_overrides"];
+		}
+
 		if (json.contains("ui"))
 		{
 			if (!json["ui"].is_object())
@@ -162,6 +182,7 @@ namespace AqualinkAutomate::Preferences
 		m_Hub->AlertCommsTimeoutSeconds = comms;
 		m_Hub->AlertWebhookUrl = std::move(webhook);
 		m_Hub->HistoryRetentionDays = retention;
+		m_Hub->LabelOverrides = std::move(label_overrides);
 		m_Hub->UiPreferences = std::move(ui);
 
 		Save();

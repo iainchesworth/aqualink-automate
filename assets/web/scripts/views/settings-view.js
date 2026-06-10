@@ -56,6 +56,9 @@ function settingsView() {
         prefsError: '',
         savedFlash: false,
 
+        // Friendly display-name overrides keyed by canonical device label.
+        labelOverrides: {},
+
         // Alpine auto-calls init() on the component.
         async init() {
             try {
@@ -67,6 +70,7 @@ function settingsView() {
                 this.prefs.comms_timeout_seconds = (p.alert && p.alert.comms_timeout_seconds) ?? 60;
                 this.prefs.webhook_url = (p.alert && p.alert.webhook_url) || '';
                 this.prefs.retention_days = (p.history && p.history.retention_days) ?? 90;
+                this.labelOverrides = (p.label_overrides && typeof p.label_overrides === 'object') ? p.label_overrides : {};
 
                 // Server-stored chemistry bands take precedence (cross-device).
                 if (p.ui && p.ui.chemistryBands) {
@@ -112,6 +116,26 @@ function settingsView() {
 
         _syncBandsToServer() {
             this._putPrefs({ ui: { chemistryBands: bandsForStorage(this.values) } });
+        },
+
+        // ---- Device display names ----
+        // The canonical-labelled controllable devices come straight from the store.
+        deviceButtons() {
+            return (this.$store.pool && this.$store.pool.buttons) ? this.$store.pool.buttons : [];
+        },
+
+        async saveLabels() {
+            // Drop blank entries so an empty field falls back to the canonical label.
+            const cleaned = {};
+            for (const [canonical, display] of Object.entries(this.labelOverrides)) {
+                if (display && String(display).trim() !== '') { cleaned[canonical] = String(display).trim(); }
+            }
+            this.labelOverrides = cleaned;
+            await this._putPrefs({ label_overrides: cleaned });
+            // Refresh the dashboard so the new display names take effect immediately.
+            if (this.$store.pool && typeof this.$store.pool._fetchButtons === 'function') {
+                this.$store.pool._fetchButtons();
+            }
         },
 
         // ---- Server-backed preferences ----

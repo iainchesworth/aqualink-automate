@@ -58,6 +58,7 @@ namespace AqualinkAutomate::HTTP
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
+		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
 	}
 
 	Message WebRoute_Equipment::OnRequest(const HTTP::Request& req)
@@ -114,7 +115,7 @@ namespace AqualinkAutomate::HTTP
 			jandy_equipment_json["configuration"] = std::move(config);
 		}
 
-		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub);
+		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object());
 		jandy_equipment_json["stats"] = JSON::GenerateJson_Equipment_Stats(m_StatisticsHub);
 		jandy_equipment_json["version"] = JSON::GenerateJson_Equipment_Version(m_DataHub);
 

@@ -336,7 +336,7 @@
                                             @click="toggle(button)">
                                         <span x-text="isActive(button) ? 'On' : 'Off'"></span>
                                     </button>
-                                    <span class="heater-label" x-text="button.label"></span>
+                                    <span class="heater-label" x-text="button.display_label || button.label"></span>
                                     <span class="heater-status-badge"
                                           :class="{
                                               'badge-status-off': !isActive(button),
@@ -380,7 +380,7 @@
                             :aria-label="button.label + ' — ' + statusLabel(button)"
                             @click="toggle(button)">
                         <span class="eq-button-icon" aria-hidden="true" x-text="icon(button)"></span>
-                        <span class="eq-button-label" x-text="button.label"></span>
+                        <span class="eq-button-label" x-text="button.display_label || button.label"></span>
                         <span class="eq-button-status" x-text="statusLabel(button)"></span>
                         <!-- Command feedback overlay -->
                         <span class="cmd-badge cmd-applied" x-show="cmdState(button) === 'applied'" x-transition.opacity>Applied</span>
@@ -1191,6 +1191,25 @@
                     <span class="trends-error" x-show="prefsError" x-cloak x-text="prefsError"></span>
                 </div>
             </div>
+
+            <div class="section-title mt-2">Device Names</div>
+            <p class="text-muted mb-1 text-xs">
+                Give auxiliaries friendly names for the dashboard. Leave blank to keep the
+                original; the underlying control name (used for commands, MQTT and Home Assistant) is unchanged.
+            </p>
+            <div class="prefs-form" x-show="deviceButtons().length > 0">
+                <template x-for="button in deviceButtons()" :key="button.id">
+                    <label class="sched-field" x-show="button.label">
+                        <span x-text="button.label"></span>
+                        <input type="text" class="login-input" :placeholder="button.label" x-model="labelOverrides[button.label]">
+                    </label>
+                </template>
+                <div class="sched-form-actions">
+                    <button class="sched-new-btn" @click="saveLabels()">Save names</button>
+                    <span class="text-muted text-xs" x-show="savedFlash" x-cloak>Saved ✓</span>
+                </div>
+            </div>
+            <p class="text-muted text-xs" x-show="deviceButtons().length === 0">No devices discovered yet.</p>
 
             <div class="section-title mt-2">Chemistry Target Ranges</div>
             <p class="text-muted mb-1 text-xs">

@@ -9,6 +9,7 @@ namespace AqualinkAutomate::HTTP
 	WebRoute_Equipment_Devices::WebRoute_Equipment_Devices(Kernel::HubLocator& hub_locator)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
 	}
 	
     HTTP::Message WebRoute_Equipment_Devices::OnRequest(const HTTP::Request& req)
@@ -20,7 +21,7 @@ namespace AqualinkAutomate::HTTP
         resp.set(boost::beast::http::field::server, ServerFields::Server());
         resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
         resp.keep_alive(req.keep_alive());
-        resp.body() = JSON::GenerateJson_Equipment_Devices(m_DataHub).dump();
+        resp.body() = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object()).dump();
         resp.prepare_payload();
 
         zone->Value(resp.body().size());
