@@ -271,6 +271,37 @@ BOOST_AUTO_TEST_CASE(MainStatus_RendersKnownSystemStatusPage)
 	BOOST_CHECK(joined.find("81F") != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(Probe_EmulatedAnswers_NonEmulatedIgnores)
+{
+	// The master discovers an AqualinkTouch (0x33) with a generic Probe (cmd 0x00),
+	// exactly as it discovers a OneTouch. An EMULATED instance must answer it (treating
+	// the probe as "addressed", so it is present rather than NotPresent on timeout) -- this
+	// is what lets the PowerCenter sim go on to drive the IAQ page protocol. A passive
+	// non-emulated decoder must IGNORE a bare probe (a probe alone is not proof that a real
+	// device answered) and settle to NotPresent.
+	const uint8_t cmd_probe = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::Probe);
+	auto probe = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_probe, {});
+
+	{
+		Test::MockReplayHarness harness;
+		auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+		TestIAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+		harness.Replay(probe);
+		device.TriggerWatchdogTimeout();
+		BOOST_CHECK(device.IsFaulted());        // answered the probe -> was addressed
+		BOOST_CHECK(!device.IsNotPresent());
+	}
+	{
+		Test::MockReplayHarness harness;
+		auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+		TestIAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+		harness.Replay(probe);
+		device.TriggerWatchdogTimeout();
+		BOOST_CHECK(device.IsNotPresent());     // bare probe ignored -> not present
+		BOOST_CHECK(!device.IsFaulted());
+	}
+}
+
 BOOST_AUTO_TEST_CASE(MainStatus_ScreenRefreshesOnSecondMessage)
 {
 	Test::MockReplayHarness harness;

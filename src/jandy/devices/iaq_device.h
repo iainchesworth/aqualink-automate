@@ -11,6 +11,7 @@
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
+#include "messages/jandy_message_probe.h"
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
 #include "messages/iaq/iaq_message_control_ready.h"
@@ -88,6 +89,7 @@ namespace AqualinkAutomate::Devices
 		void Slot_IAQ_PageMessage(const Messages::IAQMessage_PageMessage& msg);
 		void Slot_IAQ_PageStart(const Messages::IAQMessage_PageStart& msg);
 		void Slot_IAQ_Poll(const Messages::IAQMessage_Poll& msg);
+		void Slot_IAQ_Probe(const Messages::JandyMessage_Probe& msg);
 		void Slot_IAQ_StartUp(const Messages::IAQMessage_StartUp& msg);
 		void Slot_IAQ_TableMessage(const Messages::IAQMessage_TableMessage& msg);
 		void Slot_IAQ_TitleMessage(const Messages::IAQMessage_TitleMessage& msg);

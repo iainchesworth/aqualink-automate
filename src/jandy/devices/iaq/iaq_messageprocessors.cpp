@@ -23,6 +23,27 @@ namespace AqualinkAutomate::Devices
 		Restartable::Kick();
 	}
 
+	void IAQDevice::Slot_IAQ_Probe(const Messages::JandyMessage_Probe& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_Probe", std::source_location::current(), UnitColours::Red);
+
+		// The master discovers an AqualinkTouch (0x30-0x33) with a generic Probe (0x00),
+		// exactly as it discovers a OneTouch -- so an EMULATED instance must answer the
+		// probe for the master to see it and begin the iAQ status/page protocol. A passive
+		// (non-emulated) decoder must NOT treat a bare probe as a real device answering
+		// (that would mask not-present detection), so this only acts when emulated.
+		if (!IsEmulated())
+		{
+			return;
+		}
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received JandyMessage_Probe (emulated -> answering)", DeviceId()); });
+
+		ProcessControllerUpdates();
+
+		Restartable::Kick();
+	}
+
 	void IAQDevice::Slot_IAQ_MainStatus(const Messages::IAQMessage_MainStatus& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_MainStatus", std::source_location::current(), UnitColours::Red);
