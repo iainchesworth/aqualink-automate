@@ -379,9 +379,15 @@ html.dark .gauge-card {
 }
 
 .eq-control-icon {
-    font-size: 1.6rem;
-    line-height: 1;
+    width: 26px;
+    height: 26px;
     flex-shrink: 0;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+}
+
+.eq-control.active .eq-control-icon {
+    color: var(--button-active-bg);
 }
 
 .eq-control-body {
