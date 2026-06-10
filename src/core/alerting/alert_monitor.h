@@ -21,6 +21,7 @@ namespace AqualinkAutomate::Kernel
 	class DataHub;
 	class EquipmentHub;
 	class StatisticsHub;
+	class PreferencesHub;
 	class HubLocator;
 }
 // namespace AqualinkAutomate::Kernel
@@ -97,6 +98,7 @@ namespace AqualinkAutomate::Alerting
 		std::shared_ptr<Kernel::DataHub> m_DataHub;
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub;
+		std::shared_ptr<Kernel::PreferencesHub> m_PreferencesHub;
 
 		// condition key -> raised?  Transparent comparator allows string_view lookup.
 		std::map<std::string, bool, std::less<>> m_Latched;

@@ -340,6 +340,54 @@ paths:
         '503': { description: Scheduler is disabled }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/preferences:
+    get:
+      tags:
+        - Preferences
+      summary: Get user/admin preferences
+      description: >
+        Returns the current preferences. The typed fields (temperature units,
+        alert thresholds, history retention) are read LIVE by the backend
+        services, so a change applies without a restart. `ui` is an opaque blob
+        the backend does not interpret (e.g. the chemistry gauge bands).
+      operationId: getPreferences
+      responses:
+        '200':
+          description: Current preferences
+          content:
+            application/json:
+              example:
+                temperature_units: "Celsius"
+                alert: { salt_low_ppm: 2600, comms_timeout_seconds: 60, webhook_url: "" }
+                history: { retention_days: 90 }
+                ui: { chemistryBands: {} }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Preferences
+      summary: Update (partial) preferences
+      description: >
+        Validates and applies a partial preferences document, then persists it
+        (when --preferences-file is set). Ranges enforced: salt_low_ppm 0..6000
+        (0 disables), comms_timeout_seconds > 0, retention_days > 0, webhook_url
+        empty or absolute http/https, temperature_units Celsius|Fahrenheit. A
+        single invalid field rejects the whole request (nothing is applied).
+      operationId: updatePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              temperature_units: "Fahrenheit"
+              alert: { salt_low_ppm: 2800 }
+      responses:
+        '200': { description: Updated preferences (full document) }
+        '400': { description: Validation error }
+        '503': { description: Preferences service unavailable }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment:
     get:
       tags:

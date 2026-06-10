@@ -67,6 +67,7 @@ target_sources(
 	http/webroute_equipment_version.cpp
 	http/webroute_history.cpp
 	http/webroute_metrics.cpp
+	http/webroute_preferences.cpp
 	http/webroute_schedules.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
@@ -175,6 +176,7 @@ target_sources(
 	options/options_history_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
+	options/options_preferences_options.cpp
 	options/options_registry.cpp
 	options/options_scheduling_options.cpp
 	options/options_serial_options.cpp
@@ -184,6 +186,7 @@ target_sources(
 	options/helpers/option_dependency_helper.cpp 
 	options/validators/profiler_type_validator.cpp
 	options/validators/severity_level_validator.cpp
+	preferences/preferences_service.cpp
 	profiling/noop_profiler.cpp
 	profiling/profiling.cpp
 	$<$<BOOL:${ENABLE_PROFILING}>:profiling/tracy_profiler.cpp>	

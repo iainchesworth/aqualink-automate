@@ -1162,11 +1162,41 @@
         <!-- ====== SETTINGS VIEW ====== -->
         <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
 
+            <div class="section-title mt-2">System Preferences</div>
+            <p class="text-muted mb-1 text-xs">
+                Saved on the server and applied live (no restart needed); shared across devices.
+            </p>
+            <div class="prefs-form">
+                <label class="sched-field">Temperature units
+                    <select x-model="prefs.temperature_units" class="login-input prefs-input">
+                        <option value="Celsius">Celsius</option>
+                        <option value="Fahrenheit">Fahrenheit</option>
+                    </select>
+                </label>
+                <label class="sched-field">Salt-low alert (ppm — 0 disables)
+                    <input type="number" min="0" max="6000" x-model.number="prefs.salt_low_ppm" class="login-input prefs-input">
+                </label>
+                <label class="sched-field">Comms-loss timeout (seconds)
+                    <input type="number" min="1" x-model.number="prefs.comms_timeout_seconds" class="login-input prefs-input">
+                </label>
+                <label class="sched-field">Alert webhook URL (http/https — blank disables)
+                    <input type="text" x-model="prefs.webhook_url" class="login-input" placeholder="https://example.com/hook">
+                </label>
+                <label class="sched-field">History retention (days)
+                    <input type="number" min="1" x-model.number="prefs.retention_days" class="login-input prefs-input">
+                </label>
+                <div class="sched-form-actions">
+                    <button class="sched-new-btn" @click="saveServerPrefs()">Save preferences</button>
+                    <span class="text-muted text-xs" x-show="savedFlash" x-cloak>Saved ✓</span>
+                    <span class="trends-error" x-show="prefsError" x-cloak x-text="prefsError"></span>
+                </div>
+            </div>
+
             <div class="section-title mt-2">Chemistry Target Ranges</div>
             <p class="text-muted mb-1 text-xs">
                 Configure the Good / Okay / Bad ranges for each chemistry gauge.
                 Values outside the Bad range are also shown as Bad.
-                Changes are saved to this browser only.
+                Saved to this browser and synced to the server.
             </p>
 
             <template x-for="gauge in gauges" :key="gauge.key">

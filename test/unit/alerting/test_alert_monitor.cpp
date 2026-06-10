@@ -13,6 +13,7 @@
 #include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
+#include "kernel/preferences_hub.h"
 #include "kernel/statistics_hub.h"
 #include "options/options_alerting_options.h"
 #include "types/units_dimensionless.h"
@@ -70,6 +71,10 @@ BOOST_AUTO_TEST_CASE(SaltLow_RaisesBelowThreshold_ClearsWithHysteresis)
 	SinkRecorder rec;
 	monitor.AddSink(rec.AsSink());
 
+	// AlertMonitor reads the threshold live from PreferencesHub (seeded from the
+	// CLI in production); set it explicitly in the test.
+	Find<Kernel::PreferencesHub>()->AlertSaltLowPpm = 2600;
+
 	auto data_hub = Find<Kernel::DataHub>();
 
 	// Below threshold -> raise.
@@ -104,6 +109,7 @@ BOOST_AUTO_TEST_CASE(SaltLow_Disabled_NeverRaises)
 	SinkRecorder rec;
 	monitor.AddSink(rec.AsSink());
 
+	Find<Kernel::PreferencesHub>()->AlertSaltLowPpm = 0;   // disables the check
 	Find<Kernel::DataHub>()->SaltLevel(500 * Units::ppm);
 	monitor.EvaluateSaltLow();
 	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::SaltLow), 0u);
@@ -171,6 +177,8 @@ BOOST_AUTO_TEST_CASE(SerialCommsLoss_RaisesAfterTimeout_ClearsOnTraffic)
 	AlertMonitor monitor(io, *this, settings);
 	SinkRecorder rec;
 	monitor.AddSink(rec.AsSink());
+
+	Find<Kernel::PreferencesHub>()->AlertCommsTimeoutSeconds = 60;
 
 	std::int64_t now = 1000;
 	monitor.SetClock([&now] { return now; });

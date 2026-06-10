@@ -68,6 +68,10 @@
 #include "history/history_service.h"
 #include "http/webroute_history.h"
 
+// Core — preferences (user/admin settings)
+#include "preferences/preferences_service.h"
+#include "http/webroute_preferences.h"
+
 // Core — scheduling (time-based automation)
 #include "scheduling/scheduler_service.h"
 #include "http/webroute_schedules.h"
@@ -150,6 +154,7 @@ int main(int argc, char* argv[])
 				| Add(Options::Equipment::OptionsProcessor{})
 				| Add(Options::History::OptionsProcessor{})
 				| Add(Options::Mqtt::OptionsProcessor{})
+				| Add(Options::Preferences::OptionsProcessor{})
 				| Add(Options::Scheduling::OptionsProcessor{})
 				| Add(Options::Serial::OptionsProcessor{})
 				| Add(Options::Web::OptionsProcessor{})
@@ -170,6 +175,7 @@ int main(int argc, char* argv[])
 					Options::Equipment::OptionsProcessor{},
 					Options::History::OptionsProcessor{},
 					Options::Mqtt::OptionsProcessor{},
+					Options::Preferences::OptionsProcessor{},
 					Options::Scheduling::OptionsProcessor{},
 					Options::Serial::OptionsProcessor{},
 					Options::Web::OptionsProcessor{},
@@ -418,6 +424,33 @@ int main(int argc, char* argv[])
 		AqualinkAutomate::Developer::FirewallUtils::CheckAndConfigureExceptions();
 
 		//---------------------------------------------------------------------
+		// PREFERENCES SERVICE (user/admin settings persistence)
+		//---------------------------------------------------------------------
+		// Constructed first: it seeds the PreferencesHub from the effective CLI
+		// values (so deployments behave identically) then loads any persisted
+		// file (overriding the seed). The services below read the hub live.
+		namespace Preferences = AqualinkAutomate::Preferences;
+
+		std::shared_ptr<Preferences::PreferencesService> preferences_service;
+		{
+			Options::Preferences::PreferencesSettings prefs_settings;
+			if (auto r = settings.Get<Options::Preferences::PreferencesSettings>(); r) { prefs_settings = r.value().get(); }
+
+			Options::Alerting::AlertingSettings seed_alerting;
+			if (auto r = settings.Get<Options::Alerting::AlertingSettings>(); r) { seed_alerting = r.value().get(); }
+			Options::History::HistorySettings seed_history;
+			if (auto r = settings.Get<Options::History::HistorySettings>(); r) { seed_history = r.value().get(); }
+
+			preferences_service = std::make_shared<Preferences::PreferencesService>(hub_locator, prefs_settings);
+			preferences_service->Seed(seed_alerting.salt_low_ppm, seed_alerting.comms_timeout_seconds, seed_alerting.webhook_url, seed_history.retention_days);
+			preferences_service->Start();
+
+			LogInfo(Channel::Main, prefs_settings.preferences_file.empty()
+				? std::string{ "Preferences are in-memory only (no --preferences-file)" }
+				: std::format("Preferences persisted to {}", prefs_settings.preferences_file));
+		}
+
+		//---------------------------------------------------------------------
 		// HISTORY SERVICE (SQLite time-series persistence)
 		//---------------------------------------------------------------------
 		// Constructed before the routes so WebRoute_History can hold it. When
@@ -498,6 +531,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Preferences>(preferences_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedule>(scheduler_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedules>(scheduler_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
@@ -582,12 +616,11 @@ int main(int argc, char* argv[])
 			alerting_settings = alerting_settings_result.value().get();
 		}
 
-		// Optional webhook sink — declared before the monitor so it outlives it.
-		std::unique_ptr<Alerting::WebhookSink> webhook_sink;
-		if (!alerting_settings.webhook_url.empty())
-		{
-			webhook_sink = std::make_unique<Alerting::WebhookSink>(io_context, alerting_settings.webhook_url);
-		}
+		// Webhook sink — declared before the monitor so it outlives it. It reads
+		// the URL LIVE from preferences (seeded from --alert-webhook-url), so the
+		// webhook can be enabled/changed at runtime; an empty URL is a no-op.
+		auto webhook_sink = std::make_unique<Alerting::WebhookSink>(io_context,
+			[preferences_hub]() -> std::string { return preferences_hub ? preferences_hub->AlertWebhookUrl : std::string{}; });
 
 		Alerting::AlertMonitor alert_monitor(io_context, hub_locator, alerting_settings);
 
@@ -597,14 +630,11 @@ int main(int argc, char* argv[])
 			equipment_hub->AlertTransitionSignal(transition.condition, transition.raised, transition.ts, transition.detail);
 		});
 
-		// Webhook sink (only when a usable URL was configured).
-		if (webhook_sink && webhook_sink->IsUsable())
+		// Webhook sink (always added; a no-op while the preference URL is empty).
+		alert_monitor.AddSink([&webhook_sink](const Alerting::AlertTransition& transition)
 		{
-			alert_monitor.AddSink([&webhook_sink](const Alerting::AlertTransition& transition)
-			{
-				webhook_sink->Post(transition);
-			});
-		}
+			webhook_sink->Post(transition);
+		});
 
 		// MQTT / Home Assistant sink: publish the consolidated alert state
 		// (retained) that the HA problem binary_sensors read.  Only when MQTT is

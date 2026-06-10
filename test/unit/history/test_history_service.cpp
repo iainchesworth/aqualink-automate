@@ -8,6 +8,7 @@
 
 #include "history/history_service.h"
 #include "history/sqlite_db.h"
+#include "kernel/preferences_hub.h"
 #include "options/options_history_options.h"
 
 #include "support/unit_test_hublocatorinjector.h"
@@ -172,6 +173,9 @@ BOOST_AUTO_TEST_CASE(PurgeOld_DropsSamplesBeyondRetention)
 	std::int64_t now = 0;
 	service.SetClock([&now] { return now; });
 	service.Start();
+
+	// PurgeOld reads retention live from PreferencesHub (seeded from the CLI).
+	Find<Kernel::PreferencesHub>()->HistoryRetentionDays = 90;
 
 	// One sample 100 days ago, one "now".
 	const std::int64_t reference = 1'000'000'000;

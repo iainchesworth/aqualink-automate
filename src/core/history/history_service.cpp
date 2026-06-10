@@ -13,6 +13,7 @@
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/hub_locator.h"
+#include "kernel/preferences_hub.h"
 #include "logging/logging.h"
 #include "utility/slugify.h"
 
@@ -48,6 +49,7 @@ namespace AqualinkAutomate::History
 		m_PurgeTimer(io_context)
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
 	}
 
 	HistoryService::~HistoryService()
@@ -283,14 +285,17 @@ namespace AqualinkAutomate::History
 
 	void HistoryService::PurgeOld()
 	{
-		if (!m_Db || m_Settings.retention_days <= 0)
+		// Read retention LIVE from preferences (seeded from the CLI at boot).
+		const std::uint32_t retention_days = m_PreferencesHub ? m_PreferencesHub->HistoryRetentionDays : m_Settings.retention_days;
+
+		if (!m_Db || retention_days == 0)
 		{
 			return;
 		}
 
 		try
 		{
-			const std::int64_t cutoff = m_Clock() - (static_cast<std::int64_t>(m_Settings.retention_days) * 86400);
+			const std::int64_t cutoff = m_Clock() - (static_cast<std::int64_t>(retention_days) * 86400);
 			SqliteStmt del(*m_Db, "DELETE FROM samples WHERE ts < ?");
 			del.Bind(1, cutoff);
 			del.Step();

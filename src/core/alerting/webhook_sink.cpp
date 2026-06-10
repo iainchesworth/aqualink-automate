@@ -134,40 +134,39 @@ namespace AqualinkAutomate::Alerting
 	}
 	// unnamed namespace
 
-	WebhookSink::WebhookSink(boost::asio::io_context& io_context, std::string url) :
-		m_IoContext(io_context),
-		m_Url(std::move(url))
+	namespace
 	{
-		auto parsed = boost::urls::parse_uri(m_Url);
-		if (!parsed)
+		// Parse an http/https URL into connection components. Returns false (and
+		// leaves the out-params unspecified) for an empty or non-http(s) URL.
+		bool ParseWebhookUrl(const std::string& url, bool& use_tls, std::string& host, std::string& port, std::string& target)
 		{
-			return;
-		}
+			if (url.empty()) { return false; }
 
-		const auto scheme = parsed->scheme();
-		if (scheme != "http" && scheme != "https")
-		{
-			return;
-		}
+			auto parsed = boost::urls::parse_uri(url);
+			if (!parsed) { return false; }
 
-		m_UseTls = (scheme == "https");
-		m_Host = parsed->host();
-		m_Port = parsed->has_port() ? std::string{ parsed->port() } : (m_UseTls ? "443" : "80");
+			const auto scheme = parsed->scheme();
+			if (scheme != "http" && scheme != "https") { return false; }
 
-		// Path + (optional) query reassembled as the request target.
-		std::string target{ parsed->path() };
-		if (target.empty())
-		{
-			target = "/";
-		}
-		if (parsed->has_query())
-		{
-			target += "?";
-			target += parsed->query();
-		}
-		m_Target = std::move(target);
+			use_tls = (scheme == "https");
+			host = parsed->host();
+			if (host.empty()) { return false; }
 
-		m_Valid = !m_Host.empty();
+			port = parsed->has_port() ? std::string{ parsed->port() } : (use_tls ? "443" : "80");
+
+			std::string t{ parsed->path() };
+			if (t.empty()) { t = "/"; }
+			if (parsed->has_query()) { t += "?"; t += parsed->query(); }
+			target = std::move(t);
+			return true;
+		}
+	}
+	// unnamed namespace
+
+	WebhookSink::WebhookSink(boost::asio::io_context& io_context, UrlProvider url_provider) :
+		m_IoContext(io_context),
+		m_UrlProvider(std::move(url_provider))
+	{
 	}
 
 	std::string WebhookSink::BuildPayload(const AlertTransition& transition)
@@ -182,14 +181,24 @@ namespace AqualinkAutomate::Alerting
 
 	void WebhookSink::Post(const AlertTransition& transition)
 	{
-		if (!m_Valid)
+		if (!m_UrlProvider)
+		{
+			return;
+		}
+
+		// Read the URL fresh so a runtime preference change takes effect.
+		bool use_tls = false;
+		std::string host;
+		std::string port;
+		std::string target;
+		if (!ParseWebhookUrl(m_UrlProvider(), use_tls, host, port, target))
 		{
 			return;
 		}
 
 		boost::asio::co_spawn(
 			m_IoContext,
-			RunWithRetry(m_UseTls, m_Host, m_Port, m_Target, BuildPayload(transition)),
+			RunWithRetry(use_tls, host, port, target, BuildPayload(transition)),
 			boost::asio::detached);
 	}
 

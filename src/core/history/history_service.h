@@ -17,6 +17,7 @@ namespace AqualinkAutomate::Kernel
 {
 	class DataHub;
 	class HubLocator;
+	class PreferencesHub;
 	class DataHub_ConfigEvent;
 }
 
@@ -103,6 +104,7 @@ namespace AqualinkAutomate::History
 		boost::asio::io_context& m_IoContext;
 		Options::History::HistorySettings m_Settings;
 		std::shared_ptr<Kernel::DataHub> m_DataHub;
+		std::shared_ptr<Kernel::PreferencesHub> m_PreferencesHub;
 
 		std::unique_ptr<SqliteDb> m_Db;
 		ClockFn m_Clock;

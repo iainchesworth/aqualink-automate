@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 
 #include <boost/asio/io_context.hpp>
@@ -14,34 +15,30 @@ namespace AqualinkAutomate::Alerting
 	//
 	// On each transition it POSTs a JSON body
 	//   {"condition": "...", "state": "raised"|"cleared", "ts": <unix>, "detail": "..."}
-	// to the configured URL.  Runs entirely on the application io_context (no
-	// extra threads, no blocking waits), retries once on failure, then logs and
-	// drops — an unreachable webhook must NEVER wedge the main loop.
+	// to the URL returned by the supplied provider.  The provider is read FRESH
+	// on every transition so the webhook URL can be changed at runtime via the
+	// preferences API (an empty/invalid URL is simply a no-op).  Runs entirely on
+	// the application io_context (no extra threads, no blocking waits), retries
+	// once on failure, then logs and drops — an unreachable webhook must NEVER
+	// wedge the main loop.
 	//=========================================================================
 	class WebhookSink
 	{
 	public:
-		WebhookSink(boost::asio::io_context& io_context, std::string url);
+		using UrlProvider = std::function<std::string()>;
 
-		// Fire-and-forget POST for one transition (returns immediately).
+		WebhookSink(boost::asio::io_context& io_context, UrlProvider url_provider);
+
+		// Fire-and-forget POST for one transition (returns immediately). No-op
+		// when the current URL is empty or not a valid http/https URL.
 		void Post(const AlertTransition& transition);
 
 		// Build the JSON request body for a transition (pure; unit-tested).
 		static std::string BuildPayload(const AlertTransition& transition);
 
-		// True if the configured URL parsed into a usable http/https target.
-		bool IsUsable() const { return m_Valid; }
-
 	private:
 		boost::asio::io_context& m_IoContext;
-		std::string m_Url;
-
-		// Parsed components.
-		bool m_Valid{ false };
-		bool m_UseTls{ false };
-		std::string m_Host;
-		std::string m_Port;
-		std::string m_Target;
+		UrlProvider m_UrlProvider;
 	};
 
 }

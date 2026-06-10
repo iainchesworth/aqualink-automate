@@ -9,6 +9,7 @@
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
+#include "kernel/preferences_hub.h"
 #include "kernel/statistics_hub.h"
 #include "logging/logging.h"
 
@@ -55,6 +56,7 @@ namespace AqualinkAutomate::Alerting
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
 		m_EquipmentHub = hub_locator.Find<Kernel::EquipmentHub>();
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
+		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
 
 		// Seed the latch for every catalogue condition so transitions are detected
 		// from a known (cleared) baseline.
@@ -157,7 +159,11 @@ namespace AqualinkAutomate::Alerting
 
 	void AlertMonitor::EvaluateSaltLow()
 	{
-		if (!m_DataHub || m_Settings.salt_low_ppm == 0)
+		// Read the threshold LIVE from preferences (seeded from the CLI at boot),
+		// so a change via the preferences API takes effect without a restart.
+		const std::uint32_t salt_low_ppm = m_PreferencesHub ? m_PreferencesHub->AlertSaltLowPpm : m_Settings.salt_low_ppm;
+
+		if (!m_DataHub || salt_low_ppm == 0)
 		{
 			// 0 disables the salt check entirely.
 			return;
@@ -171,7 +177,7 @@ namespace AqualinkAutomate::Alerting
 			return;
 		}
 
-		const double threshold = static_cast<double>(m_Settings.salt_low_ppm);
+		const double threshold = static_cast<double>(salt_low_ppm);
 		const bool currently_raised = IsRaised(ConditionKeys::SaltLow);
 
 		// Hysteresis: raise below the threshold, clear only once back above
@@ -232,6 +238,9 @@ namespace AqualinkAutomate::Alerting
 		const std::uint64_t count = TotalMessageCount(*m_StatisticsHub);
 		const std::int64_t now = m_Clock();
 
+		// Read the timeout LIVE from preferences (seeded from the CLI at boot).
+		const std::uint32_t comms_timeout = m_PreferencesHub ? m_PreferencesHub->AlertCommsTimeoutSeconds : m_Settings.comms_timeout_seconds;
+
 		if (count != m_LastMessageCount)
 		{
 			// Fresh traffic -> note the time and clear any latched loss.
@@ -241,10 +250,10 @@ namespace AqualinkAutomate::Alerting
 			return;
 		}
 
-		if ((now - m_LastMessageChangeTs) >= static_cast<std::int64_t>(m_Settings.comms_timeout_seconds))
+		if ((now - m_LastMessageChangeTs) >= static_cast<std::int64_t>(comms_timeout))
 		{
 			SetCondition(ConditionKeys::SerialCommsLoss, true,
-				std::format("No protocol message decoded for {} s", m_Settings.comms_timeout_seconds));
+				std::format("No protocol message decoded for {} s", comms_timeout));
 		}
 	}
 

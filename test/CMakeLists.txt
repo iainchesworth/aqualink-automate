@@ -57,9 +57,11 @@ target_sources(
 	unit/options/test_options_history.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
+	unit/options/test_options_preferences.cpp
 	unit/options/test_options_scheduling.cpp
 	unit/options/test_options_serial.cpp
 	unit/options/test_options_validators.cpp
+	unit/preferences/test_preferences_service.cpp
 	unit/scheduling/test_schedule.cpp
 	unit/scheduling/test_scheduler_service.cpp
 	unit/options/test_options_web.cpp
