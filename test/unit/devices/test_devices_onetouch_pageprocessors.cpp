@@ -1,5 +1,8 @@
 #include <boost/test/unit_test.hpp>
 
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+
 #include "support/unit_test_onetouchdevice.h"
 #include "support/unit_test_ostream_support.h"
 
@@ -174,6 +177,115 @@ BOOST_AUTO_TEST_CASE(TestAuxillariesHeatersPumpsAreRegistered)
 	BOOST_CHECK(!check_for_device("All Off", Kernel::AuxillaryStatuses::Unknown, data_hub.Auxillaries()));
 	BOOST_CHECK(!check_for_device("All Off", Kernel::HeaterStatuses::Unknown, data_hub.Heaters()));
 	BOOST_CHECK(!check_for_device("All Off", Kernel::PumpStatuses::Unknown, data_hub.Pumps()));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// OneTouch "EQUIPMENT STATUS" page — AquaPure / salt status-line processors.
+//
+// PROVENANCE OF THE LINE STRINGS
+// ------------------------------
+// No recorded capture exercises the AquaPure %, salt-PPM, or "Check AquaPure"
+// lines of the Equipment Status page, so these page lines are reconstructed
+// from the documented OneTouch 16-character screen format: the label is
+// left-justified and the value right-justified within the 16-column row,
+// producing MULTIPLE internal spaces.  That format is evidenced throughout the
+// existing fixtures — e.g. "AquaPure      ON" (test_factories_jandy_auxillary),
+// "Pool Heat    ENA", "Aux1         OFF" (unit_test_onetouchdevice).  The
+// processors used to assume a SINGLE space between tokens, so an anchored
+// regex_match never fired on a real right-justified line; that is the bug these
+// tests lock down.  Strings here are 16 columns wide exactly, like the real
+// screen rows.
+//=============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(PageProcessor_EquipmentStatus_AquaPure_TestSuite, Test::OneTouchDevice)
+
+namespace
+{
+	// Build a minimal 12-line "EQUIPMENT STATUS" page (line 0 is the title that
+	// routes the page to PageProcessor_EquipmentStatus) carrying a single status
+	// line of interest at row 2.  Unused rows are 16 blanks, exactly as the real
+	// screen pads them.
+	Test::OneTouchDevice::TestPage MakeEquipmentStatusPage(const std::string& status_line)
+	{
+		return Test::OneTouchDevice::TestPage
+		{
+			{ 0x0, "EQUIPMENT STATUS" },
+			{ 0x1, "                " },
+			{ 0x2, status_line        },
+			{ 0x3, "                " },
+			{ 0x4, "                " },
+			{ 0x5, "                " },
+			{ 0x6, "                " },
+			{ 0x7, "                " },
+			{ 0x8, "                " },
+			{ 0x9, "                " },
+			{ 0xA, "                " },
+			{ 0xB, "                " }
+		};
+	}
+}
+
+// "AquaPure     50%" (right-justified) must set the AquaPure chlorinator's duty
+// cycle to 50.  Regression: the single-space regex failed on the multi-space
+// real format.
+BOOST_AUTO_TEST_CASE(AquaPurePercentage_RightJustifiedLine_SetsDutyCycle)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	LoadAndSignalTestPage(MakeEquipmentStatusPage("AquaPure     50%"));
+
+	auto chlorinators = DataHub().Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	auto duty_cycle = chlorinators.front()->AuxillaryTraits.TryGet(DutyCycleTrait{});
+	BOOST_REQUIRE(duty_cycle.has_value());
+	BOOST_CHECK_EQUAL(duty_cycle.value(), static_cast<uint8_t>(50));
+}
+
+// "AquaPure    100%" (the three-digit boundary value) must also be accepted.
+BOOST_AUTO_TEST_CASE(AquaPurePercentage_RightJustifiedLine_HundredPercent)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	LoadAndSignalTestPage(MakeEquipmentStatusPage("AquaPure    100%"));
+
+	auto chlorinators = DataHub().Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	auto duty_cycle = chlorinators.front()->AuxillaryTraits.TryGet(DutyCycleTrait{});
+	BOOST_REQUIRE(duty_cycle.has_value());
+	BOOST_CHECK_EQUAL(duty_cycle.value(), static_cast<uint8_t>(100));
+}
+
+// "Salt    3200 PPM" (right-justified) must publish the salt level to the
+// DataHub.  Regression: the single-space regex failed on the multi-space real
+// format.
+BOOST_AUTO_TEST_CASE(SaltLevelPPM_RightJustifiedLine_SetsSaltLevel)
+{
+	LoadAndSignalTestPage(MakeEquipmentStatusPage("Salt    3200 PPM"));
+
+	BOOST_CHECK_EQUAL(DataHub().SaltLevel().value(), 3200.0);
+}
+
+// "Check AquaPure" (left-justified, trailing pad) flags the chlorinator health
+// as a general fault.  This line already matched (its regex has no embedded
+// value token) — pin it so a future edit cannot silently break it.
+BOOST_AUTO_TEST_CASE(CheckAquaPure_Line_SetsHealthGeneralFault)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	LoadAndSignalTestPage(MakeEquipmentStatusPage("Check AquaPure  "));
+
+	auto chlorinators = DataHub().Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	auto health = chlorinators.front()->AuxillaryTraits.TryGet(ChlorinatorHealthTrait{});
+	BOOST_REQUIRE(health.has_value());
+	// ChlorinatorHealth has no ostream operator<<, so compare with == rather than
+	// BOOST_CHECK_EQUAL (which would need to stream both operands on failure).
+	BOOST_CHECK(health.value() == Kernel::ChlorinatorHealth::GeneralFault);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

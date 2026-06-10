@@ -396,7 +396,11 @@ namespace AqualinkAutomate::Devices
 
 		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_AquaPurePercentage status line.", DeviceId()); });
 
-		static const boost::regex re("aquapure ([0-9]{1,2}|100)%", boost::regex_constants::icase);
+		// Real OneTouch Equipment Status lines are 16 columns wide with the value
+		// right-justified, so the token gap is MULTIPLE spaces (e.g. "AquaPure
+		// 50%"), not one.  Match \s+ rather than a single literal space — the
+		// previous single-space pattern never fired against live screen content.
+		static const boost::regex re("aquapure\\s+([0-9]{1,2}|100)%", boost::regex_constants::icase);
 		static const HintArrayType hints{ 'a', 'q' };
 		boost::smatch matches;
 
@@ -450,7 +454,10 @@ namespace AqualinkAutomate::Devices
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::StatusProcessor_SaltLevelPPM", std::source_location::current());
 		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is checking for a StatusProcessor_SaltLevelPPM status line.", DeviceId()); });
 
-		static const boost::regex re("salt ([0-9]{1,4}) ppm", boost::regex_constants::icase);
+		// As with the AquaPure percentage line, the real screen row is 16 columns
+		// with the value right-justified, so the gaps between "salt", the number
+		// and "ppm" are MULTIPLE spaces.  Match \s+ rather than single spaces.
+		static const boost::regex re("salt\\s+([0-9]{1,4})\\s+ppm", boost::regex_constants::icase);
 		static const HintArrayType hints{ 's', 'a' };
 		boost::smatch matches;
 

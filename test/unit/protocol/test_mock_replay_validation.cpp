@@ -3,6 +3,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 
@@ -138,6 +139,70 @@ BOOST_AUTO_TEST_CASE(Replay_CorruptChecksumFrame_IsRejectedAndLeavesStateUntouch
 	// reported level and no chlorinator was ever created in the DataHub.
 	BOOST_CHECK_EQUAL(device.ReportedGeneratingLevel().value, static_cast<uint8_t>(0));
 	BOOST_CHECK(harness.DataHub()->Chlorinators().empty());
+}
+
+//-----------------------------------------------------------------------------
+// Explicit regression lock for the two historical AquaRite wire->DataHub bugs.
+//
+// Both bugs were fixed in aquarite_device.cpp; this case fails if either is
+// re-introduced (verified locally by reverting each fix):
+//
+//   (1) AquariteMessage_PPM must be registered UNFILTERED.  PPM frames travel
+//       SWG->Master with destination 0x00, so a device-id filter on 0x50 would
+//       drop them entirely -> SaltLevel would never be set and the chlorinator
+//       health/status would stay at their defaults.  (aquarite_device.cpp:68)
+//
+//   (2) The PPM handler must call ReportedSaltConcentration(), not the
+//       generating-level setter.  Calling the wrong setter leaves the reported
+//       salt concentration at its default while corrupting the generating
+//       level.  (aquarite_device.cpp:157)
+//
+// It also pins that the chlorinator surfaced by the WIRE path carries the
+// "AquaPure" label (the chemistry card / equipment JSON keys off it), which the
+// happy-path case above does not assert.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(Replay_AquaRite_Regression_UnfilteredPpmAndAquaPureLabel)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(SWG_DEVICE_ID));
+	auto& device = harness.AddDevice<AquariteDevice>(device_id);
+
+	// Generating percentage (60%) arrives addressed to the SWG (0x50).
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(
+		SWG_DEVICE_ID, CMD_AQUARITE_PERCENT, { static_cast<uint8_t>(60) }));
+
+	// Salt 3000 PPM + status On arrives addressed to the MASTER (0x00).  If the
+	// PPM slot were device-id filtered on 0x50 (bug 1) this frame would be
+	// dropped and every assertion below on salt / status would fail.
+	constexpr uint16_t salt_ppm = 3000;
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(
+		MASTER_DEVICE_ID, CMD_AQUARITE_PPM,
+		{ static_cast<uint8_t>(salt_ppm / 100), AQUARITE_STATUS_ON }));
+
+	BOOST_TEST(harness.StatisticsHub()->MessageErrors.ChecksumFailures == 0u);
+
+	auto chlorinators = harness.DataHub()->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+	auto& chlorinator = chlorinators.front();
+
+	// The wire path must stamp the "AquaPure" label.
+	auto label = chlorinator->AuxillaryTraits.TryGet(LabelTrait{});
+	BOOST_REQUIRE(label.has_value());
+	BOOST_CHECK_EQUAL(label.value(), std::string{ "AquaPure" });
+
+	// Bug 2 lock: reported salt concentration lands via ReportedSaltConcentration.
+	BOOST_CHECK_EQUAL(device.ReportedSaltConcentration().value, salt_ppm);
+
+	// Bug 1 lock: the unfiltered PPM frame reached the DataHub salt level...
+	BOOST_CHECK_EQUAL(harness.DataHub()->SaltLevel().value(), static_cast<double>(salt_ppm));
+
+	// ...and drove the chlorinator operating status On (status byte On).
+	auto status = chlorinator->AuxillaryTraits.TryGet(ChlorinatorStatusTrait{});
+	BOOST_REQUIRE(status.has_value());
+	// ChlorinatorStatuses has no ostream operator<<, so compare with == rather
+	// than BOOST_CHECK_EQUAL (which streams both operands on failure).
+	BOOST_CHECK(status.value() == Kernel::ChlorinatorStatuses::On);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
