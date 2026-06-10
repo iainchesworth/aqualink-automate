@@ -12,6 +12,16 @@
 namespace AqualinkAutomate::Messages
 {
 
+	// ePump 0x44/0x45 model -- UNRESOLVED, capture-gated (see docs/alwin32/epump.md).
+	// The official Jandy RS simulator decodes 0x44 ('D') and 0x45 ('E') as master->pump
+	// COMMANDS -- 'D' = set speed (RPM x4, little-endian, in the command payload) and
+	// 'E' = query a value (a selector byte chooses RPM vs Watts) -- alongside 'A'(0x41)
+	// poll, 'B'(0x42) stop, 'C'(0x43) start. This class instead models 0x44 as a pump
+	// RPM *report*. The sim does not cleanly define the pump's reply command byte (it
+	// echoes the inbound frame) and its value sits ~1 byte later than read here, so the
+	// sim neither confirms nor cleanly replaces this decode; and the project's captures
+	// contain no ePump traffic. The two models are therefore left as-is pending a live
+	// ePump capture rather than flipped on incomplete sim evidence.
 	class EPumpMessage_RPM : public EPumpMessage, public Interfaces::IMessageSignalRecv<EPumpMessage_RPM>
 	{
 	public:

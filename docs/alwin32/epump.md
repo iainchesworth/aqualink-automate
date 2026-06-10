@@ -260,3 +260,28 @@ capture before trusting a byte layout. Do not fabricate one.
   so these were found manually.)
 * NetIO `RemoteStatus` export = `0x1fb5`, `GetMasterMessage` = `0x2068`,
   `RemoteLogOn` = `0x1dff` (base variants).
+
+---
+
+## Reconciliation with aqualink-automate's ePump decoder (UNRESOLVED — capture-gated)
+
+The app (`src/jandy/messages/epump/*`, `src/jandy/devices/epump_device.cpp`) and this sim
+**disagree**, and neither is validated against real hardware (the project's capture fixtures
+contain **no** ePump traffic — `0` frames to `0x78`–`0x7B` in any `test/fixtures/*.cap`).
+
+| | App's model | Simulator (this doc) |
+|---|---|---|
+| `0x44` | `EPUMP_RPM` — pump *reports* RPM; 16-bit LE at frame idx **6–7**, ÷4 | `'D'` master→pump **set-speed command**; RPM×4 LE at command-payload offset 1–2 (frame idx **5–6**) |
+| `0x45` | `EPUMP_Watts` — pump *reports* Watts; 16-bit LE at frame idx **7–8** | `'E'` master→pump **query command**; selector byte (0=RPM, 5=Watts) at payload offset 1 |
+| `0x41`/`0x42`/`0x43` | not recognised (→ `Unknown`) | `'A'` poll / `'B'` stop / `'C'` start (master→pump) |
+| pump reply | the app filters ePump msgs by dest = pump id `0x78` (it decodes frames *to* the pump) | 6-byte frame to master `0x00`; value at `obj+0x80/81` (frame idx **7–8**); **reply command byte `obj+0x7c` is undefined** (echoed inbound), so the sim does not say which cmd byte a pump status reply uses |
+
+So the simulator **confirms the command side** (`0x41`–`0x45` are master→pump commands, `0x44`=
+set-speed with RPM×4, `0x45`=query) but **cannot resolve the report side** (its reply command
+byte is an echo artifact, and offsets differ from the app by ~1 byte). Decision: **leave the
+app's `0x44`/`0x45` decode unchanged** — flipping it would swap one unverified model for an
+incomplete one. Resolve with a **live ePump capture** (run `ePump.exe` + the PowerCenter master
+sim over com0com, or record real hardware), then settle: (a) does a real pump report RPM/Watts
+to its own id `0x78` or to the master `0x00`? (b) the exact value offsets, and (c) the report
+command byte(s). The sim-confirmed `0x41`/`0x42`/`0x43` poll/stop/start commands could be added
+as recognised messages once their direction is confirmed against that capture.
