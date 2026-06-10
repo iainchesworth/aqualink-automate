@@ -381,8 +381,11 @@ BOOST_AUTO_TEST_CASE(TestConstruction_Defaults)
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_Valid)
 {
+	// 0x26 carries TWO leading bytes (line + attribute) before the text -- unlike
+	// 0x25 which has one. The attribute byte must NOT bleed into the line text.
 	std::vector<uint8_t> payload = {
 		0x02, // LineId
+		0x01, // Attribute
 		'T','a','b','l','e',' ','R','o','w'
 	};
 	auto pkt = MakePacket(0x33, 0x26, payload);
@@ -390,6 +393,7 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_Valid)
 	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
 
 	BOOST_CHECK_EQUAL(msg.LineId(), static_cast<uint8_t>(2));
+	BOOST_CHECK_EQUAL(msg.Attribute(), static_cast<uint8_t>(1));
 	BOOST_CHECK_EQUAL(msg.Line(), "Table Row");
 }
 
@@ -402,7 +406,8 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_TooShort_NoLineId)
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_TooShort_NoLineText)
 {
-	std::vector<uint8_t> payload = { 0x02 };
+	// Line + attribute present, but no text byte -> rejected.
+	std::vector<uint8_t> payload = { 0x02, 0x01 };
 	auto pkt = MakePacket(0x33, 0x26, payload);
 	IAQMessage_TableMessage msg;
 	BOOST_CHECK(!msg.DeserializeContents(std::span<const uint8_t>(pkt)));

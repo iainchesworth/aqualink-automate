@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Messages
 		IAQMessage(JandyMessageIds::IAQ_TableMessage),
 		Interfaces::IMessageSignalRecv<IAQMessage_TableMessage>(),
 		m_LineId(0),
+		m_Attribute(0),
 		m_Line()
 	{
 	}
@@ -25,6 +26,11 @@ namespace AqualinkAutomate::Messages
 		return m_LineId;
 	}
 
+	uint8_t IAQMessage_TableMessage::Attribute() const
+	{
+		return m_Attribute;
+	}
+
 	std::string IAQMessage_TableMessage::Line() const
 	{
 		return m_Line;
@@ -32,7 +38,7 @@ namespace AqualinkAutomate::Messages
 
 	std::string IAQMessage_TableMessage::ToString() const
 	{
-		return std::format("Packet: {} || Payload: LineId: {}, Line: '{}'", IAQMessage::ToString(), m_LineId, m_Line);
+		return std::format("Packet: {} || Payload: LineId: {}, Attribute: {}, Line: '{}'", IAQMessage::ToString(), m_LineId, m_Attribute, m_Line);
 	}
 
 	bool IAQMessage_TableMessage::SerializeContents(std::vector<uint8_t>& message_bytes) const
@@ -59,9 +65,10 @@ namespace AqualinkAutomate::Messages
 		}
 
 		m_LineId = Text::ReadU8(message_bytes, Index_LineId);
+		m_Attribute = Text::ReadU8(message_bytes, Index_Attribute);
 		m_Line = Text::ExtractTrailingAsciiPayload(message_bytes, Index_LineText);
 
-		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_TableMessage: LineId -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Line, m_Line.length()); });
+		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_TableMessage: LineId -> {}, Attribute -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Attribute, m_Line, m_Line.length()); });
 
 		return true;
 	}
