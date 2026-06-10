@@ -30,7 +30,9 @@ the controllers ([pwrcntr-master.md](alwin32/pwrcntr-master.md),
 [pc-host-bridge.md](alwin32/pc-host-bridge.md) (RS Serial Adapter ASCII protocol + PC Docking
 Station), [ctrlpnl-simio.md](alwin32/ctrlpnl-simio.md) (wired Control Panel + iodll option DIP
 bits). **Testing:** [testing-ecosystem.md](alwin32/testing-ecosystem.md) — how to mint `.cap`
-replay fixtures (generated + live sim-capture) to test behaviour.
+replay fixtures (generated + live sim-capture) to test behaviour; and
+[sim-connection.md](alwin32/sim-connection.md) — how the sims interconnect (shared memory) and
+a no-install raw-TCP feeder that drives the live app with sim-derived fixtures.
 
 ---
 
