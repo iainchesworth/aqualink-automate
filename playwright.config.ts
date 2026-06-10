@@ -41,9 +41,9 @@ import { join } from 'node:path';
 // Every per-channel log level the developer options expose; --replay-filename
 // requires each to be present (see option_dependency_helper.cpp).
 const LOG_CHANNELS = [
-  'main', 'certificates', 'coroutines', 'devices', 'equipment', 'exceptions',
-  'messages', 'mqtt', 'navigation', 'options', 'platform', 'profiling',
-  'protocol', 'scraping', 'serial', 'signals', 'web',
+  'main', 'certificates', 'coroutines', 'developer', 'devices', 'equipment',
+  'exceptions', 'messages', 'mqtt', 'navigation', 'options', 'platform',
+  'profiling', 'protocol', 'scraping', 'serial', 'signals', 'web',
 ];
 
 const HOST = '127.0.0.1';
