@@ -110,9 +110,18 @@ the full menu tree (`Set Temp >`, `Diagnostics >`, …) — **live-validating** 
   `Pool`/`Heat`, `Aux1/2/3`); `0x25` PageMessage = **`[lineId][text]`** (one leading byte — e.g.
   line 1 = `72°`, `Air Temp`, `Pool Temp`); `0x2d` TitleMessage `AquaLink Touch`; `0x28` PageEnd.
   (The `0x25` one-leading-byte layout matches the app and corroborates the decompilation method
-  behind the `0x26` two-byte finding; `0x26` TableMessage itself is for table/grid pages and
-  needs navigation to a non-home page to surface — the remaining live-validation, along with an
-  ePump capture for the [epump.md](epump.md) reconciliation.)
+  behind the `0x26` two-byte finding.) **`0x26` TableMessage is still not directly captured live.**
+  It is rendered for table/grid pages, so it needs the emulated AqualinkTouch driven off the home
+  page. Driving navigation via the chlorinator command (`POST /api/equipment/chlorinator
+  {"percentage":60}`) does make the emulated 0x33 transmit a nav sequence on the wire (Acks
+  carrying `0x02` back, `0x19` open-AquaPure, `0x11` select, `0x80` submit), but the master then
+  **stops rendering** rather than showing a table page: those `IAQ_CMD_*` bytes are the
+  **iAqualink2 (0xA3) command-channel** vocabulary, not the AqualinkTouch (0x33) **page-button**
+  navigation the sim expects, so they confuse the master. Live `0x26` confirmation therefore needs
+  the app to support **page-protocol navigation** (select an on-screen `0x24` PageButton by index
+  on the 0x33 channel) — a small feature, not yet present. Until then `0x26`'s two-byte layout
+  rests on the static decompile + the live-confirmed `0x25` sibling. (Same remaining-work bucket:
+  an ePump capture for the [epump.md](epump.md) reconciliation.)
 
 ## Advanced (optional, not built): a shared-memory tap
 
