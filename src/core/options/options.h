@@ -8,6 +8,7 @@
 #include "options/options_history_options.h"
 #include "options/options_mqtt_options.h"
 #include "options/options_registry.h"
+#include "options/options_scheduling_options.h"
 #include "options/options_serial_options.h"
 #include "options/options_web_options.h"
 

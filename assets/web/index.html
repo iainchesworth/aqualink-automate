@@ -55,6 +55,7 @@
                 <button class="nav-link" :class="{ active: isRoute('dashboard') }" @click="navigate('dashboard')">Dashboard</button>
                 <button class="nav-link" :class="{ active: isRoute('diagnostics') }" @click="navigate('diagnostics')">Diagnostics</button>
                 <button class="nav-link" :class="{ active: isRoute('trends') }" @click="navigate('trends')">Trends</button>
+                <button class="nav-link" :class="{ active: isRoute('schedules') }" @click="navigate('schedules')">Schedules</button>
                 <button class="nav-link" :class="{ active: isRoute('settings') }" @click="navigate('settings')">Settings</button>
                 <button class="nav-link" :class="{ active: isRoute('about') }" @click="navigate('about')">About</button>
             </div>
@@ -1088,6 +1089,76 @@
             </template>
         </div>
 
+        <!-- ====== SCHEDULES VIEW (WS4) ====== -->
+        <div x-show="route === 'schedules'" x-cloak x-data="schedulesView()" x-effect="if (route === 'schedules') onShown()">
+            <div class="section-title">Schedules</div>
+            <template x-if="!available">
+                <p class="text-muted text-xs">Scheduler is disabled. Start the server with <code>--schedules-file &lt;path&gt;</code> to enable time-based automation.</p>
+            </template>
+            <template x-if="available">
+                <div>
+                    <p class="trends-error" x-show="error" x-cloak x-text="error"></p>
+                    <button class="sched-new-btn" @click="newSchedule()" :disabled="monitorOnly" x-show="editing === null">+ New schedule</button>
+
+                    <div x-show="editing === null" class="sched-list">
+                        <template x-for="s in schedules" :key="s.uuid">
+                            <div class="sched-row">
+                                <label class="sched-enable" :title="s.enabled ? 'Enabled' : 'Disabled'">
+                                    <input type="checkbox" :checked="s.enabled" @change="toggleEnabled(s)" :disabled="monitorOnly">
+                                </label>
+                                <div class="sched-main">
+                                    <div class="sched-name" x-text="s.name || '(unnamed)'"></div>
+                                    <div class="sched-meta">
+                                        <span x-text="s.time_local"></span> · <span x-text="daySummary(s.days_of_week)"></span> · <span x-text="actionSummary(s)"></span>
+                                    </div>
+                                </div>
+                                <div class="sched-actions">
+                                    <button class="trends-range-btn" @click="editSchedule(s)" :disabled="monitorOnly">Edit</button>
+                                    <button class="trends-range-btn" @click="remove(s)" :disabled="monitorOnly">Delete</button>
+                                </div>
+                            </div>
+                        </template>
+                        <p class="text-muted text-xs" x-show="schedules.length === 0 && !loading">No schedules yet.</p>
+                    </div>
+
+                    <div x-show="editing !== null" x-cloak class="sched-form">
+                        <label class="sched-field">Name <input type="text" x-model="form.name" class="login-input"></label>
+                        <label class="sched-field">Time <input type="time" x-model="form.time" class="login-input"></label>
+                        <div class="sched-field">Days
+                            <div class="sched-days">
+                                <template x-for="d in days" :key="d.bit">
+                                    <button type="button" class="sched-day-chip" :class="{ active: hasDay(d.bit) }" @click="toggleDay(d.bit)" x-text="d.label"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <label class="sched-field">Action
+                            <select x-model="form.actionType" class="login-input">
+                                <template x-for="a in actionTypes" :key="a.value">
+                                    <option :value="a.value" x-text="a.label"></option>
+                                </template>
+                            </select>
+                        </label>
+                        <label class="sched-field" x-show="isButtonAction(form.actionType)">Device
+                            <select x-model="form.target" class="login-input">
+                                <template x-for="b in buttons" :key="b"><option :value="b" x-text="b"></option></template>
+                            </select>
+                        </label>
+                        <label class="sched-field" x-show="form.actionType === 'circulation_mode'">Mode
+                            <input type="text" x-model="form.target" class="login-input" placeholder="e.g. Pool">
+                        </label>
+                        <label class="sched-field" x-show="isValueAction(form.actionType)">Value
+                            <input type="number" x-model.number="form.value" class="login-input">
+                        </label>
+                        <label class="sched-field"><input type="checkbox" x-model="form.enabled"> Enabled</label>
+                        <div class="sched-form-actions">
+                            <button class="sched-new-btn" @click="save()" :disabled="monitorOnly">Save</button>
+                            <button class="trends-range-btn" @click="cancel()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
         <!-- ====== SETTINGS VIEW ====== -->
         <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
 
@@ -1243,6 +1314,7 @@
     <script src="/scripts/views/dashboard-view.js"></script>
     <script src="/scripts/views/diagnostics-view.js"></script>
     <script src="/scripts/views/trends-view.js"></script>
+    <script src="/scripts/views/schedules-view.js"></script>
     <script src="/scripts/views/about-view.js"></script>
     <script src="/scripts/views/settings-view.js"></script>
     <!-- App init -->

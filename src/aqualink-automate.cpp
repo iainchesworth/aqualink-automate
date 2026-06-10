@@ -68,6 +68,10 @@
 #include "history/history_service.h"
 #include "http/webroute_history.h"
 
+// Core — scheduling (time-based automation)
+#include "scheduling/scheduler_service.h"
+#include "http/webroute_schedules.h"
+
 // Core — MQTT, serial, protocol
 #include "mqtt/mqtt_hub.h"
 #include "mqtt/mqtt_client.h"
@@ -146,6 +150,7 @@ int main(int argc, char* argv[])
 				| Add(Options::Equipment::OptionsProcessor{})
 				| Add(Options::History::OptionsProcessor{})
 				| Add(Options::Mqtt::OptionsProcessor{})
+				| Add(Options::Scheduling::OptionsProcessor{})
 				| Add(Options::Serial::OptionsProcessor{})
 				| Add(Options::Web::OptionsProcessor{})
 				| Add(Jandy::Options::OptionsProcessor{})
@@ -165,6 +170,7 @@ int main(int argc, char* argv[])
 					Options::Equipment::OptionsProcessor{},
 					Options::History::OptionsProcessor{},
 					Options::Mqtt::OptionsProcessor{},
+					Options::Scheduling::OptionsProcessor{},
 					Options::Serial::OptionsProcessor{},
 					Options::Web::OptionsProcessor{},
 					Jandy::Options::OptionsProcessor{},
@@ -442,6 +448,26 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		//---------------------------------------------------------------------
+		// SCHEDULER SERVICE (time-based automation)
+		//---------------------------------------------------------------------
+		// Block-scope alias: bare `Scheduling` is otherwise ambiguous between the
+		// AqualinkAutomate::Scheduling service namespace and
+		// AqualinkAutomate::Options::Scheduling.
+		namespace Scheduling = AqualinkAutomate::Scheduling;
+
+		std::shared_ptr<Scheduling::SchedulerService> scheduler_service;
+		if (auto scheduling_settings_result = settings.Get<Options::Scheduling::SchedulingSettings>(); scheduling_settings_result)
+		{
+			const auto& scheduling_settings = scheduling_settings_result.value().get();
+			if (!scheduling_settings.schedules_file.empty())
+			{
+				scheduler_service = std::make_shared<Scheduling::SchedulerService>(io_context, hub_locator, scheduling_settings);
+				scheduler_service->Start();
+				LogInfo(Channel::Main, std::format("Scheduler enabled (file: {})", scheduling_settings.schedules_file));
+			}
+		}
+
 		auto web_settings_result = settings.Get<Options::Web::WebSettings>();
 
 		std::unique_ptr<HTTP::HttpServer> http_server;
@@ -472,6 +498,8 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedule>(scheduler_service));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedules>(scheduler_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
@@ -701,6 +729,13 @@ int main(int argc, char* argv[])
 		{
 			history_service->Stop();
 			history_service.reset();
+		}
+
+		// Stop the scheduler timer.
+		if (scheduler_service)
+		{
+			scheduler_service->Stop();
+			scheduler_service.reset();
 		}
 
 		// 3. Stop MQTT integration

@@ -60,7 +60,7 @@ function app() {
 
         _getRouteFromHash() {
             const hash = window.location.hash.replace('#', '');
-            const valid = ['dashboard', 'diagnostics', 'trends', 'settings', 'about'];
+            const valid = ['dashboard', 'diagnostics', 'trends', 'schedules', 'settings', 'about'];
             return valid.includes(hash) ? hash : 'dashboard';
         },
 

@@ -67,6 +67,7 @@ target_sources(
 	http/webroute_equipment_version.cpp
 	http/webroute_history.cpp
 	http/webroute_metrics.cpp
+	http/webroute_schedules.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
 	http/websocket_event_types.cpp 
@@ -175,6 +176,7 @@ target_sources(
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
 	options/options_registry.cpp
+	options/options_scheduling_options.cpp
 	options/options_serial_options.cpp
 	options/options_settings.cpp
 	options/options_web_options.cpp
@@ -210,6 +212,8 @@ target_sources(
 	protocol/protocol_handler_read_handler_messages.cpp
 	protocol/protocol_handler_types.cpp
 	protocol/protocol_thread.cpp
+	scheduling/schedule.cpp
+	scheduling/scheduler_service.cpp
 	serial/serial_initialise.cpp
 	serial/serial_port.cpp	
 	serial/serial_port_config.cpp	

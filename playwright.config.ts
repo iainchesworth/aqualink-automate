@@ -59,6 +59,10 @@ const AUTH_TOKEN = process.env.AQUALINK_AUTH_TOKEN;
 // run ONLY the trends spec (which then expects recorded series + a chart).
 const HISTORY_DB = process.env.AQUALINK_HISTORY_DB;
 
+// WS4 scheduler mode: when AQUALINK_SCHEDULES_FILE is set, boot with
+// --schedules-file and run ONLY the schedules spec (schedule CRUD).
+const SCHEDULES_FILE = process.env.AQUALINK_SCHEDULES_FILE;
+
 const ROOT = __dirname;
 
 // Resolve the built application binary.  The `wt` CMake preset emits it under
@@ -84,8 +88,10 @@ export default defineConfig({
   testDir: './e2e',
   // The auth spec needs a token-protected server; everything else needs an
   // unauthenticated one. Select by the AQUALINK_AUTH_TOKEN env (see above).
-  testMatch: AUTH_TOKEN ? ['**/auth.spec.ts'] : (HISTORY_DB ? ['**/trends.spec.ts'] : undefined),
-  testIgnore: (AUTH_TOKEN || HISTORY_DB) ? undefined : ['**/auth.spec.ts'],
+  testMatch: AUTH_TOKEN
+    ? ['**/auth.spec.ts']
+    : (HISTORY_DB ? ['**/trends.spec.ts'] : (SCHEDULES_FILE ? ['**/schedules.spec.ts'] : undefined)),
+  testIgnore: (AUTH_TOKEN || HISTORY_DB || SCHEDULES_FILE) ? undefined : ['**/auth.spec.ts'],
   // Replay is deterministic but the UI is global mutable state behind one backend;
   // run serially so command-button tests don't race each other's optimistic updates.
   fullyParallel: false,
@@ -124,6 +130,7 @@ export default defineConfig({
       ...LOG_CHANNELS.map((ch) => `--loglevel-${ch} info`),
       ...(AUTH_TOKEN ? [`--api-auth-token ${AUTH_TOKEN}`] : []),
       ...(HISTORY_DB ? [`--history-db "${HISTORY_DB}"`, '--history-flush-seconds 1'] : []),
+      ...(SCHEDULES_FILE ? [`--schedules-file "${SCHEDULES_FILE}"`] : []),
     ].join(' '),
     url: BASE_URL,
     reuseExistingServer: false,

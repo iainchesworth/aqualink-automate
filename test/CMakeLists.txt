@@ -57,8 +57,11 @@ target_sources(
 	unit/options/test_options_history.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
+	unit/options/test_options_scheduling.cpp
 	unit/options/test_options_serial.cpp
 	unit/options/test_options_validators.cpp
+	unit/scheduling/test_schedule.cpp
+	unit/scheduling/test_scheduler_service.cpp
 	unit/options/test_options_web.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp

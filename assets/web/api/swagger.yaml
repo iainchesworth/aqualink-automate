@@ -246,6 +246,100 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/schedules:
+    get:
+      tags:
+        - Schedules
+      summary: List all schedules
+      description: >
+        Returns the full list of schedules. A schedule fires an
+        ICommandDispatcher action at a local wall-clock time on the selected
+        days. Returns 503 when the scheduler is disabled (no --schedules-file).
+        Note on DST: recomputing local time each tick means a spring-forward
+        02:30 simply never fires; an ambiguous fall-back time fires once.
+      operationId: listSchedules
+      responses:
+        '200':
+          description: Array of schedules
+          content:
+            application/json:
+              example:
+                - uuid: "f1a2..."
+                  name: "Morning pump"
+                  enabled: true
+                  days_of_week: 31
+                  time_local: "08:00"
+                  action: { type: "button_on", target: "Pool Pump" }
+        '503': { description: Scheduler is disabled }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Schedules
+      summary: Create a schedule
+      description: >
+        Creates a schedule; the server assigns the uuid. The action variant
+        mirrors ICommandDispatcher: button_on/button_off/button_toggle
+        (target = device label), pool_setpoint/spa_setpoint (value 1..104),
+        chlorinator_percent (value 0..100), circulation_mode (target = mode).
+        days_of_week is a bitmask (bit0=Mon..bit6=Sun); time_local is "HH:MM".
+      operationId: createSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Spa warm"
+              enabled: true
+              days_of_week: 64
+              time_local: "17:00"
+              action: { type: "spa_setpoint", value: 38 }
+      responses:
+        '201': { description: Created (returns the schedule with its uuid) }
+        '400': { description: Validation error (bad time/action/value) }
+        '503': { description: Scheduler is disabled }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/schedules/{uuid}:
+    parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Schedules]
+      summary: Get a schedule
+      operationId: getSchedule
+      responses:
+        '200': { description: The schedule }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Schedules]
+      summary: Replace a schedule
+      operationId: replaceSchedule
+      requestBody:
+        required: true
+        content:
+          application/json: {}
+      responses:
+        '200': { description: Updated schedule }
+        '400': { description: Validation error }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Schedules]
+      summary: Delete a schedule
+      operationId: deleteSchedule
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /api/equipment:
     get:
       tags:

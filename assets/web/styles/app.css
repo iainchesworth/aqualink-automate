@@ -348,6 +348,54 @@ nav .nav-controls {
 .trends-error { color: #ef4444; font-size: 0.8rem; }
 .trends-chart-wrap { position: relative; height: 360px; margin-top: 0.75rem; }
 
+/* ---- Schedules view (WS4) ---------------------------------------------- */
+.sched-new-btn {
+    padding: 0.45rem 0.9rem;
+    background: #0ea5e9;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm, 8px);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+}
+.sched-new-btn:disabled { opacity: 0.5; cursor: default; }
+.sched-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+.sched-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--surface, #1e293b);
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: var(--radius-sm, 8px);
+}
+.sched-main { flex: 1; min-width: 0; }
+.sched-name { font-weight: 600; color: var(--text, #e2e8f0); }
+.sched-meta { font-size: 0.75rem; color: var(--text-muted, #94a3b8); }
+.sched-actions { display: flex; gap: 0.35rem; }
+.sched-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 420px;
+    margin-top: 0.5rem;
+}
+.sched-field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--text-muted, #94a3b8); }
+.sched-days { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.sched-day-chip {
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+.sched-day-chip.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+.sched-form-actions { display: flex; gap: 0.5rem; align-items: center; }
+
 .mode-dot.connected {
     background: #10b981;
 }
