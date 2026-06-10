@@ -49,6 +49,11 @@
                 <span class="mode-indicator mode-ready" x-show="$store.system.state === 'Ready'" x-cloak>
                     <span class="mode-dot connected" aria-hidden="true"></span> Ready
                 </span>
+                <span class="mode-indicator mode-problem" x-show="$store.alerts.hasAlerts" x-cloak
+                      :title="$store.alerts.list.map(a => a.label + ': ' + a.detail).join('\n')">
+                    <span class="mode-dot problem" aria-hidden="true"></span>
+                    <span x-text="$store.alerts.count + ' Alert' + ($store.alerts.count > 1 ? 's' : '')"></span>
+                </span>
             </div>
             <div class="nav-controls">
                 <button class="theme-toggle" @click="$store.system.toggleMonitorOnly()"
@@ -1163,6 +1168,7 @@
     <!-- Store scripts -->
     <script src="/scripts/stores/theme-store.js"></script>
     <script src="/scripts/stores/toast-store.js"></script>
+    <script src="/scripts/stores/alerts-store.js"></script>
     <script src="/scripts/stores/ws-store.js"></script>
     <script src="/scripts/stores/system-store.js"></script>
     <script src="/scripts/stores/pool-store.js"></script>

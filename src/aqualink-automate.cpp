@@ -58,7 +58,14 @@
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
 
+// Core — alerting (fault detection)
+#include "alerting/alert_condition.h"
+#include "alerting/alert_monitor.h"
+#include "alerting/webhook_sink.h"
+
 // Core — MQTT, serial, protocol
+#include "mqtt/mqtt_hub.h"
+#include "mqtt/mqtt_client.h"
 #include "mqtt/mqtt_integration.h"
 #include "protocol/message_generator_registry.h"
 #include "protocol/protocol_thread.h"
@@ -128,6 +135,7 @@ int main(int argc, char* argv[])
 			LogDebug(Channel::Options, "Parsing application options provided via command line");
 
 			auto processed_options = Options::Initialise()
+				| Add(Options::Alerting::OptionsProcessor{})
 				| Add(Options::App::OptionsProcessor{})
 				| Add(Options::Developer::OptionsProcessor{})
 				| Add(Options::Equipment::OptionsProcessor{})
@@ -145,6 +153,7 @@ int main(int argc, char* argv[])
 				| CheckHelpAndVersion()
 				| Validate()
 				| Process(
+					Options::Alerting::OptionsProcessor{},
 					Options::App::OptionsProcessor{},
 					Options::Developer::OptionsProcessor{},
 					Options::Equipment::OptionsProcessor{},
@@ -492,6 +501,67 @@ int main(int argc, char* argv[])
 		// FRAME LOOP
 		//---------------------------------------------------------------------
 
+		// ----- Alert monitor (fault detection + alerting) --------------------
+		// Block-scope alias: bare `Alerting` is otherwise ambiguous between the
+		// AqualinkAutomate::Alerting subsystem and AqualinkAutomate::Options::Alerting
+		// (both visible via `using namespace AqualinkAutomate`). This local
+		// declaration takes lookup precedence over the using-directive names.
+		namespace Alerting = AqualinkAutomate::Alerting;
+
+		Options::Alerting::AlertingSettings alerting_settings;
+		if (auto alerting_settings_result = settings.Get<Options::Alerting::AlertingSettings>(); alerting_settings_result)
+		{
+			alerting_settings = alerting_settings_result.value().get();
+		}
+
+		// Optional webhook sink — declared before the monitor so it outlives it.
+		std::unique_ptr<Alerting::WebhookSink> webhook_sink;
+		if (!alerting_settings.webhook_url.empty())
+		{
+			webhook_sink = std::make_unique<Alerting::WebhookSink>(io_context, alerting_settings.webhook_url);
+		}
+
+		Alerting::AlertMonitor alert_monitor(io_context, hub_locator, alerting_settings);
+
+		// UI sink (always): broadcast every transition to /ws/equipment clients.
+		alert_monitor.AddSink([equipment_hub](const Alerting::AlertTransition& transition)
+		{
+			equipment_hub->AlertTransitionSignal(transition.condition, transition.raised, transition.ts, transition.detail);
+		});
+
+		// Webhook sink (only when a usable URL was configured).
+		if (webhook_sink && webhook_sink->IsUsable())
+		{
+			alert_monitor.AddSink([&webhook_sink](const Alerting::AlertTransition& transition)
+			{
+				webhook_sink->Post(transition);
+			});
+		}
+
+		// MQTT / Home Assistant sink: publish the consolidated alert state
+		// (retained) that the HA problem binary_sensors read.  Only when MQTT is
+		// active; the binary_sensor discovery itself is emitted by HA discovery.
+		if (mqtt_integration)
+		{
+			if (auto mqtt_hub = mqtt_integration->GetMqttHub(); mqtt_hub)
+			{
+				if (auto mqtt_client = mqtt_hub->GetMqttClient(); mqtt_client)
+				{
+					const auto alert_topic = mqtt_client->BuildTopic(std::string{ Alerting::AlertStateSubtopic });
+
+					alert_monitor.AddSink([&alert_monitor, mqtt_client, alert_topic](const Alerting::AlertTransition&)
+					{
+						mqtt_client->Publish(alert_topic, alert_monitor.BuildStateJson().dump(), /*retain=*/true);
+					});
+
+					// Seed the retained state so the HA entities start with a value.
+					mqtt_client->Publish(alert_topic, alert_monitor.BuildStateJson().dump(), /*retain=*/true);
+				}
+			}
+		}
+
+		alert_monitor.Start();
+
 		LogInfo(Channel::Main, "Starting AqualinkAutomate...");
 		profiler.Get()->Message("Application starting", static_cast<uint32_t>(Profiling::UnitColours::Green));
 
@@ -581,6 +651,10 @@ int main(int argc, char* argv[])
 
 		// 2. Release protocol task resources.
 		protocol_task.reset();
+
+		// Stop the alert monitor (cancels its timer + disconnects hub signals)
+		// before tearing down the MQTT client its sink may reference.
+		alert_monitor.Stop();
 
 		// 3. Stop MQTT integration
 		if (mqtt_integration)

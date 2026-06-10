@@ -29,6 +29,14 @@ info:
 
     - `GET /ws/equipment` - Real-time equipment status updates via WebSocket.
     - `GET /ws/equipment/stats` - Real-time equipment statistics streaming via WebSocket.
+
+    WebSocket frames are JSON objects `{ "type": <string>, "payload": <object> }`.
+    Message types on `/ws/equipment` include `ChemistryUpdate`, `TemperatureUpdate`,
+    `ButtonStateChange`, `SystemStatusChange`, `SystemStateUpdate`, and
+    `AlertTransition`. The `AlertTransition` payload (fault-detection alerts) is
+    `{ "condition": <string>, "state": "raised"|"cleared", "ts": <unix-seconds>,
+    "detail": <string> }`, where `condition` is one of `chlorinator_fault`,
+    `salt_low`, `service_mode`, `serial_comms_loss`.
   version: 1.0.0
   contact:
     name: Aqualink Automate

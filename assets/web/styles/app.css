@@ -238,11 +238,20 @@ nav .nav-controls {
     background: rgba(148, 163, 184, 0.15);
 }
 
+.mode-problem {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+}
+
 .mode-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
     display: inline-block;
+}
+
+.mode-dot.problem {
+    background: #ef4444;
 }
 
 .mode-dot.connected {

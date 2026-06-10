@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 
+#include "alerting/alert_condition.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
@@ -50,6 +51,7 @@ namespace AqualinkAutomate::Mqtt
 			AddChemistrySensorComponents(cmps);
 			AddCirculationComponents(cmps);
 			AddSystemComponents(cmps);
+			AddAlertComponents(cmps);
 			AddDynamicDeviceComponents(cmps);
 			payload["cmps"] = std::move(cmps);
 
@@ -580,6 +582,36 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::SystemStatusTopic() const
 	{
 		return m_Client->BuildTopic("system/status");
+	}
+
+	std::string HomeAssistantDiscovery::AlertStateTopic() const
+	{
+		return m_Client->BuildTopic(std::string{ Alerting::AlertStateSubtopic });
+	}
+
+	void HomeAssistantDiscovery::AddAlertComponents(nlohmann::json& cmps)
+	{
+		// One HA binary_sensor (device_class: problem) per AlertMonitor condition.
+		// All read the same consolidated state document via a per-condition
+		// value_template; the AlertMonitor's MQTT sink publishes that document to
+		// AlertStateTopic() on every transition.
+		const auto state_topic = AlertStateTopic();
+
+		for (const auto& condition : Alerting::AlertConditions)
+		{
+			const std::string key{ condition.key };
+
+			cmps[std::format("alert_{}", key)] = {
+				{ "p", "binary_sensor" },
+				{ "name", std::string{ condition.friendly_name } },
+				{ "unique_id", UniqueId(std::format("alert_{}", key)) },
+				{ "state_topic", state_topic },
+				{ "value_template", std::format("{{{{ value_json.{} }}}}", key) },
+				{ "device_class", "problem" },
+				{ "payload_on", "true" },
+				{ "payload_off", "false" }
+			};
+		}
 	}
 
 	std::string HomeAssistantDiscovery::SetpointCommandTopic(const std::string& target) const

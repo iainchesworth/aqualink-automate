@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -39,6 +41,12 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::EquipmentHub_SystemEvent>)> EquipmentStatusChangeSignal;
+
+		// Alerting (WS3): emitted by AlertMonitor on each fault-condition edge so
+		// the WebSocket layer can broadcast it to UI clients.
+		// Args: condition key, raised(true)/cleared(false), unix-seconds timestamp,
+		// human-readable detail.
+		mutable boost::signals2::signal<void(const std::string&, bool, std::int64_t, const std::string&)> AlertTransitionSignal;
 
 		//---------------------------------------------------------------------
 		// ACTIVE EQUIPMENT

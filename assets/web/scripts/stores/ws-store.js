@@ -40,6 +40,7 @@ document.addEventListener('alpine:init', () => {
                     if (_WS_DEBUG) console.debug('[WS /equipment]', msg.type, msg.payload);
                     Alpine.store('pool').handleEvent(msg);
                     Alpine.store('system').handleEvent(msg);
+                    Alpine.store('alerts').handleEvent(msg);
                 },
                 onOpen: () => { this.connected = true; },
                 onDown: () => { this.connected = false; }

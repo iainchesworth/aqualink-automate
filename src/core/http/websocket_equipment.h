@@ -47,6 +47,7 @@ namespace AqualinkAutomate::HTTP
 		// if a hub outlives the handler and fires a signal during/after teardown.
 		boost::signals2::scoped_connection m_ConfigChangeSlot;
 		boost::signals2::scoped_connection m_StatusChangeSlot;
+		boost::signals2::scoped_connection m_AlertSlot;
 
 		// NOTE: The connection/message-queue map is intentionally unsynchronised.
 		// Signal-driven broadcasts, connection lifecycle, and message dequeuing

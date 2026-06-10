@@ -55,6 +55,27 @@ namespace AqualinkAutomate::HTTP
 					zone->Value(payload->size());
 					Broadcast(payload);
 				});
+
+			// Alerting (WS3): broadcast each fault-condition transition to clients.
+			m_AlertSlot = m_EquipmentHub->AlertTransitionSignal.connect(
+				[this](const std::string& condition, bool raised, std::int64_t ts, const std::string& detail)
+				{
+					if (m_Connections.empty())
+					{
+						return;
+					}
+
+					auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebSocket_Equipment::on_alert_event", std::source_location::current());
+					nlohmann::json alert_payload{
+						{ "condition", condition },
+						{ "state", raised ? "raised" : "cleared" },
+						{ "ts", ts },
+						{ "detail", detail }
+					};
+					auto payload = std::make_shared<const std::string>(HTTP::WebSocket_Event(WebSocket_EventTypes::AlertTransition, alert_payload).Payload());
+					zone->Value(payload->size());
+					Broadcast(payload);
+				});
 		}
 	}
 

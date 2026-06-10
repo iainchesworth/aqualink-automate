@@ -10,6 +10,8 @@ add_library(libaqualink-automate)
 target_sources( 
 	libaqualink-automate
 	PRIVATE
+	alerting/alert_monitor.cpp
+	alerting/webhook_sink.cpp
 	application/application_defaults.cpp
 	certificates/certificate_management.cpp
 	concepts/is_option_processor.cpp
@@ -160,6 +162,7 @@ target_sources(
 	mqtt/mqtt_hub.cpp
 	mqtt/mqtt_integration.cpp
 	options/options.cpp
+	options/options_alerting_options.cpp
 	options/options_app_options.cpp
 	options/options_config_file.cpp
 	options/options_developer_options.cpp

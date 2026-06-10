@@ -13,6 +13,8 @@ namespace AqualinkAutomate::HTTP
 		SystemStateUpdate,
 		ButtonStateChange,
 
+		AlertTransition,
+
 		Unknown
 	};
 
