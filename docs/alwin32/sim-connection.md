@@ -99,11 +99,20 @@ the full menu tree (`Set Temp >`, `Diagnostics >`, …) — **live-validating** 
   in-memory net table and **deadlock** the COM-mode PowerCenter ("Not Responding"). Capture
   device traffic by having the *app* emulate the device (`--jandy-device-type`), not by running
   `Aquarite.exe`/`ePump.exe`. The valid emulation types are `OneTouch IAQ SerialAdapter`.
-- The **IAQ page protocol** (`0x23`–`0x28`, incl. the `0x26` fix) needs the app to emulate an
-  **AqualinkTouch at 0x33** that completes the iAQ handshake — a plain `IAQ`/`0x33` emulation
-  gets polled but doesn't yet respond, so the master never renders pages. That handshake is the
-  remaining piece to live-validate the page decode (and to drive an ePump capture for the
-  [epump.md](epump.md) reconciliation).
+- **IAQ page protocol — now working.** The master discovers an AqualinkTouch (`0x30`–`0x33`)
+  with a generic **Probe (`cmd 0x00`)**, exactly as it does a OneTouch — but `IAQDevice` only
+  Ack'd `IAQMessage_Poll` (`0x30`), never the bare probe, so an emulated `0x33` stayed silent and
+  the master never rendered pages. Fix: `IAQDevice` now has a **probe handler that Acks in
+  emulated mode** (`Slot_IAQ_Probe`; no-op when passively decoding). With it,
+  `--jandy-device-type IAQ --jandy-device-id 0x33` makes the master drive the **full IAQ page
+  protocol**. Captured `test/fixtures/alwin32/iaq_pages_live.cap`, which **live-validates** the
+  static page RE: `0x23` PageStart; `0x24` PageButton with **two labels** (`Filter`/`Pump`,
+  `Pool`/`Heat`, `Aux1/2/3`); `0x25` PageMessage = **`[lineId][text]`** (one leading byte — e.g.
+  line 1 = `72°`, `Air Temp`, `Pool Temp`); `0x2d` TitleMessage `AquaLink Touch`; `0x28` PageEnd.
+  (The `0x25` one-leading-byte layout matches the app and corroborates the decompilation method
+  behind the `0x26` two-byte finding; `0x26` TableMessage itself is for table/grid pages and
+  needs navigation to a non-home page to surface — the remaining live-validation, along with an
+  ePump capture for the [epump.md](epump.md) reconciliation.)
 
 ## Advanced (optional, not built): a shared-memory tap
 
