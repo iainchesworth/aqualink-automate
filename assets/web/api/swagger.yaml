@@ -91,6 +91,50 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Prometheus metrics exposition
+      description: >
+        Serial/message/latency statistics in Prometheus text exposition format
+        (version 0.0.4) for scraping. Served at the root (NOT under /api) per
+        Prometheus convention. Always available; subject to the same bearer-token
+        enforcement as every other route when --api-auth-token is configured
+        (Prometheus scrapers support bearer auth natively).
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus exposition document
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP aqualink_build_info Build information (constant 1; value carried in labels).
+                # TYPE aqualink_build_info gauge
+                aqualink_build_info{version="1.0.0",commit="abc123"} 1
+                # HELP aqualink_serial_read_bytes_total Total bytes read from the serial port.
+                # TYPE aqualink_serial_read_bytes_total counter
+                aqualink_serial_read_bytes_total 12345
+                # HELP aqualink_serial_write_bytes_total Total bytes written to the serial port.
+                # TYPE aqualink_serial_write_bytes_total counter
+                aqualink_serial_write_bytes_total 678
+                # HELP aqualink_messages_total Total protocol messages decoded across all message types.
+                # TYPE aqualink_messages_total counter
+                aqualink_messages_total 4210
+                # HELP aqualink_message_errors_total Protocol message decode errors by kind.
+                # TYPE aqualink_message_errors_total counter
+                aqualink_message_errors_total{kind="checksum"} 2
+                # HELP aqualink_serial_errors_total Serial-layer errors by kind.
+                # TYPE aqualink_serial_errors_total counter
+                aqualink_serial_errors_total{kind="overflow"} 0
+                # HELP aqualink_latency_microseconds Operation latency percentiles (sliding 60s window), in microseconds.
+                # TYPE aqualink_latency_microseconds gauge
+                aqualink_latency_microseconds{stage="serial_read",quantile="0.5"} 850.5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment:
     get:
       tags:

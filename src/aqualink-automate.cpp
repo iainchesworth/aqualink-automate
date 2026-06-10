@@ -53,6 +53,7 @@
 #include "http/webroute_equipment_devices.h"
 #include "http/webroute_equipment_setpoints.h"
 #include "http/webroute_equipment_version.h"
+#include "http/webroute_metrics.h"
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
 #include "http/websocket_equipment_stats.h"
@@ -421,6 +422,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));

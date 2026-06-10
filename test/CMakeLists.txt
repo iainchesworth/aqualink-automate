@@ -27,6 +27,7 @@ target_sources(
 	unit/factories/test_factories_jandy_messages.cpp
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/http/test_api_equipment.cpp
+	unit/http/test_api_metrics.cpp
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp

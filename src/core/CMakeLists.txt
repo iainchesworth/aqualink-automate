@@ -60,6 +60,7 @@ target_sources(
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
+	http/webroute_metrics.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
 	http/websocket_event_types.cpp 
