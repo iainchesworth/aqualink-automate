@@ -1,0 +1,11 @@
+# Serial recording started at: (generated fixture)
+# Format: [timestamp_ms] direction byte|byte|byte|...
+# Direction: R=read (from device), W=write (to device)
+#
+# LX heater (0x38) enable with setpoints; reports Heating
+#   0x0C = [flags][PoolSP][SpaSP][MeasTemp]; flags bit3=Heat Cmd, bit4=temp present;
+#   0x0D reply = [status][temp][switchBits]; status bit3(0x08)=Heating.
+#
+[       150] R 0x10|0x02|0x38|0x0c|0x09|0x50|0x66|0x4e|0x63|0x10|0x03
+[       300] R 0x10|0x02|0x00|0x0d|0x08|0x4e|0x00|0x75|0x10|0x03
+# Recording ended

@@ -21,6 +21,17 @@ accessories ([lpc4-remaux.md](alwin32/lpc4-remaux.md), [panels.md](alwin32/panel
 the controllers ([pwrcntr-master.md](alwin32/pwrcntr-master.md),
 [onetouch.md](alwin32/onetouch.md), [pda.md](alwin32/pda.md)) each have their own file.
 
+**Controller behaviour & host interfaces:**
+[pwrcntr-behavior.md](alwin32/pwrcntr-behavior.md) — the `ControllerType`→model/config table
+(RS-4/6/8/12/16 Only/Combo/Dual, aux counts, pool/spa body model), config-gated behaviours
+(freeze protection, config-dependent page opcodes), and the **IAQ page-message field layouts**
+(incl. the `0x25` vs `0x26` resolution). Host/config interfaces:
+[uapi-client.md](alwin32/uapi-client.md) (iAqualink2 Wi-Fi TLV status),
+[pc-host-bridge.md](alwin32/pc-host-bridge.md) (RS Serial Adapter ASCII protocol + PC Docking
+Station), [ctrlpnl-simio.md](alwin32/ctrlpnl-simio.md) (wired Control Panel + iodll option DIP
+bits). **Testing:** [testing-ecosystem.md](alwin32/testing-ecosystem.md) — how to mint `.cap`
+replay fixtures (generated + live sim-capture) to test behaviour.
+
 ---
 
 ## 1. Suite layout — who emulates what
@@ -124,6 +135,7 @@ the vendor's own code. (`class` = `addr>>3`.)
 
 | class | base addr | device | sim exe | frame | source |
 |:-----:|:---------:|--------|---------|-------|--------|
+| `0x01` | **`0x08`–0x0F** | **iAqualink wired Control Panel** (27-button) | `Ctrlpnl.exe` | Jandy DLE | [ctrlpnl-simio](alwin32/ctrlpnl-simio.md) |
 | `0x02` | **`0x10`–0x17** | Dual-Spa / 2×4 remote keypad | `2x4rem.exe` | Jandy DLE | [panels](alwin32/panels.md) |
 | `0x04` | **`0x20`–0x27** | "AllButton" 8-button keypad | `8button.exe` | Jandy DLE | [panels](alwin32/panels.md) |
 | `0x05` | **`0x28`–0x2B** | Aux / Remote Power Center (8 relays) | `Remaux.exe` | Jandy DLE | [lpc4-remaux](alwin32/lpc4-remaux.md) |
@@ -131,6 +143,7 @@ the vendor's own code. (`class` = `addr>>3`.)
 | `0x07` | `0x38`–0x3B | **LX gas heater** (carries setpoints) | `Aquatemp.exe` | Jandy DLE | [aquatemp-wtrmatic](alwin32/aquatemp-wtrmatic.md) |
 | `0x08` | `0x40`–0x43 | OneTouch panel | `Onetouch.exe`/`Smallcp.exe` | Jandy DLE | [onetouch](alwin32/onetouch.md) |
 | `0x0A` | `0x50`–0x53 | SWG chlorinator (AutoClear/AquaPure/AquaRite) | `Aquarite.exe` | Jandy DLE | §5 below |
+| `0x0B` | **`0x58`** | **PC Docking Station** (paged config-EEPROM xfer) | `Pcdock.exe` | Jandy DLE | [pc-host-bridge](alwin32/pc-host-bridge.md) |
 | `0x0C` | **`0x60`–0x63** | **PDA / AquaPalm remote** | `PDA.exe` | Jandy DLE | [pda](alwin32/pda.md) |
 | `0x0D` | **`0x68`–0x6B** | **LXi gas heater** | `LXI Heater.exe` | Jandy DLE | [heaters](alwin32/heaters.md) |
 | `0x0E` | **`0x70`–0x73** | **Heat pump / chiller** | `HeatPump.exe` | Jandy DLE | [heaters](alwin32/heaters.md) |
@@ -144,9 +157,9 @@ the vendor's own code. (`class` = `addr>>3`.)
 > `0x100276c0`), a parallel protocol family — they do not collide on the base-Jandy bus.
 
 This cross-validates `src/jandy/devices/jandy_device_types.h` (LX_Heater `0x38`, OneTouch
-`0x40`, AquaPure/chlorinator `0x50`, ChemLink `0x80` all match) and **adds** the keypad classes
-(`0x10`/`0x20`), aux (`0x28`), PDA (`0x60`), LXi/HeatPump heaters (`0x68`/`0x70`), ePump (`0x78`),
-and laminar (`0x90`).
+`0x40`, AquaPure/chlorinator `0x50`, ChemLink `0x80` all match) and **adds** the wired Control
+Panel (`0x08`), keypad classes (`0x10`/`0x20`), aux (`0x28`), PC Docking Station (`0x58`), PDA
+(`0x60`), LXi/HeatPump heaters (`0x68`/`0x70`), ePump (`0x78`), and laminar (`0x90`).
 
 ### Device catalogue (one-line summary; see linked files for byte layouts)
 
