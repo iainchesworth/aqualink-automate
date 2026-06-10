@@ -193,6 +193,14 @@ function(GetGitState _working_dir)
     RunGitCommand(show -s "--format=%b" ${object})
     if(exit_code EQUAL 0)
         if(output)
+            # Escape backslashes FIRST so a literal backslash in the body (e.g. a
+            # commit message mentioning a regex like \s) does not form an invalid
+            # C++ escape sequence in the generated string literal (warning C4129,
+            # promoted to an error under /WX).  This must precede the newline
+            # handling below, which deliberately introduces its own
+            # line-continuation backslashes that must NOT be re-escaped.  Mirrors
+            # the subject/author handling above.
+            string(REPLACE "\\" "\\\\" output "${output}")
             # Escape quotes
             string(REPLACE "\"" "\\\"" output "${output}")
             # Escape line breaks in the commit message.
