@@ -281,52 +281,31 @@
                         </div>
                     </div>
                 </template>
-            </div>
 
-            <!-- Chemistry / Chlorinator Card -->
-            <div class="section-title">Chemistry / Chlorinator</div>
-            <div class="chemistry-card card mb-2" x-data="chlorinatorCard()" role="region" aria-label="Chlorinator and water chemistry summary">
-                <div class="chemistry-card-grid">
-                    <!-- SWG output % — coloured by chlorinator health -->
-                    <div class="chemistry-metric">
-                        <span class="chemistry-metric-label">SWG Output</span>
-                        <span class="chemistry-metric-value" :style="`color:${healthColor}`" x-text="generatingPercent"></span>
-                        <span class="chemistry-metric-sub"
-                              x-show="present"
-                              :class="'gauge-band-' + (healthBand || '')"
-                              x-text="healthLabel"></span>
+                <!-- Chlorinator (SWG) output — folded in here (was a duplicate
+                     card that repeated pH/ORP/Salt). Shown only when present. -->
+                <div class="gauge-card swg-card" x-data="chlorinatorCard()" x-show="present" x-cloak
+                     role="region" aria-label="Chlorinator output">
+                    <div class="gauge-header">
+                        <span class="gauge-label">SWG Output</span>
+                        <span class="gauge-band-indicator" x-show="healthBand"
+                              :class="'gauge-band-' + (healthBand || '')" x-text="healthLabel"></span>
                     </div>
-
-                    <!-- Salt PPM -->
-                    <div class="chemistry-metric">
-                        <span class="chemistry-metric-label">Salt</span>
-                        <span class="chemistry-metric-value" x-text="saltPpm"></span>
-                        <span class="chemistry-metric-sub" x-show="present" x-text="statusLabel"></span>
+                    <div class="gauge-value" :style="`color:${healthColor}`" x-text="generatingPercent"></div>
+                    <div class="gauge-bar-track" role="meter" aria-label="SWG Output"
+                         :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
+                        <div class="gauge-bar-fill" :style="`width:${percent}%;background:${healthColor}`"></div>
                     </div>
-
-                    <!-- ORP — labelled placeholder; renders automatically once a sensor reports -->
-                    <div class="chemistry-metric">
-                        <span class="chemistry-metric-label">ORP</span>
-                        <span class="chemistry-metric-value" x-text="orp"></span>
-                        <span class="chemistry-metric-sub text-muted">sensor optional</span>
-                    </div>
-
-                    <!-- pH — labelled placeholder; renders automatically once a sensor reports -->
-                    <div class="chemistry-metric">
-                        <span class="chemistry-metric-label">pH</span>
-                        <span class="chemistry-metric-value" x-text="ph"></span>
-                        <span class="chemistry-metric-sub text-muted">sensor optional</span>
-                    </div>
+                    <div class="gauge-range-labels"><span x-text="statusLabel"></span><span>100%</span></div>
                 </div>
-                <p class="text-muted text-2xs mt-1" x-show="!present" x-cloak>No chlorinator detected on the bus.</p>
             </div>
 
             <!-- Heater Controls -->
-            <template x-if="$store.pool.buttons.some(b => b.label && b.label.toLowerCase().includes('heat'))">
+            <template x-if="heaterButtons().length > 0">
                 <div>
                     <div class="section-title">Heater</div>
                     <div class="heater-rows mb-2">
-                        <template x-for="button in $store.pool.buttons.filter(b => b.label && b.label.toLowerCase().includes('heat'))" :key="button.id">
+                        <template x-for="button in heaterButtons()" :key="button.id">
                             <div class="heater-row card" x-data="equipmentButton()">
                                 <div class="heater-row-inner">
                                     <button class="heater-toggle"
@@ -359,30 +338,32 @@
                 </div>
             </template>
 
-            <!-- Equipment Buttons (non-heater) -->
+            <!-- Equipment Controls — controllable (toggleable) devices only -->
             <div class="section-title">Equipment Controls</div>
             <div x-show="$store.pool.buttonsLoading" class="text-center">
                 <div class="spinner"></div>
                 <p class="text-muted text-sm">Loading equipment...</p>
             </div>
-            <div x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length === 0" class="text-center py-3">
-                <p class="text-muted">No equipment controls available</p>
+            <div x-show="!$store.pool.buttonsLoading && controlButtons().length === 0" class="text-center py-3">
+                <p class="text-muted">No controllable equipment available</p>
             </div>
-            <div class="equipment-grid" x-show="!$store.pool.buttonsLoading && $store.pool.buttons.length > 0">
-                <template x-for="button in $store.pool.buttons.filter(b => !(b.label && b.label.toLowerCase().includes('heat')))" :key="button.id">
-                    <button class="eq-button"
+            <div class="control-grid" x-show="!$store.pool.buttonsLoading && controlButtons().length > 0">
+                <template x-for="button in controlButtons()" :key="button.id">
+                    <button class="eq-control"
                             x-data="equipmentButton()"
-                            :class="{
-                                active: isActive(button),
-                                'cmd-sending': cmdState(button) === 'sending'
-                            }"
+                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending' }"
                             :aria-pressed="isActive(button)"
-                            :aria-label="button.label + ' — ' + statusLabel(button)"
+                            :aria-label="(button.display_label || button.label) + ' — ' + statusLabel(button)"
                             @click="toggle(button)">
-                        <span class="eq-button-icon" aria-hidden="true" x-text="icon(button)"></span>
-                        <span class="eq-button-label" x-text="button.display_label || button.label"></span>
-                        <span class="eq-button-status" x-text="statusLabel(button)"></span>
-                        <!-- Command feedback overlay -->
+                        <span class="eq-control-icon" aria-hidden="true" x-text="icon(button)"></span>
+                        <span class="eq-control-body">
+                            <span class="eq-control-label" x-text="button.display_label || button.label"></span>
+                            <span class="eq-control-status" x-text="statusLabel(button)"></span>
+                        </span>
+                        <span class="eq-switch" :class="{ on: isActive(button) }" aria-hidden="true">
+                            <span class="eq-switch-knob"></span>
+                        </span>
+                        <!-- Command feedback -->
                         <span class="cmd-badge cmd-applied" x-show="cmdState(button) === 'applied'" x-transition.opacity>Applied</span>
                         <span class="cmd-badge cmd-rejected" x-show="cmdState(button) === 'rejected'" x-transition.opacity>Rejected</span>
                         <span class="cmd-badge cmd-timedout" x-show="cmdState(button) === 'timedout'" x-transition.opacity>Timed out</span>
@@ -393,6 +374,21 @@
                     </button>
                 </template>
             </div>
+
+            <!-- Other Equipment — configurable / informational, read-only. Hidden when empty. -->
+            <template x-if="otherButtons().length > 0">
+                <div>
+                    <div class="section-title">Other Equipment</div>
+                    <div class="other-equip card mb-2">
+                        <template x-for="button in otherButtons()" :key="button.id">
+                            <div class="other-equip-row">
+                                <span class="other-equip-label" x-text="button.display_label || button.label"></span>
+                                <span class="other-equip-status text-muted" x-text="button.status || 'Status only'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
 
             <!-- Last update -->
             <div class="text-muted text-center mt-2 text-2xs" x-show="lastUpdateText">

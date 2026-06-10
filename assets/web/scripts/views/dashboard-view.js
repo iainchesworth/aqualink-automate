@@ -35,6 +35,27 @@ function dashboardView() {
         isStale(field) {
             void this._tick;
             return Alpine.store('pool').isStale(field);
+        },
+
+        // ---- Equipment grouping ----------------------------------------
+        // Heaters get their own setpoint+toggle block; the controllable
+        // (toggleable) devices become switches; everything else
+        // (configurable-but-not-controllable, e.g. sensors) is read-only.
+        // The chlorinator is surfaced in the Water Chemistry section, not here.
+        isHeater(b) {
+            return b.device_type === 'Heater' || (b.label && b.label.toLowerCase().includes('heat'));
+        },
+
+        heaterButtons() {
+            return Alpine.store('pool').buttons.filter(b => this.isHeater(b));
+        },
+
+        controlButtons() {
+            return Alpine.store('pool').buttons.filter(b => b.controllable && !this.isHeater(b));
+        },
+
+        otherButtons() {
+            return Alpine.store('pool').buttons.filter(b => !b.controllable && b.device_type !== 'Chlorinator');
         }
     };
 }

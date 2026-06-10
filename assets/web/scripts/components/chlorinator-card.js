@@ -20,6 +20,13 @@ function chlorinatorCard() {
             return (v === '--' || v == null) ? '--' : (v + '%');
         },
 
+        /** Numeric 0–100 for the output bar (0 when no reading). */
+        get percent() {
+            const v = Alpine.store('pool').swgGeneratingPercent;
+            const n = (v === '--' || v == null) ? NaN : Number(v);
+            return isNaN(n) ? 0 : Math.max(0, Math.min(100, n));
+        },
+
         get saltPpm() {
             const v = Alpine.store('pool').saltPpm;
             return (v === '--' || v == null) ? '--' : (v + ' ppm');

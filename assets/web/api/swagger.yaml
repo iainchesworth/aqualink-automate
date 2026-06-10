@@ -1159,6 +1159,14 @@ components:
             User-facing name to show in UIs: the preferences label_overrides entry
             for this canonical label, or the canonical label itself when none is set.
           example: "Pool Light"
+        controllable:
+          type: boolean
+          description: >
+            True when the device is operated by an on/off toggle (pumps, aux relays,
+            lights, cleaner, spillover, sprinkler, heater). False for configurable/
+            informational devices (chlorinator — a % setpoint surfaced in chemistry —
+            and Unknown-type devices), which UIs show read-only.
+          example: true
         status:
           type: string
           description: |

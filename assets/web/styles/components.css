@@ -330,6 +330,147 @@ html.dark .gauge-card {
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* === Equipment Controls — labelled on/off switch cards === */
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.eq-control {
+    position: relative;
+    overflow: hidden;
+    background: var(--button-inactive-bg);
+    border: 1px solid var(--button-inactive-border);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-height: 64px;
+    text-align: left;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    width: 100%;
+}
+
+.eq-control:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+}
+
+.eq-control:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.eq-control.active {
+    border-color: var(--button-active-border);
+}
+
+.eq-control.cmd-sending {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.eq-control-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.eq-control-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.eq-control-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.eq-control-status {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.eq-control.active .eq-control-status {
+    color: var(--gauge-good);
+    font-weight: 500;
+}
+
+/* The on/off switch (decorative; the whole card is the button) */
+.eq-switch {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    border-radius: 13px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.eq-switch.on {
+    background: var(--button-active-bg);
+    border-color: var(--button-active-border);
+}
+
+.eq-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease;
+}
+
+.eq-switch.on .eq-switch-knob {
+    transform: translateX(18px);
+}
+
+/* === Other Equipment — read-only list === */
+.other-equip {
+    padding: 0.25rem 1rem;
+}
+
+.other-equip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.other-equip-row:last-child {
+    border-bottom: none;
+}
+
+.other-equip-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.other-equip-status {
+    font-size: 0.78rem;
+}
+
 /* Setpoint buttons */
 .setpoint-btn {
     width: 36px;

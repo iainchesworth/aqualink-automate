@@ -420,13 +420,16 @@ nav .nav-controls {
 /* === Global command gating === */
 
 .commands-disabled .eq-button,
+.commands-disabled .eq-control,
+.commands-disabled .heater-toggle,
 .commands-disabled .setpoint-btn {
     pointer-events: none;
     opacity: 0.45;
     filter: grayscale(0.3);
 }
 
-.commands-disabled .eq-button:hover {
+.commands-disabled .eq-button:hover,
+.commands-disabled .eq-control:hover {
     transform: none;
     box-shadow: var(--shadow-sm);
     border-color: var(--button-inactive-border);
