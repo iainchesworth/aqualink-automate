@@ -45,6 +45,7 @@
 #include "http/webroute_auth_check.h"
 #include "http/webroute_diagnostics_actualdevices.h"
 #include "http/webroute_diagnostics_devices.h"
+#include "http/webroute_diagnostics_mqtt.h"
 #include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_diagnostics_options.h"
 #include "http/webroute_diagnostics_recording.h"
@@ -545,6 +546,7 @@ int main(int argc, char* argv[])
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Mqtt>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_ActualDevices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
@@ -613,6 +615,9 @@ int main(int argc, char* argv[])
 				mqtt_integration = std::make_shared<AqualinkAutomate::Mqtt::MqttIntegration>(io_context, mqtt_settings);
 				mqtt_integration->ConnectHubs(data_hub, equipment_hub, statistics_hub);
 				mqtt_integration->Start();
+
+				// Expose to the HTTP layer so /api/diagnostics/mqtt can read live status.
+				hub_locator.Register(mqtt_integration);
 
 				LogInfo(Channel::Main, std::format("MQTT service enabled, publishing to {}:{}", mqtt_settings.broker_host, mqtt_settings.broker_port));
 			}

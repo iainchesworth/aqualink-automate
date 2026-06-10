@@ -58,6 +58,7 @@ target_sources(
 	http/webroute_diagnostics_actualdevices.cpp
 	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
+	http/webroute_diagnostics_mqtt.cpp
 	http/webroute_diagnostics_options.cpp
 	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp

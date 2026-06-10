@@ -906,3 +906,79 @@ a:hover {
     outline: none;
     border-color: var(--accent);
 }
+
+/* === Settings page layout === */
+.settings-card-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+    line-height: 1.5;
+}
+
+.settings-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.settings-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin: 1.1rem 0 0.6rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-group-label:first-of-type {
+    margin-top: 0.4rem;
+}
+
+.settings-field {
+    margin-bottom: 0.9rem;
+}
+
+.settings-field > label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.settings-field-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-field .settings-input {
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+}
+
+.settings-field .settings-input-sm {
+    width: 110px;
+    max-width: 110px;
+}
+
+.settings-field .settings-input-md {
+    width: 200px;
+    max-width: 200px;
+}
+
+.settings-unit {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.settings-hint {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    line-height: 1.45;
+}

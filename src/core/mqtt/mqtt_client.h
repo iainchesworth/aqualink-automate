@@ -106,6 +106,17 @@ namespace AqualinkAutomate::Mqtt
 		const std::string& TopicPrefix() const noexcept;
 
 	public:
+		// Read-only diagnostics accessors. Safe to call from the HTTP handler:
+		// the client is single-threaded and the handler runs on the same
+		// io_context thread, so no synchronisation is required.
+		const Options::Mqtt::MqttSettings& Settings() const noexcept { return m_Settings; }
+		std::size_t PublishQueueDepth() const noexcept { return m_PublishQueue.size(); }
+		std::uint16_t ReconnectAttempts() const noexcept { return m_ReconnectAttempts; }
+		std::uint64_t PublishedCount() const noexcept { return m_PublishedCount; }
+		std::uint64_t DroppedCount() const noexcept { return m_DroppedCount; }
+		const std::string& LastError() const noexcept { return m_LastError; }
+
+	public:
 		ConnectedSignal OnConnected;
 		DisconnectedSignal OnDisconnected;
 		MessageReceivedSignal OnMessageReceived;
@@ -227,6 +238,11 @@ namespace AqualinkAutomate::Mqtt
 		// Reconnection
 		uint16_t m_ReconnectAttempts{ 0 };
 		std::chrono::steady_clock::time_point m_ReconnectTime;
+
+		// Diagnostics counters (surfaced via /api/diagnostics/mqtt).
+		std::uint64_t m_PublishedCount{ 0 };
+		std::uint64_t m_DroppedCount{ 0 };
+		std::string m_LastError;
 
 		// Last Will and Testament
 		std::optional<WillConfig> m_WillConfig;

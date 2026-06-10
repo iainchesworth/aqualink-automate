@@ -292,6 +292,7 @@ namespace AqualinkAutomate::Mqtt
 		{
 			LogWarning(Channel::Mqtt, "MQTT publish queue full, dropping oldest message");
 			m_PublishQueue.pop_front();
+			++m_DroppedCount;
 		}
 		m_PublishQueue.push_back({ topic, payload, retain });
 	}
@@ -419,6 +420,7 @@ namespace AqualinkAutomate::Mqtt
 	{
 		LogWarning(Channel::Mqtt, [&] { return std::format("MQTT reconnecting (attempt {}): {}", m_ReconnectAttempts + 1, reason); });
 
+		m_LastError = reason;
 		CloseSocket();
 		m_ReadBuffer.clear();
 		m_State = State::Reconnecting;
@@ -808,6 +810,7 @@ namespace AqualinkAutomate::Mqtt
 			if (!m_PublishQueue.empty())
 			{
 				m_PublishQueue.pop_front();
+				++m_PublishedCount;
 			}
 		}
 	}

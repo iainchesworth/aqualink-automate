@@ -59,9 +59,10 @@ test('Settings view shows and saves server preferences', async ({ page }) => {
   await expect(page.getByText('System Preferences')).toBeVisible();
 
   // Change the temperature units and save -> a "Saved" confirmation appears.
-  await page.locator('select[x-model="prefs.temperature_units"]').selectOption('Fahrenheit');
-  await page.getByRole('button', { name: 'Save preferences' }).click();
-  await expect(page.getByText('Saved ✓').first()).toBeVisible({ timeout: 5_000 });
+  const sysCard = page.locator('.settings-card', { hasText: 'System Preferences' });
+  await sysCard.locator('select[x-model="prefs.temperature_units"]').selectOption('Fahrenheit');
+  await sysCard.getByRole('button', { name: 'Save' }).click();
+  await expect(sysCard.getByText('Saved ✓')).toBeVisible({ timeout: 5_000 });
 
   // The change is reflected by the API.
   const prefs = await (await page.request.get('/api/preferences')).json();

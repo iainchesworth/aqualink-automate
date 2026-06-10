@@ -69,6 +69,10 @@ function diagnosticsView() {
         showEmulatedDevices: true,
         showActualDevices: true,
         showRecording: false,
+        showMqtt: false,
+
+        // MQTT broker status diagnostics
+        mqtt: { enabled: false },
 
         // Serial recording control state
         recording: { recording: false, file: '', bytes: 0 },
@@ -98,6 +102,7 @@ function diagnosticsView() {
             this.fetchEmulatedDevices();
             this.fetchActualDevices();
             this.fetchRecordingStatus();
+            this.fetchMqtt();
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
                 _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
@@ -107,6 +112,9 @@ function diagnosticsView() {
             }
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
+            }
+            if (!_diag.mqttTimer) {
+                _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
             }
         },
 
@@ -213,6 +221,11 @@ function diagnosticsView() {
                 _diag.recordingTimer = null;
             }
 
+            if (_diag.mqttTimer) {
+                clearInterval(_diag.mqttTimer);
+                _diag.mqttTimer = null;
+            }
+
             if (_diag.statsListener) {
                 window.removeEventListener('stats-updated', _diag.statsListener);
                 _diag.statsListener = null;
@@ -254,6 +267,17 @@ function diagnosticsView() {
                 _diag.warnedOnce['recording'] = false;
             } catch (e) {
                 _handlePollFailure('recording', null, e);
+            }
+        },
+
+        async fetchMqtt() {
+            try {
+                const resp = await fetch('/api/diagnostics/mqtt');
+                if (!resp.ok) { _handlePollFailure('mqtt', resp, null); return; }
+                this.mqtt = await resp.json();
+                _diag.warnedOnce['mqtt'] = false;
+            } catch (e) {
+                _handlePollFailure('mqtt', null, e);
             }
         },
 

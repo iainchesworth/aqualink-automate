@@ -1088,6 +1088,55 @@
             </div>
             </div>
 
+            <!-- MQTT Status -->
+            <button class="section-toggle mb-1" @click="showMqtt = !showMqtt"
+                    :aria-expanded="showMqtt" aria-controls="diag-mqtt">
+                <span class="section-toggle-chevron" :class="{ open: showMqtt }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">MQTT</span>
+            </button>
+            <div id="diag-mqtt" x-show="showMqtt" x-transition.opacity x-cloak>
+            <div class="card mb-2">
+                <div class="card-header card-header-split">
+                    <span>Broker Status</span>
+                    <span class="badge"
+                          :class="!mqtt.enabled ? 'badge-status-off' : (mqtt.connected ? 'badge-freq' : 'badge-status-warn')"
+                          x-text="!mqtt.enabled ? 'Disabled' : (mqtt.connected ? 'Connected' : (mqtt.state || 'Disconnected'))"></span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-xs mt-0 mb-1" x-show="!mqtt.enabled">
+                        MQTT is disabled. Start the server with <code>--mqtt-enabled</code> and broker options to
+                        publish equipment state and accept commands.
+                    </p>
+                    <div class="emu-kv-grid" x-show="mqtt.enabled">
+                        <span class="emu-kv-key">Broker</span>
+                        <span class="emu-kv-val"><code x-text="(mqtt.broker_host || '--') + ':' + (mqtt.broker_port || '')"></code><span class="text-muted text-2xs" x-show="mqtt.tls"> · TLS</span></span>
+                        <span class="emu-kv-key">State</span>
+                        <span class="emu-kv-val" x-text="mqtt.state || '--'"></span>
+                        <span class="emu-kv-key">Client ID</span>
+                        <span class="emu-kv-val"><code x-text="mqtt.client_id || '--'"></code></span>
+                        <span class="emu-kv-key">Topic prefix</span>
+                        <span class="emu-kv-val"><code x-text="mqtt.topic_prefix || '--'"></code></span>
+                        <span class="emu-kv-key">Home Assistant</span>
+                        <span class="emu-kv-val" x-text="mqtt.home_assistant_enabled ? ('discovery on · ' + (mqtt.ha_discovery_prefix || '')) : 'off'"></span>
+                        <span class="emu-kv-key">Published</span>
+                        <span class="emu-kv-val" x-text="(mqtt.published ?? 0).toLocaleString()"></span>
+                        <span class="emu-kv-key">Queue depth</span>
+                        <span class="emu-kv-val" x-text="mqtt.queue_depth ?? 0"></span>
+                        <span class="emu-kv-key">Dropped</span>
+                        <span class="emu-kv-val" x-text="mqtt.dropped ?? 0"></span>
+                        <span class="emu-kv-key">Reconnects</span>
+                        <span class="emu-kv-val" x-text="mqtt.reconnect_attempts ?? 0"></span>
+                        <template x-if="mqtt.last_error">
+                            <span class="emu-kv-key">Last error</span>
+                        </template>
+                        <template x-if="mqtt.last_error">
+                            <span class="emu-kv-val" x-text="mqtt.last_error"></span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            </div>
+
             <!-- Stats connection indicator -->
             <div class="text-muted text-center mt-2 text-2xs">
                 Stats WebSocket:
@@ -1201,60 +1250,100 @@
         <!-- ====== SETTINGS VIEW ====== -->
         <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
 
-            <div class="section-title mt-2">System Preferences</div>
-            <p class="text-muted mb-1 text-xs">
-                Saved on the server and applied live (no restart needed); shared across devices.
-            </p>
-            <div class="prefs-form">
-                <label class="sched-field">Temperature units
-                    <select x-model="prefs.temperature_units" class="login-input prefs-input">
-                        <option value="Celsius">Celsius</option>
-                        <option value="Fahrenheit">Fahrenheit</option>
-                    </select>
-                </label>
-                <label class="sched-field">Salt-low alert (ppm — 0 disables)
-                    <input type="number" min="0" max="6000" x-model.number="prefs.salt_low_ppm" class="login-input prefs-input">
-                </label>
-                <label class="sched-field">Comms-loss timeout (seconds)
-                    <input type="number" min="1" x-model.number="prefs.comms_timeout_seconds" class="login-input prefs-input">
-                </label>
-                <label class="sched-field">Alert webhook URL (http/https — blank disables)
-                    <input type="text" x-model="prefs.webhook_url" class="login-input" placeholder="https://example.com/hook">
-                </label>
-                <label class="sched-field">History retention (days)
-                    <input type="number" min="1" x-model.number="prefs.retention_days" class="login-input prefs-input">
-                </label>
-                <div class="sched-form-actions">
-                    <button class="sched-new-btn" @click="saveServerPrefs()">Save preferences</button>
-                    <span class="text-muted text-xs" x-show="savedFlash" x-cloak>Saved ✓</span>
-                    <span class="trends-error" x-show="prefsError" x-cloak x-text="prefsError"></span>
+            <div class="section-title mt-2">Settings</div>
+
+            <!-- System Preferences -->
+            <div class="card mb-2 settings-card">
+                <div class="card-header card-header-split">
+                    <span>System Preferences</span>
+                    <div class="settings-card-actions">
+                        <span class="cmd-badge cmd-applied" x-show="savedFlash" x-cloak>Saved ✓</span>
+                        <button class="sched-new-btn" @click="saveServerPrefs()">Save</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="settings-card-desc">Stored on the server and applied live — no restart, shared across devices.</p>
+
+                    <div class="settings-group-label">Display</div>
+                    <div class="settings-field">
+                        <label for="pref-units">Temperature units</label>
+                        <select id="pref-units" x-model="prefs.temperature_units" class="settings-input settings-input-md">
+                            <option value="Celsius">Celsius</option>
+                            <option value="Fahrenheit">Fahrenheit</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-group-label">Alerts</div>
+                    <div class="settings-field">
+                        <label for="pref-salt">Salt-low threshold</label>
+                        <div class="settings-field-input">
+                            <input id="pref-salt" type="number" min="0" max="6000" x-model.number="prefs.salt_low_ppm" class="settings-input settings-input-sm">
+                            <span class="settings-unit">ppm</span>
+                        </div>
+                        <span class="settings-hint">Warn when salt falls below this. Set 0 to disable.</span>
+                    </div>
+                    <div class="settings-field">
+                        <label for="pref-comms">Comms-loss timeout</label>
+                        <div class="settings-field-input">
+                            <input id="pref-comms" type="number" min="1" x-model.number="prefs.comms_timeout_seconds" class="settings-input settings-input-sm">
+                            <span class="settings-unit">seconds</span>
+                        </div>
+                        <span class="settings-hint">Raise a fault if no protocol message decodes for this long.</span>
+                    </div>
+                    <div class="settings-field">
+                        <label for="pref-webhook">Alert webhook URL</label>
+                        <input id="pref-webhook" type="text" x-model="prefs.webhook_url" class="settings-input" placeholder="https://example.com/hook">
+                        <span class="settings-hint">Optional. POST alert transitions to this http/https URL; blank disables.</span>
+                    </div>
+
+                    <div class="settings-group-label">History</div>
+                    <div class="settings-field">
+                        <label for="pref-retention">Retention</label>
+                        <div class="settings-field-input">
+                            <input id="pref-retention" type="number" min="1" x-model.number="prefs.retention_days" class="settings-input settings-input-sm">
+                            <span class="settings-unit">days</span>
+                        </div>
+                        <span class="settings-hint">How long recorded trends are kept before purging.</span>
+                    </div>
+
+                    <p class="trends-error" x-show="prefsError" x-cloak x-text="prefsError"></p>
                 </div>
             </div>
 
-            <div class="section-title mt-2">Device Names</div>
-            <p class="text-muted mb-1 text-xs">
-                Give auxiliaries friendly names for the dashboard. Leave blank to keep the
-                original; the underlying control name (used for commands, MQTT and Home Assistant) is unchanged.
-            </p>
-            <div class="prefs-form" x-show="deviceButtons().length > 0">
-                <template x-for="button in deviceButtons()" :key="button.id">
-                    <label class="sched-field" x-show="button.label">
-                        <span x-text="button.label"></span>
-                        <input type="text" class="login-input" :placeholder="button.label" x-model="labelOverrides[button.label]">
-                    </label>
-                </template>
-                <div class="sched-form-actions">
-                    <button class="sched-new-btn" @click="saveLabels()">Save names</button>
-                    <span class="text-muted text-xs" x-show="savedFlash" x-cloak>Saved ✓</span>
+            <!-- Device Names -->
+            <div class="card mb-2 settings-card">
+                <div class="card-header card-header-split">
+                    <span>Device Names</span>
+                    <div class="settings-card-actions" x-show="deviceButtons().length > 0">
+                        <span class="cmd-badge cmd-applied" x-show="savedFlash" x-cloak>Saved ✓</span>
+                        <button class="sched-new-btn" @click="saveLabels()">Save</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="settings-card-desc">
+                        Friendly dashboard names for auxiliaries. Blank keeps the original; the underlying
+                        control name (commands, MQTT, Home Assistant) is unchanged.
+                    </p>
+                    <template x-if="deviceButtons().length > 0">
+                        <div>
+                            <template x-for="button in deviceButtons()" :key="button.id">
+                                <div class="settings-field" x-show="button.label">
+                                    <label :for="'name-' + button.id" x-text="button.label"></label>
+                                    <input :id="'name-' + button.id" type="text" class="settings-input"
+                                           :placeholder="button.label" x-model="labelOverrides[button.label]">
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <p class="settings-hint" x-show="deviceButtons().length === 0">No devices discovered yet.</p>
                 </div>
             </div>
-            <p class="text-muted text-xs" x-show="deviceButtons().length === 0">No devices discovered yet.</p>
 
+            <!-- Chemistry Target Ranges -->
             <div class="section-title mt-2">Chemistry Target Ranges</div>
             <p class="text-muted mb-1 text-xs">
-                Configure the Good / Okay / Bad ranges for each chemistry gauge.
-                Values outside the Bad range are also shown as Bad.
-                Saved to this browser and synced to the server.
+                Good / Okay / Bad ranges for each chemistry gauge. Values outside the Bad range
+                are shown as Bad. Saved to this browser and synced to the server.
             </p>
 
             <template x-for="gauge in gauges" :key="gauge.key">
