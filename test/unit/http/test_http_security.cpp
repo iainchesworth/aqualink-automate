@@ -12,8 +12,14 @@
 #include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
 
+#include <filesystem>
+#include <fstream>
+#include <system_error>
+
 #include "http/server/routing/routing.h"
 #include "http/server/server_types.h"
+#include "http/server/static_file_handler.h"
+#include "http/webroute_auth_check.h"
 #include "interfaces/iwebroute.h"
 
 #include "mocks/mock_beast_basicstream_with_timeout.h"
@@ -368,6 +374,166 @@ BOOST_AUTO_TEST_CASE(Test_Security_WsUpgrade_BadOrigin_Returns403)
 	auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req);
 	BOOST_REQUIRE(rejection.has_value());
 	BOOST_CHECK_EQUAL(boost::beast::http::status::forbidden, rejection->result());
+
+	HTTP::Routing::Clear();
+}
+
+// =============================================================================
+// WebSocket subprotocol bearer auth (browsers cannot set Authorization on a WS
+// upgrade, so the token rides in Sec-WebSocket-Protocol as "bearer.<token>").
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Security_WsUpgrade_SubprotocolToken_Allowed)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "ws-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::sec_websocket_protocol, "aqualink, bearer.ws-token");
+	BOOST_CHECK(!HTTP::Routing::AuthorizeWebSocketUpgrade(req).has_value());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Security_WsUpgrade_SubprotocolToken_NoSpaceVariant_Allowed)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "ws-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::sec_websocket_protocol, "aqualink,bearer.ws-token");
+	BOOST_CHECK(!HTTP::Routing::AuthorizeWebSocketUpgrade(req).has_value());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Security_WsUpgrade_WrongSubprotocolToken_Returns401)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "ws-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::sec_websocket_protocol, "aqualink, bearer.wrong-token");
+	auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req);
+	BOOST_REQUIRE(rejection.has_value());
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, rejection->result());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Security_WsUpgrade_SubprotocolNoBearerEntry_Returns401)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "ws-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::sec_websocket_protocol, "aqualink");
+	auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req);
+	BOOST_REQUIRE(rejection.has_value());
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, rejection->result());
+
+	HTTP::Routing::Clear();
+}
+
+// The subprotocol token path is WS-upgrade-only: a plain HTTP request carrying a
+// bearer.<token> subprotocol but no Authorization header must still be rejected.
+BOOST_AUTO_TEST_CASE(Test_Security_Http_SubprotocolTokenIgnored_Returns401)
+{
+	RegisterOkRoute();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "ws-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, OK_ROUTE_URL);
+	req.set(boost::beast::http::field::sec_websocket_protocol, "aqualink, bearer.ws-token");
+	auto resp = RunRequest(req);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, resp.result());
+
+	HTTP::Routing::Clear();
+}
+
+// =============================================================================
+// Static assets are served WITHOUT authentication (so the login screen loads).
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Security_StaticAsset_ServedWithoutAuth)
+{
+	HTTP::Routing::Clear();
+
+	const auto doc_root = std::filesystem::temp_directory_path() / "aqualink_ws5_static_test";
+	std::filesystem::create_directories(doc_root);
+	{
+		std::ofstream out((doc_root / "index.html").string(), std::ios::binary);
+		out << "<html>login shell</html>";
+	}
+
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+	HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", doc_root.string()));
+
+	// No Authorization header, token required -> static file must STILL be served.
+	auto req = MakeRequest(boost::beast::http::verb::get, "/index.html");
+	auto resp = RunRequest(req);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	HTTP::Routing::Clear();
+	std::error_code ec;
+	std::filesystem::remove_all(doc_root, ec);
+}
+
+// =============================================================================
+// /api/auth/check probe.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_AuthCheck_AuthDisabled_Returns200)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::AUTH_CHECK_ROUTE_URL);
+	auto resp = RunRequest(req);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+	BOOST_CHECK(resp.body().find("authenticated") != std::string::npos);
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_AuthCheck_TokenSetNoCredentials_Returns401)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::AUTH_CHECK_ROUTE_URL);
+	auto resp = RunRequest(req);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, resp.result());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_AuthCheck_TokenSetCorrectBearer_Returns200)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::AUTH_CHECK_ROUTE_URL);
+	req.set(boost::beast::http::field::authorization, "Bearer the-token");
+	auto resp = RunRequest(req);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
 
 	HTTP::Routing::Clear();
 }

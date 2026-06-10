@@ -140,6 +140,43 @@ namespace AqualinkAutomate::HTTP::Routing
 			return (it != req.end()) ? ToStringView(it->value()) : std::string_view{};
 		}
 
+		// Extract and constant-time-compare a bearer token offered via the
+		// WebSocket handshake's Sec-WebSocket-Protocol header.  Browsers cannot set
+		// an Authorization header on a WebSocket upgrade, so the UI offers the token
+		// as a `bearer.<token>` subprotocol entry alongside the `aqualink` marker
+		// (e.g. "aqualink, bearer.<token>").  NEVER logs the token.
+		[[nodiscard]] bool WebSocketSubprotocolTokenMatches(const HTTP::Request& req, std::string_view expected_token)
+		{
+			const std::string_view header = HeaderValue(req, boost::beast::http::field::sec_websocket_protocol);
+			static constexpr std::string_view BEARER_ENTRY_PREFIX{ "bearer." };
+
+			std::size_t pos = 0;
+			while (pos <= header.size())
+			{
+				const std::size_t comma = header.find(',', pos);
+				std::string_view entry = (comma == std::string_view::npos)
+					? header.substr(pos)
+					: header.substr(pos, comma - pos);
+
+				// Trim surrounding optional whitespace (per the header's ABNF).
+				while (!entry.empty() && (entry.front() == ' ' || entry.front() == '\t')) { entry.remove_prefix(1); }
+				while (!entry.empty() && (entry.back() == ' ' || entry.back() == '\t')) { entry.remove_suffix(1); }
+
+				if (entry.starts_with(BEARER_ENTRY_PREFIX))
+				{
+					if (ConstantTimeEquals(entry.substr(BEARER_ENTRY_PREFIX.size()), expected_token))
+					{
+						return true;
+					}
+				}
+
+				if (comma == std::string_view::npos) { break; }
+				pos = comma + 1;
+			}
+
+			return false;
+		}
+
 		// Evaluate the active SecurityConfig against a parsed request. Returns the
 		// rejection response to send when the request is denied, or std::nullopt when
 		// it is permitted. Shared by the HTTP and WebSocket-upgrade paths so both
@@ -181,6 +218,14 @@ namespace AqualinkAutomate::HTTP::Routing
 				{
 					const std::string_view presented = header.substr(BEARER_PREFIX.size());
 					authorised = ConstantTimeEquals(presented, *cfg.AuthToken);
+				}
+
+				// Browsers cannot attach an Authorization header to a WebSocket
+				// upgrade, so for upgrades also accept the token carried in the
+				// Sec-WebSocket-Protocol header as a `bearer.<token>` entry.
+				if (!authorised && is_websocket_upgrade)
+				{
+					authorised = WebSocketSubprotocolTokenMatches(req, *cfg.AuthToken);
 				}
 
 				if (!authorised)
@@ -270,14 +315,12 @@ namespace AqualinkAutomate::HTTP::Routing
 
 		try
 		{
-			// Enforce the (opt-in) security policy before any dispatch. When the policy
-			// is disabled (the default) this is a single cheap predicate and returns
-			// immediately, preserving historical behaviour.
-			if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
-			{
-				return std::move(*rejection);
-			}
-
+			// Security is enforced PER-BRANCH below rather than up front: registered
+			// routes (incl. /api and /metrics) and unmatched paths are gated, but
+			// static assets are served WITHOUT authentication so a token-protected
+			// deployment can still load index.html / scripts / css to render the
+			// login screen.  When the policy is disabled (the default) EvaluateSecurity
+			// is a cheap no-op, so behaviour is byte-identical to before.
 			std::filesystem::path static_file_result;
 			HTTP::Routing::matches m;
 
@@ -294,16 +337,30 @@ namespace AqualinkAutomate::HTTP::Routing
 			}
 			else if (auto p = http_routes.find_impl(*path, matches_it, ids_it, matches_end, ids_end); nullptr != p)
 			{
+				// Registered route -> enforce security before dispatch.
+				if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+				{
+					return std::move(*rejection);
+				}
+
 				LogTrace(Channel::Web, [&] { return std::format("Handling HTTP {} request for {}", magic_enum::enum_name(req.method()), std::string_view(req.target())); });
 				return p->OnRequest(req);
 			}
 			else if (sf_route.has_value() && sf_route->match(req.target(), static_file_result))
 			{
+				// Static asset -> intentionally UNauthenticated (see above).
 				LogTrace(Channel::Web, [&] { return std::format("Attempting to serve static content; file is -> {}", static_file_result.string()); });
 				return HTTP::Responses::Response_StaticFile(req, static_file_result);
 			}
 			else
 			{
+				// Unmatched path -> still enforce security so an unknown /api/* path
+				// answers 401 (not 404) when a token is required.
+				if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+				{
+					return std::move(*rejection);
+				}
+
 				Factory::ProfilerFactory::Instance().Get()->Message("HTTP 404 Not Found");
 				LogDebug(Channel::Web, [&] { return std::format("Path '{}' was requested but no HTTP handler was available", std::string_view(req.target())); });
 				LogDebug(Channel::Web, "Could not handle request -> returning a 404 NOT FOUND");

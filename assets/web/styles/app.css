@@ -254,6 +254,70 @@ nav .nav-controls {
     background: #ef4444;
 }
 
+/* ---- Login overlay (WS5) ------------------------------------------------ */
+.login-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.92);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.login-card {
+    width: min(360px, 90vw);
+    background: var(--surface, #1e293b);
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.2));
+    border-radius: var(--radius-md, 12px);
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.login-logo { width: 56px; height: 56px; margin-bottom: 0.5rem; }
+.login-title { font-size: 1.25rem; margin: 0.25rem 0; color: var(--text, #e2e8f0); }
+.login-subtitle { color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin-bottom: 1.25rem; }
+
+.login-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+    background: var(--bg, #0f172a);
+    color: var(--text, #e2e8f0);
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.95rem;
+}
+
+.login-remember {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 1rem;
+}
+
+.login-submit {
+    width: 100%;
+    padding: 0.6rem;
+    background: #0ea5e9;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm, 8px);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.login-submit:disabled { opacity: 0.6; cursor: default; }
+.login-error { color: #ef4444; font-size: 0.8rem; margin-top: 0.75rem; }
+
 .mode-dot.connected {
     background: #10b981;
 }

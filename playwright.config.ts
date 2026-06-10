@@ -50,6 +50,11 @@ const HOST = '127.0.0.1';
 const PORT = Number(process.env.AQUALINK_TEST_PORT ?? 18080);
 const BASE_URL = `http://${HOST}:${PORT}`;
 
+// WS5 auth mode: when AQUALINK_AUTH_TOKEN is set, boot the app with
+// --api-auth-token and run ONLY the auth spec; otherwise run every other spec
+// against an unauthenticated server (proving the default path is unchanged).
+const AUTH_TOKEN = process.env.AQUALINK_AUTH_TOKEN;
+
 const ROOT = __dirname;
 
 // Resolve the built application binary.  The `wt` CMake preset emits it under
@@ -73,6 +78,10 @@ if (!existsSync(APP_EXE)) {
 
 export default defineConfig({
   testDir: './e2e',
+  // The auth spec needs a token-protected server; everything else needs an
+  // unauthenticated one. Select by the AQUALINK_AUTH_TOKEN env (see above).
+  testMatch: AUTH_TOKEN ? ['**/auth.spec.ts'] : undefined,
+  testIgnore: AUTH_TOKEN ? undefined : ['**/auth.spec.ts'],
   // Replay is deterministic but the UI is global mutable state behind one backend;
   // run serially so command-button tests don't race each other's optimistic updates.
   fullyParallel: false,
@@ -109,6 +118,7 @@ export default defineConfig({
       '--jandy-disable-emulation',
       '--profiler tracy',
       ...LOG_CHANNELS.map((ch) => `--loglevel-${ch} info`),
+      ...(AUTH_TOKEN ? [`--api-auth-token ${AUTH_TOKEN}`] : []),
     ].join(' '),
     url: BASE_URL,
     reuseExistingServer: false,

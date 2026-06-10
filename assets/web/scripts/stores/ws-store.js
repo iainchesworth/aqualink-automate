@@ -86,7 +86,13 @@ document.addEventListener('alpine:init', () => {
             this._closeSocket(conn);
 
             try {
-                const ws = new WebSocket(this.wsUrl(path));
+                // Attach the bearer token (when present) as a WebSocket subprotocol;
+                // browsers cannot set an Authorization header on the upgrade. Returns
+                // undefined when no token is stored, i.e. an unauthenticated connect.
+                const subprotocols = (window.AqualinkAuth && window.AqualinkAuth.wsSubprotocols())
+                    ? window.AqualinkAuth.wsSubprotocols()
+                    : undefined;
+                const ws = subprotocols ? new WebSocket(this.wsUrl(path), subprotocols) : new WebSocket(this.wsUrl(path));
                 conn.socket = ws;
 
                 ws.onopen = () => {

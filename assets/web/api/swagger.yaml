@@ -17,11 +17,24 @@ info:
     credentials and the documented `401` responses never occur — fully
     backward-compatible behaviour.
 
-    When an API auth token is configured, every API request (and the WebSocket
-    upgrade) must carry an `Authorization: Bearer <token>` header. A request with
-    a missing or mismatched token is rejected with `401`. This is the
-    `bearerAuth` security scheme below; the top-level `security` requirement is
-    declared as optional (`{}` alternative) to reflect that auth is opt-in.
+    When an API auth token is configured, every `/api` request must carry an
+    `Authorization: Bearer <token>` header. A request with a missing or
+    mismatched token is rejected with `401`. This is the `bearerAuth` security
+    scheme below; the top-level `security` requirement is declared as optional
+    (`{}` alternative) to reflect that auth is opt-in.
+
+    **Static assets are exempt** — only `/api`, `/metrics` and the `/ws`
+    upgrade are protected, so `index.html` / scripts / styles always load (to
+    render the login screen). `GET /api/auth/check` lets a client discover its
+    auth state: it returns `200` when authorized (or when auth is disabled) and
+    `401` otherwise.
+
+    **WebSocket auth:** browsers cannot set an `Authorization` header on a
+    WebSocket upgrade, so the client offers the token via the
+    `Sec-WebSocket-Protocol` header as `aqualink, bearer.<token>`. The server
+    constant-time-compares the `bearer.<token>` entry and, on success, completes
+    the handshake echoing the `aqualink` subprotocol. Non-browser clients may
+    still use the `Authorization: Bearer <token>` header on the upgrade.
 
     ## WebSocket Endpoints
 
@@ -140,6 +153,32 @@ paths:
                 # HELP aqualink_latency_microseconds Operation latency percentiles (sliding 60s window), in microseconds.
                 # TYPE aqualink_latency_microseconds gauge
                 aqualink_latency_microseconds{stage="serial_read",quantile="0.5"} 850.5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/check:
+    get:
+      tags:
+        - Authentication
+      summary: Probe authentication state
+      description: >
+        Returns 200 when the request is authorized (or when auth is disabled),
+        401 otherwise. The UI calls this on load to decide whether to show the
+        login screen. Reached only when already authorized, so the body always
+        reports authenticated=true.
+      operationId: getAuthCheck
+      responses:
+        '200':
+          description: Authorized (or authentication disabled)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+              example:
+                authenticated: true
         '401':
           $ref: '#/components/responses/Unauthorized'
 

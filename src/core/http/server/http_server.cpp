@@ -323,11 +323,44 @@ namespace AqualinkAutomate::HTTP
 			m_TcpStream.reset();
 		}
 
-		const bool dispatched = WithWsStream([self = shared_from_this(), &req](auto& ws)
+		// The browser offers the `aqualink` subprotocol (carrying the bearer token
+		// as a `bearer.<token>` entry when auth is enabled).  If — and only if — it
+		// offered `aqualink`, the handshake response must echo it back: a browser
+		// that offered subprotocols but received a response selecting none closes
+		// the connection.  Auth itself was already enforced by
+		// Routing::AuthorizeWebSocketUpgrade above.
+		bool offered_aqualink = false;
+		if (auto it = req.find(boost::beast::http::field::sec_websocket_protocol); it != req.end())
+		{
+			const std::string_view protocols{ it->value().data(), it->value().size() };
+			std::size_t pos = 0;
+			while (pos <= protocols.size())
+			{
+				const std::size_t comma = protocols.find(',', pos);
+				std::string_view entry = (comma == std::string_view::npos) ? protocols.substr(pos) : protocols.substr(pos, comma - pos);
+				while (!entry.empty() && (entry.front() == ' ' || entry.front() == '\t')) { entry.remove_prefix(1); }
+				while (!entry.empty() && (entry.back() == ' ' || entry.back() == '\t')) { entry.remove_suffix(1); }
+				if (entry == "aqualink") { offered_aqualink = true; break; }
+				if (comma == std::string_view::npos) { break; }
+				pos = comma + 1;
+			}
+		}
+
+		const bool dispatched = WithWsStream([self = shared_from_this(), &req, offered_aqualink](auto& ws)
 			{
 				ws.set_option(
 					boost::beast::websocket::stream_base::timeout::suggested(
 						boost::beast::role_type::server));
+
+				// Echo the negotiated subprotocol when the client offered `aqualink`.
+				ws.set_option(boost::beast::websocket::stream_base::decorator(
+					[offered_aqualink](boost::beast::websocket::response_type& res)
+					{
+						if (offered_aqualink)
+						{
+							res.set(boost::beast::http::field::sec_websocket_protocol, "aqualink");
+						}
+					}));
 
 				// Cap inbound message size so a single frame cannot allocate beast's
 				// 16 MB default; our JSON command messages are far smaller.

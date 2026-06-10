@@ -42,6 +42,7 @@
 #include "http/server/http_server.h"
 #include "http/server/static_file_handler.h"
 #include "http/server/routing/routing.h"
+#include "http/webroute_auth_check.h"
 #include "http/webroute_diagnostics_actualdevices.h"
 #include "http/webroute_diagnostics_devices.h"
 #include "http/webroute_diagnostics_logging.h"
@@ -420,6 +421,7 @@ int main(int argc, char* argv[])
 			// passes --api-auth-token.
 			HTTP::Routing::SecurityConfig security_config{ .AuthToken = web_settings.ApiAuthToken };
 
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_ActualDevices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
