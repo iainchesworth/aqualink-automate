@@ -26,6 +26,7 @@
     "magic-enum",
     "nlohmann-json",
     "openssl",
+    "sqlite3",
     {
       "name": "tracy",
       "features": ["on-demand"]

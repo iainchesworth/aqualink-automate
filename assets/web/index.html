@@ -54,6 +54,7 @@
             <div class="nav-links">
                 <button class="nav-link" :class="{ active: isRoute('dashboard') }" @click="navigate('dashboard')">Dashboard</button>
                 <button class="nav-link" :class="{ active: isRoute('diagnostics') }" @click="navigate('diagnostics')">Diagnostics</button>
+                <button class="nav-link" :class="{ active: isRoute('trends') }" @click="navigate('trends')">Trends</button>
                 <button class="nav-link" :class="{ active: isRoute('settings') }" @click="navigate('settings')">Settings</button>
                 <button class="nav-link" :class="{ active: isRoute('about') }" @click="navigate('about')">About</button>
             </div>
@@ -1055,6 +1056,38 @@
             </div>
         </div>
 
+        <!-- ====== TRENDS VIEW (WS2) ====== -->
+        <div x-show="route === 'trends'" x-cloak x-data="trendsView()" x-effect="if (route === 'trends') onShown()">
+            <div class="section-title">Trends</div>
+            <template x-if="!available">
+                <p class="text-muted text-xs">History is disabled. Start the server with <code>--history-db &lt;path&gt;</code> to record and chart time-series data.</p>
+            </template>
+            <template x-if="available">
+                <div>
+                    <div class="trends-controls">
+                        <div class="trends-ranges">
+                            <template x-for="r in ranges" :key="r.label">
+                                <button class="trends-range-btn" :class="{ active: rangeSeconds === r.seconds }" @click="setRange(r.seconds)" x-text="r.label"></button>
+                            </template>
+                        </div>
+                        <div class="trends-series">
+                            <template x-for="s in series" :key="s.key">
+                                <label class="trends-series-toggle">
+                                    <input type="checkbox" :checked="selected[s.key]" @change="toggleSeries(s.key)">
+                                    <span x-text="s.key"></span>
+                                </label>
+                            </template>
+                            <span class="text-muted text-xs" x-show="series.length === 0 && !loading">No series recorded yet.</span>
+                        </div>
+                    </div>
+                    <p class="trends-error" x-show="error" x-cloak x-text="error"></p>
+                    <div class="trends-chart-wrap">
+                        <canvas x-ref="trendsCanvas"></canvas>
+                    </div>
+                </div>
+            </template>
+        </div>
+
         <!-- ====== SETTINGS VIEW ====== -->
         <div x-show="route === 'settings'" x-cloak x-data="settingsView()">
 
@@ -1209,6 +1242,7 @@
     <!-- View scripts -->
     <script src="/scripts/views/dashboard-view.js"></script>
     <script src="/scripts/views/diagnostics-view.js"></script>
+    <script src="/scripts/views/trends-view.js"></script>
     <script src="/scripts/views/about-view.js"></script>
     <script src="/scripts/views/settings-view.js"></script>
     <!-- App init -->

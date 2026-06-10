@@ -318,6 +318,36 @@ nav .nav-controls {
 .login-submit:disabled { opacity: 0.6; cursor: default; }
 .login-error { color: #ef4444; font-size: 0.8rem; margin-top: 0.75rem; }
 
+/* ---- Trends view (WS2) -------------------------------------------------- */
+.trends-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin: 0.75rem 0;
+}
+.trends-ranges { display: flex; gap: 0.25rem; }
+.trends-range-btn {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.trends-range-btn.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+.trends-series { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.trends-series-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+}
+.trends-error { color: #ef4444; font-size: 0.8rem; }
+.trends-chart-wrap { position: relative; height: 360px; margin-top: 0.75rem; }
+
 .mode-dot.connected {
     background: #10b981;
 }

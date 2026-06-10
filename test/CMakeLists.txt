@@ -48,11 +48,13 @@ target_sources(
 	unit/logging/test_logging_severity_filter_defaults.cpp
 	unit/logging/test_logging_filter_and_helpers.cpp
 	unit/alerting/test_alert_monitor.cpp
+	unit/history/test_history_service.cpp
 	unit/options/test_option_metadata.cpp
 	unit/options/test_options_alerting.cpp
 	unit/options/test_options_config_file.cpp
 	unit/options/test_options_developer.cpp
 	unit/options/test_options_equipment.cpp
+	unit/options/test_options_history.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
 	unit/options/test_options_serial.cpp

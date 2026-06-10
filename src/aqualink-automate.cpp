@@ -64,6 +64,10 @@
 #include "alerting/alert_monitor.h"
 #include "alerting/webhook_sink.h"
 
+// Core — history (time-series persistence)
+#include "history/history_service.h"
+#include "http/webroute_history.h"
+
 // Core — MQTT, serial, protocol
 #include "mqtt/mqtt_hub.h"
 #include "mqtt/mqtt_client.h"
@@ -140,6 +144,7 @@ int main(int argc, char* argv[])
 				| Add(Options::App::OptionsProcessor{})
 				| Add(Options::Developer::OptionsProcessor{})
 				| Add(Options::Equipment::OptionsProcessor{})
+				| Add(Options::History::OptionsProcessor{})
 				| Add(Options::Mqtt::OptionsProcessor{})
 				| Add(Options::Serial::OptionsProcessor{})
 				| Add(Options::Web::OptionsProcessor{})
@@ -158,6 +163,7 @@ int main(int argc, char* argv[])
 					Options::App::OptionsProcessor{},
 					Options::Developer::OptionsProcessor{},
 					Options::Equipment::OptionsProcessor{},
+					Options::History::OptionsProcessor{},
 					Options::Mqtt::OptionsProcessor{},
 					Options::Serial::OptionsProcessor{},
 					Options::Web::OptionsProcessor{},
@@ -405,6 +411,37 @@ int main(int argc, char* argv[])
 
 		AqualinkAutomate::Developer::FirewallUtils::CheckAndConfigureExceptions();
 
+		//---------------------------------------------------------------------
+		// HISTORY SERVICE (SQLite time-series persistence)
+		//---------------------------------------------------------------------
+		// Constructed before the routes so WebRoute_History can hold it. When
+		// --history-db is unset the service stays null and the route returns 503.
+
+		// Block-scope alias: bare `History` is otherwise ambiguous between the
+		// AqualinkAutomate::History service namespace and
+		// AqualinkAutomate::Options::History (both visible via using-directives).
+		namespace History = AqualinkAutomate::History;
+
+		std::shared_ptr<History::HistoryService> history_service;
+		if (auto history_settings_result = settings.Get<Options::History::HistorySettings>(); history_settings_result)
+		{
+			const auto& history_settings = history_settings_result.value().get();
+			if (!history_settings.db_path.empty())
+			{
+				try
+				{
+					history_service = std::make_shared<History::HistoryService>(io_context, hub_locator, history_settings);
+					history_service->Start();
+					LogInfo(Channel::Main, std::format("History service enabled (db: {})", history_settings.db_path));
+				}
+				catch (const std::exception& ex)
+				{
+					LogError(Channel::Main, std::format("History service failed to start (continuing without it): {}", ex.what()));
+					history_service.reset();
+				}
+			}
+		}
+
 		auto web_settings_result = settings.Get<Options::Web::WebSettings>();
 
 		std::unique_ptr<HTTP::HttpServer> http_server;
@@ -433,6 +470,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
@@ -657,6 +695,13 @@ int main(int argc, char* argv[])
 		// Stop the alert monitor (cancels its timer + disconnects hub signals)
 		// before tearing down the MQTT client its sink may reference.
 		alert_monitor.Stop();
+
+		// Flush + close the history database (also done by its destructor).
+		if (history_service)
+		{
+			history_service->Stop();
+			history_service.reset();
+		}
 
 		// 3. Stop MQTT integration
 		if (mqtt_integration)

@@ -182,6 +182,70 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/history/series:
+    get:
+      tags:
+        - History
+      summary: List history series or fetch downsampled samples
+      description: >
+        With no `key`, returns metadata for every recorded series. With a `key`,
+        returns server-side bucket-averaged (time-bucket mean) samples for that
+        series between `from` and `to`. Series keys contain `/` (e.g.
+        `temp/pool`), so the key travels as a query parameter, not a path
+        segment. Returns 503 when history is disabled (no `--history-db`), 404
+        for an unknown key, and 400 when `to` < `from`.
+      operationId: getHistory
+      parameters:
+        - name: key
+          in: query
+          required: false
+          schema: { type: string }
+          description: Series key. Omit to list all series.
+        - name: from
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: Start of the window, unix seconds (default 0).
+        - name: to
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: End of the window, unix seconds (default now).
+        - name: max_points
+          in: query
+          required: false
+          schema: { type: integer, default: 500, maximum: 2000 }
+          description: Maximum buckets returned (capped at 2000).
+      responses:
+        '200':
+          description: Series list (no key) or downsampled points (with key)
+          content:
+            application/json:
+              examples:
+                seriesList:
+                  summary: Series list (no key)
+                  value:
+                    - { key: "temp/pool", unit: "C", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                    - { key: "chem/salt_ppm", unit: "ppm", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                points:
+                  summary: Downsampled points (with key)
+                  value:
+                    key: "temp/pool"
+                    from: 1717000000
+                    to: 1717003600
+                    max_points: 500
+                    points:
+                      - { ts: 1717000000, value: 28.5 }
+                      - { ts: 1717000060, value: 28.6 }
+        '400':
+          description: Bad range (to < from)
+        '404':
+          description: Unknown series key
+        '503':
+          description: History is disabled (no --history-db configured)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment:
     get:
       tags:

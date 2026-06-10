@@ -133,6 +133,7 @@ find_package(Boost REQUIRED COMPONENTS graph iostreams log log_setup program_opt
 find_package(magic_enum REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 
 #------------------------------------------------------------------------------

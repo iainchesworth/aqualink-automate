@@ -55,6 +55,10 @@ const BASE_URL = `http://${HOST}:${PORT}`;
 // against an unauthenticated server (proving the default path is unchanged).
 const AUTH_TOKEN = process.env.AQUALINK_AUTH_TOKEN;
 
+// WS2 history mode: when AQUALINK_HISTORY_DB is set, boot with --history-db and
+// run ONLY the trends spec (which then expects recorded series + a chart).
+const HISTORY_DB = process.env.AQUALINK_HISTORY_DB;
+
 const ROOT = __dirname;
 
 // Resolve the built application binary.  The `wt` CMake preset emits it under
@@ -80,8 +84,8 @@ export default defineConfig({
   testDir: './e2e',
   // The auth spec needs a token-protected server; everything else needs an
   // unauthenticated one. Select by the AQUALINK_AUTH_TOKEN env (see above).
-  testMatch: AUTH_TOKEN ? ['**/auth.spec.ts'] : undefined,
-  testIgnore: AUTH_TOKEN ? undefined : ['**/auth.spec.ts'],
+  testMatch: AUTH_TOKEN ? ['**/auth.spec.ts'] : (HISTORY_DB ? ['**/trends.spec.ts'] : undefined),
+  testIgnore: (AUTH_TOKEN || HISTORY_DB) ? undefined : ['**/auth.spec.ts'],
   // Replay is deterministic but the UI is global mutable state behind one backend;
   // run serially so command-button tests don't race each other's optimistic updates.
   fullyParallel: false,
@@ -119,6 +123,7 @@ export default defineConfig({
       '--profiler tracy',
       ...LOG_CHANNELS.map((ch) => `--loglevel-${ch} info`),
       ...(AUTH_TOKEN ? [`--api-auth-token ${AUTH_TOKEN}`] : []),
+      ...(HISTORY_DB ? [`--history-db "${HISTORY_DB}"`, '--history-flush-seconds 1'] : []),
     ].join(' '),
     url: BASE_URL,
     reuseExistingServer: false,

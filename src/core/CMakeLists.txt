@@ -40,7 +40,9 @@ target_sources(
 	exceptions/exception_traits_failedtoset.cpp 
 	exceptions/exception_traits_invalidtraitvalue.cpp 
 	exceptions/exception_traits_notmutable.cpp 
-	exceptions/exception_webserver.cpp 
+	exceptions/exception_webserver.cpp
+	history/history_service.cpp
+	history/sqlite_db.cpp
 	formatters/array_standard_formatter.cpp
 	formatters/asio_endpoint_formatter.cpp
 	formatters/beast_stringview_formatter.cpp 
@@ -63,6 +65,7 @@ target_sources(
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
+	http/webroute_history.cpp
 	http/webroute_metrics.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
@@ -168,6 +171,7 @@ target_sources(
 	options/options_config_file.cpp
 	options/options_developer_options.cpp
 	options/options_equipment_options.cpp
+	options/options_history_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
 	options/options_registry.cpp
@@ -353,6 +357,7 @@ target_link_libraries(
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto
+	unofficial::sqlite3::sqlite3
 	ZLIB::ZLIB
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>
