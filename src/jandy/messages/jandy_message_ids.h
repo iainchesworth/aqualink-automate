@@ -26,6 +26,11 @@ namespace AqualinkAutomate::Messages
 		// AQUARITE commands
 		AQUARITE_Percent = 0x11,
 		AQUARITE_GetId = 0x14,
+		// A second "set output %" command the AquaRite firmware accepts on an identical
+		// code path to AQUARITE_Percent (0x11); recovered from the official Jandy RS
+		// simulator (see docs/alwin32/). The distinction from 0x11 (e.g. pool vs spa, or
+		// AquaPure vs AquaRite) is not yet confirmed -- pending a live capture.
+		AQUARITE_SetPercent = 0x15,
 		AQUARITE_PPM = 0x16,
 
 		// PDA commands
@@ -56,6 +61,11 @@ namespace AqualinkAutomate::Messages
 		IAQ_PageButton = 0x24,
 		IAQ_PageMessage = 0x25,
 		IAQ_TableMessage = 0x26,
+		// A fixed 5-byte page sub-message the master emits during a page walk (recovered
+		// from the Jandy RS simulator, see docs/alwin32/pwrcntr-behavior.md). Its field
+		// meanings are not yet decoded, so it is registered as a named, payload-retaining
+		// Unknown so the bytes are captured rather than collapsed to Unknown (0xFF).
+		IAQ_PageSubMessage = 0x27,
 		IAQ_PageEnd = 0x28,
 		IAQ_StartUp = 0x29,
 		IAQ_MessageLong = 0x2C,

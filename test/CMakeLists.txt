@@ -69,6 +69,7 @@ target_sources(
 	unit/options/test_options_web.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp
+	unit/messages/test_aquarite_message_setpercent.cpp
 	unit/messages/test_aquarite_message_ppm.cpp
 	unit/messages/test_message.cpp 
 	unit/messages/test_message_ack.cpp 

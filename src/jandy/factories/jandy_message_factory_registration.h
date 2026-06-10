@@ -23,6 +23,7 @@
 #include "messages/light/light_message_status.h"
 #include "messages/aquarite/aquarite_message_getid.h"
 #include "messages/aquarite/aquarite_message_percent.h"
+#include "messages/aquarite/aquarite_message_setpercent.h"
 #include "messages/aquarite/aquarite_message_ppm.h"
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
@@ -72,6 +73,7 @@ namespace AqualinkAutomate::Factory
 		// Register the UNKNOWN type for all "seen-but-unknown" message types
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_PDA_1B),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown_ReadyControl),
+		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::IAQ_PageSubMessage),
 		REGISTER_MESSAGE(Messages::JandyMessage_Unknown, Messages::JandyMessageIds::Unknown),
 
 		// Register the ePump message types
@@ -92,6 +94,7 @@ namespace AqualinkAutomate::Factory
 		// Register the Aquarite message types
 		REGISTER_MESSAGE(Messages::AquariteMessage_GetId, Messages::JandyMessageIds::AQUARITE_GetId),
 		REGISTER_MESSAGE(Messages::AquariteMessage_Percent, Messages::JandyMessageIds::AQUARITE_Percent),
+		REGISTER_MESSAGE(Messages::AquariteMessage_SetPercent, Messages::JandyMessageIds::AQUARITE_SetPercent),
 		REGISTER_MESSAGE(Messages::AquariteMessage_PPM, Messages::JandyMessageIds::AQUARITE_PPM),
 
 		// Register the IAQ message types

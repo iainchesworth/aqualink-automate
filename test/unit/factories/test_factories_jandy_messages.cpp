@@ -20,6 +20,9 @@
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_unknown.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "jandy/messages/jandy_message_constants.h"
+#include "jandy/messages/aquarite/aquarite_message_setpercent.h"
+#include "jandy/utility/jandy_checksum.h"
 
 #include "support/unit_test_ostream_support.h"
 
@@ -33,7 +36,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryRegistrationCount)
 {
     // Verify the factory has registered the expected number of message types
     BOOST_CHECK_GT(JandyMessageFactoryT::RegisteredCount(), 0);
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 42); // Based on registration file (+IAQMessage_DeviceId, 0x51)
+    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 44); // Based on registration file (+AQUARITE_SetPercent 0x15, +IAQ_PageSubMessage 0x27)
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateHotPathMessage_Ack)
@@ -106,6 +109,47 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateColdPathMessage_IAQPoll)
 
     BOOST_REQUIRE(message != nullptr);
     BOOST_CHECK_EQUAL(message->Id(), JandyMessageIds::IAQ_Poll);
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateColdPathMessage_AquariteSetPercent)
+{
+    // 0x15 -- the AquaRite second "set output %" command recovered from the simulator.
+    auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::AQUARITE_SetPercent);
+
+    BOOST_REQUIRE(message != nullptr);
+    BOOST_CHECK_EQUAL(message->Id(), JandyMessageIds::AQUARITE_SetPercent);
+
+    auto setpercent_message = std::dynamic_pointer_cast<AquariteMessage_SetPercent>(message);
+    BOOST_CHECK(setpercent_message != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_IAQPageSubMessage_RecognisedAsNamedUnknown)
+{
+    // 0x27 is registered as a named, payload-retaining Unknown: the factory yields a
+    // JandyMessage_Unknown, and deserialising a real 0x27 frame must resolve the id to
+    // IAQ_PageSubMessage (not the 0xFF catch-all) with its 5 payload bytes retained.
+    auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::IAQ_PageSubMessage);
+    BOOST_REQUIRE(message != nullptr);
+
+    auto unknown_message = std::dynamic_pointer_cast<JandyMessage_Unknown>(message);
+    BOOST_REQUIRE(unknown_message != nullptr);
+
+    std::vector<uint8_t> frame =
+    {
+        HEADER_BYTE_DLE, HEADER_BYTE_STX,
+        0x33,
+        magic_enum::enum_integer(JandyMessageIds::IAQ_PageSubMessage),
+        0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+        0x00, // checksum placeholder
+        HEADER_BYTE_DLE, HEADER_BYTE_ETX
+    };
+    frame[9] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(frame.begin(), frame.begin() + 9);
+
+    BOOST_REQUIRE(unknown_message->Deserialize(std::as_bytes(std::span<uint8_t>(frame))));
+    BOOST_CHECK_EQUAL(unknown_message->Id(), JandyMessageIds::IAQ_PageSubMessage);
+
+    const std::vector<uint8_t> expected_payload = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
+    BOOST_CHECK_EQUAL_COLLECTIONS(unknown_message->Payload().begin(), unknown_message->Payload().end(), expected_payload.begin(), expected_payload.end());
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateInvalidMessageId)

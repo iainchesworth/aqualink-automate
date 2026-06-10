@@ -74,6 +74,7 @@ target_sources(
 	messages/aquarite/aquarite_message.cpp
 	messages/aquarite/aquarite_message_getid.cpp
 	messages/aquarite/aquarite_message_percent.cpp
+	messages/aquarite/aquarite_message_setpercent.cpp
 	messages/aquarite/aquarite_message_ppm.cpp
 	messages/iaq/iaq_message.cpp
 	messages/iaq/iaq_message_aux_status.cpp
