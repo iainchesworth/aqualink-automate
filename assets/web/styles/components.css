@@ -471,6 +471,94 @@ html.dark .gauge-card {
     font-size: 0.78rem;
 }
 
+/* === Chlorinator (SWG) tile — actual readout + inline target control === */
+.swg-target {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.3rem;
+}
+
+.swg-target-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.swg-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--accent);
+}
+
+.swg-target-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 38px;
+    text-align: right;
+}
+
+.swg-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.swg-set-btn {
+    padding: 0.3rem 0.85rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.swg-set-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.swg-set-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.swg-boost-btn {
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: var(--button-inactive-bg);
+    border: 1px solid var(--button-inactive-border);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.swg-boost-btn:hover:not(:disabled) {
+    border-color: var(--gauge-warn);
+}
+
+.swg-boost-btn.active {
+    background: var(--gauge-warn);
+    border-color: var(--gauge-warn);
+    color: #1e293b;
+}
+
+.swg-boost-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 /* Setpoint buttons */
 .setpoint-btn {
     width: 36px;

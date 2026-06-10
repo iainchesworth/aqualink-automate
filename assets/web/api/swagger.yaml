@@ -574,6 +574,37 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/equipment/chlorinator:
+    post:
+      tags:
+        - Equipment
+      summary: Set the chlorinator (SWG) output
+      description: >
+        Commands the salt-water generator. Both body fields are optional and may be
+        sent together. `percentage` (0..100) sets the output level via
+        ICommandDispatcher::SetChlorinatorPercentage; `boost` toggles boost mode via
+        SetChlorinatorBoost. 400 on a bad value; 503 when no commandable chlorinator
+        is present (e.g. no iAQ device); 200 with a per-field status body otherwise.
+      operationId: setChlorinator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              percentage: 60
+              boost: false
+      responses:
+        '200':
+          description: Command(s) accepted
+          content:
+            application/json:
+              example:
+                percentage: { status: "success", value: 60 }
+        '400': { description: Invalid value (percentage out of 0..100, or wrong type) }
+        '503': { description: No commandable chlorinator / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment/setpoints:
     get:
       tags:

@@ -422,7 +422,10 @@ nav .nav-controls {
 .commands-disabled .eq-button,
 .commands-disabled .eq-control,
 .commands-disabled .heater-toggle,
-.commands-disabled .setpoint-btn {
+.commands-disabled .setpoint-btn,
+.commands-disabled .swg-card .swg-slider,
+.commands-disabled .swg-set-btn,
+.commands-disabled .swg-boost-btn {
     pointer-events: none;
     opacity: 0.45;
     filter: grayscale(0.3);

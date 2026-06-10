@@ -282,21 +282,30 @@
                     </div>
                 </template>
 
-                <!-- Chlorinator (SWG) output — folded in here (was a duplicate
-                     card that repeated pH/ORP/Salt). Shown only when present. -->
-                <div class="gauge-card swg-card" x-data="chlorinatorCard()" x-show="present" x-cloak
-                     role="region" aria-label="Chlorinator output">
+                <!-- Chlorinator (SWG): actual output (big) + inline TARGET control.
+                     Folded in here (was a duplicate card repeating pH/ORP/Salt). -->
+                <div class="gauge-card swg-card" x-data="chlorinatorControl()" x-show="present" x-cloak
+                     role="region" aria-label="Chlorinator output and target control">
                     <div class="gauge-header">
                         <span class="gauge-label">SWG Output</span>
                         <span class="gauge-band-indicator" x-show="healthBand"
                               :class="'gauge-band-' + (healthBand || '')" x-text="healthLabel"></span>
                     </div>
-                    <div class="gauge-value" :style="`color:${healthColor}`" x-text="generatingPercent"></div>
-                    <div class="gauge-bar-track" role="meter" aria-label="SWG Output"
-                         :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
-                        <div class="gauge-bar-fill" :style="`width:${percent}%;background:${healthColor}`"></div>
+                    <div class="gauge-value" :style="`color:${healthColor}`" x-text="actualLabel"></div>
+                    <div class="swg-target">
+                        <span class="swg-target-label">Target</span>
+                        <input type="range" min="0" max="100" step="5" class="swg-slider"
+                               x-model.number="target" @input="touched = true" :disabled="busy"
+                               aria-label="Target output percentage">
+                        <span class="swg-target-value" x-text="target + '%'"></span>
                     </div>
-                    <div class="gauge-range-labels"><span x-text="statusLabel"></span><span>100%</span></div>
+                    <div class="swg-actions">
+                        <button class="swg-set-btn" @click="setPercent()" :disabled="busy || !changed">Set</button>
+                        <button class="swg-boost-btn" :class="{ active: boost }" @click="toggleBoost()"
+                                :disabled="busy" :aria-pressed="boost">Boost</button>
+                        <span class="cmd-badge cmd-applied" x-show="feedback === 'applied'" x-transition.opacity>Set&nbsp;&#x2713;</span>
+                        <span class="cmd-badge cmd-rejected" x-show="feedback === 'rejected'" x-transition.opacity>Failed</span>
+                    </div>
                 </div>
             </div>
 
@@ -1353,7 +1362,7 @@
     <!-- Component scripts -->
     <script src="/scripts/components/pool-graphic.js"></script>
     <script src="/scripts/components/chemistry-gauge.js"></script>
-    <script src="/scripts/components/chlorinator-card.js"></script>
+    <script src="/scripts/components/chlorinator-control.js"></script>
     <script src="/scripts/components/equipment-button.js"></script>
     <!-- View scripts -->
     <script src="/scripts/views/dashboard-view.js"></script>

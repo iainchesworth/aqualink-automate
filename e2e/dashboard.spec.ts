@@ -29,6 +29,27 @@ test('dashboard has one consolidated chemistry section — no duplicate chlorina
   await expect(page.getByText('Chemistry / Chlorinator')).toHaveCount(0);
 });
 
+test('chlorinator output control: API validates, and the slider renders when present', async ({ page, request }) => {
+  // A valid percentage is handled (200 toggled, or 503 when no commandable
+  // chlorinator/iAQ device is present in this minimal fixture).
+  const ok = await request.post('/api/equipment/chlorinator', { data: { percentage: 60 } });
+  expect([200, 503]).toContain(ok.status());
+
+  // Out-of-range is rejected BEFORE dispatch.
+  expect((await request.post('/api/equipment/chlorinator', { data: { percentage: 150 } })).status()).toBe(400);
+  expect((await request.post('/api/equipment/chlorinator', { data: { boost: 'yes' } })).status()).toBe(400);
+
+  // Boost is accepted/handled.
+  expect([200, 503]).toContain((await request.post('/api/equipment/chlorinator', { data: { boost: true } })).status());
+
+  // The target control is integrated into the SWG Output tile (the fixture
+  // materialises a chlorinator).
+  await page.goto('/');
+  await expect(page.getByText('SWG Output')).toBeVisible();
+  await expect(page.locator('.swg-card .swg-slider')).toBeVisible();
+  await expect(page.locator('.swg-card').getByRole('button', { name: 'Boost' })).toBeVisible();
+});
+
 test('equipment controls render as switches for controllable devices only', async ({ page, request }) => {
   const buttons = (await (await request.get('/api/equipment/buttons')).json()).buttons;
   const controllable = buttons.filter((b: any) => b.controllable && !isHeater(b));
