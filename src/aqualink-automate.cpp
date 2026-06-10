@@ -72,6 +72,9 @@
 #include "preferences/preferences_service.h"
 #include "http/webroute_preferences.h"
 
+// Core — equipment cache (instant dashboard on restart)
+#include "equipment_cache/equipment_cache_service.h"
+
 // Core — scheduling (time-based automation)
 #include "scheduling/scheduler_service.h"
 #include "http/webroute_schedules.h"
@@ -451,6 +454,28 @@ int main(int argc, char* argv[])
 		}
 
 		//---------------------------------------------------------------------
+		// EQUIPMENT CACHE (instant dashboard on restart)
+		//---------------------------------------------------------------------
+		// Loaded BEFORE the protocol task starts discovery so the DataHub already
+		// holds last-known devices/config; live discovery then merges by label.
+		namespace EquipmentCache = AqualinkAutomate::EquipmentCache;
+
+		std::shared_ptr<EquipmentCache::EquipmentCacheService> equipment_cache_service;
+		{
+			Options::Equipment::EquipmentSettings eq_settings;
+			if (auto r = settings.Get<Options::Equipment::EquipmentSettings>(); r) { eq_settings = r.value().get(); }
+
+			equipment_cache_service = std::make_shared<EquipmentCache::EquipmentCacheService>(io_context, hub_locator, eq_settings);
+			equipment_cache_service->Load();
+			equipment_cache_service->Start();
+
+			if (!eq_settings.equipment_cache_file.empty())
+			{
+				LogInfo(Channel::Main, std::format("Equipment cache file: {}", eq_settings.equipment_cache_file));
+			}
+		}
+
+		//---------------------------------------------------------------------
 		// HISTORY SERVICE (SQLite time-series persistence)
 		//---------------------------------------------------------------------
 		// Constructed before the routes so WebRoute_History can hold it. When
@@ -766,6 +791,13 @@ int main(int argc, char* argv[])
 		{
 			scheduler_service->Stop();
 			scheduler_service.reset();
+		}
+
+		// Cancel the cache timer and write a final equipment snapshot.
+		if (equipment_cache_service)
+		{
+			equipment_cache_service->Stop();
+			equipment_cache_service.reset();
 		}
 
 		// 3. Stop MQTT integration

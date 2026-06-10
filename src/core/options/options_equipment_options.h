@@ -30,6 +30,11 @@ namespace AqualinkAutomate::Options::Equipment
 
 		Kernel::PoolConfigurations pool_configuration;
 		bool pool_configuration_is_user_specified;
+
+		/// JSON cache of discovered equipment config (board, pool config, device
+		/// list with stable UUIDs). Loaded at boot for an instant dashboard, then
+		/// corrected by live discovery. EMPTY (default) disables caching.
+		std::string equipment_cache_file;
 	}
 	EquipmentSettings;
 
@@ -37,10 +42,12 @@ namespace AqualinkAutomate::Options::Equipment
 	{
 	private:
 		AppOptionPtr OPTION_POOL_CONFIGURATION{ make_appoption("pool-configuration", "Pool installation type: pool-only, spa-only, combo, dual (default: auto)", boost::program_options::value<std::string>()->default_value("auto")) };
+		AppOptionPtr OPTION_EQUIPMENT_CACHE_FILE{ make_appoption("equipment-cache-file", "JSON cache of discovered equipment config for an instant dashboard on restart (empty disables)", boost::program_options::value<std::string>()) };
 
 		const std::vector<AppOptionPtr> EquipmentOptionsCollection
 		{
-			OPTION_POOL_CONFIGURATION
+			OPTION_POOL_CONFIGURATION,
+			OPTION_EQUIPMENT_CACHE_FILE
 		};
 
 	public:

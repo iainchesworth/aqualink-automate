@@ -19,6 +19,9 @@ namespace AqualinkAutomate::Kernel
 	public:
 		AuxillaryDevice();
 		AuxillaryDevice(std::string_view label);
+		// Reconstruct with a specific id (used to restore stable ids from the
+		// equipment cache so device UUIDs survive a restart).
+		explicit AuxillaryDevice(boost::uuids::uuid id);
 
 	public:
 		boost::uuids::uuid Id() const;

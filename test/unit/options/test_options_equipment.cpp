@@ -136,6 +136,30 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_UnknownValue_TreatedAsAuto)
 }
 
 //-----------------------------------------------------------------------------
+// EQUIPMENT CACHE FILE
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_CacheFileDefaultEmpty)
+{
+	Options::Equipment::OptionsProcessor processor;
+	auto vm = ParseEquipmentOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK(result.value().equipment_cache_file.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_CacheFileCustom)
+{
+	Options::Equipment::OptionsProcessor processor;
+	auto vm = ParseEquipmentOptions(processor, { "program", "--equipment-cache-file", "/var/lib/aqualink/equip.json" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_EQUAL(result.value().equipment_cache_file, "/var/lib/aqualink/equip.json");
+}
+
+//-----------------------------------------------------------------------------
 // VALIDATION
 //-----------------------------------------------------------------------------
 

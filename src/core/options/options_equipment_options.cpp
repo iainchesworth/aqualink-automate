@@ -60,6 +60,11 @@ namespace AqualinkAutomate::Options::Equipment
 			}
 		}
 
+		if (OPTION_EQUIPMENT_CACHE_FILE->IsPresent(vm))
+		{
+			settings.equipment_cache_file = OPTION_EQUIPMENT_CACHE_FILE->As<std::string>(vm);
+		}
+
 		return settings;
 	}
 

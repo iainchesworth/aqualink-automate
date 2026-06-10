@@ -41,6 +41,7 @@ target_sources(
 	exceptions/exception_traits_invalidtraitvalue.cpp 
 	exceptions/exception_traits_notmutable.cpp 
 	exceptions/exception_webserver.cpp
+	equipment_cache/equipment_cache_service.cpp
 	history/history_service.cpp
 	history/sqlite_db.cpp
 	formatters/array_standard_formatter.cpp
