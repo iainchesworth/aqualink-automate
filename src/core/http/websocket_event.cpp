@@ -138,7 +138,12 @@ namespace AqualinkAutomate::HTTP
 		std::optional<WebSocket_Event> return_event{std::nullopt};
 
 		// Parse directly from the view's contiguous range; no intermediate std::string copy.
-		auto parsed_event{nlohmann::json::parse(event_payload.begin(), event_payload.end(), nullptr, false, false)};
+		// IMPORTANT: copy-initialise with '=', NOT 'auto x{...}'. Under gcc/libstdc++,
+		// brace-initialising from a single nlohmann::json selects the initializer_list
+		// constructor, which wraps the parsed object in a 1-element ARRAY -- then
+		// contains("type") is always false and every event is silently rejected. (MSVC
+		// treats 'auto x{e}' as copy-init, which is why this passed on Windows only.)
+		auto parsed_event = nlohmann::json::parse(event_payload.begin(), event_payload.end(), nullptr, false, false);
 
 		if (!parsed_event.contains(WS_JSON_TYPE_FIELD))
 		{

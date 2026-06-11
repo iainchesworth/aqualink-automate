@@ -39,9 +39,16 @@ namespace AqualinkAutomate::Kernel
 		// User-friendly display names keyed by the device's canonical label
 		// (e.g. {"Aux1": "Pool Light"}). The canonical label is unchanged (it
 		// still drives dispatch / MQTT / HA); this only feeds a display_label.
-		nlohmann::json LabelOverrides{ nlohmann::json::object() };
+		//
+		// NOTE: copy-initialise with '=', NOT 'json x{ object() }'. Under
+		// gcc/libstdc++ the brace form selects nlohmann's initializer_list
+		// constructor and wraps the empty object in a 1-element array ([{}]),
+		// which then fails the "must be an object" validation on reload and
+		// silently discards the whole persisted preferences file. (MSVC treated
+		// it as copy-init, so this only bit the Linux/gcc build.)
+		nlohmann::json LabelOverrides = nlohmann::json::object();
 
-		nlohmann::json UiPreferences{ nlohmann::json::object() };
+		nlohmann::json UiPreferences = nlohmann::json::object();
 	};
 
 }
