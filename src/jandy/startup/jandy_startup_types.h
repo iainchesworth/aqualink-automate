@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "devices/jandy_emulated_device_types.h"
+#include "startup/jandy_revision_capabilities.h"
 
 namespace AqualinkAutomate::Jandy::Startup
 {
@@ -34,6 +35,11 @@ namespace AqualinkAutomate::Jandy::Startup
 		bool probes_onetouch{ false };       // master probes 0x40-0x43
 		bool probes_pda{ false };            // master probes 0x60-0x63
 		bool has_iaqualink2_slot{ false };   // master probes 0xa3 (a configured cloud iface)
+
+		// Feature support implied by the panel's software revision (e.g. Rev Q+ -> AqualinkTouch,
+		// Rev O+ -> VS pumps). Derived from `revision`; cross-checks the observed probe set and
+		// tells downstream which peripherals to expect. is_known is false until revision is sourced.
+		RevisionCapabilities revision_caps;
 	};
 
 	// A controller/peripheral the plan wants to emulate, with preference-ordered candidate
@@ -54,6 +60,15 @@ namespace AqualinkAutomate::Jandy::Startup
 		DataGatheringMethod method{ DataGatheringMethod::Unknown };
 		std::vector<PlannedDevice> devices;
 		std::string rationale;
+
+		// Revision-implied capabilities carried through for downstream consumers (which
+		// peripherals to expect/decode: VS pumps, ChemLink/AutoClear chlorinators, etc.).
+		RevisionCapabilities revision_caps;
+
+		// True when the observed probe set and the revision-implied capabilities AGREE about
+		// AqualinkTouch support; false flags a discrepancy worth logging (mis-decode, unusual
+		// config, or a revision we don't recognise). Only meaningful when revision_caps.is_known.
+		bool revision_consistent{ true };
 	};
 
 }

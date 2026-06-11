@@ -4,6 +4,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "jandy/startup/jandy_revision_capabilities.h"
 #include "jandy/startup/jandy_startup_planner.h"
 #include "jandy/startup/jandy_startup_types.h"
 
@@ -165,6 +166,80 @@ BOOST_AUTO_TEST_CASE(ResolveAddresses_AllSlotsTaken_LeavesUnresolved)
 	BOOST_REQUIRE(iaq != nullptr);
 	BOOST_CHECK(!iaq->resolved);
 	BOOST_CHECK_EQUAL(iaq->selected_id, 0x00);
+}
+
+// =============================================================================
+// Revision integration -- firmware revision as an early/fallback capability signal
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(DeriveProfile_PopulatesRevisionCaps)
+{
+	auto profile = StartupPlanner::DeriveProfile({ 0x33 }, "PD-8 Combo", "REV T.0.1");
+	BOOST_CHECK(profile.revision_caps.is_known);
+	BOOST_CHECK(profile.revision_caps.aqualink_touch);
+	BOOST_CHECK(profile.revision_caps.variable_speed_pumps);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_NoProbesButTouchCapableRevision_ProvisionalPagePush)
+{
+	// Revision sourced (Rev T) before the master's probe cycle is seen -> classify as page-push.
+	PanelProfile profile;
+	profile.revision_caps = DeriveRevisionCapabilities("REV T.0.1");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::PagePush);
+	BOOST_CHECK(FindDevice(plan, DeviceType::IAQ) != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_TouchProbedButPpdRevision_FlagsInconsistent)
+{
+	// The master probes the touch range, but the revision (Rev M) predates Touch support: the
+	// live probe still wins, but the contradiction is flagged for logging.
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	profile.revision_caps = DeriveRevisionCapabilities("M");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::PagePush);
+	BOOST_CHECK(!plan.revision_consistent);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_TouchProbedAndTouchCapableRevision_Consistent)
+{
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	profile.revision_caps = DeriveRevisionCapabilities("T");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.revision_consistent);
+	BOOST_CHECK(plan.revision_caps.aqualink_touch);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_TouchCapableRevButNoTouchProbed_IsNotInconsistent)
+{
+	// Rev T but only OneTouch probed: panel is touch-capable yet a OneTouch UI is installed --
+	// normal, NOT a contradiction. Method follows the live probe (spider).
+	PanelProfile profile;
+	profile.probes_onetouch = true;
+	profile.revision_caps = DeriveRevisionCapabilities("T");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::MenuSpider);
+	BOOST_CHECK(plan.revision_consistent);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_NoControllerAndPpdRevision_ObserveOnly)
+{
+	PanelProfile profile;
+	profile.revision_caps = DeriveRevisionCapabilities("M");  // PPD, no touch, nothing probed
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::ObserveOnly);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

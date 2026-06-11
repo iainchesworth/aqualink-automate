@@ -1,5 +1,9 @@
 #include "startup/jandy_startup_planner.h"
 
+#include <format>
+#include <string>
+#include <vector>
+
 namespace AqualinkAutomate::Jandy::Startup
 {
 	const std::vector<std::uint8_t> StartupPlanner::AQUALINKTOUCH_IDS{ 0x33, 0x32, 0x31, 0x30 };
@@ -20,6 +24,31 @@ namespace AqualinkAutomate::Jandy::Startup
 			}
 			return false;
 		}
+
+		// Human-readable summary of the revision-gated peripherals, for the plan rationale.
+		std::string RevisionFeatureSummary(const RevisionCapabilities& caps)
+		{
+			std::vector<std::string> features;
+			if (caps.variable_speed_pumps)  { features.emplace_back("VS pumps"); }
+			if (caps.chemlink_chlorinators) { features.emplace_back("ChemLink/AutoClear"); }
+			if (caps.aqualink_touch)        { features.emplace_back("AqualinkTouch"); }
+			if (caps.iaqualink_cloud)       { features.emplace_back("iAquaLink"); }
+			if (caps.addressed_vs_pumps)    { features.emplace_back("16 addressed VS pumps"); }
+			if (caps.infinite_watercolors)  { features.emplace_back("Infinite WaterColors"); }
+
+			if (features.empty())
+			{
+				return "no CPU-era peripherals";
+			}
+
+			std::string out;
+			for (std::size_t i = 0; i < features.size(); ++i)
+			{
+				if (i != 0) { out += ", "; }
+				out += features[i];
+			}
+			return out;
+		}
 	}
 	// unnamed namespace
 
@@ -32,6 +61,7 @@ namespace AqualinkAutomate::Jandy::Startup
 		profile.probes_onetouch = AnyInRange(probed, 0x40, 0x43);
 		profile.probes_pda = AnyInRange(probed, 0x60, 0x63);
 		profile.has_iaqualink2_slot = probed.contains(0xA3);
+		profile.revision_caps = DeriveRevisionCapabilities(revision);
 		return profile;
 	}
 
@@ -40,17 +70,31 @@ namespace AqualinkAutomate::Jandy::Startup
 		using DeviceType = Devices::JandyEmulatedDeviceTypes;
 
 		StartupPlan plan;
+		plan.revision_caps = profile.revision_caps;
+
+		// The only genuine contradiction worth flagging: the master probes the AqualinkTouch
+		// range, yet the revision predates Touch Screen support (Rev Q). The converse (Rev Q+
+		// but no touch probed) is normal -- the panel is touch-capable but no touch panel is
+		// installed/configured, so it is NOT an inconsistency.
+		if (profile.revision_caps.is_known)
+		{
+			plan.revision_consistent = !(profile.probes_aqualinktouch && !profile.revision_caps.aqualink_touch);
+		}
+
+		const bool no_controller_probed = !profile.probes_aqualinktouch && !profile.probes_onetouch && !profile.probes_pda;
 
 		// The SerialAdapter is always useful and never collides with the controller emulation:
 		// it sources the panel model and is the command channel. If a real adapter answers it
 		// self-suppresses (Emulated::SuppressEmulation), so it is safe to stand up first.
 		plan.devices.push_back(PlannedDevice{ DeviceType::SerialAdapter, SERIALADAPTER_IDS, 0x00, false, "panel model + command channel" });
 
-		if (profile.probes_aqualinktouch)
+		if (profile.probes_aqualinktouch || (no_controller_probed && profile.revision_caps.aqualink_touch))
 		{
 			plan.method = DataGatheringMethod::PagePush;
 			plan.devices.push_back(PlannedDevice{ DeviceType::IAQ, AQUALINKTOUCH_IDS, 0x00, false, "live status via AqualinkTouch page-push (no menu crawl)" });
-			plan.rationale = "master probes the AqualinkTouch range (0x30-0x33): source status from pushed pages, navigating to specific pages on demand";
+			plan.rationale = profile.probes_aqualinktouch
+				? "master probes the AqualinkTouch range (0x30-0x33): source status from pushed pages, navigating to specific pages on demand"
+				: "no controller probed yet, but revision is Touch-capable (Rev Q+): provisionally use AqualinkTouch page-push, to be confirmed once the touch range is probed";
 		}
 		else if (profile.probes_onetouch)
 		{
@@ -67,7 +111,21 @@ namespace AqualinkAutomate::Jandy::Startup
 		else
 		{
 			plan.method = DataGatheringMethod::ObserveOnly;
-			plan.rationale = "no emulatable controller slot probed: passive decode only";
+			plan.rationale = "no emulatable controller slot probed and revision not Touch-capable: passive decode only";
+		}
+
+		// Append a revision summary so the choice (and the expected peripherals) is auditable.
+		if (profile.revision_caps.is_known)
+		{
+			plan.rationale += std::format(" [Rev {} ({}): {}]",
+				profile.revision_caps.revision_letter,
+				profile.revision_caps.cpu_board ? "CPU" : "PPD",
+				RevisionFeatureSummary(profile.revision_caps));
+
+			if (!plan.revision_consistent)
+			{
+				plan.rationale += " -- WARNING: AqualinkTouch probed but revision predates Touch Screen support (Rev Q)";
+			}
 		}
 
 		return plan;

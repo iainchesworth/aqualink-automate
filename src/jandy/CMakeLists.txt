@@ -41,6 +41,7 @@ target_sources(
 	navigation/onetouch_menu_model.cpp
 	navigation/spider_engine.cpp
 	navigation/visit_policies.cpp
+	startup/jandy_revision_capabilities.cpp
 	startup/jandy_startup_planner.cpp
 	startup/jandy_startup_coordinator.cpp
 	devices/pda/pda_messageprocessors.cpp

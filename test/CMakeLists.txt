@@ -66,6 +66,7 @@ target_sources(
 	unit/preferences/test_preferences_service.cpp
 	unit/scheduling/test_schedule.cpp
 	unit/scheduling/test_scheduler_service.cpp
+	unit/startup/test_jandy_revision_capabilities.cpp
 	unit/startup/test_jandy_startup_planner.cpp
 	unit/startup/test_jandy_startup_coordinator.cpp
 	unit/options/test_options_web.cpp

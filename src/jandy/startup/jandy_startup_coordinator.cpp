@@ -30,7 +30,16 @@ namespace AqualinkAutomate::Jandy::Startup
 	bool StartupCoordinator::HaveControllerSignal() const
 	{
 		auto profile = StartupPlanner::DeriveProfile(m_Env.ObservedProbes(), m_Env.PanelModel(), m_Env.PanelRevision());
-		return profile.probes_aqualinktouch || profile.probes_onetouch || profile.probes_pda;
+
+		if (profile.probes_aqualinktouch || profile.probes_onetouch || profile.probes_pda)
+		{
+			return true;
+		}
+
+		// The revision (sourced via the SerialAdapter, often before the master's probe cycle is
+		// fully observed) can classify a touch-capable panel early -- Rev Q+ implies the page
+		// protocol -- so we need not wait out the whole detection window.
+		return profile.revision_caps.is_known && profile.revision_caps.aqualink_touch;
 	}
 
 	StartupCoordinator::Phase StartupCoordinator::Advance(bool detection_window_elapsed)

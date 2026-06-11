@@ -139,4 +139,22 @@ BOOST_AUTO_TEST_CASE(WindowElapsesWithNoController_ObserveOnly_NoControllerStood
 	BOOST_CHECK(env.Find(DeviceType::SerialAdapter) != nullptr);  // still up from Begin()
 }
 
+BOOST_AUTO_TEST_CASE(RevisionTouchCapable_ClassifiesEarlyWithoutWaitingForProbes)
+{
+	// The SerialAdapter sources "REV T.0.1" before the master's probe cycle is observed; a
+	// touch-capable revision (Rev Q+) lets the coordinator classify and stand up the IAQ
+	// emulation immediately, without waiting out the detection window.
+	MockEnvironment env;
+	env.revision = "REV T.0.1";  // no probes yet
+	StartupCoordinator coord(env);
+
+	coord.Begin();
+	coord.Advance(/*detection_window_elapsed=*/false);
+
+	BOOST_CHECK(coord.CurrentPhase() == StartupCoordinator::Phase::Running);
+	BOOST_CHECK(coord.Plan().method == DataGatheringMethod::PagePush);
+	BOOST_REQUIRE(env.Find(DeviceType::IAQ) != nullptr);
+	BOOST_CHECK_EQUAL(env.Find(DeviceType::IAQ)->id, 0x33);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
