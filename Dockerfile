@@ -99,6 +99,12 @@ CMD ["bash"]
 
 FROM base AS ci
 
+# Version to stamp into the binary. The build context intentionally omits .git
+# (see .dockerignore), so `git describe` cannot derive the version inside the
+# container; the release workflow passes the resolved tag via --build-arg
+# VERSION=v<M>.<M>.<P>[-prerelease]. Empty (local builds) => 0.0.0-dev fallback.
+ARG VERSION=""
+
 WORKDIR /src
 COPY . .
 
@@ -112,6 +118,7 @@ RUN --mount=type=cache,target=/ccache \
     VCPKG_DEFAULT_BINARY_CACHE=/vcpkg-cache \
     VCPKG_DOWNLOADS=/vcpkg-downloads \
     cmake --preset config-linux-gcc \
+        -DDERIVED_VERSION_OVERRIDE="${VERSION}" \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -142,17 +149,17 @@ RUN groupadd --gid 10000 aqualink \
 
 WORKDIR /opt/aqualink-automate
 
-# Copy installed application from the ci stage
+# Copy the installed application from the ci stage. The install tree already
+# carries the vcpkg runtime libraries in lib/aqualink-automate/, and the binary
+# is linked with an $ORIGIN-relative RPATH (see cmake/CPackConfig.cmake), so no
+# separate shared-library copy or LD_LIBRARY_PATH is required.
 COPY --from=ci /src/install/config-linux-gcc/ .
-
-# Copy vcpkg shared libraries from the ci stage
-COPY --from=ci /src/build/config-linux-gcc/vcpkg_installed/x64-linux-gcc/lib/*.so* ./lib/
-
-ENV LD_LIBRARY_PATH=/opt/aqualink-automate/lib
 
 USER aqualink
 
 EXPOSE 80
 
+# doc-root and the SSL material default to paths resolved relative to the
+# executable (share/aqualink-automate/...), so they do not need to be passed.
 ENTRYPOINT ["/opt/aqualink-automate/bin/aqualink-automate"]
-CMD ["--address", "0.0.0.0", "--doc-root", "web", "--disable-https"]
+CMD ["--address", "0.0.0.0", "--disable-https"]

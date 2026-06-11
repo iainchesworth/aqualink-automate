@@ -20,6 +20,11 @@ on:
         type: boolean
         default: false
 
+# Serialise releases of the same version; never cancel an in-flight release.
+concurrency:
+  group: release-${{ github.event.inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   resolve-version:
     name: Resolve Version
@@ -80,6 +85,22 @@ jobs:
           echo "| Pre-release | $IS_PRERELEASE |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Dry run | $IS_DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
 
+      # On a manual dispatch the tag does not exist yet (github-release pushes it
+      # at the end). Fail fast if it is already present so we don't build every
+      # package and only discover the collision at the final push. (A tag-push
+      # trigger is exempt: the tag obviously exists — it triggered the run.)
+      - name: Guard against an existing tag (dispatch only)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.resolve.outputs.version_tag }}"
+          if gh api "repos/${{ github.repository }}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} already exists. Push it to trigger a release, or choose a new version."
+            exit 1
+          fi
+          echo "Tag ${TAG} is available."
+
   build-packages:
     name: Package — ${{ matrix.name }}
     needs: [resolve-version]
@@ -132,6 +153,13 @@ jobs:
         with:
           compiler: ${{ matrix.compiler }}
 
+      # Self-hosted Windows images bake in the VS Build Tools but do not expose
+      # the MSVC environment (cl.exe, INCLUDE/LIB) on the default PATH; mirror
+      # the CI workflow and load it so the Configure step can find the compiler.
+      - name: Setup MSVC environment (self-hosted)
+        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install NSIS
         if: runner.os == 'Windows' && !contains(matrix.runner, 'self-hosted')
         run: choco install nsis -y
@@ -180,10 +208,45 @@ jobs:
       - name: Package
         run: cpack --preset=${{ matrix.package_preset }}
 
+      # Install/extract the freshly built package on a clean target and run the
+      # binary. This catches missing runtime dependencies (the exact failure
+      # mode of an unbundled dynamic build) BEFORE the package is published.
+      - name: Smoke test — install package & run (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -v "$PWD/packages:/pkg:ro" ubuntu:25.04 bash -c '
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq /pkg/*.deb
+            aqualink-automate --version'
+
+      - name: Smoke test — extract ZIP & run (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem packages/*.zip | Select-Object -First 1
+          if (-not $zip) { throw "No ZIP package was produced" }
+          Expand-Archive -Path $zip.FullName -DestinationPath smoke -Force
+          $exe = Get-ChildItem -Path smoke -Recurse -Filter aqualink-automate.exe | Select-Object -First 1
+          if (-not $exe) { throw "aqualink-automate.exe not found in the package" }
+          & $exe.FullName --version
+          if ($LASTEXITCODE -ne 0) { throw "Binary exited with code $LASTEXITCODE" }
+
+      - name: Smoke test — extract TGZ & run (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          mkdir -p smoke
+          tar xzf packages/*.tgz -C smoke
+          BIN="$(find smoke -name aqualink-automate -type f -perm +111 | head -1)"
+          if [ -z "$BIN" ]; then echo "::error::binary not found in package"; exit 1; fi
+          "$BIN" --version
+
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.configure_preset }}
+          if-no-files-found: error
           path: |
             packages/*.deb
             packages/*.rpm
@@ -233,6 +296,8 @@ jobs:
           context: .
           target: runtime
           push: true
+          build-args: |
+            VERSION=${{ needs.resolve-version.outputs.version_tag }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 

@@ -416,35 +416,35 @@
       "displayName": "Windows MSVC Package",
       "configurePreset": "config-windows-msvc",
       "generators": [ "ZIP", "NSIS" ],
-      "packageDirectory": "packages"
+      "packageDirectory": "${sourceDir}/packages"
     },
     {
       "name": "pack-windows-llvm",
       "displayName": "Windows LLVM Package",
       "configurePreset": "config-windows-llvm",
       "generators": [ "ZIP", "NSIS" ],
-      "packageDirectory": "packages"
+      "packageDirectory": "${sourceDir}/packages"
     },
     {
       "name": "pack-linux-gcc",
       "displayName": "Linux GCC Package",
       "configurePreset": "config-linux-gcc",
       "generators": [ "TGZ", "DEB", "RPM" ],
-      "packageDirectory": "packages"
+      "packageDirectory": "${sourceDir}/packages"
     },
     {
       "name": "pack-linux-llvm",
       "displayName": "Linux LLVM Package",
       "configurePreset": "config-linux-llvm",
       "generators": [ "TGZ", "DEB", "RPM" ],
-      "packageDirectory": "packages"
+      "packageDirectory": "${sourceDir}/packages"
     },
     {
       "name": "pack-macos-llvm",
       "displayName": "macOS LLVM Package",
       "configurePreset": "config-macos-llvm",
       "generators": [ "TGZ", "DragNDrop" ],
-      "packageDirectory": "packages"
+      "packageDirectory": "${sourceDir}/packages"
     }
   ],
 

@@ -10,7 +10,8 @@ add_executable(testaqualink-automate)
 target_sources( 
 	testaqualink-automate
 	PRIVATE
-	unit/test_main.cpp 
+	unit/test_main.cpp
+	unit/application/test_application_defaults.cpp
 	unit/concepts/test_concept_is_c_array.cpp
 	unit/equipment_cache/test_equipment_cache_service.cpp
 	unit/errors/test_error_categories.cpp

@@ -38,38 +38,53 @@ function(DeriveVersionFromGit)
     set(_fallback_patch 0)
     set(_fallback_prerelease "dev")
 
-    find_package(Git QUIET)
-    if(NOT GIT_FOUND)
-        message(STATUS "GitVersionDerivation: git not found, using fallback 0.0.0-dev")
-        SetFallbackVersion()
-        return()
+    # An explicit override takes priority over git describe. This is how the
+    # Docker release image is versioned: the build context intentionally omits
+    # .git (see .dockerignore), so `git describe` cannot run inside the
+    # container. The release workflow passes the resolved tag through as
+    # -DDERIVED_VERSION_OVERRIDE=v<M>.<M>.<P>[-prerelease]; a leading 'v' is
+    # optional. An empty override (e.g. a local `docker build` with no VERSION
+    # build-arg) is ignored so the normal git/fallback path still applies.
+    if(DEFINED DERIVED_VERSION_OVERRIDE AND NOT "${DERIVED_VERSION_OVERRIDE}" STREQUAL "")
+        set(_clean_describe "${DERIVED_VERSION_OVERRIDE}")
+        if(NOT _clean_describe MATCHES "^v")
+            set(_clean_describe "v${_clean_describe}")
+        endif()
+        message(STATUS "GitVersionDerivation: using override '${DERIVED_VERSION_OVERRIDE}' (git describe skipped)")
+    else()
+        find_package(Git QUIET)
+        if(NOT GIT_FOUND)
+            message(STATUS "GitVersionDerivation: git not found, using fallback 0.0.0-dev")
+            SetFallbackVersion()
+            return()
+        endif()
+
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" describe --tags --match "v*" --always HEAD
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE _git_result
+            OUTPUT_VARIABLE _git_describe
+            ERROR_VARIABLE _git_error
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        if(NOT _git_result EQUAL 0)
+            message(STATUS "GitVersionDerivation: git describe failed, using fallback 0.0.0-dev")
+            SetFallbackVersion()
+            return()
+        endif()
+
+        message(STATUS "GitVersionDerivation: git describe output: ${_git_describe}")
+
+        # git describe appends a "-<distance>-g<hash>" suffix once HEAD has moved past
+        # the matched tag. Strip that suffix first so the SemVer prerelease grammar
+        # below does not greedily swallow it (CMake regexes are greedy with no lazy
+        # quantifiers, and a SemVer prerelease legitimately contains '-').
+        #   v1.0.0-15-gabcdef1        -> v1.0.0
+        #   v1.0.0-beta.2-3-gabcdef1  -> v1.0.0-beta.2
+        set(_clean_describe "${_git_describe}")
+        string(REGEX REPLACE "-[0-9]+-g[0-9a-f]+$" "" _clean_describe "${_clean_describe}")
     endif()
-
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE}" describe --tags --match "v*" --always HEAD
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        RESULT_VARIABLE _git_result
-        OUTPUT_VARIABLE _git_describe
-        ERROR_VARIABLE _git_error
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    if(NOT _git_result EQUAL 0)
-        message(STATUS "GitVersionDerivation: git describe failed, using fallback 0.0.0-dev")
-        SetFallbackVersion()
-        return()
-    endif()
-
-    message(STATUS "GitVersionDerivation: git describe output: ${_git_describe}")
-
-    # git describe appends a "-<distance>-g<hash>" suffix once HEAD has moved past
-    # the matched tag. Strip that suffix first so the SemVer prerelease grammar
-    # below does not greedily swallow it (CMake regexes are greedy with no lazy
-    # quantifiers, and a SemVer prerelease legitimately contains '-').
-    #   v1.0.0-15-gabcdef1        -> v1.0.0
-    #   v1.0.0-beta.2-3-gabcdef1  -> v1.0.0-beta.2
-    set(_clean_describe "${_git_describe}")
-    string(REGEX REPLACE "-[0-9]+-g[0-9a-f]+$" "" _clean_describe "${_clean_describe}")
 
     # Try to match: v<MAJOR>.<MINOR>.<PATCH>[-<prerelease>]
     # The prerelease subexpression follows the SemVer grammar (dot-separated
@@ -100,7 +115,7 @@ function(DeriveVersionFromGit)
         endif()
     else()
         # No matching v* tag — bare hash or unrecognised format
-        message(WARNING "GitVersionDerivation: could not parse a v<major>.<minor>.<patch> tag (got '${_git_describe}'), using fallback 0.0.0-dev")
+        message(WARNING "GitVersionDerivation: could not parse a v<major>.<minor>.<patch> tag (got '${_clean_describe}'), using fallback 0.0.0-dev")
         SetFallbackVersion()
     endif()
 endfunction()
