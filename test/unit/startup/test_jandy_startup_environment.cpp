@@ -101,4 +101,69 @@ BOOST_AUTO_TEST_CASE(OccupiedAddresses_EmptyWithNoRealResponders_AndNeverOurOwn)
 	BOOST_CHECK(env.OccupiedAddresses().empty());
 }
 
+// =============================================================================
+// Collision -> RELOCATION (prefer a free instance over going silent)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(RelocateEmulation_OneTouch_MovesToAnotherInstance)
+{
+	// The requested behaviour: a real OneTouch appears at our address -> relocate to a free
+	// OneTouch instance (two OneTouch co-exist at different addresses) rather than suppress.
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	env.EmulateDevice(DeviceType::OneTouch, 0x41, "controller");
+	BOOST_REQUIRE(HubHasDeviceAt(harness, 0x41));
+
+	const bool relocated = env.RelocateEmulation(DeviceType::OneTouch, 0x41);
+
+	BOOST_CHECK(relocated);
+	// OneTouch instances are {0x40,0x41,0x42,0x43}; 0x41 is now the real device's, so our
+	// emulation stands up at the first free instance, 0x40.
+	BOOST_CHECK(HubHasDeviceAt(harness, 0x40));
+}
+
+BOOST_AUTO_TEST_CASE(RelocateEmulation_SerialAdapter_MovesFrom0x48To0x49)
+{
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	env.EmulateDevice(DeviceType::SerialAdapter, 0x48, "detector");
+
+	BOOST_CHECK(env.RelocateEmulation(DeviceType::SerialAdapter, 0x48));
+	BOOST_CHECK(HubHasDeviceAt(harness, 0x49));   // the SerialAdapter's only other instance
+}
+
+BOOST_AUTO_TEST_CASE(RelocateEmulation_NoFreeInstance_ReturnsFalse)
+{
+	// Both SerialAdapter instances are already ours -> nowhere to relocate -> false (the caller
+	// then suppresses, the safe last resort).
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	env.EmulateDevice(DeviceType::SerialAdapter, 0x48, "a");
+	env.EmulateDevice(DeviceType::SerialAdapter, 0x49, "b");
+
+	BOOST_CHECK(!env.RelocateEmulation(DeviceType::SerialAdapter, 0x48));
+}
+
+BOOST_AUTO_TEST_CASE(Collision_RealAdapterDetectedOnTheBus_RelocatesViaTheHandler)
+{
+	// The full reactive chain through the real stack: the env stands up a SerialAdapter at 0x48
+	// (wiring its relocation handler), a REAL adapter then answers at 0x48 (a DevStatus reply only
+	// a real adapter emits), the emulated instance detects the collision and -- via the handler --
+	// relocates to the free instance 0x49 instead of merely going silent.
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	env.EmulateDevice(DeviceType::SerialAdapter, 0x48, "detector");
+	BOOST_REQUIRE(HubHasDeviceAt(harness, 0x48));
+	BOOST_REQUIRE(!HubHasDeviceAt(harness, 0x49));
+
+	const auto cmd_devstatus = static_cast<std::uint8_t>(Messages::JandyMessageIds::RSSA_DevStatus);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(0x48, cmd_devstatus, { 0x0A, 0x00, 0x00, 0x00 }));
+
+	BOOST_CHECK(HubHasDeviceAt(harness, 0x49));   // emulation relocated to the free instance
+}
+
 BOOST_AUTO_TEST_SUITE_END()

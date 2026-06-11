@@ -43,6 +43,13 @@ namespace AqualinkAutomate::Jandy::Startup
 		std::string PanelModel() const override;
 		std::string PanelRevision() const override;
 
+	public:
+		// Relocate an emulated device to a free instance of its class after a bus collision at
+		// `colliding_id` (a real device answered there). Stands up a fresh emulation at the first
+		// free instance -> true, or gives up -> false (the colliding instance stays passive). This
+		// is the collision handler set on every emulated device, and is public for tests.
+		bool RelocateEmulation(Devices::JandyEmulatedDeviceTypes type, std::uint8_t colliding_id);
+
 	private:
 		Kernel::HubLocator& m_HubLocator;
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;

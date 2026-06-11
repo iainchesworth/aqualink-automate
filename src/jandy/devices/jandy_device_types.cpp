@@ -63,5 +63,23 @@ namespace AqualinkAutomate::Devices
 		return m_DeviceId;
 	}
 
+	std::vector<std::uint8_t> JandyDeviceType::InstanceAddressesForClass(DeviceClasses device_class)
+	{
+		for (const auto& [known_class, ids] : m_KnownDeviceIdsList)
+		{
+			if (known_class == device_class)
+			{
+				std::vector<std::uint8_t> addresses;
+				addresses.reserve(ids.size());
+				for (const auto& id : ids)
+				{
+					addresses.push_back(id());   // JandyDeviceId -> raw uint8_t
+				}
+				return addresses;
+			}
+		}
+		return {};
+	}
+
 }
 // namespace AqualinkAutomate::Devices

@@ -95,6 +95,12 @@ namespace AqualinkAutomate::Devices
 		DeviceClasses Class() const;
 		DeviceId Id() const;
 
+		// The full set of bus addresses (instances) the master probes for a device class -- e.g.
+		// OneTouch -> {0x40,0x41,0x42,0x43}, SerialAdapter -> {0x48,0x49}. Used to relocate an
+		// emulated device to a FREE instance of its class on a bus collision, since multiple of a
+		// class can co-exist at different instances. Empty for an unknown class.
+		static std::vector<std::uint8_t> InstanceAddressesForClass(DeviceClasses device_class);
+
 	private:
 		DeviceClasses m_DeviceClass;
 		DeviceId m_DeviceId;

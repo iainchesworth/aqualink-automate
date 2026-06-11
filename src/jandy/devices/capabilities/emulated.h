@@ -79,9 +79,27 @@ namespace AqualinkAutomate::Devices::Capabilities
 		bool IsEmulationSuppressed() const;
 		bool IsEmulationActive() const;
 
+	public:
+		// A collision handler is the address manager's hook for preferring RELOCATION over
+		// suppression. When this instance detects a real device at its address, the handler is
+		// invoked to stand up the emulation at a FREE instance of the same class (returning true
+		// if it relocated). Multiple of a class co-exist on the bus at different instances (two
+		// OneTouch, etc.), so moving is better than going silent. When no handler is set (e.g. a
+		// manually-configured emulation), the device simply suppresses -- the safe default.
+		using CollisionHandler = std::function<bool()>;
+		void SetCollisionHandler(CollisionHandler handler);
+
+	protected:
+		// A device calls this when it has detected a REAL device answering at its bus address.
+		// It relocates via the collision handler if one is set and a free instance exists; this
+		// instance then stops transmitting either way (the relocated emulation, or the real
+		// device, now owns this address) and remains a passive decoder.
+		void HandleEmulationCollision();
+
 	private:
 		const bool m_IsEmulated;
 		bool m_EmulationSuppressed{ false };
+		CollisionHandler m_CollisionHandler;
 	};
 
 }

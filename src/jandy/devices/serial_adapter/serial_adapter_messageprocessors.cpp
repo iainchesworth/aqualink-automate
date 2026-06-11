@@ -253,11 +253,13 @@ namespace AqualinkAutomate::Devices
 			return;
 		}
 
-		LogNotify(Channel::Devices, std::format("Serial Adapter ({}): a REAL adapter was observed ({} frame); suppressing emulation to avoid bus contention. This instance is now a passive decoder.", DeviceId(), observed_message_kind));
+		LogNotify(Channel::Devices, std::format("Serial Adapter ({}): a REAL adapter was observed ({} frame); handling the bus collision -- relocate to a free instance if possible, else suppress.", DeviceId(), observed_message_kind));
 
-		SuppressEmulation();
+		// Prefer relocation to a free SerialAdapter instance (0x48/0x49 both exist) over going
+		// silent; falls back to suppression when no relocation handler / no free instance.
+		HandleEmulationCollision();
 
-		// Drop anything we might have queued -- a suppressed instance must not emit.
+		// Drop anything we might have queued -- this instance must not emit at this address.
 		m_PendingCommands.clear();
 	}
 

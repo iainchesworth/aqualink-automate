@@ -4,9 +4,11 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include "devices/capabilities/emulated.h"
 #include "devices/iaq_device.h"
 #include "devices/iaq/iaq_page_registry.h"
 #include "devices/jandy_device_id.h"
+#include "devices/jandy_device_types.h"
 #include "devices/jandy_emulated_device_factory.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
@@ -96,9 +98,48 @@ namespace AqualinkAutomate::Jandy::Startup
 				}
 			}
 
+			// Prefer RELOCATION over suppression on a bus collision: if this instance later
+			// detects a real device at its address, move our emulation to a free instance of the
+			// same class instead of going silent.
+			if (auto* emulated = dynamic_cast<Devices::Capabilities::Emulated*>(device.get()); emulated != nullptr)
+			{
+				emulated->SetCollisionHandler([this, type, id]() { return RelocateEmulation(type, id); });
+			}
+
 			m_EquipmentHub->AddDevice(std::move(device));
 			m_EmulatedIds.insert(id);
 		}
+	}
+
+	bool JandyStartupEnvironment::RelocateEmulation(Devices::JandyEmulatedDeviceTypes type, std::uint8_t colliding_id)
+	{
+		// A real device now owns `colliding_id`. Find a free instance of the SAME class (the
+		// master probes 0-3 of each class, so two of a class co-exist) and stand our emulation up
+		// there instead of suppressing.
+		const auto device_class = Devices::JandyDeviceType(Devices::JandyDeviceId(colliding_id)).Class();
+		const auto candidates = Devices::JandyDeviceType::InstanceAddressesForClass(device_class);
+
+		std::set<std::uint8_t> taken = m_EmulatedIds;   // slots we already occupy
+		taken.insert(colliding_id);                     // and the colliding (now-real) one
+		for (auto occupied : OccupiedAddresses())
+		{
+			taken.insert(occupied);
+		}
+
+		for (auto candidate : candidates)
+		{
+			if (!taken.contains(candidate))
+			{
+				LogInfo(Channel::Devices, std::format("Startup: real device at 0x{:02x}; relocating emulated {} to free instance 0x{:02x}",
+					colliding_id, magic_enum::enum_name(type), candidate));
+				EmulateDevice(type, candidate, "relocated after bus collision");
+				return true;
+			}
+		}
+
+		LogWarning(Channel::Devices, std::format("Startup: real device at 0x{:02x} but no free instance of its class to relocate emulated {} -- staying a passive decoder",
+			colliding_id, magic_enum::enum_name(type)));
+		return false;
 	}
 
 	std::set<std::uint8_t> JandyStartupEnvironment::ObservedProbes() const
