@@ -38,6 +38,10 @@ namespace AqualinkAutomate::Devices
 		// the System Status page rather than flipping the screen to Cloud Link.
 		m_HasReceivedMainStatus = true;
 
+		// The home page is now established; an emulated panel with a survey armed walks its
+		// data pages from here (runs once).
+		MaybeStartPageSurvey();
+
 		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
 			DeviceId(),
 			msg.PoolTemperature().InFahrenheit().value(),

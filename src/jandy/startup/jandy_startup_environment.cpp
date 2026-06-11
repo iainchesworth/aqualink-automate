@@ -4,6 +4,8 @@
 
 #include <magic_enum/magic_enum.hpp>
 
+#include "devices/iaq_device.h"
+#include "devices/iaq/iaq_page_registry.h"
 #include "devices/jandy_device_id.h"
 #include "devices/jandy_emulated_device_factory.h"
 #include "kernel/data_hub.h"
@@ -83,6 +85,17 @@ namespace AqualinkAutomate::Jandy::Startup
 
 		if (auto device = Devices::MakeEmulatedDevice(type, Devices::JandyDeviceId(id), m_HubLocator); device != nullptr)
 		{
+			// An emulated AqualinkTouch sources data via targeted page navigation on start-up
+			// (the page-push method) -- arm its survey of the data pages the pushed home page
+			// does not carry (setpoints, etc.). It runs once, after the home page is established.
+			if (type == Devices::JandyEmulatedDeviceTypes::IAQ)
+			{
+				if (auto* iaq_device = dynamic_cast<Devices::IAQDevice*>(device.get()); iaq_device != nullptr)
+				{
+					iaq_device->EnablePageSurvey(Devices::IAQ::DefaultAqualinkTouchRegistry());
+				}
+			}
+
 			m_EquipmentHub->AddDevice(std::move(device));
 			m_EmulatedIds.insert(id);
 		}

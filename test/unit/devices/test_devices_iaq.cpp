@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 
 #include "jandy/devices/iaq_device.h"
+#include "jandy/devices/iaq/iaq_page_registry.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ids.h"
@@ -269,6 +270,39 @@ BOOST_AUTO_TEST_CASE(MainStatus_RendersKnownSystemStatusPage)
 	// SpaTemp = water_current (27C == 81F); both whole-degree values must render.
 	BOOST_CHECK(joined.find("82F") != std::string::npos);
 	BOOST_CHECK(joined.find("81F") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(PageSurvey_OnHomeEstablished_QueuesNavigation)
+{
+	// An emulated AqualinkTouch with a page survey armed walks its data pages once the home
+	// page is established (first MainStatus) -- targeted navigation, not a menu crawl. The
+	// navigation drains one command per poll, so it shows up as a non-empty command queue.
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+	device.EnablePageSurvey(IAQ::DefaultAqualinkTouchRegistry());
+
+	// Nothing queued until home is established.
+	BOOST_CHECK_EQUAL(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat()));
+
+	// Home established -> the survey navigation sequence is queued.
+	BOOST_CHECK_GT(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
+}
+
+BOOST_AUTO_TEST_CASE(PageSurvey_NotEnabled_NothingQueuedOnHome)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+	// Survey NOT armed -> reaching home must not queue any navigation.
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat()));
+
+	BOOST_CHECK_EQUAL(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
 }
 
 BOOST_AUTO_TEST_CASE(Probe_EmulatedAnswers_NonEmulatedIgnores)

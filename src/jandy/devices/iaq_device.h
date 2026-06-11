@@ -11,6 +11,7 @@
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
+#include "devices/iaq/iaq_page_registry.h"
 #include "messages/jandy_message_probe.h"
 #include "messages/iaq/iaq_message_aux_status.h"
 #include "messages/iaq/iaq_message_command_ready.h"
@@ -68,6 +69,12 @@ namespace AqualinkAutomate::Devices
 		// exactly as a physical touch would.
 		void SelectPageButton(uint8_t button_index);
 
+		// Arm a start-up PAGE SURVEY: once the home page is established (first MainStatus), an
+		// emulated panel walks `registry`'s data pages -- navigating to each, dwelling so it
+		// renders+decodes, then back -- to source data the pushed home page does not carry
+		// (setpoints, etc.). Targeted navigation instead of menu spidering. Runs once.
+		void EnablePageSurvey(const IAQ::PageRegistry& registry);
+
 	public:
 		// Operating-state queries (also exercised by the device tests).
 		bool IsInNormalOperation() const { return m_OpState == OperatingStates::NormalOperation; }
@@ -104,6 +111,10 @@ namespace AqualinkAutomate::Devices
 		void ProcessMainStatus(const Messages::IAQMessage_MainStatus& msg);
 		void ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg);
 
+		// Once home is established, queue the page-survey navigation sequence (built from the
+		// registry) so it drains one command per poll. Emulated + survey-enabled + not-run only.
+		void MaybeStartPageSurvey();
+
 	private:
 		// Render the live decoded system status into the device's Screen capability
 		// as a fixed "System Status" page so the diagnostics "Actual Devices" card
@@ -138,6 +149,10 @@ namespace AqualinkAutomate::Devices
 		std::deque<uint8_t> m_CommandQueue;
 		bool m_AwaitingControlReady{ false };
 		std::string m_ControlDataValue;
+
+		bool m_PageSurveyEnabled{ false };       // arm a start-up data-page survey (auto-startup page-push)
+		bool m_PageSurveyDone{ false };          // the survey runs once, after home is established
+		IAQ::PageRegistry m_PageSurveyRegistry;  // the declarative pages to visit
 
 	private:
 		Types::ProfilingUnitTypePtr m_ProfilingDomain;
