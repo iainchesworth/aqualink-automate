@@ -1,0 +1,170 @@
+#include <cstdint>
+#include <optional>
+#include <set>
+
+#include <boost/test/unit_test.hpp>
+
+#include "jandy/startup/jandy_startup_planner.h"
+#include "jandy/startup/jandy_startup_types.h"
+
+using namespace AqualinkAutomate::Jandy::Startup;
+using DeviceType = AqualinkAutomate::Devices::JandyEmulatedDeviceTypes;
+
+namespace
+{
+	const PlannedDevice* FindDevice(const StartupPlan& plan, DeviceType type)
+	{
+		for (const auto& device : plan.devices)
+		{
+			if (device.type == type)
+			{
+				return &device;
+			}
+		}
+		return nullptr;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(Jandy_Startup_Planner_TestSuite)
+
+// =============================================================================
+// DeriveProfile -- capabilities come from the master's discovery probe set
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(DeriveProfile_AqualinkTouchRange_SetsFlag)
+{
+	auto profile = StartupPlanner::DeriveProfile({ 0x30, 0x31, 0x32, 0x33 }, "", "");
+	BOOST_CHECK(profile.probes_aqualinktouch);
+	BOOST_CHECK(!profile.probes_onetouch);
+	BOOST_CHECK(!profile.probes_pda);
+}
+
+BOOST_AUTO_TEST_CASE(DeriveProfile_OneTouchRange_SetsFlag)
+{
+	auto profile = StartupPlanner::DeriveProfile({ 0x40, 0x41 }, "", "");
+	BOOST_CHECK(profile.probes_onetouch);
+	BOOST_CHECK(!profile.probes_aqualinktouch);
+}
+
+BOOST_AUTO_TEST_CASE(DeriveProfile_Iaqualink2Slot_OnlyWhenA3Probed)
+{
+	// The verified fact: the master probes 0xa3 but never 0xa0/a1/a2.
+	BOOST_CHECK(StartupPlanner::DeriveProfile({ 0xA3 }, "", "").has_iaqualink2_slot);
+	BOOST_CHECK(!StartupPlanner::DeriveProfile({ 0xA1 }, "", "").has_iaqualink2_slot);
+}
+
+BOOST_AUTO_TEST_CASE(DeriveProfile_CarriesIdentity)
+{
+	auto profile = StartupPlanner::DeriveProfile({ 0x33 }, "PD-8 Combo", "T.0.1");
+	BOOST_CHECK_EQUAL(profile.model, "PD-8 Combo");
+	BOOST_CHECK_EQUAL(profile.revision, "T.0.1");
+}
+
+// =============================================================================
+// Plan -- data-gathering method + device choice
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Plan_AqualinkTouch_PrefersPagePushOverSpider)
+{
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	profile.probes_onetouch = true;   // both probed -- page-push must win
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::PagePush);
+	BOOST_REQUIRE(FindDevice(plan, DeviceType::IAQ) != nullptr);
+	BOOST_CHECK_EQUAL(FindDevice(plan, DeviceType::IAQ)->candidate_ids.front(), 0x33);
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) != nullptr);  // always present
+	BOOST_CHECK(FindDevice(plan, DeviceType::OneTouch) == nullptr);       // not when page-push wins
+}
+
+BOOST_AUTO_TEST_CASE(Plan_OneTouchOnly_FallsBackToSpider)
+{
+	PanelProfile profile;
+	profile.probes_onetouch = true;
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::MenuSpider);
+	BOOST_CHECK(FindDevice(plan, DeviceType::OneTouch) != nullptr);
+	BOOST_CHECK(FindDevice(plan, DeviceType::IAQ) == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_PdaOnly_UsesPdaGraph)
+{
+	PanelProfile profile;
+	profile.probes_pda = true;
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::PdaGraph);
+	BOOST_CHECK(FindDevice(plan, DeviceType::PDA) != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_NoController_ObserveOnly_StillEmulatesSerialAdapter)
+{
+	PanelProfile profile;  // nothing probed
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::ObserveOnly);
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) != nullptr);
+	BOOST_CHECK_EQUAL(plan.devices.size(), 1u);  // SerialAdapter only
+}
+
+// =============================================================================
+// Address selection -- presence-aware placement (never collide with real devices)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(SelectFreeAddress_PrefersFirstFree)
+{
+	BOOST_CHECK(StartupPlanner::SelectFreeAddress({ 0x33, 0x32, 0x31, 0x30 }, {}) == std::optional<std::uint8_t>(0x33));
+	BOOST_CHECK(StartupPlanner::SelectFreeAddress({ 0x33, 0x32, 0x31, 0x30 }, { 0x33 }) == std::optional<std::uint8_t>(0x32));
+	BOOST_CHECK(StartupPlanner::SelectFreeAddress({ 0x33, 0x32, 0x31, 0x30 }, { 0x33, 0x32, 0x31, 0x30 }) == std::nullopt);
+}
+
+BOOST_AUTO_TEST_CASE(ResolveAddresses_FreeBus_UsesPreferred)
+{
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	auto plan = StartupPlanner::Plan(profile);
+
+	StartupPlanner::ResolveAddresses(plan, {});
+
+	const auto* iaq = FindDevice(plan, DeviceType::IAQ);
+	BOOST_REQUIRE(iaq != nullptr);
+	BOOST_CHECK(iaq->resolved);
+	BOOST_CHECK_EQUAL(iaq->selected_id, 0x33);
+}
+
+BOOST_AUTO_TEST_CASE(ResolveAddresses_RealTouchAt0x33_RelocatesToSecondSlot)
+{
+	// A real AqualinkTouch already answers at 0x33 -> our emulated one stands up at 0x32.
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	auto plan = StartupPlanner::Plan(profile);
+
+	StartupPlanner::ResolveAddresses(plan, { 0x33 });
+
+	const auto* iaq = FindDevice(plan, DeviceType::IAQ);
+	BOOST_REQUIRE(iaq != nullptr);
+	BOOST_CHECK(iaq->resolved);
+	BOOST_CHECK_EQUAL(iaq->selected_id, 0x32);
+}
+
+BOOST_AUTO_TEST_CASE(ResolveAddresses_AllSlotsTaken_LeavesUnresolved)
+{
+	PanelProfile profile;
+	profile.probes_aqualinktouch = true;
+	auto plan = StartupPlanner::Plan(profile);
+
+	StartupPlanner::ResolveAddresses(plan, { 0x30, 0x31, 0x32, 0x33 });
+
+	const auto* iaq = FindDevice(plan, DeviceType::IAQ);
+	BOOST_REQUIRE(iaq != nullptr);
+	BOOST_CHECK(!iaq->resolved);
+	BOOST_CHECK_EQUAL(iaq->selected_id, 0x00);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

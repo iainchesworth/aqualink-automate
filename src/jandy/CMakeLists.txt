@@ -41,7 +41,9 @@ target_sources(
 	navigation/onetouch_menu_model.cpp
 	navigation/spider_engine.cpp
 	navigation/visit_policies.cpp
-	devices/pda/pda_messageprocessors.cpp 	 
+	startup/jandy_startup_planner.cpp
+	startup/jandy_startup_coordinator.cpp
+	devices/pda/pda_messageprocessors.cpp
 	devices/pda/pda_pageprocessors.cpp 
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
 	devices/serial_adapter/serial_adapter_messageprocessors.cpp 
