@@ -24,6 +24,7 @@ namespace AqualinkAutomate::Devices
 		constexpr uint8_t IAQ_CMD_BACK{ 0x02 };                 // navigate back / clean state
 		constexpr uint8_t IAQ_CMD_OPEN_AQUAPURE_PAGE{ 0x19 };   // open the AquaPure settings page
 		constexpr uint8_t IAQ_CMD_SELECT_POOL{ 0x11 };          // select Pool (button index 0)
+		constexpr uint8_t IAQ_CMD_PAGE_BUTTON_BASE{ 0x11 };     // press on-screen PageButton index N -> 0x11 + N
 		constexpr uint8_t IAQ_CMD_QUICK_BOOST{ 0x13 };          // Quick Boost (button index 2) / Stop
 		constexpr uint8_t IAQ_CMD_BOOST_START{ 0x12 };          // Start boost (button index 1)
 		constexpr uint8_t IAQ_CMD_SUBMIT_VALUE{ 0x80 };         // submit the entered value
@@ -86,6 +87,18 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, [this, command]() { return std::format("IAQ ({}): Queuing command: 0x{:02x}", DeviceId(), command); });
 		m_PendingCommand = command;
+	}
+
+	void IAQDevice::SelectPageButton(uint8_t button_index)
+	{
+		// On the AqualinkTouch (0x33) page protocol a button is "pressed" by sending the
+		// command (0x11 + button_index) in the next IAQ_Poll ACK: 0x11 selects the page's
+		// button index 0 (cf. IAQ_CMD_SELECT_POOL), so on-screen button N is 0x11 + N. The
+		// command is page-relative -- it presses whatever button currently occupies that
+		// index -- which is how the master drives navigation between pages.
+		const auto command = static_cast<uint8_t>(IAQ_CMD_PAGE_BUTTON_BASE + button_index);
+		LogInfo(Channel::Devices, [this, button_index, command]() { return std::format("IAQ ({}): SelectPageButton(index={}) -> queuing page command 0x{:02x}", DeviceId(), button_index, command); });
+		QueueCommand(command);
 	}
 
 	void IAQDevice::QueueChlorinatorPercentage(uint8_t percentage)

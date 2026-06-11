@@ -54,6 +54,7 @@
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_chlorinator.h"
 #include "http/webroute_equipment_devices.h"
+#include "http/webroute_equipment_iaq.h"
 #include "http/webroute_equipment_setpoints.h"
 #include "http/webroute_equipment_version.h"
 #include "http/webroute_metrics.h"
@@ -555,6 +556,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Chlorinator>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_IAQ>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));

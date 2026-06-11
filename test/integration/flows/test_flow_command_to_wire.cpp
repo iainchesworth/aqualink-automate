@@ -383,6 +383,20 @@ BOOST_AUTO_TEST_CASE(SetChlorinatorBoost_Enable_WritesCommandSequenceToWire)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(SelectIAQPageButton_WritesButtonSelectAckToWire)
+{
+	// SelectIAQPageButton(N) presses the on-screen PageButton at index N by emitting
+	// command (0x11 + N) in the next IAQ_Poll ACK -- this drives the master's page UI
+	// (navigate sub-pages / toggle equipment) exactly as a physical touch would.
+	auto result = dispatcher->SelectIAQPageButton(2);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplayIAQPoll();
+	// IAQ ACK ack_type 0x00; button index 2 -> command 0x11 + 2 = 0x13.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 0x13));
+}
+
 BOOST_AUTO_TEST_CASE(SetChlorinatorBoost_Disable_WritesCommandSequenceToWire)
 {
 	auto result = dispatcher->SetChlorinatorBoost(false);

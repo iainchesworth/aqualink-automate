@@ -44,6 +44,7 @@ namespace AqualinkAutomate::Devices
 		CommandResult SetChlorinatorPercentage(uint8_t percentage) override;
 		CommandResult SetChlorinatorBoost(bool enable) override;
 		CommandResult SetCirculationMode(Kernel::CirculationModes mode) override;
+		CommandResult SelectIAQPageButton(uint8_t button_index) override;
 
 	private:
 		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);

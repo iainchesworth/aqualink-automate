@@ -62,6 +62,12 @@ namespace AqualinkAutomate::Devices
 		void QueueChlorinatorPercentage(uint8_t percentage);
 		void QueueChlorinatorBoost(bool enable);
 
+		// Press an on-screen PageButton on the AqualinkTouch (0x33) page UI by its index
+		// (the index carried in the master's IAQMessage_PageButton frames). This lets the
+		// emulated panel navigate the master's pages -- open sub-pages, toggle equipment --
+		// exactly as a physical touch would.
+		void SelectPageButton(uint8_t button_index);
+
 	public:
 		// Operating-state queries (also exercised by the device tests).
 		bool IsInNormalOperation() const { return m_OpState == OperatingStates::NormalOperation; }

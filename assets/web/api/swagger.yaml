@@ -605,6 +605,36 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/equipment/iaq:
+    post:
+      tags:
+        - Equipment
+      summary: Drive the AqualinkTouch (0x33) page UI
+      description: >
+        Navigates the emulated AqualinkTouch's page UI. `select_button` (0..255) presses
+        the on-screen PageButton at that index (the index carried in the master's
+        IAQMessage_PageButton frames) via ICommandDispatcher::SelectIAQPageButton, so the
+        master navigates pages / toggles equipment exactly as a physical touch would.
+        400 on a bad value; 503 when no commandable IAQ/AqualinkTouch device is present.
+      operationId: driveIAQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              select_button: 2
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              example:
+                select_button: { status: "success", value: 2 }
+        '400': { description: Invalid value (select_button out of 0..255, or wrong type) }
+        '503': { description: No commandable IAQ/AqualinkTouch device / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment/setpoints:
     get:
       tags:

@@ -48,6 +48,7 @@ namespace
 		CommandResult SetChlorinatorPercentage(uint8_t) override { return CommandResult::Success; }
 		CommandResult SetChlorinatorBoost(bool) override { return CommandResult::Success; }
 		CommandResult SetCirculationMode(Kernel::CirculationModes) override { return CommandResult::Success; }
+		CommandResult SelectIAQPageButton(uint8_t) override { return CommandResult::Success; }
 	};
 
 	struct SetpointsFixture : public AqualinkAutomate::Test::HubLocatorInjector

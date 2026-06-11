@@ -163,6 +163,20 @@ namespace AqualinkAutomate::Devices
 		return CommandResult::Success;
 	}
 
+	CommandDispatcher::CommandResult CommandDispatcher::SelectIAQPageButton(uint8_t button_index)
+	{
+		auto iaq_device = FindIAQDevice();
+		if (!iaq_device)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ/AqualinkTouch device found for page-button select");
+			return CommandResult::DeviceNotFound;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: Selecting IAQ page button index {}", static_cast<int>(button_index)));
+		iaq_device->get().SelectPageButton(button_index);
+		return CommandResult::Success;
+	}
+
 	CommandDispatcher::CommandResult CommandDispatcher::SetCirculationMode(Kernel::CirculationModes mode)
 	{
 		auto serial_adapter = FindSerialAdapter();
