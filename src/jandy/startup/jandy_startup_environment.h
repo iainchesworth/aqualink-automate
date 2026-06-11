@@ -19,7 +19,11 @@ namespace AqualinkAutomate::Jandy::Startup
 	// Production IStartupEnvironment backed by the live hubs + passive bus observation.
 	//
 	//  - EmulateDevice  stands the device up in the EquipmentHub (shared factory).
-	//  - ObservedProbes records the master's discovery probes (cmd 0x00) -- the capability signal.
+	//  - ObservedProbes records the addresses the master addresses AS A CONTROLLER: the cold-boot
+	//    discovery probe (cmd 0x00), and the active controller-protocol polls a configured panel
+	//    sends to an already-discovered controller (IAQ_Poll 0x30 -> AqualinkTouch; Status 0x02 ->
+	//    OneTouch). The latter makes classification robust on a capture taken AFTER discovery,
+	//    where the lone cold-boot probe may not be present.
 	//  - OccupiedAddresses reports addresses where a REAL device answered, so the controller can
 	//    be relocated off it. Presence is inferred from a device->master ACK that follows the
 	//    master's probe of that address (excluding our own emulations). On a point-to-point link
@@ -50,6 +54,8 @@ namespace AqualinkAutomate::Jandy::Startup
 		std::uint8_t m_LastProbedId{ 0x00 };
 
 		boost::signals2::scoped_connection m_ProbeConnection;
+		boost::signals2::scoped_connection m_IAQPollConnection;     // AqualinkTouch active poll (0x30)
+		boost::signals2::scoped_connection m_StatusConnection;      // OneTouch active addressing (0x02)
 		boost::signals2::scoped_connection m_AckConnection;
 	};
 

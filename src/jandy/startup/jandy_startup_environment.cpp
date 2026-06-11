@@ -12,6 +12,8 @@
 #include "logging/logging.h"
 #include "messages/jandy_message_ack.h"
 #include "messages/jandy_message_probe.h"
+#include "messages/jandy_message_status.h"
+#include "messages/iaq/iaq_message_poll.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -31,6 +33,26 @@ namespace AqualinkAutomate::Jandy::Startup
 				const auto id = msg.Destination().Id()();
 				m_ProbedIds.insert(id);
 				m_LastProbedId = id;
+			});
+		}
+
+		// A configured panel actively polls an already-discovered AqualinkTouch with IAQ_Poll
+		// (0x30); seeing that is as good a "0x33 is an AqualinkTouch controller" signal as the
+		// cold-boot probe (and survives a capture taken after discovery).
+		if (auto iaq_poll_signal = Messages::IAQMessage_Poll::GetSignal())
+		{
+			m_IAQPollConnection = iaq_poll_signal->connect([this](const Messages::IAQMessage_Poll& msg)
+			{
+				m_ProbedIds.insert(msg.Destination().Id()());
+			});
+		}
+
+		// Likewise the master addresses a OneTouch with Status (0x02).
+		if (auto status_signal = Messages::JandyMessage_Status::GetSignal())
+		{
+			m_StatusConnection = status_signal->connect([this](const Messages::JandyMessage_Status& msg)
+			{
+				m_ProbedIds.insert(msg.Destination().Id()());
 			});
 		}
 

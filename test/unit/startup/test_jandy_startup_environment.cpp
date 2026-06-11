@@ -50,6 +50,21 @@ BOOST_AUTO_TEST_CASE(ObservedProbes_RecordsTheMastersProbeDestinations)
 	BOOST_CHECK(probes.contains(0x41));   // OneTouch range
 }
 
+BOOST_AUTO_TEST_CASE(ObservedProbes_AlsoRecordsActiveControllerPolls)
+{
+	// A panel that has already discovered its controller addresses it with the controller
+	// protocol, not the cold-boot probe: IAQ_Poll (0x30) -> AqualinkTouch, Status (0x02) ->
+	// OneTouch. These must count as "addressed as a controller" so classification works on a
+	// capture taken after discovery.
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	const auto cmd_iaq_poll = static_cast<std::uint8_t>(Messages::JandyMessageIds::IAQ_Poll);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(0x33, cmd_iaq_poll, {}));
+
+	BOOST_CHECK(env.ObservedProbes().contains(0x33));
+}
+
 BOOST_AUTO_TEST_CASE(EmulateDevice_StandsTheDeviceUpInTheEquipmentHub)
 {
 	Test::MockReplayHarness harness;
