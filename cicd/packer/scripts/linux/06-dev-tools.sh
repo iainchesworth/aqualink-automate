@@ -9,7 +9,9 @@ apt-get install -y --no-install-recommends \
     python3-venv \
     autoconf \
     automake \
-    libtool
+    libtool \
+    rpm \
+    file
 
 # Install gcovr via pip
 python3 -m pip install --break-system-packages gcovr
