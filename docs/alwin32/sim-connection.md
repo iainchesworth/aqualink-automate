@@ -117,11 +117,20 @@ the full menu tree (`Set Temp >`, `Diagnostics >`, …) — **live-validating** 
   carrying `0x02` back, `0x19` open-AquaPure, `0x11` select, `0x80` submit), but the master then
   **stops rendering** rather than showing a table page: those `IAQ_CMD_*` bytes are the
   **iAqualink2 (0xA3) command-channel** vocabulary, not the AqualinkTouch (0x33) **page-button**
-  navigation the sim expects, so they confuse the master. Live `0x26` confirmation therefore needs
-  the app to support **page-protocol navigation** (select an on-screen `0x24` PageButton by index
-  on the 0x33 channel) — a small feature, not yet present. Until then `0x26`'s two-byte layout
-  rests on the static decompile + the live-confirmed `0x25` sibling. (Same remaining-work bucket:
-  an ePump capture for the [epump.md](epump.md) reconciliation.)
+  navigation the sim expects, so they confuse the master. That page-protocol navigation is
+  **now implemented**: `IAQDevice::SelectPageButton(N)` presses the on-screen PageButton at index
+  N (command `0x11 + N` in the IAQ_Poll ACK), wired through
+  `CommandDispatcher::SelectIAQPageButton` and `POST /api/equipment/iaq {"select_button": N}`.
+  **Verified live**: selecting button 2 (Pool Heat) on the home page navigates the master to the
+  Pool Heat sub-page (capture `test/fixtures/alwin32/iaq_nav_poolheat.cap`). **But `0x26` still did
+  not appear** — the reachable equipment UI (home buttons `0`–`6`: Filter Pump / Spa / Pool Heat /
+  Spa Heat / Aux1-3, and the heat-setpoint sub-pages) uses `0x25` throughout. `0x26`
+  (attributed/table rows) is emitted by deeper **menu / diagnostic** pages (the decompile xref
+  shows it on e.g. the MAC network-status page), which the home equipment buttons don't link to —
+  there is no on-screen "Menu" PageButton to reach them. So `0x26`'s two-byte layout rests on the
+  static decompile + the live-confirmed `0x25` sibling; a live `0x26` capture would need the
+  Service/Diagnostics menu tree (password-gated), out of reach of the home navigation. (Same
+  remaining-work bucket: an ePump capture for the [epump.md](epump.md) reconciliation.)
 
 ## Advanced (optional, not built): a shared-memory tap
 
