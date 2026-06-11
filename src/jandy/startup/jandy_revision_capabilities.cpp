@@ -57,6 +57,8 @@ namespace AqualinkAutomate::Jandy::Startup
 		const int ordinal = caps.revision_letter - 'A' + 1;
 		const auto at_least = [ordinal](char gate) { return ordinal >= (gate - 'A' + 1); };
 
+		caps.serial_adapter_support = at_least('I');
+		caps.onetouch_support     = at_least('I');
 		caps.cpu_board            = at_least('N');
 		caps.variable_speed_pumps = at_least('O');
 		caps.chemlink_chlorinators = at_least('P');

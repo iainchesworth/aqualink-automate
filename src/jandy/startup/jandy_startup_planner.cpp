@@ -72,13 +72,15 @@ namespace AqualinkAutomate::Jandy::Startup
 		StartupPlan plan;
 		plan.revision_caps = profile.revision_caps;
 
-		// The only genuine contradiction worth flagging: the master probes the AqualinkTouch
-		// range, yet the revision predates Touch Screen support (Rev Q). The converse (Rev Q+
-		// but no touch probed) is normal -- the panel is touch-capable but no touch panel is
-		// installed/configured, so it is NOT an inconsistency.
+		// Genuine contradictions worth flagging: the master probes a controller range the
+		// revision cannot support -- AqualinkTouch probed but pre-Rev-Q, or OneTouch probed but
+		// pre-Rev-I. (The converse -- a capable revision with that UI simply not installed, so
+		// not probed -- is normal and NOT an inconsistency.)
 		if (profile.revision_caps.is_known)
 		{
-			plan.revision_consistent = !(profile.probes_aqualinktouch && !profile.revision_caps.aqualink_touch);
+			const bool touch_contradiction = profile.probes_aqualinktouch && !profile.revision_caps.aqualink_touch;
+			const bool onetouch_contradiction = profile.probes_onetouch && !profile.revision_caps.onetouch_support;
+			plan.revision_consistent = !(touch_contradiction || onetouch_contradiction);
 		}
 
 		const bool no_controller_probed = !profile.probes_aqualinktouch && !profile.probes_onetouch && !profile.probes_pda;
@@ -124,7 +126,7 @@ namespace AqualinkAutomate::Jandy::Startup
 
 			if (!plan.revision_consistent)
 			{
-				plan.rationale += " -- WARNING: AqualinkTouch probed but revision predates Touch Screen support (Rev Q)";
+				plan.rationale += " -- WARNING: a probed controller range is unsupported by this revision (AqualinkTouch needs Rev Q+, OneTouch needs Rev I+)";
 			}
 		}
 

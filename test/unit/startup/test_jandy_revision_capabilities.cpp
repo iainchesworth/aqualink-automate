@@ -67,9 +67,28 @@ BOOST_AUTO_TEST_CASE(Caps_RevM_PpdEraNoCpuFeatures)
 {
 	auto caps = DeriveRevisionCapabilities("M");
 	BOOST_CHECK(caps.is_known);
+	BOOST_CHECK(caps.onetouch_support);        // OneTouch arrived at Rev I, M is later (still PPD)
 	BOOST_CHECK(!caps.cpu_board);              // pre-N == PPD architecture
 	BOOST_CHECK(!caps.variable_speed_pumps);
 	BOOST_CHECK(!caps.aqualink_touch);
+}
+
+BOOST_AUTO_TEST_CASE(Caps_RevI_OneTouchAndSerialAdapterArrive)
+{
+	auto caps = DeriveRevisionCapabilities("I");  // 2000: first OneTouch + RS-485 serial adapter
+	BOOST_CHECK(caps.onetouch_support);
+	BOOST_CHECK(caps.serial_adapter_support);
+	BOOST_CHECK(!caps.cpu_board);                 // N+
+	BOOST_CHECK(!caps.variable_speed_pumps);
+}
+
+BOOST_AUTO_TEST_CASE(Caps_RevH_PredatesOneTouch_DoubleLetterMapsToMajor)
+{
+	// Rev H (1998) predates OneTouch (Rev I); "HH" still maps to the major letter 'H'.
+	auto caps = DeriveRevisionCapabilities("HH");
+	BOOST_CHECK_EQUAL(caps.revision_letter, 'H');
+	BOOST_CHECK(!caps.onetouch_support);
+	BOOST_CHECK(!caps.serial_adapter_support);
 }
 
 BOOST_AUTO_TEST_CASE(Caps_RevQ_TouchButNoCloud)

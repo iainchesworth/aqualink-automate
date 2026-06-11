@@ -206,6 +206,20 @@ BOOST_AUTO_TEST_CASE(Plan_TouchProbedButPpdRevision_FlagsInconsistent)
 	BOOST_CHECK(!plan.revision_consistent);
 }
 
+BOOST_AUTO_TEST_CASE(Plan_OneTouchProbedButPreRevI_FlagsInconsistent)
+{
+	// OneTouch first appears at Rev I (2000); a Rev H panel probing the OneTouch range is a
+	// contradiction. Live probe still wins the method, but the conflict is flagged.
+	PanelProfile profile;
+	profile.probes_onetouch = true;
+	profile.revision_caps = DeriveRevisionCapabilities("H");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::MenuSpider);
+	BOOST_CHECK(!plan.revision_consistent);
+}
+
 BOOST_AUTO_TEST_CASE(Plan_TouchProbedAndTouchCapableRevision_Consistent)
 {
 	PanelProfile profile;
