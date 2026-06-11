@@ -34,12 +34,14 @@ namespace AqualinkAutomate::Jandy::Options
 
 		JandySettings() :
 			disable_emulation{ false },
+			auto_startup{ false },
 			emulated_devices{},
 			navigation_password{}
 		{
 		}
 
 		bool disable_emulation;
+		bool auto_startup;                // detect the controller from the bus and choose what to emulate
 		JandyEmulatedDeviceCollection emulated_devices;
 		std::string navigation_password;  // 4-digit password for menu navigation
 	};
@@ -48,6 +50,7 @@ namespace AqualinkAutomate::Jandy::Options
 	{
 	private:
 		AppOptionPtr OPTION_DISABLEEMULATION{ make_appoption("jandy-disable-emulation", "Disable Jandy controller emulation", boost::program_options::bool_switch()->default_value(false)) };
+		AppOptionPtr OPTION_AUTOSTARTUP{ make_appoption("jandy-auto-startup", "Auto-detect the controller type/revision from the bus and choose what to emulate + how to source data (overrides --jandy-device-type)", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_EMULATEDDEVICETYPE{ make_appoption("jandy-device-type", "Space-separated Jandy emulation types (e.g. iaq onetouch)", boost::program_options::value<std::vector<Devices::JandyEmulatedDeviceTypes>>()->multitoken()) };
 		AppOptionPtr OPTION_EMULATEDDEVICEID{ make_appoption("jandy-device-id", "Space-separated hex device IDs (e.g. 0xa1 0x41)", boost::program_options::value<std::vector<Devices::JandyDeviceId>>()->multitoken()) };
 		AppOptionPtr OPTION_NAVPASSWORD{ make_appoption("jandy-nav-password", "4-digit password for navigating Jandy password-protected menus", boost::program_options::value<std::string>()->default_value("")) };
@@ -55,6 +58,7 @@ namespace AqualinkAutomate::Jandy::Options
 		const std::vector<AppOptionPtr> JandyOptionsCollection
 		{
 			OPTION_DISABLEEMULATION,
+			OPTION_AUTOSTARTUP,
 			OPTION_EMULATEDDEVICETYPE,
 			OPTION_EMULATEDDEVICEID,
 			OPTION_NAVPASSWORD

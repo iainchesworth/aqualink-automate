@@ -70,6 +70,11 @@ namespace AqualinkAutomate::Jandy::Options
 			settings.disable_emulation = OPTION_DISABLEEMULATION->As<bool>(vm);
 		}
 
+		if (OPTION_AUTOSTARTUP->IsPresent(vm))
+		{
+			settings.auto_startup = OPTION_AUTOSTARTUP->As<bool>(vm);
+		}
+
 		if (OPTION_NAVPASSWORD->IsPresent(vm))
 		{
 			settings.navigation_password = OPTION_NAVPASSWORD->As<std::string>(vm);

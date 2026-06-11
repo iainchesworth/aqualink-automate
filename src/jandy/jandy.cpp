@@ -72,7 +72,15 @@ namespace AqualinkAutomate::Jandy
 			}
 		}
 
-		if (!jandy_settings.disable_emulation)
+		if (jandy_settings.auto_startup)
+		{
+			// The JandyStartupService (wired in aqualink-automate.cpp on the io_context) detects
+			// the controller from the bus and stands up the emulation dynamically, so skip the
+			// static, CLI-configured device set here.
+			LogInfo(Channel::Main, "Jandy auto-startup enabled; deferring emulated-device selection to the start-up coordinator");
+		}
+
+		if (!jandy_settings.disable_emulation && !jandy_settings.auto_startup)
 		{
 			for (const auto& [controller_type, device_type] : jandy_settings.emulated_devices)
 			{

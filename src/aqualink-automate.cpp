@@ -99,6 +99,7 @@
 // Jandy protocol
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/options/options_jandy.h"
+#include "jandy/startup/jandy_startup_service.h"
 #include "jandy/jandy.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/iaq/iaq_message_control_data_response.h"
@@ -420,6 +421,16 @@ int main(int argc, char* argv[])
 
 		Jandy::Configure(hub_locator, settings);
 		Pentair::Configure(hub_locator, settings);
+
+		// Jandy auto-startup: detect the controller type/revision from the bus and stand up the
+		// emulation dynamically (in place of the static --jandy-device-type set). Driven on the
+		// io_context, so it advances as the run loop polls below.
+		std::shared_ptr<Jandy::Startup::JandyStartupService> jandy_startup_service;
+		if (auto jandy_result = settings.Get<Jandy::Options::JandySettings>(); jandy_result && jandy_result.value().get().auto_startup)
+		{
+			jandy_startup_service = std::make_shared<Jandy::Startup::JandyStartupService>(io_context, hub_locator);
+			jandy_startup_service->Start();
+		}
 
 		//---------------------------------------------------------------------
 		// WEB SERVER
@@ -793,6 +804,13 @@ int main(int argc, char* argv[])
 		{
 			history_service->Stop();
 			history_service.reset();
+		}
+
+		// Stop the Jandy auto-startup timer.
+		if (jandy_startup_service)
+		{
+			jandy_startup_service->Stop();
+			jandy_startup_service.reset();
 		}
 
 		// Stop the scheduler timer.

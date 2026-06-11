@@ -16,6 +16,14 @@ namespace AqualinkAutomate::Devices
 {
 	void SerialAdapterDevice::Command_SerialAdapter_Model(const uint16_t model_type)
 	{
+		// Surface the panel model the RS Serial Adapter reports so the start-up coordinator (and
+		// the diagnostics UI) can identify the controller without a menu scrape. The numeric
+		// model-code -> human-name mapping is still TODO; store the raw code so it is at least
+		// present and comparable.
+		if (JandyController::m_DataHub != nullptr)
+		{
+			JandyController::m_DataHub->EquipmentVersions.Set("Model", std::format("0x{:04x}", model_type));
+		}
 	}
 
 	void SerialAdapterDevice::Command_SerialAdapter_OpMode(const Messages::SerialAdapter_SCS_OpModes& op_mode)

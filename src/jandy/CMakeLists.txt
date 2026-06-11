@@ -23,7 +23,8 @@ target_sources(
 	devices/jandy_device.cpp 
 	devices/jandy_device_id.cpp 
 	devices/jandy_device_types.cpp
-	devices/jandy_emulated_device_types.cpp 
+	devices/jandy_emulated_device_types.cpp
+	devices/jandy_emulated_device_factory.cpp
 	devices/capabilities/emulated.cpp
 	devices/capabilities/scrapeable.cpp
 	devices/capabilities/screen.cpp 
@@ -44,6 +45,8 @@ target_sources(
 	startup/jandy_revision_capabilities.cpp
 	startup/jandy_startup_planner.cpp
 	startup/jandy_startup_coordinator.cpp
+	startup/jandy_startup_environment.cpp
+	startup/jandy_startup_service.cpp
 	devices/pda/pda_messageprocessors.cpp
 	devices/pda/pda_pageprocessors.cpp 
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
