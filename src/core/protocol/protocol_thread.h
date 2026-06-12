@@ -20,8 +20,17 @@ namespace AqualinkAutomate::Protocol
 	class ProtocolTask
 	{
 	public:
+		// single_read_per_poll bounds the read loop to ONE serial chunk per Poll()
+		// for capture replay (see --replay-filename).  The application's frame loop
+		// owns the pacing (it steps at a fixed processing period); this bound just
+		// stops a single Poll() from slurping the whole capture in one frame, which
+		// would defeat pacing AND overflow the circular buffer (nothing is parsed
+		// between back-to-back reads).  False (the default) drains everything
+		// available each Poll() — correct for real ports (which self-pace via
+		// would_block as the OS buffer empties) and for tests.
 		ProtocolTask(std::shared_ptr<Serial::SerialPort> serial_port,
-					 std::shared_ptr<Kernel::StatisticsHub> statistics_hub);
+					 std::shared_ptr<Kernel::StatisticsHub> statistics_hub,
+					 bool single_read_per_poll = false);
 		~ProtocolTask();
 
 		ProtocolTask(const ProtocolTask&) = delete;
@@ -32,7 +41,7 @@ namespace AqualinkAutomate::Protocol
 		/// Advance the protocol task.  Returns true if work was performed
 		/// (messages parsed or writes pending), signalling the caller that
 		/// sleeping can be skipped for tighter response latency.
-		bool Poll();
+		[[nodiscard]] bool Poll();
 
 		void EnqueueWrite(std::vector<uint8_t> buffer);
 
@@ -68,6 +77,9 @@ namespace AqualinkAutomate::Protocol
 		ReadOps_SerialBufferType m_SerialBuffer;
 		std::array<uint8_t, Constants::SERIAL_READ_CHUNK_SIZE> m_ReadBuffer{};
 		std::size_t m_WriteOffset{0};
+
+		// When true, read at most one serial chunk per Poll() (see constructor).
+		bool m_SingleReadPerPoll;
 
 	private:
 		std::vector<boost::signals2::scoped_connection> m_WriteSignalConnections;

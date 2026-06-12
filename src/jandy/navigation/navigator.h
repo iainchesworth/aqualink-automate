@@ -44,8 +44,15 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_BACK_PRESSES = 10;
 		static constexpr uint32_t MAX_RECOMPUTE_COUNT = 50;      // Prevent infinite recompute loops
 		static constexpr uint32_t MAX_WAIT_CYCLES = 100;         // Timeout after this many page updates with no progress
+		static constexpr uint32_t MAX_TRANSIENT_WAITS = 20;      // Page updates to wait for a transient (splash) page to auto-clear
 		static constexpr uint32_t MAX_CURSOR_MOVES = 15;         // Max cursor moves before declaring wrap
 		static constexpr uint32_t SYNC_REQUIRED_CONSISTENT_COUNT = 3; // Consecutive consistent detections needed for sync
+
+		// Sentinel highlighted-line value meaning "no line is highlighted". The device sends a
+		// clear-all highlight (0xFF) to drop the cursor; treating that literal value as a real
+		// row index would leave the navigator chasing a non-existent line. When this arrives we
+		// retain the previously known cursor line rather than overwriting it with the sentinel.
+		static constexpr uint8_t CURSOR_LINE_NONE = 0xFF;
 
 	public:
 		explicit Navigator(const MenuModel& model);
@@ -98,9 +105,9 @@ namespace AqualinkAutomate::Navigation
 		void Reset();
 
 	private:
-		// Handle the Syncing state: detect page with consistency requirement
-		std::optional<NavKeyCommand> HandleSyncing(
-			const Utility::ScreenDataPage& content);
+		// Handle the Syncing state: apply the consistency requirement to the already-resolved
+		// detected page id (DetectPage is run once per content update by OnPageUpdate).
+		std::optional<NavKeyCommand> HandleSyncing(PageId detected);
 
 		// Compute navigation path from current to target
 		void ComputePath();
@@ -123,8 +130,13 @@ namespace AqualinkAutomate::Navigation
 		// Move cursor to the target line for the current step
 		std::optional<NavKeyCommand> MoveCursorToTarget();
 
-		// Find the line that is currently highlighted
-		std::optional<uint8_t> FindHighlightedLine(const Utility::ScreenDataPage& content) const;
+		// Wrap-recovery helpers for MoveCursorToTarget. AttemptWrapRecovery tries to retarget
+		// the cursor via content-based label resolution after a wrap is detected; it returns
+		// true (setting 'recovered_at_target' when the cursor already sits on the new target)
+		// if a fresh target was found. GiveUpCursorMove abandons the move, either failing the
+		// navigation (NavigateToItem) or accepting the current line as the target.
+		bool AttemptWrapRecovery(bool& recovered_at_target);
+		std::optional<NavKeyCommand> GiveUpCursorMove();
 
 		// Content-based line resolution: find the screen line whose text starts with the given label
 		std::optional<uint8_t> FindLineByLabel(const std::string& label) const;
@@ -137,6 +149,9 @@ namespace AqualinkAutomate::Navigation
 
 		// Check if current page is a blocking special page
 		bool IsBlockingPage(PageId page) const;
+
+		// Check if a page is a transient splash/cold-start page that auto-advances
+		bool IsTransientPage(PageId page) const;
 
 	private:
 		const MenuModel& m_Model;
@@ -185,6 +200,9 @@ namespace AqualinkAutomate::Navigation
 
 		// Recompute tracking (to prevent infinite loops)
 		uint32_t m_RecomputeCount{ 0 };
+
+		// Transient-page wait tracking (the cold-start splash auto-advances on its own)
+		uint32_t m_TransientWaitCount{ 0 };
 
 		// Sync state tracking
 		PageId m_SyncDetectedPage{ PageId::Unknown };

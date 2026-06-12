@@ -7,14 +7,6 @@
 
 #include "logging/logging_severity_levels.h"
 
-namespace AqualinkAutomate::Options::Validators
-{
-
-	// NOTHING HERE
-	
-}
-// namespace AqualinkAutomate::Options::Validators
-
 //=============================================================================
 //
 // BOOST Program Options requires validators to be in the namespace of the

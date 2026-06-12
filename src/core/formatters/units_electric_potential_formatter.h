@@ -1,9 +1,9 @@
 #pragma once
 
 #include <format>
-#include <iostream>
-#include <string>
+#include <ostream>
 
+#include "formatters/formatter_helpers.h"
 #include "types/units_electric_potential.h"
 
 namespace AqualinkAutomate::Formatters
@@ -25,36 +25,12 @@ namespace std
 
 template<>
 struct std::formatter<AqualinkAutomate::Units::millivolt_quantity>
+	: AqualinkAutomate::Formatters::QuantityFormatter<AqualinkAutomate::Units::millivolt_quantity, "mV">
 {
-	std::formatter<double> m_Base;
-
-	constexpr auto parse(std::format_parse_context& ctx)
-	{
-		return m_Base.parse(ctx);
-	}
-
-	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Units::millivolt_quantity& value_in_mV, FormatContext& ctx) const
-	{
-		m_Base.format(value_in_mV.value(), ctx);
-		return std::format_to(ctx.out(), "mV");
-	}
 };
 
 template<>
 struct std::formatter<AqualinkAutomate::Units::volt_quantity>
+	: AqualinkAutomate::Formatters::QuantityFormatter<AqualinkAutomate::Units::volt_quantity, "V">
 {
-	std::formatter<double> m_Base;
-
-	constexpr auto parse(std::format_parse_context& ctx)
-	{
-		return m_Base.parse(ctx);
-	}
-
-	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Units::volt_quantity& value_in_V, FormatContext& ctx) const
-	{
-		m_Base.format(value_in_V.value(), ctx);
-		return std::format_to(ctx.out(), "V");
-	}
 };

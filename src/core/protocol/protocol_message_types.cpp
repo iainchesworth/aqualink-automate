@@ -3,7 +3,7 @@
 namespace AqualinkAutomate::Protocol
 {
 
-	// IProtocolMessage and IMessageGenerator are pure virtual interfaces
+	// ProtocolMessageWrapper provides type-erased access to protocol-specific messages.
 	// Implementations are provided by protocol-specific libraries (e.g., Jandy, Pentair)
 
 }

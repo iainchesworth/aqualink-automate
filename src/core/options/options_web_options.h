@@ -53,6 +53,14 @@ namespace AqualinkAutomate::Options::Web
 
 		SslCertificate ssl_certificate;
 		std::optional<std::filesystem::path> ca_chain_certificate;
+
+		// Optional API bearer token (opt-in, default UNSET => no auth, exactly as
+		// before). When set, the HTTP server requires every API request (and the
+		// WebSocket upgrade) to carry "Authorization: Bearer <token>"; a missing or
+		// mismatched token is answered with HTTP 401. Enforcement lives in the
+		// http-server-routing layer (constant-time compare; the token is never
+		// logged).
+		std::optional<std::string> ApiAuthToken;
 	}
 	WebSettings;
 
@@ -70,6 +78,9 @@ namespace AqualinkAutomate::Options::Web
 		AppOptionPtr OPTION_TLSCERTKEY{ make_appoption("cert-key", "Specify the certificate's key (PEM format) to use", boost::program_options::value<std::string>()->default_value(Application::DEFAULT_PRIVATE_KEY)) };
 		AppOptionPtr OPTION_TLSCACERT{ make_appoption("cachain-cert", "Specify the CA chain certificate (PEM format) to use", boost::program_options::value<std::string>()) };
 		AppOptionPtr OPTION_DOCROOT{ make_appoption("doc-root", "The location from which HTML files are served", boost::program_options::value<std::string>()->default_value(Application::DOC_ROOT)) };
+		// Opt-in API auth token; UNSET by default (no auth, backward-compatible). No default_value
+		// so an absent flag leaves the option unset rather than producing an empty-string token.
+		AppOptionPtr OPTION_APIAUTHTOKEN{ make_appoption("api-auth-token", "Require 'Authorization: Bearer <token>' on API requests and the WebSocket upgrade (default: no auth)", boost::program_options::value<std::string>()) };
 
 		const std::vector<AppOptionPtr> WebOptionsCollection
 		{
@@ -82,7 +93,8 @@ namespace AqualinkAutomate::Options::Web
 			OPTION_TLSCERT,
 			OPTION_TLSCERTKEY,
 			OPTION_TLSCACERT,
-			OPTION_DOCROOT
+			OPTION_DOCROOT,
+			OPTION_APIAUTHTOKEN
 		};
 
 	public:

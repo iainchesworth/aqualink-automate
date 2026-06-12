@@ -1,3 +1,5 @@
+#include <format>
+
 #include <boost/url.hpp>
 
 #include "http/server/parse_query_string.h"

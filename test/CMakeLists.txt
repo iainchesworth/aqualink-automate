@@ -10,41 +10,71 @@ add_executable(testaqualink-automate)
 target_sources( 
 	testaqualink-automate
 	PRIVATE
-	unit/test_main.cpp 
-	unit/concepts/test_concept_is_c_array.cpp 
-	unit/developer/test_async_operation_tracker.cpp
-	unit/developer/test_coroutine_lifetime_tracker.cpp
-	unit/developer/test_signal_connection_tracker.cpp
+	unit/test_main.cpp
+	unit/application/test_application_defaults.cpp
+	unit/concepts/test_concept_is_c_array.cpp
+	unit/equipment_cache/test_equipment_cache_service.cpp
 	unit/errors/test_error_categories.cpp
 	unit/devices/test_devices_id.cpp
 	unit/devices/test_devices_onetouch_pageprocessors.cpp 
-	unit/devices/test_devices_screendatapage.cpp 
-	unit/devices/test_devices_screendatapage_processor.cpp 
+	unit/devices/test_devices_screendatapage.cpp
+	unit/devices/test_devices_screendatapage_processor.cpp
+	unit/devices/test_devices_screendatapage_updater.cpp
 	unit/devices/test_devices_screenscraping.cpp 
 	unit/devices/test_devices_types.cpp 
-	unit/exceptions/test_genericaqualinkexception.cpp 
+	unit/exceptions/test_genericaqualinkexception.cpp
+	unit/exceptions/test_exception_message_forwarding.cpp
 	unit/formatters/test_formatters.cpp
 	unit/factories/test_factories_jandy_auxillary.cpp	 	
 	unit/factories/test_factories_jandy_messages.cpp
 	unit/generators/test_jandy_message_generator.cpp 
-	unit/generators/test_jandy_rawdata_generator.cpp 
-	unit/http/test_api_equipment.cpp 
-	unit/http/test_http_error_responses.cpp 
-	unit/http/test_http_sessions.cpp 
-	unit/http/test_routing_matches.cpp 
-	unit/http/test_ws_equipment.cpp 
-	unit/kernel/test_auxillary_traits.cpp 
+	unit/http/test_api_equipment.cpp
+	unit/http/test_api_metrics.cpp
+	unit/http/test_http_chlorinator.cpp
+	unit/http/test_http_diagnostics_devices.cpp
+	unit/http/test_http_diagnostics_recording.cpp
+	unit/http/test_http_error_responses.cpp
+	unit/http/test_http_security.cpp
+	unit/http/test_http_make_response.cpp
+	unit/http/test_http_sessions.cpp
+	unit/http/test_http_setpoints.cpp
+	unit/http/test_http_static_file.cpp
+	unit/http/test_routing_matches.cpp
+	unit/http/test_routing_node_bounds.cpp
+	unit/http/test_ws_equipment.cpp
+	unit/kernel/test_auxillary_traits.cpp
+	unit/kernel/test_auxillary_traits_status.cpp
 	unit/logging/test_logging_validator_jandyemulateddevicetype.cpp 
 	unit/logging/test_logging_validator_jandydeviceid.cpp 
 	unit/logging/test_logging_validator_profiler.cpp 
 	unit/logging/test_logging_validator_severity.cpp 
+	unit/logging/test_logging_severity_filter_defaults.cpp
+	unit/logging/test_logging_filter_and_helpers.cpp
+	unit/alerting/test_alert_monitor.cpp
+	unit/history/test_history_service.cpp
+	unit/options/test_option_metadata.cpp
+	unit/options/test_options_alerting.cpp
+	unit/options/test_options_config_file.cpp
+	unit/options/test_options_developer.cpp
 	unit/options/test_options_equipment.cpp
+	unit/options/test_options_history.cpp
 	unit/options/test_options_jandy.cpp
 	unit/options/test_options_pipeline.cpp
+	unit/options/test_options_preferences.cpp
+	unit/options/test_options_scheduling.cpp
 	unit/options/test_options_serial.cpp
+	unit/options/test_options_validators.cpp
+	unit/preferences/test_preferences_service.cpp
+	unit/scheduling/test_schedule.cpp
+	unit/scheduling/test_scheduler_service.cpp
+	unit/startup/test_jandy_revision_capabilities.cpp
+	unit/startup/test_jandy_startup_planner.cpp
+	unit/startup/test_jandy_startup_coordinator.cpp
+	unit/startup/test_jandy_startup_environment.cpp
 	unit/options/test_options_web.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp
+	unit/messages/test_aquarite_message_setpercent.cpp
 	unit/messages/test_aquarite_message_ppm.cpp
 	unit/messages/test_message.cpp 
 	unit/messages/test_message_ack.cpp 
@@ -52,9 +82,11 @@ target_sources(
 	unit/messages/test_message_message_long.cpp 	 
 	unit/messages/test_message_pda_highlight.cpp 
 	unit/messages/test_message_probe.cpp 
-	unit/messages/test_message_status.cpp 
-	unit/messages/test_message_structure.cpp 
-	unit/messages/test_message_unknown.cpp 
+	unit/messages/test_message_status.cpp
+	unit/messages/test_message_structure.cpp
+	unit/messages/test_message_dle_stuffing.cpp
+	unit/messages/test_message_unknown.cpp
+	unit/messages/test_to_master_decode.cpp
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_chronoclocks.cpp 
 	unit/mocks/mock_generator_messagetorawdata.cpp 
@@ -66,12 +98,21 @@ target_sources(
 	unit/mqtt/test_mqtt_hub.cpp
 	unit/mqtt/test_mqtt_integration.cpp
 	unit/mqtt/test_mqtt_options.cpp
-	unit/protocol/test_protocol_handler.cpp 
-	unit/statuses/test_statusupdate_equipmentanddevices.cpp 
+	unit/mqtt/test_mqtt_payload_parsing.cpp
+	unit/mqtt/test_mqtt_topic_scheme.cpp
+	unit/protocol/test_protocol_handler.cpp
+	unit/protocol/test_mock_replay_validation.cpp
+	unit/protocol/test_replay_pacing.cpp
+	unit/protocol/test_record_replay_roundtrip.cpp
+	unit/protocol/test_record_runtime_toggle.cpp
+	unit/protocol/test_pentair_message_generator.cpp
+	unit/statuses/test_statusupdate_equipmentanddevices.cpp
 	unit/support/unit_test_circularbuffermaker.cpp
 	unit/support/unit_test_httprequestresponse.cpp
-	unit/support/unit_test_hublocatorinjector.cpp 
-	unit/support/unit_test_onetouchdevice.cpp 	 
+	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_loadfixture.cpp
+	unit/support/unit_test_mockreplayharness.cpp
+	unit/support/unit_test_onetouchdevice.cpp
 	unit/support/unit_test_ostream_support.cpp 	
 	unit/support/unit_test_protocolmessagebuilder.cpp
 	unit/support/unit_test_wsrequestresponse.cpp
@@ -80,12 +121,14 @@ target_sources(
 	unit/units/test_units_ph.cpp 
 	unit/utility/test_utility_auxillarystate.cpp
 	unit/utility/test_utility_bandwidthutilisation.cpp
+	unit/utility/test_utility_caseinsensitivecomparison.cpp
 	unit/utility/test_utility_chemistry.cpp
 	unit/utility/test_utility_endpointparser.cpp
 	unit/utility/test_utility_jandychecksum.cpp
 	unit/utility/test_utility_latencytracker.cpp
 	unit/utility/test_utility_signallingstatscounter.cpp
 	unit/utility/test_utility_temperature.cpp
+	unit/utility/test_utility_temperature_conversion.cpp
 	unit/utility/test_utility_timeoutdurationstringconverter.cpp
 	unit/utility/test_utility_tonumber.cpp
 	unit/utility/test_utility_valuedebouncer.cpp
@@ -93,12 +136,22 @@ target_sources(
 	unit/navigation/test_navigation_navigator_edgecases.cpp
 	unit/navigation/test_navigation_visit_policies.cpp
 	unit/navigation/test_spider_engine.cpp
+	unit/navigation/test_navigation_aux_scrolling_discovery.cpp
 	unit/messages/test_chemlink_message_response.cpp
+	unit/messages/test_pentair_message_base.cpp
 	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp
 	unit/devices/test_devices_iaq.cpp
+	unit/devices/test_jandy_iaq_page_registry.cpp
+	unit/devices/test_pentair_vsp_pump.cpp
+	unit/devices/test_pentair_chlorinator.cpp
+	unit/devices/test_pentair_controller.cpp
+	unit/devices/test_pentair_equipment.cpp
 	unit/messages/test_iaq_messages.cpp
+	unit/messages/test_iaq_message_device_id.cpp
 	unit/messages/test_iaq_message_main_status.cpp
+	unit/messages/test_jandy_message_text_helpers.cpp
 	unit/formatters/test_formatters_jandy_messages.cpp
 	unit/formatters/test_formatters_jandy_devices.cpp
 	unit/formatters/test_formatters_screen_data_page.cpp
@@ -107,13 +160,19 @@ target_sources(
 	unit/serial/test_serial_port.cpp
 	unit/messages/test_epump_messages.cpp
 	unit/messages/test_heater_messages.cpp
+	unit/messages/test_light_message_status.cpp
 	unit/messages/test_pda_messages.cpp
 	unit/messages/test_serial_adapter_messages.cpp
 	unit/devices/test_devices_onetouch.cpp
 	unit/devices/test_devices_pda.cpp
 	unit/devices/test_devices_keypad.cpp
+	unit/devices/test_devices_lights.cpp
+	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
+	unit/equipment/test_jandy_equipment.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
+	unit/kernel/test_kernel_device_graph.cpp
+	unit/kernel/test_kernel_equipment_hub.cpp
 	unit/kernel/test_kernel_equipment_versions.cpp
 	unit/kernel/test_kernel_body_of_water.cpp
 	unit/kernel/test_kernel_status_conversions.cpp
@@ -122,8 +181,11 @@ target_sources(
 	unit/utility/test_utility_auxillary_state_converter.cpp
 	unit/http/test_http_server_fields.cpp
 	unit/profiling/test_profiling_noop.cpp
+	unit/profiling/test_profiling_factories.cpp
 	unit/options/test_options_settings.cpp
 	unit/serial/test_mock_serial_port_impl.cpp
+	unit/serial/test_mock_serial_replay_format.cpp
+	unit/serial/test_rfc2217_inbound_filter.cpp
 	unit/serial/test_test_serial_port_impl.cpp
 )
 
@@ -233,6 +295,10 @@ target_sources(
 	integration/flows/test_flow_serial_to_web.cpp
 	integration/flows/test_flow_mqtt_commands.cpp
 	integration/flows/test_flow_web_commands.cpp
+	integration/flows/test_flow_fixture_replay.cpp
+	integration/flows/test_flow_command_to_wire.cpp
+	integration/flows/test_flow_rssa_presence_gating.cpp
+	integration/flows/test_flow_autostartup.cpp
 	# IAQ device tests
 	integration/devices/test_iaq_device_commands.cpp
 	# Serial Adapter device tests
@@ -241,6 +307,8 @@ target_sources(
 	unit/mocks/mock_beast_basicstream_with_timeout.cpp
 	unit/mocks/mock_testserialportimpl.cpp
 	unit/support/unit_test_hublocatorinjector.cpp
+	unit/support/unit_test_loadfixture.cpp
+	unit/support/unit_test_mockreplayharness.cpp
 	unit/support/unit_test_ostream_support.cpp
 	unit/support/unit_test_protocolmessagebuilder.cpp
 	unit/support/unit_test_httprequestresponse.cpp
@@ -323,7 +391,7 @@ target_link_libraries(
 	benchmark::benchmark_main
 )
 
-add_test(AqualinkAutomatePerfTests perfaqualink-automate)
+add_test(NAME AqualinkAutomatePerfTests COMMAND perfaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 if(ENABLE_SANITIZERS)
 target_enable_sanitizers(perfaqualink-automate)
@@ -339,8 +407,29 @@ endif(ENABLE_BENCHMARKS)
 #------------------------------------------------------------------------------
 
 add_custom_command(
-	TARGET testaqualink-automate 
+	TARGET testaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
 	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+)
+
+#------------------------------------------------------------------------------
+#
+#  Record/replay capture fixtures must be available next to the test exe so that
+#  LoadFixture("fixtures/<name>.cap") resolves against the test working dir.
+#
+#------------------------------------------------------------------------------
+
+add_custom_command(
+	TARGET testaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying capture fixtures to test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${PROJECT_SOURCE_DIR}/test/fixtures" "${CMAKE_CURRENT_BINARY_DIR}/fixtures"
+)
+
+add_custom_command(
+	TARGET intaqualink-automate
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying capture fixtures to integration test folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${PROJECT_SOURCE_DIR}/test/fixtures" "${CMAKE_CURRENT_BINARY_DIR}/fixtures"
 )

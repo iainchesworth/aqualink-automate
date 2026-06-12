@@ -1,10 +1,13 @@
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <format>
 #include <random>
+#include <string_view>
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/asio/ssl/host_name_verification.hpp>
 #include <openssl/ssl.h>
 
 #include "logging/logging.h"
@@ -18,12 +21,74 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Mqtt
 {
 
+	namespace
+	{
+		// MQTT 3.1.1 fixed-header first bytes.  The high nibble is the packet type;
+		// the low nibble carries packet-specific flags (SUBSCRIBE must use 0010).
+		constexpr uint8_t FixedHeader(PacketType type, uint8_t flags = 0)
+		{
+			return static_cast<uint8_t>((static_cast<uint8_t>(type) << 4) | (flags & 0x0F));
+		}
+
+		// Connect-flags bit positions (MQTT 3.1.1 section 3.1.2.3).
+		constexpr uint8_t CONNECT_FLAG_CLEAN_SESSION = 0x02;
+		constexpr uint8_t CONNECT_FLAG_WILL = 0x04;
+		constexpr uint8_t CONNECT_FLAG_WILL_RETAIN = 0x20;
+		constexpr uint8_t CONNECT_FLAG_PASSWORD = 0x40;
+		constexpr uint8_t CONNECT_FLAG_USERNAME = 0x80;
+
+		constexpr uint8_t PUBLISH_FLAG_RETAIN = 0x01;
+
+		// Maximum length of an MQTT UTF-8 encoded string (16-bit length prefix).
+		constexpr std::size_t MQTT_MAX_STRING_LENGTH = 0xFFFF;
+
+		void EncodeRemainingLength(std::vector<uint8_t>& buf, uint32_t length)
+		{
+			do
+			{
+				uint8_t encoded_byte = length % 128;
+				length /= 128;
+				if (length > 0)
+				{
+					encoded_byte |= 0x80;
+				}
+				buf.push_back(encoded_byte);
+			} while (length > 0);
+		}
+
+		// Append a UTF-8 string with a 16-bit big-endian length prefix.
+		// Returns false (and appends nothing) if the string exceeds the field width;
+		// the caller treats this as a fatal encoding error rather than silently
+		// narrowing the length to a corrupt value.
+		[[nodiscard]] bool EncodeUtf8String(std::vector<uint8_t>& buf, std::string_view str)
+		{
+			if (str.size() > MQTT_MAX_STRING_LENGTH)
+			{
+				return false;
+			}
+
+			const auto len = static_cast<uint16_t>(str.size());
+			buf.push_back(static_cast<uint8_t>((len >> 8) & 0xFF));
+			buf.push_back(static_cast<uint8_t>(len & 0xFF));
+			buf.insert(buf.end(), str.begin(), str.end());
+			return true;
+		}
+	}
+
 	MqttClient::MqttClient(boost::asio::io_context& io_context, const Options::Mqtt::MqttSettings& settings)
 		: m_IoContext(io_context)
 		, m_Settings(settings)
+		, m_Resolver(io_context)
 	{
 		m_ClientId = settings.client_id.empty() ? GenerateClientId() : settings.client_id;
-		LogDebug(Channel::Mqtt, std::format("MQTT client created with client ID: {}", m_ClientId));
+		LogDebug(Channel::Mqtt, [&] { return std::format("MQTT client created with client ID: {}", m_ClientId); });
+
+		// Document the credentials-over-TLS expectation: a plaintext broker
+		// connection sends the password as cleartext on the wire.
+		if (!m_Settings.password.empty() && !m_Settings.use_tls)
+		{
+			LogWarning(Channel::Mqtt, "MQTT credentials configured without TLS - password will be sent in cleartext; enable --mqtt-tls");
+		}
 
 		if (settings.use_tls)
 		{
@@ -56,16 +121,16 @@ namespace AqualinkAutomate::Mqtt
 				m_SslContext->load_verify_file(m_Settings.tls_ca_cert, ec);
 				if (ec)
 				{
-					LogWarning(Channel::Mqtt, std::format("Failed to load CA certificate: {}", ec.message()));
+					LogError(Channel::Mqtt, [msg = ec.message()] { return std::format("Failed to load CA certificate: {}", msg); });
 				}
 				else
 				{
-					LogDebug(Channel::Mqtt, std::format("Loaded CA certificate: {}", m_Settings.tls_ca_cert));
+					LogDebug(Channel::Mqtt, [&] { return std::format("Loaded CA certificate: {}", m_Settings.tls_ca_cert); });
 				}
 			}
 			else
 			{
-				LogWarning(Channel::Mqtt, std::format("CA certificate file not found: {}", m_Settings.tls_ca_cert));
+				LogError(Channel::Mqtt, [&] { return std::format("CA certificate file not found: {}", m_Settings.tls_ca_cert); });
 			}
 		}
 
@@ -77,14 +142,14 @@ namespace AqualinkAutomate::Mqtt
 				m_SslContext->use_certificate_file(m_Settings.tls_client_cert, boost::asio::ssl::context::pem, ec);
 				if (ec)
 				{
-					LogWarning(Channel::Mqtt, std::format("Failed to load client certificate: {}", ec.message()));
+					LogError(Channel::Mqtt, [msg = ec.message()] { return std::format("Failed to load client certificate: {}", msg); });
 				}
 				else
 				{
 					m_SslContext->use_private_key_file(m_Settings.tls_client_key, boost::asio::ssl::context::pem, ec);
 					if (ec)
 					{
-						LogWarning(Channel::Mqtt, std::format("Failed to load client private key: {}", ec.message()));
+						LogError(Channel::Mqtt, [msg = ec.message()] { return std::format("Failed to load client private key: {}", msg); });
 					}
 					else
 					{
@@ -94,7 +159,7 @@ namespace AqualinkAutomate::Mqtt
 			}
 			else
 			{
-				LogWarning(Channel::Mqtt, "Client certificate or key file not found");
+				LogError(Channel::Mqtt, "Client certificate or key file not found");
 			}
 		}
 
@@ -107,7 +172,16 @@ namespace AqualinkAutomate::Mqtt
 		else
 		{
 			m_SslContext->set_verify_mode(boost::asio::ssl::verify_peer);
-			LogDebug(Channel::Mqtt, "TLS certificate verification enabled");
+
+			// Trust store: load the system's default CA bundle so verify_peer works
+			// without an explicit --mqtt-ca-cert against publicly-trusted brokers.
+			m_SslContext->set_default_verify_paths(ec);
+			if (ec)
+			{
+				LogWarning(Channel::Mqtt, [msg = ec.message()] { return std::format("Failed to load system trust store: {}", msg); });
+			}
+
+			LogDebug(Channel::Mqtt, "TLS certificate verification enabled (peer + hostname)");
 		}
 	}
 
@@ -119,7 +193,7 @@ namespace AqualinkAutomate::Mqtt
 	void MqttClient::SetWill(const std::string& topic, const std::string& payload, bool retain)
 	{
 		m_WillConfig = WillConfig{ topic, payload, retain };
-		LogDebug(Channel::Mqtt, std::format("LWT configured: topic='{}', retain={}", topic, retain));
+		LogDebug(Channel::Mqtt, [&] { return std::format("LWT configured: topic='{}', retain={}", topic, retain); });
 	}
 
 	void MqttClient::Start()
@@ -134,8 +208,8 @@ namespace AqualinkAutomate::Mqtt
 		m_ReconnectAttempts = 0;
 		m_State = State::Connecting;
 
-		LogInfo(Channel::Mqtt, std::format("Starting MQTT client, connecting to {}:{}",
-			m_Settings.broker_host, m_Settings.broker_port));
+		LogInfo(Channel::Mqtt, [&] { return std::format("Starting MQTT client, connecting to {}:{}",
+			m_Settings.broker_host, m_Settings.broker_port); });
 	}
 
 	void MqttClient::Stop() noexcept
@@ -159,6 +233,8 @@ namespace AqualinkAutomate::Mqtt
 		CloseSocket();
 		m_PublishQueue.clear();
 		m_ReadBuffer.clear();
+		m_WriteBuffer.clear();
+		m_WriteOffset = 0;
 		m_State = State::Disconnected;
 
 		OnDisconnected("Client stopped");
@@ -216,6 +292,7 @@ namespace AqualinkAutomate::Mqtt
 		{
 			LogWarning(Channel::Mqtt, "MQTT publish queue full, dropping oldest message");
 			m_PublishQueue.pop_front();
+			++m_DroppedCount;
 		}
 		m_PublishQueue.push_back({ topic, payload, retain });
 	}
@@ -224,21 +301,27 @@ namespace AqualinkAutomate::Mqtt
 	{
 		if (m_State != State::Connected)
 		{
-			LogWarning(Channel::Mqtt, std::format("Cannot subscribe to '{}': not connected", topic_filter));
+			LogWarning(Channel::Mqtt, [&] { return std::format("Cannot subscribe to '{}': not connected", topic_filter); });
 			return;
 		}
 
 		auto pkt = EncodeSubscribe(topic_filter, qos);
+		if (pkt.empty())
+		{
+			// EncodeSubscribe already logged the reason (e.g. oversized filter).
+			return;
+		}
+
 		boost::system::error_code ec;
 		WriteSocket(pkt, ec);
 
 		if (ec && ec != boost::asio::error::would_block)
 		{
-			LogWarning(Channel::Mqtt, std::format("Failed to send SUBSCRIBE for '{}': {}", topic_filter, ec.message()));
+			LogWarning(Channel::Mqtt, [&, msg = ec.message()] { return std::format("Failed to send SUBSCRIBE for '{}': {}", topic_filter, msg); });
 		}
 		else if (!ec)
 		{
-			LogDebug(Channel::Mqtt, std::format("Sent SUBSCRIBE for '{}' (QoS {})", topic_filter, qos));
+			LogDebug(Channel::Mqtt, [&] { return std::format("Sent SUBSCRIBE for '{}' (QoS {})", topic_filter, qos); });
 		}
 	}
 
@@ -260,15 +343,15 @@ namespace AqualinkAutomate::Mqtt
 	// Socket I/O helpers (work with both plain TCP and TLS)
 	//=========================================================================
 
-	std::size_t MqttClient::WriteSocket(const std::vector<uint8_t>& data, boost::system::error_code& ec)
+	std::size_t MqttClient::WriteSocket(std::span<const uint8_t> data, boost::system::error_code& ec)
 	{
 		if (m_SslStream)
 		{
-			return m_SslStream->write_some(boost::asio::buffer(data), ec);
+			return m_SslStream->write_some(boost::asio::buffer(data.data(), data.size()), ec);
 		}
 		else if (m_Socket)
 		{
-			return m_Socket->write_some(boost::asio::buffer(data), ec);
+			return m_Socket->write_some(boost::asio::buffer(data.data(), data.size()), ec);
 		}
 		ec = boost::asio::error::not_connected;
 		return 0;
@@ -291,6 +374,16 @@ namespace AqualinkAutomate::Mqtt
 	void MqttClient::CloseSocket()
 	{
 		boost::system::error_code ec;
+
+		// Invalidate any outstanding async-connect handlers so a late completion
+		// cannot mutate the state machine after the socket has been torn down.
+		++m_ConnectGeneration;
+		m_ConnectInProgress = false;
+		m_Resolver.cancel();
+
+		// Drop any half-written outbound packet; it belongs to the closed connection.
+		m_WriteBuffer.clear();
+		m_WriteOffset = 0;
 
 		if (m_SslStream)
 		{
@@ -323,86 +416,178 @@ namespace AqualinkAutomate::Mqtt
 	// State machine poll methods
 	//=========================================================================
 
+	void MqttClient::ScheduleReconnect(const std::string& reason, bool emit_disconnect)
+	{
+		LogWarning(Channel::Mqtt, [&] { return std::format("MQTT reconnecting (attempt {}): {}", m_ReconnectAttempts + 1, reason); });
+
+		m_LastError = reason;
+		CloseSocket();
+		m_ReadBuffer.clear();
+		m_State = State::Reconnecting;
+		m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
+		++m_ReconnectAttempts;
+
+		if (emit_disconnect)
+		{
+			OnDisconnected(reason);
+		}
+	}
+
 	void MqttClient::PollConnecting()
 	{
-		Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Connecting to broker", static_cast<uint32_t>(UnitColours::Cyan));
+		// Kick off the asynchronous resolve/connect chain exactly once.  Subsequent
+		// Poll() calls while still Connecting simply let the io_context drive the
+		// in-flight handlers.
+		if (!m_ConnectInProgress)
+		{
+			Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Connecting to broker", static_cast<uint32_t>(UnitColours::Cyan));
+			BeginConnect();
+		}
+	}
 
-		// Create a non-blocking TCP socket and attempt synchronous connect
-		boost::system::error_code ec;
+	void MqttClient::BeginConnect()
+	{
+		// The asynchronous connect chain captures shared_from_this() to keep the
+		// client alive across pending handlers.  This requires the client to be
+		// owned by a shared_ptr (it always is in production via make_shared).
+		if (weak_from_this().expired())
+		{
+			LogError(Channel::Mqtt, "MqttClient must be owned by a shared_ptr to connect; refusing to start async connect");
+			ScheduleReconnect("Client not shared-owned");
+			return;
+		}
 
-		boost::asio::ip::tcp::resolver resolver(m_IoContext);
-		auto endpoints = resolver.resolve(
+		m_ConnectInProgress = true;
+		const auto generation = m_ConnectGeneration;
+
+		auto self = shared_from_this();
+		m_Resolver.async_resolve(
 			m_Settings.broker_host,
 			std::to_string(m_Settings.broker_port),
-			ec);
+			[self, this, generation](const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& endpoints)
+			{
+				OnResolveComplete(generation, ec, endpoints);
+			});
+	}
+
+	void MqttClient::OnResolveComplete(uint64_t generation, const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& endpoints)
+	{
+		// Discard stale handlers (a Stop()/reconnect happened while this was in flight).
+		if (generation != m_ConnectGeneration || m_State != State::Connecting)
+		{
+			return;
+		}
 
 		if (ec)
 		{
-			LogWarning(Channel::Mqtt, std::format("DNS resolve failed for {}:{}: {}",
-				m_Settings.broker_host, m_Settings.broker_port, ec.message()));
 			OnError(std::format("DNS resolve failed: {}", ec.message()));
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect(std::format("DNS resolve failed for {}:{}: {}",
+				m_Settings.broker_host, m_Settings.broker_port, ec.message()));
 			return;
 		}
 
 		m_Socket.emplace(m_IoContext);
-		boost::asio::connect(*m_Socket, endpoints, ec);
 
-		if (ec)
+		auto self = shared_from_this();
+		boost::asio::async_connect(*m_Socket, endpoints,
+			[self, this, generation](const boost::system::error_code& connect_ec, const boost::asio::ip::tcp::endpoint&)
+			{
+				OnTcpConnectComplete(generation, connect_ec);
+			});
+	}
+
+	void MqttClient::OnTcpConnectComplete(uint64_t generation, const boost::system::error_code& ec)
+	{
+		if (generation != m_ConnectGeneration || m_State != State::Connecting)
 		{
-			LogWarning(Channel::Mqtt, std::format("TCP connect failed to {}:{}: {}",
-				m_Settings.broker_host, m_Settings.broker_port, ec.message()));
-			OnError(std::format("TCP connect failed: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
 			return;
 		}
 
-		LogDebug(Channel::Mqtt, std::format("TCP connected to {}:{}", m_Settings.broker_host, m_Settings.broker_port));
-
-		// Perform TLS handshake if enabled
-		if (m_Settings.use_tls && m_SslContext)
+		if (ec)
 		{
-			m_SslStream.emplace(*m_Socket, *m_SslContext);
-
-			// Set SNI hostname for server name indication
-			if (!SSL_set_tlsext_host_name(m_SslStream->native_handle(), m_Settings.broker_host.c_str()))
-			{
-				LogWarning(Channel::Mqtt, "Failed to set SNI hostname");
-			}
-
-			m_SslStream->handshake(boost::asio::ssl::stream_base::client, ec);
-
-			if (ec)
-			{
-				LogWarning(Channel::Mqtt, std::format("TLS handshake failed: {}", ec.message()));
-				OnError(std::format("TLS handshake failed: {}", ec.message()));
-				CloseSocket();
-				m_State = State::Reconnecting;
-				m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-				++m_ReconnectAttempts;
-				return;
-			}
-
-			LogInfo(Channel::Mqtt, "TLS handshake completed successfully");
+			OnError(std::format("TCP connect failed: {}", ec.message()));
+			ScheduleReconnect(std::format("TCP connect failed to {}:{}: {}",
+				m_Settings.broker_host, m_Settings.broker_port, ec.message()));
+			return;
 		}
 
-		// Set socket to non-blocking for subsequent I/O
+		LogDebug(Channel::Mqtt, [&] { return std::format("TCP connected to {}:{}", m_Settings.broker_host, m_Settings.broker_port); });
+
+		if (m_Settings.use_tls && m_SslContext)
+		{
+			StartTlsHandshake(generation);
+		}
+		else
+		{
+			EnterSendingConnect();
+		}
+	}
+
+	void MqttClient::StartTlsHandshake(uint64_t generation)
+	{
+		m_SslStream.emplace(*m_Socket, *m_SslContext);
+
+		// Set SNI hostname for server name indication.
+		if (!SSL_set_tlsext_host_name(m_SslStream->native_handle(), m_Settings.broker_host.c_str()))
+		{
+			LogWarning(Channel::Mqtt, "Failed to set SNI hostname");
+		}
+
+		// Enable RFC 6125 hostname verification against the broker certificate
+		// (unless explicitly disabled).  Peer + trust-store verification is set up
+		// on the context; this binds the presented certificate to the host we dialled.
+		if (!m_Settings.tls_skip_verify)
+		{
+			boost::system::error_code verify_ec;
+			m_SslStream->set_verify_callback(
+				boost::asio::ssl::host_name_verification(m_Settings.broker_host), verify_ec);
+			if (verify_ec)
+			{
+				LogError(Channel::Mqtt, [&, msg = verify_ec.message()] { return std::format("Failed to install hostname verification: {}", msg); });
+			}
+		}
+
+		auto self = shared_from_this();
+		m_SslStream->async_handshake(boost::asio::ssl::stream_base::client,
+			[self, this, generation](const boost::system::error_code& ec)
+			{
+				OnTlsHandshakeComplete(generation, ec);
+			});
+	}
+
+	void MqttClient::OnTlsHandshakeComplete(uint64_t generation, const boost::system::error_code& ec)
+	{
+		if (generation != m_ConnectGeneration || m_State != State::Connecting)
+		{
+			return;
+		}
+
+		if (ec)
+		{
+			OnError(std::format("TLS handshake failed: {}", ec.message()));
+			ScheduleReconnect(std::format("TLS handshake failed: {}", ec.message()));
+			return;
+		}
+
+		LogInfo(Channel::Mqtt, "TLS handshake completed successfully");
+		EnterSendingConnect();
+	}
+
+	void MqttClient::EnterSendingConnect()
+	{
+		// Switch the socket to non-blocking for the subsequent synchronous,
+		// would_block-driven I/O performed in the Connected state machine.
+		boost::system::error_code ec;
 		m_Socket->non_blocking(true, ec);
 		if (ec)
 		{
-			LogWarning(Channel::Mqtt, std::format("Failed to set non-blocking: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect(std::format("Failed to set non-blocking: {}", ec.message()));
 			return;
 		}
 
+		m_ConnectInProgress = false;
+		m_WriteBuffer.clear();
+		m_WriteOffset = 0;
 		m_State = State::SendingConnect;
 	}
 
@@ -410,32 +595,32 @@ namespace AqualinkAutomate::Mqtt
 	{
 		if (!IsSocketOpen())
 		{
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect("Socket not open while sending CONNECT");
 			return;
 		}
 
-		auto connect_pkt = EncodeConnect();
+		// Serialise the CONNECT packet once into the pending write buffer.
+		if (m_WriteBuffer.empty())
+		{
+			m_WriteBuffer = EncodeConnect();
+			m_WriteOffset = 0;
+		}
+
 		boost::system::error_code ec;
-		auto bytes_written = WriteSocket(connect_pkt, ec);
-
-		if (ec == boost::asio::error::would_block)
+		if (!DrainWriteBuffer(ec))
 		{
-			return; // Try again next poll
-		}
+			if (ec == boost::asio::error::would_block)
+			{
+				return; // Try again next poll
+			}
 
-		if (ec)
-		{
-			LogWarning(Channel::Mqtt, std::format("Failed to send CONNECT: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect(std::format("Failed to send CONNECT: {}", ec.message()));
 			return;
 		}
 
-		LogDebug(Channel::Mqtt, std::format("Sent CONNECT packet ({} bytes)", bytes_written));
+		LogDebug(Channel::Mqtt, [&] { return std::format("Sent CONNECT packet ({} bytes)", m_WriteBuffer.size()); });
+		m_WriteBuffer.clear();
+		m_WriteOffset = 0;
 		m_ReadBuffer.clear();
 		m_LastActivity = std::chrono::steady_clock::now();
 		m_State = State::WaitingConnack;
@@ -445,21 +630,15 @@ namespace AqualinkAutomate::Mqtt
 	{
 		if (!IsSocketOpen())
 		{
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect("Socket not open while waiting for CONNACK");
 			return;
 		}
 
 		// Check for timeout waiting for CONNACK
 		auto now = std::chrono::steady_clock::now();
-		if (now - m_LastActivity > std::chrono::seconds(10))
+		if (now - m_LastActivity > CONNACK_TIMEOUT)
 		{
-			LogWarning(Channel::Mqtt, "Timeout waiting for CONNACK");
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = now + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect("Timeout waiting for CONNACK");
 			return;
 		}
 
@@ -475,23 +654,14 @@ namespace AqualinkAutomate::Mqtt
 
 		if (ec)
 		{
-			LogWarning(Channel::Mqtt, std::format("Read error waiting for CONNACK: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect(std::format("Read error waiting for CONNACK: {}", ec.message()));
 			return;
 		}
 
 		// Security: Check read buffer size before appending to prevent memory exhaustion
 		if (m_ReadBuffer.size() + bytes_read > MAX_READ_BUFFER_SIZE)
 		{
-			LogWarning(Channel::Mqtt, "MQTT read buffer overflow attempt blocked, disconnecting");
-			CloseSocket();
-			m_ReadBuffer.clear();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
+			ScheduleReconnect("MQTT read buffer overflow attempt blocked");
 			return;
 		}
 
@@ -508,19 +678,14 @@ namespace AqualinkAutomate::Mqtt
 				m_LastPingSent = m_LastActivity;
 				m_ReadBuffer.clear();
 
-				LogInfo(Channel::Mqtt, std::format("Connected to MQTT broker at {}:{}{}",
-					m_Settings.broker_host, m_Settings.broker_port, m_Settings.use_tls ? " (TLS)" : ""));
+				LogInfo(Channel::Mqtt, [&] { return std::format("Connected to MQTT broker at {}:{}{}",
+					m_Settings.broker_host, m_Settings.broker_port, m_Settings.use_tls ? " (TLS)" : ""); });
 				Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Connected", static_cast<uint32_t>(UnitColours::Green));
 				OnConnected();
 			}
 			else
 			{
-				LogWarning(Channel::Mqtt, "CONNACK rejected by broker");
-				CloseSocket();
-				m_ReadBuffer.clear();
-				m_State = State::Reconnecting;
-				m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-				++m_ReconnectAttempts;
+				ScheduleReconnect("CONNACK rejected by broker");
 			}
 		}
 	}
@@ -529,19 +694,28 @@ namespace AqualinkAutomate::Mqtt
 	{
 		if (!IsSocketOpen())
 		{
-			LogWarning(Channel::Mqtt, "Socket closed unexpectedly");
 			Factory::ProfilerFactory::Instance().Get()->Message("MQTT: Disconnected - Socket closed", static_cast<uint32_t>(UnitColours::Orange));
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
-			OnDisconnected("Socket closed");
+			ScheduleReconnect("Socket closed", /*emit_disconnect=*/true);
 			return;
 		}
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("MQTT Publish Queue", static_cast<int64_t>(m_PublishQueue.size()));
 
 		SendPendingPublishes();
+
+		// SendPendingPublishes may have torn the connection down on a write error.
+		if (m_State != State::Connected)
+		{
+			return;
+		}
+
 		ReadIncoming();
+
+		if (m_State != State::Connected)
+		{
+			return;
+		}
+
 		SendPingreq();
 	}
 
@@ -550,9 +724,10 @@ namespace AqualinkAutomate::Mqtt
 		auto now = std::chrono::steady_clock::now();
 		if (now >= m_ReconnectTime)
 		{
-			auto msg = std::format("MQTT: Reconnecting (attempt {})", m_ReconnectAttempts + 1);
-			Factory::ProfilerFactory::Instance().Get()->Message(msg, static_cast<uint32_t>(UnitColours::Yellow));
-			LogDebug(Channel::Mqtt, std::format("Attempting reconnection (attempt {})", m_ReconnectAttempts + 1));
+			Factory::ProfilerFactory::Instance().Get()->Message(
+				std::format("MQTT: Reconnecting (attempt {})", m_ReconnectAttempts + 1),
+				static_cast<uint32_t>(UnitColours::Yellow));
+			LogInfo(Channel::Mqtt, [&] { return std::format("Attempting reconnection (attempt {})", m_ReconnectAttempts + 1); });
 			m_State = State::Connecting;
 		}
 	}
@@ -561,34 +736,82 @@ namespace AqualinkAutomate::Mqtt
 	// Connected-state helpers
 	//=========================================================================
 
-	void MqttClient::SendPendingPublishes()
+	bool MqttClient::DrainWriteBuffer(boost::system::error_code& ec)
 	{
-		while (!m_PublishQueue.empty())
+		// Write the remaining tail of the active outbound packet.  Returns true once
+		// the whole buffer has been flushed; on a partial write the offset advances
+		// and we report would_block so the caller retries next poll without losing
+		// or re-sending already-transmitted bytes.
+		while (m_WriteOffset < m_WriteBuffer.size())
 		{
-			auto& front = m_PublishQueue.front();
-			auto pkt = EncodePublish(front.topic, front.payload, front.retain);
-
-			boost::system::error_code ec;
-			WriteSocket(pkt, ec);
+			std::span<const uint8_t> remaining(m_WriteBuffer.data() + m_WriteOffset, m_WriteBuffer.size() - m_WriteOffset);
+			auto written = WriteSocket(remaining, ec);
 
 			if (ec == boost::asio::error::would_block)
 			{
-				break; // Try again next poll
+				m_WriteOffset += written;
+				return false;
 			}
 
 			if (ec)
 			{
-				LogDebug(Channel::Mqtt, std::format("Publish write error: {}", ec.message()));
-				CloseSocket();
-				m_State = State::Reconnecting;
-				m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-				++m_ReconnectAttempts;
-				OnDisconnected(std::format("Write error: {}", ec.message()));
+				return false;
+			}
+
+			m_WriteOffset += written;
+
+			if (written == 0)
+			{
+				// Defensive: a non-error zero-byte write would otherwise spin.
+				ec = boost::asio::error::would_block;
+				return false;
+			}
+		}
+
+		ec = {};
+		return true;
+	}
+
+	void MqttClient::SendPendingPublishes()
+	{
+		boost::system::error_code ec;
+
+		while (true)
+		{
+			// Finish flushing any partially-written packet before serialising the next.
+			if (m_WriteBuffer.empty())
+			{
+				if (m_PublishQueue.empty())
+				{
+					return;
+				}
+
+				const auto& front = m_PublishQueue.front();
+				m_WriteBuffer = EncodePublish(front.topic, front.payload, front.retain);
+				m_WriteOffset = 0;
+			}
+
+			if (!DrainWriteBuffer(ec))
+			{
+				if (ec == boost::asio::error::would_block)
+				{
+					return; // Try again next poll; offset retained.
+				}
+
+				LogWarning(Channel::Mqtt, [&, msg = ec.message()] { return std::format("Publish write error: {}", msg); });
+				ScheduleReconnect(std::format("Write error: {}", ec.message()), /*emit_disconnect=*/true);
 				return;
 			}
 
+			// Whole packet flushed: clear the write buffer and pop the queued publish.
+			m_WriteBuffer.clear();
+			m_WriteOffset = 0;
 			m_LastActivity = std::chrono::steady_clock::now();
-			m_PublishQueue.pop_front();
+			if (!m_PublishQueue.empty())
+			{
+				m_PublishQueue.pop_front();
+				++m_PublishedCount;
+			}
 		}
 	}
 
@@ -605,12 +828,7 @@ namespace AqualinkAutomate::Mqtt
 
 		if (ec)
 		{
-			LogDebug(Channel::Mqtt, std::format("Read error: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = std::chrono::steady_clock::now() + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
-			OnDisconnected(std::format("Read error: {}", ec.message()));
+			ScheduleReconnect(std::format("Read error: {}", ec.message()), /*emit_disconnect=*/true);
 			return;
 		}
 
@@ -618,11 +836,13 @@ namespace AqualinkAutomate::Mqtt
 		{
 			m_LastActivity = std::chrono::steady_clock::now();
 
-			// Security: Check read buffer size before appending
+			// Security: Check read buffer size before appending.  An overflow here
+			// means we have lost framing sync (or are being fed garbage); clearing
+			// the buffer mid-packet would desynchronise MQTT framing, so we tear the
+			// connection down and reconnect cleanly (mirrors the CONNACK path).
 			if (m_ReadBuffer.size() + bytes_read > MAX_READ_BUFFER_SIZE)
 			{
-				LogWarning(Channel::Mqtt, "MQTT read buffer overflow in Connected state, clearing buffer");
-				m_ReadBuffer.clear();
+				ScheduleReconnect("MQTT read buffer overflow in Connected state", /*emit_disconnect=*/true);
 				return;
 			}
 
@@ -632,7 +852,7 @@ namespace AqualinkAutomate::Mqtt
 			while (m_ReadBuffer.size() >= 2)
 			{
 				uint8_t first_byte = m_ReadBuffer[0];
-				uint8_t packet_type = (first_byte >> 4) & 0x0F;
+				auto packet_type = static_cast<PacketType>((first_byte >> 4) & 0x0F);
 
 				// Decode the remaining length (variable-length encoding, up to 4 bytes).
 				uint32_t remaining_length = 0;
@@ -668,15 +888,17 @@ namespace AqualinkAutomate::Mqtt
 				// We have a complete packet. Process it.
 				std::size_t payload_offset = 1 + length_bytes;
 
-				if (packet_type == 13) // PINGRESP
+				switch (packet_type)
 				{
+				case PacketType::Pingresp:
 					LogTrace(Channel::Mqtt, "Received PINGRESP");
-				}
-				else if (packet_type == 9) // SUBACK
-				{
+					break;
+
+				case PacketType::Suback:
 					LogDebug(Channel::Mqtt, "Received SUBACK");
-				}
-				else if (packet_type == 3) // PUBLISH
+					break;
+
+				case PacketType::Publish:
 				{
 					// Parse QoS-0 PUBLISH: topic length (2 bytes BE) + topic + payload
 					if (remaining_length >= 2)
@@ -698,14 +920,16 @@ namespace AqualinkAutomate::Mqtt
 
 							std::string payload(m_ReadBuffer.begin() + pos_signed, m_ReadBuffer.begin() + payload_end);
 
-							LogDebug(Channel::Mqtt, std::format("Received PUBLISH: topic='{}', payload_size={}", topic, payload.size()));
+							LogDebug(Channel::Mqtt, [&] { return std::format("Received PUBLISH: topic='{}', payload_size={}", topic, payload.size()); });
 							OnMessageReceived(topic, payload);
 						}
 					}
+					break;
 				}
-				else
-				{
-					LogTrace(Channel::Mqtt, std::format("Received MQTT packet type {} (skipping)", packet_type));
+
+				default:
+					LogTrace(Channel::Mqtt, [&] { return std::format("Received MQTT packet type {} (skipping)", static_cast<int>(packet_type)); });
+					break;
 				}
 
 				// Remove the processed packet from the buffer.
@@ -728,12 +952,7 @@ namespace AqualinkAutomate::Mqtt
 
 		if (ec && ec != boost::asio::error::would_block)
 		{
-			LogDebug(Channel::Mqtt, std::format("Ping write error: {}", ec.message()));
-			CloseSocket();
-			m_State = State::Reconnecting;
-			m_ReconnectTime = now + CalculateReconnectDelay();
-			++m_ReconnectAttempts;
-			OnDisconnected(std::format("Ping write error: {}", ec.message()));
+			ScheduleReconnect(std::format("Ping write error: {}", ec.message()), /*emit_disconnect=*/true);
 			return;
 		}
 
@@ -748,69 +967,47 @@ namespace AqualinkAutomate::Mqtt
 	// MQTT 3.1.1 packet encoding
 	//=========================================================================
 
-	static void EncodeRemainingLength(std::vector<uint8_t>& buf, uint32_t length)
-	{
-		do
-		{
-			uint8_t encoded_byte = length % 128;
-			length /= 128;
-			if (length > 0)
-			{
-				encoded_byte |= 0x80;
-			}
-			buf.push_back(encoded_byte);
-		} while (length > 0);
-	}
-
-	static void EncodeUtf8String(std::vector<uint8_t>& buf, const std::string& str)
-	{
-		auto len = static_cast<uint16_t>(str.size());
-		buf.push_back(static_cast<uint8_t>((len >> 8) & 0xFF));
-		buf.push_back(static_cast<uint8_t>(len & 0xFF));
-		buf.insert(buf.end(), str.begin(), str.end());
-	}
-
 	std::vector<uint8_t> MqttClient::EncodeConnect()
 	{
 		// Variable header + payload
 		std::vector<uint8_t> var_payload;
 
-		// Protocol Name: "MQTT"
-		EncodeUtf8String(var_payload, "MQTT");
+		// Protocol Name: "MQTT" (4 bytes, well within the length field)
+		static_cast<void>(EncodeUtf8String(var_payload, "MQTT"));
 
 		// Protocol Level: 4 (MQTT 3.1.1)
 		var_payload.push_back(0x04);
 
-		// Connect Flags
-		// Bit 7: Username Flag
-		// Bit 6: Password Flag
-		// Bit 5: Will Retain
-		// Bit 4-3: Will QoS
-		// Bit 2: Will Flag
-		// Bit 1: Clean Session
-		// Bit 0: Reserved
-		uint8_t flags = 0x02; // Clean Session
+		// Connect Flags (MQTT 3.1.1 section 3.1.2.3)
+		uint8_t flags = CONNECT_FLAG_CLEAN_SESSION;
 
-		bool has_username = !m_Settings.username.empty();
-		bool has_password = !m_Settings.password.empty();
-		bool has_will = m_WillConfig.has_value();
+		const bool has_username = !m_Settings.username.empty();
+		// MQTT 3.1.1 [MQTT-3.1.2-22]: the Password flag is only valid when the
+		// Username flag is also set.  Send the password only alongside a username.
+		const bool has_password = has_username && !m_Settings.password.empty();
+		const bool has_will = m_WillConfig.has_value();
 
 		if (has_username)
 		{
-			flags |= 0x80; // Username Flag (bit 7)
+			flags |= CONNECT_FLAG_USERNAME;
 		}
 		if (has_password)
 		{
-			flags |= 0x40; // Password Flag (bit 6)
+			flags |= CONNECT_FLAG_PASSWORD;
 		}
 		if (has_will)
 		{
-			flags |= 0x04; // Will Flag (bit 2)
+			flags |= CONNECT_FLAG_WILL;
 			if (m_WillConfig->retain)
 			{
-				flags |= 0x20; // Will Retain (bit 5)
+				flags |= CONNECT_FLAG_WILL_RETAIN;
 			}
 			// Will QoS = 0 (bits 4-3 remain 0)
+		}
+
+		if (!m_Settings.password.empty() && !has_username)
+		{
+			LogWarning(Channel::Mqtt, "MQTT password configured without a username - omitting password from CONNECT (MQTT 3.1.1 requires the username flag)");
 		}
 
 		var_payload.push_back(flags);
@@ -821,32 +1018,38 @@ namespace AqualinkAutomate::Mqtt
 
 		// Payload (in order per MQTT 3.1.1 section 3.1.3):
 		// Client Identifier, Will Topic, Will Message, Username, Password
-		EncodeUtf8String(var_payload, m_ClientId);
+		bool encode_ok = EncodeUtf8String(var_payload, m_ClientId);
 
 		if (has_will)
 		{
-			EncodeUtf8String(var_payload, m_WillConfig->topic);
-			EncodeUtf8String(var_payload, m_WillConfig->payload);
+			encode_ok = EncodeUtf8String(var_payload, m_WillConfig->topic) && encode_ok;
+			encode_ok = EncodeUtf8String(var_payload, m_WillConfig->payload) && encode_ok;
 		}
 
 		if (has_username)
 		{
-			EncodeUtf8String(var_payload, m_Settings.username);
+			encode_ok = EncodeUtf8String(var_payload, m_Settings.username) && encode_ok;
 		}
 		if (has_password)
 		{
-			EncodeUtf8String(var_payload, m_Settings.password);
+			encode_ok = EncodeUtf8String(var_payload, m_Settings.password) && encode_ok;
+		}
+
+		if (!encode_ok)
+		{
+			LogError(Channel::Mqtt, "CONNECT field exceeds the 16-bit MQTT string length limit");
 		}
 
 		// Build fixed header
 		std::vector<uint8_t> packet;
-		packet.push_back(0x10); // CONNECT packet type
+		packet.push_back(FixedHeader(PacketType::Connect));
 		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
 		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
 
+		// Note: the username/password are deliberately NOT logged (credential leak).
 		if (has_username)
 		{
-			LogDebug(Channel::Mqtt, std::format("CONNECT packet includes username '{}'", m_Settings.username));
+			LogDebug(Channel::Mqtt, "CONNECT packet includes username and authentication credentials");
 		}
 
 		return packet;
@@ -856,7 +1059,11 @@ namespace AqualinkAutomate::Mqtt
 	{
 		// Variable header: topic name
 		std::vector<uint8_t> var_payload;
-		EncodeUtf8String(var_payload, topic);
+		if (!EncodeUtf8String(var_payload, topic))
+		{
+			LogWarning(Channel::Mqtt, [&] { return std::format("PUBLISH topic exceeds the 16-bit length limit ({} bytes), dropping", topic.size()); });
+			return {};
+		}
 
 		// QoS 0: no packet identifier
 		// Payload
@@ -864,7 +1071,7 @@ namespace AqualinkAutomate::Mqtt
 
 		// Fixed header: PUBLISH, DUP=0, QoS=0, RETAIN per flag (MQTT 3.1.1 section 3.3.1.3)
 		std::vector<uint8_t> packet;
-		packet.push_back(static_cast<uint8_t>(0x30 | (retain ? 0x01 : 0x00)));
+		packet.push_back(FixedHeader(PacketType::Publish, retain ? PUBLISH_FLAG_RETAIN : 0));
 		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
 		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
 
@@ -881,12 +1088,16 @@ namespace AqualinkAutomate::Mqtt
 		var_payload.push_back(static_cast<uint8_t>(packet_id & 0xFF));
 
 		// Payload: UTF-8 topic filter + requested QoS byte
-		EncodeUtf8String(var_payload, topic_filter);
+		if (!EncodeUtf8String(var_payload, topic_filter))
+		{
+			LogWarning(Channel::Mqtt, [&] { return std::format("SUBSCRIBE filter exceeds the 16-bit length limit ({} bytes), dropping", topic_filter.size()); });
+			return {};
+		}
 		var_payload.push_back(qos & 0x03); // QoS is bits 0-1
 
 		// Fixed header: SUBSCRIBE = 0x82 (type 8, reserved bits = 0010)
 		std::vector<uint8_t> packet;
-		packet.push_back(0x82);
+		packet.push_back(FixedHeader(PacketType::Subscribe, 0x02));
 		EncodeRemainingLength(packet, static_cast<uint32_t>(var_payload.size()));
 		packet.insert(packet.end(), var_payload.begin(), var_payload.end());
 
@@ -895,12 +1106,12 @@ namespace AqualinkAutomate::Mqtt
 
 	std::vector<uint8_t> MqttClient::EncodePingreq()
 	{
-		return { 0xC0, 0x00 };
+		return { FixedHeader(PacketType::Pingreq), 0x00 };
 	}
 
 	std::vector<uint8_t> MqttClient::EncodeDisconnect()
 	{
-		return { 0xE0, 0x00 };
+		return { FixedHeader(PacketType::Disconnect), 0x00 };
 	}
 
 	//=========================================================================
@@ -915,16 +1126,16 @@ namespace AqualinkAutomate::Mqtt
 		}
 
 		// Byte 0: packet type (0x20 = CONNACK)
-		if ((data[0] & 0xF0) != 0x20)
+		if (static_cast<PacketType>((data[0] >> 4) & 0x0F) != PacketType::Connack)
 		{
-			LogWarning(Channel::Mqtt, std::format("Expected CONNACK (0x20), got 0x{:02X}", data[0]));
+			LogWarning(Channel::Mqtt, [&] { return std::format("Expected CONNACK (0x20), got 0x{:02X}", data[0]); });
 			return false;
 		}
 
 		// Byte 1: remaining length (should be 2)
 		if (data[1] != 0x02)
 		{
-			LogWarning(Channel::Mqtt, std::format("Unexpected CONNACK remaining length: {}", data[1]));
+			LogWarning(Channel::Mqtt, [&] { return std::format("Unexpected CONNACK remaining length: {}", data[1]); });
 			return false;
 		}
 
@@ -944,7 +1155,7 @@ namespace AqualinkAutomate::Mqtt
 			case 0x05: reason = "Not authorized"; break;
 			default: break;
 			}
-			LogWarning(Channel::Mqtt, std::format("CONNACK rejected: {} (code {})", reason, return_code));
+			LogWarning(Channel::Mqtt, [&] { return std::format("CONNACK rejected: {} (code {})", reason, return_code); });
 			return false;
 		}
 

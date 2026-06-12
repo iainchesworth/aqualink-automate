@@ -20,15 +20,8 @@ namespace AqualinkAutomate::Kernel
 
 		auto insert_device_in_graph = [&](auto& m_DevicesGraph, auto& source_vertex, auto& ptr) -> void
 		{
-			std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto target_vertex = boost::add_vertex(ptr, m_DevicesGraph);
 			auto edge = boost::add_edge(source_vertex, target_vertex, m_DevicesGraph);
-
-			if (auto [_, was_inserted] = m_DevicesMap.try_emplace(target_vertex, ptr); !was_inserted)
-			{
-				LogDebug(Channel::Equipment, "DataHub: Failed to add device to device unordered_map");
-			}
 		};
 
 		if (nullptr == device)
@@ -55,8 +48,6 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 			auto verts = boost::make_iterator_range(boost::vertices(m_DevicesGraph));
 			auto iter = std::ranges::find_if(verts,
 				[this, &device](const auto& vertex)
@@ -81,8 +72,6 @@ namespace AqualinkAutomate::Kernel
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::Remove", std::source_location::current());
 
-		std::unique_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
 		for (auto vp = boost::vertices(m_DevicesGraph); vp.first != vp.second; ++vp.first)
 		{
 			if (m_DevicesGraph[*vp.first] == device)
@@ -99,14 +88,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
-
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		auto range = boost::make_iterator_range(boost::vertices(fg));
-
-		return std::distance(range.begin(), range.end());
+		return CountFilteredView(filter);
 	}
 
 	std::shared_ptr<AuxillaryDevice> DevicesGraph::FindById(const boost::uuids::uuid& id) const
@@ -114,18 +96,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindById", std::source_location::current());
 
 		DeviceIdFilter filter(m_DevicesGraph, id);
-
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceIdFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		auto [begin, end] = boost::vertices(fg);
-		if (begin != end)
-		{
-			return m_DevicesGraph[*begin];
-		}
-
-		return nullptr;
+		return FindFirstInFilteredView(filter);
 	}
 
 	uint32_t DevicesGraph::CountByLabel(std::string_view device_label) const
@@ -133,13 +104,15 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::CountByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
+		return CountFilteredView(filter);
+	}
 
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
+	bool DevicesGraph::HasAnyByLabel(std::string_view device_label) const
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::HasAnyByLabel", std::source_location::current());
 
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		auto range = boost::make_iterator_range(boost::vertices(fg));
-		return std::distance(range.begin(), range.end());
+		DeviceLabelFilter filter(m_DevicesGraph, device_label);
+		return AnyInFilteredView(filter);
 	}
 
 	std::vector<std::shared_ptr<AuxillaryDevice>> DevicesGraph::FindByLabel(std::string_view device_label) const
@@ -147,19 +120,7 @@ namespace AqualinkAutomate::Kernel
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DeviceGraph::FindByLabel", std::source_location::current());
 
 		DeviceLabelFilter filter(m_DevicesGraph, device_label);
-
-		std::shared_lock<std::shared_mutex> guard(m_GraphWriteLockMutex);
-
-		boost::filtered_graph<DevicesGraphType, boost::keep_all, DeviceLabelFilter> fg(m_DevicesGraph, boost::keep_all{}, filter);
-
-		std::vector<std::shared_ptr<AuxillaryDevice>> found_devices;
-
-		for (auto vp : boost::make_iterator_range(boost::vertices(fg)))
-		{
-			found_devices.push_back(m_DevicesGraph[vp]);
-		}
-
-		return found_devices;
+		return CollectFilteredView(filter);
 	}
 
 }

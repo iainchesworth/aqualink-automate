@@ -10,7 +10,7 @@ namespace AqualinkAutomate::Version
 		return std::format(
 			"Name: {}\nVersion: v{}\nDescription: {}\nHomepage URL: {}",
 			Version::VersionInfo::ProjectName(),
-			Version::VersionInfo::ProjectVersion(),
+			Version::VersionInfo::ProjectVersionFull(),
 			Version::VersionInfo::ProjectDescription(),
 			Version::VersionInfo::ProjectHomepageURL()
 		);

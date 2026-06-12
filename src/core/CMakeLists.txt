@@ -10,24 +10,16 @@ add_library(libaqualink-automate)
 target_sources( 
 	libaqualink-automate
 	PRIVATE
-	application/application_defaults.cpp 	 
-	certificates/certificate_management.cpp 
-	certificates/certificate_verification.cpp 
-	concepts/is_c_array.cpp
-	concepts/is_one_of.cpp 
+	alerting/alert_monitor.cpp
+	alerting/webhook_sink.cpp
+	application/application_defaults.cpp
+	certificates/certificate_management.cpp
 	concepts/is_option_processor.cpp
+	devices/capabilities/restartable.cpp
+	utility/slot_connection_manager.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
-	developer/async_operation_tracker.cpp
-	developer/chrono_clocks.cpp
-	developer/coroutine_lifetime_tracker.cpp
-	developer/debug_tools.cpp
-	developer/firewall_manager.cpp
 	developer/mock_serial_port_impl.cpp
 	developer/recording_serial_port_impl.cpp
-	developer/serial_port_options.cpp
-	developer/signal_connection_tracker.cpp
-	devices/device_status.cpp 
-	equipment/equipment_status.cpp
 	errors/message_errors.cpp
 	errors/protocol_errors.cpp
 	exceptions/exception_certificate_invalidformat.cpp 
@@ -48,9 +40,11 @@ target_sources(
 	exceptions/exception_traits_failedtoset.cpp 
 	exceptions/exception_traits_invalidtraitvalue.cpp 
 	exceptions/exception_traits_notmutable.cpp 
-	exceptions/exception_webserver.cpp 
+	exceptions/exception_webserver.cpp
+	equipment_cache/equipment_cache_service.cpp
+	history/history_service.cpp
+	history/sqlite_db.cpp
 	formatters/array_standard_formatter.cpp
-	formatters/asio_buffer_standard_formatter.cpp 
 	formatters/asio_endpoint_formatter.cpp
 	formatters/beast_stringview_formatter.cpp 
 	formatters/circular_buffer_standard_formatter.cpp
@@ -60,13 +54,25 @@ target_sources(
 	formatters/units_dimensionless_formatter.cpp 
 	formatters/units_electric_potential_formatter.cpp 
 	formatters/url_segments_encoded_view_formatter.cpp 
+	http/webroute_auth_check.cpp
+	http/webroute_diagnostics_actualdevices.cpp
+	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
+	http/webroute_diagnostics_mqtt.cpp
+	http/webroute_diagnostics_options.cpp
+	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp
-	http/webroute_equipment_button.cpp 
-	http/webroute_equipment_buttons.cpp 
+	http/webroute_equipment_button.cpp
+	http/webroute_equipment_buttons.cpp
+	http/webroute_equipment_chlorinator.cpp
+	http/webroute_equipment_iaq.cpp
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
+	http/webroute_history.cpp
+	http/webroute_metrics.cpp
+	http/webroute_preferences.cpp
+	http/webroute_schedules.cpp
 	http/webroute_version.cpp
 	http/websocket_event.cpp 
 	http/websocket_event_types.cpp 
@@ -75,8 +81,9 @@ target_sources(
 	http/json/json_data_hub.cpp 
 	http/json/json_equipment.cpp 
 	http/server/http_server.cpp
-	http/server/parse_query_string.cpp 
-	http/server/server_fields.cpp 
+	http/server/make_response.cpp
+	http/server/parse_query_string.cpp
+	http/server/server_fields.cpp
 	http/server/server_types.cpp 
 	http/server/static_file_handler.cpp	 	
 	http/server/responses/response_staticfile.cpp
@@ -99,7 +106,8 @@ target_sources(
 	interfaces/imessagesignal_recv.cpp
 	interfaces/imessagesignal_send.cpp
 	interfaces/iprofiler.cpp
-	interfaces/iprofilingunit.cpp 	 
+	interfaces/iprofilingunit.cpp
+	interfaces/irecordingcontroller.cpp
 	interfaces/iserializable.cpp
 	interfaces/iserialport.cpp	 
 	interfaces/iserialportimpl.cpp
@@ -124,7 +132,6 @@ target_sources(
 	kernel/auxillary_traits/auxillary_traits_types.cpp 
 	kernel/circulation.cpp
 	kernel/data_hub.cpp
-	kernel/data_hub_command.cpp
 	kernel/equipment_hub.cpp
 	kernel/equipment_versions.cpp
 	kernel/flow_rate.cpp 
@@ -165,12 +172,17 @@ target_sources(
 	mqtt/mqtt_hub.cpp
 	mqtt/mqtt_integration.cpp
 	options/options.cpp
+	options/options_alerting_options.cpp
 	options/options_app_options.cpp
+	options/options_config_file.cpp
 	options/options_developer_options.cpp
 	options/options_equipment_options.cpp
+	options/options_history_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
+	options/options_preferences_options.cpp
 	options/options_registry.cpp
+	options/options_scheduling_options.cpp
 	options/options_serial_options.cpp
 	options/options_settings.cpp
 	options/options_web_options.cpp
@@ -178,15 +190,14 @@ target_sources(
 	options/helpers/option_dependency_helper.cpp 
 	options/validators/profiler_type_validator.cpp
 	options/validators/severity_level_validator.cpp
+	preferences/preferences_service.cpp
 	profiling/noop_profiler.cpp
 	profiling/profiling.cpp
 	$<$<BOOL:${ENABLE_PROFILING}>:profiling/tracy_profiler.cpp>	
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:profiling/uprof_profiler.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/vtune_profiler.cpp>
 	profiling/factories/profiler_factory.cpp
-	profiling/factories/profiler_factory_registration.cpp
 	profiling/factories/profiling_unit_factory.cpp 
-	profiling/factories/profiling_unit_factory_registration.cpp 
 	profiling/formatters/profiling_formatters.cpp
 	profiling/profiling_units/domain.cpp 
 	profiling/profiling_units/frame.cpp 
@@ -198,7 +209,6 @@ target_sources(
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/profiling_units/vtune_frame.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_zone.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>,$<BOOL:${UProf_ACTIVITY_LOGGER_FOUND}>>:profiling/profiling_units/uprof_frame.cpp>
-	profiling/profiling_units/timed_zone.cpp 
 	profiling/profiling_units/zone.cpp 
 	profiling/types/profiling_types.cpp
 	protocol/message_generator_registry.cpp
@@ -209,38 +219,39 @@ target_sources(
 	protocol/protocol_handler_read_handler_messages.cpp
 	protocol/protocol_handler_types.cpp
 	protocol/protocol_thread.cpp
+	scheduling/schedule.cpp
+	scheduling/scheduler_service.cpp
 	serial/serial_initialise.cpp
 	serial/serial_port.cpp	
 	serial/serial_port_config.cpp	
-	serial/serial_types.cpp	
 	serial/port_types/network_serial_port_impl.cpp
 	serial/port_types/physical_serial_port_impl.cpp
-	serial/rfc2217/rfc2217_constants.cpp
 	serial/rfc2217/rfc2217_protocol_handler.cpp
 	serial/rfc2217/rfc2217_protocol_handler_byteprocessor.cpp
-	serial/rfc2217/rfc2217_types.cpp
 	types/units_electric_potential.cpp
 	types/units_dimensionless.cpp
-	types/units_flow_rate.cpp 
-	utility/bandwidth_utilisation.cpp 
-	utility/case_insensitive_comparision.cpp 
-	utility/circular_buffer_wrapping_iterator.cpp
+	types/units_flow_rate.cpp
+	utility/case_insensitive_comparision.cpp
 	utility/endpoint_parser.cpp
-	utility/enumerate.cpp 
 	utility/get_terminal_column_width.cpp
-	utility/is_in_variant.cpp 	
-	utility/overloaded_variant_visitor.cpp 
-	utility/signalling_stats_counter.cpp 
-	utility/singular_bytes_from_range.cpp
+	utility/signalling_stats_counter.cpp
 	utility/timeout_duration_string_converter.cpp
-	utility/to_number.cpp
-	utility/to_string.cpp 
-	utility/value_debouncer.cpp 
-	version/version.cpp 
+	version/version.cpp
 	version/version_cmake.cpp 
 	version/version_git.cpp 
 	${CMAKE_CURRENT_BINARY_DIR}/version/version_cmake.constants.cpp # Generated by the configure_file command in the versioning section
 	${CMAKE_CURRENT_BINARY_DIR}/version/version_git.constants.cpp   # Generated by the GitWatcher.cmake in the versioning section
+)
+
+# The generated version constant sources are excluded from clang-tidy: they are
+# regenerated on every build (configure_file / GitWatcher) and their content
+# (e.g. an empty git commit body) can trip checks such as
+# readability-redundant-string-init. SKIP_LINTING omits them from the linters
+# configured via CMAKE_CXX_CLANG_TIDY without affecting first-party sources.
+set_source_files_properties(
+	${CMAKE_CURRENT_BINARY_DIR}/version/version_cmake.constants.cpp
+	${CMAKE_CURRENT_BINARY_DIR}/version/version_git.constants.cpp
+	PROPERTIES SKIP_LINTING ON
 )
 
 if(WIN32)
@@ -282,14 +293,14 @@ endif(WIN32)
 
 if(LINUX)
 target_sources(
-	libaqualink-automate 
+	libaqualink-automate
 	PRIVATE
-	platform/linux/application_defaults.cpp
-	platform/linux/firewall_manager.cpp
-	platform/linux/get_terminal_column_width.cpp
+	platform/posix/application_defaults.cpp
+	platform/posix/firewall_manager.cpp
+	platform/posix/network_serial_port_timeout.cpp
+	platform/posix/safe_ctime.cpp
+	platform/posix/get_terminal_column_width.cpp
 	platform/linux/physical_serial_port_timeout.cpp
-	platform/linux/network_serial_port_timeout.cpp
-	platform/linux/safe_ctime.cpp
 )
 endif(LINUX)
 
@@ -297,12 +308,12 @@ if(APPLE)
 target_sources(
 	libaqualink-automate
 	PRIVATE
-	platform/macos/application_defaults.cpp
-	platform/macos/firewall_manager.cpp
-	platform/macos/get_terminal_column_width.cpp
+	platform/posix/application_defaults.cpp
+	platform/posix/firewall_manager.cpp
+	platform/posix/network_serial_port_timeout.cpp
+	platform/posix/safe_ctime.cpp
+	platform/posix/get_terminal_column_width.cpp
 	platform/macos/physical_serial_port_timeout.cpp
-	platform/macos/network_serial_port_timeout.cpp
-	platform/macos/safe_ctime.cpp
 )
 endif(APPLE)
 
@@ -331,11 +342,10 @@ target_include_directories(
 )
 
 target_include_directories(
-	libaqualink-automate 
-	SYSTEM 
-	PUBLIC 
-	${asio_INCLUDE_DIRS}
-	${Boost_INCLUDE_DIRS} 
+	libaqualink-automate
+	SYSTEM
+	PUBLIC
+	${Boost_INCLUDE_DIRS}
 	${magic_enum_INCLUDE_DIRS}
 	${nlohmann_json_INCLUDE_DIRS}
 	${OpenSSL_INCLUDE_DIRS}
@@ -348,15 +358,17 @@ target_link_libraries(
 	libaqualink-automate
 	PUBLIC
 	Boost::boost
-	Boost::iostreams 
-	Boost::log 
-	Boost::log_setup 
-	Boost::program_options 
+	Boost::iostreams
+	Boost::log
+	Boost::log_setup
+	Boost::program_options
+	Boost::system
 	Boost::url
 	magic_enum::magic_enum
 	nlohmann_json::nlohmann_json
 	OpenSSL::SSL 
 	OpenSSL::Crypto
+	unofficial::sqlite3::sqlite3
 	ZLIB::ZLIB
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:${UProf_LIBRARIES}>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:${VTune_LIBRARIES}>

@@ -5,9 +5,11 @@
 #include "http/websocket_event.h"
 #include "http/websocket_equipment.h"
 #include "http/server/routing/routing.h"
+#include "kernel/data_hub.h"
 #include "kernel/hub_events/data_hub_config_event.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
+#include "kernel/orp.h"
 
 #include "support/unit_test_httprequestresponse.h"
 #include "support/unit_test_onetouchdevice.h"
@@ -234,6 +236,87 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_PublishTemperatu
 			BOOST_CHECK_EQUAL("38\u00B0C", wse_json["payload"]["pool_temp"]);
 		}
 	}*/
+}
+
+//
+// Regression tests for WU-HTTP-WS:
+//   - scoped_connection prevents a use-after-free when the handler is destroyed
+//     while a hub remains alive and subsequently fires a signal.
+//   - the empty-connection short-circuit skips broadcasting when nobody is listening.
+//   - a single broadcast reaches every connected client (shared-payload broadcast).
+//
+
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_ScopedConnectionDisconnectsOnDestroy)
+{
+	// Build a handler, then destroy it while the (fixture-owned) DataHub stays alive.
+	// Firing ConfigUpdateSignal afterwards must NOT touch the freed handler (no UAF).
+	{
+		auto handler = std::make_unique<HTTP::WebSocket_Equipment>(*this);
+		BOOST_REQUIRE(nullptr != handler);
+		// Handler destroyed at end of scope; scoped_connection disconnects the slot.
+	}
+
+	// If the slot were a plain boost::signals2::connection, this would invoke a
+	// lambda capturing a dangling `this`. With scoped_connection it is a no-op.
+	BOOST_CHECK_NO_THROW(DataHub().ORP(Kernel::ORP(650)));
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_EmptyConnectionsSkipsBroadcast)
+{
+	HTTP::WebSocket_Equipment handler(*this);
+
+	// No connections open: a config update must not enqueue anything for connection 1.
+	DataHub().ORP(Kernel::ORP(650));
+
+	BOOST_CHECK(!handler.DequeueMessage(1).has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_BroadcastReachesAllConnections)
+{
+	HTTP::WebSocket_Equipment handler(*this);
+
+	const auto conn_a = handler.OnOpen();
+	const auto conn_b = handler.OnOpen();
+	BOOST_REQUIRE_NE(conn_a, conn_b);
+
+	// OnOpen enqueues an initial SystemStateUpdate snapshot per connection; drain it.
+	{
+		auto seed_a = handler.DequeueMessage(conn_a);
+		auto seed_b = handler.DequeueMessage(conn_b);
+		BOOST_REQUIRE(seed_a.has_value());
+		BOOST_REQUIRE(seed_b.has_value());
+		auto seed_a_json = nlohmann::json::parse(*seed_a);
+		BOOST_CHECK_EQUAL("SystemStateUpdate", seed_a_json["type"]);
+	}
+
+	// A single broadcast must be delivered to BOTH connections.
+	DataHub().ORP(Kernel::ORP(650));
+
+	auto msg_a = handler.DequeueMessage(conn_a);
+	auto msg_b = handler.DequeueMessage(conn_b);
+	BOOST_REQUIRE(msg_a.has_value());
+	BOOST_REQUIRE(msg_b.has_value());
+
+	// Both connections received an identical, fully-serialised payload.
+	BOOST_CHECK_EQUAL(*msg_a, *msg_b);
+	auto msg_a_json = nlohmann::json::parse(*msg_a);
+	BOOST_CHECK_EQUAL("ChemistryUpdate", msg_a_json["type"]);
+	BOOST_REQUIRE(msg_a_json["payload"].contains("orp"));
+	BOOST_CHECK_EQUAL(650, msg_a_json["payload"]["orp"]);
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEvent_ConvertFromStringViewParsesWithoutCopy)
+{
+	const std::string_view valid_event{ R"({"type":"ChemistryUpdate","payload":{"orp":650}})" };
+
+	auto parsed = HTTP::WebSocket_Event::ConvertFromStringView(valid_event);
+	BOOST_REQUIRE(parsed.has_value());
+	BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::ChemistryUpdate, parsed->Type());
+
+	// Malformed JSON must fail gracefully (allow_exceptions=false path) rather than throw.
+	const std::string_view invalid_event{ R"({not valid json)" };
+	BOOST_CHECK_NO_THROW(HTTP::WebSocket_Event::ConvertFromStringView(invalid_event));
+	BOOST_CHECK(!HTTP::WebSocket_Event::ConvertFromStringView(invalid_event).has_value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

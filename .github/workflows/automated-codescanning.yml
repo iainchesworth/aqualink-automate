@@ -23,7 +23,7 @@ jobs:
   ##
 
   CodeScanning_CodeQL:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     timeout-minutes: 360
     permissions:
       actions: read
@@ -39,28 +39,53 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: rm -rf build/
+
+    - uses: ./.github/actions/setup-cpp-toolchain
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
+      with:
+        compiler: gcc-15
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
 
-    - uses: ./.github/actions/setup-cpp-toolchain
-      with:
-        compiler: gcc-13
+    - name: Setup vcpkg cache (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: |
+        BINARY_DIR="$HOME/.cache/vcpkg/archives"
+        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
     - uses: ./.github/actions/setup-vcpkg-cache
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
       with:
-        cache-key-prefix: Linux GCC
+        cache-key-prefix: CodeQL
+
+    - name: Bootstrap vcpkg
+      run: bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+      env:
+        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
       uses: lukka/run-cmake@v10
       with:
         configurePreset: config-linux-gcc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
       uses: lukka/run-cmake@v10
       with:
         buildPreset: build-linux-gcc
+        buildPresetAdditionalArgs: "['--parallel', '8']"
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
@@ -93,7 +118,7 @@ jobs:
   ##
 
   CodeScanning_SonarCloud:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
@@ -103,26 +128,44 @@ jobs:
         fetch-depth: 0
         submodules: recursive
 
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: rm -rf build/
+
+    - uses: ./.github/actions/setup-cpp-toolchain
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
+      with:
+        compiler: gcc-15
+
     - name: Install build-wrapper
       uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
 
-    - uses: aminya/setup-cpp@v1
-      with:
-        compiler: gcc-13
-        cmake: true
-        ninja: true
-        gcovr: true
-        python: true
+    - name: Setup vcpkg cache (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: |
+        BINARY_DIR="$HOME/.cache/vcpkg/archives"
+        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
     - uses: ./.github/actions/setup-vcpkg-cache
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
       with:
-        cache-key-prefix: Linux GCC
+        cache-key-prefix: SonarCloud
+
+    - name: Bootstrap vcpkg
+      run: bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+      env:
+        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
       uses: lukka/run-cmake@v10
       with:
         configurePreset: config-linux-gcc-coverage
         configurePresetAdditionalArgs: "['-DUSE_SONARQUBE=ON']"
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build with build-wrapper
       run: |
@@ -144,7 +187,7 @@ jobs:
   ##
 
   CodeScanning_MSVCCodeAnalysis:
-    runs-on: windows-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_WINDOWS || '["windows-latest"]') }}
     permissions:
       actions: read
       contents: read
@@ -154,23 +197,64 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
+      shell: bash
+      run: rm -rf build/
+
     - uses: ./.github/actions/setup-cpp-toolchain
+      if: ${{ !contains(vars.RUNNER_WINDOWS || '', 'self-hosted') }}
       with:
         compiler: msvc
 
+    - name: Setup MSVC environment (self-hosted)
+      if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup vcpkg cache (self-hosted)
+      if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
+      shell: bash
+      run: |
+        BINARY_DIR="$HOME/.cache/vcpkg/archives"
+        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        # Convert Git bash paths to native Windows paths for CMake/vcpkg
+        if command -v cygpath >/dev/null 2>&1; then
+          BINARY_DIR=$(cygpath -w "$BINARY_DIR")
+          DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
+        fi
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
     - uses: ./.github/actions/setup-vcpkg-cache
+      if: ${{ !contains(vars.RUNNER_WINDOWS || '', 'self-hosted') }}
       with:
-        cache-key-prefix: Windows MSVC
+        cache-key-prefix: MSVCAnalysis
+
+    - name: Bootstrap vcpkg
+      shell: bash
+      run: |
+        if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+          bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
+          "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+        fi
+      env:
+        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
       uses: lukka/run-cmake@v10
       with:
         configurePreset: config-windows-msvc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
       uses: lukka/run-cmake@v10
       with:
         buildPreset: build-windows-msvc
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - uses: microsoft/msvc-code-analysis-action@v0.1.1
       id: run-analysis

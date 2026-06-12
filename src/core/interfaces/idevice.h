@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Interfaces
 
     public:
         IDevice(const IDevice& other) = delete;
-        IDevice(IDevice&& other) noexcept;
+        IDevice(IDevice&& other) noexcept = default;
 
     public:
         const IDeviceIdentifier& DeviceId() const;

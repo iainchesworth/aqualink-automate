@@ -3,7 +3,9 @@
 #include <any>
 #include <expected>
 #include <format>
+#include <functional>
 #include <string>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>
 #include <vector>

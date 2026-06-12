@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstring>
 
 #include <tracy/Tracy.hpp>
@@ -37,13 +36,13 @@ namespace AqualinkAutomate::Profiling
 
 	void Tracy_Profiler::PlotValue(const std::string& name, int64_t value)
 	{
-		const char* name_ptr = GetOrCacheName(m_PlotNameCache, m_CacheMutex, name);
+		const char* name_ptr = GetOrCacheName(m_PlotNameCache, name);
 		TracyPlot(name_ptr, value);
 	}
 
 	void Tracy_Profiler::PlotValue(const std::string& name, double value)
 	{
-		const char* name_ptr = GetOrCacheName(m_PlotNameCache, m_CacheMutex, name);
+		const char* name_ptr = GetOrCacheName(m_PlotNameCache, name);
 		TracyPlot(name_ptr, value);
 	}
 
@@ -59,14 +58,12 @@ namespace AqualinkAutomate::Profiling
 
 	void Tracy_Profiler::EmitFrameMark(const char* name) const
 	{
-		const char* name_ptr = GetOrCacheName(m_FrameNameCache, m_CacheMutex, name);
+		const char* name_ptr = GetOrCacheName(m_FrameNameCache, name);
 		FrameMarkNamed(name_ptr);
 	}
 
-	const char* Tracy_Profiler::GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, std::mutex& mutex, const std::string& name) // static
+	const char* Tracy_Profiler::GetOrCacheName(std::unordered_map<std::string, std::unique_ptr<char[]>>& cache, const std::string& name) // static
 	{
-		std::lock_guard lock(mutex);
-
 		if (auto it = cache.find(name); it != cache.end())
 		{
 			return it->second.get();

@@ -4,6 +4,7 @@
 
 #include "messages/chemlink/chemlink_message_response.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -42,27 +43,22 @@ namespace AqualinkAutomate::Messages
 
 	bool ChemlinkMessage_Response::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into ChemlinkMessage_Response type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into ChemlinkMessage_Response type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_DataTag)
+		if (!Text::RequireIndex(message_bytes, Index_DataTag, "ChemlinkMessage_Response", "DataTag"))
 		{
-			LogDebug(Channel::Messages, "ChemlinkMessage_Response is too short to deserialise DataTag.");
 			return false;
 		}
 
-		const auto raw_tag = message_bytes[Index_DataTag];
-		auto tag = magic_enum::enum_cast<ChemlinkDataTag>(raw_tag);
-		m_DataTag = tag.value_or(ChemlinkDataTag::Unknown);
+		m_DataTag = magic_enum::enum_cast<ChemlinkDataTag>(Text::ReadU8(message_bytes, Index_DataTag)).value_or(ChemlinkDataTag::Unknown);
 
 		if (message_bytes.size() > Index_ValueHigh)
 		{
-			const uint8_t low = static_cast<uint8_t>(message_bytes[Index_ValueLow]);
-			const uint8_t high = static_cast<uint8_t>(message_bytes[Index_ValueHigh]);
-			m_RawValue = static_cast<uint16_t>(high * 256 + low);
+			m_RawValue = Text::ReadU16LE(message_bytes, Index_ValueLow);
 		}
 		else if (message_bytes.size() > Index_ValueLow)
 		{
-			m_RawValue = static_cast<uint16_t>(message_bytes[Index_ValueLow]);
+			m_RawValue = Text::ReadU8(message_bytes, Index_ValueLow);
 		}
 
 		return true;

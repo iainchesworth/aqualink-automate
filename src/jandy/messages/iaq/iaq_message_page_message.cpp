@@ -1,7 +1,9 @@
+#include <cstddef>
 #include <format>
 
 #include "messages/iaq/iaq_message_page_message.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -30,7 +32,7 @@ namespace AqualinkAutomate::Messages
 
 	std::string IAQMessage_PageMessage::ToString() const
 	{
-		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
+		return std::format("Packet: {} || Payload: LineId: {}, Line: '{}'", IAQMessage::ToString(), m_LineId, m_Line);
 	}
 
 	bool IAQMessage_PageMessage::SerializeContents(std::vector<uint8_t>& message_bytes) const
@@ -40,47 +42,28 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_PageMessage::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageMessage type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_PageMessage type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_LineId)
+		if (!Text::RequireIndex(message_bytes, Index_LineId, "IAQMessage_PageMessage", "LineId"))
 		{
-			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise LineId.");
+			return false;
 		}
-		else if (message_bytes.size() <= Index_LineText)
+
+		// At least one LineText character must be present: the payload runs from
+		// Index_LineText up to the 3-byte footer, so the packet must be longer than
+		// Index_LineText + PACKET_FOOTER_LENGTH.
+		if (message_bytes.size() <= Index_LineText + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
-			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise LineText.");
-		}
-		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1) > message_bytes.size())
-		{
-			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short to deserialise content of LineText");
-		}
-		else if (message_bytes.size() < Index_LineText + 3)
-		{
-			// Security: Prevent integer underflow in length calculation
 			LogDebug(Channel::Messages, "IAQMessage_PageMessage is too short for content extraction");
+			return false;
 		}
-		else
-		{
-			m_LineId = static_cast<uint8_t>(message_bytes[Index_LineId]);
 
-			const auto length_to_copy = message_bytes.size() - Index_LineText - 3;
-			const auto start_index = message_bytes.begin() + Index_LineText;
-			const auto end_index = start_index + length_to_copy;
+		m_LineId = Text::ReadU8(message_bytes, Index_LineId);
+		m_Line = Text::ExtractTrailingAsciiPayload(message_bytes, Index_LineText);
 
-			m_Line.clear();
-			std::transform(start_index, end_index, std::back_inserter(m_Line),
-				[](const auto& elem)
-				{
-					return static_cast<char>(elem);
-				}
-			);
+		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_PageMessage: LineId -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Line, m_Line.length()); });
 
-			LogDebug(Channel::Messages, std::format("Deserialised IAQMessage_PageMessage: LineId -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Line, m_Line.length()));
-
-			return true;
-		}	
-
-		return false;
+		return true;
 	}
 
 }

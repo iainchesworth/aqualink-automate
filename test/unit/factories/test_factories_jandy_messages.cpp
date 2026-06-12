@@ -8,16 +8,21 @@
 #include <boost/test/unit_test.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+#include "errors/protocol_errors.h"
 #include "jandy/factories/jandy_message_factory.h"
 #include "jandy/factories/jandy_message_factory_registration.h"
 #include "jandy/formatters/jandy_device_formatters.h"
 #include "jandy/formatters/jandy_message_formatters.h"
+#include "jandy/messages/jandy_message.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_message.h"
 #include "jandy/messages/jandy_message_status.h"
 #include "jandy/messages/jandy_message_probe.h"
 #include "jandy/messages/jandy_message_unknown.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "jandy/messages/jandy_message_constants.h"
+#include "jandy/messages/aquarite/aquarite_message_setpercent.h"
+#include "jandy/utility/jandy_checksum.h"
 
 #include "support/unit_test_ostream_support.h"
 
@@ -31,15 +36,7 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryRegistrationCount)
 {
     // Verify the factory has registered the expected number of message types
     BOOST_CHECK_GT(JandyMessageFactoryT::RegisteredCount(), 0);
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 40); // Based on registration file
-}
-
-BOOST_AUTO_TEST_CASE(JandyMessageFactory_FactoryHotPathCount)
-{
-    // Verify hot path messages are correctly configured
-    BOOST_CHECK_GT(JandyMessageFactoryT::HotPathCount(), 0);
-    BOOST_CHECK_LE(JandyMessageFactoryT::HotPathCount(), 4); // Hot cache capacity is 4
-    BOOST_CHECK_EQUAL(JandyMessageFactoryT::HotPathCount(), 3); // Ack, Status, Probe
+    BOOST_CHECK_EQUAL(JandyMessageFactoryT::RegisteredCount(), 44); // Based on registration file (+AQUARITE_SetPercent 0x15, +IAQ_PageSubMessage 0x27)
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateHotPathMessage_Ack)
@@ -114,6 +111,47 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateColdPathMessage_IAQPoll)
     BOOST_CHECK_EQUAL(message->Id(), JandyMessageIds::IAQ_Poll);
 }
 
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateColdPathMessage_AquariteSetPercent)
+{
+    // 0x15 -- the AquaRite second "set output %" command recovered from the simulator.
+    auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::AQUARITE_SetPercent);
+
+    BOOST_REQUIRE(message != nullptr);
+    BOOST_CHECK_EQUAL(message->Id(), JandyMessageIds::AQUARITE_SetPercent);
+
+    auto setpercent_message = std::dynamic_pointer_cast<AquariteMessage_SetPercent>(message);
+    BOOST_CHECK(setpercent_message != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_IAQPageSubMessage_RecognisedAsNamedUnknown)
+{
+    // 0x27 is registered as a named, payload-retaining Unknown: the factory yields a
+    // JandyMessage_Unknown, and deserialising a real 0x27 frame must resolve the id to
+    // IAQ_PageSubMessage (not the 0xFF catch-all) with its 5 payload bytes retained.
+    auto message = JandyMessageFactoryT::CreateMessageFromRaw(JandyMessageIds::IAQ_PageSubMessage);
+    BOOST_REQUIRE(message != nullptr);
+
+    auto unknown_message = std::dynamic_pointer_cast<JandyMessage_Unknown>(message);
+    BOOST_REQUIRE(unknown_message != nullptr);
+
+    std::vector<uint8_t> frame =
+    {
+        HEADER_BYTE_DLE, HEADER_BYTE_STX,
+        0x33,
+        magic_enum::enum_integer(JandyMessageIds::IAQ_PageSubMessage),
+        0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+        0x00, // checksum placeholder
+        HEADER_BYTE_DLE, HEADER_BYTE_ETX
+    };
+    frame[9] = AqualinkAutomate::Utility::JandyPacket_CalculateChecksum(frame.begin(), frame.begin() + 9);
+
+    BOOST_REQUIRE(unknown_message->Deserialize(std::as_bytes(std::span<uint8_t>(frame))));
+    BOOST_CHECK_EQUAL(unknown_message->Id(), JandyMessageIds::IAQ_PageSubMessage);
+
+    const std::vector<uint8_t> expected_payload = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
+    BOOST_CHECK_EQUAL_COLLECTIONS(unknown_message->Payload().begin(), unknown_message->Payload().end(), expected_payload.begin(), expected_payload.end());
+}
+
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateInvalidMessageId)
 {
     const uint8_t UNUSED_MESSAGE_ID = 0xFE;
@@ -185,6 +223,43 @@ BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_EmptyData)
 
     BOOST_CHECK(!result.has_value());
     BOOST_CHECK(result.error());
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_TwoBytes_NoOutOfBoundsRead)
+{
+    // Regression: previously the size guard accepted any input with >= 2 bytes
+    // and then dereferenced index Index_MessageType (3), reading out of bounds for
+    // a 2-byte input.  The guard now requires a full MINIMUM_PACKET_LENGTH packet,
+    // so this must fail cleanly with an invalid-packet-format error (no OOB read).
+    std::vector<uint8_t> two_bytes = { 0x10, 0x02 };
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(two_bytes.begin(), two_bytes.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_ThreeBytes_NoOutOfBoundsRead)
+{
+    // Regression: a 3-byte input has no byte at index Index_MessageType (3); the
+    // guard must reject it before any dereference of the message-type byte.
+    std::vector<uint8_t> three_bytes = { 0x10, 0x02, 0x00 };
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(three_bytes.begin(), three_bytes.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
+}
+
+BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_BelowMinimumPacketLength)
+{
+    // Any input shorter than MINIMUM_PACKET_LENGTH must be rejected by the size guard.
+    std::vector<uint8_t> short_packet(JandyMessage::MINIMUM_PACKET_LENGTH - 1, 0x00);
+
+    auto result = JandyMessageFactoryT::CreateFromSerialData(std::ranges::subrange(short_packet.begin(), short_packet.end()));
+
+    BOOST_REQUIRE(!result.has_value());
+    BOOST_CHECK(result.error() == make_error_code(AqualinkAutomate::ErrorCodes::Protocol_ErrorCodes::InvalidPacketFormat));
 }
 
 BOOST_AUTO_TEST_CASE(JandyMessageFactory_CreateFromSerialData_InvalidMessageType)

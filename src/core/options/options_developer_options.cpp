@@ -1,18 +1,22 @@
+#include <cctype>
 #include <format>
 #include <string>
+#include <string_view>
 
 #include <boost/program_options/value_semantic.hpp>
+#include <magic_enum/magic_enum.hpp>
+#include <magic_enum/magic_enum_utility.hpp>
 
 #include "logging/logging.h"
 #include "logging/logging_severity_filter.h"
 #include "logging/formatters/logging_formatters.h"
 #include "options/options_developer_options.h"
+#include "options/helpers/build_options_description.h"
 #include "options/helpers/conflicting_options_helper.h"
 #include "options/helpers/option_dependency_helper.h"
 #include "options/validators/profiler_type_validator.h"
 #include "options/validators/severity_level_validator.h"
 #include "profiling/profiling.h"
-#include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Logging;
@@ -20,68 +24,92 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Options::Developer
 {
 
+	namespace
+	{
+		std::string ToLowerAscii(std::string_view text)
+		{
+			std::string lowered;
+			lowered.reserve(text.size());
+			for (const char c : text)
+			{
+				lowered.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+			}
+			return lowered;
+		}
+	}
+
+	OptionsProcessor::OptionsProcessor()
+	{
+		// Data-drive the per-channel log-level options by enumerating the
+		// Logging::Channel enum instead of hand-writing one member per channel.
+		// Each contributes a `--loglevel-<channel>` option (e.g. Channel::Main
+		// -> `--loglevel-main`) taking a Severity value.
+		magic_enum::enum_for_each<Logging::Channel>([this](Logging::Channel channel)
+			{
+				const std::string channel_name{ magic_enum::enum_name(channel) };
+				auto option = make_appoption(
+					std::format("loglevel-{}", ToLowerAscii(channel_name)),
+					std::format("Set the logging level for Channel::{}", channel_name),
+					boost::program_options::value<AqualinkAutomate::Logging::Severity>()->multitoken());
+
+				OPTION_LOGLEVELS.emplace(channel, option);
+			});
+
+		DeveloperOptionsCollection =
+		{
+			OPTION_DEVMODE,
+			OPTION_DEVREPLAYFILE,
+			OPTION_DEVRECORDFILE,
+			OPTION_DECODE_TO_MASTER,
+			OPTION_REPLAY_FRAME_PERIOD,
+			OPTION_REPLAY_SPEED,
+			OPTION_PROFILER
+		};
+
+		DeveloperOptionsCollection.reserve(DeveloperOptionsCollection.size() + OPTION_LOGLEVELS.size());
+		for (const auto& entry : OPTION_LOGLEVELS)
+		{
+			DeveloperOptionsCollection.push_back(entry.second);
+		}
+	}
+
 	boost::program_options::options_description OptionsProcessor::Options() const
 	{
-		boost::program_options::options_description options(SettingsType::AreaName(), Utility::get_terminal_column_width());
-
-		LogDebug(Channel::Options, std::format("Adding {} options from the {} set", DeveloperOptionsCollection.size(), SettingsType::AreaName()));
-		for (auto& option : DeveloperOptionsCollection)
-		{
-			options.add((*option)());
-		}
-
-		return options;
+		return BuildOptionsDescription(SettingsType::AreaName(), DeveloperOptionsCollection);
 	}
 
 	void OptionsProcessor::Validate(const boost::program_options::variables_map& vm) const
 	{
 		Helper_CheckForConflictingOptions(vm, OPTION_DEVREPLAYFILE, OPTION_DEVRECORDFILE);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_DEVMODE);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MAIN);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_CERTIFICATES);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_COROUTINES);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_DEVICES);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EQUIPMENT);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_EXCEPTIONS);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MESSAGES);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_MQTT);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_NAVIGATION);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_OPTIONS);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PLATFORM);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PROFILING);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_PROTOCOL);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_SCRAPING);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_SERIAL);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_SIGNALS);
-		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_LOGLEVEL_WEB);
 		Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, OPTION_PROFILER);
+
+		// Every per-channel log-level option is a developer-mode dependency of
+		// the replay file (mirrors the historical hand-written dependency list).
+		for (const auto& entry : OPTION_LOGLEVELS)
+		{
+			Helper_ValidateOptionDependencies(vm, OPTION_DEVREPLAYFILE, entry.second);
+		}
 	}
 
 	std::expected<OptionsProcessor::SettingsType, ErrorCodes::Options_ErrorCodes> OptionsProcessor::Process(boost::program_options::variables_map& vm) const
 	{
 		SettingsType settings;
-		
+
 		if (OPTION_DEVMODE->IsPresent(vm)) { settings.dev_mode_enabled = OPTION_DEVMODE->As<bool>(vm); }
 		if (OPTION_DEVREPLAYFILE->IsPresent(vm)) { settings.replay_file = OPTION_DEVREPLAYFILE->As<std::string>(vm); }
 		if (OPTION_DEVRECORDFILE->IsPresent(vm)) { settings.recording_file = OPTION_DEVRECORDFILE->As<std::string>(vm); }
+		if (OPTION_DECODE_TO_MASTER->IsPresent(vm)) { settings.decode_to_master_enabled = OPTION_DECODE_TO_MASTER->As<bool>(vm); }
+		if (OPTION_REPLAY_FRAME_PERIOD->IsPresent(vm)) { settings.replay_frame_period_ms = OPTION_REPLAY_FRAME_PERIOD->As<std::uint32_t>(vm); }
+		if (OPTION_REPLAY_SPEED->IsPresent(vm)) { settings.replay_speed = OPTION_REPLAY_SPEED->As<double>(vm); }
 
-		if (OPTION_LOGLEVEL_MAIN->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Main, OPTION_LOGLEVEL_MAIN->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_CERTIFICATES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Certificates, OPTION_LOGLEVEL_CERTIFICATES->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_COROUTINES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Coroutines, OPTION_LOGLEVEL_COROUTINES->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_DEVICES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Devices, OPTION_LOGLEVEL_DEVICES->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_EQUIPMENT->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Equipment, OPTION_LOGLEVEL_EQUIPMENT->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_EXCEPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Exceptions, OPTION_LOGLEVEL_EXCEPTIONS->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_MESSAGES->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Messages, OPTION_LOGLEVEL_MESSAGES->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_MQTT->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Mqtt, OPTION_LOGLEVEL_MQTT->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_NAVIGATION->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Navigation, OPTION_LOGLEVEL_NAVIGATION->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_OPTIONS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Options, OPTION_LOGLEVEL_OPTIONS->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_PLATFORM->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Platform, OPTION_LOGLEVEL_PLATFORM->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_PROFILING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Profiling, OPTION_LOGLEVEL_PROFILING->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_PROTOCOL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Protocol, OPTION_LOGLEVEL_PROTOCOL->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_SCRAPING->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Scraping, OPTION_LOGLEVEL_SCRAPING->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_SERIAL->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Serial, OPTION_LOGLEVEL_SERIAL->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_SIGNALS->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Signals, OPTION_LOGLEVEL_SIGNALS->As<Severity>(vm)); }
-		if (OPTION_LOGLEVEL_WEB->IsPresent(vm)) { SeverityFiltering::SetChannelFilterLevel(Channel::Web, OPTION_LOGLEVEL_WEB->As<Severity>(vm)); }
+		for (const auto& [channel, option] : OPTION_LOGLEVELS)
+		{
+			if (option->IsPresent(vm))
+			{
+				SeverityFiltering::SetChannelFilterLevel(channel, option->As<Severity>(vm));
+			}
+		}
 
 		if (OPTION_PROFILER->IsPresent(vm)) { Factory::ProfilerFactory::Instance().SetDesired(OPTION_PROFILER->As<Types::ProfilerTypes>(vm)); }
 

@@ -2,6 +2,7 @@
 #include <functional>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "devices/device_status.h"
 #include "logging/logging.h"
@@ -16,11 +17,12 @@ namespace AqualinkAutomate::Devices
 
 	SerialAdapterDevice::SerialAdapterDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
-		Capabilities::Emulated(is_emulated),
 		Capabilities::Restartable(SERIALADAPTER_TIMEOUT_DURATION),
+		Capabilities::Emulated(is_emulated),
 		m_StatusTypesCollection(),
 		m_StatusTypesCollectionIter(),
 		m_StatusMessageReceived(false),
+		m_PendingCommands(),
 		m_ProfilingDomain(std::move(Factory::ProfilingUnitFactory::Instance().CreateDomain("SerialAdapterDevice")))
 	{
 		m_ProfilingDomain->Start();
@@ -79,15 +81,17 @@ namespace AqualinkAutomate::Devices
 
 		if (m_StatusMessageReceived)
 		{
-			if (m_PendingCommand.has_value())
+			if (!m_PendingCommands.empty())
 			{
 				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::ProcessControllerUpdates -> pending_command", std::source_location::current());
 
-				LogDebug(Channel::Devices, std::format("ProcessControllerUpdates -> Sending pending command (ack_type=0x{:02x}, ack_data_value=0x{:02x})", m_PendingCommand->ack_type, m_PendingCommand->ack_data_value));
+				const PendingCommand pending = m_PendingCommands.front();
+				m_PendingCommands.pop_front();
 
-				ack_type = m_PendingCommand->ack_type;
-				ack_data_value = m_PendingCommand->ack_data_value;
-				m_PendingCommand.reset();
+				LogDebug(Channel::Devices, std::format("ProcessControllerUpdates -> Sending pending command (ack_type=0x{:02x}, ack_data_value=0x{:02x}); {} remaining", pending.ack_type, pending.ack_data_value, m_PendingCommands.size()));
+
+				ack_type = pending.ack_type;
+				ack_data_value = pending.ack_data_value;
 			}
 			else
 			{
@@ -160,8 +164,35 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueueCommand(uint8_t ack_type, uint8_t ack_data_value)
 	{
+		if (IsEmulated() && IsEmulationSuppressed())
+		{
+			// Presence gating: a real adapter owns this address. Never queue work
+			// for a suppressed instance -- it must not transmit.
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: Ignoring command (ack_type=0x{:02x}, ack_data_value=0x{:02x}) -- emulation is suppressed (a real adapter is present).", ack_type, ack_data_value));
+			return;
+		}
+
+		// Single-command semantics: a freshly issued command supersedes any earlier
+		// still-pending command (last-write-wins), so we clear before queuing. The
+		// multi-step write path uses EnqueueCommand() to append without clobbering.
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing command (ack_type=0x{:02x}, ack_data_value=0x{:02x})", ack_type, ack_data_value));
-		m_PendingCommand = PendingCommand{ ack_type, ack_data_value };
+		m_PendingCommands.clear();
+		m_PendingCommands.emplace_back(PendingCommand{ ack_type, ack_data_value });
+	}
+
+	void SerialAdapterDevice::EnqueueCommand(uint8_t ack_type, uint8_t ack_data_value)
+	{
+		if (IsEmulated() && IsEmulationSuppressed())
+		{
+			// Presence gating: a real adapter owns this address; stay passive.
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: Ignoring enqueued command (ack_type=0x{:02x}, ack_data_value=0x{:02x}) -- emulation is suppressed (a real adapter is present).", ack_type, ack_data_value));
+			return;
+		}
+
+		// Append (FIFO) -- used by multi-step writes that must emit several ACKs in
+		// a specific order, one per master poll, without discarding earlier steps.
+		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Enqueuing command (ack_type=0x{:02x}, ack_data_value=0x{:02x})", ack_type, ack_data_value));
+		m_PendingCommands.emplace_back(PendingCommand{ ack_type, ack_data_value });
 	}
 
 	void SerialAdapterDevice::QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action)
@@ -182,8 +213,70 @@ namespace AqualinkAutomate::Devices
 		QueueCommand(magic_enum::enum_integer(setpoint), temperature);
 	}
 
+	void SerialAdapterDevice::QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)
+	{
+		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, two-step setpoint).
+		// Byte ordering/codes are AqualinkD-derived and NOT yet validated on this
+		// project's live bus -- proven only by synthetic round-trip tests here.
+		// MUST be confirmed against a live Brainboxes capture before trusting it to
+		// drive real hardware.
+		//
+		//   Step 1 (readySP): wire {0x00,0x01,typeID,0x35}
+		//                     -> ACK {ack_type = typeID(setpoint), data = 0x35}
+		//   Step 2 (setSP):   wire {0x00,0x01,0x00,val}
+		//                     -> ACK {ack_type = 0x00,            data = temperature}
+		//
+		// The two ACKs are queued FIFO so the readySP is emitted on the next master
+		// poll and the setSP on the poll immediately after, mirroring the adapter's
+		// expected request/confirm handshake order.
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing two-step setpoint write ({}, temperature={}) -- readySP then setSP", magic_enum::enum_name(setpoint), temperature));
+
+		// Supersede any earlier pending command, then append both steps in order so
+		// readySP and setSP go out on consecutive polls. The second QueueCommand
+		// must NOT be used (it would clear the first step) -- EnqueueCommand appends.
+		QueueCommand(magic_enum::enum_integer(setpoint), magic_enum::enum_integer(Messages::SerialAdapter_CommandTypes::ReadySetpoint));
+		EnqueueCommand(0x00, temperature);
+	}
+
+	void SerialAdapterDevice::QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on)
+	{
+		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, aux on/off toggle).
+		//   setDev[] = {0x00, 0x01, state, devID}, state = RS_SA_ON(0x81)/OFF(0x80).
+		//   -> ACK {ack_type = state, data = devID(aux + SERIALADAPTER_AUX_ID_OFFSET)}
+		//
+		// NOTE the byte ORDER differs from the existing QueueAuxCommand() (which
+		// sends {ack_type = devID, data = state}). AqualinkD's setDev puts the state
+		// in the command byte and the device id in the value byte. This ordering is
+		// AqualinkD-derived and NOT yet validated on this project's live bus -- it is
+		// proven only by synthetic round-trip tests here and MUST be reconciled
+		// against a live Brainboxes capture before it is used to drive hardware.
+		const uint8_t state{ static_cast<uint8_t>(turn_on ? Messages::SerialAdapter_CommandTypes::SetOn : Messages::SerialAdapter_CommandTypes::SetOff) };
+		const uint8_t dev_id{ static_cast<uint8_t>(magic_enum::enum_integer(aux_id) + Messages::SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET) };
+
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing aux toggle write ({}, {}) -> setDev state=0x{:02x} devID=0x{:02x}", magic_enum::enum_name(aux_id), turn_on ? "ON" : "OFF", state, dev_id));
+
+		QueueCommand(state, dev_id);
+	}
+
 	void SerialAdapterDevice::WatchdogTimeoutOccurred()
 	{
+	}
+
+	nlohmann::json SerialAdapterDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "SerialAdapter";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+		j["status_collection_count"] = static_cast<uint32_t>(m_StatusTypesCollection.size());
+		j["status_message_received"] = m_StatusMessageReceived;
+		j["has_pending_command"] = !m_PendingCommands.empty();
+		j["pending_command_count"] = static_cast<uint32_t>(m_PendingCommands.size());
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

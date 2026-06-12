@@ -16,6 +16,11 @@ namespace AqualinkAutomate::Kernel
 		AuxillaryTraits.Set(AuxillaryTraitsTypes::LabelTrait{}, std::string{label});
 	}
 
+	AuxillaryDevice::AuxillaryDevice(boost::uuids::uuid id) :
+		m_Id(id)
+	{
+	}
+
 	boost::uuids::uuid AuxillaryDevice::Id() const
 	{
 		return m_Id;

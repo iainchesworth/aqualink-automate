@@ -1,20 +1,13 @@
 #pragma once
 
-#include <string>
+#include <source_location>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
 namespace AqualinkAutomate::Exceptions
 {
 
-	class OptionsHelpOrVersion : public GenericAqualinkException
-	{
-		static const std::string OPTIONS_HELP_OR_VERSION_MESSAGE;
-
-	public:
-		OptionsHelpOrVersion();
-		OptionsHelpOrVersion(const std::string& message);
-	};
+	AQ_DECLARE_EXCEPTION(OptionsHelpOrVersion);
 
 }
 // namespace AqualinkAutomate::Exceptions

@@ -1,40 +1,15 @@
 #pragma once
 
-#include <memory>
-#include <string_view>
-
-#include "concepts/is_c_array.h"
-#include "interfaces/istatus.h"
+#include "interfaces/status_tag.h"
 
 namespace AqualinkAutomate::Devices
 {
 
+	inline constexpr char DEVICESTATUS_SOURCE_TYPE[] = "device";
+
+	/// Device-side status tag: a StatusTag whose source-type text is "device".
 	template<const auto& DEVICE_STATUS_STRING>
-	requires (Concepts::CArray<decltype(DEVICE_STATUS_STRING)>)
-	class DeviceStatus : public Interfaces::IStatus
-	{
-		inline static constexpr std::string_view SOURCE_NAME{ "my_device" };
-		inline static constexpr std::string_view SOURCE_TYPE{ "device" };
-
-	public:
-		std::string_view SourceName() const final
-		{			
-			return SOURCE_NAME;
-		}
-
-		std::string_view SourceType() const final
-		{
-			return SOURCE_TYPE;
-		}
-
-		std::string_view StatusType() const final
-		{
-			return m_StatusType;
-		}
-
-	private:
-		const std::string_view m_StatusType{ DEVICE_STATUS_STRING };
-	};
+	using DeviceStatus = Interfaces::StatusTag<DEVICE_STATUS_STRING, DEVICESTATUS_SOURCE_TYPE>;
 
 	inline constexpr char DEVICESTATUS_INITIALIZING_NAME[] = "Initializing";
 	class DeviceStatus_Initializing : public DeviceStatus<DEVICESTATUS_INITIALIZING_NAME>

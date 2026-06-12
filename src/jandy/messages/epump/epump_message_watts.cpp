@@ -2,6 +2,7 @@
 
 #include "messages/epump/epump_message_watts.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -34,21 +35,16 @@ namespace AqualinkAutomate::Messages
 
 	bool EPumpMessage_Watts::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into EPumpMessage_Watts type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into EPumpMessage_Watts type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_Watts_High)
+		if (!Text::RequireIndex(message_bytes, Index_Watts_High, "EPumpMessage_Watts", "Watts"))
 		{
-			LogDebug(Channel::Messages, "EPumpMessage_Watts is too short to deserialise Watts.");
-		}
-		else
-		{
-			const uint8_t low = static_cast<uint8_t>(message_bytes[Index_Watts_Low]);
-			const uint8_t high = static_cast<uint8_t>(message_bytes[Index_Watts_High]);
-			m_Watts = static_cast<uint16_t>(high * 256 + low);
-			return true;
+			return false;
 		}
 
-		return false;
+		m_Watts = Text::ReadU16LE(message_bytes, Index_Watts_Low);
+
+		return true;
 	}
 
 }

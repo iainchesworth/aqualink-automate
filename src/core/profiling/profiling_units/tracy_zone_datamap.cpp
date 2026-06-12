@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstring>
 
 #include "profiling/profiling_units/tracy_zone_datamap.h"

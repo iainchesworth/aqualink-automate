@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./cicd/build.sh                                  # default: debug, platform primary compiler
 #   ./cicd/build.sh --compiler clang --type release
 #   ./cicd/build.sh --preset config-linux-gcc-debug
+#   ./cicd/build.sh --package
 #
 ########################################################################################
 
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
         --package)
             PACKAGE=true
             shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--preset <name>] [--compiler gcc|clang] [--type debug|release] [--package]"
+            exit 0
             ;;
         *)
             echo "Unknown argument: $1"
@@ -107,14 +112,61 @@ echo "  Type:      ${BUILD_TYPE}"
 echo "  Preset:    ${PRESET}"
 echo ""
 
-# Bootstrap vcpkg if needed
+# ---- Dependency validation ----
+echo "--- Checking dependencies ---"
+MISSING=()
+
+command -v git >/dev/null 2>&1    || MISSING+=("git")
+command -v cmake >/dev/null 2>&1  || MISSING+=("cmake (https://cmake.org)")
+command -v ninja >/dev/null 2>&1  || MISSING+=("ninja (https://ninja-build.org)")
+
+if [[ "${COMPILER_NAME}" == "gcc" ]]; then
+    command -v gcc >/dev/null 2>&1 || MISSING+=("gcc")
+    command -v g++ >/dev/null 2>&1 || MISSING+=("g++")
+elif [[ "${COMPILER_NAME}" == "llvm" ]]; then
+    command -v clang >/dev/null 2>&1   || MISSING+=("clang")
+    command -v clang++ >/dev/null 2>&1 || MISSING+=("clang++")
+fi
+
+if [[ "${PACKAGE}" == "true" && "${PLATFORM_NAME}" == "linux" ]]; then
+    command -v dpkg-deb >/dev/null 2>&1 || command -v rpmbuild >/dev/null 2>&1 || true
+fi
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+    echo "Error: Missing required tools:"
+    for tool in "${MISSING[@]}"; do
+        echo "  - ${tool}"
+    done
+    echo ""
+    if [[ "${PLATFORM_NAME}" == "linux" ]]; then
+        echo "Install with: sudo apt install build-essential cmake ninja-build git"
+    elif [[ "${PLATFORM_NAME}" == "macos" ]]; then
+        echo "Install with: brew install cmake ninja llvm"
+    fi
+    exit 1
+fi
+
+# Report versions
+echo "  git:    $(git --version | head -1)"
+echo "  cmake:  $(cmake --version | head -1)"
+echo "  ninja:  $(ninja --version)"
+if [[ "${COMPILER_NAME}" == "gcc" ]]; then
+    echo "  gcc:    $(gcc --version | head -1)"
+elif [[ "${COMPILER_NAME}" == "llvm" ]]; then
+    echo "  clang:  $(clang --version | head -1)"
+fi
+echo ""
+
+# ---- Submodules ----
+if [[ ! -f "${PROJECT_DIR}/deps/vcpkg/bootstrap-vcpkg.sh" ]]; then
+    echo "--- Initializing submodules ---"
+    git -C "${PROJECT_DIR}" submodule update --init --recursive
+fi
+
+# ---- Bootstrap vcpkg ----
 VCPKG_DIR="${PROJECT_DIR}/deps/vcpkg"
 if [[ ! -f "${VCPKG_DIR}/vcpkg" ]]; then
     echo "--- Bootstrapping vcpkg ---"
-    if [[ ! -f "${VCPKG_DIR}/bootstrap-vcpkg.sh" ]]; then
-        echo "Error: vcpkg not found at ${VCPKG_DIR}. Did you clone with --recurse-submodules?"
-        exit 1
-    fi
     "${VCPKG_DIR}/bootstrap-vcpkg.sh" -disableMetrics
 fi
 

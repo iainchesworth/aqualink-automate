@@ -74,8 +74,8 @@ BOOST_AUTO_TEST_CASE(Test_Flow_Web_EquipmentJsonContainsChemistry)
 	auto json = nlohmann::json::parse(resp.body());
 
 	BOOST_REQUIRE(json.contains("chemistry"));
-	BOOST_CHECK(json["chemistry"].contains("salt_in_ppm"));
-	BOOST_CHECK_EQUAL(json["chemistry"]["salt_in_ppm"].get<int>(), 3200);
+	BOOST_CHECK(json["chemistry"].contains("salt_ppm"));
+	BOOST_CHECK_EQUAL(json["chemistry"]["salt_ppm"].get<int>(), 3200);
 
 	HTTP::Routing::Clear();
 }

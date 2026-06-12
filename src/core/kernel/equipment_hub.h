@@ -1,18 +1,17 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
-#include <vector>
+#include <string>
 #include <typeindex>
+#include <typeinfo>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 #include <boost/signals2.hpp>
 
-#include <functional>
-
 #include "interfaces/idevice.h"
 #include "interfaces/ideviceidentifier.h"
-#include "interfaces/istatuspublisher.h"
 #include "interfaces/iequipment.h"
 #include "interfaces/ihub.h"
 #include "kernel/hub_events/equipment_hub_system_event.h"
@@ -43,6 +42,12 @@ namespace AqualinkAutomate::Kernel
 	public:
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::EquipmentHub_SystemEvent>)> EquipmentStatusChangeSignal;
 
+		// Alerting (WS3): emitted by AlertMonitor on each fault-condition edge so
+		// the WebSocket layer can broadcast it to UI clients.
+		// Args: condition key, raised(true)/cleared(false), unix-seconds timestamp,
+		// human-readable detail.
+		mutable boost::signals2::signal<void(const std::string&, bool, std::int64_t, const std::string&)> AlertTransitionSignal;
+
 		//---------------------------------------------------------------------
 		// ACTIVE EQUIPMENT
 		//---------------------------------------------------------------------
@@ -55,48 +60,58 @@ namespace AqualinkAutomate::Kernel
 		bool DeviceExists(std::unique_ptr<Interfaces::IDevice> const& device) const;
 		bool AddDevice(std::unique_ptr<Interfaces::IDevice> device);
 
-		Interfaces::IDevice* FindDevice(std::function<bool(const Interfaces::IDevice&)> predicate) const;
-
-	private:
-		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;
-		std::unordered_set<std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
-
-		//---------------------------------------------------------------------
-		// SERVICE STATUS
-		//---------------------------------------------------------------------
-
-	public:
-
-	private:
-		std::vector<boost::signals2::scoped_connection> m_StatusConnections;
-
-		template<typename EQUIPMENT_TYPE>
-		void CheckAndRegisterForUpdateEvents(const std::shared_ptr<EQUIPMENT_TYPE> status_publisher_ptr)
+		// FindDevice returns the first registered device satisfying the
+		// predicate, or nullptr.  The predicate is taken by forwarding
+		// reference so it can be a lambda passed without the per-call
+		// std::function heap allocation the previous std::function-by-value
+		// signature incurred on the command-dispatch path.
+		template<typename Predicate>
+		Interfaces::IDevice* FindDevice(Predicate&& predicate) const
 		{
-			if (auto ptr = std::dynamic_pointer_cast<Interfaces::IStatusPublisher>(status_publisher_ptr); nullptr == ptr)
+			for (const auto& [identifier_type, device] : m_ActiveDevices)
 			{
-				LogTrace(Channel::Equipment, "IStatusPublisher interface not supported; will not attempt to chain status signals");
+				if (predicate(*device))
+				{
+					return device.get();
+				}
 			}
-			else
+
+			return nullptr;
+		}
+
+		// NOTE: The equipment hub is intentionally unsynchronised. Device
+		// registration (from the protocol task) and iteration (from the
+		// HTTP/diagnostics handlers) both run on the single application thread
+		// driven by the main poll() loop, so no locking is required. If a
+		// multi-threaded execution model is ever reintroduced, this container
+		// must be guarded before concurrent iteration/mutation.
+		template<typename Func>
+		void ForEachDevice(Func&& func) const
+		{
+			for (const auto& [identifier_type, device] : m_ActiveDevices)
 			{
-				m_StatusConnections.emplace_back(
-					ptr->StatusSignal.connect(
-						[this](Interfaces::IStatusPublisher::StatusType status) -> void
-						{
-							if (auto status_ptr = status.lock(); nullptr == status_ptr)
-							{
-								LogDebug(Channel::Equipment, "Status was unavailable when locking was attempted; ignoring status change");
-							}
-							else
-							{
-								LogTrace(Channel::Equipment, "Publishing a status change has occurred for a connected equipment/device");
-								EquipmentStatusChangeSignal(std::make_shared<Kernel::EquipmentHub_SystemEvent_StatusChange>(*status_ptr));
-							}
-						}
-					)
-				);
+				func(*device);
 			}
 		}
+
+	private:
+		// Equipment is keyed by the *runtime pointee* type so that distinct
+		// concrete IEquipment subclasses (e.g. JandyEquipment and
+		// PentairEquipment) each register exactly once.  Keying by the static
+		// IEquipment type (the historical bug) collapsed every subclass onto a
+		// single slot, silently dropping the second protocol's equipment.
+		std::unordered_map<std::type_index, std::unique_ptr<Interfaces::IEquipment>> m_ActiveEquipment;
+
+		// Devices are bucketed by the runtime type of their IDeviceIdentifier
+		// (typeid(device->DeviceId())).  This bounds the per-id existence scan
+		// to devices that share an identifier type rather than scanning every
+		// device in the system.  A perfect O(1) by-id map is not possible at
+		// this layer because IDeviceIdentifier (src/core/interfaces) exposes
+		// only Equals() with no hash or stable scalar key; promoting this to a
+		// full O(1) lookup would require adding a hash hook to that interface,
+		// which is outside this change's scope.
+		std::unordered_multimap<std::type_index, std::unique_ptr<Interfaces::IDevice>> m_ActiveDevices;
+
 	};
 
 }

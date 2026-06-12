@@ -36,21 +36,6 @@ namespace AqualinkAutomate::Devices
 		Unknown
 	};
 
-	/*
-		enum class Pentair_Pump_DeviceIds : uint8_t
-		{
-			Pentair_Pump_A = 0x60,
-			Pentair_Pump_B = 0x61,
-			Pentair_Pump_C = 0x62,
-			Pentair_Pump_D = 0x63,
-			Pentair_Pump_E = 0x64,
-			Pentair_Pump_F = 0x65,
-			Pentair_Pump_G = 0x66,
-			Pentair_Pump_H = 0x67,
-			Pentair_Pump_I = 0x67
-		};
-	*/
-
 	class JandyDeviceType : public Interfaces::IDeviceIdentifier
 	{
 		using DeviceId = JandyDeviceId;
@@ -60,7 +45,7 @@ namespace AqualinkAutomate::Devices
 		inline static const DeviceClasses UNKNOWN_DEVICE_CLASS{ DeviceClasses::Unknown };
 		inline static const DeviceId UNKNOWN_DEVICE_RAWID{ 0xFF };
 
-		const DeviceClassAndIdsList m_KnownDeviceIdsList =
+		inline static const DeviceClassAndIdsList m_KnownDeviceIdsList =
 		{
 			{DeviceClasses::AqualinkMaster, {0x00, 0x01, 0x02, 0x03}},
 			{DeviceClasses::RS_Keypad,		{0x08, 0x09, 0x0A, 0x0B}},
@@ -89,10 +74,10 @@ namespace AqualinkAutomate::Devices
 		JandyDeviceType(DeviceId device_id);
 
 	public:
-		JandyDeviceType(const JandyDeviceType& other);
-		JandyDeviceType& operator=(const JandyDeviceType& other);
-		JandyDeviceType(JandyDeviceType&& other) noexcept;
-		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept;
+		JandyDeviceType(const JandyDeviceType& other) = default;
+		JandyDeviceType& operator=(const JandyDeviceType& other) = default;
+		JandyDeviceType(JandyDeviceType&& other) noexcept = default;
+		JandyDeviceType& operator=(JandyDeviceType&& other) noexcept = default;
 
 	public:
 		bool operator==(const JandyDeviceType& other) const;
@@ -109,6 +94,12 @@ namespace AqualinkAutomate::Devices
 	public:
 		DeviceClasses Class() const;
 		DeviceId Id() const;
+
+		// The full set of bus addresses (instances) the master probes for a device class -- e.g.
+		// OneTouch -> {0x40,0x41,0x42,0x43}, SerialAdapter -> {0x48,0x49}. Used to relocate an
+		// emulated device to a FREE instance of its class on a bus collision, since multiple of a
+		// class can co-exist at different instances. Empty for an unknown class.
+		static std::vector<std::uint8_t> InstanceAddressesForClass(DeviceClasses device_class);
 
 	private:
 		DeviceClasses m_DeviceClass;

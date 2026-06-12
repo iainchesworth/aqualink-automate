@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "devices/jandy_device_types.h"
 
 namespace AqualinkAutomate::Devices
@@ -15,60 +17,17 @@ namespace AqualinkAutomate::Devices
 	{
 		for (const auto& device_class : m_KnownDeviceIdsList)
 		{
-			for (const auto& id : device_class.second)
+			const auto& ids = device_class.second;
+			if (std::ranges::find(ids, device_id) != ids.cend())
 			{
-				if (static_cast<DeviceId>(id) == device_id)
-				{
-					m_DeviceClass = device_class.first;
-				}
+				m_DeviceClass = device_class.first;
+				// A given raw id maps to exactly one class; stop once matched.
+				break;
 			}
 		}
 	}
 
-	JandyDeviceType::JandyDeviceType(const JandyDeviceType& other) :
-		m_DeviceClass(other.m_DeviceClass),
-		m_DeviceId(other.m_DeviceId)
-	{
-	}
-
-	JandyDeviceType& JandyDeviceType::operator=(const JandyDeviceType& other)
-	{
-		if (this != &other)
-		{
-			// "Copy" the data to this instance.
-			m_DeviceClass = other.m_DeviceClass;
-			m_DeviceId = other.m_DeviceId;
-		}
-
-		return *this;
-	}
-
-	JandyDeviceType::JandyDeviceType(JandyDeviceType&& other) noexcept :
-		m_DeviceClass(other.m_DeviceClass),
-		m_DeviceId(other.m_DeviceId)
-	{
-		// Reset the other instance to default "unknown" values.
-		other.m_DeviceClass = DeviceClasses::Unknown;
-		other.m_DeviceId = 0xFF;
-	}
-
-	JandyDeviceType& JandyDeviceType::operator=(JandyDeviceType&& other) noexcept
-	{
-		if (this != &other)
-		{
-			// "Move" the data to this instance.
-			m_DeviceClass =other.m_DeviceClass;
-			m_DeviceId = other.m_DeviceId;
-
-			// Reset the other instance to default "unknown" values.
-			other.m_DeviceClass = DeviceClasses::Unknown;
-			other.m_DeviceId = 0xFF;
-		}
-
-		return *this;
-	}
-
-	bool JandyDeviceType::operator==(const JandyDeviceType& other) const 
+	bool JandyDeviceType::operator==(const JandyDeviceType& other) const
 	{
 		return m_DeviceId == other.m_DeviceId;
 	}
@@ -102,6 +61,24 @@ namespace AqualinkAutomate::Devices
 	JandyDeviceType::DeviceId JandyDeviceType::Id() const
 	{
 		return m_DeviceId;
+	}
+
+	std::vector<std::uint8_t> JandyDeviceType::InstanceAddressesForClass(DeviceClasses device_class)
+	{
+		for (const auto& [known_class, ids] : m_KnownDeviceIdsList)
+		{
+			if (known_class == device_class)
+			{
+				std::vector<std::uint8_t> addresses;
+				addresses.reserve(ids.size());
+				for (const auto& id : ids)
+				{
+					addresses.push_back(id());   // JandyDeviceId -> raw uint8_t
+				}
+				return addresses;
+			}
+		}
+		return {};
 	}
 
 }

@@ -1,15 +1,37 @@
-build/
-install/
-packages/
-.git/
-deps/vcpkg/buildtrees/
-deps/vcpkg/downloads/
-deps/vcpkg/packages/
-deps/vcpkg/installed/
-.vs/
-.vscode/
-.devcontainer/
-.github/
+# Keep the Docker build context small. The image bootstraps its own vcpkg and
+# builds from source, so none of the local build outputs, IDE state, or the
+# Packer runner-image tooling (multi-GB install ISOs) belong in the context.
+#
+# Biggest offenders if omitted: cicd/ (~15 GB of Packer ISOs + packer_cache),
+# build/ (~18 GB), .vs/ (~4 GB), deps/vcpkg/buildtrees (~5 GB).
+
+# CI/CD runner-image tooling — Packer ISOs, packer_cache, etc. (not used by the app build)
+cicd
+
+# Local build outputs
+build
+install
+packages
+vcpkg_installed
+
+# vcpkg working dirs (the image bootstraps + populates its own)
+deps/vcpkg/buildtrees
+deps/vcpkg/downloads
+deps/vcpkg/packages
+deps/vcpkg/installed
+
+# VCS / IDE / CI metadata
+.git
+.vs
+.vscode
+.devcontainer
+.github
+
+# Node / Playwright artifacts
+node_modules
+test-results
+playwright-report
+
 CMakeUserPresets.json
 nul
 *.zip

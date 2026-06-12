@@ -76,7 +76,6 @@ namespace AqualinkAutomate::Devices
 		Utility::ValueDebouncer<Generating_InPercent, TypeWithTimeComparator<Generating_InPercent>> m_Requested;
 		Generating_InPercent m_Reported;
 		SaltConcentration_InPPM m_SaltPPM;
-		Messages::AquariteStatuses m_AquariteStatus{ Messages::AquariteStatuses::Unknown };
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 
 	private:

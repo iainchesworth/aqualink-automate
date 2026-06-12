@@ -8,32 +8,27 @@ namespace AqualinkAutomate::ErrorCodes
 		return category;
 	}
 
-	const char* Factory_ErrorCategory::name() const noexcept
+	std::string_view Factory_ErrorCategory::Describe(Factory_ErrorCodes e)
 	{
-		return "AqualinkAutomate::Factory Error Category";
-	}
-
-	std::string Factory_ErrorCategory::message(int ev) const
-	{
-		switch (ev)
+		switch (e)
 		{
 		case Factory_ErrorCodes::Error_UnknownFactoryError:
-			return "Factory_ErrorCodes::Error_UnknownFactoryError";
+			return "An unspecified error occurred while creating the auxillary device";
 
 		case Factory_ErrorCodes::Error_UnknownDeviceLabel:
-			return "Factory_ErrorCodes::Error_UnknownDeviceLabel";
+			return "The device label is not recognised by the auxillary factory";
 
 		case Factory_ErrorCodes::Error_CannotCastToJandyAuxillaryId:
-			return "Factory_ErrorCodes::Error_CannotCastToJandyAuxillaryId";
+			return "The device identifier could not be cast to a Jandy auxillary id";
 
 		case Factory_ErrorCodes::Error_FailedToCreateAuxillaryPtr:
-			return "Factory_ErrorCodes::Error_FailedToCreateAuxillaryPtr";
+			return "The auxillary device pointer could not be created";
 
 		case Factory_ErrorCodes::Error_ReceivedInvalidAuxillaryStatus:
-			return "Factory_ErrorCodes::Error_ReceivedInvalidAuxillaryStatus";
+			return "An invalid auxillary status was received";
 
 		default:
-			return "Factory_ErrorCodes - Unknown Error Code";
+			return "Unknown auxillary factory error";
 		}
 	}
 }
@@ -41,10 +36,10 @@ namespace AqualinkAutomate::ErrorCodes
 
 boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::Factory_ErrorCodes e)
 {
-	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Factory_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::Factory_ErrorCategory::MakeErrorCode(e);
 }
 
-boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::Factory_ErrorCodes e)
+boost::system::error_condition make_error_condition(AqualinkAutomate::ErrorCodes::Factory_ErrorCodes e)
 {
-	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::Factory_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::Factory_ErrorCategory::MakeErrorCondition(e);
 }

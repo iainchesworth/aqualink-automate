@@ -57,7 +57,8 @@ namespace AqualinkAutomate::Options::Serial
 		AppOptionPtr OPTION_SERIALPORT{ make_appoption("serial-port", "s", "Serial port to use for Aqualink connectivity", boost::program_options::value<std::string>()->default_value(Application::SERIAL_PORT)) };
 		AppOptionPtr OPTION_BAUDRATE{ make_appoption("baudrate", "Desired serial port baud rate setting", boost::program_options::value<uint16_t>()->default_value(9600)) };
 		AppOptionPtr OPTION_REMOTESERIALPORT{ make_appoption("remote-serial-port", "r", "Remote serial port to use for Aqualink connectivity", boost::program_options::value<std::string>()) };
-		AppOptionPtr OPTION_USE_RFC2217{ make_appoption("rfc2217", "Use RFC2217 with the remote serial port", boost::program_options::bool_switch()->default_value(true)) };
+		AppOptionPtr OPTION_USE_RFC2217{ make_appoption("rfc2217", "Use RFC2217 with the remote serial port (the default for remote ports)", boost::program_options::bool_switch()->default_value(true)) };
+		AppOptionPtr OPTION_NO_RFC2217{ make_appoption("no-rfc2217", "Disable RFC2217 for the remote serial port (use a plain socket)", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_USE_RAWTCP{ make_appoption("rawtcp", "Use raw TCP with the remote serial port", boost::program_options::bool_switch()->default_value(false)) };
 
 		const std::vector<AppOptionPtr> SerialOptionsCollection
@@ -66,6 +67,7 @@ namespace AqualinkAutomate::Options::Serial
 			OPTION_BAUDRATE,
 			OPTION_REMOTESERIALPORT,
 			OPTION_USE_RFC2217,
+			OPTION_NO_RFC2217,
 			OPTION_USE_RAWTCP
 		};
 

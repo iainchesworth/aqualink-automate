@@ -9,12 +9,47 @@ info:
     This API provides endpoints for retrieving equipment status, managing buttons/devices,
     controlling temperature setpoints, and managing diagnostics.
 
+    ## Authentication
+
+    Authentication is **optional and disabled by default**. When the server is
+    started without an API auth token (the `--api-auth-token` CLI flag /
+    `api-auth-token` config key is unset), every endpoint is reachable without
+    credentials and the documented `401` responses never occur — fully
+    backward-compatible behaviour.
+
+    When an API auth token is configured, every `/api` request must carry an
+    `Authorization: Bearer <token>` header. A request with a missing or
+    mismatched token is rejected with `401`. This is the `bearerAuth` security
+    scheme below; the top-level `security` requirement is declared as optional
+    (`{}` alternative) to reflect that auth is opt-in.
+
+    **Static assets are exempt** — only `/api`, `/metrics` and the `/ws`
+    upgrade are protected, so `index.html` / scripts / styles always load (to
+    render the login screen). `GET /api/auth/check` lets a client discover its
+    auth state: it returns `200` when authorized (or when auth is disabled) and
+    `401` otherwise.
+
+    **WebSocket auth:** browsers cannot set an `Authorization` header on a
+    WebSocket upgrade, so the client offers the token via the
+    `Sec-WebSocket-Protocol` header as `aqualink, bearer.<token>`. The server
+    constant-time-compares the `bearer.<token>` entry and, on success, completes
+    the handshake echoing the `aqualink` subprotocol. Non-browser clients may
+    still use the `Authorization: Bearer <token>` header on the upgrade.
+
     ## WebSocket Endpoints
 
     These are not part of the OpenAPI spec but are documented here for reference:
 
     - `GET /ws/equipment` - Real-time equipment status updates via WebSocket.
     - `GET /ws/equipment/stats` - Real-time equipment statistics streaming via WebSocket.
+
+    WebSocket frames are JSON objects `{ "type": <string>, "payload": <object> }`.
+    Message types on `/ws/equipment` include `ChemistryUpdate`, `TemperatureUpdate`,
+    `ButtonStateChange`, `SystemStatusChange`, `SystemStateUpdate`, and
+    `AlertTransition`. The `AlertTransition` payload (fault-detection alerts) is
+    `{ "condition": <string>, "state": "raised"|"cleared", "ts": <unix-seconds>,
+    "detail": <string> }`, where `condition` is one of `chlorinator_fault`,
+    `salt_low`, `service_mode`, `serial_comms_loss`.
   version: 1.0.0
   contact:
     name: Aqualink Automate
@@ -38,6 +73,14 @@ tags:
     description: Temperature setpoint control
   - name: Diagnostics
     description: Diagnostics and logging configuration
+
+# Authentication is optional (opt-in). The empty requirement object `{}` permits
+# unauthenticated access (the default when no API auth token is configured);
+# `bearerAuth` applies the `Authorization: Bearer <token>` scheme when a token is
+# set. A request with a missing/mismatched token (when auth is enabled) gets 401.
+security:
+  - {}
+  - bearerAuth: []
 
 paths:
   /api/version:
@@ -66,13 +109,293 @@ paths:
                   uncommitted_changes: false
                 server_start_time: "2024-01-15T10:30:00Z"
                 uptime_seconds: 3600
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Prometheus metrics exposition
+      description: >
+        Serial/message/latency statistics in Prometheus text exposition format
+        (version 0.0.4) for scraping. Served at the root (NOT under /api) per
+        Prometheus convention. Always available; subject to the same bearer-token
+        enforcement as every other route when --api-auth-token is configured
+        (Prometheus scrapers support bearer auth natively).
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus exposition document
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP aqualink_build_info Build information (constant 1; value carried in labels).
+                # TYPE aqualink_build_info gauge
+                aqualink_build_info{version="1.0.0",commit="abc123"} 1
+                # HELP aqualink_serial_read_bytes_total Total bytes read from the serial port.
+                # TYPE aqualink_serial_read_bytes_total counter
+                aqualink_serial_read_bytes_total 12345
+                # HELP aqualink_serial_write_bytes_total Total bytes written to the serial port.
+                # TYPE aqualink_serial_write_bytes_total counter
+                aqualink_serial_write_bytes_total 678
+                # HELP aqualink_messages_total Total protocol messages decoded across all message types.
+                # TYPE aqualink_messages_total counter
+                aqualink_messages_total 4210
+                # HELP aqualink_message_errors_total Protocol message decode errors by kind.
+                # TYPE aqualink_message_errors_total counter
+                aqualink_message_errors_total{kind="checksum"} 2
+                # HELP aqualink_serial_errors_total Serial-layer errors by kind.
+                # TYPE aqualink_serial_errors_total counter
+                aqualink_serial_errors_total{kind="overflow"} 0
+                # HELP aqualink_latency_microseconds Operation latency percentiles (sliding 60s window), in microseconds.
+                # TYPE aqualink_latency_microseconds gauge
+                aqualink_latency_microseconds{stage="serial_read",quantile="0.5"} 850.5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/check:
+    get:
+      tags:
+        - Authentication
+      summary: Probe authentication state
+      description: >
+        Returns 200 when the request is authorized (or when auth is disabled),
+        401 otherwise. The UI calls this on load to decide whether to show the
+        login screen. Reached only when already authorized, so the body always
+        reports authenticated=true.
+      operationId: getAuthCheck
+      responses:
+        '200':
+          description: Authorized (or authentication disabled)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+              example:
+                authenticated: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/history/series:
+    get:
+      tags:
+        - History
+      summary: List history series or fetch downsampled samples
+      description: >
+        With no `key`, returns metadata for every recorded series. With a `key`,
+        returns server-side bucket-averaged (time-bucket mean) samples for that
+        series between `from` and `to`. Series keys contain `/` (e.g.
+        `temp/pool`), so the key travels as a query parameter, not a path
+        segment. Returns 503 when history is disabled (no `--history-db`), 404
+        for an unknown key, and 400 when `to` < `from`.
+      operationId: getHistory
+      parameters:
+        - name: key
+          in: query
+          required: false
+          schema: { type: string }
+          description: Series key. Omit to list all series.
+        - name: from
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: Start of the window, unix seconds (default 0).
+        - name: to
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+          description: End of the window, unix seconds (default now).
+        - name: max_points
+          in: query
+          required: false
+          schema: { type: integer, default: 500, maximum: 2000 }
+          description: Maximum buckets returned (capped at 2000).
+      responses:
+        '200':
+          description: Series list (no key) or downsampled points (with key)
+          content:
+            application/json:
+              examples:
+                seriesList:
+                  summary: Series list (no key)
+                  value:
+                    - { key: "temp/pool", unit: "C", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                    - { key: "chem/salt_ppm", unit: "ppm", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                points:
+                  summary: Downsampled points (with key)
+                  value:
+                    key: "temp/pool"
+                    from: 1717000000
+                    to: 1717003600
+                    max_points: 500
+                    points:
+                      - { ts: 1717000000, value: 28.5 }
+                      - { ts: 1717000060, value: 28.6 }
+        '400':
+          description: Bad range (to < from)
+        '404':
+          description: Unknown series key
+        '503':
+          description: History is disabled (no --history-db configured)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/schedules:
+    get:
+      tags:
+        - Schedules
+      summary: List all schedules
+      description: >
+        Returns the full list of schedules. A schedule fires an
+        ICommandDispatcher action at a local wall-clock time on the selected
+        days. Returns 503 when the scheduler is disabled (no --schedules-file).
+        Note on DST: recomputing local time each tick means a spring-forward
+        02:30 simply never fires; an ambiguous fall-back time fires once.
+      operationId: listSchedules
+      responses:
+        '200':
+          description: Array of schedules
+          content:
+            application/json:
+              example:
+                - uuid: "f1a2..."
+                  name: "Morning pump"
+                  enabled: true
+                  days_of_week: 31
+                  time_local: "08:00"
+                  action: { type: "button_on", target: "Pool Pump" }
+        '503': { description: Scheduler is disabled }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Schedules
+      summary: Create a schedule
+      description: >
+        Creates a schedule; the server assigns the uuid. The action variant
+        mirrors ICommandDispatcher: button_on/button_off/button_toggle
+        (target = device label), pool_setpoint/spa_setpoint (value 1..104),
+        chlorinator_percent (value 0..100), circulation_mode (target = mode).
+        days_of_week is a bitmask (bit0=Mon..bit6=Sun); time_local is "HH:MM".
+      operationId: createSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Spa warm"
+              enabled: true
+              days_of_week: 64
+              time_local: "17:00"
+              action: { type: "spa_setpoint", value: 38 }
+      responses:
+        '201': { description: Created (returns the schedule with its uuid) }
+        '400': { description: Validation error (bad time/action/value) }
+        '503': { description: Scheduler is disabled }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/schedules/{uuid}:
+    parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Schedules]
+      summary: Get a schedule
+      operationId: getSchedule
+      responses:
+        '200': { description: The schedule }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Schedules]
+      summary: Replace a schedule
+      operationId: replaceSchedule
+      requestBody:
+        required: true
+        content:
+          application/json: {}
+      responses:
+        '200': { description: Updated schedule }
+        '400': { description: Validation error }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Schedules]
+      summary: Delete a schedule
+      operationId: deleteSchedule
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Unknown schedule }
+        '503': { description: Scheduler is disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/preferences:
+    get:
+      tags:
+        - Preferences
+      summary: Get user/admin preferences
+      description: >
+        Returns the current preferences. The typed fields (temperature units,
+        alert thresholds, history retention) are read LIVE by the backend
+        services, so a change applies without a restart. `ui` is an opaque blob
+        the backend does not interpret (e.g. the chemistry gauge bands).
+      operationId: getPreferences
+      responses:
+        '200':
+          description: Current preferences
+          content:
+            application/json:
+              example:
+                temperature_units: "Celsius"
+                alert: { salt_low_ppm: 2600, comms_timeout_seconds: 60, webhook_url: "" }
+                history: { retention_days: 90 }
+                label_overrides: { "Aux1": "Pool Light", "Aux2": "Waterfall" }
+                ui: { chemistryBands: {} }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Preferences
+      summary: Update (partial) preferences
+      description: >
+        Validates and applies a partial preferences document, then persists it
+        (when --preferences-file is set). Ranges enforced: salt_low_ppm 0..6000
+        (0 disables), comms_timeout_seconds > 0, retention_days > 0, webhook_url
+        empty or absolute http/https, temperature_units Celsius|Fahrenheit,
+        label_overrides an object of canonical-label -> friendly-name strings. A
+        single invalid field rejects the whole request (nothing is applied).
+      operationId: updatePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              temperature_units: "Fahrenheit"
+              alert: { salt_low_ppm: 2800 }
+      responses:
+        '200': { description: Updated preferences (full document) }
+        '400': { description: Validation error }
+        '503': { description: Preferences service unavailable }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment:
     get:
       tags:
         - Equipment
       summary: Get all equipment information
-      description: Returns comprehensive equipment data including temperatures, chemistry, configuration, buttons, devices, statistics, and version
+      description: Returns comprehensive equipment data including temperatures, chemistry, configuration, devices, statistics, and version
       operationId: getEquipment
       responses:
         '200':
@@ -81,6 +404,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EquipmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/buttons:
     get:
@@ -106,6 +431,8 @@ paths:
                     label: "Spa Jets"
                     status: "On"
                     device_type: "Auxillary"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Buttons
@@ -119,6 +446,8 @@ paths:
             text/html:
               schema:
                 type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/buttons/{button_id}:
     get:
@@ -147,6 +476,8 @@ paths:
                 id: "550e8400-e29b-41d4-a716-446655440000"
                 label: "Pool Light"
                 status: "Off"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Button not found
           content:
@@ -183,6 +514,8 @@ paths:
                 label: "Pool Light"
                 status: "On"
                 command: "toggled"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: Button not found
           content:
@@ -221,6 +554,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DevicesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/version:
     get:
@@ -236,6 +571,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EquipmentVersionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/equipment/chlorinator:
+    post:
+      tags:
+        - Equipment
+      summary: Set the chlorinator (SWG) output
+      description: >
+        Commands the salt-water generator. Both body fields are optional and may be
+        sent together. `percentage` (0..100) sets the output level via
+        ICommandDispatcher::SetChlorinatorPercentage; `boost` toggles boost mode via
+        SetChlorinatorBoost. 400 on a bad value; 503 when no commandable chlorinator
+        is present (e.g. no iAQ device); 200 with a per-field status body otherwise.
+      operationId: setChlorinator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              percentage: 60
+              boost: false
+      responses:
+        '200':
+          description: Command(s) accepted
+          content:
+            application/json:
+              example:
+                percentage: { status: "success", value: 60 }
+        '400': { description: Invalid value (percentage out of 0..100, or wrong type) }
+        '503': { description: No commandable chlorinator / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/equipment/iaq:
+    post:
+      tags:
+        - Equipment
+      summary: Drive the AqualinkTouch (0x33) page UI
+      description: >
+        Navigates the emulated AqualinkTouch's page UI. `select_button` (0..255) presses
+        the on-screen PageButton at that index (the index carried in the master's
+        IAQMessage_PageButton frames) via ICommandDispatcher::SelectIAQPageButton, so the
+        master navigates pages / toggles equipment exactly as a physical touch would.
+        400 on a bad value; 503 when no commandable IAQ/AqualinkTouch device is present.
+      operationId: driveIAQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              select_button: 2
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              example:
+                select_button: { status: "success", value: 2 }
+        '400': { description: Invalid value (select_button out of 0..255, or wrong type) }
+        '503': { description: No commandable IAQ/AqualinkTouch device / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/equipment/setpoints:
     get:
@@ -258,6 +656,8 @@ paths:
                 spa_setpoint:
                   celsius: 38.0
                   fahrenheit: 100.4
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Setpoints
@@ -265,6 +665,10 @@ paths:
       description: |
         Set pool and/or spa temperature setpoints. Values are in Celsius.
         Either or both fields may be provided; omitted fields are left unchanged.
+
+        Each provided value must be a finite JSON number within the accepted
+        Celsius range (-10.0 to 50.0). A non-numeric, non-finite, or out-of-range
+        value is rejected with `400` before any command is dispatched.
       operationId: setSetpoints
       requestBody:
         required: true
@@ -277,7 +681,7 @@ paths:
               spa: 38.0
       responses:
         '200':
-          description: Setpoints updated (per-field status)
+          description: All provided setpoints accepted and dispatched (per-field status)
           content:
             application/json:
               schema:
@@ -290,12 +694,42 @@ paths:
                   status: "success"
                   celsius: 38.0
         '400':
-          description: Invalid JSON in request body
+          description: |
+            Invalid request. Returned for malformed JSON, a setpoint field that is
+            not a number, or a numeric value that is non-finite or outside the
+            accepted Celsius range (-10.0 to 50.0). No command is dispatched.
           content:
             text/plain:
               schema:
                 type: string
-              example: "Invalid JSON"
+              examples:
+                invalid_json:
+                  summary: Request body is not valid JSON
+                  value: "Invalid JSON"
+                not_a_number:
+                  summary: A setpoint field is not a JSON number
+                  value: "Setpoint 'pool' must be a number"
+                out_of_range:
+                  summary: A setpoint value is non-finite or out of range
+                  value: "Setpoint 'spa' out of range"
+                invalid_payload:
+                  summary: JSON type/access error while reading a field
+                  value: "Invalid setpoint payload"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: |
+            At least one accepted setpoint could not be dispatched to the
+            equipment. The per-field response body still reports each field's
+            individual `status` ("success" or "error").
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetpointsPostResponse'
+              example:
+                pool:
+                  status: "error"
+                  celsius: 26.5
         '503':
           description: Command dispatcher not available
           content:
@@ -329,6 +763,8 @@ paths:
                   - "Info"
                   - "Warning"
                   - "Error"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
         - Diagnostics
@@ -366,6 +802,8 @@ paths:
                   status:
                     type: string
                     example: "ok"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '400':
           description: Invalid request (bad JSON, invalid severity/channel name, or missing fields)
           content:
@@ -399,6 +837,338 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET or POST."
 
+  /api/diagnostics/options:
+    get:
+      tags:
+        - Diagnostics
+      summary: List configured CLI/application options
+      description: Returns the metadata (long name, short name, description) for every CLI/application option registered during option parsing
+      operationId: getOptions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        short_name:
+                          type: string
+                        description:
+                          type: string
+              example:
+                options:
+                  - name: "help"
+                    short_name: "h"
+                    description: "Displays the help information"
+                  - name: "version-detail"
+                    short_name: ""
+                    description: "Displays detailed version information (including git commit)"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
+  /api/diagnostics/mqtt:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get MQTT status diagnostics
+      description: >
+        Live MQTT broker status: connection state, broker address, TLS, Home
+        Assistant discovery, publish-queue depth, and reconnect/published/dropped
+        counters plus the last error. Returns { "enabled": false } when MQTT is
+        disabled.
+      operationId: getMqttDiagnostics
+      responses:
+        '200':
+          description: MQTT status (or { enabled:false } when disabled)
+          content:
+            application/json:
+              example:
+                enabled: true
+                running: true
+                connected: true
+                state: "Connected"
+                broker_host: "192.168.1.10"
+                broker_port: 1883
+                tls: false
+                topic_prefix: "aqualink"
+                client_id: "aqualink-abc123"
+                home_assistant_enabled: true
+                ha_discovery_prefix: "homeassistant"
+                queue_depth: 0
+                reconnect_attempts: 0
+                published: 1284
+                dropped: 0
+                last_error: ""
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/diagnostics/emulated-devices:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get emulated device diagnostics
+      description: |
+        Returns diagnostic state for all active emulated devices. Each device
+        reports its internal operating state, screen content, navigation progress,
+        command queues, and other device-specific information.
+      operationId: getEmulatedDevices
+      responses:
+        '200':
+          description: Array of emulated device diagnostic objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmulatedDeviceDiagnostics'
+              example:
+                - device_type: "OneTouch"
+                  device_id: "0x41"
+                  operating_state: "Scraping"
+                  screen:
+                    page_type: "Page_System"
+                    mode: "Normal"
+                    lines: ["Equipment ON/OFF", "Filter Pump  OFF", ""]
+                  navigator:
+                    state: "Navigating"
+                    current_page: "System"
+                    target_page: "EquipmentStatus"
+                    cursor_line: 3
+                    synced: true
+                  spider_engine:
+                    state: "NavigatingToNext"
+                    visited_count: 12
+                    current_target: "SetTemperature"
+                    label_scrape_skipped: false
+                  scraping_stall_counter: 0
+                  highlighted_line: 3
+                  pending_key_command: "NoKeyCommand"
+                  ack_type: "V2_Normal"
+                  is_running: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
+  /api/diagnostics/actual-devices:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get actual (real, non-emulated) device diagnostics
+      description: |
+        Returns diagnostic state for all active *real* (non-emulated)
+        bus-discovered devices — e.g. a passively-snooped iAqualink2 (via the
+        0x33 AqualinkTouch snoop), a real OneTouch, and any others. Each device
+        reports its internal operating state, screen content, navigation
+        progress, command queues, and other device-specific information.
+
+        The response schema is identical to `/api/diagnostics/emulated-devices`
+        (shared `EmulatedDeviceDiagnostics` schema); the only difference is the
+        emulation filter (this endpoint emits only devices where
+        `IsEmulated() == false`). Real devices are passive snoopers and never
+        transmit on the RS-485 bus.
+      operationId: getActualDevices
+      responses:
+        '200':
+          description: Array of actual (non-emulated) device diagnostic objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmulatedDeviceDiagnostics'
+              example:
+                - device_type: "IAQ"
+                  device_id: "0x33"
+                  operating_state: "NormalOperation"
+                  screen:
+                    page_type: "Page_Home"
+                    mode: "Normal"
+                    lines: ["Pool 78", "Spa 0", "Air 81"]
+                  is_running: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET."
+
+  /api/diagnostics/recording:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get serial-recording status
+      description: |
+        Returns the current state of on-demand serial-traffic recording: whether
+        a capture is in progress, the active capture file's basename, and the
+        number of wire bytes written so far. Recording is OFF by default and is
+        controlled at runtime via the POST endpoint. The captured file is in the
+        recorder format (replayable with `--dev-mode --replay-filename`).
+
+        Only the file's basename is returned; the absolute server-side path is
+        never disclosed.
+      operationId: getRecording
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingStatus'
+              example:
+                recording: true
+                file: "capture.cap"
+                bytes: 4096
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Diagnostics
+      summary: Start or stop serial recording
+      description: |
+        Start or stop recording the raw RS-485 serial traffic exchanged with the
+        hardware. Provide `{"action":"start","filename":"..."}` to begin a capture
+        or `{"action":"stop"}` to end it. Returns the resulting recording status.
+
+        The `filename` must be a bare `*.cap` basename. It is jailed to a fixed
+        server-side capture directory: path separators, drive letters, leading
+        separators, and `..` are rejected with `400`. The capture is always
+        written inside that directory, never to a client-chosen path.
+      operationId: setRecording
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/RecordingStart'
+                - $ref: '#/components/schemas/RecordingStop'
+            examples:
+              start:
+                summary: Start recording
+                value:
+                  action: "start"
+                  filename: "capture.cap"
+              stop:
+                summary: Stop recording
+                value:
+                  action: "stop"
+      responses:
+        '200':
+          description: Recording started/stopped successfully; returns the new status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingStatus'
+              example:
+                recording: true
+                file: "capture.cap"
+                bytes: 0
+        '400':
+          description: |
+            Invalid request: bad JSON; missing/invalid action; a missing, empty,
+            or rejected filename. The filename must be a bare `*.cap` basename
+            (no path separators, drive letter, leading separator, or `..`): it is
+            jailed to a fixed server-side capture directory, so any path-traversal
+            attempt is rejected here rather than written to disk.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                invalid_json:
+                  value:
+                    error: "Invalid JSON in request body"
+                missing_action:
+                  value:
+                    error: "Request must contain a string 'action' of 'start' or 'stop'"
+                missing_filename:
+                  value:
+                    error: "'start' action requires a string 'filename'"
+                empty_filename:
+                  value:
+                    error: "'filename' must not be empty"
+                invalid_filename:
+                  summary: Filename contains a path separator, drive letter, '..', or wrong extension
+                  value:
+                    error: "'filename' must be a bare *.cap name with no path separators or '..'"
+                invalid_action:
+                  value:
+                    error: "'action' must be 'start' or 'stop'"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflicting state (already recording on start, or not recording on stop)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                already_recording:
+                  value:
+                    error: "Could not start recording: already recording or file could not be opened"
+                not_recording:
+                  value:
+                    error: "Not currently recording"
+        '503':
+          description: Recording is not available in the current mode (e.g. dev-mode/replay)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Recording is not available in this mode"
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET or POST."
+
 components:
   schemas:
     VersionInfo:
@@ -413,7 +1183,7 @@ components:
               example: "Aqualink Automate"
             version:
               type: string
-              description: Project version
+              description: Full project version including prerelease label (e.g. "1.0.0", "1.0.0-beta.1")
               example: "1.0.0"
             description:
               type: string
@@ -478,8 +1248,22 @@ components:
           example: "550e8400-e29b-41d4-a716-446655440000"
         label:
           type: string
-          description: Human-readable label for the button
+          description: Canonical label (drives command dispatch, MQTT and Home Assistant)
+          example: "Aux1"
+        display_label:
+          type: string
+          description: >
+            User-facing name to show in UIs: the preferences label_overrides entry
+            for this canonical label, or the canonical label itself when none is set.
           example: "Pool Light"
+        controllable:
+          type: boolean
+          description: >
+            True when the device is operated by an on/off toggle (pumps, aux relays,
+            lights, cleaner, spillover, sprinkler, heater). False for configurable/
+            informational devices (chlorinator — a % setpoint surfaced in chemistry —
+            and Unknown-type devices), which UIs show read-only.
+          example: true
         status:
           type: string
           description: |
@@ -625,20 +1409,71 @@ components:
               $ref: '#/components/schemas/Temperature'
         chemistry:
           type: object
+          description: >-
+            Water chemistry and chlorinator (SWG) state. ORP / pH are placeholders
+            until a sensor is decoded on the wire and are null when no sensor is
+            present. The chlorinator block is null until a salt-water generator is
+            discovered on the bus.
           properties:
+            salt_ppm:
+              type: integer
+              description: Salt concentration in parts per million (0 when unknown)
+              example: 3200
+            orp_mv:
+              type: integer
+              nullable: true
+              description: Oxidation-Reduction Potential in mV; null when no ORP sensor is present
+              example: 650
             ph:
               type: number
               format: double
-              description: Water pH level
+              nullable: true
+              description: Water pH level; null when no pH sensor is present
               example: 7.4
-            orp:
-              type: integer
-              description: Oxidation-Reduction Potential in mV
-              example: 650
-            salt_in_ppm:
-              type: integer
-              description: Salt concentration in parts per million
-              example: 3200
+            chlorinator:
+              type: object
+              nullable: true
+              description: Salt-water generator (SWG) state; null when no chlorinator is discovered
+              properties:
+                generating_percent:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Chlorinator generating output percentage (0-100)
+                  example: 50
+                duty_cycle:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Chlorinator duty cycle percentage (0-100)
+                  example: 50
+                status:
+                  type: string
+                  description: Chlorinator operating status
+                  enum:
+                    - Off
+                    - On
+                    - Unknown
+                  example: On
+                health:
+                  type: string
+                  description: Chlorinator health / diagnostic status reported by the cell
+                  enum:
+                    - Ok
+                    - TurningOff
+                    - Warning_NoFlow
+                    - Warning_LowSalt
+                    - Warning_HighSalt
+                    - Warning_HighCurrent
+                    - Warning_CleanCell
+                    - Warning_LowVoltage
+                    - Warning_LowTemperature
+                    - Error_CheckPCB
+                    - GeneralFault
+                    - Unknown
+                  example: Ok
         configuration:
           type: object
           description: Pool configuration and body-of-water information
@@ -653,11 +1488,6 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/BodyOfWater'
-        buttons:
-          type: array
-          description: Equipment buttons data (from GenerateJson_Equipment_Buttons)
-          items:
-            type: object
         devices:
           type: object
           description: Equipment devices data
@@ -817,16 +1647,23 @@ components:
 
     SetpointsPostRequest:
       type: object
-      description: Set one or both temperature setpoints. Values are in Celsius.
+      description: |
+        Set one or both temperature setpoints. Values are in Celsius and must be
+        finite numbers within the accepted range (-10.0 to 50.0); out-of-range or
+        non-numeric values are rejected with 400.
       properties:
         pool:
           type: number
           format: double
+          minimum: -10.0
+          maximum: 50.0
           description: Pool temperature setpoint in Celsius
           example: 26.5
         spa:
           type: number
           format: double
+          minimum: -10.0
+          maximum: 50.0
           description: Spa temperature setpoint in Celsius
           example: 38.0
 
@@ -892,7 +1729,202 @@ components:
           description: Severity level to set for the channel
           example: "Trace"
 
+    RecordingStatus:
+      type: object
+      required:
+        - recording
+        - file
+        - bytes
+      properties:
+        recording:
+          type: boolean
+          description: True while a capture is in progress
+          example: true
+        file:
+          type: string
+          description: Basename of the active capture file (empty when not recording). The absolute server-side path is never disclosed.
+          example: "capture.cap"
+        bytes:
+          type: integer
+          description: Number of wire bytes (read + write) written to the active capture
+          example: 4096
+
+    RecordingStart:
+      type: object
+      required:
+        - action
+        - filename
+      properties:
+        action:
+          type: string
+          enum: [start]
+          description: Begin a new capture
+        filename:
+          type: string
+          pattern: '^[^/\\:]+\.cap$'
+          description: |
+            Bare basename of the capture file to write (must end in `.cap`). Path
+            separators, drive letters, leading separators, and `..` are rejected
+            with 400; the file is created inside a fixed server-side capture
+            directory.
+          example: "capture.cap"
+
+    RecordingStop:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [stop]
+          description: Stop the active capture
+
+    EmulatedDeviceDiagnostics:
+      type: object
+      required:
+        - device_type
+        - device_id
+      properties:
+        device_type:
+          type: string
+          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA)
+          example: "OneTouch"
+        device_id:
+          type: string
+          description: Hex device address on the RS-485 bus
+          example: "0x41"
+        operating_state:
+          type: string
+          description: Current operating state of the device
+          example: "Scraping"
+        is_running:
+          type: boolean
+          description: Whether the watchdog timer is running
+        screen:
+          type: object
+          description: Current screen content (devices with display capability)
+          properties:
+            page_type:
+              type: string
+              description: Detected page type
+              example: "Page_System"
+            mode:
+              type: string
+              description: Screen update state (Normal, Updating, UpdateComplete)
+              example: "Normal"
+            lines:
+              type: array
+              items:
+                type: string
+              description: Screen line contents
+        navigator:
+          type: object
+          description: Navigator state (OneTouch only)
+          properties:
+            state:
+              type: string
+              example: "Navigating"
+            current_page:
+              type: string
+              example: "System"
+            target_page:
+              type: string
+              example: "EquipmentStatus"
+            cursor_line:
+              type: integer
+            synced:
+              type: boolean
+        spider_engine:
+          type: object
+          description: Spider engine state (OneTouch only)
+          properties:
+            state:
+              type: string
+              example: "NavigatingToNext"
+            visited_count:
+              type: integer
+            current_target:
+              type: string
+              example: "SetTemperature"
+            label_scrape_skipped:
+              type: boolean
+              description: >-
+                True when aux labels were already present on the DataHub (e.g.
+                seeded by a real iAqualink2 on the bus) so the slow Label Aux
+                menu crawl was skipped at startup.
+        scraping_stall_counter:
+          type: integer
+          description: OneTouch stall counter
+        highlighted_line:
+          type: integer
+          description: Currently highlighted line index
+        pending_key_command:
+          type: string
+          description: Pending key command to send
+        ack_type:
+          type: string
+          description: ACK type for next response
+        pending_command:
+          type: string
+          description: IAQ pending command hex value
+        command_queue_depth:
+          type: integer
+          description: IAQ command queue depth
+        awaiting_control_ready:
+          type: boolean
+          description: IAQ control ready wait flag
+        control_data_value:
+          type: string
+          description: IAQ control data value to send
+        status_collection_count:
+          type: integer
+          description: SerialAdapter status type count
+        status_message_received:
+          type: boolean
+          description: SerialAdapter status received flag
+        has_pending_command:
+          type: boolean
+          description: SerialAdapter pending command flag
+        pending_command_count:
+          type: integer
+          description: SerialAdapter count of queued pending command ACKs
+        is_emulated:
+          type: boolean
+          description: SerialAdapter constructed as an emulated (transmitting) device
+        emulation_suppressed:
+          type: boolean
+          description: >-
+            SerialAdapter emulation suppressed at runtime because a real serial
+            adapter was detected on the bus (presence gating). When true the
+            device is a passive decoder and never transmits.
+        scrape_state:
+          type: string
+          description: PDA scrape state
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Optional shared API auth token. Enabled only when the server is started
+        with an API auth token configured (`--api-auth-token` /
+        `api-auth-token`); unset by default, in which case no authentication is
+        required and this scheme has no effect. When enabled, supply the token as
+        `Authorization: Bearer <token>` on every API request and on the WebSocket
+        upgrade.
+
   responses:
+    Unauthorized:
+      description: |
+        Missing or invalid `Authorization: Bearer <token>` header. Only returned
+        when an API auth token is configured on the server; when auth is disabled
+        (the default) this response never occurs.
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "Unauthorized"
+
     NotFound:
       description: The specified resource was not found
       content:

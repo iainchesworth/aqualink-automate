@@ -15,15 +15,15 @@ namespace AqualinkAutomate::Profiling
 		}
 	}
 
-	inline void TracyZone::Start() const
+	void TracyZone::Start() const
 	{
 	}
 
-	inline void TracyZone::Mark() const
+	void TracyZone::Mark() const
 	{
 	}
 
-	inline void TracyZone::End() const
+	void TracyZone::End() const
 	{
 	}
 

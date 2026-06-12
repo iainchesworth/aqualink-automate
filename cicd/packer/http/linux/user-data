@@ -1,0 +1,23 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: github-runner-linux
+    username: runner
+    password: "$6$KEA7cxu8APmlmNdY$6TSZKPrGWR7hp7LjPrfyUF0s.oAVQn4GQoq2CjhGOdqfTikfXE7.CVEq0FXyg6quYYFxZvCu5kr42i8b4tPXH/"
+  ssh:
+    install-server: true
+    allow-pw: true
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+  packages:
+    - open-vm-tools
+    - openssh-server
+  late-commands:
+    - echo 'runner ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/runner
+    - chmod 440 /target/etc/sudoers.d/runner

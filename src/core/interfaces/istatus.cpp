@@ -1,5 +1,5 @@
 #include "exceptions/exception_notimplemented.h"
-#include "interfaces/istatuspublisher.h"
+#include "interfaces/istatus.h"
 
 namespace AqualinkAutomate::Interfaces
 {

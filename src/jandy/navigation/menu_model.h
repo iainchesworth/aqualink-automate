@@ -70,6 +70,11 @@ namespace AqualinkAutomate::Navigation
 		// the same PageId shows different content depending on which menu item was selected.
 		bool multi_instance = false;
 
+		// When true, this page is a transient splash/cold-start screen the controller
+		// auto-advances off on its own (no keypress). It has no navigation edges; the
+		// navigator waits for it to clear rather than trying to navigate/recover from it.
+		bool transient = false;
+
 		// Convenience: find the Back edge target (nullopt if no Back edge)
 		std::optional<PageId> BackTarget() const;
 
@@ -172,9 +177,6 @@ namespace AqualinkAutomate::Navigation
 		// Returns empty vector if no path exists
 		std::vector<const MenuEdge*> FindPath(PageId from, PageId to) const;
 
-		// Find path to a specific menu item on a page
-		std::vector<const MenuEdge*> FindPathToItem(PageId from, PageId target_page, uint8_t menu_line) const;
-
 		// Find a global system event edge that matches a detected page
 		std::optional<MenuEdge> FindSystemEvent(PageId detected_page) const;
 
@@ -188,15 +190,19 @@ namespace AqualinkAutomate::Navigation
 		std::vector<const MenuEdge*> GetIncomingSelectEdges(PageId target) const;
 
 	private:
-		// BFS helper for pathfinding
-		struct PathNode
-		{
-			PageId page_id;
-			std::vector<const MenuEdge*> path;
-		};
+		// Rebuild the incoming-Select-edge index from the current page set. Cheap one-off
+		// scan performed lazily on first query after a page registration.
+		void RebuildIncomingSelectEdges() const;
 
 		std::unordered_map<PageId, MenuPage> m_Pages;
 		std::vector<MenuEdge> m_GlobalEdges;
+
+		// Incoming-Select-edge index: target page -> edges that Select-transition into it.
+		// Edge pointers are stable for the model's lifetime (page edge vectors are not
+		// mutated after registration). Built lazily and memoised; invalidated by RegisterPage.
+		// Marked mutable so the const query accessor can populate it on demand.
+		mutable std::unordered_map<PageId, std::vector<const MenuEdge*>> m_IncomingSelectEdges;
+		mutable bool m_IncomingSelectEdgesValid{ false };
 	};
 
 }

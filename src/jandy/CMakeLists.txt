@@ -9,10 +9,7 @@ add_library(libaqualink-jandy)
 
 target_sources( 
 	libaqualink-jandy
-	PRIVATE 
-	auxillaries/jandy_auxillary_id.cpp 
-	auxillaries/jandy_auxillary_status.cpp 
-	auxillaries/jandy_auxillary_traits_types.cpp 
+	PRIVATE
 	concepts/jandy_message_type.cpp
 	devices/aquarite_device.cpp
 	devices/command_dispatcher.cpp
@@ -22,21 +19,22 @@ target_sources(
 	devices/iaq_device.cpp
 	devices/iaq/iaq_messageprocessors.cpp
 	devices/iaq/iaq_statusprocessors.cpp
+	devices/iaq/iaq_page_registry.cpp
 	devices/jandy_controller.cpp
 	devices/jandy_device.cpp 
 	devices/jandy_device_id.cpp 
 	devices/jandy_device_types.cpp
-	devices/jandy_emulated_device_types.cpp 
+	devices/jandy_emulated_device_types.cpp
+	devices/jandy_emulated_device_factory.cpp
 	devices/capabilities/emulated.cpp
-	devices/capabilities/restartable.cpp
 	devices/capabilities/scrapeable.cpp
 	devices/capabilities/screen.cpp 
-	devices/keypad_device.cpp 
-	devices/onetouch_device.cpp 
+	devices/keypad_device.cpp
+	devices/lights_device.cpp
+	devices/onetouch_device.cpp
 	devices/pda_device.cpp 
 	devices/serial_adapter_device.cpp 
 	devices/keypad/keypad_messageprocessors.cpp 
-	devices/keypad/keypad_pageprocessors.cpp 
 	devices/onetouch/onetouch_messageprocessors.cpp
 	devices/onetouch/onetouch_pageprocessors.cpp
 	devices/onetouch/onetouch_statusprocessors.cpp
@@ -45,33 +43,30 @@ target_sources(
 	navigation/onetouch_menu_model.cpp
 	navigation/spider_engine.cpp
 	navigation/visit_policies.cpp
-	devices/pda/pda_messageprocessors.cpp 	 
+	startup/jandy_revision_capabilities.cpp
+	startup/jandy_startup_planner.cpp
+	startup/jandy_startup_coordinator.cpp
+	startup/jandy_startup_environment.cpp
+	startup/jandy_startup_service.cpp
+	devices/pda/pda_messageprocessors.cpp
 	devices/pda/pda_pageprocessors.cpp 
 	devices/serial_adapter/serial_adapter_commandprocessors.cpp 
 	devices/serial_adapter/serial_adapter_messageprocessors.cpp 
 	equipment/jandy_equipment.cpp
-	equipment/jandy_equipment_versions.cpp 
-	errors/jandy_errors_auxillary_factory.cpp 
-	errors/jandy_errors_messages.cpp
-	errors/jandy_errors_protocol.cpp
-	errors/jandy_errors_scrapeable.cpp 
+	equipment/master_traffic_snoop.cpp
+	errors/jandy_errors_auxillary_factory.cpp
+	errors/jandy_errors_scrapeable.cpp
 	errors/string_conversion_errors.cpp
-	factories/jandy_auxillary_factory.cpp 
-	factories/jandy_message_factory.cpp
-	factories/jandy_message_factory_registration.cpp
-	formatters/chemistry_formatter.cpp 
+	factories/jandy_auxillary_factory.cpp
+	formatters/chemistry_formatter.cpp
 	formatters/jandy_device_formatters.cpp 
 	formatters/jandy_message_formatters.cpp 
 	formatters/screen_data_page_formatter.cpp
 	formatters/stats_counter_formatter.cpp	 
 	generator/jandy_message_generator.cpp
 	generator/jandy_message_generator_buffercleanup.cpp
-	generator/jandy_message_generator_buffervalidation.cpp
 	generator/jandy_message_generator_packetprocessing.cpp
 	generator/jandy_message_generator_packetvalidation.cpp
-	generator/jandy_message_generator_startendsequence.cpp
-	generator/jandy_rawdata_generator.cpp 
-	messages/aqualink_touch/aqualink_touch_message.cpp
 	messages/chemlink/chemlink_message.cpp
 	messages/chemlink/chemlink_message_response.cpp
 	messages/epump/epump_message.cpp
@@ -81,15 +76,19 @@ target_sources(
 	messages/heater/heater_message.cpp
 	messages/heater/heater_message_request.cpp
 	messages/heater/heater_message_status.cpp
+	messages/light/light_message.cpp
+	messages/light/light_message_status.cpp
 	messages/aquarite/aquarite_message.cpp
 	messages/aquarite/aquarite_message_getid.cpp
 	messages/aquarite/aquarite_message_percent.cpp
+	messages/aquarite/aquarite_message_setpercent.cpp
 	messages/aquarite/aquarite_message_ppm.cpp
 	messages/iaq/iaq_message.cpp
 	messages/iaq/iaq_message_aux_status.cpp
 	messages/iaq/iaq_message_command_ready.cpp
 	messages/iaq/iaq_message_control_data_response.cpp
 	messages/iaq/iaq_message_control_ready.cpp
+	messages/iaq/iaq_message_device_id.cpp
 	messages/iaq/iaq_message_heartbeat.cpp
 	messages/iaq/iaq_message_main_status.cpp
 	messages/iaq/iaq_message_message_long.cpp
@@ -113,8 +112,6 @@ target_sources(
 	messages/serial_adapter/serial_adapter_message_dev_status.cpp 
 	messages/jandy_message.cpp
 	messages/jandy_message_ack.cpp
-	messages/jandy_message_constants.cpp
-	messages/jandy_message_ids.cpp
 	messages/jandy_message_message.cpp
 	messages/jandy_message_message_long.cpp	
 	messages/jandy_message_display_update.cpp
@@ -131,11 +128,7 @@ target_sources(
 	utility/jandy_null_handler.cpp 
 	utility/jandy_pool_configuration_decoder.cpp
 	utility/screen_data_page.cpp
-	utility/screen_data_page_graph.cpp 
-	utility/screen_data_page_graph/screen_data_page_graph_edge.cpp 
-	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp 
-	utility/screen_data_page_graph/screen_data_page_graph_validator.cpp
-	utility/screen_data_page_graph/screen_data_page_graph_vertex.cpp 
+	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp
 	utility/screen_data_page_processor.cpp 
 	utility/screen_data_page_updater.cpp
 	utility/screen_data_page_updater/screen_data_page_updater_context.cpp
@@ -143,8 +136,8 @@ target_sources(
 	utility/screen_data_page_updater/screen_data_page_updater_evhighlightchars.cpp 
 	utility/screen_data_page_updater/screen_data_page_updater_evshift.cpp
 	utility/screen_data_page_updater/screen_data_page_updater_evupdate.cpp
-	utility/slot_connection_manager.cpp
-	utility/string_manipulation.cpp 
+	utility/jandy_slot_connection_manager.cpp
+	utility/string_manipulation.cpp
 	utility/string_conversion/auxillary_state_string_converter.cpp 
 	utility/string_conversion/chemistry_string_converter.cpp 
 	utility/string_conversion/temperature_string_converter.cpp 

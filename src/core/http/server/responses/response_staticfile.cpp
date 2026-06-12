@@ -1,5 +1,11 @@
+#include <cstdint>
+#include <filesystem>
 #include <format>
+#include <string>
+#include <string_view>
+#include <system_error>
 
+#include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/file_body.hpp>
 #include <magic_enum/magic_enum.hpp>
 
@@ -114,6 +120,42 @@ namespace AqualinkAutomate::HTTP::Responses
             // Cache the size since we need it after the move
             auto const size = body.size();
 
+            // Build a weak ETag from the file's size and last-write time so the
+            // client can issue conditional GETs (If-None-Match) and we can answer
+            // an unchanged asset with a bodyless 304 instead of re-reading and
+            // re-sending the whole file.  An open scan-mode handle guarantees the
+            // file exists, so a metadata error here is logged but non-fatal (we
+            // simply skip the conditional-GET fast path).
+            std::error_code meta_ec;
+            const auto last_write = std::filesystem::last_write_time(result, meta_ec);
+            std::string etag;
+            if (!meta_ec)
+            {
+                const auto mtime_ticks = static_cast<std::uint64_t>(last_write.time_since_epoch().count());
+                etag = std::format("\"{:x}-{:x}\"", size, mtime_ticks);
+
+                // Conditional GET: if the client's cached validator matches, the
+                // asset is unchanged -> 304 Not Modified with no body.
+                if (const auto inm = req.find(boost::beast::http::field::if_none_match); inm != req.end() && std::string_view{ inm->value().data(), inm->value().size() } == etag)
+                {
+                    LogTrace(Channel::Web, std::format("Static asset ({}) unchanged (ETag {}); responding 304 NOT MODIFIED", result.string(), etag));
+
+                    boost::beast::http::response<boost::beast::http::empty_body> not_modified
+                    {
+                        boost::beast::http::status::not_modified,
+                        req.version()
+                    };
+
+                    not_modified.set(boost::beast::http::field::server, ServerFields::Server());
+                    not_modified.set(boost::beast::http::field::etag, etag);
+                    not_modified.set(boost::beast::http::field::cache_control, "no-cache");
+                    not_modified.keep_alive(req.keep_alive());
+                    not_modified.prepare_payload();
+
+                    return not_modified;
+                }
+            }
+
             boost::beast::http::response<boost::beast::http::file_body> res
             {
                 std::piecewise_construct,
@@ -123,10 +165,15 @@ namespace AqualinkAutomate::HTTP::Responses
 
             res.set(boost::beast::http::field::server, ServerFields::Server());
             res.set(boost::beast::http::field::content_type, mime_type(result.string()));
+            if (!etag.empty())
+            {
+                res.set(boost::beast::http::field::etag, etag);
+                res.set(boost::beast::http::field::cache_control, "no-cache");
+            }
             res.content_length(size);
             res.keep_alive(req.keep_alive());
 
-            return res;           
+            return res;
         }
     }
 

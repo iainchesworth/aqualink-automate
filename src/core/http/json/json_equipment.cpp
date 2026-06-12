@@ -1,5 +1,4 @@
 #include <format>
-#include <functional>
 
 #include "http/json/json_data_hub.h"
 #include "http/json/json_equipment.h"
@@ -12,15 +11,7 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP::JSON
 {
 
-	nlohmann::json GenerateJson_Equipment_Buttons(const std::shared_ptr<Kernel::DataHub>& data_hub)
-	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Buttons", std::source_location::current());
-		LogTrace(Channel::Web, "Generating equipment buttons JSON");
-		nlohmann::json je_buttons;
-		return je_buttons;
-	}
-
-	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub)
+	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub, const nlohmann::json& label_overrides)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Devices", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment devices JSON");
@@ -30,12 +21,27 @@ namespace AqualinkAutomate::HTTP::JSON
 		nlohmann::json heaters;
 		nlohmann::json pumps;
 
+		// Stamp a display_label onto the most-recently-pushed device: the user
+		// override for its canonical label, or the canonical label itself. The
+		// canonical "label" is left untouched (it still drives dispatch/MQTT/HA).
+		auto stamp_display_label = [&label_overrides](nlohmann::json& device_array)
+		{
+			if (device_array.empty() || !device_array.back().contains("label") || !device_array.back()["label"].is_string())
+			{
+				return;
+			}
+			const std::string label = device_array.back()["label"].get<std::string>();
+			const auto it = label_overrides.is_object() ? label_overrides.find(label) : label_overrides.end();
+			device_array.back()["display_label"] = (it != label_overrides.end() && it->is_string()) ? it->get<std::string>() : label;
+		};
+
 		std::size_t aux_count{ 0 };
 		for (const auto& device : data_hub->Auxillaries())
 		{
 			if (nullptr != device)
 			{
 				auxillaries.push_back(*device);
+				stamp_display_label(auxillaries);
 				++aux_count;
 			}
 		}
@@ -48,6 +54,7 @@ namespace AqualinkAutomate::HTTP::JSON
 			if (nullptr != device)
 			{
 				heaters.push_back(*device);
+				stamp_display_label(heaters);
 				++heater_count;
 			}
 		}
@@ -60,6 +67,7 @@ namespace AqualinkAutomate::HTTP::JSON
 			if (nullptr != device)
 			{
 				pumps.push_back(*device);
+				stamp_display_label(pumps);
 				++pump_count;
 			}
 		}

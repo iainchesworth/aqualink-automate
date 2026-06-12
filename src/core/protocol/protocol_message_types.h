@@ -25,9 +25,13 @@ namespace AqualinkAutomate::Protocol
 		template<typename MessageType>
 		explicit ProtocolMessageWrapper(std::shared_ptr<MessageType> message)
 			: m_Message(message)
-			, m_SignalGetter([message]() -> Interfaces::IMessageSignalRecvBase* {
-				return dynamic_cast<Interfaces::IMessageSignalRecvBase*>(message.get());
-			})
+			// Resolve the signal interface ONCE here (a single dynamic_cast at
+			// construction), storing the non-owning raw pointer.  m_Message keeps
+			// the object alive, so this pointer stays valid for the wrapper's
+			// lifetime.  This drops the previous per-message std::function alloc
+			// (capturing a shared_ptr) and the second dynamic_cast on the dispatch
+			// hot path entirely.
+			, m_SignalInterface(dynamic_cast<Interfaces::IMessageSignalRecvBase*>(message.get()))
 		{
 		}
 
@@ -37,7 +41,7 @@ namespace AqualinkAutomate::Protocol
 		/// Get the signal interface for the message (may return nullptr).
 		Interfaces::IMessageSignalRecvBase* GetSignalInterface() const
 		{
-			return m_SignalGetter ? m_SignalGetter() : nullptr;
+			return m_SignalInterface;
 		}
 
 		/// Get the raw message pointer for type-specific handling.
@@ -49,7 +53,9 @@ namespace AqualinkAutomate::Protocol
 
 	private:
 		std::shared_ptr<void> m_Message;
-		std::function<Interfaces::IMessageSignalRecvBase*()> m_SignalGetter;
+		// Non-owning view into m_Message resolved once at construction (nullptr if
+		// the message type does not implement the signal interface).
+		Interfaces::IMessageSignalRecvBase* m_SignalInterface{ nullptr };
 	};
 
 	/// Shared pointer to a protocol message wrapper.
@@ -60,25 +66,6 @@ namespace AqualinkAutomate::Protocol
 
 	/// Expected type for protocol message results.
 	using ExpectedProtocolMessage = std::expected<ProtocolMessagePtr, ProtocolErrorCode>;
-
-	/// Interface for a protocol message generator.
-	/// Implementations parse raw serial data and generate protocol-specific messages.
-	class IMessageGenerator
-	{
-	public:
-		virtual ~IMessageGenerator() = default;
-
-		/// Attempt to generate a message from the given buffer.
-		/// May consume bytes from the buffer if a message is found.
-		/// Returns an expected containing the message or an error code.
-		virtual ExpectedProtocolMessage GenerateFromBuffer(std::vector<uint8_t>& buffer) = 0;
-
-		/// Get the name of the protocol this generator handles.
-		virtual std::string ProtocolName() const = 0;
-	};
-
-	/// Shared pointer to a message generator.
-	using MessageGeneratorPtr = std::shared_ptr<IMessageGenerator>;
 
 }
 // namespace AqualinkAutomate::Protocol

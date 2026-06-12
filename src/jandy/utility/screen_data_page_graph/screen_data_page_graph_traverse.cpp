@@ -1,4 +1,3 @@
-#include <any>
 #include <limits>
 
 #include "utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
@@ -8,7 +7,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
 
     ForwardIterator::ForwardIterator(ScreenDataPageGraph& graph, VertexId start_id) :
         m_Graph(graph),
-        m_CurrentStep({ start_id, std::any() }, Edge{})
+        m_CurrentStep(Vertex{ start_id }, Edge{})
     {
         if (m_Graph.m_VertexMap.end() != m_Graph.m_VertexMap.find(start_id))
         {
@@ -51,7 +50,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl
         }
 
         // If no unvisited vertices are found, reset the state
-        m_CurrentStep = { { std::numeric_limits<VertexId>::max(), std::any() }, Edge{} };
+        m_CurrentStep = { Vertex{ std::numeric_limits<VertexId>::max() }, Edge{} };
         m_Visited.clear();
         return *this;
     }

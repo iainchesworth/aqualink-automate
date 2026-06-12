@@ -163,11 +163,17 @@ function(GetGitState _working_dir)
 
     RunGitCommand(show -s "--format=%an" ${object})
     if(exit_code EQUAL 0)
+        # Escape backslashes then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
+        string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_AUTHOR_NAME} "${output}")
     endif()
 
     RunGitCommand(show -s "--format=%ae" ${object})
     if(exit_code EQUAL 0)
+        # Escape backslashes then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
+        string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_AUTHOR_EMAIL} "${output}")
     endif()
 
@@ -178,7 +184,8 @@ function(GetGitState _working_dir)
 
     RunGitCommand(show -s "--format=%s" ${object})
     if(exit_code EQUAL 0)
-        # Escape quotes
+        # Escape backslashes first, then quotes (this value lands inside C++ "..." literals).
+        string(REPLACE "\\" "\\\\" output "${output}")
         string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_COMMIT_SUBJECT} "${output}")
     endif()
@@ -186,6 +193,14 @@ function(GetGitState _working_dir)
     RunGitCommand(show -s "--format=%b" ${object})
     if(exit_code EQUAL 0)
         if(output)
+            # Escape backslashes FIRST so a literal backslash in the body (e.g. a
+            # commit message mentioning a regex like \s) does not form an invalid
+            # C++ escape sequence in the generated string literal (warning C4129,
+            # promoted to an error under /WX).  This must precede the newline
+            # handling below, which deliberately introduces its own
+            # line-continuation backslashes that must NOT be re-escaped.  Mirrors
+            # the subject/author handling above.
+            string(REPLACE "\\" "\\\\" output "${output}")
             # Escape quotes
             string(REPLACE "\"" "\\\"" output "${output}")
             # Escape line breaks in the commit message.
@@ -204,7 +219,7 @@ function(GetGitState _working_dir)
     endif()
 
     # Get output of git describe
-    RunGitCommand(describe --always ${object})
+    RunGitCommand(describe --tags --match "v*" --always ${object})
     if(NOT exit_code EQUAL 0)
         set(ENV{GIT_DESCRIBE} "unknown")
     else()

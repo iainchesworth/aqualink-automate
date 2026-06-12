@@ -1,41 +1,35 @@
 /**
- * Equipment Button — Toggle button component logic with command feedback
+ * Equipment Button — toggle component logic with command feedback.
  *
  * Button status values from the API (magic_enum string representations):
  *   Auxillary: On, Off, Enabled, Pending, Unknown
  *   Pump:      Off, Running, NotInstalled, Unknown
  *   Heater:    Off, Heating, Enabled, NotInstalled, Unknown
- *   Chlor:     Off, Running, Unknown
  *
- * Icon resolution order:
- *   1. localStorage override (keyed by button id)
- *   2. device_type trait from backend (if present)
- *   3. Label keyword matching (fallback)
+ * iconKey() maps a device to one of the line-art icons defined in the SVG sprite
+ * in index.html (id="icon-<key>"), preferring the backend device_type and falling
+ * back to label keywords. The template renders <svg><use href="#icon-<key>"></svg>.
  */
-
-// Device-type to icon mapping
-const _deviceTypeIcons = {
-    'light':        '\u{1F4A1}',
-    'pump':         '\u2699\uFE0F',
-    'filter_pump':  '\u{1F504}',
-    'heater':       '\u{1F525}',
-    'spa':          '\u{1F6C1}',
-    'chlorinator':  '\u{1F9C2}',
-    'aquapure':     '\u{1F9C2}',
-    'cleaner':      '\u{1F9F9}',
-    'jet':          '\u{1F4A8}',
-    'spillway':     '\u{1F30A}',
-    'valve':        '\u{1F527}'
-};
-
-// Load icon overrides once
-const _iconOverrides = JSON.parse(localStorage.getItem('iconOverrides') || '{}');
-
 function equipmentButton() {
+    const ui = (typeof window !== 'undefined' && window.AquaUI) || {};
+    const isActiveStatus = ui.isActiveStatus || ((status) => {
+        const s = String(status == null ? '' : status).toLowerCase();
+        return s === 'on' || s === 'running' || s === 'heating' || s === 'enabled';
+    });
+
+    const TYPE_ICON = {
+        light: 'light',
+        pump: 'pump',
+        cleaner: 'clean',
+        heater: 'heater',
+        spillover: 'waves',
+        sprinkler: 'droplet',
+        auxillary: 'power',
+    };
+
     return {
         isActive(button) {
-            const s = String(button.status || '').toLowerCase();
-            return s === 'on' || s === 'enabled' || s === 'running' || s === 'heating';
+            return isActiveStatus(button.status);
         },
 
         statusLabel(button) {
@@ -46,34 +40,27 @@ function equipmentButton() {
             return Alpine.store('pool').getCommandState(button.id);
         },
 
-        icon(button) {
-            // 1. localStorage override
-            if (_iconOverrides[button.id]) return _iconOverrides[button.id];
+        // Returns an SVG sprite key (see #icon-* symbols in index.html).
+        iconKey(button) {
+            const dt = String(button.device_type || '').toLowerCase();
+            if (TYPE_ICON[dt]) { return TYPE_ICON[dt]; }
 
-            // 2. device_type trait from backend
-            if (button.device_type) {
-                const dtIcon = _deviceTypeIcons[button.device_type.toLowerCase()];
-                if (dtIcon) return dtIcon;
-            }
-
-            // 3. Label keyword fallback
             const label = String(button.label || '').toLowerCase();
-            if (label.includes('light')) return '\u{1F4A1}';
-            if (label.includes('filter')) return '\u{1F504}';
-            if (label.includes('pump')) return '\u2699\uFE0F';
-            if (label.includes('heat')) return '\u{1F525}';
-            if (label.includes('spa')) return '\u{1F6C1}';
-            if (label.includes('chlor') || label.includes('aquapure')) return '\u{1F9C2}';
-            if (label.includes('pool')) return '\u{1F3CA}';
-            if (label.includes('jet')) return '\u{1F4A8}';
-            if (label.includes('clean')) return '\u{1F9F9}';
-            if (label.includes('valve')) return '\u{1F527}';
-            if (label.includes('spill')) return '\u{1F30A}';
-            return '\u26A1';
+            if (label.includes('light')) { return 'light'; }
+            if (label.includes('filter')) { return 'filter'; }
+            if (label.includes('pump')) { return 'pump'; }
+            if (label.includes('heat')) { return 'heater'; }
+            if (label.includes('spa')) { return 'waves'; }
+            if (label.includes('clean') || label.includes('vac')) { return 'clean'; }
+            if (label.includes('jet') || label.includes('blow')) { return 'wind'; }
+            if (label.includes('spill') || label.includes('fall') || label.includes('pool')) { return 'waves'; }
+            if (label.includes('sprink') || label.includes('water')) { return 'droplet'; }
+            if (label.includes('valve')) { return 'valve'; }
+            return 'power';
         },
 
         async toggle(button) {
             await Alpine.store('pool').toggleButton(button.id);
-        }
+        },
     };
 }

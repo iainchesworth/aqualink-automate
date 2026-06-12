@@ -1,14 +1,22 @@
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <boost/test/unit_test.hpp>
+#include <nlohmann/json.hpp>
 
 #include "jandy/devices/iaq_device.h"
+#include "jandy/devices/iaq/iaq_page_registry.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/messages/jandy_message_ids.h"
 
 #include "support/unit_test_hublocatorinjector.h"
+#include "support/unit_test_mockreplayharness.h"
+#include "support/unit_test_protocolmessagebuilder.h"
 
+using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Devices;
 
 namespace
@@ -21,6 +29,16 @@ namespace
 		}
 
 		std::shared_ptr<JandyDeviceType> device_type;
+	};
+
+	// Exposes the protected watchdog/update hooks so the start-up state machine can be
+	// driven directly. The IAQDevice ctor arms its watchdog on the real clock, so the
+	// tests invoke WatchdogTimeoutOccurred() rather than waiting on wall-clock time.
+	struct TestIAQDevice : public IAQDevice
+	{
+		using IAQDevice::IAQDevice;
+		void TriggerWatchdogTimeout() { WatchdogTimeoutOccurred(); }
+		void SimulateAddressedTraffic() { ProcessControllerUpdates(); }
 	};
 }
 
@@ -128,6 +146,325 @@ BOOST_AUTO_TEST_CASE(TestDestruction_AfterQueuing)
 	}
 	// If we reach here without crash, destruction is clean
 	BOOST_CHECK(true);
+}
+
+// =============================================================================
+// Start-up watchdog states (regression for the live iAqualink2 capture)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestWatchdog_NeverAddressedEmulated_BecomesNotPresentNotFault)
+{
+	// An emulated IAQ id the master never addresses (e.g. the default 0xa1 on a
+	// panel with no iAqualink2 configured there) must settle to NotPresent, NOT
+	// fault -- nothing went wrong, the id simply isn't on the bus.
+	TestIAQDevice device(device_type, *this, /*is_emulated=*/true);
+	BOOST_REQUIRE(!device.IsFaulted());
+	BOOST_REQUIRE(!device.IsNotPresent());
+
+	device.TriggerWatchdogTimeout();   // 30s elapsed with no traffic ever addressed
+
+	BOOST_CHECK(device.IsNotPresent());
+	BOOST_CHECK(!device.IsFaulted());
+}
+
+BOOST_AUTO_TEST_CASE(TestWatchdog_AddressedThenSilent_Faults)
+{
+	// A device that WAS receiving traffic addressed to its id and then went silent
+	// is a genuine fault, distinct from "never present".
+	TestIAQDevice device(device_type, *this, /*is_emulated=*/true);
+	device.SimulateAddressedTraffic();   // traffic seen -> m_HasReceivedData = true
+	device.TriggerWatchdogTimeout();     // ...then it stopped
+
+	BOOST_CHECK(device.IsFaulted());
+	BOOST_CHECK(!device.IsNotPresent());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// System Status screen rendering
+//
+// Regression for the "Actual Devices" diagnostics card showing the IAQ as
+// "page unknown" with no content.  The IAQ (iAqualink2 cloud interface) has no
+// navigable physical screen, so after decoding a MainStatus (0x70) it must
+// render the live status into its Screen capability as a fixed System Status
+// page -- DescribeDiagnostics()/DescribeScreen() must then report a KNOWN page
+// type and lines that carry the decoded values.
+// =============================================================================
+
+namespace
+{
+	constexpr uint8_t IAQ_DEVICE_ID = 0x33;   // AqualinkTouch address carrying IAQ status.
+
+	// Build a current-format (no-sentinel) MainStatus (0x70) payload matching the
+	// wire layout exercised in test_iaq_message_main_status.cpp:
+	//   device_count, device_ids..., pump, pool_heat, spa_mode, spa_heat, solar,
+	//   pool_target(BE C), spa_target(BE C), air(BE C), water_current(BE C)
+	std::vector<uint8_t> MakeMainStatusPayload_CurrentFormat()
+	{
+		auto push_temp_be = [](std::vector<uint8_t>& v, uint16_t raw)
+		{
+			v.push_back(static_cast<uint8_t>(raw >> 8));
+			v.push_back(static_cast<uint8_t>(raw & 0xFF));
+		};
+
+		std::vector<uint8_t> payload;
+		payload.push_back(0x03);       // device_count = 3
+		payload.push_back(0x01);       // device IDs
+		payload.push_back(0x02);
+		payload.push_back(0x08);
+		payload.push_back(0x01);       // pump ON
+		payload.push_back(0x01);       // pool heater = Heating
+		payload.push_back(0x00);       // spa OFF (Pool mode)
+		payload.push_back(0x00);       // spa heater = Off
+		payload.push_back(0x00);       // solar = Off
+		push_temp_be(payload, 28);     // pool_target  = 28C -> reported as PoolTemp (== 82F)
+		push_temp_be(payload, 32);     // spa_target   = 32C
+		push_temp_be(payload, 24);     // air          = 24C (== 75F)
+		push_temp_be(payload, 27);     // water_current = 27C -> reported as SpaTemp (== 81F)
+		return payload;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_StatusScreen_TestSuite)
+
+BOOST_AUTO_TEST_CASE(MainStatus_RendersKnownSystemStatusPage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	// IAQDevice ctor takes (device_id, hub_locator, is_emulated); the harness's
+	// AddDevice<> appends the hub locator last, which would not match this middle-
+	// positioned hub_locator parameter, so construct the device directly against
+	// the harness's HubLocator and keep it alive for the replay.
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	auto frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	BOOST_REQUIRE(diagnostics.contains("screen"));
+
+	const auto& screen = diagnostics["screen"];
+	BOOST_REQUIRE(screen.contains("page_type"));
+	BOOST_REQUIRE(screen.contains("lines"));
+
+	// (a) The page type must no longer be the constructor-default Page_Unknown.
+	const auto page_type = screen["page_type"].get<std::string>();
+	BOOST_CHECK_NE(page_type, std::string("Page_Unknown"));
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_SystemStatus"));
+
+	// (b) The rendered lines must carry the decoded live status.
+	std::string joined;
+	for (const auto& line : screen["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	BOOST_CHECK(joined.find("System Status") != std::string::npos);
+	BOOST_CHECK(joined.find("Pool Temp") != std::string::npos);
+	BOOST_CHECK(joined.find("Pump: On") != std::string::npos);
+	// Current-format MainStatus reports PoolTemp = pool_target (28C == 82F) and
+	// SpaTemp = water_current (27C == 81F); both whole-degree values must render.
+	BOOST_CHECK(joined.find("82F") != std::string::npos);
+	BOOST_CHECK(joined.find("81F") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(PageSurvey_OnHomeEstablished_QueuesNavigation)
+{
+	// An emulated AqualinkTouch with a page survey armed walks its data pages once the home
+	// page is established (first MainStatus) -- targeted navigation, not a menu crawl. The
+	// navigation drains one command per poll, so it shows up as a non-empty command queue.
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+	device.EnablePageSurvey(IAQ::DefaultAqualinkTouchRegistry());
+
+	// Nothing queued until home is established.
+	BOOST_CHECK_EQUAL(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat()));
+
+	// Home established -> the survey navigation sequence is queued.
+	BOOST_CHECK_GT(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
+}
+
+BOOST_AUTO_TEST_CASE(PageSurvey_NotEnabled_NothingQueuedOnHome)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+	// Survey NOT armed -> reaching home must not queue any navigation.
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat()));
+
+	BOOST_CHECK_EQUAL(device.DescribeDiagnostics()["command_queue_depth"].get<std::uint32_t>(), 0u);
+}
+
+BOOST_AUTO_TEST_CASE(Probe_EmulatedAnswers_NonEmulatedIgnores)
+{
+	// The master discovers an AqualinkTouch (0x33) with a generic Probe (cmd 0x00),
+	// exactly as it discovers a OneTouch. An EMULATED instance must answer it (treating
+	// the probe as "addressed", so it is present rather than NotPresent on timeout) -- this
+	// is what lets the PowerCenter sim go on to drive the IAQ page protocol. A passive
+	// non-emulated decoder must IGNORE a bare probe (a probe alone is not proof that a real
+	// device answered) and settle to NotPresent.
+	const uint8_t cmd_probe = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::Probe);
+	auto probe = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_probe, {});
+
+	{
+		Test::MockReplayHarness harness;
+		auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+		TestIAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/true);
+		harness.Replay(probe);
+		device.TriggerWatchdogTimeout();
+		BOOST_CHECK(device.IsFaulted());        // answered the probe -> was addressed
+		BOOST_CHECK(!device.IsNotPresent());
+	}
+	{
+		Test::MockReplayHarness harness;
+		auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+		TestIAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+		harness.Replay(probe);
+		device.TriggerWatchdogTimeout();
+		BOOST_CHECK(device.IsNotPresent());     // bare probe ignored -> not present
+		BOOST_CHECK(!device.IsFaulted());
+	}
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_ScreenRefreshesOnSecondMessage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+
+	// First MainStatus: pump ON.
+	auto frame_on = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(frame_on);
+
+	// Second MainStatus: same layout but pump OFF (byte after the 3 device IDs).
+	auto payload_off = MakeMainStatusPayload_CurrentFormat();
+	payload_off[4] = 0x00;   // pump OFF
+	auto frame_off = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, payload_off);
+	harness.Replay(frame_off);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	std::string joined;
+	for (const auto& line : diagnostics["screen"]["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	// The page must still be known and must reflect the LATEST state (pump off),
+	// proving the render is idempotent/refreshing rather than accumulating stale lines.
+	BOOST_CHECK_EQUAL(diagnostics["screen"]["page_type"].get<std::string>(), std::string("Page_SystemStatus"));
+	BOOST_CHECK(joined.find("Pump: Off") != std::string::npos);
+	BOOST_CHECK(joined.find("Pump: On") == std::string::npos);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// Cloud Link heartbeat screen rendering
+//
+// The heartbeat-only IAQ (the iAqualink2 cloud interface on 0xA3) receives ONLY
+// the heartbeat (0x53) -- no MainStatus/AuxStatus and no navigable page.  Without
+// a rendered page it would sit on the constructor-default Page_Unknown forever.
+// On a heartbeat it must render a fixed "Cloud Link" page carrying the heartbeat
+// liveness; a 0x33 that has decoded a MainStatus must KEEP its System Status page
+// even when a heartbeat arrives (the two ids share one handler).
+// =============================================================================
+
+namespace
+{
+	constexpr uint8_t IAQ_CLOUD_DEVICE_ID = 0xA3;   // iAqualink2 cloud interface (heartbeat-only).
+}
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_CloudLinkScreen_TestSuite)
+
+BOOST_AUTO_TEST_CASE(Heartbeat_OnHeartbeatOnlyDevice_RendersCloudLinkPage)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_CLOUD_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_heartbeat = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_Heartbeat);
+	auto frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_CLOUD_DEVICE_ID, cmd_heartbeat, /*payload=*/{});
+	harness.Replay(frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	BOOST_REQUIRE(diagnostics.contains("screen"));
+
+	const auto& screen = diagnostics["screen"];
+	BOOST_REQUIRE(screen.contains("page_type"));
+	BOOST_REQUIRE(screen.contains("lines"));
+
+	// (a) A heartbeat-only device that never saw a MainStatus renders Cloud Link,
+	//     not the constructor-default Page_Unknown and not System Status.
+	const auto page_type = screen["page_type"].get<std::string>();
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_CloudLink"));
+	BOOST_CHECK_NE(page_type, std::string("Page_Unknown"));
+	BOOST_CHECK_NE(page_type, std::string("Page_SystemStatus"));
+
+	// (b) The rendered lines must mention the cloud link and the heartbeat liveness.
+	std::string joined;
+	for (const auto& line : screen["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+
+	BOOST_CHECK(joined.find("Cloud Link") != std::string::npos);
+	BOOST_CHECK(joined.find("Heartbeat") != std::string::npos);
+	// A just-Kick()ed watchdog reports the link as active.
+	BOOST_CHECK(joined.find("active") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(Heartbeat_AfterMainStatus_KeepsSystemStatusPage)
+{
+	Test::MockReplayHarness harness;
+
+	// A device on the AqualinkTouch 0x33 side that HAS decoded a MainStatus must
+	// keep its System Status page even after a later heartbeat arrives -- it must
+	// NOT flip to Cloud Link just because a heartbeat was seen.
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+	auto main_status_frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, MakeMainStatusPayload_CurrentFormat());
+	harness.Replay(main_status_frame);
+
+	// Sanity: System Status rendered from the MainStatus.
+	BOOST_REQUIRE_EQUAL(device.DescribeDiagnostics()["screen"]["page_type"].get<std::string>(), std::string("Page_SystemStatus"));
+
+	// Now a heartbeat addressed to the same id arrives.
+	const uint8_t cmd_heartbeat = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_Heartbeat);
+	auto heartbeat_frame = Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_heartbeat, /*payload=*/{});
+	harness.Replay(heartbeat_frame);
+
+	auto diagnostics = device.DescribeDiagnostics();
+	const auto page_type = diagnostics["screen"]["page_type"].get<std::string>();
+
+	// The page must STILL be System Status -- the heartbeat must not clobber it.
+	BOOST_CHECK_EQUAL(page_type, std::string("Page_SystemStatus"));
+	BOOST_CHECK_NE(page_type, std::string("Page_CloudLink"));
+
+	std::string joined;
+	for (const auto& line : diagnostics["screen"]["lines"])
+	{
+		joined += line.get<std::string>();
+		joined += '\n';
+	}
+	BOOST_CHECK(joined.find("System Status") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

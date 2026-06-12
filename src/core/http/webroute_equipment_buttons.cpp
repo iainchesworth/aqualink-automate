@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <format>
-#include <ranges>
 
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -24,6 +23,7 @@ namespace AqualinkAutomate::HTTP
 		Interfaces::IWebRoute<EQUIPMENTBUTTONS_ROUTE_URL>()
 	{
 		m_DataHub = hub_locator.Find<Kernel::DataHub>();
+		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
     }
 
     HTTP::Message WebRoute_Equipment_Buttons::OnRequest(const HTTP::Request& req)
@@ -47,29 +47,43 @@ namespace AqualinkAutomate::HTTP
 	{
 		nlohmann::json buttons, all_buttons;
 
+		// User-friendly display names keyed by canonical label (empty if none).
+		const nlohmann::json label_overrides = m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object();
+
 		const auto all_devices = m_DataHub->Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
-		std::for_each(all_devices.begin(), all_devices.end(), [&buttons](const auto& device)
+		std::for_each(all_devices.begin(), all_devices.end(), [&buttons, &label_overrides](const auto& device)
 			{
 				nlohmann::json button;
 
 				button["id"] = boost::uuids::to_string(device->Id());
-				
+
 				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
-				{ 
-					button["label"] = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
+				{
+					const std::string label = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
+					button["label"] = label;
+
+					// display_label = override for this canonical label, else the label.
+					const auto it = label_overrides.is_object() ? label_overrides.find(label) : label_overrides.end();
+					button["display_label"] = (it != label_overrides.end() && it->is_string()) ? it->get<std::string>() : label;
 				}
 				
-				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::StatusTrait{}))
+				if (Kernel::AuxillaryTraitsTypes::HasStatus(device))
 				{
 					button["status"] = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device);
 				}
 
+				// controllable = the device is operated by an on/off toggle. The
+				// chlorinator (a % setpoint, surfaced in the chemistry view) and
+				// Unknown-type devices are configurable/informational, not toggles.
+				bool controllable = false;
 				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}))
 				{
-					button["device_type"] = std::string(magic_enum::enum_name(
-						*(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}])
-					));
+					const auto device_type = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}]);
+					button["device_type"] = std::string(magic_enum::enum_name(device_type));
+					controllable = (device_type != Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator
+						&& device_type != Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Unknown);
 				}
+				button["controllable"] = controllable;
 
 				buttons.push_back(button);
 			}

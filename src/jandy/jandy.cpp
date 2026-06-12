@@ -3,14 +3,15 @@
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 
+#include "kernel/data_hub.h"
 #include "devices/iaq_device.h"
 #include "devices/keypad_device.h"
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "options/options_developer_options.h"
 #include "options/options_jandy.h"
 #include "equipment/jandy_equipment.h"
-#include "messages/jandy_message_ack.h"
 #include "jandy.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -49,9 +50,37 @@ namespace AqualinkAutomate::Jandy
 
 		LogInfo(Channel::Main, "Starting AqualinkAutomate::JandyEquipment...");
 
-		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator));
+		bool decode_to_master = false;
+		if (auto dev_settings_result = settings.Get<AqualinkAutomate::Options::Developer::DeveloperSettings>(); dev_settings_result)
+		{
+			decode_to_master = dev_settings_result.value().get().decode_to_master_enabled;
+			if (decode_to_master)
+			{
+				LogInfo(Channel::Main, "Developer: decode-to-master enabled; frames addressed to the master (0x00) will be decoded and logged on Channel::Messages (observe-only)");
+			}
+		}
 
-		if (!jandy_settings.disable_emulation)
+		equipment_hub->AddEquipment(std::make_unique<Equipment::JandyEquipment>(hub_locator, decode_to_master));
+
+		if (jandy_settings.disable_emulation)
+		{
+			auto data_hub = hub_locator.Find<Kernel::DataHub>();
+			if (nullptr != data_hub)
+			{
+				data_hub->EmulationDisabled = true;
+				LogInfo(Channel::Main, "Emulation disabled; skipping equipment discovery phase");
+			}
+		}
+
+		if (jandy_settings.auto_startup)
+		{
+			// The JandyStartupService (wired in aqualink-automate.cpp on the io_context) detects
+			// the controller from the bus and stands up the emulation dynamically, so skip the
+			// static, CLI-configured device set here.
+			LogInfo(Channel::Main, "Jandy auto-startup enabled; deferring emulated-device selection to the start-up coordinator");
+		}
+
+		if (!jandy_settings.disable_emulation && !jandy_settings.auto_startup)
 		{
 			for (const auto& [controller_type, device_type] : jandy_settings.emulated_devices)
 			{
@@ -62,23 +91,23 @@ namespace AqualinkAutomate::Jandy
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::KeypadDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::IAQ:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::IAQDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::PDA:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::PDADevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
-					equipment_hub->AddDevice(std::move(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true)));
+					equipment_hub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:

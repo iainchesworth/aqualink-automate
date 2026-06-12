@@ -10,8 +10,35 @@
 const _diag = {
     chart: null,
     statsListener: null,
-    windowSeconds: 60
+    windowSeconds: 60,
+    emuDeviceTimer: null,
+    actualDeviceTimer: null,
+    recordingTimer: null,
+    // One-shot guards so a persistently-degraded backend warns once per
+    // poller instead of flooding the console on every 2s tick.
+    warnedOnce: {}
 };
+
+/**
+ * Handle a poller fetch failure. 404 / absent endpoints are expected (the
+ * feature may not be compiled in) and stay quiet; 5xx or thrown errors mean a
+ * degraded backend and warn exactly once per poller key.
+ *
+ * @param {string} key     poller identifier (for the once-guard)
+ * @param {Response|null} resp  the fetch Response (null when fetch threw)
+ * @param {Error|null} err  the thrown error, if any
+ */
+function _handlePollFailure(key, resp, err) {
+    // Quiet for a plain 404 / not-found — endpoint simply isn't available.
+    if (resp && resp.status === 404) return;
+    if (_diag.warnedOnce[key]) return;
+    _diag.warnedOnce[key] = true;
+    if (resp) {
+        console.warn(`[diagnostics] ${key} poll failed: HTTP ${resp.status}`);
+    } else {
+        console.warn(`[diagnostics] ${key} poll failed:`, err);
+    }
+}
 
 function diagnosticsView() {
     return {
@@ -33,6 +60,31 @@ function diagnosticsView() {
             return val || fallback;
         },
 
+        // Collapsible section state (power-user sections collapsed by default)
+        showSerialHealth: false,
+        showMessageErrors: false,
+        showMessageStats: false,
+        showLogLevels: false,
+        showDeviceStatus: false,
+        showEmulatedDevices: true,
+        showActualDevices: true,
+        showRecording: false,
+        showMqtt: false,
+
+        // MQTT broker status diagnostics
+        mqtt: { enabled: false },
+
+        // Serial recording control state
+        recording: { recording: false, file: '', bytes: 0 },
+        recordingFilename: 'capture.cap',
+        recordingBusy: false,
+
+        // Emulated device diagnostics
+        emulatedDevices: [],
+
+        // Actual (real, non-emulated) device diagnostics
+        actualDevices: [],
+
         // Log level control state
         logChannels: {},
         severityLevels: [],
@@ -47,6 +99,23 @@ function diagnosticsView() {
             }
 
             this._fetchLogLevels();
+            this.fetchEmulatedDevices();
+            this.fetchActualDevices();
+            this.fetchRecordingStatus();
+            this.fetchMqtt();
+            // Guard against a leaked interval if initChart() runs again before destroyChart().
+            if (!_diag.emuDeviceTimer) {
+                _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
+            }
+            if (!_diag.actualDeviceTimer) {
+                _diag.actualDeviceTimer = setInterval(() => this.fetchActualDevices(), 2000);
+            }
+            if (!_diag.recordingTimer) {
+                _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
+            }
+            if (!_diag.mqttTimer) {
+                _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
+            }
         },
 
         _createChart() {
@@ -137,6 +206,26 @@ function diagnosticsView() {
         destroyChart() {
             Alpine.store('ws').disconnectStats();
 
+            if (_diag.emuDeviceTimer) {
+                clearInterval(_diag.emuDeviceTimer);
+                _diag.emuDeviceTimer = null;
+            }
+
+            if (_diag.actualDeviceTimer) {
+                clearInterval(_diag.actualDeviceTimer);
+                _diag.actualDeviceTimer = null;
+            }
+
+            if (_diag.recordingTimer) {
+                clearInterval(_diag.recordingTimer);
+                _diag.recordingTimer = null;
+            }
+
+            if (_diag.mqttTimer) {
+                clearInterval(_diag.mqttTimer);
+                _diag.mqttTimer = null;
+            }
+
             if (_diag.statsListener) {
                 window.removeEventListener('stats-updated', _diag.statsListener);
                 _diag.statsListener = null;
@@ -145,6 +234,96 @@ function diagnosticsView() {
             if (_diag.chart) {
                 _diag.chart.destroy();
                 _diag.chart = null;
+            }
+        },
+
+        async fetchEmulatedDevices() {
+            try {
+                const resp = await fetch('/api/diagnostics/emulated-devices');
+                if (!resp.ok) { _handlePollFailure('emulated-devices', resp, null); return; }
+                this.emulatedDevices = await resp.json();
+                _diag.warnedOnce['emulated-devices'] = false;
+            } catch (e) {
+                _handlePollFailure('emulated-devices', null, e);
+            }
+        },
+
+        async fetchActualDevices() {
+            try {
+                const resp = await fetch('/api/diagnostics/actual-devices');
+                if (!resp.ok) { _handlePollFailure('actual-devices', resp, null); return; }
+                this.actualDevices = await resp.json();
+                _diag.warnedOnce['actual-devices'] = false;
+            } catch (e) {
+                _handlePollFailure('actual-devices', null, e);
+            }
+        },
+
+        async fetchRecordingStatus() {
+            try {
+                const resp = await fetch('/api/diagnostics/recording');
+                if (!resp.ok) { _handlePollFailure('recording', resp, null); return; }
+                this.recording = await resp.json();
+                _diag.warnedOnce['recording'] = false;
+            } catch (e) {
+                _handlePollFailure('recording', null, e);
+            }
+        },
+
+        async fetchMqtt() {
+            try {
+                const resp = await fetch('/api/diagnostics/mqtt');
+                if (!resp.ok) { _handlePollFailure('mqtt', resp, null); return; }
+                this.mqtt = await resp.json();
+                _diag.warnedOnce['mqtt'] = false;
+            } catch (e) {
+                _handlePollFailure('mqtt', null, e);
+            }
+        },
+
+        async startRecording() {
+            if (this.recordingBusy || !this.recordingFilename) return;
+            this.recordingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/recording', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'start', filename: this.recordingFilename })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    this.recording = data;
+                    Alpine.store('toast').show('Serial recording started', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to start recording', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to start recording', 'error');
+            } finally {
+                this.recordingBusy = false;
+            }
+        },
+
+        async stopRecording() {
+            if (this.recordingBusy) return;
+            this.recordingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/recording', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'stop' })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    this.recording = data;
+                    Alpine.store('toast').show('Serial recording stopped', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to stop recording', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to stop recording', 'error');
+            } finally {
+                this.recordingBusy = false;
             }
         },
 
@@ -170,6 +349,27 @@ function diagnosticsView() {
             return 'var(--gauge-bad)';
         },
 
+        // Maps a device operating_state to a badge severity class.
+        // NOTE: these string values are C++ enum names emitted verbatim by
+        // magic_enum::enum_name() over OperatingStates in DescribeDiagnostics().
+        // They form a cross-boundary contract — keep in sync if the C++ enum
+        // names ever change.
+        operatingStateClass(state) {
+            switch (state) {
+                case 'NormalOperation':
+                case 'Scraping':
+                    return 'badge-status-normal';
+                case 'StartUp':
+                case 'ColdStart':
+                    return 'badge-status-warn';
+                case 'FaultHasOccurred':
+                case 'ScrapingFaulted':
+                    return 'badge-status-danger';
+                default:
+                    return '';
+            }
+        },
+
         formatUptime(secs) {
             if (secs == null) return '--';
             const h = Math.floor(secs / 3600);
@@ -181,50 +381,74 @@ function diagnosticsView() {
         async _fetchLogLevels() {
             try {
                 const resp = await fetch('/api/diagnostics/logging');
-                if (!resp.ok) return;
+                if (!resp.ok) { _handlePollFailure('logging', resp, null); return; }
                 const data = await resp.json();
                 this.logChannels = data.channels || {};
                 this.severityLevels = data.severity_levels || [];
-                if (this.severityLevels.length > 0) {
-                    // Determine global level: if all channels share the same level, show it
-                    const values = Object.values(this.logChannels);
-                    this.globalLevel = values.length > 0 && values.every(v => v === values[0]) ? values[0] : '';
-                }
+                this.globalLevel = this._computeGlobalLevel();
                 this.logLevelsLoaded = true;
+                _diag.warnedOnce['logging'] = false;
             } catch (e) {
-                // Silently fail — endpoint may not be available
+                _handlePollFailure('logging', null, e);
             }
         },
 
+        // Derive the global indicator: the shared level when every channel
+        // agrees, otherwise '' (Mixed). Guards against an empty channel map
+        // ([].every() is true, which would otherwise yield undefined).
+        _computeGlobalLevel() {
+            const values = Object.values(this.logChannels);
+            return values.length > 0 && values.every(v => v === values[0]) ? values[0] : '';
+        },
+
         async setChannelLevel(channel, level) {
-            this.logChannels[channel] = level;
+            const previous = this.logChannels[channel];
+            this.logChannels[channel] = level;            // optimistic
+            this.globalLevel = this._computeGlobalLevel();
             try {
-                await fetch('/api/diagnostics/logging', {
+                const resp = await fetch('/api/diagnostics/logging', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channel, level })
                 });
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
             } catch (e) {
-                // Silently fail
+                // Revert the optimistic mutation and surface the failure.
+                if (previous === undefined) {
+                    delete this.logChannels[channel];
+                } else {
+                    this.logChannels[channel] = previous;
+                }
+                this.globalLevel = this._computeGlobalLevel();
+                console.error(`[diagnostics] failed to set log level for ${channel}:`, e);
+                Alpine.store('toast').show(`Failed to set log level for ${channel}`, 'error');
             }
-            // Update global indicator
-            const values = Object.values(this.logChannels);
-            this.globalLevel = values.every(v => v === values[0]) ? values[0] : '';
         },
 
         async setGlobalLevel(level) {
-            this.globalLevel = level;
+            const previous = { ...this.logChannels };
+            const previousGlobal = this.globalLevel;
+            this.globalLevel = level;                     // optimistic
             for (const ch in this.logChannels) {
                 this.logChannels[ch] = level;
             }
             try {
-                await fetch('/api/diagnostics/logging', {
+                const resp = await fetch('/api/diagnostics/logging', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ global: level })
                 });
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
             } catch (e) {
-                // Silently fail
+                // Revert the optimistic mutation and surface the failure.
+                this.logChannels = previous;
+                this.globalLevel = previousGlobal;
+                console.error('[diagnostics] failed to set global log level:', e);
+                Alpine.store('toast').show('Failed to set global log level', 'error');
             }
         }
     };

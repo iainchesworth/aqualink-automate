@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <format>
 
 #include "errors/message_errors.h"
 #include "errors/protocol_errors.h"
@@ -19,11 +20,10 @@ namespace AqualinkAutomate::Protocol
 
 	void MessageGeneratorRegistry::Register(MessageGeneratorFunc generator, int priority)
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Generators.push_back({ std::move(generator), priority });
 
 		// Sort by priority (lower values = higher priority)
-		std::sort(m_Generators.begin(), m_Generators.end(),
+		std::ranges::sort(m_Generators,
 			[](const GeneratorEntry& a, const GeneratorEntry& b) {
 				return a.priority < b.priority;
 			});
@@ -33,61 +33,92 @@ namespace AqualinkAutomate::Protocol
 
 	void MessageGeneratorRegistry::Clear()
 	{
-		std::lock_guard lock(m_Mutex);
 		m_Generators.clear();
 		LogDebug(Channel::Protocol, "Cleared all message generators");
 	}
 
+	//=========================================================================
+	// CONSUME-OR-DEFER CONTRACT
+	//
+	// Generators are tried in priority order against the SAME shared buffer.
+	// Each call MUST return exactly one of:
+	//
+	//   * value                  -> a frame was decoded; the generator consumed
+	//                               (erased) its bytes from the front.
+	//   * WaitingForMoreData     -> "these bytes are NOT mine": the buffer is
+	//                               left UNTOUCHED so the NEXT generator may claim
+	//                               them.  This is the ONLY code that advances to
+	//                               the next generator.
+	//   * any other error code   -> "these bytes ARE mine": the generator has
+	//                               positively identified the protocol.  The
+	//                               registry returns immediately and does NOT try
+	//                               another generator (preventing a destructive
+	//                               co-generator from clearing an identified-but-
+	//                               incomplete frame).  Such a generator EITHER
+	//                               consumed >= 1 byte (a definitive failure such
+	//                               as ChecksumFailure / OverlappingPackets that
+	//                               makes forward progress) OR deferred without
+	//                               consuming (DataAvailableToProcess = "my frame,
+	//                               still arriving").  The protocol task converts a
+	//                               non-buffer-shrinking deferral into a bounded
+	//                               "await more data" break (see ProcessMessages),
+	//                               so a non-conforming generator cannot spin.
+	//
+	// Detection-by-preamble means a generator can leave the buffer untouched yet
+	// still POSITIVELY claim it (incomplete frame) — hence the claim signal is the
+	// error code, NOT the buffer-mutation state.
+	//=========================================================================
 	ExpectedProtocolMessage MessageGeneratorRegistry::GenerateMessage(boost::circular_buffer<uint8_t>& buffer)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MessageGeneratorRegistry::GenerateMessage", std::source_location::current());
 		zone->Value(buffer.size());
 
-		std::shared_lock lock(m_Mutex);
-
 		if (m_Generators.empty())
 		{
-			LogDebug(Channel::Protocol, "No message generators registered");
+			// An empty registry is a configuration error (no protocol was wired up),
+			// not a routine per-message condition.  Surface it at Warning with a
+			// distinct code so it is not silently folded into GeneratorFailures.
+			LogWarning(Channel::Protocol, "No message generators registered; cannot parse serial data");
 			return std::unexpected(make_error_code(ErrorCodes::Message_ErrorCodes::Error_CannotFindGenerator));
 		}
 
-		// Try each generator in priority order
+		const auto deferral_code = make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData);
+
+		// Try each generator in priority order.
 		for (const auto& entry : m_Generators)
 		{
 			auto result = entry.generator(buffer);
 
-			// If successful or if the error indicates the buffer was consumed, return
 			if (result.has_value())
 			{
 				return result;
 			}
 
-			// If the generator returned WaitingForMoreData, continue to next generator
-			// (another protocol might have enough data)
-			if (result.error().value() != ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData)
+			// WaitingForMoreData (category-aware) means "not my protocol" -> try the
+			// next generator on the same bytes.  Comparing the whole error_code (value
+			// AND category) avoids a cross-category collision with an unrelated 2001.
+			if (result.error() != deferral_code)
 			{
-				// For other errors (like InvalidPacketFormat), return immediately
-				// This means this generator tried to parse but failed
+				// Any other error code is a positive claim on these bytes (decode
+				// failure or an identified-but-incomplete frame).  Stop here; do NOT
+				// offer the buffer to a co-generator that might destructively clear it.
 				return result;
 			}
 		}
 
-		// All generators are waiting for more data
-		return std::unexpected(make_error_code(ErrorCodes::Protocol_ErrorCodes::WaitingForMoreData));
+		// Every generator declined the buffer.
+		return std::unexpected(deferral_code);
 	}
 
 	bool MessageGeneratorRegistry::HasGenerators() const
 	{
-		std::shared_lock lock(m_Mutex);
 		return !m_Generators.empty();
 	}
 
 	std::size_t MessageGeneratorRegistry::GeneratorCount() const
 	{
-		std::shared_lock lock(m_Mutex);
 		return m_Generators.size();
 	}
 
 }
 // namespace AqualinkAutomate::Protocol
-

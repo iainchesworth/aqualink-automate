@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <execution>
-
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
@@ -12,9 +9,22 @@
 namespace AqualinkAutomate::Kernel
 {
 	
-	DataHub::DataHub() :
-		IHub()
+	DataHub::DataHub() = default;
+
+	void DataHub::EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const
 	{
+		// Signal that a temperature update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
+		populate(*update_event);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const
+	{
+		// Signal that a chemistry update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
+		populate(*update_event);
+		ConfigUpdateSignal(update_event);
 	}
 
 	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source)
@@ -151,10 +161,10 @@ namespace AqualinkAutomate::Kernel
 		m_AirTemp = air_temp;
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Air Temp", air_temp.InCelsius().value());
 
-		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->AirTemp(air_temp);
-		ConfigUpdateSignal(update_event);
+		EmitTemperatureEvent([&air_temp](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.AirTemp(air_temp);
+			});
 	}
 
 	void DataHub::PoolTemp(const Kernel::Temperature& pool_temp)
@@ -168,10 +178,10 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp", pool_temp.InCelsius().value());
 
-		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->PoolTemp(pool_temp);
-		ConfigUpdateSignal(update_event);
+		EmitTemperatureEvent([&pool_temp](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolTemp(pool_temp);
+			});
 	}
 
 	void DataHub::SpaTemp(const Kernel::Temperature& spa_temp)
@@ -185,10 +195,10 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp", spa_temp.InCelsius().value());
 
-		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->SpaTemp(spa_temp);
-		ConfigUpdateSignal(update_event);
+		EmitTemperatureEvent([&spa_temp](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.SpaTemp(spa_temp);
+			});
 	}
 
 	std::optional<Kernel::Temperature> DataHub::PoolTempSetpoint() const
@@ -222,10 +232,10 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", pool_temp_setpoint.InCelsius().value());
 
-		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->PoolSetpoint(pool_temp_setpoint);
-		ConfigUpdateSignal(update_event);
+		EmitTemperatureEvent([&pool_temp_setpoint](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolSetpoint(pool_temp_setpoint);
+			});
 	}
 
 	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
@@ -239,10 +249,10 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", spa_temp_setpoint.InCelsius().value());
 
-		// Signal that a temperature update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
-		update_event->SpaSetpoint(spa_temp_setpoint);
-		ConfigUpdateSignal(update_event);
+		EmitTemperatureEvent([&spa_temp_setpoint](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.SpaSetpoint(spa_temp_setpoint);
+			});
 	}
 
 	Kernel::TemperatureUnits DataHub::SystemTemperatureUnits() const
@@ -253,11 +263,23 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::SystemTemperatureUnits(Kernel::TemperatureUnits units)
 	{
 		m_SystemTemperatureUnits = units;
+
+		// Deliberately does NOT emit a ConfigUpdateSignal: DataHub_ConfigEvent_Temperature
+		// carries no temperature-units field, so an emitted event would be an empty
+		// ({}) no-op for WebSocket/MQTT consumers. If a units change ever needs to be
+		// surfaced, add a units field to the temperature event (owned by the hub-events
+		// unit) and emit it here via EmitTemperatureEvent.
 	}
 
 	void DataHub::FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point)
 	{
 		m_FreezeProtectPoint = freeze_protect_point;
+
+		// Deliberately does NOT emit a ConfigUpdateSignal: DataHub_ConfigEvent_Temperature
+		// carries no freeze-protect field, so an emitted event would be an empty ({})
+		// no-op for WebSocket/MQTT consumers. If the freeze-protect setpoint ever needs
+		// to be surfaced, add a field to the temperature event (owned by the hub-events
+		// unit) and emit it here via EmitTemperatureEvent.
 	}
 
 	Kernel::ORP DataHub::ORP() const
@@ -279,60 +301,85 @@ namespace AqualinkAutomate::Kernel
 	{
 		m_ORP = orp;
 
-		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
-		update_event->ORP(m_ORP);
-		ConfigUpdateSignal(update_event);
+		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
+			{
+				update_event.ORP(m_ORP);
+			});
 	}
 
 	void DataHub::pH(const Kernel::pH& pH)
 	{
 		m_pH = pH;
 
-		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
-		update_event->pH(m_pH);
-		ConfigUpdateSignal(update_event);
+		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
+			{
+				update_event.pH(m_pH);
+			});
 	}
 
 	void DataHub::SaltLevel(const ppm_quantity& salt_level_in_ppm)
 	{
 		m_SaltLevel = salt_level_in_ppm;
 
-		// Signal that a chemistry update has occurred.
-		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
-		update_event->SaltLevel(m_SaltLevel);
-		ConfigUpdateSignal(update_event);
+		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
+			{
+				update_event.SaltLevel(m_SaltLevel);
+			});
+	}
+
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const
+	{
+		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, type);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Auxillaries() const
 	{
-		using DeviceType = decltype(Auxillaries())::value_type::element_type;
-		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+		return DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Chlorinators() const
 	{
-		using DeviceType = decltype(Chlorinators())::value_type::element_type;
-		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
+		return DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes::Chlorinator);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Heaters() const
 	{
-		using DeviceType = decltype(Heaters())::value_type::element_type;
-		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+		return DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes::Heater);
+	}
+
+	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Lights() const
+	{
+		return DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes::Light);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::Pumps() const
 	{
-		using DeviceType = decltype(Pumps())::value_type::element_type;
-		return Devices.FindByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Pump);
+		return DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes::Pump);
 	}
 
 	std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::FilterPumps() const
 	{
-		using DeviceType = decltype(Pumps())::value_type::element_type;
 		return Devices.FindByTrait(AuxillaryTraitsTypes::PumpTypeTrait{}, PumpTypes::FilterCirculation);
+	}
+
+	uint32_t DataHub::CountOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const
+	{
+		return Devices.CountByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, type);
+	}
+
+	bool DataHub::HasAnyOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const
+	{
+		return Devices.HasAnyByTrait(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, type);
+	}
+
+	uint32_t DataHub::CountFilterPumps() const
+	{
+		return Devices.CountByTrait(AuxillaryTraitsTypes::PumpTypeTrait{}, PumpTypes::FilterCirculation);
+	}
+
+	bool DataHub::HasAnyFilterPumps() const
+	{
+		return Devices.HasAnyByTrait(AuxillaryTraitsTypes::PumpTypeTrait{}, PumpTypes::FilterCirculation);
 	}
 
 	std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> DataHub::FilterPump()

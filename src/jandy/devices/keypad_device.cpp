@@ -1,4 +1,7 @@
+#include <format>
 #include <functional>
+
+#include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
 #include "devices/keypad_device.h"
@@ -32,6 +35,20 @@ namespace AqualinkAutomate::Devices
 
 	void KeypadDevice::WatchdogTimeoutOccurred()
 	{
+	}
+
+	nlohmann::json KeypadDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "Keypad";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+
+		j["screen"] = DescribeScreen();
+
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

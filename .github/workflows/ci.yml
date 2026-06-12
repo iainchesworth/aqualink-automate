@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "feature/**", "bug/**"]
+    branches: ["main", "develop", "feature/**", "bug/**"]
   pull_request:
     branches: ["develop", "main"]
 
@@ -14,27 +14,30 @@ permissions:
   contents: read
 
 jobs:
+  # Runner selection: set RUNNER_LINUX / RUNNER_WINDOWS repository variables
+  # to use self-hosted runners (e.g. '["self-hosted","linux","x64"]').
+  # Leave unset to fall back to GitHub-hosted runners.
   build-and-test:
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: "Linux GCC"
-            os: ubuntu-latest
-            compiler: gcc-13
+            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
+            compiler: gcc-15
             configure_preset: config-linux-gcc
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc
           - name: "Windows MSVC"
-            os: windows-latest
+            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
             configure_preset: config-windows-msvc
             build_preset: build-windows-msvc
             test_preset: test-windows-msvc
           - name: "macOS Clang"
-            os: macos-latest
+            runner: '["macos-latest"]'
             compiler: llvm
             configure_preset: config-macos-llvm
             build_preset: build-macos-llvm
@@ -45,23 +48,68 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Clean workspace (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: rm -rf build/
+
       - uses: ./.github/actions/setup-cpp-toolchain
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           compiler: ${{ matrix.compiler }}
 
+      - name: Setup MSVC environment (self-hosted)
+        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup vcpkg cache (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          # Convert Git bash paths to native Windows paths for CMake/vcpkg
+          if command -v cygpath >/dev/null 2>&1; then
+            BINARY_DIR=$(cygpath -w "$BINARY_DIR")
+            DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
+          fi
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/setup-vcpkg-cache
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
         with:
           cache-key-prefix: ${{ matrix.name }}
 
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
+            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          fi
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+
+      # VCPKG_ROOT points lukka/run-cmake (and the in-tree vcpkg toolchain) at the
+      # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
+      # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
+      # overrides that leak, so no special "pin" step is needed (same as Linux/macOS).
       - name: Configure
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Build
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.build_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Show build errors on failure
         if: failure()
@@ -74,10 +122,40 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           testPreset: ${{ matrix.test_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+  version-check:
+    name: Version Check
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        shell: bash
+        run: |
+          # The project version is derived from git tags (see GitVersionDerivation.cmake),
+          # not from a literal in CMakeLists.txt, so compare what `git describe` resolves on
+          # the PR head versus the base branch.
+          HEAD_DESCRIBE=$(git describe --tags --match "v*" --always HEAD 2>/dev/null || echo "none")
+          BASE_DESCRIBE=$(git describe --tags --match "v*" --always "origin/${{ github.base_ref }}" 2>/dev/null || echo "none")
+
+          echo "Base (${{ github.base_ref }}): $BASE_DESCRIBE"
+          echo "Head: $HEAD_DESCRIBE"
+
+          if [[ "$HEAD_DESCRIBE" == "$BASE_DESCRIBE" ]]; then
+            echo "::warning::Version appears unchanged between base and PR branch ($HEAD_DESCRIBE). If this PR includes functional changes, consider tagging a new version before merging."
+          else
+            echo "Version info differs: base=$BASE_DESCRIBE, head=$HEAD_DESCRIBE"
+          fi
 
   docker-verify:
     name: Docker Verification
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +170,6 @@ jobs:
           context: .
           target: ci
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build runtime target
         uses: docker/build-push-action@v6
@@ -103,7 +179,6 @@ jobs:
           push: false
           load: true
           tags: aqualink-automate:verify
-          cache-from: type=gha
 
       - name: Verify runtime starts
         run: docker run --rm aqualink-automate:verify --version

@@ -2,6 +2,7 @@
 #include <functional>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "logging/logging.h"
 #include "devices/device_status.h"
@@ -14,6 +15,23 @@ using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Devices
 {
+
+	namespace
+	{
+		// IAQ (AqualinkTouch 0x33) UI navigation / chlorinator command bytes.  These ride
+		// the 0x33 ACK channel as documented in iaq_protocol.md; named here so the queue
+		// builders below are self-describing rather than a string of bare hex literals.
+		constexpr uint8_t IAQ_CMD_BACK{ 0x02 };                 // navigate back / clean state
+		constexpr uint8_t IAQ_CMD_OPEN_AQUAPURE_PAGE{ 0x19 };   // open the AquaPure settings page
+		constexpr uint8_t IAQ_CMD_SELECT_POOL{ 0x11 };          // select Pool (button index 0)
+		constexpr uint8_t IAQ_CMD_PAGE_BUTTON_BASE{ 0x11 };     // press on-screen PageButton index N -> 0x11 + N
+		constexpr uint8_t IAQ_CMD_QUICK_BOOST{ 0x13 };          // Quick Boost (button index 2) / Stop
+		constexpr uint8_t IAQ_CMD_BOOST_START{ 0x12 };          // Start boost (button index 1)
+		constexpr uint8_t IAQ_CMD_SUBMIT_VALUE{ 0x80 };         // submit the entered value
+
+		constexpr char IAQ_BUTTON_INDEX_POOL{ '1' };            // ASCII Pool button index prefix for control-data values
+	}
+	// namespace
 
 	IAQDevice::IAQDevice(const std::shared_ptr<Devices::JandyDeviceType>& device_id, Kernel::HubLocator& hub_locator, bool is_emulated) :
 		JandyController(device_id, hub_locator),
@@ -48,6 +66,7 @@ namespace AqualinkAutomate::Devices
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageMessage>(std::bind(&IAQDevice::Slot_IAQ_PageMessage, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_PageStart>(std::bind(&IAQDevice::Slot_IAQ_PageStart, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_Poll>(std::bind(&IAQDevice::Slot_IAQ_Poll, this, std::placeholders::_1), DeviceId().Id());
+		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Probe>(std::bind(&IAQDevice::Slot_IAQ_Probe, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_StartUp>(std::bind(&IAQDevice::Slot_IAQ_StartUp, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TableMessage>(std::bind(&IAQDevice::Slot_IAQ_TableMessage, this, std::placeholders::_1), DeviceId().Id());
 		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::IAQMessage_TitleMessage>(std::bind(&IAQDevice::Slot_IAQ_TitleMessage, this, std::placeholders::_1), DeviceId().Id());
@@ -66,40 +85,76 @@ namespace AqualinkAutomate::Devices
 
 	void IAQDevice::QueueCommand(uint8_t command)
 	{
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Queuing command: 0x{:02x}", DeviceId(), command));
+		LogDebug(Channel::Devices, [this, command]() { return std::format("IAQ ({}): Queuing command: 0x{:02x}", DeviceId(), command); });
 		m_PendingCommand = command;
+	}
+
+	void IAQDevice::SelectPageButton(uint8_t button_index)
+	{
+		// On the AqualinkTouch (0x33) page protocol a button is "pressed" by sending the
+		// command (0x11 + button_index) in the next IAQ_Poll ACK: 0x11 selects the page's
+		// button index 0 (cf. IAQ_CMD_SELECT_POOL), so on-screen button N is 0x11 + N. The
+		// command is page-relative -- it presses whatever button currently occupies that
+		// index -- which is how the master drives navigation between pages.
+		const auto command = static_cast<uint8_t>(IAQ_CMD_PAGE_BUTTON_BASE + button_index);
+		LogInfo(Channel::Devices, [this, button_index, command]() { return std::format("IAQ ({}): SelectPageButton(index={}) -> queuing page command 0x{:02x}", DeviceId(), button_index, command); });
+		QueueCommand(command);
+	}
+
+	void IAQDevice::EnablePageSurvey(const IAQ::PageRegistry& registry)
+	{
+		m_PageSurveyEnabled = true;
+		m_PageSurveyRegistry = registry;
+		LogInfo(Channel::Devices, [this, &registry]() { return std::format("IAQ ({}): Page survey armed with {} target page(s)", DeviceId(), registry.size()); });
+	}
+
+	void IAQDevice::MaybeStartPageSurvey()
+	{
+		// Source data the pushed home page doesn't carry by visiting a small declarative set of
+		// pages -- targeted navigation, not a menu crawl. Only an emulated panel drives the bus,
+		// it runs once, and only after the home page is established (so navigation is well-defined).
+		if (!IsEmulated() || !m_PageSurveyEnabled || m_PageSurveyDone)
+		{
+			return;
+		}
+		m_PageSurveyDone = true;
+
+		auto commands = IAQ::BuildSurveyCommandSequence(m_PageSurveyRegistry);
+		LogInfo(Channel::Devices, [this, &commands]() { return std::format("IAQ ({}): Home established -> starting page survey ({} command(s) over {} target page(s))",
+			DeviceId(), commands.size(), m_PageSurveyRegistry.size()); });
+		m_CommandQueue.assign(commands.begin(), commands.end());
 	}
 
 	void IAQDevice::QueueChlorinatorPercentage(uint8_t percentage)
 	{
-		LogInfo(Channel::Devices, std::format("IAQ ({}): QueueChlorinatorPercentage({}%) - queuing command sequence", DeviceId(), percentage));
+		LogInfo(Channel::Devices, [this, percentage]() { return std::format("IAQ ({}): QueueChlorinatorPercentage({}%) - queuing command sequence", DeviceId(), percentage); });
 
 		m_CommandQueue.clear();
-		m_CommandQueue.push_back(0x02);  // Back (ensure clean state)
-		m_CommandQueue.push_back(0x19);  // Open AquaPure page
-		m_CommandQueue.push_back(0x11);  // Select Pool (button index 0)
-		m_CommandQueue.push_back(0x80);  // Submit value
+		m_CommandQueue.push_back(IAQ_CMD_BACK);
+		m_CommandQueue.push_back(IAQ_CMD_OPEN_AQUAPURE_PAGE);
+		m_CommandQueue.push_back(IAQ_CMD_SELECT_POOL);
+		m_CommandQueue.push_back(IAQ_CMD_SUBMIT_VALUE);
 
 		m_AwaitingControlReady = true;
-		m_ControlDataValue = std::format("1{}", percentage);  // "1" = Pool button index
+		m_ControlDataValue = std::format("{}{}", IAQ_BUTTON_INDEX_POOL, percentage);
 	}
 
 	void IAQDevice::QueueChlorinatorBoost(bool enable)
 	{
-		LogInfo(Channel::Devices, std::format("IAQ ({}): QueueChlorinatorBoost({}) - queuing command sequence", DeviceId(), enable));
+		LogInfo(Channel::Devices, [this, enable]() { return std::format("IAQ ({}): QueueChlorinatorBoost({}) - queuing command sequence", DeviceId(), enable); });
 
 		m_CommandQueue.clear();
-		m_CommandQueue.push_back(0x02);  // Back (ensure clean state)
-		m_CommandQueue.push_back(0x19);  // Open AquaPure page
-		m_CommandQueue.push_back(0x13);  // Quick Boost (button index 2)
+		m_CommandQueue.push_back(IAQ_CMD_BACK);
+		m_CommandQueue.push_back(IAQ_CMD_OPEN_AQUAPURE_PAGE);
+		m_CommandQueue.push_back(IAQ_CMD_QUICK_BOOST);
 
 		if (enable)
 		{
-			m_CommandQueue.push_back(0x12);  // Start (button index 1)
+			m_CommandQueue.push_back(IAQ_CMD_BOOST_START);
 		}
 		else
 		{
-			m_CommandQueue.push_back(0x13);  // Stop (button index 2)
+			m_CommandQueue.push_back(IAQ_CMD_QUICK_BOOST);  // Stop
 		}
 
 		m_AwaitingControlReady = false;
@@ -115,13 +170,17 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessControllerUpdates", std::source_location::current());
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): ProcessControllerUpdates called: state={}, is_poll={}, pending_cmd=0x{:02x}",
-			DeviceId(), magic_enum::enum_name(m_OpState), is_poll_message, m_PendingCommand));
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): ProcessControllerUpdates called: state={}, is_poll={}, pending_cmd=0x{:02x}",
+			DeviceId(), magic_enum::enum_name(m_OpState), is_poll_message, m_PendingCommand); });
+
+		// This id has been addressed on the bus (poll/status), so any later watchdog
+		// timeout is a genuine drop-out rather than "never present".
+		m_HasReceivedData = true;
 
 		// Non-emulated devices skip straight to NormalOperation on the first update.
 		if (!IsEmulated() && m_OpState == OperatingStates::StartUp)
 		{
-			LogInfo(Channel::Devices, std::format("IAQ ({}): Non-emulated device detected - entering NormalOperation", DeviceId()));
+			LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Non-emulated device detected - entering NormalOperation", DeviceId()); });
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
 		}
@@ -130,20 +189,26 @@ namespace AqualinkAutomate::Devices
 		{
 		case OperatingStates::StartUp:
 		{
-			LogDebug(Channel::Devices, std::format("IAQ ({}): Processing StartUp state - waiting for MainStatus/AuxStatus", DeviceId()));
+			LogDebug(Channel::Devices, [this]() { return std::format("IAQ ({}): Processing StartUp state - waiting for MainStatus/AuxStatus", DeviceId()); });
 			Status(Devices::DeviceStatus_Initializing{});
 			break;
 		}
 
 		case OperatingStates::NormalOperation:
 		{
-			LogTrace(Channel::Devices, std::format("IAQ ({}): Processing NormalOperation state", DeviceId()));
+			LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Processing NormalOperation state", DeviceId()); });
 			break;
 		}
 
 		case OperatingStates::FaultHasOccurred:
 		{
-			LogWarning(Channel::Devices, std::format("IAQ ({}): Processing FaultHasOccurred state", DeviceId()));
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Processing FaultHasOccurred state", DeviceId()); });
+			break;
+		}
+
+		case OperatingStates::NotPresent:
+		{
+			// Device not present yet; nothing to process for this update.
 			break;
 		}
 		}
@@ -153,13 +218,13 @@ namespace AqualinkAutomate::Devices
 		{
 			auto cmd = m_CommandQueue.front();
 			m_CommandQueue.pop_front();
-			LogDebug(Channel::Devices, std::format("IAQ ({}): Sending queued command in Poll ACK: 0x{:02x} ({} remaining)",
-				DeviceId(), cmd, m_CommandQueue.size()));
+			LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Sending queued command in Poll ACK: 0x{:02x} ({} remaining)",
+				DeviceId(), cmd, m_CommandQueue.size()); });
 			Signal_AckMessage(static_cast<uint8_t>(0x00), cmd);
 		}
 		else if (is_poll_message && m_PendingCommand != 0x00)
 		{
-			LogDebug(Channel::Devices, std::format("IAQ ({}): Sending command in Poll ACK: 0x{:02x}", DeviceId(), m_PendingCommand));
+			LogDebug(Channel::Devices, [this]() { return std::format("IAQ ({}): Sending command in Poll ACK: 0x{:02x}", DeviceId(), m_PendingCommand); });
 			Signal_AckMessage(static_cast<uint8_t>(0x00), m_PendingCommand);
 			m_PendingCommand = 0x00;
 		}
@@ -173,13 +238,33 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::WatchdogTimeoutOccurred", std::source_location::current());
 
-		LogWarning(Channel::Devices, std::format("IAQ ({}): Watchdog timeout occurred: state={}, timeout_duration={}s", DeviceId(), magic_enum::enum_name(m_OpState), IAQ_TIMEOUT_DURATION.count()));
+		if (m_OpState == OperatingStates::NotPresent)
+		{
+			// Already determined this id is not present on the bus -- stay quiet.
+			return;
+		}
+
+		LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Watchdog timeout occurred: state={}, timeout_duration={}s", DeviceId(), magic_enum::enum_name(m_OpState), IAQ_TIMEOUT_DURATION.count()); });
 
 		if (m_OpState == OperatingStates::StartUp)
 		{
-			LogWarning(Channel::Devices, std::format("IAQ ({}): No valid data received during StartUp -> entering FaultHasOccurred", DeviceId()));
-			m_OpState = OperatingStates::FaultHasOccurred;
-			Status(Devices::DeviceStatus_FaultOccurred{});
+			if (m_HasReceivedData)
+			{
+				// Traffic addressed to this id was being received and then stopped -- a
+				// genuine fault (the device was present but went silent).
+				LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): No valid data received during StartUp -> entering FaultHasOccurred", DeviceId()); });
+				m_OpState = OperatingStates::FaultHasOccurred;
+				Status(Devices::DeviceStatus_FaultOccurred{});
+			}
+			else
+			{
+				// This id was never addressed on the bus: the master is not polling an
+				// iAqualink2 here (e.g. an emulated id the panel isn't configured for).
+				// That is "not present", not a fault -- settle quietly rather than alarm.
+				LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): No traffic ever addressed to this id -> marking NotPresent (master is not polling an iAqualink2 here)", DeviceId()); });
+				m_OpState = OperatingStates::NotPresent;
+				Status(Devices::DeviceStatus_Initializing{});
+			}
 		}
 	}
 
@@ -193,9 +278,28 @@ namespace AqualinkAutomate::Devices
 		auto data_msg = std::make_shared<Messages::IAQMessage_ControlDataResponse>(ascii_data);
 		if (data_msg)
 		{
-			LogDebug(Channel::Devices, std::format("IAQ ({}): Signalling control data response: '{}'", DeviceId(), ascii_data));
+			LogDebug(Channel::Devices, [this, &ascii_data]() { return std::format("IAQ ({}): Signalling control data response: '{}'", DeviceId(), ascii_data); });
 			data_msg->Signal_MessageToSend();
 		}
+	}
+
+	nlohmann::json IAQDevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "IAQ";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+		j["operating_state"] = std::string(magic_enum::enum_name(m_OpState));
+
+		j["screen"] = DescribeScreen();
+
+		j["pending_command"] = std::format("0x{:02x}", m_PendingCommand);
+		j["command_queue_depth"] = static_cast<uint32_t>(m_CommandQueue.size());
+		j["awaiting_control_ready"] = m_AwaitingControlReady;
+		j["control_data_value"] = m_ControlDataValue;
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

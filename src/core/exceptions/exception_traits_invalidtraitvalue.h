@@ -1,20 +1,13 @@
 #pragma once
 
-#include <string>
+#include <source_location>
 
 #include "exceptions/exception_genericaqualinkexception.h"
 
 namespace AqualinkAutomate::Exceptions
 {
 
-	class Traits_InvalidTraitValue : public GenericAqualinkException
-	{
-		static const std::string TRAIT_INVALID_TRAIT_VALUE_MESSAGE;
-
-	public:
-		Traits_InvalidTraitValue();
-		Traits_InvalidTraitValue(const std::string& message);
-	};
+	AQ_DECLARE_EXCEPTION(Traits_InvalidTraitValue);
 
 }
 // namespace AqualinkAutomate::Exceptions

@@ -1,15 +1,11 @@
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <string_view>
-#include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_locator.h"
+#include "kernel/preferences_hub.h"
 
 namespace AqualinkAutomate::HTTP
 {
@@ -29,6 +25,7 @@ namespace AqualinkAutomate::HTTP
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
+		std::shared_ptr<Kernel::PreferencesHub> m_PreferencesHub{ nullptr };
 	};
 
 }

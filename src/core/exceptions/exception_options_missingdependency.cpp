@@ -15,7 +15,7 @@ namespace AqualinkAutomate::Exceptions
 	}
 
 	Options_MissingDependency::Options_MissingDependency(const std::string& message) :
-		OptionParsingFailed(OPTION_MISSING_DEPENDENCY_MESSAGE)
+		OptionParsingFailed(message)
 	{
 		LogTrace(Channel::Exceptions, "Options_MissingDependency exception was constructed");
 	}

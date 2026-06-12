@@ -1,0 +1,227 @@
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <boost/test/unit_test.hpp>
+
+#include <boost/asio/io_context.hpp>
+
+#include "alerting/alert_condition.h"
+#include "alerting/alert_monitor.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/data_hub.h"
+#include "kernel/preferences_hub.h"
+#include "kernel/statistics_hub.h"
+#include "options/options_alerting_options.h"
+#include "types/units_dimensionless.h"
+#include "jandy/messages/jandy_message_ids.h"
+
+#include "support/unit_test_hublocatorinjector.h"
+
+using namespace AqualinkAutomate;
+using namespace AqualinkAutomate::Alerting;
+
+namespace
+{
+	// Records every transition the monitor emits so a test can assert the edge
+	// sequence (and prove latching suppresses repeats).
+	struct SinkRecorder
+	{
+		std::vector<AlertTransition> transitions;
+
+		AlertMonitor::Sink AsSink()
+		{
+			return [this](const AlertTransition& t) { transitions.push_back(t); };
+		}
+
+		std::size_t CountFor(std::string_view key) const
+		{
+			std::size_t n = 0;
+			for (const auto& t : transitions) { if (t.condition == key) { ++n; } }
+			return n;
+		}
+	};
+
+	std::shared_ptr<Kernel::AuxillaryDevice> MakeChlorinator(Kernel::ChlorinatorHealth health)
+	{
+		using namespace Kernel::AuxillaryTraitsTypes;
+		auto chlor = std::make_shared<Kernel::AuxillaryDevice>();
+		chlor->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		chlor->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+		chlor->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
+		chlor->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, health);
+		return chlor;
+	}
+}
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_AlertMonitor, Test::HubLocatorInjector)
+
+// salt_low raises below the threshold and only clears after +100 ppm hysteresis,
+// so a reading hovering at the boundary cannot flap.
+BOOST_AUTO_TEST_CASE(SaltLow_RaisesBelowThreshold_ClearsWithHysteresis)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+	settings.salt_low_ppm = 2600;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	// AlertMonitor reads the threshold live from PreferencesHub (seeded from the
+	// CLI in production); set it explicitly in the test.
+	Find<Kernel::PreferencesHub>()->AlertSaltLowPpm = 2600;
+
+	auto data_hub = Find<Kernel::DataHub>();
+
+	// Below threshold -> raise.
+	data_hub->SaltLevel(2000 * Units::ppm);
+	monitor.EvaluateSaltLow();
+	BOOST_REQUIRE_EQUAL(rec.CountFor(ConditionKeys::SaltLow), 1u);
+	BOOST_CHECK(rec.transitions.back().raised);
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::SaltLow));
+
+	// Inside the hysteresis band (>= threshold but < threshold+100) -> stay raised.
+	data_hub->SaltLevel(2650 * Units::ppm);
+	monitor.EvaluateSaltLow();
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::SaltLow), 1u); // no new transition
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::SaltLow));
+
+	// Above threshold + 100 -> clear.
+	data_hub->SaltLevel(2750 * Units::ppm);
+	monitor.EvaluateSaltLow();
+	BOOST_REQUIRE_EQUAL(rec.CountFor(ConditionKeys::SaltLow), 2u);
+	BOOST_CHECK(!rec.transitions.back().raised);
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::SaltLow));
+}
+
+// salt_low_ppm == 0 disables the salt check entirely.
+BOOST_AUTO_TEST_CASE(SaltLow_Disabled_NeverRaises)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+	settings.salt_low_ppm = 0;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	Find<Kernel::PreferencesHub>()->AlertSaltLowPpm = 0;   // disables the check
+	Find<Kernel::DataHub>()->SaltLevel(500 * Units::ppm);
+	monitor.EvaluateSaltLow();
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::SaltLow), 0u);
+}
+
+// chlorinator_fault latches on a hard fault and clears on recovery.
+BOOST_AUTO_TEST_CASE(ChlorinatorFault_RaisesOnGeneralFault_ClearsOnOk)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	auto data_hub = Find<Kernel::DataHub>();
+	auto chlor = MakeChlorinator(Kernel::ChlorinatorHealth::Ok);
+	data_hub->Devices.Add(chlor);
+
+	monitor.EvaluateChlorinatorFault();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorFault));
+
+	chlor->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::GeneralFault);
+	monitor.EvaluateChlorinatorFault();
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::ChlorinatorFault));
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::ChlorinatorFault), 1u);
+
+	chlor->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::Ok);
+	monitor.EvaluateChlorinatorFault();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorFault));
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::ChlorinatorFault), 2u);
+}
+
+// service_mode tracks the DataHub equipment mode.
+BOOST_AUTO_TEST_CASE(ServiceMode_TracksEquipmentMode)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	auto data_hub = Find<Kernel::DataHub>();
+
+	data_hub->Mode = Kernel::EquipmentMode::Service;
+	monitor.EvaluateServiceMode();
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::ServiceMode));
+
+	data_hub->Mode = Kernel::EquipmentMode::Normal;
+	monitor.EvaluateServiceMode();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ServiceMode));
+
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::ServiceMode), 2u);
+}
+
+// serial_comms_loss raises after the timeout elapses with no new messages and
+// clears as soon as traffic resumes (deterministic via an injected clock).
+BOOST_AUTO_TEST_CASE(SerialCommsLoss_RaisesAfterTimeout_ClearsOnTraffic)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+	settings.comms_timeout_seconds = 60;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	Find<Kernel::PreferencesHub>()->AlertCommsTimeoutSeconds = 60;
+
+	std::int64_t now = 1000;
+	monitor.SetClock([&now] { return now; });
+
+	auto stats = Find<Kernel::StatisticsHub>();
+
+	// Start establishes the baseline at t=1000 with zero messages.
+	monitor.Start();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::SerialCommsLoss));
+
+	// Timeout elapses with no new traffic -> raise.
+	now = 1000 + 60;
+	monitor.EvaluateSerialCommsLoss();
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::SerialCommsLoss));
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::SerialCommsLoss), 1u);
+
+	// New traffic -> clear.
+	stats->MessageCounts[Messages::JandyMessageIds::AQUARITE_Percent] += 1u;
+	now = 1000 + 70;
+	monitor.EvaluateSerialCommsLoss();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::SerialCommsLoss));
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::SerialCommsLoss), 2u);
+
+	monitor.Stop();
+}
+
+// BuildStateJson reports every catalogue condition as a "true"/"false" string
+// matching the latched state (read by the HA binary_sensors).
+BOOST_AUTO_TEST_CASE(BuildStateJson_ReflectsLatchedState)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+
+	AlertMonitor monitor(io, *this, settings);
+
+	Find<Kernel::DataHub>()->Mode = Kernel::EquipmentMode::Service;
+	monitor.EvaluateServiceMode();
+
+	auto state = monitor.BuildStateJson();
+	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::ServiceMode }], "true");
+	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::SaltLow }], "false");
+	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::ChlorinatorFault }], "false");
+	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::SerialCommsLoss }], "false");
+}
+
+BOOST_AUTO_TEST_SUITE_END()

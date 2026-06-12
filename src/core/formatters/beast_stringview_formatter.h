@@ -1,7 +1,7 @@
 #pragma once
 
 #include <format>
-#include <iostream>
+#include <ostream>
 #include <string>
 #include <string_view>
 

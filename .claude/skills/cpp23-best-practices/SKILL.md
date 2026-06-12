@@ -7,6 +7,8 @@ description: C++23 best practices and coding standards for the Aqualink-Automate
 
 This skill defines the coding standards, idioms, and architectural patterns for C++ development in the Aqualink-Automate project. All new code and refactors should follow these guidelines. The target standard is **C++23** (with C++20 as a fallback where compiler support is incomplete).
 
+Subsystem-specific conventions live in dedicated skills: `jandy-protocol` (RS-485 messages), `device-navigation`, `kernel-architecture` (hubs/DI/threading), `backend-observability` (profiling/logging), `mqtt-home-assistant`, `cmake-build-system`, `webui-best-practices`, and `testing-best-practices`.
+
 ---
 
 ## 1. Core Language Preferences
@@ -182,57 +184,24 @@ auto device = std::make_shared<AqualinkDevice>(port_config);
 
 ---
 
-## 3. Concurrency & Async Patterns
+## 3. Concurrency & Async Model
 
-### Use `std::jthread` with stop tokens
-
-For background polling loops (e.g., periodic status reads), prefer `std::jthread` which joins automatically and supports cooperative cancellation.
+**This project is single-threaded.** There are no `std::thread`/`std::jthread` and no `io_context::run()`. One `boost::asio::io_context` is driven by a cooperative `poll()` loop in `src/aqualink-automate.cpp`:
 
 ```cpp
-class StatusPoller {
-    std::jthread poll_thread_;
-
-public:
-    void start(AqualinkDevice& device) {
-        poll_thread_ = std::jthread([&device](std::stop_token stoken) {
-            while (!stoken.stop_requested()) {
-                auto status = device.poll_status();
-                if (status) publish(*status);
-                std::this_thread::sleep_for(5s);
-            }
-        });
-    }
-    // ~StatusPoller automatically requests stop and joins
-};
+while (!shutdown) {
+    io_context.poll();          // drain ready Asio handlers (non-blocking)
+    protocol_task->Poll();      // RS-485 read/process/write
+    http_server->Poll();
+    mqtt_integration->Poll();
+}
 ```
 
-### Use `std::atomic` for shared state, avoid mutable globals
+Each subsystem exposes a non-blocking `Poll()` that does bounded work per frame and returns. See the `kernel-architecture` skill for the full model. Consequences for new code:
 
-```cpp
-// GOOD
-struct SharedState {
-    std::atomic<float> pool_temp{0.0f};
-    std::atomic<float> orp_mv{0.0f};
-    std::atomic<bool>  pump_running{false};
-};
-
-// BAD
-float g_pool_temp;
-std::mutex g_temp_mutex;
-```
-
-### Use `std::latch` / `std::barrier` (C++20) for synchronisation rather than ad-hoc condition variables
-
-```cpp
-std::latch startup_complete{3}; // wait for 3 subsystems
-
-// In each subsystem init:
-startup_complete.count_down();
-
-// In main:
-startup_complete.wait();
-std::print("All subsystems initialised\n");
-```
+- **Don't introduce threads.** Long-running work belongs in a subsystem `Poll()` step (do a little, return), or as an Asio async operation on the shared `io_context` — not a background `std::thread`/`jthread` and not a blocking call in the loop.
+- **Shared state (the kernel hubs) is intentionally unsynchronised** — no mutexes, no `std::atomic` — because all access is on the one loop thread. `boost::signals2` slots fire synchronously, inline.
+- If a multi-threaded model is ever genuinely required, introduce it deliberately (e.g. a single `boost::asio::strand` guarding hub access) and guard the affected containers first — see the note over `EquipmentHub::ForEachDevice`. Do **not** sprinkle `std::atomic`/`std::mutex` ad hoc.
 
 ---
 
@@ -356,40 +325,29 @@ if (!result) {
 
 ## 7. Project Structure & Organisation
 
-### Recommended directory layout
+Source-only layout — there is **no separate `include/` tree**; headers and sources live together per module. See `cmake-build-system` for how the build is wired.
 
 ```
 aqualink-automate/
-├── CMakeLists.txt
-├── include/
-│   └── aqualink/
-│       ├── core/            # Protocol, framing, CRC
-│       ├── device/          # Device abstraction, serial comms
-│       ├── sensors/         # Sensor interfaces & implementations
-│       ├── control/         # Pump, heater, chlorinator control
-│       ├── schedule/        # Time-based scheduling (off-peak, etc.)
-│       ├── integration/     # MQTT, Home Assistant, REST API
-│       └── util/            # Logging, config, strong types
+├── CMakeLists.txt          # root; options() before project(); version derivation
+├── CMakePresets.json       # config/build/test presets per platform
+├── vcpkg.json              # dependency manifest (vcpkg submodule at deps/vcpkg)
+├── cmake/                  # toolchains/, vcpkg/triplets/, tools/, Sanitizers.cmake
 ├── src/
-│   └── (mirrors include structure)
-├── tests/
-│   ├── unit/
-│   └── integration/
-├── config/
-│   └── aqualink.toml       # Runtime configuration
+│   ├── core/    → libaqualink-automate  (protocol, kernel/hubs, http, mqtt, serial, logging, profiling, options)
+│   ├── jandy/   → libaqualink-jandy     (messages, devices, navigation, equipment)
+│   └── pentair/ → libaqualink-pentair
+├── test/{unit,integration,performance}/  # Boost.Test + Google Benchmark
+├── assets/web/             # Alpine.js web UI + api/swagger.yaml
 └── docs/
 ```
 
-### Use modules where compiler support allows, otherwise conventional headers
+### Headers, not modules
+
+The build sets `CMAKE_CXX_SCAN_FOR_MODULES OFF` — use `#pragma once` headers. C++20 modules are deliberately **not** used (partly so clang-tidy works).
 
 ```cpp
-// If using modules (preferred when toolchain supports it)
-export module aqualink.core.protocol;
-
-export class ProtocolHandler { /* ... */ };
-
-// Otherwise, use #pragma once (not include guards)
-#pragma once
+#pragma once   // not #ifndef include guards
 ```
 
 ### One class per header/source pair for non-trivial types
@@ -398,108 +356,36 @@ export class ProtocolHandler { /* ... */ };
 
 ## 8. Build & Tooling
 
-### CMake minimum version 3.28+ for C++23 module support
+Full build conventions are in the `cmake-build-system` skill. Key facts for writing code:
 
-```cmake
-cmake_minimum_required(VERSION 3.28)
-project(aqualink-automate LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-```
-
-### Compiler warnings — treat warnings as errors in CI
-
-```cmake
-target_compile_options(aqualink PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:
-        -Wall -Wextra -Wpedantic -Werror
-        -Wshadow -Wnon-virtual-dtor -Wcast-align
-        -Wunused -Woverloaded-virtual -Wconversion
-        -Wsign-conversion -Wnull-dereference
-        -Wformat=2 -Wimplicit-fallthrough
-    >
-)
-```
-
-### Use sanitisers during development
-
-```cmake
-# Debug builds
-target_compile_options(aqualink PRIVATE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer>
-)
-target_link_options(aqualink PRIVATE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
-)
-```
-
-### Use `clang-format` for consistent style
-
-Include a `.clang-format` file in the repository root. Recommended base:
-
-```yaml
-BasedOnStyle: LLVM
-IndentWidth: 4
-ColumnLimit: 120
-AllowShortFunctionsOnASingleLine: Inline
-BreakBeforeBraces: Attach
-PointerAlignment: Left
-IncludeBlocks: Regroup
-```
-
-### Use `clang-tidy` with a project-specific config
-
-```yaml
-# .clang-tidy
-Checks: >
-  -*,
-  bugprone-*,
-  cert-*,
-  cppcoreguidelines-*,
-  misc-*,
-  modernize-*,
-  performance-*,
-  readability-*,
-  -modernize-use-trailing-return-type,
-  -readability-identifier-length,
-  -cppcoreguidelines-avoid-magic-numbers
-WarningsAsErrors: '*'
-```
+- **CMake 3.31+**; `CMAKE_CXX_STANDARD 23`, `CMAKE_CXX_EXTENSIONS OFF`, `CMAKE_COMPILE_WARNING_AS_ERROR ON` (warnings ARE errors), `CMAKE_EXPORT_COMPILE_COMMANDS ON`.
+- **Compiler/linker/stdlib flags live in toolchain files** (`cmake/toolchains/*.toolchain.cmake`) — **never** add `$<CXX_COMPILER_ID:...>` / `$<PLATFORM_ID:...>` conditionals to a `src/` `CMakeLists.txt` (the platform-isolation rule). Per-OS source differences use plain `if(WIN32)/if(LINUX)/if(APPLE)` blocks only.
+- **Sanitisers** are applied via `cmake/Sanitizers.cmake` (`target_enable_sanitizers`), driven by the `*-debug` presets. MSVC ASan needs `/MD`, so Debug+ASan uses the **Windows-LLVM** preset; sanitisers are mutually exclusive with `ENABLE_PROFILING` (configure-time FATAL).
+- A **`.clang-format`** and **`.clang-tidy`** already exist at the repo root; clang-tidy runs as part of the build under `ENABLE_CLANG_TIDY` (on in the debug presets), which is why tidy advisories surface during a normal build. Match the surrounding formatting (tabs, attached braces).
 
 ---
 
 ## 9. Testing
 
-### Use a modern test framework (Catch2 v3 or GoogleTest)
+The project uses **Boost.Test** for unit and integration tests and **Google Benchmark** for performance tests — see the `testing-best-practices` skill. A regression test MUST accompany every bug fix.
 
 ```cpp
-#include <catch2/catch_test_macros.hpp>
+#include <boost/test/unit_test.hpp>
 
-TEST_CASE("CRC calculation matches known values", "[protocol][crc]") {
-    constexpr std::array<std::uint8_t, 3> data = {0xFF, 0x00, 0x55};
-    REQUIRE(calculate_crc(data) == 0xAA);
+BOOST_AUTO_TEST_SUITE(JandyChecksum_TestSuite)
+
+BOOST_AUTO_TEST_CASE(Test_Checksum_KnownValue)
+{
+    constexpr std::array<std::uint8_t, 3> data{ 0xFF, 0x00, 0x55 };
+    BOOST_CHECK_EQUAL(CalculateChecksum(data), 0xAA);
 }
 
-TEST_CASE("Parse valid status frame", "[protocol][parse]") {
-    auto result = parse_frame(valid_frame_bytes);
-    REQUIRE(result.has_value());
-    CHECK(result->pool_temp == Catch::Approx(28.5f).margin(0.1f));
-}
-
-TEST_CASE("Timeout returns expected error", "[device][serial]") {
-    MockSerialPort mock_port{/* returns nothing */};
-    auto result = read_pool_status(mock_port);
-    REQUIRE(!result.has_value());
-    CHECK(result.error() == AqualinkError::Timeout);
-}
+BOOST_AUTO_TEST_SUITE_END()
 ```
 
 ### Use compile-time tests for constexpr functions
 
 ```cpp
-static_assert(calculate_crc({0xFF, 0x00, 0x55}) == 0xAA);
 static_assert(crc_table[0] == 0x00);
 ```
 
@@ -507,17 +393,19 @@ static_assert(crc_table[0] == 0x00);
 
 ## 10. Naming Conventions
 
-| Element             | Style              | Example                        |
-|---------------------|--------------------|--------------------------------|
-| Types / Classes     | `PascalCase`       | `PoolStatus`, `SerialPort`     |
-| Functions / Methods | `snake_case`       | `read_status()`, `send_cmd()`  |
-| Variables           | `snake_case`       | `pool_temp`, `orp_reading`     |
-| Constants           | `UPPER_SNAKE_CASE` | `MAX_RETRIES`, `AQUALINK_ADDR` |
-| Namespaces          | `snake_case`       | `aqualink::core`               |
-| Template params     | `PascalCase`       | `template<Sensor S>`           |
-| Member variables    | `snake_case_`      | `device_`, `poll_interval_`    |
-| Enum values         | `PascalCase`       | `PumpSpeed::High`              |
-| Macros (avoid)      | `UPPER_SNAKE_CASE` | `AQUALINK_PLATFORM_LINUX`      |
+| Element             | Style              | Example                          |
+|---------------------|--------------------|----------------------------------|
+| Types / Classes     | `PascalCase`       | `PoolStatus`, `SerialPort`       |
+| Functions / Methods | `PascalCase`       | `OnRequest()`, `IsRunning()`, `DescribeDiagnostics()` |
+| Local variables     | `snake_case`       | `pool_temp`, `device_id`         |
+| Constants           | `UPPER_SNAKE_CASE` | `MAX_RETRIES`, `PACKET_HEADER_LENGTH` |
+| Namespaces          | `PascalCase`       | `AqualinkAutomate::Kernel`, `::HTTP` |
+| Template params     | `UPPER_SNAKE_CASE` or short `PascalCase` | `MESSAGE_TYPE`, `EVENT_TYPE`, `Func` |
+| Member variables    | `m_PascalCase`     | `m_EquipmentHub`, `m_PendingCommand` |
+| Enum values         | `PascalCase`       | `OperatingStates::Scraping`      |
+| Macros (avoid)      | `UPPER_SNAKE_CASE` | `TRACY_ENABLE`                   |
+
+> The illustrative snippets earlier in this document prioritise the C++23 *idiom* and use simplified (often snake_case) names; **real** method and namespace names are `PascalCase` and members are `m_`-prefixed, per this table.
 
 ---
 
@@ -589,7 +477,7 @@ bool pump_on = status_flags.test(PUMP_ON_BIT);
 | `std::format` / `std::print`         | `printf` / `iostream` formatting          |
 | `std::span<T>`                        | Raw pointer + size                        |
 | `std::string_view`                    | `const std::string&` for read-only        |
-| `std::jthread`                        | `std::thread` + manual join               |
+| Asio async on the shared `io_context` | background `std::thread`/`jthread` (project is single-threaded) |
 | `std::ranges` algorithms              | Iterator-pair algorithms                  |
 | `enum class` + `std::to_underlying`   | Unscoped enums                            |
 | `constexpr` / `consteval`             | Runtime computation of constants          |
@@ -619,5 +507,5 @@ When reviewing or writing code, verify:
 6. **Templates are constrained** — concepts, not unconstrained `typename T`.
 7. **Resources are RAII-managed** — serial ports, files, GPIO, sockets.
 8. **`constexpr` where possible** — protocol constants, CRC tables, default configs.
-9. **Thread safety is explicit** — `std::atomic`, `std::jthread`, or documented single-thread assumption.
+9. **No new threads** — the app is single-threaded (one `io_context` + cooperative `poll()` loop); shared hub state is unsynchronised by design. Don't add `std::thread`/`std::jthread` or ad-hoc `std::atomic`/`std::mutex` (see `kernel-architecture`).
 10. **Naming follows conventions** — see section 10.

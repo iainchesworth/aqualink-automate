@@ -6,6 +6,7 @@
 #include <boost/asio/io_context.hpp>
 #include <nlohmann/json.hpp>
 
+#include "alerting/alert_condition.h"
 #include "mqtt/ha_discovery.h"
 #include "mqtt/mqtt_client.h"
 #include "kernel/data_hub.h"
@@ -300,6 +301,43 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_QueuesToClient)
 	BOOST_CHECK_GE(payload["cmps"].size(), 13);
 }
 
+// Every AlertMonitor condition is exposed as a Home Assistant problem
+// binary_sensor reading the shared alert-state topic via a per-condition
+// value_template (WS3).
+BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_AlertProblemBinarySensors)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	ha.PublishDiscoveryConfigs();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_REQUIRE_EQUAL(queue.size(), 1);
+	auto payload = nlohmann::json::parse(queue[0].payload);
+	BOOST_REQUIRE(payload.contains("cmps"));
+	auto& cmps = payload["cmps"];
+
+	const std::string state_topic = ha.AlertStateTopic();
+
+	for (const auto& condition : Alerting::AlertConditions)
+	{
+		const std::string comp_key = std::string("alert_") + std::string(condition.key);
+		BOOST_REQUIRE_MESSAGE(cmps.contains(comp_key), "missing alert component: " + comp_key);
+
+		auto& cmp = cmps[comp_key];
+		BOOST_CHECK_EQUAL(cmp["p"], "binary_sensor");
+		BOOST_CHECK_EQUAL(cmp["device_class"], "problem");
+		BOOST_CHECK_EQUAL(cmp["state_topic"], state_topic);
+		BOOST_CHECK_EQUAL(cmp["payload_on"], "true");
+		BOOST_CHECK_EQUAL(cmp["payload_off"], "false");
+
+		const std::string expected_template = std::string("{{ value_json.") + std::string(condition.key) + " }}";
+		BOOST_CHECK_EQUAL(cmp["value_template"], expected_template);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_ValidJson)
 {
 	boost::asio::io_context ioc;
@@ -579,7 +617,7 @@ BOOST_AUTO_TEST_CASE(Test_DeviceDiscoveryPayload_AllComponentsHavePlatform)
 
 		auto platform = cmp["p"].get<std::string>();
 		BOOST_CHECK_MESSAGE(platform == "sensor" || platform == "binary_sensor" || platform == "number" || platform == "switch",
-			"Component has unexpected platform '" + platform + "': " + key);
+			std::string("Component has unexpected platform '").append(platform).append("': ").append(key));
 	}
 }
 

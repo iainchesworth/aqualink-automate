@@ -2,16 +2,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include <boost/functional/hash.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_traits.hpp>
 #include <boost/signals2.hpp>
 
 #include "interfaces/ihub.h"
@@ -36,6 +33,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Kernel
 {
+
+	// Forward declarations for the concrete config-update event types populated
+	// by the temperature/chemistry emit helpers. The full definitions are only
+	// required in data_hub.cpp where the helpers are defined.
+	class DataHub_ConfigEvent_Temperature;
+	class DataHub_ConfigEvent_Chemistry;
 
 	enum class EquipmentMode
 	{
@@ -71,6 +74,7 @@ namespace AqualinkAutomate::Kernel
 		Kernel::PoolConfigurations PoolConfiguration{ Kernel::PoolConfigurations::Unknown };
 		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
+		bool EmulationDisabled{ false };
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT STATUS
@@ -177,15 +181,33 @@ namespace AqualinkAutomate::Kernel
 		DevicesGraph Devices{};
 
 	public:
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> DevicesOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Auxillaries() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Chlorinators() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Heaters() const;
+		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Lights() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> Pumps() const;
 		std::vector<std::shared_ptr<Kernel::AuxillaryDevice>> FilterPumps() const;
 
 	public:
+		// Count / existence predicates that avoid materialising a vector for the
+		// common size() / empty() checks on the status hot path.
+		uint32_t CountOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const;
+		bool HasAnyOfType(AuxillaryTraitsTypes::AuxillaryTypes type) const;
+		uint32_t CountFilterPumps() const;
+		bool HasAnyFilterPumps() const;
+
+	public:
 		[[deprecated("Use FilterPumps() instead; that returns a collection of pumps as there might be more than one")]]
 		std::optional<std::shared_ptr<Kernel::AuxillaryDevice>> FilterPump();
+
+	//---------------------------------------------------------------------
+	// CONFIG-UPDATE EVENT EMITTERS
+	//---------------------------------------------------------------------
+
+	private:
+		void EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const;
+		void EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const;
 
 	};
 

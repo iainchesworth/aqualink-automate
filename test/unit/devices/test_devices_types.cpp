@@ -1,3 +1,6 @@
+#include <cstdint>
+#include <vector>
+
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/devices/jandy_device_types.h"
@@ -18,6 +21,20 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
     AqualinkAutomate::Devices::JandyDeviceType device2(0x09);
     BOOST_CHECK_EQUAL(device2.Class(), AqualinkAutomate::Devices::DeviceClasses::RS_Keypad);
     BOOST_CHECK_EQUAL(device2.Id(), 0x09);
+}
+
+BOOST_AUTO_TEST_CASE(InstanceAddressesForClass_ReturnsEveryInstanceOfTheClass)
+{
+    using namespace AqualinkAutomate::Devices;
+
+    // The instance set the master probes for a class -- used to relocate an emulated device to a
+    // free instance on a bus collision.
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::OneTouch)
+        == std::vector<std::uint8_t>{ 0x40, 0x41, 0x42, 0x43 }));
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::AqualinkTouch)
+        == std::vector<std::uint8_t>{ 0x30, 0x31, 0x32, 0x33 }));
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SerialAdapter)
+        == std::vector<std::uint8_t>{ 0x48, 0x49 }));
 }
 
 BOOST_AUTO_TEST_CASE(CopyConstructorTest)

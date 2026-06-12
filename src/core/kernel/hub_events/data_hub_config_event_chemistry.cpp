@@ -1,7 +1,6 @@
 #include <cstdint>
 #include <format>
 
-#include <boost/uuid/uuid_generators.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #include "formatters/orp_formatter.h"
@@ -48,12 +47,6 @@ namespace AqualinkAutomate::Kernel
 	void DataHub_ConfigEvent_Chemistry::SaltLevel(const Units::ppm_quantity& salt_level_in_ppm)
 	{
 		m_SaltLevel = salt_level_in_ppm;
-	}
-
-	boost::uuids::uuid DataHub_ConfigEvent_Chemistry::Id() const
-	{
-		static boost::uuids::uuid id{ boost::uuids::random_generator()() };
-		return id;
 	}
 
 	nlohmann::json DataHub_ConfigEvent_Chemistry::ToJSON() const

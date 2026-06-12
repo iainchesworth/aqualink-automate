@@ -9,18 +9,12 @@ namespace AqualinkAutomate::Utility
 	{
 	}
 
-	StatsCounter::StatsCounter(const StatsCounter& other) :
-		m_Count{ 0 },
-		m_StatsSignal(other.m_StatsSignal)
-	{
-		m_Count.exchange(other.m_Count);
-	}
+	StatsCounter::StatsCounter(const StatsCounter& other) = default;
 
 	StatsCounter::StatsCounter(StatsCounter&& other) noexcept :
-		m_Count{ 0 },
+		m_Count{ other.m_Count },
 		m_StatsSignal(other.m_StatsSignal)
 	{
-		m_Count.exchange(other.m_Count);
 	}
 
 	StatsCounter& StatsCounter::operator=(const uint64_t count_to_assign)

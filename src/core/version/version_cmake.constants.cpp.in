@@ -7,6 +7,8 @@ namespace AqualinkAutomate::Version
 	const std::string VersionInfo::PROJECT_VERSION{ "@PROJECT_VERSION@" };
 	const std::string VersionInfo::PROJECT_DESCRIPTION{ "@PROJECT_DESCRIPTION@" };
 	const std::string VersionInfo::PROJECT_HOMEPAGE_URL{ "@PROJECT_HOMEPAGE_URL@" };
+	const std::string VersionInfo::PROJECT_VERSION_FULL{ "@PROJECT_VERSION_FULL@" };
+	const std::string VersionInfo::PROJECT_VERSION_PRERELEASE{ "@PROJECT_VERSION_PRERELEASE@" };
 	const uint32_t VersionInfo::VERSION_MAJOR{ @PROJECT_VERSION_MAJOR@ };
 	const uint32_t VersionInfo::VERSION_MINOR{ @PROJECT_VERSION_MINOR@ };
 	const uint32_t VersionInfo::VERSION_PATCH{ @PROJECT_VERSION_PATCH@ };

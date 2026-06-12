@@ -1,13 +1,16 @@
 #pragma once
 
 #include <chrono>
+#include <deque>
 #include <optional>
+#include <string_view>
 #include <vector>
 
 #include "auxillaries/jandy_auxillary_id.h"
 #include "auxillaries/jandy_auxillary_status.h"
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "messages/jandy_message_ack.h"
@@ -23,10 +26,10 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
-		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0f };
+		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0 };
 
 	public:
 		struct PendingCommand
@@ -40,10 +43,37 @@ namespace AqualinkAutomate::Devices
 		~SerialAdapterDevice() override;
 
 	public:
+		nlohmann::json DescribeDiagnostics() const override;
+
+	public:
 		void QueueCommand(uint8_t ack_type, uint8_t ack_data_value);
 		void QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action);
 		void QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action);
 		void QueueSetpointCommand(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
+
+	public:
+		// CAPTURE-GATED WRITE PATH (AqualinkD-derived, NOT yet validated on this
+		// project's live bus). These construct the exact RSSA control frames that
+		// AqualinkD (source/serialadapter.c) emits for writes:
+		//
+		//   * Setpoint two-step: readySP {0x00,0x01,typeID,0x35} then
+		//     setSP {0x00,0x01,0x00,val}. On the wire the device transmits the
+		//     {ack_type,data} pair only (the master prepends {0x00,0x01}); the two
+		//     ACKs are queued so that the readySP goes out on the next master poll
+		//     and the setSP on the poll after that.
+		//   * Aux toggle: setDev {0x00,0x01,state,devID} where state = RS_SA_ON
+		//     (0x81) / RS_SA_OFF (0x80) and devID is the RSSA aux device id.
+		//
+		// These are invoked ONLY on an explicit external command -- they are never
+		// auto-issued. The byte offsets/codes are validated by synthetic round-trip
+		// tests and must still be confirmed against a live Brainboxes capture.
+		void QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
+		void QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on);
+
+	private:
+		// Append a single ACK to the pending FIFO without clearing earlier entries
+		// (QueueCommand clears first; this is used by multi-step writes).
+		void EnqueueCommand(uint8_t ack_type, uint8_t ack_data_value);
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -71,6 +101,12 @@ namespace AqualinkAutomate::Devices
 		void Command_SerialAdapter_AuxillaryStatus(const Auxillaries::JandyAuxillaryIds& aux_id, const Auxillaries::JandyAuxillaryStatuses& status);
 
 	private:
+		// Presence gating: called when a real Serial Adapter is observed answering
+		// the master at this device's address. Latches emulation off permanently so
+		// the emulated instance never collides with the real one on the bus.
+		void DetectRealAdapterAndSuppressEmulation(std::string_view observed_message_kind);
+
+	private:
 		std::vector<Messages::SerialAdapter_StatusTypes> m_StatusTypesCollection;
 		std::vector<Messages::SerialAdapter_StatusTypes>::const_iterator m_StatusTypesCollectionIter;
 
@@ -78,7 +114,10 @@ namespace AqualinkAutomate::Devices
 		bool m_StatusMessageReceived;
 
 	private:
-		std::optional<PendingCommand> m_PendingCommand;
+		// FIFO of pending control ACKs. A single command queues one entry; the
+		// capture-gated two-step setpoint write queues two (readySP then setSP) so
+		// they are emitted on consecutive master polls in the correct order.
+		std::deque<PendingCommand> m_PendingCommands;
 
 	private:
 		Types::ProfilingUnitTypePtr m_ProfilingDomain;

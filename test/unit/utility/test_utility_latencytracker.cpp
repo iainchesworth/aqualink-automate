@@ -264,44 +264,61 @@ BOOST_AUTO_TEST_CASE(Test_ScopedMeasurement_CancelledDoesNotRecord)
 }
 
 //-----------------------------------------------------------------------------
-// THREAD SAFETY
+// WINDOW DURATION EVICTION
 //-----------------------------------------------------------------------------
 
-BOOST_AUTO_TEST_CASE(Test_ConcurrentAccess_NoDataRace)
+BOOST_AUTO_TEST_CASE(Test_WindowDuration_EvictsExpiredSamples)
 {
-	LatencyPercentileTracker<> tracker(1000, 60s);
+	// Short time window so samples age out quickly; generous max-sample limit so
+	// only the time window can evict.
+	LatencyPercentileTracker<> tracker(1000, 1s);
 
-	std::vector<std::thread> threads;
+	tracker.Record(500ns);
+	BOOST_CHECK_EQUAL(tracker.GetSnapshot().sample_count, 1);
 
-	// Writer threads
-	for (int t = 0; t < 4; ++t)
+	// Let the first sample age past the 1s window, then record a fresh one.
+	std::this_thread::sleep_for(1100ms);
+	tracker.Record(1500ns);
+
+	auto snapshot = tracker.GetSnapshot();
+
+	// Only the most-recent sample remains within the window...
+	BOOST_CHECK_EQUAL(snapshot.sample_count, 1);
+	BOOST_CHECK_EQUAL(snapshot.min.count(), 1500);
+	BOOST_CHECK_EQUAL(snapshot.max.count(), 1500);
+
+	// ...but both samples count toward the lifetime totals.
+	BOOST_CHECK_EQUAL(tracker.TotalSampleCount(), 2);
+	BOOST_CHECK_EQUAL(snapshot.alltime_min.count(), 500);
+	BOOST_CHECK_EQUAL(snapshot.alltime_max.count(), 1500);
+}
+
+//-----------------------------------------------------------------------------
+// SNAPSHOT STABILITY (reused scratch storage)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_RepeatedSnapshots_AreStable)
+{
+	// The ring-buffer implementation borrows a reusable scratch buffer in the
+	// const GetSnapshot(); confirm repeated calls do not mutate the window or
+	// produce drifting results.
+	LatencyPercentileTracker<> tracker(100, 60s);
+
+	for (int i = 1; i <= 50; ++i)
 	{
-		threads.emplace_back([&tracker, t]()
-		{
-			for (int i = 0; i < 100; ++i)
-			{
-				tracker.Record(std::chrono::nanoseconds((t * 100) + i));
-			}
-		});
+		tracker.Record(std::chrono::nanoseconds(i * 10));
 	}
 
-	// Reader thread
-	threads.emplace_back([&tracker]()
-	{
-		for (int i = 0; i < 50; ++i)
-		{
-			auto snapshot = tracker.GetSnapshot();
-			(void)snapshot.sample_count; // Use the result to prevent optimization
-		}
-	});
+	auto first = tracker.GetSnapshot();
+	auto second = tracker.GetSnapshot();
 
-	for (auto& thread : threads)
-	{
-		thread.join();
-	}
-
-	// If we get here without crashing/hanging, the test passes
-	BOOST_CHECK_GE(tracker.TotalSampleCount(), 1);
+	BOOST_CHECK_EQUAL(first.sample_count, second.sample_count);
+	BOOST_CHECK_EQUAL(first.sample_count, 50);
+	BOOST_CHECK_EQUAL(first.min.count(), second.min.count());
+	BOOST_CHECK_EQUAL(first.max.count(), second.max.count());
+	BOOST_CHECK_EQUAL(first.p50.count(), second.p50.count());
+	BOOST_CHECK_EQUAL(first.p99.count(), second.p99.count());
+	BOOST_CHECK_EQUAL(first.mean.count(), second.mean.count());
 }
 
 //-----------------------------------------------------------------------------

@@ -1,5 +1,8 @@
 #include "navigation/navigator.h"
 
+#include <cctype>
+#include <string_view>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
@@ -21,6 +24,7 @@ namespace AqualinkAutomate::Navigation
 		m_CurrentPage = PageId::Unknown;
 		m_SyncDetectedPage = PageId::Unknown;
 		m_SyncConsistentCount = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::NavigateTo(PageId target)
@@ -32,10 +36,10 @@ namespace AqualinkAutomate::Navigation
 		static uint32_t s_TotalNavigationAttempts = 0;
 		s_TotalNavigationAttempts++;
 
-		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation #{} to page {}({}) from {}({})",
+		LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Starting navigation #{} to page {}({}) from {}({})",
 			s_TotalNavigationAttempts,
 			static_cast<uint32_t>(target), target_page ? target_page->name : "Unknown",
-			static_cast<uint32_t>(m_CurrentPage), current_page_info ? current_page_info->name : "Unknown"));
+			static_cast<uint32_t>(m_CurrentPage), current_page_info ? current_page_info->name : "Unknown"); });
 
 		m_TargetPage = target;
 		m_NavigatingToItem = false;
@@ -47,12 +51,13 @@ namespace AqualinkAutomate::Navigation
 		m_RecomputeCount = 0;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::NavigateToItem(PageId page, uint8_t menu_item_line, const std::string& item_label, PageId select_target)
 	{
-		LogInfo(Channel::Navigation, std::format("Navigator: Starting navigation to item on page {}, line {}, label '{}', select_target={}",
-			static_cast<uint32_t>(page), menu_item_line, item_label, static_cast<uint32_t>(select_target)));
+		LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Starting navigation to item on page {}, line {}, label '{}', select_target={}",
+			static_cast<uint32_t>(page), menu_item_line, item_label, static_cast<uint32_t>(select_target)); });
 
 		m_TargetPage = page;
 		m_NavigatingToItem = true;
@@ -67,6 +72,7 @@ namespace AqualinkAutomate::Navigation
 		m_RecomputeCount = 0;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
+		m_TransientWaitCount = 0;
 	}
 
 	void Navigator::OnStatusMessageReceived()
@@ -74,8 +80,8 @@ namespace AqualinkAutomate::Navigation
 		if (m_PendingStatusMessages > 0)
 		{
 			m_PendingStatusMessages--;
-			LogTrace(Channel::Navigation, std::format("Navigator: Status received, {} pending",
-				m_PendingStatusMessages));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Status received, {} pending",
+				m_PendingStatusMessages); });
 		}
 	}
 
@@ -86,17 +92,29 @@ namespace AqualinkAutomate::Navigation
 		// Store screen content pointer for content-based line resolution
 		m_pCurrentContent = &content;
 
-		// Update cursor position from highlight
-		m_CursorLine = highlighted_line;
+		// Update cursor position from highlight. A clear-all sentinel (0xFF) means no line is
+		// highlighted on the device; treating it as a literal row index would corrupt cursor
+		// targeting, so retain the previously known cursor line in that case.
+		if (highlighted_line != CURSOR_LINE_NONE)
+		{
+			m_CursorLine = highlighted_line;
+		}
+		else
+		{
+			LogTrace(Channel::Navigation, "Navigator: Clear-all highlight (0xFF) received; retaining previous cursor line");
+		}
+
+		// Detect the current page once for this content update; the result is shared with the
+		// Syncing handler below so DetectPage is not run twice for the same screen.
+		const PageId detected = m_Model.DetectPage(content);
 
 		// Handle Syncing state separately (before page detection updates m_CurrentPage)
 		if (m_State == State::Syncing)
 		{
-			return HandleSyncing(content);
+			return HandleSyncing(detected);
 		}
 
 		// Try to detect current page from content
-		PageId detected = m_Model.DetectPage(content);
 		if (detected != PageId::Unknown)
 		{
 			m_CurrentPage = detected;
@@ -106,14 +124,14 @@ namespace AqualinkAutomate::Navigation
 		const MenuPage* current_page_info = m_Model.GetPage(m_CurrentPage);
 		const MenuPage* target_page_info = m_Model.GetPage(m_TargetPage);
 
-		LogTrace(Channel::Navigation, std::format("Navigator: Page update - state={}, current={}({}), target={}({}), cursor={}, pending={}",
+		LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Page update - state={}, current={}({}), target={}({}), cursor={}, pending={}",
 			magic_enum::enum_name(m_State),
 			static_cast<uint32_t>(m_CurrentPage),
 			current_page_info ? current_page_info->name : "Unknown",
 			static_cast<uint32_t>(m_TargetPage),
 			target_page_info ? target_page_info->name : "Unknown",
 			m_CursorLine,
-			m_PendingStatusMessages));
+			m_PendingStatusMessages); });
 
 		// Log screen content at trace level for debugging
 		if (m_State == State::Navigating || m_State == State::WaitingForPage || m_State == State::Reorienting)
@@ -124,9 +142,9 @@ namespace AqualinkAutomate::Navigation
 				const auto& row = content[i];
 				if (!row.Text.empty())
 				{
-					LogTrace(Channel::Navigation, std::format("  Line {}: '{}' {}",
+					LogTrace(Channel::Navigation, [&] { return std::format("  Line {}: '{}' {}",
 						i, row.Text,
-						(i == highlighted_line) ? "<-- CURSOR" : ""));
+						(i == highlighted_line) ? "<-- CURSOR" : ""); });
 				}
 			}
 		}
@@ -151,10 +169,14 @@ namespace AqualinkAutomate::Navigation
 			}
 			else
 			{
-				LogInfo(Channel::Navigation, "Navigator: Encountered password prompt - entering password");
-				m_State = State::EnteringPassword;
-				m_PasswordDigitIndex = 0;
-				return HandlePasswordEntry();
+				// Automated PIN entry over RS-485 is not yet supported: it requires reading the
+				// current on-screen digit value to know how many LineUp/LineDown presses to send,
+				// which has not been reverse-engineered. Rather than press Select blindly (which
+				// previously *reported success* without ever setting a digit), back out honestly.
+				// The configured PIN value is deliberately NOT logged.
+				LogError(Channel::Navigation, "Navigator: Encountered password prompt - automated password entry is not supported, backing out");
+				m_PendingStatusMessages = 2;
+				return NavKeyCommand::Back;
 			}
 		}
 
@@ -164,8 +186,8 @@ namespace AqualinkAutomate::Navigation
 			m_WaitCycleCount++;
 			if (m_WaitCycleCount >= MAX_WAIT_CYCLES)
 			{
-				LogError(Channel::Navigation, std::format("Navigator: Timeout waiting for page response after {} cycles",
-					m_WaitCycleCount));
+				LogError(Channel::Navigation, [&] { return std::format("Navigator: Timeout waiting for page response after {} cycles",
+					m_WaitCycleCount); });
 				m_WaitCycleCount = 0;
 				InitiateRecovery();
 				return RecoveryNext();
@@ -208,11 +230,8 @@ namespace AqualinkAutomate::Navigation
 		return std::nullopt;
 	}
 
-	std::optional<NavKeyCommand> Navigator::HandleSyncing(
-		const Utility::ScreenDataPage& content)
+	std::optional<NavKeyCommand> Navigator::HandleSyncing(PageId detected)
 	{
-		PageId detected = m_Model.DetectPage(content);
-
 		if (detected == PageId::Unknown)
 		{
 			// No detection - reset consistency counter
@@ -226,8 +245,8 @@ namespace AqualinkAutomate::Navigation
 		if (detected == PageId::StartUp || detected == PageId::Service || detected == PageId::TimeOut)
 		{
 			const MenuPage* page_info = m_Model.GetPage(detected);
-			LogDebug(Channel::Navigation, std::format("Navigator: Sync - transient page {}({}) detected, waiting for navigable page...",
-				static_cast<uint32_t>(detected), page_info ? page_info->name : "Unknown"));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Sync - transient page {}({}) detected, waiting for navigable page...",
+				static_cast<uint32_t>(detected), page_info ? page_info->name : "Unknown"); });
 			m_SyncConsistentCount = 0;
 			m_SyncDetectedPage = PageId::Unknown;
 			return std::nullopt;
@@ -237,15 +256,15 @@ namespace AqualinkAutomate::Navigation
 		{
 			// Same page detected again
 			m_SyncConsistentCount++;
-			LogTrace(Channel::Navigation, std::format("Navigator: Sync - page {} detected consistently ({}/{})",
-				static_cast<uint32_t>(detected), m_SyncConsistentCount, SYNC_REQUIRED_CONSISTENT_COUNT));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Sync - page {} detected consistently ({}/{})",
+				static_cast<uint32_t>(detected), m_SyncConsistentCount, SYNC_REQUIRED_CONSISTENT_COUNT); });
 		}
 		else
 		{
 			// Different page detected - restart counter
 			const MenuPage* page_info = m_Model.GetPage(detected);
-			LogDebug(Channel::Navigation, std::format("Navigator: Sync - new page detected: {}({}), restarting consistency counter",
-				static_cast<uint32_t>(detected), page_info ? page_info->name : "Unknown"));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Sync - new page detected: {}({}), restarting consistency counter",
+				static_cast<uint32_t>(detected), page_info ? page_info->name : "Unknown"); });
 			m_SyncDetectedPage = detected;
 			m_SyncConsistentCount = 1;
 		}
@@ -255,8 +274,8 @@ namespace AqualinkAutomate::Navigation
 			// Sync complete
 			m_CurrentPage = m_SyncDetectedPage;
 			const MenuPage* page_info = m_Model.GetPage(m_CurrentPage);
-			LogInfo(Channel::Navigation, std::format("Navigator: Sync complete - current page is {}({})",
-				static_cast<uint32_t>(m_CurrentPage), page_info ? page_info->name : "Unknown"));
+			LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Sync complete - current page is {}({})",
+				static_cast<uint32_t>(m_CurrentPage), page_info ? page_info->name : "Unknown"); });
 			m_State = State::Idle;
 			m_SyncDetectedPage = PageId::Unknown;
 			m_SyncConsistentCount = 0;
@@ -289,6 +308,7 @@ namespace AqualinkAutomate::Navigation
 		m_PasswordDigitIndex = 0;
 		m_WaitCycleCount = 0;
 		m_RecomputeCount = 0;
+		m_TransientWaitCount = 0;
 		m_SyncDetectedPage = PageId::Unknown;
 		m_SyncConsistentCount = 0;
 		m_pCurrentContent = nullptr;
@@ -308,23 +328,23 @@ namespace AqualinkAutomate::Navigation
 		const MenuPage* from_page = m_Model.GetPage(m_CurrentPage);
 		const MenuPage* to_page = m_Model.GetPage(m_TargetPage);
 
-		LogTrace(Channel::Navigation, std::format("Navigator: Computing path from {}({}) to {}({})",
+		LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Computing path from {}({}) to {}({})",
 			static_cast<uint32_t>(m_CurrentPage), from_page ? from_page->name : "Unknown",
-			static_cast<uint32_t>(m_TargetPage), to_page ? to_page->name : "Unknown"));
+			static_cast<uint32_t>(m_TargetPage), to_page ? to_page->name : "Unknown"); });
 
 		m_Path = m_Model.FindPath(m_CurrentPage, m_TargetPage);
 		m_PathIndex = 0;
 
 		if (m_Path.empty() && m_CurrentPage != m_TargetPage)
 		{
-			LogTrace(Channel::Navigation, std::format("Navigator: No path found from {} to {}",
-				static_cast<uint32_t>(m_CurrentPage), static_cast<uint32_t>(m_TargetPage)));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: No path found from {} to {}",
+				static_cast<uint32_t>(m_CurrentPage), static_cast<uint32_t>(m_TargetPage)); });
 			InitiateRecovery();
 			return;
 		}
 
-		LogDebug(Channel::Navigation, std::format("Navigator: Computed path with {} steps",
-			m_Path.size()));
+		LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Computed path with {} steps",
+			m_Path.size()); });
 
 		// Log each step in the path
 		for (size_t i = 0; i < m_Path.size(); ++i)
@@ -333,12 +353,12 @@ namespace AqualinkAutomate::Navigation
 			const MenuPage* step_from = m_Model.GetPage(edge->source);
 			const MenuPage* step_to = m_Model.GetPage(edge->target);
 
-			LogTrace(Channel::Navigation, std::format("  Step {}: {} from {}({}) to {}({}) target_line={} '{}'",
+			LogTrace(Channel::Navigation, [&] { return std::format("  Step {}: {} from {}({}) to {}({}) target_line={} '{}'",
 				i,
 				magic_enum::enum_name(edge->trigger),
 				static_cast<uint32_t>(edge->source), step_from ? step_from->name : "Unknown",
 				static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown",
-				edge->trigger_line, edge->label));
+				edge->trigger_line, edge->label); });
 		}
 	}
 
@@ -347,8 +367,8 @@ namespace AqualinkAutomate::Navigation
 		// Still waiting for status messages
 		if (m_PendingStatusMessages > 0)
 		{
-			LogTrace(Channel::Navigation, std::format("Navigator: HandleWaitingForPage - still waiting for {} status messages",
-				m_PendingStatusMessages));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: HandleWaitingForPage - still waiting for {} status messages",
+				m_PendingStatusMessages); });
 			return std::nullopt;
 		}
 
@@ -359,15 +379,15 @@ namespace AqualinkAutomate::Navigation
 			const MenuPage* expected_page = m_Model.GetPage(last_edge->target);
 			const MenuPage* current_page = m_Model.GetPage(m_CurrentPage);
 
-			LogTrace(Channel::Navigation, std::format("Navigator: HandleWaitingForPage - checking arrival: expected={}({}), actual={}({})",
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: HandleWaitingForPage - checking arrival: expected={}({}), actual={}({})",
 				static_cast<uint32_t>(last_edge->target), expected_page ? expected_page->name : "Unknown",
-				static_cast<uint32_t>(m_CurrentPage), current_page ? current_page->name : "Unknown"));
+				static_cast<uint32_t>(m_CurrentPage), current_page ? current_page->name : "Unknown"); });
 
 			if (m_CurrentPage != last_edge->target && last_edge->target != PageId::Unknown)
 			{
-				LogWarning(Channel::Navigation, std::format("Navigator: Unexpected page after navigation - expected {}({}), got {}({})",
+				LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Unexpected page after navigation - expected {}({}), got {}({})",
 					static_cast<uint32_t>(last_edge->target), expected_page ? expected_page->name : "Unknown",
-					static_cast<uint32_t>(m_CurrentPage), current_page ? current_page->name : "Unknown"));
+					static_cast<uint32_t>(m_CurrentPage), current_page ? current_page->name : "Unknown"); });
 				HandleUnexpectedPage(m_CurrentPage);
 
 				// HandleUnexpectedPage may have recomputed a valid path (state=Navigating)
@@ -425,8 +445,8 @@ namespace AqualinkAutomate::Navigation
 						// send Select to enter the sub-page.
 						if (m_SelectTarget != PageId::Unknown)
 						{
-							LogDebug(Channel::Navigation, std::format("Navigator: Item '{}' found at line {}, sending Select to enter page {}",
-								m_ItemLabel, m_CursorLine, static_cast<uint32_t>(m_SelectTarget)));
+							LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Item '{}' found at line {}, sending Select to enter page {}",
+								m_ItemLabel, m_CursorLine, static_cast<uint32_t>(m_SelectTarget)); });
 							m_TargetPage = m_SelectTarget;
 							m_NavigatingToItem = false;
 							m_SelectTarget = PageId::Unknown;
@@ -447,18 +467,18 @@ namespace AqualinkAutomate::Navigation
 							// Log screen content on first scroll attempt for diagnostics
 							if (m_ItemScrollAttempts == 1 && m_pCurrentContent)
 							{
-								LogWarning(Channel::Navigation, std::format("Navigator: Item '{}' not on initial screen, dumping content:", m_ItemLabel));
+								LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Item '{}' not on initial screen, dumping content:", m_ItemLabel); });
 								for (size_t di = 0; di < m_pCurrentContent->Size() && di < 12; ++di)
 								{
 									const auto& drow = (*m_pCurrentContent)[di];
 									if (!drow.Text.empty())
 									{
-										LogWarning(Channel::Navigation, std::format("Navigator: Screen[{}]: '{}'", di, drow.Text));
+										LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Screen[{}]: '{}'", di, drow.Text); });
 									}
 								}
 							}
-							LogDebug(Channel::Navigation, std::format("Navigator: Item '{}' not visible, scrolling down (attempt {}/{})",
-								m_ItemLabel, m_ItemScrollAttempts, MAX_ITEM_SCROLL_ATTEMPTS));
+							LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Item '{}' not visible, scrolling down (attempt {}/{})",
+								m_ItemLabel, m_ItemScrollAttempts, MAX_ITEM_SCROLL_ATTEMPTS); });
 							m_PendingStatusMessages = 1;
 							m_State = State::WaitingForPage;
 							return NavKeyCommand::PageDown_Or_Select1;
@@ -473,13 +493,13 @@ namespace AqualinkAutomate::Navigation
 									const auto& drow = (*m_pCurrentContent)[di];
 									if (!drow.Text.empty())
 									{
-										LogWarning(Channel::Navigation, std::format("Navigator: Screen[{}]: '{}'", di, drow.Text));
+										LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Screen[{}]: '{}'", di, drow.Text); });
 									}
 								}
 							}
 							// Item not found after scrolling -- doesn't exist on this controller
-							LogWarning(Channel::Navigation, std::format("Navigator: Item '{}' not found on page {} -- failing navigation (scrolled {} times)",
-								m_ItemLabel, static_cast<uint32_t>(m_CurrentPage), m_ItemScrollAttempts));
+							LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Item '{}' not found on page {} -- failing navigation (scrolled {} times)",
+								m_ItemLabel, static_cast<uint32_t>(m_CurrentPage), m_ItemScrollAttempts); });
 							m_State = State::Failed;
 							return std::nullopt;
 						}
@@ -498,8 +518,8 @@ namespace AqualinkAutomate::Navigation
 					// Cursor is positioned. If we have a select_target, send Select.
 					if (m_SelectTarget != PageId::Unknown)
 					{
-						LogDebug(Channel::Navigation, std::format("Navigator: Item at line {}, sending Select to enter page {}",
-							m_CursorLine, static_cast<uint32_t>(m_SelectTarget)));
+						LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Item at line {}, sending Select to enter page {}",
+							m_CursorLine, static_cast<uint32_t>(m_SelectTarget)); });
 						m_TargetPage = m_SelectTarget;
 						m_NavigatingToItem = false;
 						m_SelectTarget = PageId::Unknown;
@@ -512,8 +532,8 @@ namespace AqualinkAutomate::Navigation
 				}
 			}
 
-			LogInfo(Channel::Navigation, std::format("Navigator: Reached destination page {}",
-				static_cast<uint32_t>(m_TargetPage)));
+			LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Reached destination page {}",
+				static_cast<uint32_t>(m_TargetPage)); });
 			m_State = State::AtDestination;
 			return std::nullopt;
 		}
@@ -531,12 +551,12 @@ namespace AqualinkAutomate::Navigation
 		const MenuPage* step_from = m_Model.GetPage(edge->source);
 		const MenuPage* step_to = m_Model.GetPage(edge->target);
 
-		LogTrace(Channel::Navigation, std::format("Navigator: Executing step {}/{}: {} from {}({}) to {}({}), target_line={}, cursor={}, '{}'",
+		LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Executing step {}/{}: {} from {}({}) to {}({}), target_line={}, cursor={}, '{}'",
 			m_PathIndex, m_Path.size(),
 			magic_enum::enum_name(edge->trigger),
 			static_cast<uint32_t>(edge->source), step_from ? step_from->name : "Unknown",
 			static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown",
-			edge->trigger_line, m_CursorLine, edge->label));
+			edge->trigger_line, m_CursorLine, edge->label); });
 
 		// First, ensure cursor is at the right position for Select steps
 		// Skip this check if we just accepted a stuck cursor position
@@ -551,8 +571,8 @@ namespace AqualinkAutomate::Navigation
 				{
 					if (resolved.value() != edge->trigger_line)
 					{
-						LogDebug(Channel::Navigation, std::format("Navigator: Content-based resolution: label '{}' at line {} (model says {})",
-							edge->label, resolved.value(), edge->trigger_line));
+						LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Content-based resolution: label '{}' at line {} (model says {})",
+							edge->label, resolved.value(), edge->trigger_line); });
 					}
 					target_line = resolved.value();
 				}
@@ -560,8 +580,8 @@ namespace AqualinkAutomate::Navigation
 
 			if (m_CursorLine != target_line)
 			{
-				LogTrace(Channel::Navigation, std::format("Navigator: Need to move cursor from {} to {} before Select",
-					m_CursorLine, target_line));
+				LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Need to move cursor from {} to {} before Select",
+					m_CursorLine, target_line); });
 				m_TargetCursorLine = target_line;
 				m_CurrentEdge = edge;
 				m_CursorMoveCount = 0;
@@ -578,16 +598,16 @@ namespace AqualinkAutomate::Navigation
 		switch (edge->trigger)
 		{
 		case EdgeTrigger::Select:
-			LogDebug(Channel::Navigation, std::format("Navigator: EXECUTING Select at line {} to go to page {}({}) '{}'",
-				edge->trigger_line, static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown", edge->label));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: EXECUTING Select at line {} to go to page {}({}) '{}'",
+				edge->trigger_line, static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown", edge->label); });
 			cmd = NavKeyCommand::Select;
 			// Page transitions need 2 status messages
 			m_PendingStatusMessages = 2;
 			break;
 
 		case EdgeTrigger::Back:
-			LogDebug(Channel::Navigation, std::format("Navigator: EXECUTING Back to go to page {}({})",
-				static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown"));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: EXECUTING Back to go to page {}({})",
+				static_cast<uint32_t>(edge->target), step_to ? step_to->name : "Unknown"); });
 			cmd = NavKeyCommand::Back;
 			// Back also causes page transition
 			m_PendingStatusMessages = 2;
@@ -645,53 +665,29 @@ namespace AqualinkAutomate::Navigation
 			return std::nullopt;
 		}
 
-		// Wrap detection: too many moves without reaching target
+		// Wrap detection: too many moves without reaching target. Try a one-shot content-based
+		// retarget; if that does not place us on (or move us toward) a reachable line, give up.
 		m_CursorMoveCount++;
 		if (m_CursorMoveCount > MAX_CURSOR_MOVES)
 		{
-			LogWarning(Channel::Navigation, std::format("Navigator: Cursor wrap detected after {} moves (cursor={}, target={})",
-				m_CursorMoveCount, m_CursorLine, m_TargetCursorLine));
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Cursor wrap detected after {} moves (cursor={}, target={})",
+				m_CursorMoveCount, m_CursorLine, m_TargetCursorLine); });
 
-			// Try content-based recovery (screen may have updated since ExecuteNextStep)
-			if (m_CurrentEdge && !m_CurrentEdge->label.empty())
+			bool recovered_at_target = false;
+			if (AttemptWrapRecovery(recovered_at_target))
 			{
-				auto resolved = FindLineByLabel(m_CurrentEdge->label);
-				if (resolved.has_value() && resolved.value() != m_TargetCursorLine)
+				if (recovered_at_target)
 				{
-					LogInfo(Channel::Navigation, std::format("Navigator: Wrap recovery: retargeting from line {} to {} via label '{}'",
-						m_TargetCursorLine, resolved.value(), m_CurrentEdge->label));
-					m_TargetCursorLine = resolved.value();
-					m_CursorMoveCount = 0;
-					// Continue with normal cursor movement below
-					if (m_CursorLine == m_TargetCursorLine)
-					{
-						m_CursorStuckCount = 0;
-						m_State = State::Navigating;
-						return ExecuteNextStep();
-					}
+					m_CursorStuckCount = 0;
+					m_State = State::Navigating;
+					return ExecuteNextStep();
 				}
+				// Recovery retargeted to a different reachable line; fall through to move the cursor.
 			}
-
-			// If still over limit after recovery attempt, give up
-			if (m_CursorMoveCount > MAX_CURSOR_MOVES)
+			else
 			{
-				// For NavigateToItem mode, fail cleanly -- the target item likely doesn't
-				// exist on the screen (e.g. "AUX B1" on a controller without power center B).
-				if (m_NavigatingToItem)
-				{
-					LogWarning(Channel::Navigation, std::format("Navigator: Target line {} unreachable in NavigateToItem mode - failing navigation",
-						m_TargetCursorLine));
-					m_CursorMoveCount = 0;
-					m_State = State::Failed;
-					return std::nullopt;
-				}
-
-				LogWarning(Channel::Navigation, "Navigator: Accepting current cursor position after wrap detection");
-				m_CursorMoveCount = 0;
-				m_TargetCursorLine = m_CursorLine;
-				m_SkipCursorCheck = true;
-				m_State = State::Navigating;
-				return ExecuteNextStep();
+				// No usable recovery target - abandon the move.
+				return GiveUpCursorMove();
 			}
 		}
 
@@ -699,16 +695,16 @@ namespace AqualinkAutomate::Navigation
 		if (m_CursorLine == m_PreviousCursorLine && m_CursorStuckCount > 0)
 		{
 			m_CursorStuckCount++;
-			LogDebug(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} (attempt {}/{}), target is {}",
-				m_CursorLine, m_CursorStuckCount, MAX_CURSOR_STUCK_COUNT, m_TargetCursorLine));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Cursor stuck at line {} (attempt {}/{}), target is {}",
+				m_CursorLine, m_CursorStuckCount, MAX_CURSOR_STUCK_COUNT, m_TargetCursorLine); });
 
 			if (m_CursorStuckCount >= MAX_CURSOR_STUCK_COUNT)
 			{
 				// For NavigateToItem mode, fail cleanly -- the target item doesn't exist
 				if (m_NavigatingToItem)
 				{
-					LogWarning(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} in NavigateToItem mode - failing navigation",
-						m_CursorLine));
+					LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Cursor stuck at line {} in NavigateToItem mode - failing navigation",
+						m_CursorLine); });
 					m_CursorStuckCount = 0;
 					m_State = State::Failed;
 					return std::nullopt;
@@ -716,8 +712,8 @@ namespace AqualinkAutomate::Navigation
 
 				// Cursor appears to be at a boundary and can't move further
 				// Assume we're as close as we can get and proceed
-				LogWarning(Channel::Navigation, std::format("Navigator: Cursor stuck at line {} after {} attempts, assuming at boundary and proceeding",
-					m_CursorLine, m_CursorStuckCount));
+				LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Cursor stuck at line {} after {} attempts, assuming at boundary and proceeding",
+					m_CursorLine, m_CursorStuckCount); });
 				m_CursorStuckCount = 0;
 				m_TargetCursorLine = m_CursorLine;  // Accept current position as target
 				m_SkipCursorCheck = true;  // Skip cursor position check in ExecuteNextStep
@@ -738,14 +734,14 @@ namespace AqualinkAutomate::Navigation
 		NavKeyCommand cmd = NavKeyCommand::LineDown;
 		if (m_CursorLine < m_TargetCursorLine)
 		{
-			LogTrace(Channel::Navigation, std::format("Navigator: Moving cursor down from {} to {}",
-				m_CursorLine, m_TargetCursorLine));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Moving cursor down from {} to {}",
+				m_CursorLine, m_TargetCursorLine); });
 			cmd = NavKeyCommand::LineDown;
 		}
 		else
 		{
-			LogTrace(Channel::Navigation, std::format("Navigator: Moving cursor up from {} to {}",
-				m_CursorLine, m_TargetCursorLine));
+			LogTrace(Channel::Navigation, [&] { return std::format("Navigator: Moving cursor up from {} to {}",
+				m_CursorLine, m_TargetCursorLine); });
 			cmd = NavKeyCommand::LineUp;
 		}
 
@@ -753,28 +749,95 @@ namespace AqualinkAutomate::Navigation
 		return cmd;
 	}
 
+	bool Navigator::AttemptWrapRecovery(bool& recovered_at_target)
+	{
+		recovered_at_target = false;
+
+		// Try content-based recovery (the screen may have updated since ExecuteNextStep set the
+		// model-derived target line). If the label now resolves to a different line, retarget to it.
+		if (m_CurrentEdge && !m_CurrentEdge->label.empty())
+		{
+			auto resolved = FindLineByLabel(m_CurrentEdge->label);
+			if (resolved.has_value() && resolved.value() != m_TargetCursorLine)
+			{
+				LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Wrap recovery: retargeting from line {} to {} via label '{}'",
+					m_TargetCursorLine, resolved.value(), m_CurrentEdge->label); });
+				m_TargetCursorLine = resolved.value();
+				m_CursorMoveCount = 0;
+				recovered_at_target = (m_CursorLine == m_TargetCursorLine);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	std::optional<NavKeyCommand> Navigator::GiveUpCursorMove()
+	{
+		m_CursorMoveCount = 0;
+
+		// For NavigateToItem mode, fail cleanly -- the target item likely doesn't exist on the
+		// screen (e.g. "AUX B1" on a controller without power center B).
+		if (m_NavigatingToItem)
+		{
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Target line {} unreachable in NavigateToItem mode - failing navigation",
+				m_TargetCursorLine); });
+			m_State = State::Failed;
+			return std::nullopt;
+		}
+
+		LogWarning(Channel::Navigation, "Navigator: Accepting current cursor position after wrap detection");
+		m_TargetCursorLine = m_CursorLine;
+		m_SkipCursorCheck = true;
+		m_State = State::Navigating;
+		return ExecuteNextStep();
+	}
+
 	void Navigator::HandleUnexpectedPage(PageId actual)
 	{
 		const MenuPage* actual_page = m_Model.GetPage(actual);
 		const MenuPage* target_page = m_Model.GetPage(m_TargetPage);
 
-		LogWarning(Channel::Navigation, std::format("Navigator: Handling unexpected page {}({}) while navigating to {}({})",
+		// Transient pages (e.g. the cold-start StartUp splash) auto-advance to a real
+		// page on their own with no keypress. They have no edges, so navigating or
+		// recovering from them is impossible and previously failed the whole startup
+		// crawl. Instead, WAIT for the controller to transition and re-evaluate on the
+		// next page update. Bounded by MAX_TRANSIENT_WAITS so a page that never clears
+		// falls through to normal unexpected-page handling/recovery.
+		if ((actual != PageId::Unknown) && IsTransientPage(actual))
+		{
+			m_CurrentPage = actual;
+			if (++m_TransientWaitCount <= MAX_TRANSIENT_WAITS)
+			{
+				LogInfo(Channel::Navigation, [&] { return std::format("Navigator: On transient page {}({}); waiting for controller auto-transition ({}/{})",
+					static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown",
+					m_TransientWaitCount, MAX_TRANSIENT_WAITS); });
+				m_State = State::WaitingForPage;
+				m_PendingStatusMessages = 0;
+				return;
+			}
+
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Transient page {}({}) did not clear after {} waits; treating as unexpected",
+				static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown", MAX_TRANSIENT_WAITS); });
+		}
+
+		LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Handling unexpected page {}({}) while navigating to {}({})",
 			static_cast<uint32_t>(actual), actual_page ? actual_page->name : "Unknown",
-			static_cast<uint32_t>(m_TargetPage), target_page ? target_page->name : "Unknown"));
+			static_cast<uint32_t>(m_TargetPage), target_page ? target_page->name : "Unknown"); });
 
 		// Track recomputation attempts to detect potential infinite recompute loops
 		m_RecomputeCount++;
 		if (m_RecomputeCount % 10 == 0)
 		{
-			LogWarning(Channel::Navigation, std::format("Navigator: Path recomputed {} times - possible navigation loop",
-				m_RecomputeCount));
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Path recomputed {} times - possible navigation loop",
+				m_RecomputeCount); });
 		}
 
 		// Check for infinite recompute loop
 		if (m_RecomputeCount >= MAX_RECOMPUTE_COUNT)
 		{
-			LogError(Channel::Navigation, std::format("Navigator: Max recompute count ({}) exceeded - navigation loop detected, failing",
-				MAX_RECOMPUTE_COUNT));
+			LogError(Channel::Navigation, [&] { return std::format("Navigator: Max recompute count ({}) exceeded - navigation loop detected, failing",
+				MAX_RECOMPUTE_COUNT); });
 			m_State = State::Failed;
 			return;
 		}
@@ -783,8 +846,8 @@ namespace AqualinkAutomate::Navigation
 		auto system_event = m_Model.FindSystemEvent(actual);
 		if (system_event.has_value())
 		{
-			LogWarning(Channel::Navigation, std::format("Navigator: System event detected: '{}'",
-				system_event->label));
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: System event detected: '{}'",
+				system_event->label); });
 			// Let the blocking page handler deal with it
 		}
 
@@ -799,8 +862,8 @@ namespace AqualinkAutomate::Navigation
 			m_Path = m_Model.FindPath(m_CurrentPage, m_TargetPage);
 			if (!m_Path.empty())
 			{
-				LogInfo(Channel::Navigation, std::format("Navigator: Recomputed path from {}({}) with {} steps",
-					static_cast<uint32_t>(m_CurrentPage), actual_page ? actual_page->name : "Unknown", m_Path.size()));
+				LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Recomputed path from {}({}) with {} steps",
+					static_cast<uint32_t>(m_CurrentPage), actual_page ? actual_page->name : "Unknown", m_Path.size()); });
 				m_State = State::Navigating;
 				return;
 			}
@@ -813,8 +876,8 @@ namespace AqualinkAutomate::Navigation
 	void Navigator::InitiateRecovery()
 	{
 		m_RecoveryAttempts++;
-		LogWarning(Channel::Navigation, std::format("Navigator: Initiating recovery, attempt {}/{}",
-			m_RecoveryAttempts, MAX_RECOVERY_ATTEMPTS));
+		LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Initiating recovery, attempt {}/{}",
+			m_RecoveryAttempts, MAX_RECOVERY_ATTEMPTS); });
 
 		if (m_RecoveryAttempts > MAX_RECOVERY_ATTEMPTS)
 		{
@@ -840,8 +903,8 @@ namespace AqualinkAutomate::Navigation
 		// Check if we're on a blocking page that prevents recovery
 		if (IsBlockingPage(m_CurrentPage))
 		{
-			LogError(Channel::Navigation, std::format("Navigator: Cannot recover - stuck on blocking page {}",
-				static_cast<uint32_t>(m_CurrentPage)));
+			LogError(Channel::Navigation, [&] { return std::format("Navigator: Cannot recover - stuck on blocking page {}",
+				static_cast<uint32_t>(m_CurrentPage)); });
 			m_State = State::Failed;
 			return std::nullopt;
 		}
@@ -863,8 +926,8 @@ namespace AqualinkAutomate::Navigation
 		if (current_page && !current_page->SupportsKey(EdgeTrigger::Back))
 		{
 			// This page doesn't support Back - try to navigate to System via selection
-			LogDebug(Channel::Navigation, std::format("Navigator: Page {}({}) doesn't support Back - looking for System navigation",
-				static_cast<uint32_t>(m_CurrentPage), current_page->name));
+			LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Page {}({}) doesn't support Back - looking for System navigation",
+				static_cast<uint32_t>(m_CurrentPage), current_page->name); });
 
 			// Look for a Select edge that goes to System
 			for (const auto& edge : current_page->edges)
@@ -880,14 +943,14 @@ namespace AqualinkAutomate::Navigation
 						{
 							if (resolved.value() != edge.trigger_line)
 							{
-								LogDebug(Channel::Navigation, std::format("Navigator: Recovery: content-based resolution for '{}' at line {} (model says {})",
-									edge.label, resolved.value(), edge.trigger_line));
+								LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Recovery: content-based resolution for '{}' at line {} (model says {})",
+									edge.label, resolved.value(), edge.trigger_line); });
 							}
 							target_line = resolved.value();
 						}
 					}
 
-					LogInfo(Channel::Navigation, std::format("Navigator: Found System link at line {}", target_line));
+					LogInfo(Channel::Navigation, [&] { return std::format("Navigator: Found System link at line {}", target_line); });
 					// Navigate to the System item
 					m_TargetCursorLine = target_line;
 					if (m_CursorLine != target_line)
@@ -913,8 +976,8 @@ namespace AqualinkAutomate::Navigation
 		// Check if too many back presses
 		if (m_RecoveryBackPresses >= MAX_BACK_PRESSES)
 		{
-			LogWarning(Channel::Navigation, std::format("Navigator: Too many back presses ({}) in recovery attempt",
-				m_RecoveryBackPresses));
+			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Too many back presses ({}) in recovery attempt",
+				m_RecoveryBackPresses); });
 			m_RecoveryAttempts++;
 			m_RecoveryBackPresses = 0;
 
@@ -928,24 +991,11 @@ namespace AqualinkAutomate::Navigation
 
 		// Press back
 		m_RecoveryBackPresses++;
-		LogDebug(Channel::Navigation, std::format("Navigator: Recovery back press {}/{}",
-			m_RecoveryBackPresses, MAX_BACK_PRESSES));
+		LogDebug(Channel::Navigation, [&] { return std::format("Navigator: Recovery back press {}/{}",
+			m_RecoveryBackPresses, MAX_BACK_PRESSES); });
 
 		m_PendingStatusMessages = 2; // Back causes page transition
 		return NavKeyCommand::Back;
-	}
-
-	std::optional<uint8_t> Navigator::FindHighlightedLine(const Utility::ScreenDataPage& content) const
-	{
-		for (size_t i = 0; i < content.Size(); ++i)
-		{
-			if (content[i].HighlightState == Utility::ScreenDataPage::HighlightStates::Highlighted ||
-				content[i].HighlightState == Utility::ScreenDataPage::HighlightStates::PartiallyHighlighted)
-			{
-				return static_cast<uint8_t>(i);
-			}
-		}
-		return std::nullopt;
 	}
 
 	std::optional<uint8_t> Navigator::FindLineByLabel(const std::string& label) const
@@ -963,14 +1013,15 @@ namespace AqualinkAutomate::Navigation
 				continue;
 			}
 
-			// Trim leading and trailing whitespace
-			auto trimmed = row.Text;
-			auto start = trimmed.find_first_not_of(" \t");
-			if (start == std::string::npos)
+			// Trim leading and trailing whitespace without copying the row text: take a
+			// string_view over the original [start, end] range.
+			std::string_view trimmed{ row.Text };
+			const auto start = trimmed.find_first_not_of(" \t");
+			if (start == std::string_view::npos)
 			{
 				continue;
 			}
-			auto end = trimmed.find_last_not_of(" \t");
+			const auto end = trimmed.find_last_not_of(" \t");
 			trimmed = trimmed.substr(start, end - start + 1);
 
 			// Case-insensitive prefix match
@@ -999,70 +1050,29 @@ namespace AqualinkAutomate::Navigation
 					}
 				}
 
-				LogTrace(Channel::Navigation, std::format("Navigator: FindLineByLabel('{}') matched line {} text '{}'",
-					label, i, trimmed));
+				LogTrace(Channel::Navigation, [&] { return std::format("Navigator: FindLineByLabel('{}') matched line {} text '{}'",
+					label, i, trimmed); });
 				return static_cast<uint8_t>(i);
 			}
 		}
 
-		LogTrace(Channel::Navigation, std::format("Navigator: FindLineByLabel('{}') no match found", label));
+		LogTrace(Channel::Navigation, [&] { return std::format("Navigator: FindLineByLabel('{}') no match found", label); });
 		return std::nullopt;
 	}
 
 	std::optional<NavKeyCommand> Navigator::HandlePasswordEntry()
 	{
-		// Password entry sends LineUp/LineDown to adjust digit value, Select to confirm each digit
-		// The password is 4 digits, typically starting from 0
-		// For simplicity, we assume Select advances to next digit and we need to enter the correct digit value
-
-		if (m_Password.empty() || m_PasswordDigitIndex >= m_Password.size())
-		{
-			LogError(Channel::Navigation, "Navigator: Invalid password state during entry");
-			m_State = State::Failed;
-			return std::nullopt;
-		}
-
-		// Still waiting for previous command
-		if (m_PendingStatusMessages > 0)
-		{
-			return std::nullopt;
-		}
-
-		// Get the target digit
-		char digit_char = m_Password[m_PasswordDigitIndex];
-		if (digit_char < '0' || digit_char > '9')
-		{
-			LogError(Channel::Navigation, std::format("Navigator: Invalid password digit '{}' at position {}",
-				digit_char, m_PasswordDigitIndex));
-			m_State = State::Failed;
-			return std::nullopt;
-		}
-
-		uint8_t target_digit = static_cast<uint8_t>(digit_char - '0');
-
-		// For password entry, we need to move cursor up/down to set digit, then select to confirm
-		// The current digit is typically shown on the highlighted line
-		// We'll use a simplified approach: send the digit value as LineDown presses from 0
-		// This assumes digits start at 0 and wrap around
-
-		// For now, just log and send Select to advance (actual digit entry would need screen parsing)
-		// This is a placeholder implementation - real implementation would parse screen to see current digit
-		LogDebug(Channel::Navigation, std::format("Navigator: Password digit {} = {} (index {})",
-			m_PasswordDigitIndex, target_digit, m_PasswordDigitIndex));
-
-		m_PasswordDigitIndex++;
+		// Automated PIN entry is not supported (see the password-prompt branch in OnPageUpdate):
+		// correctly setting each digit requires reading the current on-screen digit value to
+		// decide how many LineUp/LineDown presses to send, which has not been decoded. The old
+		// placeholder blindly pressed Select per digit and reported success without ever setting
+		// a value, and logged the PIN. We never enter EnteringPassword now, but should this be
+		// reached defensively, back out honestly. The PIN value is deliberately never logged.
+		LogError(Channel::Navigation, "Navigator: Automated password entry is not supported - backing out of password prompt");
+		m_PasswordDigitIndex = 0;
 		m_PendingStatusMessages = 2;
-
-		if (m_PasswordDigitIndex >= 4)
-		{
-			// All 4 digits entered, wait for result
-			LogInfo(Channel::Navigation, "Navigator: Password entry complete, waiting for result");
-			m_PasswordDigitIndex = 0;
-			m_State = State::WaitingForPage;
-		}
-
-		// Press Select to confirm current digit and move to next
-		return NavKeyCommand::Select;
+		m_State = State::WaitingForPage;
+		return NavKeyCommand::Back;
 	}
 
 	bool Navigator::HandleSpecialPage(PageId page)
@@ -1090,6 +1100,12 @@ namespace AqualinkAutomate::Navigation
 	bool Navigator::IsBlockingPage(PageId page) const
 	{
 		return page == PageId::Service || page == PageId::TimeOut;
+	}
+
+	bool Navigator::IsTransientPage(PageId page) const
+	{
+		const MenuPage* p = m_Model.GetPage(page);
+		return (p != nullptr) && p->transient;
 	}
 
 }

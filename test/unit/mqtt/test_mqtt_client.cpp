@@ -582,4 +582,137 @@ BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ProtocolLevel4)
 	BOOST_CHECK_EQUAL(packet[8], 0x04); // MQTT 3.1.1 = protocol level 4
 }
 
+// Regression: MQTT 3.1.1 [MQTT-3.1.2-22] forbids setting the Password flag
+// without the Username flag.  A password-only configuration must NOT set the
+// Password flag, and must not append the password to the CONNECT payload.
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_PasswordWithoutUsername_NoPasswordFlag)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "cid";
+	settings.username = "";
+	settings.password = "secretpw";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	BOOST_REQUIRE_GT(packet.size(), 9);
+	uint8_t flags = packet[9]; // Connect flags byte
+
+	// Password flag (bit 6) must NOT be set when there is no username.
+	BOOST_CHECK_EQUAL(flags & 0x40, 0x00);
+	// Username flag (bit 7) must NOT be set.
+	BOOST_CHECK_EQUAL(flags & 0x80, 0x00);
+
+	// The password must not be present on the wire.
+	std::string packet_str(packet.begin(), packet.end());
+	BOOST_CHECK_MESSAGE(packet_str.find("secretpw") == std::string::npos,
+		"Password must not be encoded when no username is configured");
+}
+
+// Regression: a username-only configuration sets only the Username flag.
+BOOST_AUTO_TEST_CASE(Test_EncodeConnect_UsernameOnly_NoPasswordFlag)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.client_id = "cid";
+	settings.username = "user-only";
+	settings.password = "";
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
+
+	BOOST_REQUIRE_GT(packet.size(), 9);
+	uint8_t flags = packet[9];
+
+	BOOST_CHECK_EQUAL(flags & 0x80, 0x80); // Username flag set
+	BOOST_CHECK_EQUAL(flags & 0x40, 0x00); // Password flag NOT set
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MQTT UTF-8 string length-field guard (16-bit narrowing protection)
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Utf8LengthGuard)
+
+// Regression: an oversized PUBLISH topic (> 0xFFFF bytes) must not be encoded
+// with a silently-narrowed 16-bit length field; the encoder rejects it and
+// returns an empty packet.
+BOOST_AUTO_TEST_CASE(Test_EncodePublish_OversizedTopic_ReturnsEmpty)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	std::string huge_topic(0x10000, 't'); // 65536 bytes - one past the 16-bit limit
+	auto packet = Test::MqttClientPacketTest::EncodePublish(client, huge_topic, "x", false);
+
+	BOOST_CHECK(packet.empty());
+}
+
+// A topic at exactly the 16-bit limit is still encodable.
+BOOST_AUTO_TEST_CASE(Test_EncodePublish_MaxTopic_Encodes)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	std::string max_topic(0xFFFF, 't'); // exactly the 16-bit limit
+	auto packet = Test::MqttClientPacketTest::EncodePublish(client, max_topic, "x", false);
+
+	BOOST_REQUIRE(!packet.empty());
+	// Fixed header byte 0 is a PUBLISH (0x30).
+	BOOST_CHECK_EQUAL(packet[0], 0x30);
+}
+
+// Regression: an oversized SUBSCRIBE filter must not be narrowed either.
+BOOST_AUTO_TEST_CASE(Test_EncodeSubscribe_OversizedFilter_ReturnsEmpty)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	std::string huge_filter(0x10000, 'f');
+	auto packet = Test::MqttClientPacketTest::EncodeSubscribe(client, huge_filter, 0);
+
+	BOOST_CHECK(packet.empty());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient outbound write-buffer / per-packet offset state
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_WriteBufferState)
+
+// Regression: a freshly-constructed client has no pending outbound write.
+BOOST_AUTO_TEST_CASE(Test_WriteBuffer_InitiallyEmpty)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK(Test::MqttClientPacketTest::GetWriteBuffer(client).empty());
+	BOOST_CHECK_EQUAL(Test::MqttClientPacketTest::GetWriteOffset(client), 0u);
+}
+
+// Regression: Stop() clears any partially-written outbound packet so a stale
+// half-packet cannot bleed into a subsequent connection.
+BOOST_AUTO_TEST_CASE(Test_WriteBuffer_ClearedOnStop)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	client->Start();
+	client->Publish("topic/a", "payload");
+	client->Stop();
+
+	BOOST_CHECK(Test::MqttClientPacketTest::GetWriteBuffer(*client).empty());
+	BOOST_CHECK_EQUAL(Test::MqttClientPacketTest::GetWriteOffset(*client), 0u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

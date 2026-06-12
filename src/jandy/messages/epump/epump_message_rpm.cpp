@@ -2,6 +2,7 @@
 
 #include "messages/epump/epump_message_rpm.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -34,21 +35,17 @@ namespace AqualinkAutomate::Messages
 
 	bool EPumpMessage_RPM::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into EPumpMessage_RPM type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into EPumpMessage_RPM type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_RPM_High)
+		if (!Text::RequireIndex(message_bytes, Index_RPM_High, "EPumpMessage_RPM", "RPM"))
 		{
-			LogDebug(Channel::Messages, "EPumpMessage_RPM is too short to deserialise RPM.");
-		}
-		else
-		{
-			const uint8_t low = static_cast<uint8_t>(message_bytes[Index_RPM_Low]);
-			const uint8_t high = static_cast<uint8_t>(message_bytes[Index_RPM_High]);
-			m_RPM = static_cast<uint16_t>((high * 256 + low) / 4);
-			return true;
+			return false;
 		}
 
-		return false;
+		// The raw 16-bit LE field is in quarter-RPM units on the wire.
+		m_RPM = static_cast<uint16_t>(Text::ReadU16LE(message_bytes, Index_RPM_Low) / 4U);
+
+		return true;
 	}
 
 }

@@ -13,7 +13,7 @@ namespace AqualinkAutomate::Exceptions
         LogTrace(Channel::Exceptions, "HTTP_DuplicateRoute exception was constructed");
     }
 
-    HTTP_DuplicateRoute::HTTP_DuplicateRoute(const std::string &message) : GenericAqualinkException(DUPLICATE_ROUTE_MESSAGE)
+    HTTP_DuplicateRoute::HTTP_DuplicateRoute(const std::string &message) : GenericAqualinkException(message)
     {
         LogTrace(Channel::Exceptions, "HTTP_DuplicateRoute exception was constructed");
     }

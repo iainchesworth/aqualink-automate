@@ -5,7 +5,6 @@
 #include <limits>
 
 #include <boost/program_options.hpp>
-#include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
 #include "options/validators/jandy_device_id_validator.h"

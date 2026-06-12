@@ -3,7 +3,6 @@
 #include <any>
 #include <format>
 
-#include "exceptions/exception_traits_doesnotexist.h"
 #include "exceptions/exception_traits_invalidtraitvalue.h"
 #include "logging/logging.h"
 
@@ -37,56 +36,35 @@ namespace AqualinkAutomate::Kernel
     public:
         operator auto() const
         {
-            try
-            {
-                return std::any_cast<ValueType>(m_ValueAny);
-            }
-            catch (const std::bad_any_cast& exBAC)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_InvalidTraitValue();
-            }
-            catch (const std::out_of_range& exOOR)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve non-existent trait: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_DoesNotExist();
-            }
+            return CastOrThrow<ValueType>(m_ValueAny);
         }
 
     public:
         Reference operator*()
         {
-            try
-            {
-                return std::any_cast<Reference>(m_ValueAny);
-            }
-            catch (const std::bad_any_cast& exBAC)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_InvalidTraitValue();
-            }
-            catch (const std::out_of_range& exOOR)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve non-existent trait: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_DoesNotExist();
-            }
+            return CastOrThrow<Reference>(m_ValueAny);
         }
 
         Pointer operator->()
         {
+            return CastOrThrow<Pointer>(m_ValueAny);
+        }
+
+    private:
+        // Single point for the any_cast + diagnostic. The std::any holding the trait value is
+        // guaranteed to exist (the proxy is only constructed once Traits::Get has confirmed the
+        // trait is present), so the only failure mode is a value-type mismatch (bad_any_cast).
+        template<typename CAST_TYPE>
+        static CAST_TYPE CastOrThrow(std::any& value_any)
+        {
             try
             {
-                return std::any_cast<Pointer>(m_ValueAny);
+                return std::any_cast<CAST_TYPE>(value_any);
             }
-            catch (const std::bad_any_cast& exBAC)
+            catch (const std::bad_any_cast&)
             {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()));
+                LogDebug(Channel::Devices, [] { return std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()); });
                 throw Exceptions::Traits_InvalidTraitValue();
-            }
-            catch (const std::out_of_range& exOOR)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve non-existent trait: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_DoesNotExist();
             }
         }
 
@@ -113,44 +91,35 @@ namespace AqualinkAutomate::Kernel
     public:
         operator auto() const
         {
-            try
-            {
-                return std::any_cast<ValueType>(m_ValueAny);
-            }
-            catch (const std::bad_any_cast& exBAC)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_InvalidTraitValue();
-            }
-            catch (const std::out_of_range& exOOR)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve non-existent trait: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_DoesNotExist();
-            }
+            return CastOrThrow<ValueType>(m_ValueAny);
         }
 
     public:
         Reference operator*() const
         {
-            try
-            {
-                return std::any_cast<Reference>(m_ValueAny);
-            }
-            catch (const std::bad_any_cast& exBAC)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_InvalidTraitValue();
-            }
-            catch (const std::out_of_range& exOOR)
-            {
-                LogDebug(Channel::Devices, std::format("Attempted to retrieve non-existent trait: type -> {}", TRAIT_TYPE{}.Name()));
-                throw Exceptions::Traits_DoesNotExist();
-            }
+            return CastOrThrow<Reference>(m_ValueAny);
         }
-        
+
         Pointer operator->() const
         {
             return &(operator*());
+        }
+
+    private:
+        // See TraitValueProxy::CastOrThrow: the underlying std::any is always present, so a
+        // bad_any_cast is the only reachable failure (a value-type mismatch).
+        template<typename CAST_TYPE>
+        static CAST_TYPE CastOrThrow(const std::any& value_any)
+        {
+            try
+            {
+                return std::any_cast<CAST_TYPE>(value_any);
+            }
+            catch (const std::bad_any_cast&)
+            {
+                LogDebug(Channel::Devices, [] { return std::format("Attempted to retrieve invalid trait value: type -> {}", TRAIT_TYPE{}.Name()); });
+                throw Exceptions::Traits_InvalidTraitValue();
+            }
         }
 
     private:

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <deque>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -36,20 +36,40 @@ namespace AqualinkAutomate::HTTP
         void OnError(ConnectionId connId) override;
 
 	private:
-		void Broadcast(const std::string& payload);
+		void Broadcast(const std::shared_ptr<const std::string>& payload);
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub{ nullptr };
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub{ nullptr };
-		boost::signals2::connection m_ConfigChangeSlot;
-		boost::signals2::connection m_StatusChangeSlot;
 
-		std::mutex m_Mutex;
-		std::unordered_map<ConnectionId, std::deque<std::string>> m_Connections;
+		// scoped_connection guarantees the hub-signal slots (which capture raw `this`)
+		// are disconnected when this handler is destroyed, preventing a use-after-free
+		// if a hub outlives the handler and fires a signal during/after teardown.
+		boost::signals2::scoped_connection m_ConfigChangeSlot;
+		boost::signals2::scoped_connection m_StatusChangeSlot;
+		boost::signals2::scoped_connection m_AlertSlot;
+
+		// NOTE: The connection/message-queue map is intentionally unsynchronised.
+		// Signal-driven broadcasts, connection lifecycle, and message dequeuing
+		// all run on the single application thread driven by the main poll() loop,
+		// so no locking is required. If a multi-threaded execution model is ever
+		// reintroduced, m_Connections must be guarded before concurrent access.
+		//
+		// Queued messages are held by shared_ptr<const std::string> so a single
+		// broadcast shares one serialised payload across every connection queue
+		// (refcount bump) rather than deep-copying the string N times.
+		std::unordered_map<ConnectionId, std::deque<std::shared_ptr<const std::string>>> m_Connections;
 		ConnectionId m_NextConnectionId{ 1 };
+
+		// Count of broadcast messages dropped because a connection queue was full.
+		// Surfaced via a rate-limited warning so silent state-update loss is visible.
+		std::uint64_t m_DroppedMessageCount{ 0 };
 
 		// Security: Maximum queue size per connection to prevent memory exhaustion
 		static constexpr std::size_t MAX_MESSAGE_QUEUE_SIZE = 100;
+
+		// Emit an overflow warning once every N drops to avoid log flooding.
+		static constexpr std::uint64_t DROPPED_MESSAGE_LOG_INTERVAL = 100;
 	};
 
 }

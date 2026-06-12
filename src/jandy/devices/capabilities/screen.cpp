@@ -2,6 +2,7 @@
 #include <ranges>
 
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 
 #include "devices/capabilities/screen.h"
 #include "logging/logging.h"
@@ -98,6 +99,29 @@ namespace AqualinkAutomate::Devices::Capabilities
 	Utility::ScreenDataPageTypes Screen::DisplayedPageType() const
 	{
 		return m_DisplayedPageType;
+	}
+
+	void Screen::DisplayedPageType(Utility::ScreenDataPageTypes page_type)
+	{
+		m_DisplayedPageType = page_type;
+	}
+
+	nlohmann::json Screen::DescribeScreen() const
+	{
+		nlohmann::json screen;
+
+		screen["page_type"] = std::string(magic_enum::enum_name(DisplayedPageType()));
+		screen["mode"] = std::string(magic_enum::enum_name(ScreenMode()));
+
+		nlohmann::json lines = nlohmann::json::array();
+		const auto& page = DisplayedPage();
+		for (std::size_t i = 0; i < page.Size(); ++i)
+		{
+			lines.push_back(page[i].Text);
+		}
+		screen["lines"] = lines;
+
+		return screen;
 	}
 
 }

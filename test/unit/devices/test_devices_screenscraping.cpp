@@ -1,30 +1,23 @@
-#include <functional>
-#include <unordered_map>
-#include <unordered_set>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_traits.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/utility/screen_data_page_graph.h"
+#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_edge.h"
 #include "jandy/utility/screen_data_page_graph/screen_data_page_graph_traverse.h"
+#include "jandy/utility/screen_data_page_graph/screen_data_page_graph_vertex.h"
 #include "jandy/utility/screen_data_page_processor.h"
-#include "logging/logging.h"
 
 using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Utility;
 using namespace AqualinkAutomate::Utility::ScreenDataPageGraphImpl;
 
-// Test key commands (mimicking OneTouch device)
-enum class TestKeyCommands : uint8_t
-{
-	NoKeyCommand = 0x00,
-	Select = 0x04,
-	LineDown = 0x05,
-	LineUp = 0x06
-};
+// The graph now stores a single concrete KeyCommand on each edge (previously a
+// type-erased std::any holding a per-device key-command enum).  KeyCommand's
+// enumerators carry the shared wire semantics used by every device, so the
+// test suite uses it directly instead of a test-local enum.
 
 BOOST_AUTO_TEST_SUITE(ScreenDataPageGraph_TestSuite)
 
@@ -69,9 +62,9 @@ BOOST_AUTO_TEST_CASE(TestLinearGraph)
 			{ 4, ScreenDataPageTypes::Page_Unknown }
 		},
 		{
-			{ 1, 2, { 1, TestKeyCommands::LineDown } },
-			{ 2, 3, { 2, TestKeyCommands::LineDown } },
-			{ 3, 4, { 3, TestKeyCommands::Select } }
+			{ 1, 2, { 1, KeyCommand::LineDown } },
+			{ 2, 3, { 2, KeyCommand::LineDown } },
+			{ 3, 4, { 3, KeyCommand::Select } }
 		}
 	);
 
@@ -80,16 +73,16 @@ BOOST_AUTO_TEST_CASE(TestLinearGraph)
 
 	// Collect all vertices visited
 	std::vector<VertexId> visited_vertices;
-	std::vector<TestKeyCommands> key_commands;
+	std::vector<KeyCommand> key_commands;
 
 	while (it != end)
 	{
 		auto& [vertex, edge] = *it;
 		visited_vertices.push_back(vertex.id);
 
-		if (edge.key_command.has_value())
+		if (KeyCommand::NoKeyCommand != edge.key_command)
 		{
-			key_commands.push_back(std::any_cast<TestKeyCommands>(edge.key_command));
+			key_commands.push_back(edge.key_command);
 		}
 
 		++it;
@@ -104,9 +97,9 @@ BOOST_AUTO_TEST_CASE(TestLinearGraph)
 
 	// Should have 3 key commands (from edges)
 	BOOST_REQUIRE_EQUAL(key_commands.size(), 3);
-	BOOST_CHECK(key_commands[0] == TestKeyCommands::LineDown);
-	BOOST_CHECK(key_commands[1] == TestKeyCommands::LineDown);
-	BOOST_CHECK(key_commands[2] == TestKeyCommands::Select);
+	BOOST_CHECK(key_commands[0] == KeyCommand::LineDown);
+	BOOST_CHECK(key_commands[1] == KeyCommand::LineDown);
+	BOOST_CHECK(key_commands[2] == KeyCommand::Select);
 }
 
 BOOST_AUTO_TEST_CASE(TestStartFromMiddle)
@@ -121,9 +114,9 @@ BOOST_AUTO_TEST_CASE(TestStartFromMiddle)
 			{ 4, ScreenDataPageTypes::Page_Unknown }
 		},
 		{
-			{ 1, 2, { 1, TestKeyCommands::Select } },
-			{ 2, 3, { 2, TestKeyCommands::LineDown } },
-			{ 3, 4, { 3, TestKeyCommands::Select } }
+			{ 1, 2, { 1, KeyCommand::Select } },
+			{ 2, 3, { 2, KeyCommand::LineDown } },
+			{ 3, 4, { 3, KeyCommand::Select } }
 		}
 	);
 
@@ -146,6 +139,25 @@ BOOST_AUTO_TEST_CASE(TestStartFromMiddle)
 	BOOST_CHECK_EQUAL(visited_vertices[2], 4);
 }
 
+// Verify the typed Vertex/Edge defaults preserve the previous "empty std::any"
+// semantics: a default-constructed vertex resolves to Page_Unknown (the old
+// any_cast fallback) and a default-constructed edge carries no key command.
+BOOST_AUTO_TEST_CASE(TestDefaultVertexAndEdgeAreNeutral)
+{
+	Vertex default_vertex{};
+	BOOST_CHECK_EQUAL(default_vertex.id, 0u);
+	BOOST_CHECK(default_vertex.page == ScreenDataPageTypes::Page_Unknown);
+
+	Edge default_edge{};
+	BOOST_CHECK_EQUAL(default_edge.id, 0u);
+	BOOST_CHECK(default_edge.key_command == KeyCommand::NoKeyCommand);
+
+	// A vertex constructed with only an id also defaults to Page_Unknown.
+	Vertex id_only_vertex{ 5 };
+	BOOST_CHECK_EQUAL(id_only_vertex.id, 5u);
+	BOOST_CHECK(id_only_vertex.page == ScreenDataPageTypes::Page_Unknown);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // =============================================================================
@@ -153,18 +165,6 @@ BOOST_AUTO_TEST_SUITE_END()
 // =============================================================================
 
 BOOST_AUTO_TEST_SUITE(OneTouchNavigationGraph_TestSuite)
-
-// Simulate the actual OneTouch key commands
-enum class OneTouchKeyCommands : uint8_t
-{
-	NoKeyCommand = 0x00,
-	PageDown_Or_Select1 = 0x01,
-	Back_Or_Select2 = 0x02,
-	PageUp_Or_Select3 = 0x03,
-	Select = 0x04,
-	LineDown = 0x05,
-	LineUp = 0x06
-};
 
 // Create a graph matching the fixed ONETOUCH_AUX_LABELS_NAV_SCRAPER_GRAPH
 ScreenDataPageGraph CreateOneTouchNavGraph()
@@ -186,18 +186,18 @@ ScreenDataPageGraph CreateOneTouchNavGraph()
 			{ 13, ScreenDataPageTypes::Page_Unknown }
 		},
 		{
-			{ 1, 2, { 1, OneTouchKeyCommands::LineDown } },
-			{ 2, 3, { 2, OneTouchKeyCommands::Select } },
-			{ 3, 4, { 3, OneTouchKeyCommands::LineDown } },
-			{ 4, 5, { 4, OneTouchKeyCommands::LineDown } },
-			{ 5, 6, { 5, OneTouchKeyCommands::Select } },
-			{ 6, 7, { 6, OneTouchKeyCommands::LineDown } },
-			{ 7, 8, { 7, OneTouchKeyCommands::LineDown } },
-			{ 8, 9, { 8, OneTouchKeyCommands::LineDown } },
-			{ 9, 10, { 9, OneTouchKeyCommands::LineDown } },
-			{ 10, 11, { 10, OneTouchKeyCommands::Select } },
-			{ 11, 12, { 11, OneTouchKeyCommands::LineDown } },
-			{ 12, 13, { 12, OneTouchKeyCommands::Select } }
+			{ 1, 2, { 1, KeyCommand::LineDown } },
+			{ 2, 3, { 2, KeyCommand::Select } },
+			{ 3, 4, { 3, KeyCommand::LineDown } },
+			{ 4, 5, { 4, KeyCommand::LineDown } },
+			{ 5, 6, { 5, KeyCommand::Select } },
+			{ 6, 7, { 6, KeyCommand::LineDown } },
+			{ 7, 8, { 7, KeyCommand::LineDown } },
+			{ 8, 9, { 8, KeyCommand::LineDown } },
+			{ 9, 10, { 9, KeyCommand::LineDown } },
+			{ 10, 11, { 10, KeyCommand::Select } },
+			{ 11, 12, { 11, KeyCommand::LineDown } },
+			{ 12, 13, { 12, KeyCommand::Select } }
 		}
 	);
 }
@@ -215,8 +215,7 @@ BOOST_AUTO_TEST_CASE(TestColdStartNavigation)
 	while (it != end)
 	{
 		auto& [vertex, edge] = *it;
-		auto page_type = std::any_cast<ScreenDataPageTypes>(vertex.page);
-		navigation_sequence.push_back({ vertex.id, page_type });
+		navigation_sequence.push_back({ vertex.id, vertex.page });
 		++it;
 	}
 
@@ -257,17 +256,16 @@ BOOST_AUTO_TEST_CASE(TestWarmStartNavigation)
 
 	// Collect the navigation sequence
 	std::vector<std::pair<VertexId, ScreenDataPageTypes>> navigation_sequence;
-	std::vector<OneTouchKeyCommands> key_commands;
+	std::vector<KeyCommand> key_commands;
 
 	while (it != end)
 	{
 		auto& [vertex, edge] = *it;
-		auto page_type = std::any_cast<ScreenDataPageTypes>(vertex.page);
-		navigation_sequence.push_back({ vertex.id, page_type });
+		navigation_sequence.push_back({ vertex.id, vertex.page });
 
-		if (edge.key_command.has_value())
+		if (KeyCommand::NoKeyCommand != edge.key_command)
 		{
-			key_commands.push_back(std::any_cast<OneTouchKeyCommands>(edge.key_command));
+			key_commands.push_back(edge.key_command);
 		}
 
 		++it;
@@ -294,9 +292,9 @@ BOOST_AUTO_TEST_CASE(TestWarmStartNavigation)
 
 	// Verify the key command sequence for warm start: LineDown, LineDown, Select
 	BOOST_REQUIRE_GE(key_commands.size(), 3);
-	BOOST_CHECK(key_commands[0] == OneTouchKeyCommands::LineDown);
-	BOOST_CHECK(key_commands[1] == OneTouchKeyCommands::LineDown);
-	BOOST_CHECK(key_commands[2] == OneTouchKeyCommands::Select);
+	BOOST_CHECK(key_commands[0] == KeyCommand::LineDown);
+	BOOST_CHECK(key_commands[1] == KeyCommand::LineDown);
+	BOOST_CHECK(key_commands[2] == KeyCommand::Select);
 }
 
 BOOST_AUTO_TEST_CASE(TestHomeToMenuTransition)
@@ -317,7 +315,7 @@ BOOST_AUTO_TEST_CASE(TestHomeToMenuTransition)
 	{
 		auto& [vertex, edge] = *it;
 		BOOST_CHECK_EQUAL(vertex.id, 3);
-		BOOST_CHECK(std::any_cast<ScreenDataPageTypes>(vertex.page) == ScreenDataPageTypes::Page_System);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_System);
 	}
 
 	// Advance and check edge command
@@ -326,9 +324,9 @@ BOOST_AUTO_TEST_CASE(TestHomeToMenuTransition)
 	{
 		auto& [vertex, edge] = *it;
 		BOOST_CHECK_EQUAL(vertex.id, 4);
-		BOOST_CHECK(std::any_cast<ScreenDataPageTypes>(vertex.page) == ScreenDataPageTypes::Page_System);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_System);
 		// Edge from 3->4 should be LineDown
-		BOOST_CHECK(std::any_cast<OneTouchKeyCommands>(edge.key_command) == OneTouchKeyCommands::LineDown);
+		BOOST_CHECK(edge.key_command == KeyCommand::LineDown);
 	}
 
 	// Advance again
@@ -337,9 +335,9 @@ BOOST_AUTO_TEST_CASE(TestHomeToMenuTransition)
 	{
 		auto& [vertex, edge] = *it;
 		BOOST_CHECK_EQUAL(vertex.id, 5);
-		BOOST_CHECK(std::any_cast<ScreenDataPageTypes>(vertex.page) == ScreenDataPageTypes::Page_System);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_System);
 		// Edge from 4->5 should also be LineDown
-		BOOST_CHECK(std::any_cast<OneTouchKeyCommands>(edge.key_command) == OneTouchKeyCommands::LineDown);
+		BOOST_CHECK(edge.key_command == KeyCommand::LineDown);
 	}
 
 	// Advance to MenuHelp - THE CRITICAL TRANSITION
@@ -349,9 +347,9 @@ BOOST_AUTO_TEST_CASE(TestHomeToMenuTransition)
 		auto& [vertex, edge] = *it;
 		BOOST_CHECK_EQUAL(vertex.id, 6);
 		// Vertex 6 MUST be MenuHelp, not Home!
-		BOOST_CHECK(std::any_cast<ScreenDataPageTypes>(vertex.page) == ScreenDataPageTypes::Page_MenuHelp);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_MenuHelp);
 		// Edge from 5->6 should be Select
-		BOOST_CHECK(std::any_cast<OneTouchKeyCommands>(edge.key_command) == OneTouchKeyCommands::Select);
+		BOOST_CHECK(edge.key_command == KeyCommand::Select);
 	}
 }
 
@@ -364,20 +362,20 @@ BOOST_AUTO_TEST_CASE(TestNavigationKeyCommandSequence)
 
 	// Expected sequence from Home to SystemSetup:
 	// LineDown -> LineDown -> Select -> LineDown -> LineDown -> LineDown -> LineDown -> Select -> LineDown -> Select
-	std::vector<OneTouchKeyCommands> expected_commands = {
-		OneTouchKeyCommands::LineDown,   // 3->4: Home cursor down
-		OneTouchKeyCommands::LineDown,   // 4->5: Home cursor down
-		OneTouchKeyCommands::Select,     // 5->6: Home -> MenuHelp
-		OneTouchKeyCommands::LineDown,   // 6->7: Menu cursor down
-		OneTouchKeyCommands::LineDown,   // 7->8: Menu cursor down
-		OneTouchKeyCommands::LineDown,   // 8->9: Menu cursor down
-		OneTouchKeyCommands::LineDown,   // 9->10: Menu cursor down
-		OneTouchKeyCommands::Select,     // 10->11: Menu -> SystemSetup
-		OneTouchKeyCommands::LineDown,   // 11->12: SystemSetup cursor down
-		OneTouchKeyCommands::Select      // 12->13: SystemSetup -> end
+	std::vector<KeyCommand> expected_commands = {
+		KeyCommand::LineDown,   // 3->4: Home cursor down
+		KeyCommand::LineDown,   // 4->5: Home cursor down
+		KeyCommand::Select,     // 5->6: Home -> MenuHelp
+		KeyCommand::LineDown,   // 6->7: Menu cursor down
+		KeyCommand::LineDown,   // 7->8: Menu cursor down
+		KeyCommand::LineDown,   // 8->9: Menu cursor down
+		KeyCommand::LineDown,   // 9->10: Menu cursor down
+		KeyCommand::Select,     // 10->11: Menu -> SystemSetup
+		KeyCommand::LineDown,   // 11->12: SystemSetup cursor down
+		KeyCommand::Select      // 12->13: SystemSetup -> end
 	};
 
-	std::vector<OneTouchKeyCommands> actual_commands;
+	std::vector<KeyCommand> actual_commands;
 
 	// Skip first vertex (no incoming edge)
 	++it;
@@ -385,9 +383,9 @@ BOOST_AUTO_TEST_CASE(TestNavigationKeyCommandSequence)
 	while (it != end)
 	{
 		auto& [vertex, edge] = *it;
-		if (edge.key_command.has_value())
+		if (KeyCommand::NoKeyCommand != edge.key_command)
 		{
-			actual_commands.push_back(std::any_cast<OneTouchKeyCommands>(edge.key_command));
+			actual_commands.push_back(edge.key_command);
 		}
 		++it;
 	}
@@ -461,7 +459,7 @@ BOOST_AUTO_TEST_CASE(TestPostValidationMismatch)
 
 BOOST_AUTO_TEST_CASE(TestVertexPageTypeExtraction)
 {
-	// Test that we can correctly extract page types from vertices
+	// Test that we can correctly read page types directly from vertices
 	ScreenDataPageGraph graph(
 		{
 			{ 1, ScreenDataPageTypes::Page_System },
@@ -469,8 +467,8 @@ BOOST_AUTO_TEST_CASE(TestVertexPageTypeExtraction)
 			{ 3, ScreenDataPageTypes::Page_Unknown }
 		},
 		{
-			{ 1, 2, { 1, TestKeyCommands::Select } },
-			{ 2, 3, { 2, TestKeyCommands::Select } }
+			{ 1, 2, { 1, KeyCommand::Select } },
+			{ 2, 3, { 2, KeyCommand::Select } }
 		}
 	);
 
@@ -479,8 +477,7 @@ BOOST_AUTO_TEST_CASE(TestVertexPageTypeExtraction)
 	// Vertex 1
 	{
 		auto& [vertex, edge] = *it;
-		auto page_type = std::any_cast<ScreenDataPageTypes>(vertex.page);
-		BOOST_CHECK(page_type == ScreenDataPageTypes::Page_System);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_System);
 	}
 
 	++it;
@@ -488,8 +485,7 @@ BOOST_AUTO_TEST_CASE(TestVertexPageTypeExtraction)
 	// Vertex 2
 	{
 		auto& [vertex, edge] = *it;
-		auto page_type = std::any_cast<ScreenDataPageTypes>(vertex.page);
-		BOOST_CHECK(page_type == ScreenDataPageTypes::Page_MenuHelp);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_MenuHelp);
 	}
 
 	++it;
@@ -497,8 +493,7 @@ BOOST_AUTO_TEST_CASE(TestVertexPageTypeExtraction)
 	// Vertex 3
 	{
 		auto& [vertex, edge] = *it;
-		auto page_type = std::any_cast<ScreenDataPageTypes>(vertex.page);
-		BOOST_CHECK(page_type == ScreenDataPageTypes::Page_Unknown);
+		BOOST_CHECK(vertex.page == ScreenDataPageTypes::Page_Unknown);
 	}
 }
 

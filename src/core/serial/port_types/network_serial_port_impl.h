@@ -2,7 +2,6 @@
 
 #include <chrono>
 #include <memory>
-#include <random>
 #include <string>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -16,9 +15,6 @@
 #include "logging/logging.h"
 #include "profiling/profiling.h"
 #include "serial/rfc2217/rfc2217_types.h"
-
-using namespace AqualinkAutomate::Logging;
-using namespace AqualinkAutomate::Profiling;
 
 namespace AqualinkAutomate::Serial::PortTypes
 {
@@ -63,7 +59,6 @@ namespace AqualinkAutomate::Serial::PortTypes
 	private:
 		boost::asio::any_io_executor m_Executor;
 		boost::asio::ip::tcp::socket m_Socket;
-		std::random_device m_RandomDevice;
 		std::string m_EndpointName;
 		bool m_IsOpen{ false };
 

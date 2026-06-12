@@ -1,6 +1,7 @@
 #include <array>
 #include <format>
 #include <span>
+#include <tuple>
 #include <vector>
 
 #include <magic_enum/magic_enum.hpp>
@@ -33,17 +34,17 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 		return m_Destination;
 	}
 
-	const uint8_t JandyMessage::RawId() const
+	uint8_t JandyMessage::RawId() const
 	{
 		return m_RawId;
 	}
 
-	const uint8_t JandyMessage::MessageLength() const
+	uint8_t JandyMessage::MessageLength() const
 	{
 		return m_MessageLength;
 	}
 
-	const uint8_t JandyMessage::ChecksumValue() const
+	uint8_t JandyMessage::ChecksumValue() const
 	{
 		return m_ChecksumValue;
 	}
@@ -104,7 +105,20 @@ JandyMessage::JandyMessage(const JandyMessageIds& msg_id) :
 
 		// Convert std::byte span to uint8_t span via a stack buffer (this
 		// path is only used by the ISerializable interface, not the hot path).
-		std::array<uint8_t, 128> byte_buffer;
+		//
+		// The buffer is sized by MAXIMUM_PACKET_LENGTH rather than a bare 128
+		// literal so it stays coupled to the upper bound PacketSizeIsValid()
+		// enforces above: that check guarantees message_bytes.size() <=
+		// MAXIMUM_PACKET_LENGTH, so the transform below can never overrun the
+		// buffer.  Were MAXIMUM_PACKET_LENGTH ever raised without growing this
+		// buffer, the size check would admit packets the buffer could not hold.
+		using ByteBuffer = std::array<uint8_t, MAXIMUM_PACKET_LENGTH>;
+
+		static_assert(
+			std::tuple_size_v<ByteBuffer> >= MAXIMUM_PACKET_LENGTH,
+			"std::byte Deserialize stack buffer must be at least MAXIMUM_PACKET_LENGTH bytes to hold any packet PacketSizeIsValid() admits");
+
+		ByteBuffer byte_buffer{};
 		std::transform(message_bytes.begin(), message_bytes.end(), byte_buffer.begin(),
 			[](std::byte b)
 			{

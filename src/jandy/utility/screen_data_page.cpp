@@ -11,7 +11,7 @@ namespace AqualinkAutomate::Utility
 	{
 		m_Rows.reserve(row_count);
 
-		for (uint32_t i = 0; i < row_count; i++)
+		for (std::size_t i = 0; i < row_count; i++)
 		{
 			m_Rows.push_back(DEFAULT_ROW_DATA);
 		}
@@ -49,7 +49,7 @@ namespace AqualinkAutomate::Utility
 		}
 		else if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
 		}
 		else
 		{
@@ -70,7 +70,7 @@ namespace AqualinkAutomate::Utility
 	{
 		if (m_Rows.size() <= line_id)
 		{
-			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, std::max(m_Rows.size(), static_cast<size_t>(0))));
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: Cannot toggle highlight, line id is out of range; requested line id -> {}, max line id -> {}", line_id, m_Rows.size()));
 		}
 		else
 		{
@@ -96,14 +96,21 @@ namespace AqualinkAutomate::Utility
 			// Span is not the correct range; cannot rotate.
 			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, start index must preceed end index by at least 1; start index -> {}, end index -> {}", start_id, end_id));
 		}
-		else 
+		else if (const auto span_size = static_cast<std::size_t>(end_id - start_id) + 1; (lines_to_shift == 0) || (lines_to_shift > span_size))
+		{
+			// A shift of 0 lines is a no-op; a shift larger than the span would push the
+			// rotate pivot (start + offset) or the clear range outside [start, end), causing
+			// std::rotate / std::for_each to read/write out of bounds. Reject both.
+			LogDebug(Channel::Devices, std::format("ScreenDataPage: cannot shift lines, number of shifts out of range; shifts -> {}, span size -> {} (start -> {}, end -> {})", lines_to_shift, span_size, start_id, end_id));
+		}
+		else
 		{
 			// Get iterators to the start and end of the range
 			auto start = m_Rows.begin() + start_id;
 			auto end = m_Rows.begin() + end_id + 1;
 
 			// Calculate the offset for the rotation
-			const int offset = (direction == ShiftDirections::Up) ? lines_to_shift : (end - start) - lines_to_shift;
+			const auto offset = (direction == ShiftDirections::Up) ? static_cast<RowCollection::difference_type>(lines_to_shift) : (end - start) - lines_to_shift;
 
 			// Rotate the range left or right by the specified number of elements
 			std::rotate(start, start + offset, end);

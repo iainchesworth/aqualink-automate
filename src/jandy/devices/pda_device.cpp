@@ -1,6 +1,9 @@
 #include <format>
 #include <functional>
 
+#include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
+
 #include "logging/logging.h"
 #include "devices/pda_device.h"
 
@@ -65,6 +68,21 @@ namespace AqualinkAutomate::Devices
 
 	void PDADevice::WatchdogTimeoutOccurred()
 	{
+	}
+
+	nlohmann::json PDADevice::DescribeDiagnostics() const
+	{
+		nlohmann::json j;
+
+		j["device_type"] = "PDA";
+		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
+
+		j["screen"] = DescribeScreen();
+
+		j["scrape_state"] = std::string(magic_enum::enum_name(GetScrapeState()));
+		j["is_running"] = IsRunning();
+
+		return j;
 	}
 
 }

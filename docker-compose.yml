@@ -6,6 +6,16 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
+    # To use a configuration file instead of CLI arguments, uncomment the
+    # following lines and copy examples/config-docker.conf to ./config.conf:
+    #
+    # volumes:
+    #   - ./config.conf:/etc/aqualink/config.conf:ro
+    # command: ["--config", "/etc/aqualink/config.conf"]
+    #
+    # For a physical RS-485 serial port, also pass the device:
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
 
   swagger-ui:
     image: swaggerapi/swagger-ui

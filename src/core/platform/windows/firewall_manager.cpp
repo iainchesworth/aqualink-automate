@@ -107,7 +107,7 @@ namespace AqualinkAutomate::Developer::FirewallUtils
         {
             //
             // Firewall String Formats
-            // 
+            //
             //   Rule Name:     <Name of the feature> - <Subfeature> (<Protocol>-<Dir>-<Counter>)
             //   Rule Desc:     <Dir>bound rule for <Name of the feature> to allow ... [<UDP/TCP> <Port>]
             //   Group Name:    <Name of the feature>
@@ -117,14 +117,47 @@ namespace AqualinkAutomate::Developer::FirewallUtils
             //
             //    "AqualinkAutomate" -> "AqualinkAutomate - Web Server (HTTP-In)"   -> "Inbound rule for AqualinkAutomate to allow access to the admin portal [TCP 80]"
             //    "AqualinkAutomate" -> "AqualinkAutomate - Web Server (HTTPS-In)"  -> "Inbound rule for AqualinkAutomate to allow secure access to the admin portal [TCP 443]"
-            // 
+            //
             //    "AqualinkAutomate" -> "AqualinkAutomate - MQTT Client (MQTT-Out)" -> "Outbound rule for AqualinkAutomate to allow connections to remote MQTT brokers [TCP 1883]"
             //    "AqualinkAutomate" -> "AqualinkAutomate - MQTT Client (MQTTS-Out)" -> "Outbound rule for AqualinkAutomate to allow secure connections to remote MQTT brokers [TCP 8883]"
+            //
+            // Security scoping
+            //
+            //   Inbound (admin portal) rules are scoped so they cannot silently expose the
+            //   machine on hostile networks when the process happens to be run elevated:
+            //     - Profiles are restricted to PRIVATE | DOMAIN (the PUBLIC profile, e.g. an
+            //       airport / coffee-shop Wi-Fi, is deliberately excluded).
+            //     - The remote-address scope is restricted to "LocalSubnet" so only hosts on
+            //       the same network segment may reach the admin portal.
+            //   Outbound (MQTT client) rules keep an unrestricted remote-address scope because
+            //   the broker may legitimately live anywhere, but are likewise kept off the PUBLIC
+            //   profile.
+            //
+            //   NOTE (cross-unit): the inbound port numbers below remain the historical
+            //   defaults (HTTP 80 / HTTPS 443). Wiring the actually-configured
+            //   --http-port/--https-port (Options::Web::WebSettings) into these rules requires
+            //   threading the settings through CheckAndConfigureExceptions(), which touches the
+            //   shared firewall_manager.h declaration and the aqualink-automate.cpp call site
+            //   (owned by other units). The literals are lifted to named constants here so that
+            //   change is a single substitution once the signature is widened.
             //
 
             static const std::string APP_NAME{ Version::VersionInfo::ProjectName() };
 
-            using FirewallRule = std::tuple<std::string, std::string, decltype(NET_FW_IP_PROTOCOL_TCP), uint16_t, decltype(NET_FW_RULE_DIR_IN)>;
+            // Restrict auto-created rules away from the PUBLIC profile so an elevated run on an
+            // untrusted network does not open the admin portal to the world.
+            static constexpr long SCOPED_PROFILES{ NET_FW_PROFILE2_PRIVATE | NET_FW_PROFILE2_DOMAIN };
+
+            // Remote-address scopes (BSTR-compatible literals understood by INetFwRule).
+            static constexpr wchar_t REMOTE_LOCAL_SUBNET[]{ L"LocalSubnet" };
+            static constexpr wchar_t REMOTE_ANY[]{ L"*" };
+
+            static constexpr uint16_t HTTP_PORT{ 80 };
+            static constexpr uint16_t HTTPS_PORT{ 443 };
+            static constexpr uint16_t MQTT_PORT{ 1883 };
+            static constexpr uint16_t MQTTS_PORT{ 8883 };
+
+            using FirewallRule = std::tuple<std::string, std::string, decltype(NET_FW_IP_PROTOCOL_TCP), uint16_t, decltype(NET_FW_RULE_DIR_IN), const wchar_t*>;
             using FirewallRuleCollection = std::vector<FirewallRule>;
             using FirewallGroup = std::tuple<std::string, std::filesystem::path, FirewallRuleCollection>;
 
@@ -133,38 +166,42 @@ namespace AqualinkAutomate::Developer::FirewallUtils
                 APP_NAME,
                 *app_path,
                 {
-                    { 
+                    {
                         std::format("{} - Web Server (HTTP-In)", APP_NAME),
-                        std::format("Inbound rule for {} to allow access to the admin portal [TCP {}]", APP_NAME, 80),
-                        NET_FW_IP_PROTOCOL_TCP, 
-                        80, 
-                        NET_FW_RULE_DIR_IN 
+                        std::format("Inbound rule for {} to allow access to the admin portal [TCP {}]", APP_NAME, HTTP_PORT),
+                        NET_FW_IP_PROTOCOL_TCP,
+                        HTTP_PORT,
+                        NET_FW_RULE_DIR_IN,
+                        REMOTE_LOCAL_SUBNET
                     },
                     {
                         std::format("{} - Web Server (HTTPS-In)", APP_NAME),
-                        std::format("Inbound rule for {} to allow secure access to the admin portal [TCP {}]", APP_NAME, 443),
-                        NET_FW_IP_PROTOCOL_TCP, 
-                        443, 
-                        NET_FW_RULE_DIR_IN 
+                        std::format("Inbound rule for {} to allow secure access to the admin portal [TCP {}]", APP_NAME, HTTPS_PORT),
+                        NET_FW_IP_PROTOCOL_TCP,
+                        HTTPS_PORT,
+                        NET_FW_RULE_DIR_IN,
+                        REMOTE_LOCAL_SUBNET
                     },
                     {
                         std::format("{} - MQTT Client (MQTT-Out)", APP_NAME),
-                        std::format("Outbound rule for {} to allow connections to remote MQTT brokers [TCP {}]", APP_NAME, 1883),
-                        NET_FW_IP_PROTOCOL_TCP, 
-                        1883, 
-                        NET_FW_RULE_DIR_OUT 
+                        std::format("Outbound rule for {} to allow connections to remote MQTT brokers [TCP {}]", APP_NAME, MQTT_PORT),
+                        NET_FW_IP_PROTOCOL_TCP,
+                        MQTT_PORT,
+                        NET_FW_RULE_DIR_OUT,
+                        REMOTE_ANY
                     },
                     {
                         std::format("{} - MQTT Client (MQTTS-Out)", APP_NAME),
-                        std::format("Outbound rule for {} to allow secure connections to remote MQTT brokers [TCP {}]", APP_NAME, 8883),
-                        NET_FW_IP_PROTOCOL_TCP, 
-                        8883, 
-                        NET_FW_RULE_DIR_OUT 
+                        std::format("Outbound rule for {} to allow secure connections to remote MQTT brokers [TCP {}]", APP_NAME, MQTTS_PORT),
+                        NET_FW_IP_PROTOCOL_TCP,
+                        MQTTS_PORT,
+                        NET_FW_RULE_DIR_OUT,
+                        REMOTE_ANY
                     }
                 }
             };
 
-            auto add_new_firewall_rule = [](auto& rules, auto& name, auto& desc, auto& app, auto& proto, auto& port, auto& direction) -> void
+            auto add_new_firewall_rule = [](auto& rules, auto& name, auto& desc, auto& app, auto& proto, auto& port, auto& direction, const wchar_t* remote_addresses) -> void
                 {
                     ComRulePtr pNetFwRule;
 
@@ -178,16 +215,18 @@ namespace AqualinkAutomate::Developer::FirewallUtils
                         auto rule_name = _bstr_t(name.c_str());
                         auto rule_desc = _bstr_t(desc.c_str());
                         auto rule_ports = _bstr_t(std::format("{}", port).c_str());
+                        auto rule_remote = _bstr_t(remote_addresses);
 
                         pNetFwRule->put_Name(rule_name);
                         pNetFwRule->put_Description(rule_desc);
                         pNetFwRule->put_ApplicationName(rule_app);
                         pNetFwRule->put_Protocol(proto);
                         pNetFwRule->put_LocalPorts(rule_ports);
+                        pNetFwRule->put_RemoteAddresses(rule_remote);
                         pNetFwRule->put_Action(NET_FW_ACTION_ALLOW);
                         pNetFwRule->put_Direction(direction);
                         pNetFwRule->put_Enabled(VARIANT_TRUE);
-                        pNetFwRule->put_Profiles(NET_FW_PROFILE2_ALL);
+                        pNetFwRule->put_Profiles(SCOPED_PROFILES);
 
                         if (auto hr = rules->Add(pNetFwRule); FAILED(hr))
                         {
@@ -200,11 +239,11 @@ namespace AqualinkAutomate::Developer::FirewallUtils
                     }
                 };
 
-            for (auto& [name, desc, proto, port, direction] : std::get<FirewallRuleCollection>(firewall_group))
+            for (auto& [name, desc, proto, port, direction, remote_addresses] : std::get<FirewallRuleCollection>(firewall_group))
             {
                 if (auto rule = FindRule(*rules, name); !rule)
                 {
-                    add_new_firewall_rule(*rules, name, desc, std::get<std::filesystem::path>(firewall_group), proto, port, direction);
+                    add_new_firewall_rule(*rules, name, desc, std::get<std::filesystem::path>(firewall_group), proto, port, direction, remote_addresses);
                 }
             }
         }

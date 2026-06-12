@@ -26,6 +26,11 @@ namespace AqualinkAutomate::Messages
 		// AQUARITE commands
 		AQUARITE_Percent = 0x11,
 		AQUARITE_GetId = 0x14,
+		// A second "set output %" command the AquaRite firmware accepts on an identical
+		// code path to AQUARITE_Percent (0x11); recovered from the official Jandy RS
+		// simulator (see docs/alwin32/). The distinction from 0x11 (e.g. pool vs spa, or
+		// AquaPure vs AquaRite) is not yet confirmed -- pending a live capture.
+		AQUARITE_SetPercent = 0x15,
 		AQUARITE_PPM = 0x16,
 
 		// PDA commands
@@ -39,6 +44,15 @@ namespace AqualinkAutomate::Messages
 		EPUMP_RPM = 0x44,
 		EPUMP_Watts = 0x45,
 
+		// Jandy Light commands
+		// Jandy colored-light controllers occupy device ids 0xF0-0xF4 on the
+		// RS-485 bus.  The light's status reply carries its on/off state and
+		// the active colour/show mode.  AqualinkD documents only the device-id
+		// range for these controllers (their wire payload is not otherwise
+		// reverse-engineered), so this status command byte models the reply so
+		// the decode can be extended once a live capture is available.
+		Light_Status = 0x19,
+
 		// Chemlink commands
 		Chemlink_Response = 0x21,
 
@@ -47,6 +61,11 @@ namespace AqualinkAutomate::Messages
 		IAQ_PageButton = 0x24,
 		IAQ_PageMessage = 0x25,
 		IAQ_TableMessage = 0x26,
+		// A fixed 5-byte page sub-message the master emits during a page walk (recovered
+		// from the Jandy RS simulator, see docs/alwin32/pwrcntr-behavior.md). Its field
+		// meanings are not yet decoded, so it is registered as a named, payload-retaining
+		// Unknown so the bytes are captured rather than collapsed to Unknown (0xFF).
+		IAQ_PageSubMessage = 0x27,
 		IAQ_PageEnd = 0x28,
 		IAQ_StartUp = 0x29,
 		IAQ_MessageLong = 0x2C,
@@ -59,6 +78,7 @@ namespace AqualinkAutomate::Messages
 		IAQ_AuxStatus = 0x72,
 		IAQ_Heartbeat = 0x53,
 		IAQ_CommandReady = 0x73,
+		IAQ_DeviceId = 0x51,
 
 		// Display protocol
 		DisplayUpdate = 0x05,

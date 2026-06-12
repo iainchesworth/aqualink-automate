@@ -8,7 +8,7 @@
 
 namespace AqualinkAutomate::Generators
 {
-	Types::JandyExpectedMessageType GenerateMessageFromRawData(boost::circular_buffer<uint8_t>& serial_data);
+	[[nodiscard]] Types::JandyExpectedMessageType GenerateMessageFromRawData(boost::circular_buffer<uint8_t>& serial_data);
 
 }
 // namespace AqualinkAutomate::Generators

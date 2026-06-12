@@ -1,9 +1,12 @@
 #include <format>
+#include <string>
+#include <string_view>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "formatters/beast_stringview_formatter.h"
 #include "http/server/server_fields.h"
+#include "http/server/responses/html_escape.h"
 #include "http/server/responses/response_404.h"
 #include "logging/logging.h"
 
@@ -25,7 +28,9 @@ namespace AqualinkAutomate::HTTP::Responses
         res.set(boost::beast::http::field::server, ServerFields::Server());
         res.set(boost::beast::http::field::content_type, ContentTypes::TEXT_HTML);
         res.keep_alive(req.keep_alive());
-        res.body() = "The resource '" + std::string(req.target()) + "' was not found.";
+        // The request target is client-controlled and reflected into an HTML body;
+        // escape it to prevent reflected XSS.
+        res.body() = "The resource '" + HtmlEscape(std::string_view{ req.target().data(), req.target().size() }) + "' was not found.";
         res.prepare_payload();
 
         return res;

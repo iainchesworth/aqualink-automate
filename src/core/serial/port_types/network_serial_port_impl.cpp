@@ -1,5 +1,9 @@
-#include <boost/asio.hpp>
+#include <cstdint>
+#include <span>
+
 #include <boost/asio/basic_socket.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/write.hpp>
 
@@ -355,11 +359,39 @@ namespace AqualinkAutomate::Serial::PortTypes
 		{
 			if (ec == boost::asio::error::would_block || ec == boost::asio::error::try_again)
 			{
-				// Normal for non-blocking socket when no data is available
+				// Normal for non-blocking socket when no data is available.  Clear
+				// ec so the throwing read_some(b) overload does not treat a benign
+				// would_block as a fatal error, and so the two overloads agree.
+				ec = {};
 				return 0;
 			}
-			LogWarning(Channel::Serial, std::format("Socket read failed: {}", ec.message()));
+
+			// A hard socket error (EOF / disconnect / reset) means the port is no
+			// longer usable.  Mark it closed once on the transition so the engine
+			// observes is_open()==false and can attempt a reconnect, and so the
+			// per-frame read loop does not flood the log with the same warning.
+			if (m_IsOpen)
+			{
+				LogWarning(Channel::Serial, std::format("Network serial port '{}' disconnected during read: {}", m_EndpointName, ec.message()));
+				m_IsOpen = false;
+				boost::system::error_code ignored;
+				m_Socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored);
+				m_Socket.close(ignored);
+			}
 			return 0;
+		}
+
+		// Strip any RFC2217/telnet IAC control sequences before the bytes reach the
+		// Jandy framing layer.  IAC (0xFF) is a legal value on the serial wire, so a
+		// remote-injected IAC must never pass through raw.  The filter compacts the
+		// surviving data bytes to the front of the same buffer.
+		if (bytes_read > 0)
+		{
+			if (auto* handler = dynamic_cast<Serial::RFC2217::ProtocolHandler*>(m_ProtocolHandler.get()); nullptr != handler)
+			{
+				auto* const raw = static_cast<uint8_t*>(b.data());
+				bytes_read = handler->FilterInboundData(std::span<uint8_t>{ raw, bytes_read });
+			}
 		}
 
 		LogTrace(Channel::Serial, std::format("Read {} bytes from network socket", bytes_read));
@@ -396,10 +428,24 @@ namespace AqualinkAutomate::Serial::PortTypes
 		{
 			if (ec == boost::asio::error::would_block || ec == boost::asio::error::try_again)
 			{
-				// Normal for non-blocking socket when send buffer is full
+				// Normal for non-blocking socket when send buffer is full.  Clear ec
+				// so the throwing write_some(b) overload does not treat a benign
+				// would_block as a fatal error, and so the two overloads agree.
+				ec = {};
 				return 0;
 			}
-			LogWarning(Channel::Serial, std::format("Socket write failed: {}", ec.message()));
+
+			// A hard socket error means the peer is gone; mark the port closed once
+			// so the engine can observe the disconnect and reconnect, and so the
+			// per-frame loop does not flood the log with the same warning.
+			if (m_IsOpen)
+			{
+				LogWarning(Channel::Serial, std::format("Network serial port '{}' disconnected during write: {}", m_EndpointName, ec.message()));
+				m_IsOpen = false;
+				boost::system::error_code ignored;
+				m_Socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored);
+				m_Socket.close(ignored);
+			}
 			return 0;
 		}
 

@@ -25,8 +25,6 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_ControlDataResponse::SerializeContents(std::vector<uint8_t>& message_bytes) const
 	{
-		size_t bytes_written = 0;
-
 		for (size_t i = 0; i < DATA_PAYLOAD_SIZE; ++i)
 		{
 			if (i < m_AsciiData.size())
@@ -37,10 +35,9 @@ namespace AqualinkAutomate::Messages
 			{
 				message_bytes.emplace_back(0x00);
 			}
-			++bytes_written;
 		}
 
-		LogDebug(Channel::Messages, std::format("Serialised IAQMessage_ControlDataResponse: {} bytes, data='{}'", bytes_written, m_AsciiData));
+		LogDebug(Channel::Messages, std::format("Serialised IAQMessage_ControlDataResponse: {} bytes, data='{}'", DATA_PAYLOAD_SIZE, m_AsciiData));
 
 		return true;
 	}

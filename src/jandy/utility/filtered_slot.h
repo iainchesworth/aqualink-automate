@@ -8,6 +8,7 @@
 
 #include "devices/jandy_device_id.h"
 #include "formatters/jandy_device_formatters.h"
+#include "utility/slot_connection_manager.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -15,9 +16,9 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Utility
 {
 
-	class FilteredSlotBase
-	{
-	};
+	// FilteredSlotBase now lives in the shared core slot-connection manager
+	// (utility/slot_connection_manager.h).  FilteredSlot_ByDeviceId is the
+	// Jandy-specific filtered slot that matches on a JandyDeviceId destination.
 
 	template<typename MESSAGE_TYPE>
 	class FilteredSlot_ByDeviceId : public FilteredSlotBase

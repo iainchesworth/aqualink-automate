@@ -6,9 +6,7 @@ A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool contro
 
 - [Features](#features)
 - [Getting Started](#getting-started)
-- [Development Container](#development-container)
-- [API Documentation](#api-documentation)
-- [Runtime Container](#runtime-container)
+- [Development](#development)
 - [CI/CD Overview](#cicd-overview)
 - [License](#license)
 
@@ -21,79 +19,60 @@ A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool contro
 - 
 # Getting Started
 
-To get started, clone the repository and follow the instructions in the [INSTALL.md](INSTALL.md) file. It contains step-by-step directions to install and configure the Aqualink Automate service on your system.
+See [INSTALL.md](INSTALL.md) for complete instructions covering pre-built binaries, building from source, dev containers, and Docker deployment.
 
-# Development Container
-
-A Dev Container configuration is provided for VS Code. It builds the `dev` target from the Dockerfile with GCC-15, clang-tidy, CMake, Ninja, and ccache pre-installed.
-
-To get started, clone the repository with submodules and open in VS Code:
+Quick start:
 
 ```bash
 git clone --recurse-submodules https://github.com/iainchesworth/aqualink-automate.git
 cd aqualink-automate
-code .
+
+# Linux/macOS
+./cicd/build.sh
+
+# Windows (PowerShell)
+.\cicd\build.ps1
 ```
 
-When prompted, select **Reopen in Container**. The `postCreateCommand` initializes submodules and bootstraps vcpkg automatically. Named volumes persist ccache and vcpkg binary caches across container rebuilds.
+The build scripts validate dependencies, bootstrap vcpkg, and run configure/build/test automatically.
 
-Inside the container, use the standard CMake preset workflow:
+# Development
 
-```bash
-cmake --preset config-linux-gcc
-cmake --build --preset build-linux-gcc
-ctest --preset test-linux-gcc
-```
+A VS Code **Dev Container** is provided with GCC 15, Clang 21, CMake, Ninja, and ccache pre-installed. Open the repository in VS Code and select **Reopen in Container**. See [INSTALL.md](INSTALL.md#development-container) for details.
 
-# API Documentation
-
-The OpenAPI spec is served by the application at `GET /api/swagger.yaml` when the app is running.
-
-For development, a Swagger UI service is available without needing the app running:
-
-```bash
-docker compose --profile docs up
-```
-
-This starts Swagger UI at `http://localhost:8080`, serving the spec directly from the repository via bind mount.
-
-# Runtime Container
-
-Build and run the production container:
-
-```bash
-docker build --target runtime -t aqualink-automate .
-docker run -p 80:80 aqualink-automate
-```
-
-Defaults: HTTP on `0.0.0.0:80`, HTTPS disabled, doc-root set to `web`.
-
-To connect a serial device:
-
-```bash
-docker run -p 80:80 --device /dev/ttyUSB0 aqualink-automate --serial-port /dev/ttyUSB0
-```
-
-To enable HTTPS, mount certificates and override the default command:
-
-```bash
-docker run -p 443:443 \
-  -v /path/to/certs:/opt/aqualink-automate/ssl:ro \
-  aqualink-automate \
-  --address 0.0.0.0 --doc-root web
-```
-
-Or use `docker compose up` for a simpler workflow with the included `docker-compose.yml`.
+For native development, the build scripts handle everything:
+- `cicd/build.sh` — Linux and macOS (GCC or Clang)
+- `cicd/build.ps1` — Windows (MSVC or Clang)
 
 # CI/CD Overview
 
+## Workflows
+
 | Workflow | Job | Trigger |
 |----------|-----|---------|
-| `ci.yml` | `build-and-test` (Linux, Windows, macOS) | Push to `develop`/`main`/`feature/**`/`bug/**`, PRs to `develop`/`main` |
-| `ci.yml` | `docker-verify` | Same as above |
-| `release.yml` | `build-packages` (Linux, Windows, macOS) | Push to `main`, version tags (`v*`) |
-| `release.yml` | `docker-publish` (GHCR) | Push to `main`, version tags (`v*`) |
-| `release.yml` | `github-release` | Version tags only (`v*`) |
+| `ci.yml` | Build and test (Linux, Windows, macOS) | Push to `main`/`feature/**`/`bug/**`, PRs to `develop`/`main` |
+| `ci.yml` | Docker verification | Same as above |
+| `automated-codescanning.yml` | CodeQL analysis | Push to `main`/`feature/**`/`bug/**`, PRs to `develop`/`main`, weekly schedule |
+| `automated-codescanning.yml` | SonarCloud scan | Same as above |
+| `automated-codescanning.yml` | MSVC code analysis | Same as above |
+| `release.yml` | Package (Linux, Windows, macOS) | Push to `main`, version tags (`v*`) |
+| `release.yml` | Docker publish (GHCR) | Push to `main`, version tags (`v*`) |
+| `release.yml` | GitHub Release | Version tags only (`v*`) |
+
+## Runner Configuration
+
+Workflows support both GitHub-hosted and self-hosted runners. By default, GitHub-hosted runners are used (`ubuntu-latest`, `windows-latest`, `macos-latest`).
+
+To use self-hosted runners, set these **repository variables** (Settings > Variables > Actions):
+
+| Variable | Value | Example |
+|----------|-------|---------|
+| `RUNNER_LINUX` | JSON runner label array | `["self-hosted","linux","x64"]` |
+| `RUNNER_WINDOWS` | JSON runner label array | `["self-hosted","windows","x64"]` |
+
+macOS CI always runs on `macos-latest` (GitHub-hosted). If the variables are unset or the runners go offline, workflows automatically fall back to GitHub-hosted runners.
+
+See [cicd/packer/README.md](cicd/packer/README.md) for instructions on provisioning self-hosted runner VMs.
 
 # Changelog
 

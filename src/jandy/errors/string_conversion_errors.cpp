@@ -2,40 +2,36 @@
 
 namespace AqualinkAutomate::ErrorCodes
 {
-	const StringConversion_ErrorCategory& StringConversion_ErrorCategory::Instance() {
+	const StringConversion_ErrorCategory& StringConversion_ErrorCategory::Instance()
+	{
 		static StringConversion_ErrorCategory category;
 		return category;
 	}
 
-	const char* StringConversion_ErrorCategory::name() const noexcept
+	std::string_view StringConversion_ErrorCategory::Describe(StringConversion_ErrorCodes e)
 	{
-		return "AqualinkAutomate::String Conversion Error Category";
-	}
-
-	std::string StringConversion_ErrorCategory::message(int ev) const
-	{
-		switch (ev)
+		switch (e)
 		{
 		case StringConversion_ErrorCodes::MalformedInput:
-			return "StringConversion_ErrorCodes::MalformedInput";
+			return "The input string was malformed and could not be converted";
 
 		case StringConversion_ErrorCodes::UnknownStringConversionFailure:
-			return "StringConversion_ErrorCodes::UnknownStringConversionFailure";
+			return "An unspecified string conversion failure occurred";
 
 		default:
-			return "StringConversion_ErrorCodes - Unknown Error Code";
+			return "Unknown string conversion error";
 		}
 	}
 
 }
 // namespace AqualinkAutomate::ErrorCodes
 
-boost::system::error_code make_error_code(const AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
+boost::system::error_code make_error_code(AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
 {
-	return boost::system::error_code(static_cast<int>(e), AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::MakeErrorCode(e);
 }
 
-boost::system::error_condition make_error_condition(const AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
+boost::system::error_condition make_error_condition(AqualinkAutomate::ErrorCodes::StringConversion_ErrorCodes e)
 {
-	return boost::system::error_condition(static_cast<int>(e), AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::Instance());
+	return AqualinkAutomate::ErrorCodes::StringConversion_ErrorCategory::MakeErrorCondition(e);
 }

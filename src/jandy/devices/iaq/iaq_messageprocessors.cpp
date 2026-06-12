@@ -16,9 +16,30 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_Poll", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_Poll", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_Poll", DeviceId()); });
 
 		ProcessControllerUpdates(true);
+
+		Restartable::Kick();
+	}
+
+	void IAQDevice::Slot_IAQ_Probe(const Messages::JandyMessage_Probe& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_Probe", std::source_location::current(), UnitColours::Red);
+
+		// The master discovers an AqualinkTouch (0x30-0x33) with a generic Probe (0x00),
+		// exactly as it discovers a OneTouch -- so an EMULATED instance must answer the
+		// probe for the master to see it and begin the iAQ status/page protocol. A passive
+		// (non-emulated) decoder must NOT treat a bare probe as a real device answering
+		// (that would mask not-present detection), so this only acts when emulated.
+		if (!IsEmulated())
+		{
+			return;
+		}
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received JandyMessage_Probe (emulated -> answering)", DeviceId()); });
+
+		ProcessControllerUpdates();
 
 		Restartable::Kick();
 	}
@@ -27,13 +48,13 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_MainStatus", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_MainStatus: {}", DeviceId(), msg.ToString()));
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_MainStatus: {}", DeviceId(), msg.ToString()); });
 
 		ProcessMainStatus(msg);
 
 		if (m_OpState == OperatingStates::StartUp)
 		{
-			LogInfo(Channel::Devices, std::format("IAQ ({}): MainStatus received during StartUp -> entering NormalOperation", DeviceId()));
+			LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): MainStatus received during StartUp -> entering NormalOperation", DeviceId()); });
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
 		}
@@ -47,13 +68,13 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_AuxStatus", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_AuxStatus: {}", DeviceId(), msg.ToString()));
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_AuxStatus: {}", DeviceId(), msg.ToString()); });
 
 		ProcessAuxStatus(msg);
 
 		if (m_OpState == OperatingStates::StartUp)
 		{
-			LogInfo(Channel::Devices, std::format("IAQ ({}): AuxStatus received during StartUp -> entering NormalOperation", DeviceId()));
+			LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): AuxStatus received during StartUp -> entering NormalOperation", DeviceId()); });
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
 		}
@@ -67,7 +88,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageStart", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageStart", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_PageStart", DeviceId()); });
 
 		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evSequenceStart());
 		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evClear());
@@ -81,11 +102,11 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageMessage", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageMessage: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()));
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_PageMessage: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()); });
 
 		if (IAQ_STATUS_PAGE_LINES <= msg.LineId())
 		{
-			LogWarning(Channel::Devices, std::format("IAQ ({}): PageMessage for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), IAQ_STATUS_PAGE_LINES - 1, msg.Line()));
+			LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): PageMessage for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), IAQ_STATUS_PAGE_LINES - 1, msg.Line()); });
 		}
 		else
 		{
@@ -101,7 +122,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageEnd", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageEnd", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_PageEnd", DeviceId()); });
 
 		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evSequenceEnd());
 
@@ -114,7 +135,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageContinue", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageContinue", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_PageContinue", DeviceId()); });
 
 		ProcessControllerUpdates();
 
@@ -125,8 +146,8 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageButton", std::source_location::current(), UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_PageButton: index={}, name='{}', type={}, status={}",
-			DeviceId(), msg.ButtonIndex(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())));
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_PageButton: index={}, name='{}', type={}, status={}",
+			DeviceId(), msg.ButtonIndex(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())); });
 
 		ProcessControllerUpdates();
 
@@ -137,7 +158,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_TitleMessage", std::source_location::current(), UnitColours::Red);
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_TitleMessage: title='{}'", DeviceId(), msg.Title()));
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_TitleMessage: title='{}'", DeviceId(), msg.Title()); });
 
 		ProcessControllerUpdates();
 
@@ -148,11 +169,11 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_TableMessage", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_TableMessage: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()));
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_TableMessage: line_id={}, content='{}'", DeviceId(), msg.LineId(), msg.Line()); });
 
 		if (IAQ_MESSAGE_TABLE_LINES <= msg.LineId())
 		{
-			LogWarning(Channel::Devices, std::format("IAQ ({}): TableMessage for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), IAQ_MESSAGE_TABLE_LINES - 1, msg.Line()));
+			LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): TableMessage for unsupported line: line_id={} (max={}), content='{}'", DeviceId(), msg.LineId(), IAQ_MESSAGE_TABLE_LINES - 1, msg.Line()); });
 		}
 		else
 		{
@@ -168,7 +189,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_MessageLong", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_MessageLong", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_MessageLong", DeviceId()); });
 
 		ProcessControllerUpdates();
 
@@ -179,7 +200,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_StartUp", std::source_location::current(), UnitColours::Red);
 
-		LogInfo(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_StartUp - controller startup notification", DeviceId()));
+		LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_StartUp - controller startup notification", DeviceId()); });
 
 		ProcessControllerUpdates();
 
@@ -190,11 +211,11 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_ControlReady", std::source_location::current(), UnitColours::Red);
 
-		LogInfo(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_ControlReady", DeviceId()));
+		LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_ControlReady", DeviceId()); });
 
 		if (m_AwaitingControlReady && !m_ControlDataValue.empty())
 		{
-			LogInfo(Channel::Devices, std::format("IAQ ({}): Sending control data response: '{}'", DeviceId(), m_ControlDataValue));
+			LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Sending control data response: '{}'", DeviceId(), m_ControlDataValue); });
 			Signal_ControlDataResponse(m_ControlDataValue);
 			m_AwaitingControlReady = false;
 			m_ControlDataValue.clear();
@@ -211,7 +232,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_CommandReady", std::source_location::current(), UnitColours::Red);
 
-		LogInfo(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_CommandReady", DeviceId()));
+		LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_CommandReady", DeviceId()); });
 
 		ProcessControllerUpdates();
 
@@ -222,7 +243,7 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_OneTouchStatus", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_OneTouchStatus", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_OneTouchStatus", DeviceId()); });
 
 		ProcessControllerUpdates();
 
@@ -233,14 +254,38 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_Heartbeat", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, std::format("IAQ ({}): Received IAQMessage_Heartbeat", DeviceId()));
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_Heartbeat", DeviceId()); });
 
 		// The IAQ device responds to Heartbeat (0x53) with a constant
 		// presence beacon ACK: Type=0x1f, Command=0x00.  This differs from
 		// IAQ_Poll (0x30) which can carry commands.
 		Signal_AckMessage(static_cast<uint8_t>(0x1f), static_cast<uint8_t>(0x00));
 
+		// A heartbeat proves a real (non-emulated) iAqualink2 is alive and present.
+		// Its rich status (MainStatus/AuxStatus) is carried on the AqualinkTouch 0x33
+		// side, not here on 0xA0-0xA3, so the heartbeat is the only start-up signal a
+		// snooped 0xa3 device ever sees. Treat it as valid activity so the device
+		// reaches NormalOperation instead of sitting in StartUp until the watchdog
+		// eventually faults it (which is exactly the "IAQ didn't start up properly"
+		// symptom on a system with a real iAqualink2).
+		if (!IsEmulated() && (m_OpState == OperatingStates::StartUp))
+		{
+			LogInfo(Channel::Devices, [this]() { return std::format("IAQ ({}): Heartbeat received during StartUp -> entering NormalOperation", DeviceId()); });
+			m_OpState = OperatingStates::NormalOperation;
+			Status(Devices::DeviceStatus_Normal{});
+		}
+
 		Restartable::Kick();
+
+		// Distinguish the two IAQ ids that share this handler: the AqualinkTouch 0x33
+		// side carries MainStatus and renders a System Status page (and must KEEP it
+		// even if a heartbeat arrives), whereas the heartbeat-only 0xA3 cloud interface
+		// never sees a MainStatus -- render its Cloud Link page from the heartbeat so it
+		// shows live link liveness instead of the constructor-default Page_Unknown.
+		if (!m_HasReceivedMainStatus)
+		{
+			RenderCloudLinkScreen();
+		}
 	}
 
 }

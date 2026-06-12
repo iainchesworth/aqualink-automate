@@ -8,12 +8,18 @@
  *
  * Debounce prevents redundant fetches on rapid tab switching.
  */
+
+// Interval (ms) for the WS-down fallback poll of equipment data.
+const EQUIPMENT_FALLBACK_POLL_MS = 30000;
+
 function app() {
     return {
         route: 'dashboard',
         _prevRoute: null,
         _lastRefresh: 0,
         _refreshDebounceMs: 2000,
+
+        _started: false,
 
         init() {
             // Set initial route from hash
@@ -26,7 +32,21 @@ function app() {
                 this._onRouteActivated(this.route);
             });
 
-            // Fetch initial data and connect WebSocket
+            // Gate data fetches + WebSocket on the auth check: with no token
+            // configured this resolves immediately (200) and behaves as before;
+            // with a token it shows the login overlay until the user authenticates.
+            window.addEventListener('auth:ready', () => this._startApp(), { once: true });
+            Alpine.store('auth').check().then((ok) => {
+                if (ok) this._startApp();
+            });
+        },
+
+        // Begin live operation. Idempotent: runs once whether triggered by an
+        // already-valid session or a successful login.
+        _startApp() {
+            if (this._started) return;
+            this._started = true;
+
             Alpine.store('pool').fetchInitial();
             Alpine.store('ws').connectEquipment();
 
@@ -35,12 +55,12 @@ function app() {
                 if (!Alpine.store('ws').connected) {
                     Alpine.store('pool')._fetchEquipment();
                 }
-            }, 30000);
+            }, EQUIPMENT_FALLBACK_POLL_MS);
         },
 
         _getRouteFromHash() {
             const hash = window.location.hash.replace('#', '');
-            const valid = ['dashboard', 'diagnostics', 'settings', 'about'];
+            const valid = ['dashboard', 'diagnostics', 'trends', 'schedules', 'settings', 'about'];
             return valid.includes(hash) ? hash : 'dashboard';
         },
 

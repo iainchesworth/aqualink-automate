@@ -2,11 +2,27 @@
  * Pool Graphic — SVG pool visualization logic
  */
 function poolGraphic() {
-    // Active status values (case-insensitive): on, running, heating, enabled
-    const isActiveStatus = (status) => {
-        const s = String(status).toLowerCase();
+    // Shared UI helpers (single source of truth in scripts/config/ui-constants.js).
+    // Fall back to local definitions so the graphic still renders if that
+    // script is not loaded.
+    const ui = (typeof window !== 'undefined' && window.AquaUI) || {};
+    const isActiveStatus = ui.isActiveStatus || ((status) => {
+        const s = String(status == null ? '' : status).toLowerCase();
         return s === 'on' || s === 'running' || s === 'heating' || s === 'enabled';
+    });
+    const keywords = ui.DEVICE_KEYWORDS || {
+        chlorinator: ['chlor', 'aquapure', 'salt'],
+        spa:         ['spa'],
+        pump:        ['pump', 'filter'],
+        heater:      ['heat']
     };
+    const matches = ui.labelMatchesKeywords || ((label, kws) => {
+        const l = String(label == null ? '' : label).toLowerCase();
+        return kws.some((kw) => l.includes(kw));
+    });
+
+    const findButtonByKeywords = (kws) =>
+        Alpine.store('pool').buttons.find((b) => b.label && matches(b.label, kws));
 
     return {
         get poolTempDisplay() {
@@ -19,36 +35,23 @@ function poolGraphic() {
             return Alpine.store('pool').airTemp;
         },
         get spaActive() {
-            const btns = Alpine.store('pool').buttons;
-            const spa = btns.find(b => b.label && b.label.toLowerCase().includes('spa'));
+            const spa = findButtonByKeywords(keywords.spa);
             return spa && isActiveStatus(spa.status);
         },
         get pumpActive() {
-            const btns = Alpine.store('pool').buttons;
-            const pump = btns.find(b => b.label && (b.label.toLowerCase().includes('pump') || b.label.toLowerCase().includes('filter')));
+            const pump = findButtonByKeywords(keywords.pump);
             return pump && isActiveStatus(pump.status);
         },
         get heaterActive() {
-            const btns = Alpine.store('pool').buttons;
-            const heater = btns.find(b => b.label && b.label.toLowerCase().includes('heat'));
+            const heater = findButtonByKeywords(keywords.heater);
             return heater && isActiveStatus(heater.status);
         },
         get chlorinatorActive() {
-            const btns = Alpine.store('pool').buttons;
-            const chlorinator = btns.find(b => b.label && (
-                b.label.toLowerCase().includes('chlor') ||
-                b.label.toLowerCase().includes('aquapure') ||
-                b.label.toLowerCase().includes('salt')
-            ));
+            const chlorinator = findButtonByKeywords(keywords.chlorinator);
             return chlorinator && isActiveStatus(chlorinator.status);
         },
         get hasChlorinator() {
-            const btns = Alpine.store('pool').buttons;
-            return btns.some(b => b.label && (
-                b.label.toLowerCase().includes('chlor') ||
-                b.label.toLowerCase().includes('aquapure') ||
-                b.label.toLowerCase().includes('salt')
-            ));
+            return Alpine.store('pool').buttons.some((b) => b.label && matches(b.label, keywords.chlorinator));
         }
     };
 }

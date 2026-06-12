@@ -5,7 +5,7 @@
 namespace AqualinkAutomate::Utility
 {
 
-	bool case_insensitive_comparision(const unsigned char lhs, const unsigned char rhs)
+	bool CaseInsensitiveComparison(const unsigned char lhs, const unsigned char rhs)
 	{
 		return std::tolower(lhs) == std::tolower(rhs);
 	}

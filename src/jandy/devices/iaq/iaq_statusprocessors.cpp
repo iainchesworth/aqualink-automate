@@ -1,18 +1,27 @@
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <format>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "devices/capabilities/screen.h"
 #include "devices/iaq_device.h"
 #include "auxillaries/jandy_auxillary_id.h"
 #include "auxillaries/jandy_auxillary_status.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "factories/jandy_auxillary_factory.h"
+#include "kernel/auxillary_devices/auxillary_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/body_of_water_ids.h"
 #include "kernel/hub_events/data_hub_config_event_button_state_change.h"
+#include "utility/screen_data_page_processor.h"
+#include "utility/screen_data_page_updater.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -24,7 +33,16 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessMainStatus", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
+		// This id carries rich status (it is the AqualinkTouch 0x33 side, not the
+		// heartbeat-only 0xA3 cloud interface).  Latch it so a later heartbeat keeps
+		// the System Status page rather than flipping the screen to Cloud Link.
+		m_HasReceivedMainStatus = true;
+
+		// The home page is now established; an emulated panel with a survey armed walks its
+		// data pages from here (runs once).
+		MaybeStartPageSurvey();
+
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing MainStatus: pool={:.0f}F, spa={:.0f}F, air={:.0f}F, pump={}, pool_heat={}, spa_heat={}, solar={}",
 			DeviceId(),
 			msg.PoolTemperature().InFahrenheit().value(),
 			msg.SpaTemperature().InFahrenheit().value(),
@@ -32,7 +50,7 @@ namespace AqualinkAutomate::Devices
 			msg.PumpOn(),
 			magic_enum::enum_name(msg.PoolHeaterStatus()),
 			magic_enum::enum_name(msg.SpaHeaterStatus()),
-			magic_enum::enum_name(msg.SolarHeaterStatus())));
+			magic_enum::enum_name(msg.SolarHeaterStatus())); });
 
 		// Update circulation mode from MainStatus spa mode flag.
 		m_DataHub->CirculationMode = msg.SpaMode()
@@ -82,7 +100,11 @@ namespace AqualinkAutomate::Devices
 
 		// Update filter pump status.
 		{
-			if (0 == m_DataHub->FilterPumps().size())
+			// Query the filtered pump view once; only re-query after creating a new pump
+			// (the Add invalidates the first snapshot).  Previously FilterPumps() ran a
+			// full device-graph scan twice per MainStatus even when a pump already existed.
+			auto filter_pumps = m_DataHub->FilterPumps();
+			if (filter_pumps.empty())
 			{
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Pump);
@@ -99,10 +121,11 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 
 				m_DataHub->Devices.Add(std::move(ptr));
+				filter_pumps = m_DataHub->FilterPumps();
 			}
 
 			const auto pump_status = msg.PumpOn() ? Kernel::PumpStatuses::Running : Kernel::PumpStatuses::Off;
-			for (auto& pump : m_DataHub->FilterPumps())
+			for (auto& pump : filter_pumps)
 			{
 				pump->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::PumpStatusTrait{}, pump_status);
 
@@ -120,7 +143,11 @@ namespace AqualinkAutomate::Devices
 		// Helper to create/update a heater device in the DataHub.
 		auto update_heater = [this](const std::string& label, Kernel::HeaterStatuses status, Kernel::BodyOfWaterIds body_id)
 		{
-			if (0 == m_DataHub->Devices.FindByLabel(label).size())
+			// Query the label view once; only re-query after creating a new heater (the
+			// Add invalidates the first snapshot).  Previously FindByLabel() ran a full
+			// label scan up to three times per heater per MainStatus.
+			auto heaters = m_DataHub->Devices.FindByLabel(label);
+			if (heaters.empty())
 			{
 				auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Heater);
@@ -128,9 +155,15 @@ namespace AqualinkAutomate::Devices
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, Kernel::HeaterStatuses::Off);
 				ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 				m_DataHub->Devices.Add(std::move(ptr));
+				heaters = m_DataHub->Devices.FindByLabel(label);
 			}
 
-			auto heater = m_DataHub->Devices.FindByLabel(label).front();
+			if (heaters.empty())
+			{
+				return;
+			}
+
+			auto heater = heaters.front();
 			heater->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HeaterStatusTrait{}, status);
 
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(heater);
@@ -146,20 +179,135 @@ namespace AqualinkAutomate::Devices
 		update_heater("Pool Heat", msg.PoolHeaterStatus(), Kernel::BodyOfWaterIds::Pool);
 		update_heater("Spa Heat", msg.SpaHeaterStatus(), Kernel::BodyOfWaterIds::Spa);
 		update_heater("Solar Heat", msg.SolarHeaterStatus(), Kernel::BodyOfWaterIds::Shared);
+
+		// Now that the DataHub reflects the freshly-decoded MainStatus, render that
+		// live state into the device's Screen so the diagnostics "Actual Devices"
+		// card shows real data rather than a Page_Unknown blank.
+		RenderStatusScreen(msg);
+	}
+
+	void IAQDevice::RenderStatusScreen(const Messages::IAQMessage_MainStatus& msg)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::RenderStatusScreen", std::source_location::current());
+
+		// The IAQ (iAqualink2 cloud interface) has no navigable physical screen; its
+		// "screen" is a rendered reflection of the system status it just decoded.
+		// Rebuild the whole page from scratch on every MainStatus so it tracks live
+		// state and never accumulates stale lines.
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
+
+		// Collect the human-readable summary lines first; only the lines that fit on
+		// the fixed-size page (IAQ_STATUS_PAGE_LINES) are pushed to the updater.
+		std::vector<std::string> lines;
+		lines.reserve(IAQ_STATUS_PAGE_LINES);
+
+		lines.emplace_back("System Status");
+		lines.emplace_back(std::format("Mode: {}", msg.SpaMode() ? "Spa" : "Pool"));
+		lines.emplace_back(std::format("Pool Temp: {:.0f}F", msg.PoolTemperature().InFahrenheit().value()));
+		lines.emplace_back(std::format("Spa Temp:  {:.0f}F", msg.SpaTemperature().InFahrenheit().value()));
+		lines.emplace_back(std::format("Air Temp:  {:.0f}F", msg.AirTemperature().InFahrenheit().value()));
+
+		if (auto setpoint = msg.HeaterSetpoint(); setpoint.has_value())
+		{
+			lines.emplace_back(std::format("{} Setpoint: {:.0f}F",
+				msg.SpaMode() ? "Spa" : "Pool",
+				setpoint->InFahrenheit().value()));
+		}
+
+		lines.emplace_back(std::format("Pump: {}", msg.PumpOn() ? "On" : "Off"));
+		lines.emplace_back(std::format("Pool Heat: {}", magic_enum::enum_name(msg.PoolHeaterStatus())));
+		lines.emplace_back(std::format("Spa Heat:  {}", magic_enum::enum_name(msg.SpaHeaterStatus())));
+		lines.emplace_back(std::format("Solar:     {}", magic_enum::enum_name(msg.SolarHeaterStatus())));
+
+		// Aux on/off summary, read from the DataHub (AuxStatus keeps these fresh).
+		auto auxillaries = m_DataHub->Auxillaries();
+		for (const auto& aux : auxillaries)
+		{
+			if (nullptr == aux)
+			{
+				continue;
+			}
+
+			auto label_opt = aux->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			auto status_opt = aux->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{});
+			if (!label_opt.has_value() || !status_opt.has_value())
+			{
+				continue;
+			}
+
+			const bool is_on = (status_opt.value() == Kernel::AuxillaryStatuses::On);
+			lines.emplace_back(std::format("{}: {}", label_opt.value(), is_on ? "On" : "Off"));
+		}
+
+		const std::size_t line_count = std::min(static_cast<std::size_t>(IAQ_STATUS_PAGE_LINES), lines.size());
+		for (std::size_t line_id = 0; line_id < line_count; ++line_id)
+		{
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(static_cast<uint8_t>(line_id), lines[line_id]));
+		}
+
+		// Mark the page as a KNOWN, fixed status view.  There are no page processors
+		// for the IAQ, so do NOT call ProcessScreenUpdates() (it would reset the type
+		// back to Page_Unknown); set the type directly instead.
+		DisplayedPageType(Utility::ScreenDataPageTypes::Page_SystemStatus);
+		ScreenMode(Capabilities::ScreenModes::Normal);
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Rendered System Status screen ({} lines)", DeviceId(), DisplayedPage().Size()); });
+	}
+
+	void IAQDevice::RenderCloudLinkScreen()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::RenderCloudLinkScreen", std::source_location::current());
+
+		// A heartbeat-only IAQ (the iAqualink2 cloud interface on 0xA3) receives ONLY
+		// the heartbeat (0x53) -- no MainStatus/AuxStatus and no navigable page -- so
+		// its "screen" is a rendered reflection of the heartbeat liveness rather than
+		// of decoded system status.  Rebuild from scratch on every heartbeat so it
+		// tracks the live state and never accumulates stale lines.
+		ScreenMode(Capabilities::ScreenModes::Updating);
+		ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evClear());
+
+		// The watchdog (Restartable) is Kick()ed on each heartbeat; while it is still
+		// running the link is "active", otherwise the beacon has gone stale.
+		const bool heartbeat_active = IsRunning();
+
+		std::vector<std::string> lines;
+		lines.reserve(IAQ_STATUS_PAGE_LINES);
+
+		lines.emplace_back("iAqualink2 Cloud Link");
+		lines.emplace_back(std::format("Heartbeat: {}", heartbeat_active ? "active" : "stale"));
+		lines.emplace_back(std::format("Timeout: {}s", GetTimeout().count()));
+		// The heartbeat ACK is a constant presence beacon (Type=0x1f, Command=0x00);
+		// there is no MainStatus/AuxStatus on this id, so report the idle beacon state.
+		lines.emplace_back("ACK: 0x1f/0x00 (idle)");
+
+		const std::size_t line_count = std::min(static_cast<std::size_t>(IAQ_STATUS_PAGE_LINES), lines.size());
+		for (std::size_t line_id = 0; line_id < line_count; ++line_id)
+		{
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(static_cast<uint8_t>(line_id), lines[line_id]));
+		}
+
+		// Mark the page as a KNOWN, fixed Cloud Link view.  As with RenderStatusScreen
+		// there are no page processors for the IAQ, so set the type directly rather
+		// than calling ProcessScreenUpdates() (which would reset it to Page_Unknown).
+		DisplayedPageType(Utility::ScreenDataPageTypes::Page_CloudLink);
+		ScreenMode(Capabilities::ScreenModes::Normal);
+
+		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Rendered Cloud Link screen ({} lines)", DeviceId(), DisplayedPage().Size()); });
 	}
 
 	void IAQDevice::ProcessAuxStatus(const Messages::IAQMessage_AuxStatus& msg)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::ProcessAuxStatus", std::source_location::current());
 
-		LogDebug(Channel::Devices, std::format("IAQ ({}): Processing AuxStatus: {} devices", DeviceId(), msg.DeviceCount()));
+		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Processing AuxStatus: {} devices", DeviceId(), msg.DeviceCount()); });
 
 		for (const auto& info : msg.Devices())
 		{
 			auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(info.device_index);
 			if (!aux_id.has_value())
 			{
-				LogDebug(Channel::Devices, std::format("IAQ ({}): Unknown device_index {} in AuxStatus, skipping", DeviceId(), info.device_index));
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Unknown device_index {} in AuxStatus, skipping", DeviceId(), info.device_index); });
 				continue;
 			}
 
@@ -189,7 +337,7 @@ namespace AqualinkAutomate::Devices
 			}
 			else
 			{
-				LogDebug(Channel::Devices, std::format("IAQ ({}): Failed to create auxillary device for {}: {}", DeviceId(), magic_enum::enum_name(aux_id.value()), new_aux_ptr.error().message()));
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Failed to create auxillary device for {}: {}", DeviceId(), magic_enum::enum_name(aux_id.value()), new_aux_ptr.error().message()); });
 				continue;
 			}
 
@@ -228,8 +376,8 @@ namespace AqualinkAutomate::Devices
 			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, aux_label);
 			m_DataHub->ConfigUpdateSignal(update_event);
 
-			LogTrace(Channel::Devices, std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",
-				DeviceId(), magic_enum::enum_name(aux_id.value()), info.name, info.is_on ? "On" : "Off"));
+			LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",
+				DeviceId(), magic_enum::enum_name(aux_id.value()), info.name, info.is_on ? "On" : "Off"); });
 		}
 	}
 

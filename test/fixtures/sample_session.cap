@@ -1,0 +1,28 @@
+# Serial recording started at: Sun Jun 08 12:00:00 2026
+# Format: [timestamp_ms] direction byte|byte|byte|...
+# Direction: R=read (from device), W=write (to device)
+#
+# -----------------------------------------------------------------------------
+# Sample synthetic-but-realistic captured RS-485 session for end-to-end tests.
+#
+# Contents: an AquaRite salt-water generator (SWG, device id 0x50) identifying
+# itself and reporting status, which populates a chlorinator in the DataHub:
+#   * AQUARITE_GetId  (0x14) : Master -> SWG identification query.
+#   * AQUARITE_Percent(0x11) : generating level = 40%.
+#   * AQUARITE_PPM    (0x16) : salt concentration = 3200 PPM, status On.
+#
+# The R lines are the bytes that arrived FROM the bus (the replay input).  The
+# single W line below is the application's own past output captured during
+# recording and MUST be ignored on replay (it is here on purpose to prove the
+# replayer/LoadFixture skip W-direction bytes).
+#
+# Frames are fully framed + checksummed exactly as MessageBuilder produces them;
+# the e2e test cross-checks these bytes against MessageBuilder so a drift fails.
+# -----------------------------------------------------------------------------
+#
+[         0] # Opened device: /dev/ttyUSB0
+[       100] W 0x10|0x02|0x50|0x14|0x76|0x10|0x03
+[       142] R 0x10|0x02|0x50|0x14|0x76|0x10|0x03
+[       310] R 0x10|0x02|0x50|0x11|0x28|0x9b|0x10|0x03
+[       512] R 0x10|0x02|0x00|0x16|0x20|0x00|0x48|0x10|0x03
+# Recording ended

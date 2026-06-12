@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <cstddef>
 #include <format>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "messages/iaq/iaq_message_page_button.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -45,7 +47,13 @@ namespace AqualinkAutomate::Messages
 
 	std::string IAQMessage_PageButton::ToString() const
 	{
-		return std::format("Packet: {} || Payload: {}", IAQMessage::ToString(), 0);
+		return std::format(
+			"Packet: {} || Payload: Index: {}, Status: {}, Type: {}, Name: '{}'",
+			IAQMessage::ToString(),
+			m_ButtonIndex,
+			magic_enum::enum_name(m_ButtonStatus),
+			magic_enum::enum_name(m_ButtonType),
+			m_ButtonName);
 	}
 
 	bool IAQMessage_PageButton::SerializeContents(std::vector<uint8_t>& message_bytes) const
@@ -55,51 +63,34 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_PageButton::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_PageButton type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_PageButton type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_ButtonState)
+		if (!Text::RequireIndex(message_bytes, Index_ButtonState, "IAQMessage_PageButton", "ButtonState"))
 		{
-			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonState.");
+			return false;
 		}
-		else if (message_bytes.size() <= Index_ButtonType)
+
+		if (!Text::RequireIndex(message_bytes, Index_ButtonType, "IAQMessage_PageButton", "ButtonType"))
 		{
-			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise ButtonType.");
+			return false;
 		}
-		else if (message_bytes.size() <= Index_ButtonNameText)
+
+		// The (optional) ButtonName payload runs from Index_ButtonNameText up to the
+		// 3-byte footer.  Require at least that the footer is present so the name
+		// length can never underflow; an empty name is a valid result.
+		if (message_bytes.size() < Index_ButtonNameText + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
-			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise context of ButtonName.");
-		}
-		else if (static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + 1 + 1 + 1) > message_bytes.size())
-		{
-			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short to deserialise content of LineText");
-		}
-		else if (message_bytes.size() < Index_ButtonNameText + 3)
-		{
-			// Security: Prevent integer underflow in length calculation
 			LogDebug(Channel::Messages, "IAQMessage_PageButton is too short for content extraction");
-		}
-		else
-		{
-			m_ButtonIndex = static_cast<uint8_t>(message_bytes[Index_ButtonIndex]);
-			m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(static_cast<uint8_t>(message_bytes[Index_ButtonState])).value_or(ButtonStatuses::Unknown);
-			m_ButtonType = magic_enum::enum_cast<ButtonTypes>(static_cast<uint8_t>(message_bytes[Index_ButtonType])).value_or(ButtonTypes::Unknown);
-
-			const auto length_to_copy = message_bytes.size() - Index_ButtonNameText - 3;
-			const auto start_index = message_bytes.begin() + Index_ButtonNameText;
-			const auto end_index = start_index + length_to_copy;
-
-			m_ButtonName.clear();
-			std::transform(start_index, end_index, std::back_inserter(m_ButtonName),
-				[](const auto& elem)
-				{
-					return static_cast<char>(elem);
-				}
-			);
-
-			return true;
+			return false;
 		}
 
-		return false;
+		m_ButtonIndex = Text::ReadU8(message_bytes, Index_ButtonIndex);
+		m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(Text::ReadU8(message_bytes, Index_ButtonState)).value_or(ButtonStatuses::Unknown);
+		m_ButtonType = magic_enum::enum_cast<ButtonTypes>(Text::ReadU8(message_bytes, Index_ButtonType)).value_or(ButtonTypes::Unknown);
+
+		m_ButtonName = Text::ExtractTrailingAsciiPayload(message_bytes, Index_ButtonNameText);
+
+		return true;
 	}
 
 }

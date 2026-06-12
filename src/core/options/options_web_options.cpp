@@ -1,32 +1,21 @@
 #include <cstdint>
-#include <format>
 #include <string>
 
 #include "application/application_defaults.h"
-#include "logging/logging.h"
 #include "options/options_option_type.h"
 #include "options/options_web_options.h"
+#include "options/helpers/build_options_description.h"
 #include "options/helpers/conflicting_options_helper.h"
 #include "options/helpers/option_dependency_helper.h"
-#include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate;
-using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Web
 {
-	
+
 	boost::program_options::options_description OptionsProcessor::Options() const
 	{
-		boost::program_options::options_description options(SettingsType::AreaName(), Utility::get_terminal_column_width());
-
-		LogDebug(Channel::Options, std::format("Adding {} options from the {} set", WebOptionsCollection.size(), SettingsType::AreaName()));
-		for (auto& option : WebOptionsCollection)
-		{
-			options.add((*option)());
-		}
-
-		return options;
+		return BuildOptionsDescription(SettingsType::AreaName(), WebOptionsCollection);
 	}
 
 	void OptionsProcessor::Validate(const boost::program_options::variables_map& vm) const
@@ -84,6 +73,14 @@ namespace AqualinkAutomate::Options::Web
 		if (OPTION_TLSCACERT->IsPresent(vm))
 		{
 			settings.ca_chain_certificate = std::filesystem::path(OPTION_TLSCACERT->As<std::string>(vm));
+		}
+
+		// Opt-in API auth token. Only set when the option is actually present; an
+		// absent flag leaves ApiAuthToken unset, preserving the no-auth default.
+		// (Never log the token value.)
+		if (OPTION_APIAUTHTOKEN->IsPresent(vm))
+		{
+			settings.ApiAuthToken = OPTION_APIAUTHTOKEN->As<std::string>(vm);
 		}
 
 		//

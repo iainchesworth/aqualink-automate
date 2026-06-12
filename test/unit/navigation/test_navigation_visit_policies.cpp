@@ -204,4 +204,109 @@ BOOST_AUTO_TEST_CASE(TestFullDiscovery_NullCallbacks_NoCrash)
 	BOOST_CHECK_NO_THROW(policy.OnCrawlComplete());
 }
 
+// =============================================================================
+// FullDiscoveryVisitPolicy: Label-page skipping (IAQ-seeded labels)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestFullDiscovery_IsLabelPage_IdentifiesLabelSubTree)
+{
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::LabelAuxList));
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::LabelAux));
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::GeneralLabels));
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::LightLabels));
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::WaterfallLabels));
+	BOOST_CHECK(FullDiscoveryVisitPolicy::IsLabelPage(PageId::CustomLabel));
+
+	// Non-label pages are not part of the label sub-tree.
+	BOOST_CHECK(!FullDiscoveryVisitPolicy::IsLabelPage(PageId::System));
+	BOOST_CHECK(!FullDiscoveryVisitPolicy::IsLabelPage(PageId::SystemSetup));
+	BOOST_CHECK(!FullDiscoveryVisitPolicy::IsLabelPage(PageId::SetTemperature));
+	BOOST_CHECK(!FullDiscoveryVisitPolicy::IsLabelPage(PageId::EquipmentOnOff));
+}
+
+// NEGATIVE: default policy (no seeded labels) still plans the Label Aux scrape.
+BOOST_AUTO_TEST_CASE(TestFullDiscovery_DefaultPolicy_VisitsLabelPages)
+{
+	FullDiscoveryVisitPolicy policy;
+
+	BOOST_CHECK(!policy.SkipsLabelPages());
+
+	MenuPage page;
+
+	page.id = PageId::LabelAuxList;
+	BOOST_CHECK(policy.ShouldVisit(PageId::LabelAuxList, page));
+
+	page.id = PageId::LabelAux;
+	BOOST_CHECK(policy.ShouldVisit(PageId::LabelAux, page));
+
+	page.id = PageId::GeneralLabels;
+	BOOST_CHECK(policy.ShouldVisit(PageId::GeneralLabels, page));
+
+	page.id = PageId::CustomLabel;
+	BOOST_CHECK(policy.ShouldVisit(PageId::CustomLabel, page));
+}
+
+// POSITIVE: with skip_label_pages set, the Label Aux sub-tree is excluded but
+// every other crawl target is still planned.
+BOOST_AUTO_TEST_CASE(TestFullDiscovery_SkipLabelPages_ExcludesLabelSubTree)
+{
+	FullDiscoveryVisitPolicy policy(nullptr, nullptr, /* skip_label_pages */ true);
+
+	BOOST_CHECK(policy.SkipsLabelPages());
+
+	MenuPage page;
+
+	// Label sub-tree excluded.
+	page.id = PageId::LabelAuxList;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::LabelAuxList, page));
+
+	page.id = PageId::LabelAux;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::LabelAux, page));
+
+	page.id = PageId::GeneralLabels;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::GeneralLabels, page));
+
+	page.id = PageId::LightLabels;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::LightLabels, page));
+
+	page.id = PageId::WaterfallLabels;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::WaterfallLabels, page));
+
+	page.id = PageId::CustomLabel;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::CustomLabel, page));
+
+	// All other crawl targets remain in the plan.
+	page.id = PageId::System;
+	BOOST_CHECK(policy.ShouldVisit(PageId::System, page));
+
+	page.id = PageId::SystemSetup;
+	BOOST_CHECK(policy.ShouldVisit(PageId::SystemSetup, page));
+
+	page.id = PageId::SetTemperature;
+	BOOST_CHECK(policy.ShouldVisit(PageId::SetTemperature, page));
+
+	page.id = PageId::EquipmentOnOff;
+	BOOST_CHECK(policy.ShouldVisit(PageId::EquipmentOnOff, page));
+
+	page.id = PageId::DiagnosticsSensors;
+	BOOST_CHECK(policy.ShouldVisit(PageId::DiagnosticsSensors, page));
+}
+
+// Special system pages stay excluded regardless of the skip flag.
+BOOST_AUTO_TEST_CASE(TestFullDiscovery_SkipLabelPages_StillSkipsSpecialPages)
+{
+	FullDiscoveryVisitPolicy policy(nullptr, nullptr, /* skip_label_pages */ true);
+
+	MenuPage page;
+
+	page.id = PageId::StartUp;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::StartUp, page));
+
+	page.id = PageId::Service;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::Service, page));
+
+	page.id = PageId::EnterPassword;
+	BOOST_CHECK(!policy.ShouldVisit(PageId::EnterPassword, page));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

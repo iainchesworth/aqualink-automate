@@ -47,15 +47,7 @@ namespace AqualinkAutomate::Devices
 	{
 	}
 
-	void PDADevice::PageProcessor_AuxLabel(const Utility::ScreenDataPage& page)
-	{
-	}
-
 	void PDADevice::PageProcessor_FreezeProtect(const Utility::ScreenDataPage& page)
-	{
-	}
-
-	void PDADevice::PageProcessor_Settings(const Utility::ScreenDataPage& page)
 	{
 	}
 

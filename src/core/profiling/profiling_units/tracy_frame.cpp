@@ -1,6 +1,5 @@
 #include <cstring>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -14,13 +13,11 @@ namespace AqualinkAutomate::Profiling
 	// Tracy requires that frame name pointers are:
 	//  1. Unique per name (pointer identity is used to identify frame sets)
 	//  2. Valid for the entire program lifetime (never freed)
-	// This static cache satisfies both requirements.
+	// This static cache satisfies both requirements. The application runs on a
+	// single-threaded cooperative loop, so no synchronisation is required.
 	const char* TracyFrame::GetOrCacheFrameName(std::string_view name)
 	{
 		static std::unordered_map<std::string, std::unique_ptr<char[]>> s_Cache;
-		static std::mutex s_Mutex;
-
-		std::lock_guard lock(s_Mutex);
 
 		std::string key(name);
 		if (auto it = s_Cache.find(key); it != s_Cache.end())

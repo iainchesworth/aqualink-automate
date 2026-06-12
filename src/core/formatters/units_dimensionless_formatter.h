@@ -1,9 +1,9 @@
 #pragma once
 
 #include <format>
-#include <iostream>
-#include <string>
+#include <ostream>
 
+#include "formatters/formatter_helpers.h"
 #include "types/units_dimensionless.h"
 
 namespace AqualinkAutomate::Formatters
@@ -24,18 +24,6 @@ namespace std
 
 template<>
 struct std::formatter<AqualinkAutomate::Units::ppm_quantity>
+	: AqualinkAutomate::Formatters::QuantityFormatter<AqualinkAutomate::Units::ppm_quantity, " ppm">
 {
-	std::formatter<double> m_Base;
-
-	constexpr auto parse(std::format_parse_context& ctx)
-	{
-		return m_Base.parse(ctx);
-	}
-
-	template<typename FormatContext>
-	auto format(const AqualinkAutomate::Units::ppm_quantity& value_in_ppm, FormatContext& ctx) const
-	{
-		m_Base.format(value_in_ppm.value(), ctx);
-		return std::format_to(ctx.out(), " ppm");
-	}
 };

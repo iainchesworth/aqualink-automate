@@ -2,8 +2,6 @@
 
 #include "logging/logging.h"
 #include "options/options_pentair.h"
-#include "options/helpers/conflicting_options_helper.h"
-#include "options/helpers/option_dependency_helper.h"
 #include "utility/get_terminal_column_width.h"
 
 using namespace AqualinkAutomate::Logging;

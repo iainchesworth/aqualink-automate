@@ -30,6 +30,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		Chlorinator,
 		Cleaner,
 		Heater,
+		Light,
 		Pump,
 		Spillover,
 		Sprinkler,
@@ -66,7 +67,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class StatusTrait : public ImmutableTraitType<const std::string>
 	{
 	public:
-		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"StatusTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -76,7 +77,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class AuxillaryStatusTrait : public MutableTraitType<AuxillaryStatuses>
 	{
 	public:
-		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"AuxillaryStatusTrait"}; }
 	};
 
 	//---------------------------------------------------------------------
@@ -86,7 +87,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class ChlorinatorStatusTrait : public MutableTraitType<ChlorinatorStatuses>
 	{
 	public:
-		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"ChlorinatorStatusTrait"}; }
 	};
 
 	class GeneratingPercentageTrait : public MutableTraitType<uint8_t>
@@ -114,7 +115,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class HeaterStatusTrait : public MutableTraitType<HeaterStatuses>
 	{
 	public:
-		TraitKey Name() const final { return std::string{"StatusTrait_MultipleTraitTypes"}; }
+		TraitKey Name() const final { return std::string{"HeaterStatusTrait"}; }
 	};
 
 	class TargetTemperatureTrait : public MutableTraitType<Temperature>
@@ -152,7 +153,7 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 	class PumpStatusTrait : public MutableTraitType<PumpStatuses>
 	{
 	public:
-		TraitKey Name() const final { return std::string{ "StatusTrait_MultipleTraitTypes" }; }
+		TraitKey Name() const final { return std::string{ "PumpStatusTrait" }; }
 	};
 
 	class PumpTypeTrait : public MutableTraitType<PumpTypes>

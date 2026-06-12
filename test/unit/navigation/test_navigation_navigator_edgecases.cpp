@@ -86,6 +86,15 @@ namespace
 		};
 		model.RegisterPage(std::move(password_page));
 
+		// StartUp splash (transient cold-start page): no edges; the controller
+		// auto-advances off it on its own, so the navigator must wait, not recover.
+		MenuPage startup_page;
+		startup_page.id = PageId::StartUp;
+		startup_page.name = "StartUp";
+		startup_page.detectors = { {7, "REV "} };
+		startup_page.transient = true;
+		model.RegisterPage(std::move(startup_page));
+
 		// Global edges for system events
 		model.RegisterGlobalEdge({ EdgeTrigger::SystemTimeout, PageId::Unknown, PageId::TimeOut, 0, "Timeout" });
 		model.RegisterGlobalEdge({ EdgeTrigger::SystemService, PageId::Unknown, PageId::Service, 0, "Service" });
@@ -160,6 +169,29 @@ BOOST_AUTO_TEST_CASE(TestCursorMovement_LineUp_WhenAboveTarget)
 	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
 }
 
+// Regression: a clear-all highlight (line id 0xFF) means "no line highlighted" on the device.
+// Treating that literal value as a real row index would leave the navigator chasing a
+// non-existent line; the previously known cursor line must be retained instead.
+BOOST_AUTO_TEST_CASE(TestCursorMovement_ClearAllHighlight_RetainsPreviousCursor)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	auto system_content = MakePage({{0, "Equipment ON/OFF"}});
+
+	// Establish a known cursor line.
+	nav.OnPageUpdate(system_content, 3);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
+
+	// A clear-all (0xFF) arrives; the cursor line must NOT become 0xFF.
+	nav.OnPageUpdate(system_content, Navigator::CURSOR_LINE_NONE);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
+
+	// A subsequent real highlight updates the cursor normally.
+	nav.OnPageUpdate(system_content, 4);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 4);
+}
+
 // =============================================================================
 // Recovery
 // =============================================================================
@@ -191,6 +223,89 @@ BOOST_AUTO_TEST_CASE(TestRecovery_ServicePage_CausesFailed)
 }
 
 // =============================================================================
+// Transient pages (cold-start StartUp splash)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestTransientPage_StartUpSplash_WaitsThenSucceeds)
+{
+	// Regression (live capture test/fixtures/iaq_onetouch_startup.cap): at cold
+	// start the controller shows the StartUp splash, which has no Back support and
+	// no edges. The navigator used to treat it as unrecoverable and FAIL the whole
+	// startup crawl (navigator.cpp:908 "Cannot recover from page without Back
+	// support and no System link"). It must instead WAIT for the controller to
+	// auto-advance, then continue to the target.
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	// Sync to EquipmentOnOff (which has a Back edge to System).
+	nav.StartSync();
+	auto equip_content = MakePage({{0, "Equipment ON/OFF"}, {1, "Filter Pump"}});
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip_content, 5);
+	}
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::EquipmentOnOff);
+
+	// Navigate to System: the navigator sends Back and waits for System.
+	nav.NavigateTo(PageId::System);
+	auto cmd = nav.OnPageUpdate(equip_content, 5);
+	BOOST_REQUIRE(cmd.has_value());
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
+
+	// Instead of System, the controller shows the transient StartUp splash.
+	auto startup_content = MakePage({{6, "RS-8 Combo"}, {7, "REV T"}});
+	nav.OnStatusMessageReceived();
+	nav.OnStatusMessageReceived();
+	nav.OnPageUpdate(startup_content, 0);
+
+	// Must NOT fail -- it should be waiting for the splash to auto-clear.
+	BOOST_CHECK(nav.GetState() != Navigator::State::Failed);
+	BOOST_CHECK(!nav.IsComplete());
+	BOOST_CHECK(nav.GetCurrentPage() == PageId::StartUp);
+
+	// The splash can persist for a few updates -- still no failure.
+	nav.OnPageUpdate(startup_content, 0);
+	BOOST_CHECK(nav.GetState() != Navigator::State::Failed);
+
+	// The controller auto-advances to System (home) -> navigation completes.
+	auto system_content = MakePage({{0, "Equipment ON/OFF"}});
+	nav.OnPageUpdate(system_content, 0);
+	BOOST_CHECK(nav.IsSuccess());
+	BOOST_CHECK(nav.GetCurrentPage() == PageId::System);
+}
+
+BOOST_AUTO_TEST_CASE(TestTransientPage_NeverClears_StopsWaitingAndDoesNotHang)
+{
+	// A transient page that never clears must not be waited on forever: after
+	// MAX_TRANSIENT_WAITS it falls through to normal recovery (which, for a page
+	// with no Back and no System link, ends in Failed) -- i.e. it terminates
+	// rather than hanging.
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	nav.StartSync();
+	auto equip_content = MakePage({{0, "Equipment ON/OFF"}, {1, "Filter Pump"}});
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip_content, 5);
+	}
+
+	nav.NavigateTo(PageId::System);
+	nav.OnPageUpdate(equip_content, 5);  // sends Back
+	nav.OnStatusMessageReceived();
+	nav.OnStatusMessageReceived();
+
+	// Feed the splash well past the wait budget; it must stop waiting eventually.
+	auto startup_content = MakePage({{6, "RS-8 Combo"}, {7, "REV T"}});
+	for (uint32_t i = 0; i < Navigator::MAX_TRANSIENT_WAITS + 5; ++i)
+	{
+		nav.OnPageUpdate(startup_content, 0);
+	}
+
+	BOOST_CHECK(nav.IsComplete());  // terminated (Failed) rather than hanging forever
+}
+
+// =============================================================================
 // Password Entry
 // =============================================================================
 
@@ -219,8 +334,12 @@ BOOST_AUTO_TEST_CASE(TestPassword_NoPassword_BacksOut)
 	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
 }
 
-BOOST_AUTO_TEST_CASE(TestPassword_ValidPassword_SendsSelect)
+BOOST_AUTO_TEST_CASE(TestPassword_ConfiguredPassword_BacksOutUnsupported)
 {
+	// Regression: automated PIN entry over RS-485 is not implemented (it requires reading the
+	// on-screen digit value, which has not been decoded). The previous placeholder blindly
+	// pressed Select per digit and reported success without ever setting a value (and logged the
+	// PIN). The navigator must now back out honestly even when a password is configured.
 	auto model = BuildTestModel();
 	Navigator nav(model);
 	nav.SetPassword("1234");
@@ -240,9 +359,12 @@ BOOST_AUTO_TEST_CASE(TestPassword_ValidPassword_SendsSelect)
 	auto password_content = MakePage({{0, "Enter Password"}});
 	auto cmd = nav.OnPageUpdate(password_content, 0);
 
-	// Should enter password with Select commands
+	// Automated password entry is unsupported -> back out (NOT a blind Select that fakes success)
 	BOOST_REQUIRE(cmd.has_value());
-	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Select));
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Back));
+
+	// The navigator must NOT enter the (removed) EnteringPassword state.
+	BOOST_CHECK(nav.GetState() != Navigator::State::EnteringPassword);
 }
 
 // =============================================================================
@@ -290,7 +412,7 @@ BOOST_AUTO_TEST_CASE(TestRecomputeLimit_MaxRecomputes_CausesFailed)
 
 	// Navigate to System (already there) - should succeed immediately
 	nav.NavigateTo(PageId::System);
-	auto cmd = nav.OnPageUpdate(system_content, 0);
+	nav.OnPageUpdate(system_content, 0);
 
 	// Should arrive at destination
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::AtDestination));

@@ -1,13 +1,16 @@
+#include <cstddef>
 #include <cstdint>
 #include <random>
 
 #include <boost/circular_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "jandy/errors/jandy_errors_messages.h"
-#include "jandy/errors/jandy_errors_protocol.h"
+#include "errors/message_errors.h"
+#include "errors/protocol_errors.h"
 #include "jandy/formatters/jandy_message_formatters.h"
 #include "jandy/generator/jandy_message_generator.h"
+#include "jandy/generator/jandy_message_generator_packetvalidation.h"
+#include "jandy/messages/jandy_message.h"
 #include "jandy/types/jandy_types.h"
 #include "logging/logging.h"
 
@@ -252,6 +255,31 @@ BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLength)
 	RunTests();
 }
 
+BOOST_AUTO_TEST_CASE(PacketStartsButLongerThanMaximumLengthWithNoEndSequence)
+{
+	// Regression: BufferCleanUp_HasEndOfPacketWithinMaxDistance used to advance the erase endpoint by
+	// PACKET_END_SEQUENCE.size() unconditionally. When a packet start is present but NO end sequence has
+	// been received, p1_end == serial_data.end(); adding 2 pushed the erase endpoint past end() (an
+	// out-of-bounds iterator) once the buffer exceeded MAXIMUM_PACKET_LENGTH bytes. This must now be
+	// handled cleanly by clamping the erase endpoint to end().
+
+	boost::circular_buffer<uint8_t> test_data(200);
+	test_data.push_back(0x10); // DLE
+	test_data.push_back(0x02); // STX -> a valid packet start...
+	for (std::size_t i = test_data.size(); i < 200; ++i)
+	{
+		// ...followed by filler that never forms a DLE/ETX end sequence nor a second DLE/STX start.
+		test_data.push_back(0xAA);
+	}
+
+	BOOST_TEST(test_data.size() > static_cast<std::size_t>(JandyMessage::MAXIMUM_PACKET_LENGTH));
+
+	QueueTest(test_data, Test_WaitingForMoreData, "Test Iteration - WAITING FOR DATA");
+	StopTests(test_data, 0, "STOPPING TEST");
+
+	RunTests();
+}
+
 BOOST_AUTO_TEST_CASE(ValidPackets_50)
 {
 	auto test_data = Test::MakeCircularBuffer<uint8_t>({
@@ -342,6 +370,35 @@ BOOST_AUTO_TEST_CASE(ValidPackets_50)
 	StopTests(test_data, 0, "STOPPING TEST");
 
 	RunTests();
+}
+
+BOOST_AUTO_TEST_CASE(ChecksumValidation_RejectsUnderLengthRange)
+{
+	// Regression: PacketValidation_ChecksumIsValid computes the checksum iterator at (length - 3) with no
+	// lower-bound guard. A range shorter than 3 bytes would wrap the unsigned subtraction and form an
+	// out-of-bounds iterator. A range of length < 3 must now be rejected outright.
+
+	auto buffer_len_0 = Test::MakeCircularBuffer<uint8_t>({ });
+	BOOST_TEST(false == PacketValidation_ChecksumIsValid(buffer_len_0.begin(), buffer_len_0.end()));
+
+	auto buffer_len_1 = Test::MakeCircularBuffer<uint8_t>({ 0x10 });
+	BOOST_TEST(false == PacketValidation_ChecksumIsValid(buffer_len_1.begin(), buffer_len_1.end()));
+
+	auto buffer_len_2 = Test::MakeCircularBuffer<uint8_t>({ 0x10, 0x02 });
+	BOOST_TEST(false == PacketValidation_ChecksumIsValid(buffer_len_2.begin(), buffer_len_2.end()));
+}
+
+BOOST_AUTO_TEST_CASE(ChecksumValidation_AcceptsValidMinimalChecksum)
+{
+	// A length-3 range is the smallest the validator accepts. The checksum byte sits at index (length - 3),
+	// i.e. index 0, so the summed range [begin, checksum_it) is empty and the expected checksum is 0x00.
+	// Confirm both a matching and a mismatching checksum are handled without going out of bounds.
+
+	auto matching = Test::MakeCircularBuffer<uint8_t>({ 0x00, 0xAA, 0xBB });
+	BOOST_TEST(true == PacketValidation_ChecksumIsValid(matching.begin(), matching.end()));
+
+	auto mismatching = Test::MakeCircularBuffer<uint8_t>({ 0x01, 0xAA, 0xBB });
+	BOOST_TEST(false == PacketValidation_ChecksumIsValid(mismatching.begin(), mismatching.end()));
 }
 
 BOOST_AUTO_TEST_SUITE_END();

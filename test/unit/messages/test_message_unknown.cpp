@@ -1,3 +1,4 @@
+#include <span>
 #include <string>
 #include <vector>
 
@@ -48,9 +49,26 @@ BOOST_AUTO_TEST_CASE(TestToString)
 {
     JandyMessage_Unknown message;
 
-    const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: Unknown (0xff) || Payload: 0";
+    const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: Unknown (0xff) || Payload (0 bytes)";
 
     BOOST_CHECK_EQUAL(expected, message.ToString());
+}
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_RetainsPayload)
+{
+    // A frame addressed to the master (0x00) carrying a 2-byte payload -- exactly the kind of
+    // undecoded "command" the to-master decoder must be able to inspect byte-for-byte. The
+    // Unknown message must now retain the payload verbatim (previously it was discarded).
+    //   DLE STX 00 29  11 1c  <chk=0x68> DLE ETX   (chk = 0x10+0x02+0x00+0x29+0x11+0x1c = 0x68)
+    std::vector<uint8_t> frame = { 0x10, 0x02, 0x00, 0x29, 0x11, 0x1c, 0x68, 0x10, 0x03 };
+
+    JandyMessage_Unknown message;
+    BOOST_REQUIRE(message.Deserialize(std::as_bytes(std::span<uint8_t>(frame))));
+
+    BOOST_CHECK_EQUAL(message.RawId(), 0x29);
+    BOOST_REQUIRE_EQUAL(message.Payload().size(), 2u);
+    BOOST_CHECK_EQUAL(message.Payload()[0], 0x11);
+    BOOST_CHECK_EQUAL(message.Payload()[1], 0x1c);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

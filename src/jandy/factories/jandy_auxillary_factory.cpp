@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <boost/algorithm/string.hpp>
 
 #include "auxillaries/jandy_auxillary_traits_types.h"

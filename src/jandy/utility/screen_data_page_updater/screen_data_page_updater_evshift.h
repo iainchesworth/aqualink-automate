@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 		uint8_t LastLineId() const;
 		uint8_t NumberOfShifts() const;
 
-	public:
+	private:
 		const ScreenDataPage::ShiftDirections m_Direction;
 		const uint8_t m_FirstLineId;
 		const uint8_t m_LastLineId;

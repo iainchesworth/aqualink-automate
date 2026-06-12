@@ -10,15 +10,16 @@ namespace AqualinkAutomate::Logging
 {
 	namespace SeverityFiltering
 	{
-		const Channel DEFAULT_CHANNEL = Channel::Main;
-		const Severity DEFAULT_SEVERITY = Severity::Info;
+		inline constexpr Channel DEFAULT_CHANNEL = Channel::Main;
+		inline constexpr Severity DEFAULT_SEVERITY = Severity::Info;
 
 		void SetGlobalFilterLevel(Severity severity);
 		void SetChannelFilterLevel(Channel channel, Severity severity);
 		
-		Severity GetChannelFilterLevel(Channel channel);
+		[[nodiscard]] Severity GetChannelFilterLevel(Channel channel);
+		[[nodiscard]] bool ShouldLog(Channel channel, Severity severity);
 
-		bool PerChannelTest(boost::log::value_ref<Channel, tag::channel> const& channel, boost::log::value_ref<Severity, tag::severity> const& severity);
+		[[nodiscard]] bool PerChannelTest(boost::log::value_ref<Channel, tag::channel> const& channel, boost::log::value_ref<Severity, tag::severity> const& severity);
 	}
 	// namespace SeverityFiltering
 }

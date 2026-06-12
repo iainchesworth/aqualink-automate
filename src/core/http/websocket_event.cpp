@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <format>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -34,15 +35,15 @@ namespace AqualinkAutomate::HTTP
 			switch (config_event->Type())
 			{
 			case Kernel::Hub_EventTypes::ButtonStateChange:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_ButtonStateChange>(config_event));
+				SetFromEvent(WebSocket_EventTypes::ButtonStateChange, std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_ButtonStateChange>(config_event));
 				break;
 
 			case Kernel::Hub_EventTypes::Chemistry:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Chemistry>(config_event));
+				SetFromEvent(WebSocket_EventTypes::ChemistryUpdate, std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Chemistry>(config_event));
 				break;
 
 			case Kernel::Hub_EventTypes::Temperature:
-				this->operator=(std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Temperature>(config_event));
+				SetFromEvent(WebSocket_EventTypes::TemperatureUpdate, std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Temperature>(config_event));
 				break;
 
 			default:
@@ -54,19 +55,19 @@ namespace AqualinkAutomate::HTTP
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange>& button_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
-		this->operator=(button_config_event);
+		SetFromEvent(WebSocket_EventTypes::ButtonStateChange, button_config_event);
 	}
 
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry>& chem_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
-		this->operator=(chem_config_event);
+		SetFromEvent(WebSocket_EventTypes::ChemistryUpdate, chem_config_event);
 	}
 
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
-		this->operator=(temp_config_event);
+		SetFromEvent(WebSocket_EventTypes::TemperatureUpdate, temp_config_event);
 	}
 
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent>& system_event) :
@@ -81,7 +82,7 @@ namespace AqualinkAutomate::HTTP
 			switch (system_event->Type())
 			{
 			case Kernel::Hub_EventTypes::ServiceStatus:
-				this->operator=(std::dynamic_pointer_cast<Kernel::EquipmentHub_SystemEvent_StatusChange>(system_event));
+				SetFromEvent(WebSocket_EventTypes::SystemStatusChange, std::dynamic_pointer_cast<Kernel::EquipmentHub_SystemEvent_StatusChange>(system_event));
 				break;
 
 			default:
@@ -93,71 +94,23 @@ namespace AqualinkAutomate::HTTP
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event) :
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
-		this->operator=(status_system_event);
+		SetFromEvent(WebSocket_EventTypes::SystemStatusChange, status_system_event);
 	}
 
-	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_ButtonStateChange>& button_config_event)
+	template<typename EVENT_TYPE>
+	void WebSocket_Event::SetFromEvent(WebSocket_EventTypes event_type, const std::shared_ptr<EVENT_TYPE>& event)
 	{
-		if (nullptr == button_config_event)
+		if (nullptr == event)
 		{
-			LogDebug(Channel::Web, "Invalid DataHub_ConfigEvent_ButtonStateChange; cannot process type and payload.");
+			LogDebug(Channel::Web, [event_type] { return std::format("Invalid {} event; cannot process type and payload.", magic_enum::enum_name(event_type)); });
 		}
 		else
 		{
-			m_EventType = WebSocket_EventTypes::ButtonStateChange;
+			m_EventType = event_type;
 			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = button_config_event->ToJSON();
+			// ToJSON() returns by value; the temporary is move-assigned into the payload.
+			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = event->ToJSON();
 		}
-
-		return *this;
-	}
-
-	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Chemistry>& chem_config_event)
-	{
-		if (nullptr == chem_config_event)
-		{
-			LogDebug(Channel::Web, "Invalid DataHub_ConfigEvent_Chemistry; cannot process type and payload.");
-		}
-		else
-		{
-			m_EventType = WebSocket_EventTypes::ChemistryUpdate;
-			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = chem_config_event->ToJSON();
-		}
-
-		return *this;
-	}
-
-	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event)
-	{
-		if (nullptr == temp_config_event)
-		{
-			LogDebug(Channel::Web, "Invalid DataHub_Event_Temperature; cannot process type and payload.");
-		}
-		else
-		{
-			m_EventType = WebSocket_EventTypes::TemperatureUpdate;
-			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = temp_config_event->ToJSON();
-		}
-
-		return *this;
-	}
-
-	WebSocket_Event& WebSocket_Event::operator=(const std::shared_ptr<Kernel::EquipmentHub_SystemEvent_StatusChange>& status_system_event)
-	{
-		if (nullptr == status_system_event)
-		{
-			LogDebug(Channel::Web, "Invalid EquipmentHub_SystemEvent_StatusChange; cannot process type and payload.");
-		}
-		else
-		{
-			m_EventType = WebSocket_EventTypes::SystemStatusChange;
-			m_EventPayload[WS_JSON_TYPE_FIELD] = magic_enum::enum_name(m_EventType);
-			m_EventPayload[WS_JSON_PAYLOAD_FIELD] = status_system_event->ToJSON();
-		}
-
-		return *this;
 	}
 
 	WebSocket_EventTypes WebSocket_Event::Type() const
@@ -177,9 +130,20 @@ namespace AqualinkAutomate::HTTP
 
 	std::optional<WebSocket_Event> WebSocket_Event::ConvertFromString(const std::string& event_payload)
 	{
+		return ConvertFromStringView(event_payload);
+	}
+
+	std::optional<WebSocket_Event> WebSocket_Event::ConvertFromStringView(const std::string_view& event_payload)
+	{
 		std::optional<WebSocket_Event> return_event{std::nullopt};
 
-		auto parsed_event{nlohmann::json::parse(event_payload, nullptr, false, false)};
+		// Parse directly from the view's contiguous range; no intermediate std::string copy.
+		// IMPORTANT: copy-initialise with '=', NOT 'auto x{...}'. Under gcc/libstdc++,
+		// brace-initialising from a single nlohmann::json selects the initializer_list
+		// constructor, which wraps the parsed object in a 1-element ARRAY -- then
+		// contains("type") is always false and every event is silently rejected. (MSVC
+		// treats 'auto x{e}' as copy-init, which is why this passed on Windows only.)
+		auto parsed_event = nlohmann::json::parse(event_payload.begin(), event_payload.end(), nullptr, false, false);
 
 		if (!parsed_event.contains(WS_JSON_TYPE_FIELD))
 		{
@@ -204,11 +168,6 @@ namespace AqualinkAutomate::HTTP
 		}
 
 		return return_event;
-	}
-
-	std::optional<WebSocket_Event> WebSocket_Event::ConvertFromStringView(const std::string_view& event_payload)
-	{
-		return ConvertFromString(std::string(event_payload.data(), event_payload.size()));
 	}
 }
 // namespace AqualinkAutomate::HTTP

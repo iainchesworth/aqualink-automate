@@ -3,6 +3,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "messages/heater/heater_message_status.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -45,25 +46,22 @@ namespace AqualinkAutomate::Messages
 
 	bool HeaterMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into HeaterMessage_Status type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into HeaterMessage_Status type", message_bytes.size()); });
 
-		if (message_bytes.size() <= Index_HeaterState)
+		if (!Text::RequireIndex(message_bytes, Index_HeaterState, "HeaterMessage_Status", "HeaterState"))
 		{
-			LogDebug(Channel::Messages, "HeaterMessage_Status is too short to deserialise HeaterState.");
-		}
-		else if (message_bytes.size() <= Index_ErrorCode)
-		{
-			LogDebug(Channel::Messages, "HeaterMessage_Status is too short to deserialise ErrorCode.");
-		}
-		else
-		{
-			m_HeaterState = magic_enum::enum_cast<HeaterStates>(static_cast<uint8_t>(message_bytes[Index_HeaterState])).value_or(HeaterStates::Unknown);
-			m_ErrorCode = magic_enum::enum_cast<HeaterErrors>(static_cast<uint8_t>(message_bytes[Index_ErrorCode])).value_or(HeaterErrors::Unknown);
-
-			return true;
+			return false;
 		}
 
-		return false;
+		if (!Text::RequireIndex(message_bytes, Index_ErrorCode, "HeaterMessage_Status", "ErrorCode"))
+		{
+			return false;
+		}
+
+		m_HeaterState = magic_enum::enum_cast<HeaterStates>(Text::ReadU8(message_bytes, Index_HeaterState)).value_or(HeaterStates::Unknown);
+		m_ErrorCode = magic_enum::enum_cast<HeaterErrors>(Text::ReadU8(message_bytes, Index_ErrorCode)).value_or(HeaterErrors::Unknown);
+
+		return true;
 	}
 
 }

@@ -8,15 +8,15 @@ namespace AqualinkAutomate::Profiling
 	{
 	}
 
-	inline void Frame::Start() const
+	void Frame::Start() const
 	{
 	}
 
-	inline void Frame::End() const
+	void Frame::End() const
 	{
 	}
 
-	inline void Frame::Mark() const
+	void Frame::Mark() const
 	{
 	}
 

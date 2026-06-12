@@ -1,7 +1,7 @@
 #pragma once
 
 #include <format>
-#include <iostream>
+#include <ostream>
 #include <string>
 
 #include "formatters/units_electric_potential_formatter.h"

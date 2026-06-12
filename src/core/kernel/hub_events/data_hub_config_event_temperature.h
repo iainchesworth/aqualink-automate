@@ -2,7 +2,6 @@
 
 #include <optional>
 
-#include <boost/uuid/uuid.hpp>
 #include <nlohmann/json.hpp>
 
 #include "kernel/temperature.h"
@@ -32,7 +31,6 @@ namespace AqualinkAutomate::Kernel
 		void SpaSetpoint(const Kernel::Temperature& spa_setpoint);
 
 	public:
-		boost::uuids::uuid Id() const override;
 		nlohmann::json ToJSON() const override;
 
 	private:

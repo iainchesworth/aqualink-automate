@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "options/options_config_file.h"
 #include "options/options_web_options.h"
 #include "options/options_registry.h"
 #include "options/options_app_options.h"
@@ -230,6 +231,34 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_CustomBindAddress)
 }
 
 //-----------------------------------------------------------------------------
+// API AUTH TOKEN (opt-in, default UNSET)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_ApiAuthToken_DefaultUnset)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	// Default behaviour: no token => no auth, exactly as before.
+	BOOST_CHECK(!result.value().ApiAuthToken.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_ApiAuthToken_SetWhenProvided)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program", "--api-auth-token=s3cr3t-token" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_REQUIRE(result.value().ApiAuthToken.has_value());
+	BOOST_CHECK_EQUAL(result.value().ApiAuthToken.value(), "s3cr3t-token");
+}
+
+//-----------------------------------------------------------------------------
 // CONTENT DISABLE
 //-----------------------------------------------------------------------------
 
@@ -261,6 +290,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DisableHttps)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -284,6 +314,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DefaultsEnableHttps)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -307,6 +338,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_DisableBoth)
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();
@@ -330,6 +362,7 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_FullPipeline_ConflictingOptionsFailsValidat
 	auto processed_options = Options::Initialise()
 		| Options::Add(Options::Web::OptionsProcessor{})
 		| Options::Parse(argc, const_cast<char**>(argv))
+		| Options::Notify()
 		| Options::Validate()
 		| Options::Process(Options::Web::OptionsProcessor{})
 		| Options::Finalise();

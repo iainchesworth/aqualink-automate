@@ -50,13 +50,20 @@ public:
 public:
 	std::vector<std::byte> data;
 	std::span<const std::byte> span_data;
-
-public:
-	JandyMessage_Message message;
 };
 
 BENCHMARK_DEFINE_F(JandyMessage_Deserialise_Fixture, JandyMessage_Deserialise)(benchmark::State& state)
 {
+	// Construct the message here (at benchmark run time), NOT as a fixture member.
+	// BENCHMARK_REGISTER_F instantiates the fixture object during static
+	// initialisation, and JandyMessage_Message's constructor connects to a global
+	// boost::signals2 signal via IMessageSignalRecv::GetSignal(). Under MSVC
+	// Release + LTO that function-local-static signal is not yet initialised at
+	// static-init time, so constructing the message as a member dereferenced a
+	// null signal and crashed the perf executable before main (0xC0000005).
+	// Building it inside the benchmark body defers construction to run time.
+	JandyMessage_Message message;
+
 	for ([[maybe_unused]] auto _ : state)
 	{
 		benchmark::DoNotOptimize(message.Deserialize(span_data));

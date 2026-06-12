@@ -31,8 +31,14 @@ namespace AqualinkAutomate::Jandy::Protocol
 			}
 		};
 
-		// Register with priority 0 (highest - Jandy is the primary protocol)
-		AqualinkAutomate::Protocol::MessageGeneratorRegistry::Instance().Register(jandy_generator, 0);
+		// Register with priority 1 so the (non-destructive) Pentair generator at
+		// priority 0 gets first refusal on each buffer.  The Jandy generator
+		// clears the whole buffer when it finds no DLE/STX start, which would
+		// otherwise discard an in-flight Pentair frame; letting Pentair run first
+		// (it leaves non-Pentair buffers untouched) keeps both protocols working
+		// on a shared stream.  When Jandy is the only registered protocol this
+		// priority is immaterial — its behaviour is unchanged.
+		AqualinkAutomate::Protocol::MessageGeneratorRegistry::Instance().Register(jandy_generator, 1);
 	}
 
 	void UnregisterMessageGenerator()

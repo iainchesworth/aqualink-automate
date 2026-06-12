@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(TestToString)
 {
     JandyMessage_MessageLong message;
 
-    const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: MessageLong (0x04) || Payload: 0";
+    const std::string expected = "Packet: Destination: AqualinkMaster (0x00), Message Type: MessageLong (0x04) || Payload: LineId: 0, Line: ''";
 
     BOOST_CHECK_EQUAL(message.ToString(), expected);
 }

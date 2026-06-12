@@ -1,40 +1,15 @@
 #pragma once
 
-#include <memory>
-#include <string_view>
-
-#include "concepts/is_c_array.h"
-#include "interfaces/istatus.h"
+#include "interfaces/status_tag.h"
 
 namespace AqualinkAutomate::Equipment
 {
 
-	template<const auto& EQUPIMENT_STATUS_STRING>
-	requires (Concepts::CArray<decltype(EQUPIMENT_STATUS_STRING)>)
-	class EquipmentStatus : public Interfaces::IStatus
-	{
-		inline static constexpr std::string_view SOURCE_NAME{ "my_source" };
-		inline static constexpr std::string_view SOURCE_TYPE{ "equipment" };
+	inline constexpr char EQUIPMENTSTATUS_SOURCE_TYPE[] = "equipment";
 
-	public:
-		std::string_view SourceName() const final
-		{
-			return SOURCE_NAME;
-		}
-
-		std::string_view SourceType() const final
-		{
-			return SOURCE_TYPE;
-		}
-
-		std::string_view StatusType() const final
-		{
-			return m_StatusType;
-		}
-
-	private:
-		const std::string_view m_StatusType{ EQUPIMENT_STATUS_STRING };
-	};
+	/// Equipment-side status tag: a StatusTag whose source-type text is "equipment".
+	template<const auto& EQUIPMENT_STATUS_STRING>
+	using EquipmentStatus = Interfaces::StatusTag<EQUIPMENT_STATUS_STRING, EQUIPMENTSTATUS_SOURCE_TYPE>;
 
 	inline constexpr char EQUIPMENTSTATUS_UNKNOWN_NAME[] = "Unknown";
 	class EquipmentStatus_Unknown : public EquipmentStatus<EQUIPMENTSTATUS_UNKNOWN_NAME>

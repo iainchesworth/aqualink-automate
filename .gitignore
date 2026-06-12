@@ -41,6 +41,10 @@ bld/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
+
+# CMake user presets / settings (local, per-developer; must not be checked in)
+CMakeUserPresets.json
+CMakeSettings.json
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
 
@@ -357,3 +361,20 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 /.clang-format
+
+# Packer - never commit variable values (may contain secrets/infra details)
+cicd/packer/*.pkrvars.hcl
+!cicd/packer/*.pkrvars.hcl.example
+cicd/packer/ISOs/
+cicd/packer/packer_cache/
+
+# Playwright end-to-end UI tests (Node tooling + run artifacts)
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+/build
+
+# Local serial capture / replay scratch (recordings + decode logs; large, never source)
+captures/

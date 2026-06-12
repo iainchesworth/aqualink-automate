@@ -8,17 +8,12 @@ namespace AqualinkAutomate::Utility::ScreenDataPageUpdaterImpl
 	{
 	}
 
-	evUpdate::evUpdate(ScreenDataPageLine& line) :
-		m_Line(line)
-	{
-	}
-
 	evUpdate::ScreenDataPageLine::first_type evUpdate::Id() const
 	{
 		return m_Line.first;
 	}
 
-	evUpdate::ScreenDataPageLine::second_type evUpdate::Text() const
+	const evUpdate::ScreenDataPageLine::second_type& evUpdate::Text() const
 	{
 		return m_Line.second;
 	}

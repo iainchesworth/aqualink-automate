@@ -75,6 +75,12 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
 	{
+		if ((temperature < SETPOINT_MIN_VALUE) || (temperature > SETPOINT_MAX_VALUE))
+		{
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Pool setpoint {} out of valid range [{}, {}]", static_cast<int>(temperature), static_cast<int>(SETPOINT_MIN_VALUE), static_cast<int>(SETPOINT_MAX_VALUE)));
+			return CommandResult::InvalidValue;
+		}
+
 		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
@@ -89,6 +95,12 @@ namespace AqualinkAutomate::Devices
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
 	{
+		if ((temperature < SETPOINT_MIN_VALUE) || (temperature > SETPOINT_MAX_VALUE))
+		{
+			LogWarning(Channel::Devices, std::format("CommandDispatcher: Spa setpoint {} out of valid range [{}, {}]", static_cast<int>(temperature), static_cast<int>(SETPOINT_MIN_VALUE), static_cast<int>(SETPOINT_MAX_VALUE)));
+			return CommandResult::InvalidValue;
+		}
+
 		auto serial_adapter = FindSerialAdapter();
 		if (!serial_adapter)
 		{
@@ -148,6 +160,20 @@ namespace AqualinkAutomate::Devices
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: {} chlorinator boost", enable ? "Enabling" : "Disabling"));
 		iaq_device->get().QueueChlorinatorBoost(enable);
+		return CommandResult::Success;
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SelectIAQPageButton(uint8_t button_index)
+	{
+		auto iaq_device = FindIAQDevice();
+		if (!iaq_device)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ/AqualinkTouch device found for page-button select");
+			return CommandResult::DeviceNotFound;
+		}
+
+		LogInfo(Channel::Devices, std::format("CommandDispatcher: Selecting IAQ page button index {}", static_cast<int>(button_index)));
+		iaq_device->get().SelectPageButton(button_index);
 		return CommandResult::Success;
 	}
 

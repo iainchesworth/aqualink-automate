@@ -1,5 +1,7 @@
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 
 #include "logging/logging.h"
 #include "profiling/profiling.h"
@@ -104,6 +106,24 @@ namespace AqualinkAutomate::Serial::RFC2217
 		m_CommandBuffer.push_back(byte);
 		m_State = State::SUBNEG;
 		return std::nullopt;
+	}
+
+	std::size_t ProtocolHandler::FilterInboundData(std::span<uint8_t> raw)
+	{
+		// Compact decoded data bytes to the front of the same buffer.  out_pos is
+		// always <= the index of the byte currently being read, so the in-place
+		// rewrite can never overrun its own source.
+		std::size_t out_pos = 0;
+
+		for (const uint8_t byte : raw)
+		{
+			if (const auto data_byte = ProcessByte(byte); data_byte.has_value())
+			{
+				raw[out_pos++] = *data_byte;
+			}
+		}
+
+		return out_pos;
 	}
 
 	std::optional<uint8_t> ProtocolHandler::ProcessByte(uint8_t byte)

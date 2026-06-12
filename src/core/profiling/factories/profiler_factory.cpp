@@ -24,19 +24,13 @@ namespace AqualinkAutomate::Factory
 
 	void ProfilerFactory::SetDesired(Types::ProfilerTypes type)
 	{
-		// Self-registration schemes suck...there's no cross-platform way to make it work so:
-		if (!m_DesiredProfiler.has_value())
-		{
-			// Only register the available 
-		}
-
 		m_DesiredProfiler = type;
 
 		// Make sure that the profiling units are the same type.
 		ProfilingUnitFactory::Instance().SetDesired(type);
 	}
 
-	Types::ProfilerTypePtr AqualinkAutomate::Factory::ProfilerFactory::Get()
+	Types::ProfilerTypePtr ProfilerFactory::Get()
 	{
 		if (m_DesiredProfiler.has_value())
 		{
@@ -48,8 +42,16 @@ namespace AqualinkAutomate::Factory
 				}
 			}
 		}
+
 		// No selected profiler, not found, or could not be instantiated so it's NoOp...
-		return std::make_shared<Profiling::NoOp_Profiler>();
+		//
+		// Get() is called on the per-frame hot path (PlotValue / EmitFrameMark), so the
+		// NoOp fallback is shared from a single function-local static rather than being
+		// heap-allocated (make_shared) on every call. The instance is stateless, so a
+		// shared one is safe; the single-threaded cooperative model means no synchronisation
+		// is required for the lazy init.
+		static const Types::ProfilerTypePtr noop_profiler = std::make_shared<Profiling::NoOp_Profiler>();
+		return noop_profiler;
 	}
 
 }

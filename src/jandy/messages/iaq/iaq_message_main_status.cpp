@@ -1,9 +1,11 @@
+#include <cstdint>
 #include <format>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "messages/iaq/iaq_message_main_status.h"
 #include "messages/jandy_message_ids.h"
+#include "messages/jandy_message_text_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -13,6 +15,11 @@ namespace AqualinkAutomate::Messages
 
 	namespace
 	{
+		// Some controller firmware versions append a two-byte sentinel pair after the
+		// device-ID list to mark the start of the status fields (legacy format).
+		constexpr uint8_t SENTINEL_BYTE_FIRST{ 0x0e };
+		constexpr uint8_t SENTINEL_BYTE_SECOND{ 0x0f };
+
 		// Convert raw MainStatus heater byte to HeaterStatuses enum.
 		// Protocol values: 0x00=off, 0x01=heating, 0x03=enabled (standby).
 		Kernel::HeaterStatuses RawToHeaterStatus(uint8_t raw)
@@ -120,16 +127,20 @@ namespace AqualinkAutomate::Messages
 
 	bool IAQMessage_MainStatus::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
-		LogTrace(Channel::Messages, std::format("Deserialising {} bytes from span into IAQMessage_MainStatus type", message_bytes.size()));
+		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_MainStatus type", message_bytes.size()); });
 
-		if (message_bytes.size() <= 4 + 3)
+		if (message_bytes.size() <= JandyMessage::PACKET_HEADER_LENGTH + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_MainStatus is too short to contain any payload.");
 			return false;
 		}
 
-		// Extract raw payload (between 4-byte header and 3-byte footer).
-		m_RawPayload.assign(message_bytes.begin() + 4, message_bytes.end() - 3);
+		// Extract raw payload (between the header and the footer) in a single allocation.
+		const std::size_t payload_length = message_bytes.size() - JandyMessage::PACKET_HEADER_LENGTH - JandyMessage::PACKET_FOOTER_LENGTH;
+		m_RawPayload.reserve(payload_length);
+		m_RawPayload.assign(
+			message_bytes.begin() + JandyMessage::PACKET_HEADER_LENGTH,
+			message_bytes.end() - JandyMessage::PACKET_FOOTER_LENGTH);
 
 		const auto& payload = m_RawPayload;
 		const size_t payload_size = payload.size();
@@ -151,25 +162,26 @@ namespace AqualinkAutomate::Messages
 
 		if (pos + device_count > payload_size)
 		{
-			LogDebug(Channel::Messages, std::format("IAQMessage_MainStatus payload too short for {} device IDs.", device_count));
+			LogDebug(Channel::Messages, [device_count]() { return std::format("IAQMessage_MainStatus payload too short for {} device IDs.", device_count); });
 			return false;
 		}
 
+		m_DeviceIds.reserve(device_count);
 		for (uint8_t i = 0; i < device_count; ++i)
 		{
 			m_DeviceIds.push_back(payload[pos++]);
 		}
 
-		// Some controller firmware versions append a 0x0e 0x0f sentinel pair after the
-		// device IDs. If present, skip it so we reach the status fields correctly.
-		const bool has_sentinel = (pos + 1 < payload_size && payload[pos] == 0x0e && payload[pos + 1] == 0x0f);
+		// Some controller firmware versions append a sentinel pair after the device
+		// IDs. If present, skip it so we reach the status fields correctly.
+		const bool has_sentinel = (pos + 1 < payload_size && payload[pos] == SENTINEL_BYTE_FIRST && payload[pos + 1] == SENTINEL_BYTE_SECOND);
 		if (has_sentinel)
 		{
 			pos += 2;
 		}
 
-		LogTrace(Channel::Messages, std::format("IAQMessage_MainStatus: device_count={}, sentinel={}, status_offset={}",
-			device_count, has_sentinel, pos));
+		LogTrace(Channel::Messages, [device_count, has_sentinel, pos]() { return std::format("IAQMessage_MainStatus: device_count={}, sentinel={}, status_offset={}",
+			device_count, has_sentinel, pos); });
 
 		// Read temperature helper — big-endian uint16.
 		auto read_temp_be = [&payload, &pos](double scale) -> Kernel::Temperature
@@ -247,7 +259,7 @@ namespace AqualinkAutomate::Messages
 			m_HeaterSetpoint = m_SpaMode ? spa_target : pool_target;
 		}
 
-		LogDebug(Channel::Messages, std::format(
+		LogDebug(Channel::Messages, [this]() { return std::format(
 			"Deserialised IAQMessage_MainStatus: Pump={}, SpaMode={}, Pool={:.1f}C, Spa={:.1f}C, Air={:.1f}C, PoolHeat={}, SpaHeat={}, Solar={}",
 			m_PumpOn, m_SpaMode,
 			m_PoolTemp.InCelsius().value(),
@@ -256,7 +268,7 @@ namespace AqualinkAutomate::Messages
 			magic_enum::enum_name(m_PoolHeaterStatus),
 			magic_enum::enum_name(m_SpaHeaterStatus),
 			magic_enum::enum_name(m_SolarHeaterStatus)
-		));
+		); });
 
 		return true;
 	}

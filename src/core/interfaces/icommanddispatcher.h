@@ -40,6 +40,7 @@ namespace AqualinkAutomate::Interfaces
 		virtual CommandResult SetChlorinatorPercentage(uint8_t percentage) = 0;
 		virtual CommandResult SetChlorinatorBoost(bool enable) = 0;
 		virtual CommandResult SetCirculationMode(Kernel::CirculationModes mode) = 0;
+		virtual CommandResult SelectIAQPageButton(uint8_t button_index) = 0;
 	};
 
 }

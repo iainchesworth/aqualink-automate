@@ -29,3 +29,42 @@ namespace AqualinkAutomate::Exceptions
 
 }
 // namespace AqualinkAutomate::Exceptions
+
+//
+// Exception-class boilerplate generators.
+//
+// Each derived exception used to be three lines of hand-written, byte-identical
+// boilerplate paired with a placeholder static message constant whose source_location
+// was captured at the .cpp definition site (so Where() pointed at the exception's own
+// file rather than the throw site).  These macros centralise that boilerplate and fix
+// the source_location capture point:
+//
+//   * AQ_DECLARE_EXCEPTION declares the derived type in a header.  The single defaulted
+//     `std::source_location` parameter is evaluated at the CALL SITE (i.e. the throw
+//     site) because default arguments are substituted at the point of call, so Where()
+//     now reports where the exception was actually thrown.  Existing zero-argument
+//     throw expressions (e.g. `throw Exceptions::Hub_NotFound();`) compile unchanged.
+//
+//   * AQ_DEFINE_EXCEPTION provides the matching out-of-line definition in a .cpp, binding
+//     the type to a concise, human-readable message that is surfaced verbatim to operators
+//     via what()/What() and the top-level Fatal log path.
+//
+// Types needing an additional caller-supplied message constructor (e.g. WebServerException)
+// declare/define that overload explicitly alongside these macros.
+//
+
+#define AQ_DECLARE_EXCEPTION(TYPE)                                                                 \
+	class TYPE : public ::AqualinkAutomate::Exceptions::GenericAqualinkException                   \
+	{                                                                                              \
+	public:                                                                                        \
+		explicit TYPE(std::source_location location = std::source_location::current());            \
+	}
+
+#define AQ_DEFINE_EXCEPTION(TYPE, MESSAGE)                                                         \
+	TYPE::TYPE(std::source_location location) :                                                    \
+		::AqualinkAutomate::Exceptions::GenericAqualinkException((MESSAGE), location)              \
+	{                                                                                              \
+		::LogTrace(                                                                                \
+			::AqualinkAutomate::Logging::Channel::Exceptions,                                      \
+			#TYPE " exception was constructed");                                                   \
+	}

@@ -13,6 +13,16 @@ namespace AqualinkAutomate::Version
 		return PROJECT_VERSION;
 	}
 
+	std::string VersionInfo::ProjectVersionFull()
+	{
+		return PROJECT_VERSION_FULL;
+	}
+
+	std::string VersionInfo::ProjectVersionPrerelease()
+	{
+		return PROJECT_VERSION_PRERELEASE;
+	}
+
 	std::string VersionInfo::ProjectDescription()
 	{
 		return PROJECT_DESCRIPTION;
