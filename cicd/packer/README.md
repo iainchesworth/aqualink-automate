@@ -108,19 +108,25 @@ Before booting, set these guestinfo properties on each VM (via vCenter > VM > Co
 
 | Variable | Value |
 |----------|-------|
-| `guestinfo.github.token` | Registration token from step 2 |
-| `guestinfo.github.repository` | `https://github.com/{owner}/aqualink-automate` |
-| `guestinfo.github.runner_name` | e.g. `linux-runner` or `windows-runner` |
-| `guestinfo.github.runner_labels` | e.g. `self-hosted,linux,x64` or `self-hosted,windows,x64` |
+| `guestinfo.runner_token` | Registration token from step 2 |
+| `guestinfo.runner_repo` | `https://github.com/{owner}/aqualink-automate` |
+| `guestinfo.runner_name` | e.g. `linux-runner` or `windows-runner` |
+| `guestinfo.runner_labels` | e.g. `self-hosted,linux,x64` or `self-hosted,windows,x64` |
+
+> These key names must match exactly what the auto-registration scripts read
+> (`scripts/linux/08-github-runner.sh`, `scripts/windows/05-github-runner.ps1`):
+> `guestinfo.runner_token`, `guestinfo.runner_repo`, `guestinfo.runner_name`,
+> `guestinfo.runner_labels`. A mismatch makes auto-register read empty values and
+> silently skip (the most common "runner never registered" cause).
 
 Using `govc`:
 
 ```bash
 govc vm.change -vm github-runner-linux \
-  -e guestinfo.github.token="AXXXXXXXXXXXX" \
-  -e guestinfo.github.repository="https://github.com/{owner}/aqualink-automate" \
-  -e guestinfo.github.runner_name="linux-runner" \
-  -e guestinfo.github.runner_labels="self-hosted,linux,x64"
+  -e guestinfo.runner_token="AXXXXXXXXXXXX" \
+  -e guestinfo.runner_repo="https://github.com/{owner}/aqualink-automate" \
+  -e guestinfo.runner_name="linux-runner" \
+  -e guestinfo.runner_labels="self-hosted,linux,x64"
 ```
 
 ### 4. Boot the VMs

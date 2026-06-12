@@ -12,6 +12,14 @@ if (Test-Path $UserKey) { Set-ItemProperty -Path $UserKey -Name "IsInstalled" -V
 # Enable TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Allow the local 'runner' admin account to be used for remote administration
+# over WinRM. Without this, UAC network-token filtering hands local accounts a
+# filtered (non-admin) token over the network, so remote registration/management
+# (e.g. config.cmd over WinRM) fails with "Access is denied" even with correct
+# credentials. Required for the runner to be remotely (re)registerable.
+New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
+    -Name 'LocalAccountTokenFilterPolicy' -Value 1 -PropertyType DWord -Force | Out-Null
+
 # Install Chocolatey
 Write-Host "==> Installing Chocolatey"
 Set-ExecutionPolicy Bypass -Scope Process -Force
