@@ -317,6 +317,25 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # Verify the image we just published is actually pullable from GHCR and
+      # runs. build-push-action pushes straight to the registry without loading
+      # the image locally, so `docker pull` here genuinely exercises the published
+      # artifact (not a local build cache). Assert it reports the resolved version.
+      - name: Smoke test — pull & run the published image
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${{ github.repository }}:${{ needs.resolve-version.outputs.version }}"
+          echo "Pulling published image: $IMAGE"
+          docker pull "$IMAGE"
+          echo "Running --version on the pulled image:"
+          OUTPUT="$(docker run --rm "$IMAGE" --version)"
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -qF "${{ needs.resolve-version.outputs.version }}"; then
+            echo "::error::Published image did not report version ${{ needs.resolve-version.outputs.version }}"
+            exit 1
+          fi
+          echo "Published Docker image verified: pullable, runs, and reports ${{ needs.resolve-version.outputs.version }}."
+
   github-release:
     name: GitHub Release
     needs: [resolve-version, build-packages, docker-publish]
