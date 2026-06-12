@@ -36,6 +36,11 @@ jobs:
       is_dry_run: ${{ steps.resolve.outputs.is_dry_run }}
 
     steps:
+      # Needed for the "cut from main" guard below (merge-base ancestry check).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Resolve version from trigger
         id: resolve
         shell: bash
@@ -100,6 +105,23 @@ jobs:
             exit 1
           fi
           echo "Tag ${TAG} is available."
+
+      # Real releases must be cut from main: develop is the integration branch,
+      # only main holds released code. The release commit must be contained in
+      # origin/main (works for both a v* tag push and a workflow_dispatch).
+      # Dry-runs are EXEMPT so the pipeline can be validated from any branch
+      # (e.g. develop) without merging to main first.
+      - name: Enforce releases are cut from main
+        if: steps.resolve.outputs.is_dry_run != 'true'
+        shell: bash
+        run: |
+          git fetch --no-tags origin main
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Release commit $GITHUB_SHA is contained in main — OK."
+          else
+            echo "::error::Release commit $GITHUB_SHA is not on main. Cut releases from main (merge develop -> main, then tag main)."
+            exit 1
+          fi
 
   build-packages:
     name: Package — ${{ matrix.name }}
