@@ -253,7 +253,7 @@ jobs:
         run: |
           set -e
           mkdir -p smoke
-          tar xzf packages/*.tgz -C smoke
+          tar xzf packages/*.tar.gz -C smoke
           BIN="$(find smoke -name aqualink-automate -type f -perm +111 | head -1)"
           if [ -z "$BIN" ]; then echo "::error::binary not found in package"; exit 1; fi
           "$BIN" --version
@@ -266,7 +266,7 @@ jobs:
           path: |
             packages/*.deb
             packages/*.rpm
-            packages/*.tgz
+            packages/*.tar.gz
             packages/*.zip
             packages/*.exe
             packages/*.dmg
