@@ -93,6 +93,19 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
+      # The VS Build Tools on the self-hosted Windows image bundle their own vcpkg;
+      # vcvarsall (msvc-dev-cmd) puts it on PATH and sets VCPKG_ROOT to it, so
+      # lukka/run-cmake runs the wrong vcpkg ("could not locate a manifest"). Pin
+      # every vcpkg-discovery path back to the project's deps/vcpkg.
+      - name: Pin vcpkg to the project tree (self-hosted Windows)
+        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vcpkg = "$env:GITHUB_WORKSPACE\deps\vcpkg"
+          "VCPKG_ROOT=$vcpkg"          | Out-File -FilePath $env:GITHUB_ENV  -Append -Encoding utf8
+          "RUNVCPKG_VCPKG_ROOT=$vcpkg" | Out-File -FilePath $env:GITHUB_ENV  -Append -Encoding utf8
+          $vcpkg                        | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
       - name: Configure
         uses: lukka/run-cmake@v10
         with:
