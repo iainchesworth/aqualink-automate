@@ -40,7 +40,12 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
     set(AQ_SSL_DESTINATION "bin/ssl")
     set(AQ_EXAMPLES_DESTINATION "examples")
 
-    install(TARGETS aqualink-automate RUNTIME DESTINATION bin)
+    # The executable MUST be in the same component (Runtime) as the fixup_bundle
+    # install(CODE) below. NSIS does a per-component install, so if the exe were in
+    # the default (Unspecified) component, fixup_bundle would run during the Runtime
+    # component install with the exe not yet staged -> "fixup_bundle: not a valid
+    # bundle". (ZIP is monolithic so it happened to work regardless.)
+    install(TARGETS aqualink-automate RUNTIME DESTINATION bin COMPONENT Runtime)
 
     set(BUNDLE_APPS \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/aqualink-automate${CMAKE_EXECUTABLE_SUFFIX})
     install(
