@@ -190,20 +190,30 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
+      # VCPKG_ROOT must be set per-step: on self-hosted Windows the MSVC env
+      # setup runs vcvarsall, which exports VCPKG_ROOT pointing at the VS-bundled
+      # vcpkg (...\BuildTools\VC\vcpkg) into GITHUB_ENV. A step-level env here
+      # overrides that so vcpkg uses the project's deps/vcpkg (matches ci.yml).
       - name: Configure
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Build
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.build_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Test
         uses: lukka/run-cmake@v10
         with:
           testPreset: ${{ matrix.test_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Package
         run: cpack --preset=${{ matrix.package_preset }}

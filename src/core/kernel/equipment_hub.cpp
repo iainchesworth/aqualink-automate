@@ -18,7 +18,12 @@ namespace AqualinkAutomate::Kernel
 
 		// Key on the *runtime pointee* type (typeid(*equipment)), not the
 		// static IEquipment type, so each concrete subclass is distinct.
-		const std::type_index equipment_id = std::type_index(typeid(*equipment));
+		// Bind the pointee to a named reference first: clang's
+		// -Wpotentially-evaluated-expression (an error under -Werror) fires when
+		// typeid's operand is a side-effecting expression (operator* is a call);
+		// a named glvalue avoids it while preserving the runtime-type lookup.
+		const auto& equipment_ref = *equipment;
+		const std::type_index equipment_id = std::type_index(typeid(equipment_ref));
 		return m_ActiveEquipment.contains(equipment_id);
 	}
 
@@ -34,13 +39,20 @@ namespace AqualinkAutomate::Kernel
 		}
 		// The null check above guarantees the dereference here is safe, so the
 		// runtime type used as the key matches the one EquipmentExists tested.
-		else if (const std::type_index equipment_id = std::type_index(typeid(*equipment_to_add)); !m_ActiveEquipment.emplace(equipment_id, std::move(equipment_to_add)).second)
-		{
-			LogDebug(Channel::Devices, "Failed to add equipment to equipment hub; internal error while adding equipment object");
-		}
+		// (Bind the pointee to a named reference first to avoid clang's
+		// -Wpotentially-evaluated-expression on a side-effecting typeid operand.)
 		else
 		{
-			return true;
+			const auto& equipment_ref = *equipment_to_add;
+			const std::type_index equipment_id = std::type_index(typeid(equipment_ref));
+			if (!m_ActiveEquipment.emplace(equipment_id, std::move(equipment_to_add)).second)
+			{
+				LogDebug(Channel::Devices, "Failed to add equipment to equipment hub; internal error while adding equipment object");
+			}
+			else
+			{
+				return true;
+			}
 		}
 
 		return false;
@@ -91,7 +103,10 @@ namespace AqualinkAutomate::Kernel
 		}
 		else
 		{
-			const std::type_index identifier_type = std::type_index(typeid(device_to_add->DeviceId()));
+			// Bind the identifier to a named reference first to avoid clang's
+			// -Wpotentially-evaluated-expression on a side-effecting typeid operand.
+			const auto& device_id_ref = device_to_add->DeviceId();
+			const std::type_index identifier_type = std::type_index(typeid(device_id_ref));
 			m_ActiveDevices.emplace(identifier_type, std::move(device_to_add));
 
 			LogTrace(Channel::Devices, [size = m_ActiveDevices.size()] { return std::format("Registered device with equipment hub (active devices count = {})", size); });
