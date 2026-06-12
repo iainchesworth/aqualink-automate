@@ -238,7 +238,10 @@ jobs:
 
       - name: Smoke test — extract ZIP & run (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        # Windows PowerShell (always present on self-hosted + GitHub-hosted), NOT
+        # pwsh/PowerShell 7 which the self-hosted runner image does not ship.
+        # All cmdlets used here (Expand-Archive, Get-ChildItem, ...) exist in 5.1.
+        shell: powershell
         run: |
           $zip = Get-ChildItem packages/*.zip | Select-Object -First 1
           if (-not $zip) { throw "No ZIP package was produced" }
