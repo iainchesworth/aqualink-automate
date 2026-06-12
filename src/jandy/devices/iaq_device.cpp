@@ -205,6 +205,12 @@ namespace AqualinkAutomate::Devices
 			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Processing FaultHasOccurred state", DeviceId()); });
 			break;
 		}
+
+		case OperatingStates::NotPresent:
+		{
+			// Device not present yet; nothing to process for this update.
+			break;
+		}
 		}
 
 		// Commands can only be sent in response to IAQ_Poll messages.
