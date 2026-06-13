@@ -124,8 +124,9 @@ target_sources(
 	protocol/jandy_protocol_registration.cpp
 	types/jandy_types.cpp
 	utility/filtered_slot.cpp 
-	utility/jandy_checksum.cpp 
-	utility/jandy_null_handler.cpp 
+	utility/jandy_checksum.cpp
+	utility/jandy_equipment_validator.cpp
+	utility/jandy_null_handler.cpp
 	utility/jandy_pool_configuration_decoder.cpp
 	utility/screen_data_page.cpp
 	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp

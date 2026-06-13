@@ -13,6 +13,7 @@
 #include "kernel/body_of_water_ids.h"
 #include "navigation/onetouch_menu_model.h"
 #include "navigation/visit_policies.h"
+#include "utility/jandy_equipment_validator.h"
 #include "utility/jandy_pool_configuration_decoder.h"
 #include "utility/screen_data_page_processor.h"
 #include "utility/string_manipulation.h"
@@ -239,6 +240,7 @@ namespace AqualinkAutomate::Devices
 			// scraping sequence and fall through to normal (passive) operation
 			// so the device is at least partially functional.
 			LogWarning(Channel::Devices, std::format("OneTouch({}) : Abandoning scraping due to watchdog timeout -> entering NormalOperation", DeviceId()));
+			ValidateDiscoveredEquipment();
 			m_OpState = OperatingStates::NormalOperation;
 			m_ScrapingStallCounter = 0;
 			Status(Devices::DeviceStatus_Normal{});
@@ -871,6 +873,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete ({} pages visited) - entering NormalOperation",
 				DeviceId(), m_SpiderEngine->GetVisitedPages().size()));
+			ValidateDiscoveredEquipment();
 			m_Navigator->Reset();
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
@@ -930,6 +933,58 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	void OneTouchDevice::ValidateDiscoveredEquipment()
+	{
+		if (!m_DataHub)
+		{
+			return;
+		}
+
+		// Gather the Jandy ids of every numbered auxillary that was discovered.
+		std::vector<Auxillaries::JandyAuxillaryIds> discovered_aux_ids;
+		for (const auto& aux : m_DataHub->Auxillaries())
+		{
+			if (aux && aux->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+			{
+				discovered_aux_ids.push_back(aux->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
+			}
+		}
+
+		// Equipment occupying an aux relay that is NOT a numbered aux because an IO-board DIP
+		// switch repurposed the relay (cleaner / spillover / sprinkler). Counted toward the
+		// relay total so a DIP-repurposed panel still validates against the model's aux count.
+		const auto reconfigured_aux_relays = static_cast<uint8_t>(
+			m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Cleaner)
+			+ m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Spillover)
+			+ m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Sprinkler));
+
+		auto result = Utility::ValidateDiscoveredEquipment(
+			m_DataHub->ExpectedAuxillaryCount,
+			m_DataHub->ExpectedPowerCenterCount,
+			discovered_aux_ids,
+			reconfigured_aux_relays);
+
+		if (result.ExpectedAuxillaries == 0)
+		{
+			// The version page was never scraped (no model decoded) - nothing to validate against.
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Skipping equipment validation - model not yet decoded", DeviceId()));
+		}
+		else if (result.Passed())
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): Equipment validated - {} aux relay(s) across {} power center(s) match the model",
+				DeviceId(), result.DiscoveredAuxillaries, result.DiscoveredPowerCenters));
+		}
+		else
+		{
+			for (const auto& anomaly : result.Anomalies)
+			{
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Equipment validation anomaly - {}", DeviceId(), anomaly));
+			}
+		}
+
+		m_DataHub->EquipmentValidationResult = std::move(result);
+	}
+
 	void OneTouchDevice::PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page)
 	{
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpSubmenu invoked", DeviceId()));
@@ -962,6 +1017,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->ExpectedAuxillaryCount = pool_config_decoder.AuxillaryCount();
+		JandyController::m_DataHub->ExpectedPowerCenterCount = pool_config_decoder.PowerCenterCount();
 		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
 		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);

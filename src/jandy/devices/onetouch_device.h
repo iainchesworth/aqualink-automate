@@ -186,6 +186,10 @@ namespace AqualinkAutomate::Devices
 		void Scraping_ProcessStep_StartUp();
 		void Scraping_ProcessStep();
 
+		// Cross-check the discovered equipment set against the model's expected aux/power-centre
+		// layout once scraping ends; records the outcome on the DataHub and logs any anomalies.
+		void ValidateDiscoveredEquipment();
+
 		// On-demand actuation (DeviceActuator): service a single pending toggle goal in
 		// NormalOperation by driving the Navigator, and read a device's current on/off
 		// state so an explicit On/Off only acts when the state actually differs.

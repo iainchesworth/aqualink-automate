@@ -15,6 +15,7 @@
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "kernel/circulation.h"
+#include "kernel/equipment_validation.h"
 #include "kernel/equipment_versions.h"
 #include "kernel/hub_events/data_hub_config_event.h"
 #include "utility/timeout_duration_string_converter.h"
@@ -75,6 +76,15 @@ namespace AqualinkAutomate::Kernel
 		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
 		bool EmulationDisabled{ false };
+
+		// Expected equipment layout for the detected model (from PoolConfigurationDecoder);
+		// 0 until the version page is scraped. Used to validate the discovered equipment set.
+		uint8_t ExpectedAuxillaryCount{ 0 };
+		uint8_t ExpectedPowerCenterCount{ 0 };
+
+		// Outcome of cross-checking discovered equipment against the expected layout; set once
+		// the startup scrape completes (std::nullopt until then).
+		std::optional<Kernel::EquipmentValidation> EquipmentValidationResult;
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT STATUS

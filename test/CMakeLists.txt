@@ -178,6 +178,7 @@ target_sources(
 	unit/kernel/test_kernel_status_conversions.cpp
 	unit/utility/test_utility_string_manipulation.cpp
 	unit/utility/test_utility_pool_configuration_decoder.cpp
+	unit/utility/test_jandy_equipment_validator.cpp
 	unit/utility/test_utility_auxillary_state_converter.cpp
 	unit/http/test_http_server_fields.cpp
 	unit/profiling/test_profiling_noop.cpp

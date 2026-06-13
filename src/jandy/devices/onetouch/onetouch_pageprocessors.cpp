@@ -403,6 +403,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->ExpectedAuxillaryCount = pool_config_decoder.AuxillaryCount();
+		JandyController::m_DataHub->ExpectedPowerCenterCount = pool_config_decoder.PowerCenterCount();
 		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
 		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
