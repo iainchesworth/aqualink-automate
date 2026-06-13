@@ -114,6 +114,38 @@ panel: `DiagnosticsIAQStatus`, `DiagnosticsIAQRSSI` (iAqualink-only), `Boost`, `
 
 ---
 
+## Aux-count & power-center validation (vs `jandy_pool_configuration_decoder` ground truth)
+
+The decoder already holds the per-model ground truth as `{config, board, AuxCount, PowerCenterCount}`
+(`jandy_pool_configuration_decoder.cpp`). Scraped equipment cross-checks **exactly**:
+
+| Model | Decoder: aux / PC | Scraped aux (by power center) | Match |
+|---|---|---|---|
+| RS-8 Combo | 7 / 1 | Aux1–7 (A=7) | ✅ |
+| RS-8 Only | 7 / 1 | Aux1–7 (A=7) | ✅ |
+| RS-16 Combo | 15 / 2 | Aux1–7 (A=7) + Aux B1–B8 (B=8) | ✅ |
+| RS-2/10 Dual | 10 / 2 | Aux1–6 (A=6) + Aux B1–B4 (B=4) **+ Extra Aux** | ✅ (10 regular; Extra Aux is a separate special relay) |
+
+- **Power-center caps confirmed live:** A=7, B=8 (RS-16 Combo) — matches the orphaned `PowerCenters` class
+  caps `[7,8,8,8]`. Dual splits relays across bodies so its A-side is smaller (A=6 on RS-2/10).
+- **Sim power-center ceiling = 2:** the Alwin32 `ControllerType` set tops out at RS-12/16 Combo and RS-2/14
+  Dual (2 PC). 3–4 PC models (RS-24/32, RS-2/22/30) exist in the decoder but have **no sim ControllerType**, so
+  PC C/D can only be validated by unit test against the decoder table, not live.
+
+### OBS-07 — Model ground truth exists but is never used to validate discovery  *(Enhancement)*
+- **Finding:** `PoolConfigurationDecoder::AuxillaryCount()` / `PowerCenterCount()` are defined but **never
+  called**; the `PowerCenters` class (A/B/C/D, caps [7,8,8,8], correct "Aux"/"Aux Bn" naming) is **never
+  instantiated**. The OneTouch version processor reads `Configuration()`/`SystemBoard()` only. So the discovered
+  aux set is accepted with no cross-check — a model expecting 15 aux that scrapes 12 (a wedged/short crawl) is
+  silently accepted.
+- **Opportunity:** after the model is decoded, store expected aux/PC count in DataHub; after the equipment
+  scrape, compare discovered vs expected and warn/expose a mismatch (catches incomplete scrapes, mis-wired
+  panels, and — combined with the BUG-01 fail-fast — repeated model-missing-target failures). Also attribute
+  each aux to its power center via the existing `PowerCenters` class.
+- **Status:** OPEN (enhancement; ground truth already in-tree).
+
+---
+
 ## Operating modes — code-level handling (live mode-driving is GUI-gated)
 
 Driving Service mode / valve modes on the sim requires `Simio.exe`/iodll DIPs (GUI; e.g. S1 bit 0x80 =
