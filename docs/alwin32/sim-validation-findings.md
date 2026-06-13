@@ -187,9 +187,11 @@ Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spasid
   relay image / `0x08` set-relay-16bit / `0x09` set-relay-8bit. Outbound `[0x01][relay_bitmask][0x00]` (len 3).
 - **Dual Spa Switch + Spa Link** (`docs/alwin32/spaside-remotes.md`): both use a **fixed** hard-coded address
   (no RemoteGetNextAddress). 2x4rem `0x10` (class 0x02), 8button `0x20` (class 0x04). Inbound = a 6-byte
-  LED/indicator image (cmd `0x02` on the 2x4, `0x01` on the 8-button). Outbound = `[0x01][0x00][button_index]`
-  (len 3); the 8-button exposes 9 keys. Button-index↔physical-function map and the full LED-byte→indicator map
-  still want a live capture.
+  LED/indicator image at cmd **`0x02` on BOTH** (the 8-button additionally takes a `0x03` text string). Outbound
+  = `[0x01][0x00][button_index]` (len 3); the 8-button exposes 9 keys. Button-index↔physical-function map and the
+  full LED-byte→indicator map still want a live capture. **Cross-checked with Ghidra decompilation** — which
+  corrected the Spa Link command bytes (static disasm had read LED=0x01/text=0x02) and confirmed the RemAux
+  dispatch/relay-setter/bitmask functions exactly.
 
 #### Done (commit c230a87)
 - Added the missing **Dual Spa Switch device class** (class 0x02 → `0x10-0x13`) to `jandy_device_types.h`.
