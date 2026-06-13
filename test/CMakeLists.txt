@@ -297,6 +297,7 @@ target_sources(
 	integration/flows/test_flow_web_commands.cpp
 	integration/flows/test_flow_fixture_replay.cpp
 	integration/flows/test_flow_command_to_wire.cpp
+	integration/flows/test_flow_onetouch_toggle.cpp
 	integration/flows/test_flow_rssa_presence_gating.cpp
 	integration/flows/test_flow_autostartup.cpp
 	# IAQ device tests
