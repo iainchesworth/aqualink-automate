@@ -66,25 +66,46 @@ panel: `DiagnosticsIAQStatus`, `DiagnosticsIAQRSSI` (iAqualink-only), `Boost`, `
   1 pump (Filter), all states Off (sim idle). Help-loop dropped 23 → 3-4.
 - **Status:** FIXED & verified end-to-end.
 
-### OBS-01 — IAQ (AqualinkTouch 0x33) page-push not driven by the sim for RS models  *(Investigate)*
-- **Symptom:** emulating IAQ `0x33` against an RS-8 Combo master, the device receives only
-  `IAQMessage_StartUp` — no MainStatus / page frames — so config stays `Unknown` and no equipment is decoded.
-- **Impact:** on this sim the OneTouch menu-scrape is the only working data path for RS models; the IAQ path
-  yields nothing. (A prior session captured live IAQ pages — `iaq_pages_live.cap` — so page-push DOES work in
-  some config; reconcile which models/revisions the master drives via page-push vs menu.)
-- **Status:** OPEN (investigate — may be expected per model/revision; relevant to the auto-startup data-method choice).
+### OBS-01 — IAQ (AqualinkTouch 0x33) page-push on RS models  *(Investigate)*  — **CORRECTED + documented**
+- **Original symptom (was):** emulating IAQ `0x33` against an RS-8 Combo master, the device "receives only
+  `IAQMessage_StartUp` — no page frames", so config stays Unknown.
+- **CORRECTION — the original observation was a logging-level artifact.** With `--loglevel-messages trace` the
+  RS-8 Combo master clearly DOES drive the full AqualinkTouch page protocol to the emulated 0x33: over ~30 s,
+  `IAQMessage_Poll` ×150, `PageStart` ×1, `PageButton` ×7, `PageMessage` ×12, `TitleMessage` ×2, `PageEnd` ×2
+  (plus `StartUp` ×2). The earlier run only logged the StartUp notification because it ran at `info`. So
+  page-push is NOT absent on RS models.
+- **The real gap:** the master drives the **page UI protocol (0x23-0x28)** but does **not** emit the binary
+  **`MainStatus` (0x70) / `AuxStatus` (0x72)** status messages, and the app's IAQ config/equipment decode keys on
+  MainStatus. So with the IAQ path alone the DataHub stays empty on this sim (config Unknown, 0 aux/heaters/
+  pumps, no temps) even though the home page is being pushed. The equipment IS present in the pushed page
+  content (the home `PageButton`s = Filter Pump / Pool Heat / Aux…, `PageMessage`s = temps) but the app does not
+  currently translate the pushed home page into DataHub equipment/config — it expects MainStatus for that.
+- **Why this is not blocking:** the **OneTouch menu-scrape is the working, validated data path for RS models**
+  (this whole campaign), and the auto-startup coordinator already falls back from PagePush → MenuSpider when
+  page-push yields no data. Real iAqualink2 hardware DOES send MainStatus (the project's live captures contain
+  0x16/0x70-class status), so this MainStatus-absence may be specific to how the **sim's** RS-Combo master
+  drives an AqualinkTouch.
+- **Potential enhancement (capture-gated):** decode equipment/config from the pushed **home page**
+  (`PageButton`/`PageMessage`) rather than only from MainStatus — this overlaps the existing page-registry
+  survey work (`iaq_page_registry`). Gated on confirming, against real RS+AqualinkTouch hardware, whether
+  MainStatus is sent (if it is, no change is needed; the sim is simply not representative here).
+- **Status:** INVESTIGATED — original claim corrected (page-push works); residual gap (no MainStatus on the sim
+  page-push path → IAQ path decodes nothing for RS models) documented as a capture-gated enhancement, not a
+  blocking defect.
 
-### OBS-03 — Heater / pool / spa setpoints decode as null on *some* models  *(Investigate)*
-- **Symptom:** `pool_setpoint` / `spa_setpoint` are null after a full scrape on **PD-8 Combo** and **RS-8 Combo**,
-  but **decode correctly on RS-8 Only** (pool 80 °F / spa 60 °F). So it is model/config-dependent, not a blanket
-  failure.
-- **Crawl evidence (RS-8 Combo):** the completed crawl visited `SetTemperature` (22) but **not** `SetPoolHeat` (23)
-  or `SetSpaHeat` (24) — those sub-pages are where the per-body setpoint value lives. On RS-8 Only the value is
-  available from the page that *was* visited. So the gap is likely: on Combo the setpoint sits on a SetPoolHeat/
-  SetSpaHeat sub-page that the discovery crawl does not enter (they are value-edit pages, not discovery targets).
-- **Next:** confirm whether SetPoolHeat/SetSpaHeat should be discovery targets on Combo, or whether the value can
-  be read from the SetTemperature page directly; set a setpoint in the sim and re-scrape to confirm the read path.
-- **Status:** OPEN (investigate; not blocking — read path works on SingleBody).
+### OBS-03 — Heater / pool / spa setpoints decode as null on Combo models  *(Investigate)*  — **FIXED**
+- **Symptom (was):** `pool_setpoint` / `spa_setpoint` null after a full scrape on PD-8/RS-8 Combo (decoded fine
+  on RS-8 Only).
+- **Root cause (not what was first suspected):** the `SetTemperature` page IS visited and DOES render the values
+  — trace capture shows `Line 2: 'Pool Heat   80`F'`, `Line 3: 'Spa Heat   102`F'`. The failure was the
+  `TemperatureStringConverter` regex: it required a **single-token** area label and a **1-2 digit** value, so the
+  two-word "Pool Heat"/"Spa Heat" labels AND the 3-digit spa setpoint (102) both failed to parse. (Spa *water*
+  temps of 100 °F+ were latently unparseable for the same reason.)
+- **Fix (commit 746bebb):** widened the converter regex to accept multi-word area labels + 1-3 digit values
+  (anchored, so trailing junk still rejected); `PageProcessor_SetTemperature` now parses setpoints by area label
+  rather than fixed lines. Unit tests + a OneTouch page test added.
+- **Verified live:** RS-8 Combo now reports pool_setpoint 80 °F, spa_setpoint 102 °F.
+- **Status:** FIXED.
 
 ### OBS-04 — Air temperature blank on RS-2/10 Dual  *(Investigate)*  — **FIXED**
 - **Symptom (was):** air temp read 72 °F on RS-8 Combo/Only but was blank on RS-2/10 Dual.
@@ -102,15 +123,17 @@ panel: `DiagnosticsIAQStatus`, `DiagnosticsIAQRSSI` (iAqualink-only), `Boost`, `
   `HomeAssistantDiscovery::ConfigurationTopic`). Integration test asserts the field is published.
 - **Status:** FIXED.
 
-### OBS-06 — SpaFill / SpaDrain circulation modes defined but unimplemented  *(Minor)*
-- **Finding:** `CirculationModes` (`circulation.h`) declares `Pool, Spa, SpaFill, SpaDrain, Spillover`, but
-  `SerialAdapterDevice::SetCirculationMode` only actions Pool/Spa/Spillover; `SpaFill`/`SpaDrain` hit the
-  `default` branch → logs "Invalid circulation mode" and returns `InvalidValue` (an honest rejection, not a
-  silent no-op).
-- **Impact:** Spa Drain / Spa Fill can't be commanded. On real AquaLink these aren't simple RSSA pump commands
-  (they're valve/service operations), so this likely needs protocol research before it can be implemented — not
-  a regression. "Where it makes sense" this only applies to Combo/Dual (spa-capable) panels.
-- **Status:** OPEN (catalogued; needs protocol basis + design — not a blocking bug).
+### OBS-06 — SpaFill / SpaDrain circulation modes defined but unimplemented  *(Minor)*  — **RESOLVED**
+- **Finding:** `CirculationModes` declares `Pool, Spa, SpaFill, SpaDrain, Spillover`. SpaFill/SpaDrain are used
+  only in the defensive `SpaMode()` logic; **nothing decodes them from the wire and the command path rejected
+  them** via the `default` branch (generic `InvalidValue`).
+- **Assessment:** Spa Fill / Spa Drain are valve-sequencing / service operations — the Jandy RS protocol has no
+  single command for them (the RS Serial Adapter exposes only SPA and SPILLOVER pump commands). They are not
+  remotely commandable, so rejection is correct by design.
+- **Resolution (commit 0001af3):** handle SpaFill/SpaDrain explicitly in `SetCirculationMode`, returning
+  `NotSupported` (a well-formed request this controller cannot perform) with a clear log, rather than the generic
+  `InvalidValue`. Tests assert Pool/Spa/Spillover=Accepted, SpaFill/SpaDrain=NotSupported.
+- **Status:** RESOLVED (documented as protocol-gated; rejection now explicit + correct).
 
 ---
 
