@@ -669,6 +669,33 @@ BOOST_AUTO_TEST_CASE(TestAllNonSpecialPagesReachableFromEquipmentOnOff)
 	}
 }
 
+// =============================================================================
+// Capability-gated page classification (used to label post-crawl survey failures
+// as expected-absent vs notable on a given controller model).
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestCapabilityRequirement_IAQPages_RequireIAqualink)
+{
+	BOOST_CHECK(OneTouchPageCapabilityRequirement(PageId::DiagnosticsIAQStatus).has_value());
+	BOOST_CHECK(OneTouchPageCapabilityRequirement(PageId::DiagnosticsIAQRSSI).has_value());
+}
+
+BOOST_AUTO_TEST_CASE(TestCapabilityRequirement_ChlorinatorPages_RequireSWG)
+{
+	BOOST_CHECK(OneTouchPageCapabilityRequirement(PageId::Boost).has_value());
+	BOOST_CHECK(OneTouchPageCapabilityRequirement(PageId::SetAquapure).has_value());
+}
+
+BOOST_AUTO_TEST_CASE(TestCapabilityRequirement_CorePages_HaveNoRequirement)
+{
+	// Pages every panel has must NOT be classified as capability-gated, so a failure to
+	// reach them is reported as a notable problem rather than silently excused.
+	BOOST_CHECK(!OneTouchPageCapabilityRequirement(PageId::EquipmentOnOff).has_value());
+	BOOST_CHECK(!OneTouchPageCapabilityRequirement(PageId::System).has_value());
+	BOOST_CHECK(!OneTouchPageCapabilityRequirement(PageId::SetTemperature).has_value());
+	BOOST_CHECK(!OneTouchPageCapabilityRequirement(PageId::LabelAuxList).has_value());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // =============================================================================

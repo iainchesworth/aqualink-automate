@@ -19,6 +19,7 @@ namespace AqualinkAutomate::Navigation
 	{
 		m_Policy = std::move(policy);
 		m_Visited.clear();
+		m_Failed.clear();
 		m_VisitedMultiEdges.clear();
 		m_CurrentMultiEdge = std::nullopt;
 		m_CurrentTarget = PageId::Unknown;
@@ -137,6 +138,7 @@ namespace AqualinkAutomate::Navigation
 
 						// Skip this page and try the next target
 						m_Visited.insert(m_CurrentTarget);  // Mark as visited to skip it
+						m_Failed.insert(m_CurrentTarget);   // ...and record it as unreachable
 					}
 
 					NavigateToNextTarget();

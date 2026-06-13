@@ -63,8 +63,14 @@ namespace AqualinkAutomate::Navigation
 		// Get current engine state
 		State GetState() const { return m_State; }
 
-		// Get the set of visited pages
+		// Get the set of visited pages (includes pages that were abandoned after repeated
+		// navigation failure -- they are marked visited so the crawl skips them. Subtract
+		// GetFailedPages() for the set actually reached and captured).
 		const std::set<PageId>& GetVisitedPages() const { return m_Visited; }
+
+		// Pages the crawl could not reach (abandoned after repeated navigation failure --
+		// typically a menu target that does not exist on this controller model).
+		const std::set<PageId>& GetFailedPages() const { return m_Failed; }
 
 		// Get current navigation target
 		PageId GetCurrentTarget() const { return m_CurrentTarget; }
@@ -87,6 +93,7 @@ namespace AqualinkAutomate::Navigation
 		std::unique_ptr<VisitPolicy> m_Policy;
 		State m_State{ State::Idle };
 		std::set<PageId> m_Visited;
+		std::set<PageId> m_Failed;
 		PageId m_CurrentTarget{ PageId::Unknown };
 		uint32_t m_NavigationFailures{ 0 };
 

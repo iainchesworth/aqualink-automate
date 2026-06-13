@@ -57,6 +57,18 @@ namespace AqualinkAutomate::Devices
 			FaultHasOccurred
 		};
 
+		// Health summary of the startup menu crawl: which pages were reached, and which the
+		// crawl could not reach -- split into capability-gated pages whose absence is EXPECTED
+		// on this model (e.g. the iAqualink or chlorinator pages) versus NOTABLE failures that
+		// every panel should have. Surfaced via DescribeDiagnostics.
+		struct MenuSurveyResult
+		{
+			uint32_t PagesReached{ 0 };
+			std::vector<std::string> ExpectedAbsent;    // failed but capability-gated (benign)
+			std::vector<std::string> NotableFailures;   // failed and expected on every model
+			bool EquipmentPageReached{ false };          // the critical Equipment ON/OFF page
+		};
+
 	public:
 		enum class KeyCommands : uint8_t
 		{
@@ -190,6 +202,11 @@ namespace AqualinkAutomate::Devices
 		// layout once scraping ends; records the outcome on the DataHub and logs any anomalies.
 		void ValidateDiscoveredEquipment();
 
+		// Summarise the menu crawl once it completes: record reached/failed pages, classify
+		// failures as expected-absent (capability-gated) vs notable, and warn if a core page
+		// (Equipment ON/OFF) was missed. Result stored in m_MenuSurveyResult for diagnostics.
+		void ReportMenuSurvey();
+
 		// On-demand actuation (DeviceActuator): service a single pending toggle goal in
 		// NormalOperation by driving the Navigator, and read a device's current on/off
 		// state so an explicit On/Off only acts when the state actually differs.
@@ -231,6 +248,7 @@ namespace AqualinkAutomate::Devices
 		OperatingStates m_OpState{ OperatingStates::ColdStart };
 		uint32_t m_ScrapingStallCounter{ 0 };
 		uint8_t m_HighlightedLine{ 0 };
+		std::optional<MenuSurveyResult> m_MenuSurveyResult;  // populated when the startup crawl completes
 
 	private:
 		// On-demand equipment actuation goal (a single toggle at a time). Set by

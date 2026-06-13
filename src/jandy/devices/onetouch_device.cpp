@@ -873,6 +873,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete ({} pages visited) - entering NormalOperation",
 				DeviceId(), m_SpiderEngine->GetVisitedPages().size()));
+			ReportMenuSurvey();
 			ValidateDiscoveredEquipment();
 			m_Navigator->Reset();
 			m_OpState = OperatingStates::NormalOperation;
@@ -985,6 +986,57 @@ namespace AqualinkAutomate::Devices
 		m_DataHub->EquipmentValidationResult = std::move(result);
 	}
 
+	void OneTouchDevice::ReportMenuSurvey()
+	{
+		if (!m_SpiderEngine)
+		{
+			return;
+		}
+
+		const auto& visited = m_SpiderEngine->GetVisitedPages();
+		const auto& failed = m_SpiderEngine->GetFailedPages();
+
+		MenuSurveyResult survey;
+		survey.PagesReached = static_cast<uint32_t>(visited.size() - failed.size());
+		survey.EquipmentPageReached = visited.contains(Navigation::PageId::EquipmentOnOff)
+			&& !failed.contains(Navigation::PageId::EquipmentOnOff);
+
+		for (const auto page : failed)
+		{
+			const auto* page_info = m_MenuModel.GetPage(page);
+			const std::string name = page_info ? page_info->name : std::format("page {}", static_cast<uint32_t>(page));
+
+			if (auto requirement = Navigation::OneTouchPageCapabilityRequirement(page); requirement.has_value())
+			{
+				survey.ExpectedAbsent.push_back(std::format("{} ({})", name, requirement.value()));
+			}
+			else
+			{
+				survey.NotableFailures.push_back(name);
+			}
+		}
+
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Menu survey - {} page(s) reached, {} expected-absent, {} notable failure(s)",
+			DeviceId(), survey.PagesReached, survey.ExpectedAbsent.size(), survey.NotableFailures.size()));
+
+		if (!survey.EquipmentPageReached)
+		{
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): Menu survey - the Equipment ON/OFF page was not reached; the discovered equipment set may be incomplete", DeviceId()));
+		}
+
+		for (const auto& notable : survey.NotableFailures)
+		{
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): Menu survey - unexpected failure to reach '{}'", DeviceId(), notable));
+		}
+
+		for (const auto& expected : survey.ExpectedAbsent)
+		{
+			LogDebug(Channel::Scraping, std::format("OneTouch ({}): Menu survey - expected-absent page skipped: {}", DeviceId(), expected));
+		}
+
+		m_MenuSurveyResult = std::move(survey);
+	}
+
 	void OneTouchDevice::PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page)
 	{
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpSubmenu invoked", DeviceId()));
@@ -1077,6 +1129,20 @@ namespace AqualinkAutomate::Devices
 			spider["current_target"] = std::string(magic_enum::enum_name(m_SpiderEngine->GetCurrentTarget()));
 			spider["label_scrape_skipped"] = DataHubHasSeededAuxLabels();
 			j["spider_engine"] = spider;
+		}
+
+		// Menu survey health (populated once the startup crawl completes): which pages were
+		// reached and which could not be, split into expected-absent (capability-gated, e.g.
+		// the iAqualink / chlorinator pages) vs notable failures every panel should have.
+		if (m_MenuSurveyResult.has_value())
+		{
+			const auto& survey = m_MenuSurveyResult.value();
+			nlohmann::json menu_survey;
+			menu_survey["pages_reached"] = survey.PagesReached;
+			menu_survey["equipment_page_reached"] = survey.EquipmentPageReached;
+			menu_survey["expected_absent"] = survey.ExpectedAbsent;
+			menu_survey["notable_failures"] = survey.NotableFailures;
+			j["menu_survey"] = std::move(menu_survey);
 		}
 
 		j["scraping_stall_counter"] = m_ScrapingStallCounter;
