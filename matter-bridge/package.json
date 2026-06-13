@@ -1,0 +1,29 @@
+{
+  "name": "aqualink-matter-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Matter (smart-home) bridge sidecar for aqualink-automate. Consumes the existing HTTP/WS equipment API and exposes the pool equipment as a Matter Aggregator (bridge) so it pairs with Apple Home, Google Home, Alexa and SmartThings.",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "test": "node --test --import tsx test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@matter/main": "^0.12.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
