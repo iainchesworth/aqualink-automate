@@ -16,6 +16,7 @@
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
+#include "devices/capabilities/setpoint_controller.h"
 #include "messages/jandy_message_ack.h"
 #include "messages/jandy_message_ids.h"
 #include "messages/jandy_message_probe.h"
@@ -36,12 +37,13 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t ONETOUCH_SCRAPING_STALL_LIMIT{ 10 };
 		inline static const uint32_t ONETOUCH_ACTUATION_STEP_LIMIT{ 500 };  // frame backstop so a toggle goal can never wedge NormalOperation (the Navigator's own timeouts normally end it first)
+		inline static const uint32_t ONETOUCH_SETPOINT_STEP_LIMIT{ 500 };   // frame backstop for a setpoint goal (navigation + the per-degree value-step loop)
 
 		enum class OperatingStates
 		{
@@ -86,6 +88,24 @@ namespace AqualinkAutomate::Devices
 		// both controllers are present.
 		Capabilities::ActuationResult ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action) override;
 		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Low; }
+
+		// SetpointController: change the pool/spa heater setpoint by driving the emulated
+		// keypad to the Set Temperature page, editing the Pool Heat / Spa Heat row and
+		// stepping the value with the arrow keys to the requested temperature. The value
+		// arrives already in the controller's configured wire units (the dispatcher
+		// validates the range). Ranks Low so a Serial Adapter (direct command) wins when
+		// both controllers are present. (ControllerPriority() above satisfies both the
+		// DeviceActuator and SetpointController mixins - identical signature.)
+		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
+		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
+
+	private:
+		// Shared body of SetPoolSetpoint/SetSpaSetpoint: validate the device can actuate,
+		// reject if another goal is mid-flight, then enqueue the setpoint goal.
+		enum class SetpointBody;
+		Capabilities::ActuationResult QueueSetpointGoal(SetpointBody body, uint8_t temperature);
+
+	public:
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -170,6 +190,22 @@ namespace AqualinkAutomate::Devices
 		void Actuation_ProcessStep();
 		std::optional<bool> CurrentOnState(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const;
 
+		// On-demand setpoint editing (SetpointController): service a single pending
+		// pool/spa setpoint goal in NormalOperation. The Navigator positions the cursor on
+		// the Set Temperature page's Pool Heat / Spa Heat row (no Select); then this device
+		// drives the value-step loop directly - Select to begin editing, arrow keys to step
+		// the displayed value toward the target, Back to commit.
+		void Setpoint_ProcessStep();
+
+		// Read the currently displayed integer temperature from a Set Temperature page row
+		// (e.g. "Pool Heat   90`F" -> 90). Returns nullopt when no value is parseable yet
+		// (page not rendered, or value blanked mid-edit), so the step loop simply waits.
+		std::optional<int> DisplayedSetpoint(uint8_t line_id) const;
+
+		// True when any on-demand goal (toggle or setpoint) is mid-flight; the single
+		// shared Navigator means goals must never interleave.
+		bool GoalInProgress() const;
+
 		// Convert Navigator key command to device KeyCommand
 		static KeyCommands ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd);
 
@@ -191,6 +227,30 @@ namespace AqualinkAutomate::Devices
 		std::optional<std::string> m_PendingActuationLabel;
 		bool m_ActuationInProgress{ false };
 		uint32_t m_ActuationStepCount{ 0 };
+
+	private:
+		// On-demand setpoint goal (a single pool/spa edit at a time). Set by
+		// SetPoolSetpoint/SetSpaSetpoint (SetpointController), serviced by
+		// Setpoint_ProcessStep in NormalOperation.
+		enum class SetpointBody { Pool, Spa };
+		enum class SetpointPhase
+		{
+			Navigating,     // Navigator positioning the cursor on the Pool/Spa Heat row
+			BeginEdit,      // Select pressed to enter the in-place value editor
+			Stepping,       // arrow keys stepping the displayed value toward the target
+			Commit          // Back pressed to commit the edited value and leave the page
+		};
+
+		// The Pool Heat / Spa Heat rows on the Set Temperature page (see
+		// PageProcessor_SetTemperature): line 2 is Pool Heat, line 3 is Spa Heat.
+		inline static const uint8_t SETTEMP_POOL_HEAT_LINE{ 2 };
+		inline static const uint8_t SETTEMP_SPA_HEAT_LINE{ 3 };
+
+		std::optional<SetpointBody> m_PendingSetpointBody;
+		uint8_t m_PendingSetpointTarget{ 0 };
+		SetpointPhase m_SetpointPhase{ SetpointPhase::Navigating };
+		bool m_SetpointInProgress{ false };
+		uint32_t m_SetpointStepCount{ 0 };
 
 	private:
 		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore

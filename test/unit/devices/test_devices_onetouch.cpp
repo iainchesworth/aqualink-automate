@@ -133,4 +133,50 @@ BOOST_AUTO_TEST_CASE(TestSeededLabels_OneOfManyLabelled_SkipsScrape)
 	BOOST_CHECK(device.DataHubHasSeededAuxLabels());
 }
 
+// =============================================================================
+// SetpointController capability surface (Set Temperature menu actuation)
+//
+// SetPoolSetpoint/SetSpaSetpoint enqueue a single menu-edit goal serviced in
+// NormalOperation. The synchronous contract just confirms the request was
+// accepted/queued; the actual value-stepping is driven later by the Navigator.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSetpoint_Emulated_AcceptsPoolAndSpa)
+{
+	OneTouchDevice device(device_type, *this, true);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetPoolSetpoint(82)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetpoint_NonEmulated_NotSupported)
+{
+	// A passive (non-emulated) OneTouch cannot transmit, so it cannot edit a setpoint.
+	OneTouchDevice device(device_type, *this, false);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetSpaSetpoint(100)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetpoint_RejectsSecondGoalWhileBusy)
+{
+	// One goal at a time: a second request while the first is still pending is rejected
+	// so two cursor walks never interleave on the single shared Navigator.
+	OneTouchDevice device(device_type, *this, true);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetPoolSetpoint(82)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetSpaSetpoint(100)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetpoint_ControllerPriority_IsLow)
+{
+	// OneTouch is a Low-priority controller so a direct-command Serial Adapter (High)
+	// is preferred when both are present (shared with the DeviceActuator mixin).
+	OneTouchDevice device(device_type, *this, true);
+	BOOST_CHECK_EQUAL(static_cast<int>(device.ControllerPriority()),
+		static_cast<int>(Devices::Capabilities::ActuationPriority::Low));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

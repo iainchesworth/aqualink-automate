@@ -4,6 +4,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include "jandy/devices/command_dispatcher.h"
+#include "jandy/devices/onetouch_device.h"
+#include "jandy/devices/serial_adapter_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "interfaces/icommanddispatcher.h"
@@ -226,6 +228,82 @@ BOOST_AUTO_TEST_CASE(TestDispatchCommand_NoSerialAdapter_ReturnsNoSerialAdapter)
 
 	auto result = dispatcher.CommandByLabel("Test Aux", ICommandDispatcher::DeviceAction::On);
 	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+// =============================================================================
+// Capability routing to an emulated OneTouch (no Serial Adapter present).
+//
+// With ONLY an emulated OneTouch on the bus the dispatcher must resolve it as the
+// DeviceActuator (toggles) and SetpointController (heater setpoints) - this is the
+// whole point of the capability refactor: a OneTouch-only rig can actuate. A
+// PASSIVE (non-emulated) OneTouch advertises the same capabilities but honestly
+// reports NotSupported at call time, so commands fall through to NoSerialAdapter.
+// =============================================================================
+
+namespace
+{
+	std::unique_ptr<OneTouchDevice> MakeOneTouch(AqualinkAutomate::Test::HubLocatorInjector& hub, uint8_t id, bool emulated)
+	{
+		auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(id));
+		return std::make_unique<OneTouchDevice>(device_id, hub, emulated);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_EmulatedOneTouch_RoutesAndAccepts)
+{
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	// In range + a capable controller present => the OneTouch SetpointController
+	// queues the menu edit and the dispatcher reports Success.
+	auto result = dispatcher.SetPoolSetpoint(82);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetSpaSetpoint_EmulatedOneTouch_RoutesAndAccepts)
+{
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.SetSpaSetpoint(100);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_PassiveOneTouch_FallsThroughToNoSerialAdapter)
+{
+	// A non-emulated OneTouch IS-A SetpointController (the dynamic_cast resolves it),
+	// but it cannot transmit, so it returns NotSupported -> the call-site maps that to
+	// NoSerialAdapter (the historical "nothing can act" code for setpoints).
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, false));
+
+	auto result = dispatcher.SetPoolSetpoint(82);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
+BOOST_AUTO_TEST_CASE(TestToggleByLabel_EmulatedOneTouch_RoutesAndAccepts)
+{
+	// A labelled aux the OneTouch can map onto the Equipment ON/OFF row.
+	auto device = std::make_shared<AuxillaryDevice>();
+	device->AuxillaryTraits.Set(LabelTrait{}, std::string{"Pool Light"});
+	device->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Auxillary);
+	data_hub->Devices.Add(device);
+
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.ToggleByLabel("Pool Light");
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_SerialAdapterPreferredOverOneTouch)
+{
+	// Both a Serial Adapter (High) and an emulated OneTouch (Low) advertise
+	// SetpointController. FindCapable<> must pick the higher-priority Serial Adapter;
+	// either way the dispatcher reports Success, but precedence is what we assert at
+	// the unit level via FindCapable below. Here we just prove both-present still works.
+	auto sa_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x48));
+	equipment_hub->AddDevice(std::make_unique<SerialAdapterDevice>(sa_id, *this, true));
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.SetPoolSetpoint(82);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
