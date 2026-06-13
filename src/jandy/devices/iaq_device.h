@@ -93,11 +93,12 @@ namespace AqualinkAutomate::Devices
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 
-		// Precedence shared by DeviceActuator + SetpointController (identical signature). The
-		// AqualinkTouch is a page-state-dependent channel, so it ranks LOWEST - a Serial
-		// Adapter (High) and an emulated OneTouch (Low) are both preferred when present, which
-		// keeps a hardware-verified OneTouch rig on its existing path.
-		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Lowest; }
+		// Precedence shared by DeviceActuator + SetpointController + ChlorinatorController
+		// (identical signature). The AqualinkTouch effects actions with DIRECT commands
+		// (page-button press, value-submit), so it ranks Medium - above the OneTouch (Low),
+		// which must crawl menus, and below a Serial Adapter (High). On a combined rig the
+		// faster AqualinkTouch path is therefore preferred over the OneTouch.
+		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Medium; }
 
 		// Arm a start-up PAGE SURVEY: once the home page is established (first MainStatus), an
 		// emulated panel walks `registry`'s data pages -- navigating to each, dwelling so it

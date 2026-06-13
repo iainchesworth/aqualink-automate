@@ -28,16 +28,19 @@ highest-priority one present. Three controllers can actuate equipment and heater
 setpoints, in precedence order:
 
 1. **Serial Adapter (RSSA, `0x48`)** — *High*. A direct, stateless command channel.
-2. **OneTouch (`0x40–43`)** — *Low*. Drives the menu via the Navigator (equipment
-   toggle = in-place *Select* on the Equipment ON/OFF row; setpoint = arrow-stepping
-   the value on the Set Temperature page).
-3. **AqualinkTouch / iAqualink2 (`0x33`)** — *Lowest*. Presses the on-screen
+2. **AqualinkTouch / iAqualink2 (`0x33`)** — *Medium*. Presses the on-screen
    `PageButton` matching the device by name (`0x11 + index`) for toggles, and uses the
    value-submit protocol (select field → `0x80` → control-data value) for setpoints +
-   the chlorinator.
+   the chlorinator. These commands take effect immediately.
+3. **OneTouch (`0x40–43`)** — *Low*. Drives the menu via the Navigator (equipment
+   toggle = in-place *Select* on the Equipment ON/OFF row; setpoint = arrow-stepping
+   the value on the Set Temperature page). Slower, since it must crawl menus.
+4. **PDA (`0x60–63`)** — *Lowest*. (Currently advertises nothing → honest `NotSupported`;
+   actuation parity is planned.)
 
-So a rig with *any* of these can be controlled, and the most reliable channel present
-wins automatically. (PDA `0x60–63` advertises nothing → honest `NotSupported`.)
+The AqualinkTouch outranks the OneTouch because its direct page-button / value-submit
+commands take effect immediately, whereas the OneTouch must navigate menus. So a rig
+with *any* controller can be controlled, and the most direct channel present wins.
 
 ## Device mapping
 

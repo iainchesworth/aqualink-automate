@@ -19,6 +19,7 @@
 #include "jandy/protocol/jandy_protocol_registration.h"
 #include "jandy/devices/command_dispatcher.h"
 #include "jandy/devices/iaq_device.h"
+#include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ack.h"
@@ -213,6 +214,30 @@ BOOST_AUTO_TEST_CASE(ToggleByLabel_UnknownButton_DoesNotReachWire)
 	// Present on the bus, but no on-screen button matches -> mapping failed (not Success).
 	auto result = dispatcher->ToggleByLabel("Nonexistent Device");
 	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::UnknownEquipmentType));
+}
+
+//-----------------------------------------------------------------------------
+// PRECEDENCE: with BOTH an AqualinkTouch (Medium) and a OneTouch (Low) present,
+// the dispatcher must select the AqualinkTouch (direct page-button) over the
+// slower OneTouch menu-nav. Proven by the IAQ emitting its page-button press on
+// the wire; had the OneTouch been chosen, the IAQ would have nothing to send.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(ToggleByLabel_PrefersAqualinkTouchOverOneTouch)
+{
+	SeedHomePageButtons();
+	AddAux(*data_hub, "Pool Light");
+
+	// Add an emulated OneTouch alongside the IAQ (a combined rig).
+	auto ot_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x40));
+	equipment_hub->AddDevice(std::make_unique<OneTouchDevice>(ot_id, *this, true));
+
+	auto result = dispatcher->ToggleByLabel("Pool Light");
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplayIAQPoll();
+	// The IAQ (Medium) was chosen, so it presses Pool Light (index 9 -> 0x1a).
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 0x1a));
 }
 
 //-----------------------------------------------------------------------------

@@ -30,15 +30,21 @@ namespace AqualinkAutomate::Devices::Capabilities
 	};
 
 	// When more than one connected controller advertises the same actuation
-	// capability (e.g. a Serial Adapter AND an emulated OneTouch can both toggle
-	// equipment), the dispatcher prefers the numerically-lowest priority. A direct
-	// command channel (Serial Adapter) is faster and more reliable than menu
-	// navigation (OneTouch/PDA), so it ranks higher.
+	// capability (e.g. a Serial Adapter, an AqualinkTouch AND a OneTouch can all
+	// toggle equipment), the dispatcher prefers the numerically-lowest priority.
+	// Ranking follows how directly each controller can effect the action:
+	//   * Serial Adapter (RSSA)      - direct, stateless command bytes  -> High
+	//   * AqualinkTouch / iAqualink2 - direct page-button + value-submit -> Medium
+	//   * OneTouch                   - menu navigation / screen scraping -> Low
+	//   * PDA                        - menu navigation (last resort)     -> Lowest
+	// The AqualinkTouch outranks the OneTouch because its page-button/value-submit
+	// commands take effect immediately, whereas the OneTouch must crawl menus.
 	enum class ActuationPriority
 	{
-		High = 0,    // direct command channel (e.g. Serial Adapter)
-		Low = 1,     // menu-navigation channel (e.g. OneTouch)
-		Lowest = 2   // last-resort channel
+		High = 0,    // direct, stateless command channel (e.g. Serial Adapter / RSSA)
+		Medium = 1,  // direct page-button / value-submit channel (e.g. AqualinkTouch / IAQ)
+		Low = 2,     // menu-navigation / scraper channel (e.g. OneTouch)
+		Lowest = 3   // last-resort menu-navigation channel (e.g. PDA)
 	};
 
 }
