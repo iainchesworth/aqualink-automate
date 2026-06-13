@@ -345,6 +345,16 @@ namespace AqualinkAutomate::Devices
 			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
 			return Capabilities::ActuationResult::Accepted;
 
+		case Kernel::CirculationModes::SpaFill:
+		case Kernel::CirculationModes::SpaDrain:
+			// Spa Fill / Spa Drain are valve-sequencing / service operations: the Jandy RS
+			// protocol has no single command for them (the RS Serial Adapter exposes only the
+			// SPA and SPILLOVER pump commands), so they cannot be driven remotely. Report
+			// NotSupported (a well-formed request this controller cannot perform) rather than
+			// the generic InvalidValue. See OBS-06 in docs/alwin32/sim-validation-findings.md.
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: Circulation mode {} is not remotely commandable - no RS-485 command exists for it", magic_enum::enum_name(mode)));
+			return Capabilities::ActuationResult::NotSupported;
+
 		default:
 			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: Invalid circulation mode: {}", magic_enum::enum_name(mode)));
 			return Capabilities::ActuationResult::InvalidValue;
