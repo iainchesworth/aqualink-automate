@@ -105,6 +105,7 @@ networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
 | OneTouch toggle replay driven from `onetouch_equipment_toggle.cap`      | ✅ Navigator emits in-place Select |
 | OneTouch setpoint edit model vs `onetouch_setpoint_edit.cap` hardware    | ✅ Select-enter → arrow-step ±1 → Select-commit; Pool=line2/Spa=line3; on-screen units |
 | AqualinkTouch (IAQ) aux + setpoint vs `iaq_aux_setpoint.cap` hardware    | ✅ toggle = 0x11+index by name (Pool Light 0x1a, Spillway 0x1c); setpoint = value-submit '1'+value |
+| OneTouch chlorinator (% + boost) vs `onetouch_chlorinator.cap` hardware  | ✅ % = Set AquaPure 5% value-steps (Pool=line3); boost start/stop via Boost Pool page |
 | Sidecar unit tests (device-map, API client)                             | ✅ green (11 cases) |
 | Sidecar typecheck + build (matter.js bridge)                            | ✅ `tsc` clean |
 | Sidecar boots → emits a valid commissioning QR + manual code            | ✅ verified |
