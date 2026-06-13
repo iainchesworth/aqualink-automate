@@ -154,25 +154,72 @@ The decoder already holds the per-model ground truth as `{config, board, AuxCoun
   out-of-range aux, ExtraAux exclusion, and the page capability classifier.
 - **Status:** IMPLEMENTED (commits 66b2028 validation/attribution, a1bc8fc menu survey).
 
-### OBS-08 — Remote power center (RemAux) / Dual Spa Switch / Spa Link not modelled  *(RE done; modelling assessed)*
-- **Device mapping (user-confirmed):** `Remaux.exe` = remote auxiliary power center; **`2x4rem.exe` = "Dual Spa
-  Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spaside remote).
-- **Reverse engineering — COMPLETE & documented:**
-  - RemAux: `docs/alwin32/lpc4-remaux.md` — class 5 → `0x28-0x2B`; inbound `0x00` poll / `0x02` 6-byte bulk /
-    `0x08` set-relay-16bit / `0x09` set-relay-8bit; outbound `[0x01][relay_bitmask][0x00]` (len 3).
-  - Dual Spa Switch + Spa Link: `docs/alwin32/spaside-remotes.md` (new) — both use a **fixed** address (no
-    RemoteGetNextAddress): 2x4rem `0x10` (class 0x02), 8button `0x20` (class 0x04). Inbound = 6-byte LED/indicator
-    image (cmd `0x02` on the 2x4, `0x01` on the 8-button); outbound = `[0x01][0x00][button_index]` (len 3); the
-    8-button has 9 keys. Button-index↔function map and full LED-byte map need a live capture.
-- **App coverage:** `RemotePowerCenter` (0x28) and `SpaRemote` (0x20 = Spa Link) exist in the device map but
-  fall through to "Device class not supported" in `IdentifyAndAddDevice` (no handler). **Dual Spa Switch (class
-  0x02 / 0x10) is absent from the device map entirely.**
-- **Modelling assessment:** value is modest — these are command-source / status-display devices whose effects
-  the app already obtains via the controller scrape (OneTouch/IAQ/RSSA) and the aux-count/power-center
-  validation. Live sim validation is **blocked** for all three (equipment sims deadlock a COM-mode master over
-  com0com), so any handler is synthetic-frame-validated only. The RE + device recognition is the deliverable.
-- **Status:** RE COMPLETE. Device handler modelling pending a scope decision (recognition-only vs full
-  status/LED decoders).
+### OBS-08 — Remote power center (RemAux) / Dual Spa Switch / Spa Link  *(RE done; spaside recognised; full decode PAUSED)*
+
+**Device mapping (user-confirmed):** `Remaux.exe` = remote auxiliary power center; **`2x4rem.exe` = "Dual Spa
+Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spaside remote).
+
+#### Reverse engineering — COMPLETE & documented
+- **RemAux** (`docs/alwin32/lpc4-remaux.md`): class 5 → `0x28-0x2B`. Inbound `0x00` poll / `0x02` 6-byte bulk
+  relay image / `0x08` set-relay-16bit / `0x09` set-relay-8bit. Outbound `[0x01][relay_bitmask][0x00]` (len 3).
+- **Dual Spa Switch + Spa Link** (`docs/alwin32/spaside-remotes.md`): both use a **fixed** hard-coded address
+  (no RemoteGetNextAddress). 2x4rem `0x10` (class 0x02), 8button `0x20` (class 0x04). Inbound = a 6-byte
+  LED/indicator image (cmd `0x02` on the 2x4, `0x01` on the 8-button). Outbound = `[0x01][0x00][button_index]`
+  (len 3); the 8-button exposes 9 keys. Button-index↔physical-function map and the full LED-byte→indicator map
+  still want a live capture.
+
+#### Done (commit c230a87)
+- Added the missing **Dual Spa Switch device class** (class 0x02 → `0x10-0x13`) to `jandy_device_types.h`.
+- Routed **Dual Spa Switch (0x10)** and **Spa Link (SpaRemote 0x20)** to the `KeypadDevice` handler in
+  `IdentifyAndAddDevice`, so both spaside remotes are now **recognised supported equipment** (they appear in the
+  device inventory instead of logging "Device class not supported"). Unit tests: class resolution +
+  `InstanceAddressesForClass` + recognition-creates-a-device.
+- **Not done:** a RemAux (`RemotePowerCenter` 0x28) handler — it is not a keypad, so it still falls through to
+  "unsupported"; and the full button/LED/relay **wire-level decode** for all three.
+
+#### Why full wire-decode is blocked (the architecture finding)
+These three devices reuse **generic command bytes** that the app's *global* command→message factory already
+owns, and a device→master frame carries **no source id** (`JandyMessage` exposes only `Destination()`):
+- Their device→master STATUS (RemAux relay bitmask, spaside button press) is an **`Ack` (cmd `0x01`)** — the
+  same command every device on the bus uses to acknowledge a poll. Today device→master frames are attributed
+  only when their command is *unique* (e.g. AquaRite PPM `0x16` is registered unfiltered for exactly this
+  reason — see `aquarite_device.cpp`). A generic `0x01` Ack cannot be attributed to RemAux vs a spaside remote
+  vs anything else.
+- Their master→device COMMANDS (RemAux set-relay `0x08`/`0x09`, the LED image `0x01`/`0x02`) **collide** with
+  existing global ids (`Status`, `PDA_Highlight`, `PDA_Clear`, `Ack`). A frame to `0x28`/cmd `0x08` is parsed as
+  `PDA_Highlight`, not a RemAux-SetRelay.
+
+So clean decode needs **two** architectural pieces, neither a routine device-add:
+1. **Poll-source correlation** — have the protocol/generator track the last-polled non-master address and stamp
+   the following Ack with it, so a device can claim "this `0x01` came from me". Moderate change, but it sits on
+   the **high-volume Ack hot path** (every device acks every poll). This alone unlocks the device→master decode:
+   **RemAux relay bitmask** + **spaside button presses** (the bulk of the useful data).
+2. **Per-destination message dispatch** — interpret a frame by (destination-class, command) rather than command
+   alone, so `0x28`/`0x08` means RemAux-SetRelay. Deeper change to the factory/generator core. Needed only for
+   the LED state and the master-side set-relay commands (the latter is redundant with the status bitmask).
+
+#### Validation + value caveats
+- **Sim-unvalidatable:** all three are blocked from a live com0com capture — the vendor equipment sims share
+  NetIO's in-memory net table and **deadlock a COM-mode master** (the PowerCenter goes "Not Responding"). Any
+  handler would be **synthetic-frame-validated only** until real hardware or a non-deadlocking capture path
+  exists. (Sim `ControllerType` also caps at 2 power centers, so RemAux is the only way to exercise PC C/D and
+  it is exactly the deadlocking path.)
+- **Modest marginal value:** the equipment STATE these devices carry (aux relay on/off, spa-mode) is already
+  obtained by the app via the controller scrape (OneTouch/IAQ/RSSA) and the OBS-07 aux/power-center validation.
+  The unique value would be (a) recognising the physical accessory on the bus (done for the spaside pair), and
+  (b) seeing *which* spaside button a user pressed / a standalone RemAux's relay states without a controller
+  scrape.
+
+#### To resume
+- **If poll-source correlation is built:** register an unfiltered `JandyMessage_Ack` slot per device that checks
+  the correlated source id; decode the RemAux bitmask (`AckType()` byte = relay mask, bit N-1 = relay N) into
+  aux states, and the spaside `Command()` byte = button index. Add a minimal `RemotePowerCenterDevice`.
+- **If per-destination dispatch is built:** add RemAux SetRelay (`0x08`/`0x09`) + spaside LED-image decoders
+  keyed on (class, command).
+- Both validated via `MockReplayHarness` with synthetic RemAux/spaside frames built per the two RE docs.
+
+**Status:** RE COMPLETE; spaside remotes RECOGNISED; full wire-decode + RemAux handler **PAUSED** pending the
+architecture decision above (and ideally real-hardware/capture validation).
 
 ---
 
