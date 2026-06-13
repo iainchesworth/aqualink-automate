@@ -7,6 +7,7 @@
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "formatters/jandy_device_formatters.h"
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
@@ -183,6 +184,7 @@ namespace AqualinkAutomate::Devices
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> normal_operation", std::source_location::current());
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing NormalOperation state", DeviceId()));
+			Actuation_ProcessStep();
 			break;
 		}
 
@@ -301,6 +303,138 @@ namespace AqualinkAutomate::Devices
 		}
 
 		return false;
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action)
+	{
+		if (nullptr == device)
+		{
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		// A non-emulated (passive) OneTouch never transmits key commands, so it cannot
+		// actuate. Report NotSupported so the dispatcher can fall back to another
+		// controller (or surface that nothing on the bus can act).
+		if (!IsEmulated())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot actuate equipment", DeviceId()));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+		if (!label.has_value() || Utility::TrimWhitespace(label.value()).empty())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Cannot actuate a device with no label", DeviceId()));
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+		const std::string target_label{ Utility::TrimWhitespace(label.value()) };
+
+		// The keypad Select is a pure in-place TOGGLE. For an explicit On/Off, only act
+		// when the device's current state differs; if it already matches the request,
+		// succeed as a no-op rather than toggling it the wrong way.
+		if (action != Capabilities::ActuationAction::Toggle)
+		{
+			const bool want_on{ action == Capabilities::ActuationAction::On };
+			if (auto current = CurrentOnState(device); current.has_value() && (current.value() == want_on))
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already {} - no actuation required", DeviceId(), target_label, want_on ? "ON" : "OFF"));
+				return Capabilities::ActuationResult::Accepted;
+			}
+		}
+
+		// One goal at a time: reject a new request while a toggle is mid-navigation so two
+		// cursor walks never interleave on the single shared Navigator.
+		if (m_ActuationInProgress || m_PendingActuationLabel.has_value())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting request for '{}'", DeviceId(), target_label));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		m_PendingActuationLabel = target_label;
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued toggle of '{}'", DeviceId(), target_label));
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::optional<bool> OneTouchDevice::CurrentOnState(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const
+	{
+		namespace ATT = Kernel::AuxillaryTraitsTypes;
+
+		if (!device->AuxillaryTraits.Has(ATT::AuxillaryTypeTrait{}))
+		{
+			return std::nullopt;
+		}
+
+		switch (*(device->AuxillaryTraits[ATT::AuxillaryTypeTrait{}]))
+		{
+		case ATT::AuxillaryTypes::Pump:
+			if (auto s = device->AuxillaryTraits.TryGet(ATT::PumpStatusTrait{}); s.has_value())
+			{
+				return (s.value() == Kernel::PumpStatuses::Running);
+			}
+			return std::nullopt;
+
+		default:
+			if (auto s = device->AuxillaryTraits.TryGet(ATT::AuxillaryStatusTrait{}); s.has_value())
+			{
+				return (s.value() == Kernel::AuxillaryStatuses::On);
+			}
+			return std::nullopt;
+		}
+	}
+
+	void OneTouchDevice::Actuation_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Actuation_ProcessStep", std::source_location::current());
+
+		if (!m_PendingActuationLabel.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		// Kick off the navigation goal once: drive to the Equipment ON/OFF page, find the
+		// row whose label matches the target device, and Select it. The select_target is
+		// the Equipment ON/OFF page itself because an in-place toggle keeps us on that
+		// page (the row re-renders) rather than transitioning elsewhere.
+		if (!m_ActuationInProgress)
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): Beginning toggle navigation for '{}'", DeviceId(), m_PendingActuationLabel.value()));
+			m_Navigator->NavigateToItem(Navigation::PageId::EquipmentOnOff, 0, m_PendingActuationLabel.value(), Navigation::PageId::EquipmentOnOff);
+			m_ActuationInProgress = true;
+			m_ActuationStepCount = 0;
+		}
+
+		// Advance the navigator against the current screen and queue any key it asks for
+		// (actually emitted on the next Status message by ProcessControllerUpdates).
+		if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+		{
+			m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+		}
+
+		// Frame backstop so a mis-detected page can never wedge NormalOperation (the
+		// Navigator's own timeouts normally drive it to Failed first).
+		if (++m_ActuationStepCount > ONETOUCH_ACTUATION_STEP_LIMIT)
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' exceeded {} steps - abandoning", DeviceId(), m_PendingActuationLabel.value(), ONETOUCH_ACTUATION_STEP_LIMIT));
+			m_Navigator->Reset();
+			m_PendingActuationLabel.reset();
+			m_ActuationInProgress = false;
+			return;
+		}
+
+		if (m_Navigator->IsComplete())
+		{
+			if (m_Navigator->IsSuccess())
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' completed", DeviceId(), m_PendingActuationLabel.value()));
+			}
+			else
+			{
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' failed during navigation", DeviceId(), m_PendingActuationLabel.value()));
+			}
+			m_Navigator->Reset();
+			m_PendingActuationLabel.reset();
+			m_ActuationInProgress = false;
+		}
 	}
 
 	void OneTouchDevice::Scraping_ProcessStep_StartUp()

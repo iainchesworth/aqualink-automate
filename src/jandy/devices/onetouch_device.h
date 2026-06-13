@@ -4,12 +4,15 @@
 #include <chrono>
 #include <list>
 #include <memory>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/describable.h"
+#include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
@@ -33,11 +36,12 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t ONETOUCH_SCRAPING_STALL_LIMIT{ 10 };
+		inline static const uint32_t ONETOUCH_ACTUATION_STEP_LIMIT{ 500 };  // frame backstop so a toggle goal can never wedge NormalOperation (the Navigator's own timeouts normally end it first)
 
 		enum class OperatingStates
 		{
@@ -74,6 +78,14 @@ namespace AqualinkAutomate::Devices
 		// When so, the emulated OneTouch skips the slow "Label Aux" menu crawl at
 		// startup. Exposed for diagnostics and for validating the skip decision.
 		bool DataHubHasSeededAuxLabels() const;
+
+	public:
+		// DeviceActuator: actuate (toggle/on/off) a pool device by driving the emulated
+		// keypad to the Equipment ON/OFF page and Selecting the row whose label matches
+		// the device. Ranks Low so a Serial Adapter (direct command) is preferred when
+		// both controllers are present.
+		Capabilities::ActuationResult ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action) override;
+		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Low; }
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -152,6 +164,12 @@ namespace AqualinkAutomate::Devices
 		void Scraping_ProcessStep_StartUp();
 		void Scraping_ProcessStep();
 
+		// On-demand actuation (DeviceActuator): service a single pending toggle goal in
+		// NormalOperation by driving the Navigator, and read a device's current on/off
+		// state so an explicit On/Off only acts when the state actually differs.
+		void Actuation_ProcessStep();
+		std::optional<bool> CurrentOnState(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const;
+
 		// Convert Navigator key command to device KeyCommand
 		static KeyCommands ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd);
 
@@ -165,6 +183,14 @@ namespace AqualinkAutomate::Devices
 		OperatingStates m_OpState{ OperatingStates::ColdStart };
 		uint32_t m_ScrapingStallCounter{ 0 };
 		uint8_t m_HighlightedLine{ 0 };
+
+	private:
+		// On-demand equipment actuation goal (a single toggle at a time). Set by
+		// ActuateDevice (DeviceActuator), serviced by Actuation_ProcessStep in
+		// NormalOperation; the Navigator drives the keypad to the row and Selects it.
+		std::optional<std::string> m_PendingActuationLabel;
+		bool m_ActuationInProgress{ false };
+		uint32_t m_ActuationStepCount{ 0 };
 
 	private:
 		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore
