@@ -91,6 +91,7 @@ networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
 | ----------------------------------------------------------------------- | ------ |
 | C++ unit + integration suites (incl. OneTouch setpoint, dispatcher, fixture replay) | ✅ green (1726 + 101 cases) |
 | OneTouch toggle replay driven from `onetouch_equipment_toggle.cap`      | ✅ Navigator emits in-place Select |
+| OneTouch setpoint edit model vs `onetouch_setpoint_edit.cap` hardware    | ✅ Select-enter → arrow-step ±1 → Select-commit; Pool=line2/Spa=line3; on-screen units |
 | Sidecar unit tests (device-map, API client)                             | ✅ green (11 cases) |
 | Sidecar typecheck + build (matter.js bridge)                            | ✅ `tsc` clean |
 | Sidecar boots → emits a valid commissioning QR + manual code            | ✅ verified |
