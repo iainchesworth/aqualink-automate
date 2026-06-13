@@ -154,17 +154,25 @@ The decoder already holds the per-model ground truth as `{config, board, AuxCoun
   out-of-range aux, ExtraAux exclusion, and the page capability classifier.
 - **Status:** IMPLEMENTED (commits 66b2028 validation/attribution, a1bc8fc menu survey).
 
-### OBS-08 — Remote power centers (RemAux 0x28) / Dual Spa Switch / Spa Link not modelled  *(Investigate)*
-- **Finding:** the `RemotePowerCenter` device class is recognised at bus `0x28-0x2B` in `jandy_device_types.h`
-  but has **no device handler** — multi-PC aux relays are discovered only via the OneTouch/RSSA scrape labels
-  ("Aux B/C/D"), not via a remote-power-centre device. **Dual Spa Switch** and **Spa Link** are absent from the
-  codebase entirely. The Alwin32 suite has dedicated sims for these (`Remaux.exe`, plus IO/DIP variants driven
-  by `Simio.exe`) that have not been reconciled against the app.
-- **Impact:** 3-4 power centers can't be exercised on the sim via `ControllerType` (caps at 2); a live RemAux
-  device on the bus is not separately modelled (its relays still surface through the menu scrape). DIP-switch
-  power-centre variants (e.g. Aux3↔Cleaner, Spillover present) surface as different scrape labels and ARE handled
-  by the aux factory, but are not specifically validated across DIP configs.
-- **Status:** OPEN (capture/sim-gated; aux-count validation now covers 3-4 PC at the decoder/unit level).
+### OBS-08 — Remote power center (RemAux) / Dual Spa Switch / Spa Link not modelled  *(RE done; modelling assessed)*
+- **Device mapping (user-confirmed):** `Remaux.exe` = remote auxiliary power center; **`2x4rem.exe` = "Dual Spa
+  Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spaside remote).
+- **Reverse engineering — COMPLETE & documented:**
+  - RemAux: `docs/alwin32/lpc4-remaux.md` — class 5 → `0x28-0x2B`; inbound `0x00` poll / `0x02` 6-byte bulk /
+    `0x08` set-relay-16bit / `0x09` set-relay-8bit; outbound `[0x01][relay_bitmask][0x00]` (len 3).
+  - Dual Spa Switch + Spa Link: `docs/alwin32/spaside-remotes.md` (new) — both use a **fixed** address (no
+    RemoteGetNextAddress): 2x4rem `0x10` (class 0x02), 8button `0x20` (class 0x04). Inbound = 6-byte LED/indicator
+    image (cmd `0x02` on the 2x4, `0x01` on the 8-button); outbound = `[0x01][0x00][button_index]` (len 3); the
+    8-button has 9 keys. Button-index↔function map and full LED-byte map need a live capture.
+- **App coverage:** `RemotePowerCenter` (0x28) and `SpaRemote` (0x20 = Spa Link) exist in the device map but
+  fall through to "Device class not supported" in `IdentifyAndAddDevice` (no handler). **Dual Spa Switch (class
+  0x02 / 0x10) is absent from the device map entirely.**
+- **Modelling assessment:** value is modest — these are command-source / status-display devices whose effects
+  the app already obtains via the controller scrape (OneTouch/IAQ/RSSA) and the aux-count/power-center
+  validation. Live sim validation is **blocked** for all three (equipment sims deadlock a COM-mode master over
+  com0com), so any handler is synthetic-frame-validated only. The RE + device recognition is the deliverable.
+- **Status:** RE COMPLETE. Device handler modelling pending a scope decision (recognition-only vs full
+  status/LED decoders).
 
 ---
 
