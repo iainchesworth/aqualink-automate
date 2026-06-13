@@ -11,6 +11,7 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/chlorinator_controller.h"
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
@@ -37,13 +38,14 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::ChlorinatorController
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const uint32_t ONETOUCH_SCRAPING_STALL_LIMIT{ 10 };
 		inline static const uint32_t ONETOUCH_ACTUATION_STEP_LIMIT{ 500 };  // frame backstop so a toggle goal can never wedge NormalOperation (the Navigator's own timeouts normally end it first)
-		inline static const uint32_t ONETOUCH_SETPOINT_STEP_LIMIT{ 500 };   // frame backstop for a setpoint goal (navigation + the per-degree value-step loop)
+		inline static const uint32_t ONETOUCH_VALUEEDIT_STEP_LIMIT{ 500 };  // frame backstop for a value-edit goal (navigation + the value-step loop)
+		inline static const uint32_t ONETOUCH_BOOST_STEP_LIMIT{ 500 };      // frame backstop for a chlorinator-boost goal
 
 		enum class OperatingStates
 		{
@@ -91,22 +93,21 @@ namespace AqualinkAutomate::Devices
 
 		// SetpointController: change the pool/spa heater setpoint by driving the emulated
 		// keypad to the Set Temperature page, Select-ing the Pool Heat / Spa Heat row to
-		// enter the in-place editor, stepping the value with the arrow keys, then Select-ing
-		// again to commit. The value arrives already in the system's configured units (the
-		// setpoints route converts before dispatch; the dispatcher validates the range), so
-		// it matches the on-screen value 1:1. Ranks Low so a Serial Adapter (direct command)
-		// wins when both controllers are present. (ControllerPriority() above satisfies both
-		// the DeviceActuator and SetpointController mixins - identical signature.)
+		// enter the in-place editor, arrow-stepping the value, then Select-ing again to
+		// commit. The value arrives already in the system's configured units (the setpoints
+		// route converts before dispatch; the dispatcher validates the range), so it matches
+		// the on-screen value 1:1. (ControllerPriority() above satisfies the DeviceActuator,
+		// SetpointController AND ChlorinatorController mixins - identical signature.)
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 
-	private:
-		// Shared body of SetPoolSetpoint/SetSpaSetpoint: validate the device can actuate,
-		// reject if another goal is mid-flight, then enqueue the setpoint goal.
-		enum class SetpointBody;
-		Capabilities::ActuationResult QueueSetpointGoal(SetpointBody body, uint8_t temperature);
-
-	public:
+		// ChlorinatorController: set the chlorinator output % via the Set AquaPure page (same
+		// value-editor as the setpoint, but 5% steps) and start/stop the 100% boost via the
+		// Boost Pool page. The % drives the POOL chlorination row to match the IAQ's single-%
+		// behaviour; targets are rounded to a multiple of 5 (the OneTouch's step). Ranks Low,
+		// so the IAQ's direct value-submit chlorinator (Medium) is preferred on a combined rig.
+		Capabilities::ActuationResult SetChlorinatorPercentage(uint8_t percentage) override;
+		Capabilities::ActuationResult SetChlorinatorBoost(bool enable) override;
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -191,19 +192,25 @@ namespace AqualinkAutomate::Devices
 		void Actuation_ProcessStep();
 		std::optional<bool> CurrentOnState(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const;
 
-		// On-demand setpoint editing (SetpointController): service a single pending
-		// pool/spa setpoint goal in NormalOperation. The Navigator positions the cursor on
-		// the Set Temperature page's Pool Heat / Spa Heat row (no Select); then this device
-		// drives the value-step loop directly - Select to begin editing, arrow keys to step
-		// the displayed value toward the target, Back to commit.
-		void Setpoint_ProcessStep();
+		// On-demand on-screen VALUE EDITOR (SetpointController + chlorinator %): service a
+		// single pending value-edit goal in NormalOperation. The Navigator positions the
+		// cursor on the goal's value row (no Select); then this device drives the value-step
+		// loop directly - Select to begin editing, arrow keys to step the displayed value
+		// toward the target, Select to commit. Used for heater setpoints (Set Temperature,
+		// 1-degree steps) and chlorinator % (Set AquaPure, 5% steps) alike.
+		void ValueEdit_ProcessStep();
 
-		// Read the currently displayed integer temperature from a Set Temperature page row
-		// (e.g. "Pool Heat   90`F" -> 90). Returns nullopt when no value is parseable yet
-		// (page not rendered, or value blanked mid-edit), so the step loop simply waits.
-		std::optional<int> DisplayedSetpoint(uint8_t line_id) const;
+		// On-demand chlorinator BOOST (ChlorinatorController): service a single pending
+		// boost start/stop goal in NormalOperation via the Boost Pool page - Select on the
+		// "Operate at 100%" page starts it; navigating to the "Stop" item and Select stops it.
+		void Boost_ProcessStep();
 
-		// True when any on-demand goal (toggle or setpoint) is mid-flight; the single
+		// Read the currently displayed integer value from a row (e.g. "Pool Heat   90`F" -> 90,
+		// "Set Pool to: 45%" -> 45). Returns nullopt when no value is parseable yet (page not
+		// rendered, or value blanked mid-edit), so the step loop simply waits.
+		std::optional<int> DisplayedValue(uint8_t line_id) const;
+
+		// True when any on-demand goal (toggle / value-edit / boost) is mid-flight; the single
 		// shared Navigator means goals must never interleave.
 		bool GoalInProgress() const;
 
@@ -230,28 +237,57 @@ namespace AqualinkAutomate::Devices
 		uint32_t m_ActuationStepCount{ 0 };
 
 	private:
-		// On-demand setpoint goal (a single pool/spa edit at a time). Set by
-		// SetPoolSetpoint/SetSpaSetpoint (SetpointController), serviced by
-		// Setpoint_ProcessStep in NormalOperation.
-		enum class SetpointBody { Pool, Spa };
-		enum class SetpointPhase
+		// On-demand on-screen value-edit goal (a single edit at a time). Set by the
+		// SetpointController / ChlorinatorController-% methods, serviced by
+		// ValueEdit_ProcessStep in NormalOperation. The phase machine is identical for heater
+		// setpoints and chlorinator % - only the page/row/target/units differ.
+		enum class ValueEditPhase
 		{
-			Navigating,     // Navigator positioning the cursor on the Pool/Spa Heat row
+			Navigating,     // Navigator positioning the cursor on the value row
 			BeginEdit,      // Select pressed to enter the in-place value editor
 			Stepping,       // arrow keys stepping the displayed value toward the target
 			Commit          // Select pressed again to commit the value and leave the editor
 		};
 
-		// The Pool Heat / Spa Heat rows on the Set Temperature page (see
-		// PageProcessor_SetTemperature): line 2 is Pool Heat, line 3 is Spa Heat.
+		struct ValueEditGoal
+		{
+			Navigation::PageId page;   // page hosting the value row (Set Temperature / Set AquaPure)
+			uint8_t line;              // row index of the value (cursor target + value read-back)
+			std::string label;         // row label for content-based cursor positioning
+			uint8_t target;            // target value in the on-screen units
+			std::string desc;          // human description for logging
+		};
+
+		// Value rows (see PageProcessor_SetTemperature / the Set AquaPure page): on Set
+		// Temperature, Pool Heat is line 2 / Spa Heat line 3; on Set AquaPure, "Set Pool to:"
+		// is line 3 (verified vs onetouch_chlorinator.cap).
 		inline static const uint8_t SETTEMP_POOL_HEAT_LINE{ 2 };
 		inline static const uint8_t SETTEMP_SPA_HEAT_LINE{ 3 };
+		inline static const uint8_t SETAQUAPURE_POOL_LINE{ 3 };
+		inline static const uint8_t ONETOUCH_CHLORINATOR_STEP{ 5 };  // the OneTouch edits AquaPure % in 5% increments
 
-		std::optional<SetpointBody> m_PendingSetpointBody;
-		uint8_t m_PendingSetpointTarget{ 0 };
-		SetpointPhase m_SetpointPhase{ SetpointPhase::Navigating };
-		bool m_SetpointInProgress{ false };
-		uint32_t m_SetpointStepCount{ 0 };
+		std::optional<ValueEditGoal> m_PendingValueEdit;
+		ValueEditPhase m_ValueEditPhase{ ValueEditPhase::Navigating };
+		bool m_ValueEditInProgress{ false };
+		uint32_t m_ValueEditStepCount{ 0 };
+
+		// Shared body of the value-edit capability methods: validate the device can actuate,
+		// reject if another goal is mid-flight, then enqueue the goal.
+		Capabilities::ActuationResult QueueValueEdit(ValueEditGoal goal);
+
+	private:
+		// On-demand chlorinator-boost goal (start/stop, one at a time). Set by
+		// SetChlorinatorBoost, serviced by Boost_ProcessStep in NormalOperation.
+		enum class BoostPhase
+		{
+			Navigating,     // Navigator driving to the Boost Pool page
+			Acting,         // pressing Select (start) or selecting the Stop item (stop)
+			Settle          // waiting for the action to take effect / complete
+		};
+		std::optional<bool> m_PendingBoost;   // true = start, false = stop
+		BoostPhase m_BoostPhase{ BoostPhase::Navigating };
+		bool m_BoostInProgress{ false };
+		uint32_t m_BoostStepCount{ 0 };
 
 	private:
 		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore

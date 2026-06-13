@@ -306,4 +306,32 @@ BOOST_AUTO_TEST_CASE(TestSetPoolSetpoint_SerialAdapterPreferredOverOneTouch)
 	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
 }
 
+BOOST_AUTO_TEST_CASE(TestSetChlorinatorPercentage_EmulatedOneTouch_RoutesAndAccepts)
+{
+	// A OneTouch-only rig can now drive the chlorinator (via the Set AquaPure menu) - the
+	// OneTouch advertises ChlorinatorController and the % is queued/accepted.
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.SetChlorinatorPercentage(45);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetChlorinatorBoost_EmulatedOneTouch_RoutesAndAccepts)
+{
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.SetChlorinatorBoost(true);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+}
+
+BOOST_AUTO_TEST_CASE(TestSetChlorinatorPercentage_PassiveOneTouch_FallsThrough)
+{
+	// A non-emulated OneTouch IS-A ChlorinatorController but cannot transmit -> NotSupported,
+	// which the chlorinator call-site maps to DeviceNotFound.
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, false));
+
+	auto result = dispatcher.SetChlorinatorPercentage(45);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::DeviceNotFound));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -80,13 +80,16 @@ namespace AqualinkAutomate::Navigation
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::Program,          2,  "Program" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::SetTemperature,   3,  "Set Temp" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::SetTime,          4,  "Set Time" },
-				// Note: SetAquapure menu item is conditional (requires chlorinator enabled).
-				// When absent, items below shift up. Content-based resolution handles shifted positions.
+				// Note: the SetAquapure + Boost menu items are conditional (require a chlorinator).
+				// When absent, items below shift up; content-based resolution handles shifted
+				// positions, so the trigger_line is only a hint and the label is matched on screen.
+				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::SetAquapure,      5,  "Set AquaPure" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::DisplayLight,     6,  "Display Light" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::Lockouts,         7,  "Lockouts" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::PasswordSettings, 8,  "Password" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::ProgramGroup,     9,  "Program Group" },
 				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::SystemSetup,      10, "System Setup" },
+				{ EdgeTrigger::Select,   PageId::MenuHelp, PageId::Boost,            11, "Boost Pool" },
 				{ EdgeTrigger::Back,     PageId::MenuHelp, PageId::System,           0,  "" },
 				{ EdgeTrigger::LineUp,   PageId::MenuHelp, PageId::MenuHelp,         0,  "" },
 				{ EdgeTrigger::LineDown, PageId::MenuHelp, PageId::MenuHelp,         0,  "" },

@@ -8,9 +8,10 @@ namespace AqualinkAutomate::Devices::Capabilities
 {
 
 	// Mixin advertised by any controller that can drive a salt-water generator
-	// (chlorinator) output percentage and boost mode. Today only the AqualinkTouch
-	// (IAQ, 0x33) page UI carries chlorinator control on the wire, so this is a
-	// single-provider capability and carries no priority.
+	// (chlorinator) output percentage and boost mode. Both the AqualinkTouch (IAQ, 0x33,
+	// direct value-submit) and the OneTouch (0x40-43, via the Set AquaPure menu) can carry
+	// chlorinator control, so the CommandDispatcher selects the highest ControllerPriority()
+	// instance present (the IAQ's direct channel outranks the OneTouch menu-nav).
 	class ChlorinatorController
 	{
 	public:
@@ -18,6 +19,9 @@ namespace AqualinkAutomate::Devices::Capabilities
 
 		virtual ActuationResult SetChlorinatorPercentage(uint8_t percentage) = 0;
 		virtual ActuationResult SetChlorinatorBoost(bool enable) = 0;
+
+		// Precedence when several ChlorinatorControllers are connected at once.
+		virtual ActuationPriority ControllerPriority() const = 0;
 	};
 
 }

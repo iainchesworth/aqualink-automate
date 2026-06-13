@@ -172,11 +172,55 @@ BOOST_AUTO_TEST_CASE(TestSetpoint_RejectsSecondGoalWhileBusy)
 
 BOOST_AUTO_TEST_CASE(TestSetpoint_ControllerPriority_IsLow)
 {
-	// OneTouch is a Low-priority controller so a direct-command Serial Adapter (High)
-	// is preferred when both are present (shared with the DeviceActuator mixin).
+	// OneTouch is a Low-priority controller so a direct-command Serial Adapter (High) and
+	// the direct-command AqualinkTouch (Medium) are preferred when present (shared by the
+	// DeviceActuator / SetpointController / ChlorinatorController mixins).
 	OneTouchDevice device(device_type, *this, true);
 	BOOST_CHECK_EQUAL(static_cast<int>(device.ControllerPriority()),
 		static_cast<int>(Devices::Capabilities::ActuationPriority::Low));
+}
+
+// =============================================================================
+// ChlorinatorController capability surface (Set AquaPure % via the menu value
+// editor; boost via the Boost Pool page). Verified vs onetouch_chlorinator.cap.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestChlorinator_Emulated_AcceptsPercentageAndBoost)
+{
+	OneTouchDevice device(device_type, *this, true);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorPercentage(45)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
+}
+
+BOOST_AUTO_TEST_CASE(TestChlorinatorBoost_Emulated_Accepts)
+{
+	OneTouchDevice device(device_type, *this, true);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorBoost(true)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
+}
+
+BOOST_AUTO_TEST_CASE(TestChlorinator_NonEmulated_NotSupported)
+{
+	// A passive (non-emulated) OneTouch cannot transmit, so it cannot edit the chlorinator.
+	OneTouchDevice device(device_type, *this, false);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorPercentage(50)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorBoost(false)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
+}
+
+BOOST_AUTO_TEST_CASE(TestChlorinator_RejectsWhileAnotherGoalBusy)
+{
+	// One shared Navigator -> a chlorinator edit is rejected while a setpoint goal is pending.
+	OneTouchDevice device(device_type, *this, true);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetPoolSetpoint(82)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
+	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorPercentage(45)),
+		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

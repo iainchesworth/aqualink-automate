@@ -663,4 +663,35 @@ BOOST_AUTO_TEST_CASE(TestSetTemperature_PositionsCursorOnPoolHeat_WithoutSelect)
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 2);
 }
 
+// The chlorinator % edit positions the cursor on the Set AquaPure "Set Pool to:" row
+// (line 3) without Select - same value-editor entry as the setpoint. Grounded in
+// onetouch_chlorinator.cap (Pool % = Set AquaPure line 3).
+BOOST_AUTO_TEST_CASE(TestSetAquapure_PositionsCursorOnPoolRow_WithoutSelect)
+{
+	auto model = CreateOneTouchMenuModel();
+	Navigator nav(model);
+
+	auto aqua = MakePage({
+		{ 0, "  Set AquaPure  " },     // detector "Set AquaPure"
+		{ 3, "Set Pool to: 40%" },     // pool chlorination row
+		{ 4, "Set Spa to:  40%" },     // spa chlorination row
+	});
+
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(aqua, 3);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::SetAquapure);
+
+	nav.NavigateToItem(PageId::SetAquapure, 3, "Set Pool", PageId::Unknown);
+
+	auto cmd = nav.OnPageUpdate(aqua, 3);
+	BOOST_CHECK(!cmd.has_value());                 // no Select - the device drives the % editor
+	BOOST_CHECK(nav.IsComplete());
+	BOOST_CHECK(nav.IsSuccess());
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

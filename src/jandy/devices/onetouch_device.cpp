@@ -185,7 +185,8 @@ namespace AqualinkAutomate::Devices
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> normal_operation", std::source_location::current());
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing NormalOperation state", DeviceId()));
 			Actuation_ProcessStep();
-			Setpoint_ProcessStep();
+			ValueEdit_ProcessStep();
+			Boost_ProcessStep();
 			break;
 		}
 
@@ -442,49 +443,78 @@ namespace AqualinkAutomate::Devices
 	{
 		return m_ActuationInProgress
 			|| m_PendingActuationLabel.has_value()
-			|| m_SetpointInProgress
-			|| m_PendingSetpointBody.has_value();
+			|| m_ValueEditInProgress
+			|| m_PendingValueEdit.has_value()
+			|| m_BoostInProgress
+			|| m_PendingBoost.has_value();
 	}
 
 	Capabilities::ActuationResult OneTouchDevice::SetPoolSetpoint(uint8_t temperature)
 	{
-		return QueueSetpointGoal(SetpointBody::Pool, temperature);
+		return QueueValueEdit({ Navigation::PageId::SetTemperature, SETTEMP_POOL_HEAT_LINE, "Pool Heat", temperature, "pool setpoint" });
 	}
 
 	Capabilities::ActuationResult OneTouchDevice::SetSpaSetpoint(uint8_t temperature)
 	{
-		return QueueSetpointGoal(SetpointBody::Spa, temperature);
+		return QueueValueEdit({ Navigation::PageId::SetTemperature, SETTEMP_SPA_HEAT_LINE, "Spa Heat", temperature, "spa setpoint" });
 	}
 
-	Capabilities::ActuationResult OneTouchDevice::QueueSetpointGoal(SetpointBody body, uint8_t temperature)
+	Capabilities::ActuationResult OneTouchDevice::SetChlorinatorPercentage(uint8_t percentage)
 	{
-		const char* body_name = (body == SetpointBody::Pool) ? "pool" : "spa";
+		// The OneTouch edits AquaPure % in 5% steps, so the target must be a multiple of 5
+		// for the value-step loop to land exactly. Round to the nearest 5 and clamp to 100.
+		const uint8_t clamped = (percentage > 100) ? 100 : percentage;
+		const uint8_t rounded = static_cast<uint8_t>(((clamped + (ONETOUCH_CHLORINATOR_STEP / 2)) / ONETOUCH_CHLORINATOR_STEP) * ONETOUCH_CHLORINATOR_STEP);
+		// Drives the POOL chlorination row ("Set Pool to: NN%") to match the IAQ's single-%
+		// behaviour. Verified vs onetouch_chlorinator.cap (Pool % = Set AquaPure line 3).
+		return QueueValueEdit({ Navigation::PageId::SetAquapure, SETAQUAPURE_POOL_LINE, "Set Pool", rounded, "chlorinator %" });
+	}
 
+	Capabilities::ActuationResult OneTouchDevice::QueueValueEdit(ValueEditGoal goal)
+	{
 		// A non-emulated (passive) OneTouch never transmits key commands, so it cannot
-		// actuate. Report NotSupported so the dispatcher can fall back to another
-		// controller (or surface that nothing on the bus can act).
+		// actuate. Report NotSupported so the dispatcher can fall back to another controller.
 		if (!IsEmulated())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot set {} setpoint", DeviceId(), body_name));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot edit {}", DeviceId(), goal.desc));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
-		// One goal at a time: reject while any toggle/setpoint goal is mid-navigation so two
-		// cursor walks never interleave on the single shared Navigator.
+		// One goal at a time: reject while any goal is mid-navigation so two cursor walks
+		// never interleave on the single shared Navigator.
 		if (GoalInProgress())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting {} setpoint request", DeviceId(), body_name));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting {} request", DeviceId(), goal.desc));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
-		m_PendingSetpointBody = body;
-		m_PendingSetpointTarget = temperature;
-		m_SetpointPhase = SetpointPhase::Navigating;
-		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued {} setpoint -> {}", DeviceId(), body_name, static_cast<int>(temperature)));
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued {} -> {}", DeviceId(), goal.desc, static_cast<int>(goal.target)));
+		m_PendingValueEdit = std::move(goal);
+		m_ValueEditPhase = ValueEditPhase::Navigating;
 		return Capabilities::ActuationResult::Accepted;
 	}
 
-	std::optional<int> OneTouchDevice::DisplayedSetpoint(uint8_t line_id) const
+	Capabilities::ActuationResult OneTouchDevice::SetChlorinatorBoost(bool enable)
+	{
+		if (!IsEmulated())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot {} boost", DeviceId(), enable ? "start" : "stop"));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		if (GoalInProgress())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting boost {} request", DeviceId(), enable ? "start" : "stop"));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		m_PendingBoost = enable;
+		m_BoostPhase = BoostPhase::Navigating;
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued chlorinator boost {}", DeviceId(), enable ? "start" : "stop"));
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::optional<int> OneTouchDevice::DisplayedValue(uint8_t line_id) const
 	{
 		const auto& page = DisplayedPage();
 		if (line_id >= page.Size())
@@ -492,12 +522,12 @@ namespace AqualinkAutomate::Devices
 			return std::nullopt;
 		}
 
-		// Read the integer degrees exactly as shown on the row, e.g. "Pool Heat   30`C"
-		// -> 30 or "Pool Heat   90`F" -> 90. Both the screen AND the target are already in
-		// the system's configured units (the setpoints route converts to those units before
-		// dispatch), so the raw displayed integer is compared directly with the target - NO
-		// C/F conversion (which would mismatch a Celsius display against a Celsius target).
-		// Verified against the onetouch_setpoint_edit.cap hardware capture (30`C / 38`C).
+		// Read the integer value exactly as shown on the row, e.g. "Pool Heat   30`C" -> 30,
+		// "Pool Heat   90`F" -> 90, "Set Pool to: 45%" -> 45. The on-screen value and the
+		// target are in the same units (the setpoints route converts to the system's units
+		// before dispatch; chlorinator % is unit-less), so the raw displayed integer is
+		// compared directly with the target - NO conversion. Verified against the
+		// onetouch_setpoint_edit.cap (30`C/38`C) and onetouch_chlorinator.cap (40/45%) captures.
 		int value{ 0 };
 		bool found{ false };
 		for (const char c : page[line_id].Text)
@@ -509,66 +539,67 @@ namespace AqualinkAutomate::Devices
 			}
 			else if (found)
 			{
-				break;  // first contiguous digit run only (the temperature)
+				break;  // first contiguous digit run only (the value)
 			}
 		}
 
 		return found ? std::optional<int>{ value } : std::nullopt;
 	}
 
-	void OneTouchDevice::Setpoint_ProcessStep()
+	void OneTouchDevice::ValueEdit_ProcessStep()
 	{
-		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Setpoint_ProcessStep", std::source_location::current());
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ValueEdit_ProcessStep", std::source_location::current());
 
-		if (!m_PendingSetpointBody.has_value() || !m_Navigator)
+		if (!m_PendingValueEdit.has_value() || !m_Navigator)
 		{
 			return;
 		}
 
-		const bool is_pool = (m_PendingSetpointBody.value() == SetpointBody::Pool);
-		const uint8_t row_line = is_pool ? SETTEMP_POOL_HEAT_LINE : SETTEMP_SPA_HEAT_LINE;
-		const std::string row_label = is_pool ? "Pool Heat" : "Spa Heat";
-		const char* body_name = is_pool ? "pool" : "spa";
+		const ValueEditGoal& goal = m_PendingValueEdit.value();
+		const uint8_t row_line = goal.line;
+		const std::string& row_label = goal.label;
+		const std::string& desc = goal.desc;
+		const int target = static_cast<int>(goal.target);
 
 		auto finish = [&](bool ok)
 		{
 			if (ok)
 			{
-				LogInfo(Channel::Devices, std::format("OneTouch ({}): {} setpoint edit completed", DeviceId(), body_name));
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): {} edit completed", DeviceId(), desc));
 			}
 			else
 			{
-				LogWarning(Channel::Devices, std::format("OneTouch ({}): {} setpoint edit abandoned", DeviceId(), body_name));
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): {} edit abandoned", DeviceId(), desc));
 			}
 			m_Navigator->Reset();
-			m_PendingSetpointBody.reset();
-			m_SetpointInProgress = false;
-			m_SetpointPhase = SetpointPhase::Navigating;
+			m_PendingValueEdit.reset();
+			m_ValueEditInProgress = false;
+			m_ValueEditPhase = ValueEditPhase::Navigating;
 		};
 
 		// Frame backstop so a mis-detected page can never wedge NormalOperation (the
 		// Navigator's own timeouts normally drive it to Failed first).
-		if (m_SetpointInProgress && (++m_SetpointStepCount > ONETOUCH_SETPOINT_STEP_LIMIT))
+		if (m_ValueEditInProgress && (++m_ValueEditStepCount > ONETOUCH_VALUEEDIT_STEP_LIMIT))
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): {} setpoint exceeded {} steps - abandoning", DeviceId(), body_name, ONETOUCH_SETPOINT_STEP_LIMIT));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): {} edit exceeded {} steps - abandoning", DeviceId(), desc, ONETOUCH_VALUEEDIT_STEP_LIMIT));
 			finish(false);
 			return;
 		}
 
-		switch (m_SetpointPhase)
+		switch (m_ValueEditPhase)
 		{
-		case SetpointPhase::Navigating:
+		case ValueEditPhase::Navigating:
 		{
-			// Kick off navigation once: drive to the Set Temperature page and position the
-			// cursor on the Pool/Spa Heat row. select_target is left Unknown so the Navigator
-			// stops AT the row (cursor positioned) instead of pressing Select - the in-place
-			// value editor is driven by this device, not the Navigator.
-			if (!m_SetpointInProgress)
+			// Kick off navigation once: drive to the goal's page and position the cursor on
+			// the value row. select_target is left Unknown so the Navigator stops AT the row
+			// (cursor positioned) instead of pressing Select - the in-place value editor is
+			// driven by this device, not the Navigator.
+			if (!m_ValueEditInProgress)
 			{
-				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to Set Temp '{}' row", DeviceId(), row_label));
-				m_Navigator->NavigateToItem(Navigation::PageId::SetTemperature, row_line, row_label, Navigation::PageId::Unknown);
-				m_SetpointInProgress = true;
-				m_SetpointStepCount = 0;
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to '{}' row for {}", DeviceId(), row_label, desc));
+				m_Navigator->NavigateToItem(goal.page, row_line, row_label, Navigation::PageId::Unknown);
+				m_ValueEditInProgress = true;
+				m_ValueEditStepCount = 0;
 			}
 
 			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
@@ -581,7 +612,7 @@ namespace AqualinkAutomate::Devices
 				if (m_Navigator->IsSuccess())
 				{
 					LogInfo(Channel::Devices, std::format("OneTouch ({}): Cursor on '{}' row - entering value editor", DeviceId(), row_label));
-					m_SetpointPhase = SetpointPhase::BeginEdit;
+					m_ValueEditPhase = ValueEditPhase::BeginEdit;
 				}
 				else
 				{
@@ -591,65 +622,180 @@ namespace AqualinkAutomate::Devices
 			break;
 		}
 
-		case SetpointPhase::BeginEdit:
+		case ValueEditPhase::BeginEdit:
 		{
 			// Skip the edit entirely if the row already shows the target value (avoids a
 			// pointless enter/exit-edit toggle). Wait if the value isn't readable yet.
-			if (auto current = DisplayedSetpoint(row_line); current.has_value() && current.value() == static_cast<int>(m_PendingSetpointTarget))
+			if (auto current = DisplayedValue(row_line); current.has_value() && current.value() == target)
 			{
-				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already at target {} - no edit required", DeviceId(), row_label, static_cast<int>(m_PendingSetpointTarget)));
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already at target {} - no edit required", DeviceId(), row_label, target));
 				finish(true);
 				break;
 			}
 
-			// On the Set Temperature page, Select on the highlighted row ENTERS the in-place
-			// value editor (verified vs hardware: Select then arrows change the value).
+			// Select on the highlighted row ENTERS the in-place value editor (verified vs
+			// hardware: Select then arrows change the value).
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to begin editing '{}'", DeviceId(), row_label));
 			m_KeyCommand_ToSend = KeyCommands::Select;
-			m_SetpointPhase = SetpointPhase::Stepping;
+			m_ValueEditPhase = ValueEditPhase::Stepping;
 			break;
 		}
 
-		case SetpointPhase::Stepping:
+		case ValueEditPhase::Stepping:
 		{
-			// In edit mode, step one degree toward the target per status cycle: LineUp
-			// increments, LineDown decrements (verified vs hardware: 30->31`C on LineUp,
-			// 39->38`C on LineDown). If the value isn't parseable yet (page mid-render),
-			// wait for the next update.
-			auto current = DisplayedSetpoint(row_line);
+			// In edit mode, step toward the target per status cycle: LineUp increments,
+			// LineDown decrements (the device applies its own increment - 1 degree for
+			// setpoints, 5% for chlorinator - so the target must be reachable by it). If the
+			// value isn't parseable yet (page mid-render), wait for the next update.
+			auto current = DisplayedValue(row_line);
 			if (!current.has_value())
 			{
 				LogTrace(Channel::Devices, std::format("OneTouch ({}): '{}' value not yet readable - waiting", DeviceId(), row_label));
 				break;
 			}
 
-			const int target = static_cast<int>(m_PendingSetpointTarget);
 			if (current.value() == target)
 			{
 				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' reached target {} - committing", DeviceId(), row_label, target));
-				m_SetpointPhase = SetpointPhase::Commit;
+				m_ValueEditPhase = ValueEditPhase::Commit;
 				break;
 			}
 
-			if (current.value() < target)
-			{
-				m_KeyCommand_ToSend = KeyCommands::LineUp;
-			}
-			else
-			{
-				m_KeyCommand_ToSend = KeyCommands::LineDown;
-			}
+			m_KeyCommand_ToSend = (current.value() < target) ? KeyCommands::LineUp : KeyCommands::LineDown;
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): Stepping '{}' {} -> {} ({})", DeviceId(), row_label, current.value(), target, magic_enum::enum_name(m_KeyCommand_ToSend)));
 			break;
 		}
 
-		case SetpointPhase::Commit:
+		case ValueEditPhase::Commit:
 		{
 			// Press Select once to COMMIT the edited value and leave the editor (verified vs
 			// hardware: each edit is bracketed Select...Select, NOT Back - Back would navigate
-			// away from the Set Temperature page instead of committing the value in place).
+			// away from the page instead of committing the value in place).
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to commit '{}'", DeviceId(), row_label));
 			m_KeyCommand_ToSend = KeyCommands::Select;
+			finish(true);
+			break;
+		}
+		}
+	}
+
+	void OneTouchDevice::Boost_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Boost_ProcessStep", std::source_location::current());
+
+		if (!m_PendingBoost.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		const bool want_start = m_PendingBoost.value();
+
+		auto finish = [&](bool ok)
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): chlorinator boost {} {}", DeviceId(), want_start ? "start" : "stop", ok ? "completed" : "abandoned"));
+			m_Navigator->Reset();
+			m_PendingBoost.reset();
+			m_BoostInProgress = false;
+			m_BoostPhase = BoostPhase::Navigating;
+		};
+
+		if (m_BoostInProgress && (++m_BoostStepCount > ONETOUCH_BOOST_STEP_LIMIT))
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): boost {} exceeded {} steps - abandoning", DeviceId(), want_start ? "start" : "stop", ONETOUCH_BOOST_STEP_LIMIT));
+			finish(false);
+			return;
+		}
+
+		// The Boost Pool page shows "Time Remaining" while a boost is running and "Operate ...
+		// at 100%" when idle - used to decide whether an action is actually needed.
+		auto boost_is_running = [this]() -> bool
+		{
+			const auto& page = DisplayedPage();
+			for (std::size_t i = 0; i < page.Size(); ++i)
+			{
+				if (page[i].Text.find("Time Remaining") != std::string::npos)
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+
+		switch (m_BoostPhase)
+		{
+		case BoostPhase::Navigating:
+		{
+			// Drive to the Boost Pool page (no in-place Select yet - we decide the action from
+			// the page state once there).
+			if (!m_BoostInProgress)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to Boost Pool to {} boost", DeviceId(), want_start ? "start" : "stop"));
+				m_Navigator->NavigateTo(Navigation::PageId::Boost);
+				m_BoostInProgress = true;
+				m_BoostStepCount = 0;
+			}
+
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+
+			if (m_Navigator->IsComplete())
+			{
+				if (!m_Navigator->IsSuccess())
+				{
+					finish(false);
+					break;
+				}
+
+				const bool running = boost_is_running();
+				if (want_start && running)
+				{
+					LogInfo(Channel::Devices, std::format("OneTouch ({}): boost already running - nothing to do", DeviceId()));
+					finish(true);
+				}
+				else if (!want_start && !running)
+				{
+					LogInfo(Channel::Devices, std::format("OneTouch ({}): boost already stopped - nothing to do", DeviceId()));
+					finish(true);
+				}
+				else if (want_start)
+				{
+					// Idle page ("Operate the chlorinator at 100%"): a single Select starts boost
+					// (verified vs onetouch_chlorinator.cap).
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to start boost", DeviceId()));
+					m_KeyCommand_ToSend = KeyCommands::Select;
+					m_BoostPhase = BoostPhase::Settle;
+				}
+				else
+				{
+					// Running page: navigate to the "Stop" submenu item and Select it in place
+					// (verified vs onetouch_chlorinator.cap - user confirmed the pump stopped).
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Navigating to 'Stop' to stop boost", DeviceId()));
+					m_Navigator->NavigateToItem(Navigation::PageId::Boost, 0, "Stop", Navigation::PageId::Boost);
+					m_BoostPhase = BoostPhase::Acting;
+				}
+			}
+			break;
+		}
+
+		case BoostPhase::Acting:
+		{
+			// Stop path: let the Navigator walk the cursor to the "Stop" item and Select it.
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+			if (m_Navigator->IsComplete())
+			{
+				finish(m_Navigator->IsSuccess());
+			}
+			break;
+		}
+
+		case BoostPhase::Settle:
+		{
+			// Start path: the Select has been queued; the action is one-shot, so we are done.
 			finish(true);
 			break;
 		}

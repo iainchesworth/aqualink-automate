@@ -194,10 +194,11 @@ BOOST_AUTO_TEST_CASE(TestMenuHelpPageSelectEdgeLineNumbers)
 	BOOST_REQUIRE(menu_page != nullptr);
 
 	auto select_edges = GetSelectEdges(menu_page);
-	BOOST_REQUIRE_EQUAL(select_edges.size(), 9);
+	BOOST_REQUIRE_EQUAL(select_edges.size(), 11);
 
-	// Menu/Help page Select edges starting at line 1 (line 0 is "Menu" title)
-	// Note: SetAquapure edge removed (conditional menu item, chlorinator-dependent)
+	// Menu/Help page Select edges starting at line 1 (line 0 is "Menu" title).
+	// SetAquapure (line 5) and Boost Pool (line 11) are conditional chlorinator menu
+	// items - reachable so the OneTouch can drive the chlorinator output / boost.
 	BOOST_CHECK_EQUAL(select_edges[0]->label, "Help");
 	BOOST_CHECK_EQUAL(select_edges[0]->trigger_line, 1);
 
@@ -211,25 +212,33 @@ BOOST_AUTO_TEST_CASE(TestMenuHelpPageSelectEdgeLineNumbers)
 	BOOST_CHECK_EQUAL(select_edges[3]->label, "Set Time");
 	BOOST_CHECK_EQUAL(select_edges[3]->trigger_line, 4);
 
-	BOOST_CHECK_EQUAL(select_edges[4]->label, "Display Light");
-	BOOST_CHECK_EQUAL(select_edges[4]->trigger_line, 6);
-	BOOST_CHECK(select_edges[4]->target == PageId::DisplayLight);
+	BOOST_CHECK_EQUAL(select_edges[4]->label, "Set AquaPure");
+	BOOST_CHECK_EQUAL(select_edges[4]->trigger_line, 5);
+	BOOST_CHECK(select_edges[4]->target == PageId::SetAquapure);
 
-	BOOST_CHECK_EQUAL(select_edges[5]->label, "Lockouts");
-	BOOST_CHECK_EQUAL(select_edges[5]->trigger_line, 7);
-	BOOST_CHECK(select_edges[5]->target == PageId::Lockouts);
+	BOOST_CHECK_EQUAL(select_edges[5]->label, "Display Light");
+	BOOST_CHECK_EQUAL(select_edges[5]->trigger_line, 6);
+	BOOST_CHECK(select_edges[5]->target == PageId::DisplayLight);
 
-	BOOST_CHECK_EQUAL(select_edges[6]->label, "Password");
-	BOOST_CHECK_EQUAL(select_edges[6]->trigger_line, 8);
-	BOOST_CHECK(select_edges[6]->target == PageId::PasswordSettings);
+	BOOST_CHECK_EQUAL(select_edges[6]->label, "Lockouts");
+	BOOST_CHECK_EQUAL(select_edges[6]->trigger_line, 7);
+	BOOST_CHECK(select_edges[6]->target == PageId::Lockouts);
 
-	BOOST_CHECK_EQUAL(select_edges[7]->label, "Program Group");
-	BOOST_CHECK_EQUAL(select_edges[7]->trigger_line, 9);
-	BOOST_CHECK(select_edges[7]->target == PageId::ProgramGroup);
+	BOOST_CHECK_EQUAL(select_edges[7]->label, "Password");
+	BOOST_CHECK_EQUAL(select_edges[7]->trigger_line, 8);
+	BOOST_CHECK(select_edges[7]->target == PageId::PasswordSettings);
 
-	BOOST_CHECK_EQUAL(select_edges[8]->label, "System Setup");
-	BOOST_CHECK_EQUAL(select_edges[8]->trigger_line, 10);
-	BOOST_CHECK(select_edges[8]->target == PageId::SystemSetup);
+	BOOST_CHECK_EQUAL(select_edges[8]->label, "Program Group");
+	BOOST_CHECK_EQUAL(select_edges[8]->trigger_line, 9);
+	BOOST_CHECK(select_edges[8]->target == PageId::ProgramGroup);
+
+	BOOST_CHECK_EQUAL(select_edges[9]->label, "System Setup");
+	BOOST_CHECK_EQUAL(select_edges[9]->trigger_line, 10);
+	BOOST_CHECK(select_edges[9]->target == PageId::SystemSetup);
+
+	BOOST_CHECK_EQUAL(select_edges[10]->label, "Boost Pool");
+	BOOST_CHECK_EQUAL(select_edges[10]->trigger_line, 11);
+	BOOST_CHECK(select_edges[10]->target == PageId::Boost);
 }
 
 BOOST_AUTO_TEST_CASE(TestSystemSetupPageSelectEdgeLineNumbers)
@@ -560,12 +569,13 @@ BOOST_AUTO_TEST_CASE(TestAllNonSpecialPagesReachableFromSystem)
 	// Pages not reachable via normal menu navigation:
 	// - Service/TimeOut: involuntary system events
 	// - EquipmentStatus: shown by controller status change, not navigated to
-	// - FreezeProtect/Boost: accessible via hardware buttons, not menu items
+	// - FreezeProtect: accessible via hardware buttons, not a menu item
 	// - SelectSpeed: appears when selecting a variable-speed pump
 	// - EnterPassword: appears when password-protected option is selected
-	// - SetAquapure: conditional menu item (chlorinator-dependent), edge removed
 	// - MoreOneTouch: reached via scrolling, not Select navigation
 	// - CustomLabel: interactive character editor, edge removed to avoid edits
+	// (SetAquapure + Boost ARE reachable - they carry chlorinator control - and so are
+	// deliberately NOT excluded here; their reachability is asserted below.)
 	std::set<PageId> special_pages = {
 		PageId::Unknown,
 		PageId::StartUp,
@@ -573,10 +583,8 @@ BOOST_AUTO_TEST_CASE(TestAllNonSpecialPagesReachableFromSystem)
 		PageId::TimeOut,
 		PageId::EquipmentStatus,
 		PageId::FreezeProtect,
-		PageId::Boost,
 		PageId::SelectSpeed,
 		PageId::EnterPassword,
-		PageId::SetAquapure,
 		PageId::MoreOneTouch,
 		PageId::CustomLabel,
 	};
@@ -611,10 +619,8 @@ BOOST_AUTO_TEST_CASE(TestAllNonSpecialPagesReachableFromOneTouch)
 		PageId::TimeOut,
 		PageId::EquipmentStatus,
 		PageId::FreezeProtect,
-		PageId::Boost,
 		PageId::SelectSpeed,
 		PageId::EnterPassword,
-		PageId::SetAquapure,
 		PageId::MoreOneTouch,
 		PageId::CustomLabel,
 	};
@@ -644,10 +650,8 @@ BOOST_AUTO_TEST_CASE(TestAllNonSpecialPagesReachableFromEquipmentOnOff)
 		PageId::TimeOut,
 		PageId::EquipmentStatus,
 		PageId::FreezeProtect,
-		PageId::Boost,
 		PageId::SelectSpeed,
 		PageId::EnterPassword,
-		PageId::SetAquapure,
 		PageId::MoreOneTouch,
 		PageId::CustomLabel,
 	};
@@ -1213,23 +1217,30 @@ BOOST_AUTO_TEST_CASE(TestSetTemperatureHasNoSelectEdges)
 	BOOST_CHECK_EQUAL(select_edges.size(), 0);
 }
 
-BOOST_AUTO_TEST_CASE(TestSetAquapureHasNoIncomingEdges)
+BOOST_AUTO_TEST_CASE(TestChlorinatorPagesAreReachableFromMenu)
 {
-	// Verify no Select edge in the entire model targets SetAquapure
+	// The Set AquaPure and Boost Pool pages must be reachable (via a Select edge from the
+	// Menu/Help page) so the OneTouch can drive the chlorinator output % and boost. These
+	// are conditional menu items (present only when a chlorinator is configured).
 	auto model = CreateOneTouchMenuModel();
 	const auto& pages = model.GetAllPages();
 
+	bool aquapure_reachable = false;
+	bool boost_reachable = false;
 	for (const auto& [id, page] : pages)
 	{
 		for (const auto& edge : page.edges)
 		{
 			if (edge.trigger == EdgeTrigger::Select && edge.IsPageTransition())
 			{
-				BOOST_CHECK_MESSAGE(edge.target != PageId::SetAquapure,
-					"Found Select edge to SetAquapure from page '" + page.name + "'");
+				if (edge.target == PageId::SetAquapure) { aquapure_reachable = true; }
+				if (edge.target == PageId::Boost) { boost_reachable = true; }
 			}
 		}
 	}
+
+	BOOST_CHECK_MESSAGE(aquapure_reachable, "SetAquapure has no incoming Select edge (chlorinator % unreachable)");
+	BOOST_CHECK_MESSAGE(boost_reachable, "Boost has no incoming Select edge (chlorinator boost unreachable)");
 }
 
 BOOST_AUTO_TEST_CASE(TestCustomLabelHasNoIncomingEdges)
