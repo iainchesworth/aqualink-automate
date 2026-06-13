@@ -3,8 +3,12 @@
 Reverse-engineered from the official Jandy *Alwin32* simulator suite
 (`C:\Program Files (x86)\Alwin32\2x4rem.exe`, `8button.exe`; debug MFC builds,
 VS2003 / `mfc71d.dll`). Method: static x86 disassembly (pefile + capstone, via
-`alw.py`). Every claim is cited as `2x4rem.exe!0xRVA` / `8button.exe!0xRVA` /
-`NetIO.dll!0xRVA`. Both images have base `0x400000`, so VA `0x40xxxx` == RVA `0xxxxx`.
+`alw.py`), **cross-checked with Ghidra decompilation** (project `ghidra-proj/alwin32`,
+`BehaviorMap.java`/`ForceDecompile.java` → `alwin32-re/decomp-2x4rem` & `decomp-8button`).
+Every claim is cited as `2x4rem.exe!0xRVA` / `8button.exe!0xRVA` / `NetIO.dll!0xRVA`. Both
+images have base `0x400000`, so VA `0x40xxxx` == RVA `0xxxxx`. **The Ghidra pass corrected
+the Spa Link inbound command bytes** (LED image is cmd `0x02`, not `0x01`; text is cmd `0x03`)
+— see §2.4.
 
 Cross-checked against the shared-protocol template `docs/alwin32_simulator_protocol.md`
 (frame = `NetIO.dll!CommTx`; addressing = `(class<<3)|instance`; device model =
@@ -234,39 +238,42 @@ call sites (`0x401707`, `0x40172d`, `0x40177e`).
   addr=[+0xbd]=0x20, initBuf=+0xb4)` (`8button.exe!0x4013be`-`0x4013cf`). `+0xb4` is the
   3-byte status buffer (§2.5); byte0 seeded `0x01` (`0x4012fa mov byte [esi+0xb4],1`).
 
-## 2.4 Inbound (master → device) commands `[CONFIRMED]`
+## 2.4 Inbound (master → device) commands `[CONFIRMED — corrected via Ghidra]`
+
+> **Command-byte correction (Ghidra decompilation of `FUN_004016b4`).** The first static
+> read of the `dec`-chain placed the LED image at cmd `0x01` and text at cmd `0x02`. The
+> Ghidra decompiler resolves the actual comparisons in the dispatch as `outBuf[0] == 0x02`
+> (LED) and `== 0x03` (text). The corrected values are below — note this makes the LED image
+> command **the same `0x02` as the Dual Spa Switch**, not a different byte.
 
 `GetMasterMessage(addr=[+0xbd], outBuf=+0x80)` (`8button.exe!0x4016cd`); inbound length →
-`+0xb2`. Handler at `8button.exe!0x4016b4` dispatches on `eax = outBuf[0]`
-(`0x4016e4 movzx eax,[edi]`) via a `dec`-chain (`0x4016e7`-`0x4016f3`):
+`+0xb2`. Handler `FUN_004016b4` dispatches on `outBuf[0]`:
 
 | cmd | meaning | payload | handler |
 |----:|---------|---------|---------|
-| `0x00` (default, any ≠ `0x01`,`0x02`) | **Poll / keep-alive** — ACK 3-byte status only | — | `0x4016f5` |
-| `0x01` | **Set LED / indicator state** — 6-byte indicator image | `data[0..5]` (6 bytes) | `0x40176c` |
-| `0x02` | **Set text / config value** — single-value compare+copy path | `data[1..]` (text/value) | `0x401714` |
+| `0x00` (default, any ≠ `0x02`,`0x03`) | **Poll / keep-alive** — ACK 3-byte status only | — | else branch |
+| `0x02` | **Set LED / indicator state** — 6-byte indicator image | `data[0..5]` (6 bytes) | `if (outBuf[0]==0x02)` |
+| `0x03` | **Set text / config value** — string compare+copy path | `data[1..]` (text/value) | `else if (outBuf[0]==0x03)` |
 
-> Dispatch decode: `eax=cmd; dec eax; je 0x40176c`(cmd `0x01`) `; dec eax; je 0x401714`(cmd
-> `0x02`) `;` else default `0x4016f5`. Every branch sends the 3-byte status (`RemoteStatus`
-> @`0x401707`/`0x40172d`/`0x40177e`) before/around its payload work.
+> Every branch sends the 3-byte status (`RemoteStatus(addr, +0xb4, 3, 1)`) around its payload
+> work; the pending-button byte `+0xb6` is cleared after each message.
 
-### cmd 0x01 internals — 6-byte LED image `[CONFIRMED]`
+### cmd 0x02 internals — 6-byte LED image `[CONFIRMED]`
 
-`memcmp(outBuf@+0x80, cache@+0xb7, len=6)` (`0x4028e0` @`0x401790`); on change
-`memcpy(+0xb7, +0x80, 6)` (`0x4025a0` @`0x4017a0`) and redraw `0x401483` (`@0x4017aa`).
+`memcmp(outBuf@+0x80, cache@+0xb7, len=6)`; on change `memcpy(+0xb7, +0x80, 6)`
+(`FUN_004025a0`) and redraw `FUN_00401483`.
 
-### cmd 0x02 internals — text/config value `[CONFIRMED]`
+### cmd 0x03 internals — text/config value `[CONFIRMED]`
 
-Clears the pending-button byte `+0xb5` (`0x401714`), sends status, then
-`strcmp/compare(outBuf@+0x82, cache@+0xc0)` (`0x402510` @`0x40173e`); on change copies the
-inbound string into both `+0xc0` (`0x4118a9` @`0x401753`) and `+0x7c` (`@0x40175c`) and
-refreshes. I.e. a small **inbound text/config field** (a MFC `CString` copy) distinct from
-the bitmap LED push. `[INFERRED]` exact semantic (likely a display/name string).
+Clears the pending-button byte `+0xb5`, sends status, then `strcmp(outBuf@+0x82, cache@+0xc0)`;
+on change copies the inbound string into both `+0xc0` (`FUN_004118a9`) and `+0x7c` and
+refreshes the UI (`FUN_00410c85`). I.e. a small **inbound text/config field** (a MFC `CString`
+copy) distinct from the bitmap LED push. `[INFERRED]` exact semantic (likely a display/name string).
 
 ### LED indicator decode — 2 bits per indicator `[CONFIRMED]`
 
 Redraw routine `8button.exe!0x401483` decodes the cached LED byte at `+0xb8`
-(= `data[1]` of the cmd-0x01 image) as **4 indicators × 2 bits**, then continues into
+(= `data[1]` of the cmd-`0x02` image) as **4 indicators × 2 bits**, then continues into
 `+0xb9` for more:
 
 | bits of `data[1]` (`+0xb8`) | indicator | UI ctrl id | states |
@@ -290,7 +297,7 @@ at all three call sites (`8button.exe!0x401707`, `0x40172d`, `0x40177e`):
 | field | offset | value |
 |-------|:------:|-------|
 | `data[0]` | `+0xb4` | **response command `0x01`** (constant; set in ctor `0x4012fa mov byte [esi+0xb4],1`) |
-| `data[1]` | `+0xb5` | `0x00` (ctor-zeroed `0x4012e4`; cleared again on cmd `0x02` `0x401714`; never set to data) |
+| `data[1]` | `+0xb5` | `0x00` (ctor-zeroed; cleared again on cmd `0x03`; never set to data) |
 | `data[2]` | `+0xb6` | **pressed-button code (1–9), `0x00` = none** — set by the button handlers, cleared after each send (`0x4017af and byte [esi+0xb6],0`) |
 
 **Response = `[0x01][0x00][button_code]`, length 3.**
@@ -322,13 +329,14 @@ all-off / menu / select key). A "Spa Link" press goes on the wire as
 | device | exe | address | class | inbound cmds | outbound (cmd / len) |
 |--------|-----|:-------:|:-----:|--------------|----------------------|
 | Dual Spa Switch (2×4 spaside remote) | `2x4rem.exe` | `0x10`–`0x17` (fixed base `0x10`) | `0x02` | `0x00` poll · **`0x02`** set LEDs (6-byte image; 2-bit/indicator) | **`0x01`** / 3 = `[0x01][0x00][button 1–8]` |
-| Spa Link (8-button spaside remote) | `8button.exe` | `0x20`–`0x27` (fixed base `0x20`) | `0x04` | `0x00` poll · **`0x01`** set LEDs (6-byte image; 2-bit/indicator) · `0x02` set text/value | **`0x01`** / 3 = `[0x01][0x00][button 1–9]` |
+| Spa Link (8-button spaside remote) | `8button.exe` | `0x20`–`0x27` (fixed base `0x20`) | `0x04` | `0x00` poll · **`0x02`** set LEDs (6-byte image; 2-bit/indicator) · **`0x03`** set text/value | **`0x01`** / 3 = `[0x01][0x00][button 1–9]` |
 
 **Key model:** both are **base-Jandy DLE/STX** spaside remotes (no Pentair `0xA5`) at a
 **fixed hard-coded address** (no `RemoteGetNextAddress`). Master→remote = a **2-bits-per-
-indicator** LED image (off/on/blink) under one inbound command (`0x02` on the Dual Spa
-Switch, `0x01` on the Spa Link — note the LED-command byte **differs** between the two
-devices). Remote→master = a fixed **3-byte** `[0x01][0x00][buttonCode]` frame where
+indicator** LED image (off/on/blink) under inbound command **`0x02` on BOTH devices**
+(Ghidra-confirmed; an earlier static read mis-placed the Spa Link's at `0x01`). The Spa Link
+additionally accepts a `0x03` text/config string. Remote→master = a fixed **3-byte**
+`[0x01][0x00][buttonCode]` frame where
 `buttonCode` is a **small integer button index** (1..8 / 1..9), `0` when idle, reported on
 the next poll and cleared after one send. This is the **spaside-remote button-press wire
 encoding** — an index, not a bitfield.
@@ -344,7 +352,7 @@ capture-checkable byte layouts on the existing Jandy generator/factory stack.
 * **Full LED-image byte→indicator map** beyond `data[1]` — these sims only render the
   indicators they have UI controls for (2 on the Dual Spa Switch, 4+ on the Spa Link);
   the meaning of the higher cached bytes of the 6-byte image is unconfirmed.
-* The Spa Link **cmd `0x02` text/config** field's exact semantic (display name vs config).
+* The Spa Link **cmd `0x03` text/config** field's exact semantic (display name vs config).
 * The **response command byte for an *unsolicited* button event**: the sims only ever ACK
   a master poll, so `0x01` is the sim-confirmed response cmd; whether a real remote sends
   a different command byte when reporting a press without being polled was not observed.
