@@ -15,6 +15,7 @@ A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool contro
 - Local control of your pool system, bypassing the need for cloud services
 - Intuitive web-based user interface for easy control and monitoring
 - Full API support (HTTP and MQTT) for custom integrations with Smart Homes
+- **Matter** bridge for Apple Home / Google Home / Alexa / SmartThings (on by default; scan a QR to pair) — see [docs/MATTER.md](docs/MATTER.md)
 - Detailed status information of your Aqualink RS system
 - 
 # Getting Started
