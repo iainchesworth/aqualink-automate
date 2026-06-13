@@ -87,7 +87,9 @@ source "vsphere-iso" "ubuntu" {
   guest_os_type        = "ubuntu64Guest"
   firmware             = "efi"
   CPUs                 = 32
-  RAM                  = 24576
+  # 32 GB: 24 GB OOM-killed cc1plus during parallel C++ builds (heavy TUs +
+  # LTO at -j32 exceed ~0.75 GB/core), which silently dropped the runner offline.
+  RAM                  = 32768
   RAM_reserve_all      = false
   disk_controller_type = ["pvscsi"]
 

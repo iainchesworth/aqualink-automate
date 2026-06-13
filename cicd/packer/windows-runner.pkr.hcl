@@ -91,7 +91,9 @@ source "vsphere-iso" "windows" {
   vm_name              = var.vm_name
   guest_os_type        = "windows2019srvNext_64Guest"
   CPUs                 = 32
-  RAM                  = 24576
+  # 32 GB: match the Linux runner — 24 GB OOM-killed cc1plus during parallel
+  # C++ builds at -j32 (heavy TUs + LTO exceed ~0.75 GB/core).
+  RAM                  = 32768
   RAM_reserve_all      = false
   disk_controller_type = ["lsilogic-sas"]
 
