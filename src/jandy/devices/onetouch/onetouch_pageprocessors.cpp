@@ -47,30 +47,41 @@ namespace AqualinkAutomate::Devices
 
 		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
 
-		// When the filter pump is running, line 5 shows pool or spa water
-		// temperature (e.g. "Pool 82`F" or "Spa 100`F") instead of
-		// "Filter Pump OFF".  Try to parse it as a temperature.
-		if (auto water_temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[5].Text)); water_temp().has_value())
+		// Parse the temperature readings on the home page and route each by its area label
+		// ("Air"/"Pool"/"Spa") rather than a fixed line number. The layout is model-dependent:
+		// a single-body / shared-equipment panel shows water temp on line 5 and air on line 6,
+		// but a dual-equipment panel lists both Pool Pump and Spa Pump, which pushes the air
+		// line down (air is on line 7 on an RS-2/10 Dual). Scanning by area handles every
+		// layout. Water temps only appear here while the corresponding pump is running.
+		for (std::size_t line = 0; line < page.Size(); ++line)
 		{
-			if (auto area = water_temp.TemperatureArea(); area.has_value())
+			auto temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[line].Text));
+			if (!temp().has_value())
 			{
-				auto area_lower = area.value();
-				std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
-
-				if (area_lower.find("pool") != std::string::npos)
-				{
-					JandyController::m_DataHub->PoolTemp(water_temp().value());
-				}
-				else if (area_lower.find("spa") != std::string::npos)
-				{
-					JandyController::m_DataHub->SpaTemp(water_temp().value());
-				}
+				continue;
 			}
-		}
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
-		{
-			JandyController::m_DataHub->AirTemp(temperature().value());
+			auto area = temp.TemperatureArea();
+			if (!area.has_value())
+			{
+				continue;
+			}
+
+			auto area_lower = area.value();
+			std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+			if (area_lower.find("air") != std::string::npos)
+			{
+				JandyController::m_DataHub->AirTemp(temp().value());
+			}
+			else if (area_lower.find("pool") != std::string::npos)
+			{
+				JandyController::m_DataHub->PoolTemp(temp().value());
+			}
+			else if (area_lower.find("spa") != std::string::npos)
+			{
+				JandyController::m_DataHub->SpaTemp(temp().value());
+			}
 		}
 	}
 
