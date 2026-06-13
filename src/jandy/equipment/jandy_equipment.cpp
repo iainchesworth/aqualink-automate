@@ -198,6 +198,19 @@ namespace AqualinkAutomate::Equipment
 				m_EquipmentHub->AddDevice(std::make_unique<Devices::KeypadDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
+			case Devices::DeviceClasses::DualSpaSwitch:
+			case Devices::DeviceClasses::SpaRemote:
+				// Spaside remotes ("Dual Spa Switch" = 2x4rem at 0x10, "Spa Link" = 8button at
+				// 0x20) are spa-side keypads. They are recognised via the KeypadDevice handler so
+				// they appear as supported equipment on the bus. NOTE: their wire protocol reuses
+				// generic command bytes (button-press status is an Ack 0x01; the master's LED image
+				// is cmd 0x01/0x02), so the full button/LED decode is not attempted here -- the
+				// global command->message factory cannot distinguish them from Ack/Status, and a
+				// device->master status frame carries no source id (see docs/alwin32/spaside-remotes.md).
+				LogInfo(Channel::Equipment, [&] { return std::format("Adding new {} (spaside remote) device with id: {}", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()); });
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::KeypadDevice>(std::move(device_id), m_HubLocator, false));
+				break;
+
 			case Devices::DeviceClasses::SerialAdapter:
 				LogInfo(Channel::Equipment, std::format("Adding new Serial Adapter device with id: {}", message.Destination().Id()));
 				m_EquipmentHub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(std::move(device_id), m_HubLocator, false));

@@ -23,6 +23,20 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
     BOOST_CHECK_EQUAL(device2.Id(), 0x09);
 }
 
+BOOST_AUTO_TEST_CASE(SpasideRemoteClasses_ResolveFromBusAddress)
+{
+    using namespace AqualinkAutomate::Devices;
+
+    // "Dual Spa Switch" (2x4rem) lives at 0x10-0x13 (class 0x02); "Spa Link" (8button) at
+    // 0x20-0x23 (class 0x04). The 0x10 class was previously missing from the device map.
+    BOOST_CHECK_EQUAL(JandyDeviceType(0x10).Class(), DeviceClasses::DualSpaSwitch);
+    BOOST_CHECK_EQUAL(JandyDeviceType(0x13).Class(), DeviceClasses::DualSpaSwitch);
+    BOOST_CHECK_EQUAL(JandyDeviceType(0x20).Class(), DeviceClasses::SpaRemote);
+
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::DualSpaSwitch)
+        == std::vector<std::uint8_t>{ 0x10, 0x11, 0x12, 0x13 }));
+}
+
 BOOST_AUTO_TEST_CASE(InstanceAddressesForClass_ReturnsEveryInstanceOfTheClass)
 {
     using namespace AqualinkAutomate::Devices;

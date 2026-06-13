@@ -89,12 +89,32 @@ BOOST_AUTO_TEST_CASE(UnsupportedClass_CreatesNoDevice_AndIsRateLimited)
 
 	Equipment::JandyEquipment equipment(hub_locator);
 
-	// 0x20 / 0x21 are SpaRemote ids -> no device case in IdentifyAndAddDevice.
-	EmitAckTo(0x20);
-	EmitAckTo(0x21);
+	// 0x84 / 0x85 are Chem_Analyzer ids -> recognised at the id layer but with no device
+	// case in IdentifyAndAddDevice, so no device is created. (SpaRemote 0x20 is no longer a
+	// valid example here -- it is now recognised as a spaside-remote keypad.)
+	EmitAckTo(0x84);
+	EmitAckTo(0x85);
 
 	BOOST_CHECK_EQUAL(DeviceCount(*equipment_hub), 0U);
 	BOOST_CHECK_EQUAL(stats_hub->MessageCounts[Messages::JandyMessageIds::Ack].Count(), 2U);
+}
+
+// =============================================================================
+// Spaside remotes are recognised: "Dual Spa Switch" (2x4rem, 0x10) and "Spa Link"
+// (8button, 0x20) are spa-side keypads and each gets a device on the bus.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(SpasideRemotes_AreRecognisedAsDevices)
+{
+	Test::HubLocatorInjector hub_locator;
+	auto equipment_hub = hub_locator.Find<Kernel::EquipmentHub>();
+
+	Equipment::JandyEquipment equipment(hub_locator);
+
+	EmitAckTo(0x10);   // Dual Spa Switch (2x4rem)
+	EmitAckTo(0x20);   // Spa Link (8button)
+
+	BOOST_CHECK_EQUAL(DeviceCount(*equipment_hub), 2U);
 }
 
 // =============================================================================
