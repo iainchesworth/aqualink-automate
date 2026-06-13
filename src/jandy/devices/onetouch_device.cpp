@@ -15,7 +15,6 @@
 #include "navigation/visit_policies.h"
 #include "utility/jandy_pool_configuration_decoder.h"
 #include "utility/screen_data_page_processor.h"
-#include "utility/string_conversion/temperature_string_converter.h"
 #include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -493,19 +492,28 @@ namespace AqualinkAutomate::Devices
 			return std::nullopt;
 		}
 
-		// Reuse the production temperature parser the page processor relies on: it pulls the
-		// integer degrees out of a line like "Pool Heat   90`F" regardless of C/F suffix.
-		Utility::TemperatureStringConverter converter(Utility::TrimWhitespace(page[line_id].Text));
-		if (auto temperature = converter(); temperature.has_value())
+		// Read the integer degrees exactly as shown on the row, e.g. "Pool Heat   30`C"
+		// -> 30 or "Pool Heat   90`F" -> 90. Both the screen AND the target are already in
+		// the system's configured units (the setpoints route converts to those units before
+		// dispatch), so the raw displayed integer is compared directly with the target - NO
+		// C/F conversion (which would mismatch a Celsius display against a Celsius target).
+		// Verified against the onetouch_setpoint_edit.cap hardware capture (30`C / 38`C).
+		int value{ 0 };
+		bool found{ false };
+		for (const char c : page[line_id].Text)
 		{
-			// The displayed value and the requested target are both in the controller's
-			// configured wire units, so compare the rounded whole-degree readings directly
-			// rather than going via an absolute-temperature conversion.
-			const auto degrees = temperature.value().InFahrenheit().value();
-			return static_cast<int>(degrees + 0.5);
+			if (c >= '0' && c <= '9')
+			{
+				value = (value * 10) + (c - '0');
+				found = true;
+			}
+			else if (found)
+			{
+				break;  // first contiguous digit run only (the temperature)
+			}
 		}
 
-		return std::nullopt;
+		return found ? std::optional<int>{ value } : std::nullopt;
 	}
 
 	void OneTouchDevice::Setpoint_ProcessStep()
@@ -585,7 +593,17 @@ namespace AqualinkAutomate::Devices
 
 		case SetpointPhase::BeginEdit:
 		{
-			// Press Select once to enter the in-place value editor for the highlighted row.
+			// Skip the edit entirely if the row already shows the target value (avoids a
+			// pointless enter/exit-edit toggle). Wait if the value isn't readable yet.
+			if (auto current = DisplayedSetpoint(row_line); current.has_value() && current.value() == static_cast<int>(m_PendingSetpointTarget))
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already at target {} - no edit required", DeviceId(), row_label, static_cast<int>(m_PendingSetpointTarget)));
+				finish(true);
+				break;
+			}
+
+			// On the Set Temperature page, Select on the highlighted row ENTERS the in-place
+			// value editor (verified vs hardware: Select then arrows change the value).
 			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to begin editing '{}'", DeviceId(), row_label));
 			m_KeyCommand_ToSend = KeyCommands::Select;
 			m_SetpointPhase = SetpointPhase::Stepping;
@@ -594,9 +612,10 @@ namespace AqualinkAutomate::Devices
 
 		case SetpointPhase::Stepping:
 		{
-			// Read the live displayed value and step one degree toward the target per status
-			// cycle (arrow keys). LineUp increments, LineDown decrements. If the value is not
-			// yet parseable (page mid-render), simply wait for the next update.
+			// In edit mode, step one degree toward the target per status cycle: LineUp
+			// increments, LineDown decrements (verified vs hardware: 30->31`C on LineUp,
+			// 39->38`C on LineDown). If the value isn't parseable yet (page mid-render),
+			// wait for the next update.
 			auto current = DisplayedSetpoint(row_line);
 			if (!current.has_value())
 			{
@@ -626,9 +645,11 @@ namespace AqualinkAutomate::Devices
 
 		case SetpointPhase::Commit:
 		{
-			// Press Back once to commit the edited value and leave the editor.
-			LogDebug(Channel::Devices, std::format("OneTouch ({}): Back to commit '{}'", DeviceId(), row_label));
-			m_KeyCommand_ToSend = KeyCommands::Back_Or_Select2;
+			// Press Select once to COMMIT the edited value and leave the editor (verified vs
+			// hardware: each edit is bracketed Select...Select, NOT Back - Back would navigate
+			// away from the Set Temperature page instead of committing the value in place).
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to commit '{}'", DeviceId(), row_label));
+			m_KeyCommand_ToSend = KeyCommands::Select;
 			finish(true);
 			break;
 		}

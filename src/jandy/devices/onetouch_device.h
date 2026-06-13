@@ -90,12 +90,13 @@ namespace AqualinkAutomate::Devices
 		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Low; }
 
 		// SetpointController: change the pool/spa heater setpoint by driving the emulated
-		// keypad to the Set Temperature page, editing the Pool Heat / Spa Heat row and
-		// stepping the value with the arrow keys to the requested temperature. The value
-		// arrives already in the controller's configured wire units (the dispatcher
-		// validates the range). Ranks Low so a Serial Adapter (direct command) wins when
-		// both controllers are present. (ControllerPriority() above satisfies both the
-		// DeviceActuator and SetpointController mixins - identical signature.)
+		// keypad to the Set Temperature page, Select-ing the Pool Heat / Spa Heat row to
+		// enter the in-place editor, stepping the value with the arrow keys, then Select-ing
+		// again to commit. The value arrives already in the system's configured units (the
+		// setpoints route converts before dispatch; the dispatcher validates the range), so
+		// it matches the on-screen value 1:1. Ranks Low so a Serial Adapter (direct command)
+		// wins when both controllers are present. (ControllerPriority() above satisfies both
+		// the DeviceActuator and SetpointController mixins - identical signature.)
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 
@@ -238,7 +239,7 @@ namespace AqualinkAutomate::Devices
 			Navigating,     // Navigator positioning the cursor on the Pool/Spa Heat row
 			BeginEdit,      // Select pressed to enter the in-place value editor
 			Stepping,       // arrow keys stepping the displayed value toward the target
-			Commit          // Back pressed to commit the edited value and leave the page
+			Commit          // Select pressed again to commit the value and leave the editor
 		};
 
 		// The Pool Heat / Spa Heat rows on the Set Temperature page (see
