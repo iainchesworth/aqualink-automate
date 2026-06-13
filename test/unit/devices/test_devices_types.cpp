@@ -35,6 +35,40 @@ BOOST_AUTO_TEST_CASE(InstanceAddressesForClass_ReturnsEveryInstanceOfTheClass)
         == std::vector<std::uint8_t>{ 0x30, 0x31, 0x32, 0x33 }));
     BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SerialAdapter)
         == std::vector<std::uint8_t>{ 0x48, 0x49 }));
+
+    // The two spaside remotes are distinct device families and must not be conflated (see
+    // docs/alwin32/panels.md): the "2x4" / Dual-Spa switch is class 0x02 at 0x10-0x17, whereas
+    // the "AllButton" 8-button remote is class 0x04 at 0x20-0x27.
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SpaRemote_2x4)
+        == std::vector<std::uint8_t>{ 0x10, 0x11, 0x12, 0x13 }));
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SpaRemote)
+        == std::vector<std::uint8_t>{ 0x20, 0x21, 0x22, 0x23 }));
+}
+
+BOOST_AUTO_TEST_CASE(SpaRemoteClasses_AreDistinctAndCorrectlyAddressed)
+{
+    using namespace AqualinkAutomate::Devices;
+
+    // Regression: the address map previously had ONLY a single SpaRemote entry at 0x20-0x23 and
+    // no class for 0x10-0x17, conflating the two physical spaside remotes recovered from the
+    // official Jandy Alwin32 simulator suite (docs/alwin32/panels.md, RVA-cited):
+    //   * 2x4rem.exe  -> class 0x02, base 0x10  (Dual-Spa / "2x4" switch)
+    //   * 8button.exe -> class 0x04, base 0x20  ("AllButton" 8-button remote)
+
+    // Every 0x10-0x13 instance resolves to the 2x4 / Dual-Spa class...
+    for (int id : { 0x10, 0x11, 0x12, 0x13 })
+    {
+        BOOST_CHECK_EQUAL(JandyDeviceType(id).Class(), DeviceClasses::SpaRemote_2x4);
+    }
+
+    // ...and every 0x20-0x23 instance resolves to the AllButton SpaRemote class.
+    for (int id : { 0x20, 0x21, 0x22, 0x23 })
+    {
+        BOOST_CHECK_EQUAL(JandyDeviceType(id).Class(), DeviceClasses::SpaRemote);
+    }
+
+    // The two classes are genuinely different (the bug was them being one and the same).
+    BOOST_CHECK(JandyDeviceType(0x10).Class() != JandyDeviceType(0x20).Class());
 }
 
 BOOST_AUTO_TEST_CASE(CopyConstructorTest)
