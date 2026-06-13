@@ -5,6 +5,7 @@
 #include "logging/logging.h"
 #include "devices/device_status.h"
 #include "devices/iaq_device.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -148,6 +149,19 @@ namespace AqualinkAutomate::Devices
 
 		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_PageButton: index={}, name='{}', type={}, status={}",
 			DeviceId(), msg.ButtonIndex(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())); });
+
+		// Retain the live button table (index -> name + status) for the CURRENT page so
+		// DeviceActuator can resolve a logical aux to its on-screen button index by name.
+		// A named button refreshes its entry; an empty/blank name clears that slot so a
+		// stale name can't be matched after the page changes.
+		if (Utility::TrimWhitespace(msg.ButtonName()).empty())
+		{
+			m_PageButtons.erase(msg.ButtonIndex());
+		}
+		else
+		{
+			m_PageButtons[msg.ButtonIndex()] = PageButtonInfo{ msg.ButtonName(), msg.ButtonStatus() };
+		}
 
 		ProcessControllerUpdates();
 

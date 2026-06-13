@@ -8,7 +8,10 @@
 #include "devices/device_status.h"
 #include "devices/iaq_device.h"
 #include "formatters/jandy_device_formatters.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "messages/iaq/iaq_message_control_data_response.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -29,7 +32,14 @@ namespace AqualinkAutomate::Devices
 		constexpr uint8_t IAQ_CMD_BOOST_START{ 0x12 };          // Start boost (button index 1)
 		constexpr uint8_t IAQ_CMD_SUBMIT_VALUE{ 0x80 };         // submit the entered value
 
-		constexpr char IAQ_BUTTON_INDEX_POOL{ '1' };            // ASCII Pool button index prefix for control-data values
+		// Set Temperature page (verified vs iaq_aux_setpoint.cap): from a clean state, 0x14
+		// opens the Set Temperature page; on it Pool Heat is button index 0 (0x11) and Spa
+		// Heat is button index 2 (0x13); the absolute value is submitted as control-data.
+		constexpr uint8_t IAQ_CMD_OPEN_SETTEMP_PAGE{ 0x14 };    // open the Set Temperature page (button index 3)
+		constexpr uint8_t IAQ_CMD_SELECT_POOL_HEAT{ 0x11 };     // Set Temp page: Pool Heat (button index 0)
+		constexpr uint8_t IAQ_CMD_SELECT_SPA_HEAT{ 0x13 };      // Set Temp page: Spa Heat (button index 2)
+
+		constexpr char IAQ_BUTTON_INDEX_POOL{ '1' };            // ASCII value-field prefix for control-data values ("1" + value)
 	}
 	// namespace
 
@@ -177,6 +187,116 @@ namespace AqualinkAutomate::Devices
 	{
 		SelectPageButton(button_index);
 		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::optional<uint8_t> IAQDevice::FindPageButtonByLabel(const std::string& label) const
+	{
+		const std::string target{ Utility::TrimWhitespace(label) };
+		if (target.empty())
+		{
+			return std::nullopt;
+		}
+
+		// Home-page button names carry a trailing status suffix (e.g. "Pool LightON"), so a
+		// prefix match against the trimmed label resolves the live button index.
+		for (const auto& [index, info] : m_PageButtons)
+		{
+			if (Utility::TrimWhitespace(info.name).starts_with(target))
+			{
+				return index;
+			}
+		}
+
+		return std::nullopt;
+	}
+
+	Capabilities::ActuationResult IAQDevice::ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action)
+	{
+		if (nullptr == device)
+		{
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		// A non-emulated (passive) IAQ never transmits, so it cannot actuate. Report
+		// NotSupported so the dispatcher can fall back to another controller.
+		if (!IsEmulated())
+		{
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not emulated - cannot actuate equipment", DeviceId()); });
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+		if (!label.has_value() || Utility::TrimWhitespace(label.value()).empty())
+		{
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Cannot actuate a device with no label", DeviceId()); });
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+		const std::string target_label{ Utility::TrimWhitespace(label.value()) };
+
+		auto button_index = FindPageButtonByLabel(target_label);
+		if (!button_index.has_value())
+		{
+			LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): No on-screen button matches '{}' (current page not showing it)", DeviceId(), target_label); });
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		// Pressing the button is a pure TOGGLE. For an explicit On/Off, only press when the
+		// button's current on-screen status differs from the request; otherwise succeed as a
+		// no-op rather than toggling it the wrong way.
+		if (action != Capabilities::ActuationAction::On && action != Capabilities::ActuationAction::Off)
+		{
+			// Toggle: always press.
+		}
+		else
+		{
+			const bool want_on{ action == Capabilities::ActuationAction::On };
+			const auto status = m_PageButtons.at(button_index.value()).status;
+			const bool is_on = (status == Messages::ButtonStatuses::On) || (status == Messages::ButtonStatuses::Enabled) || (status == Messages::ButtonStatuses::EnabledStandby);
+			if (status != Messages::ButtonStatuses::Unknown && is_on == want_on)
+			{
+				LogInfo(Channel::Devices, [&]() { return std::format("IAQ ({}): '{}' already {} - no actuation required", DeviceId(), target_label, want_on ? "ON" : "OFF"); });
+				return Capabilities::ActuationResult::Accepted;
+			}
+		}
+
+		LogInfo(Channel::Devices, [&]() { return std::format("IAQ ({}): Toggling '{}' via page button index {}", DeviceId(), target_label, button_index.value()); });
+		SelectPageButton(button_index.value());
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult IAQDevice::QueueSetpoint(uint8_t select_field_command, uint8_t temperature, const char* body_name)
+	{
+		if (!IsEmulated())
+		{
+			LogWarning(Channel::Devices, [this, body_name]() { return std::format("IAQ ({}): Not emulated - cannot set {} setpoint", DeviceId(), body_name); });
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		LogInfo(Channel::Devices, [this, body_name, temperature]() { return std::format("IAQ ({}): Set {} setpoint -> {} - queuing value-submit sequence", DeviceId(), body_name, static_cast<int>(temperature)); });
+
+		// Verified vs iaq_aux_setpoint.cap: BACK -> open Set Temp page -> select the field
+		// button -> submit; the absolute value rides the control-data response as "1" + value
+		// (e.g. pool 31 -> "131", spa 39 -> "139") - the field is chosen by the button, not the prefix.
+		m_CommandQueue.clear();
+		m_CommandQueue.push_back(IAQ_CMD_BACK);
+		m_CommandQueue.push_back(IAQ_CMD_OPEN_SETTEMP_PAGE);
+		m_CommandQueue.push_back(select_field_command);
+		m_CommandQueue.push_back(IAQ_CMD_SUBMIT_VALUE);
+
+		m_AwaitingControlReady = true;
+		m_ControlDataValue = std::format("{}{}", IAQ_BUTTON_INDEX_POOL, temperature);
+
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult IAQDevice::SetPoolSetpoint(uint8_t temperature)
+	{
+		return QueueSetpoint(IAQ_CMD_SELECT_POOL_HEAT, temperature, "pool");
+	}
+
+	Capabilities::ActuationResult IAQDevice::SetSpaSetpoint(uint8_t temperature)
+	{
+		return QueueSetpoint(IAQ_CMD_SELECT_SPA_HEAT, temperature, "spa");
 	}
 
 	void IAQDevice::ProcessControllerUpdates()
