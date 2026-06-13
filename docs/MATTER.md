@@ -24,11 +24,20 @@ build — keeping the C++/MSVC build untouched and the image small.
 Commands reach the RS-485 bus through a **capability-routed command dispatcher**:
 whichever controller is running advertises what it can do (`DeviceActuator`,
 `SetpointController`, `ChlorinatorController`, …) and the dispatcher routes to the
-highest-priority one present. So on a **OneTouch-only** system the bridge still
-actuates equipment and sets heater setpoints — the emulated OneTouch drives the menu
-via the Navigator (equipment toggle = an in-place *Select* on the Equipment ON/OFF
-row; setpoint = stepping the value on the Set Temperature page). A direct Serial
-Adapter, when present, is preferred automatically.
+highest-priority one present. Three controllers can actuate equipment and heater
+setpoints, in precedence order:
+
+1. **Serial Adapter (RSSA, `0x48`)** — *High*. A direct, stateless command channel.
+2. **OneTouch (`0x40–43`)** — *Low*. Drives the menu via the Navigator (equipment
+   toggle = in-place *Select* on the Equipment ON/OFF row; setpoint = arrow-stepping
+   the value on the Set Temperature page).
+3. **AqualinkTouch / iAqualink2 (`0x33`)** — *Lowest*. Presses the on-screen
+   `PageButton` matching the device by name (`0x11 + index`) for toggles, and uses the
+   value-submit protocol (select field → `0x80` → control-data value) for setpoints +
+   the chlorinator.
+
+So a rig with *any* of these can be controlled, and the most reliable channel present
+wins automatically. (PDA `0x60–63` advertises nothing → honest `NotSupported`.)
 
 ## Device mapping
 
@@ -92,6 +101,7 @@ networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
 | C++ unit + integration suites (incl. OneTouch setpoint, dispatcher, fixture replay) | ✅ green (1726 + 101 cases) |
 | OneTouch toggle replay driven from `onetouch_equipment_toggle.cap`      | ✅ Navigator emits in-place Select |
 | OneTouch setpoint edit model vs `onetouch_setpoint_edit.cap` hardware    | ✅ Select-enter → arrow-step ±1 → Select-commit; Pool=line2/Spa=line3; on-screen units |
+| AqualinkTouch (IAQ) aux + setpoint vs `iaq_aux_setpoint.cap` hardware    | ✅ toggle = 0x11+index by name (Pool Light 0x1a, Spillway 0x1c); setpoint = value-submit '1'+value |
 | Sidecar unit tests (device-map, API client)                             | ✅ green (11 cases) |
 | Sidecar typecheck + build (matter.js bridge)                            | ✅ `tsc` clean |
 | Sidecar boots → emits a valid commissioning QR + manual code            | ✅ verified |
