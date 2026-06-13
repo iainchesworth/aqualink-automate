@@ -132,17 +132,39 @@ The decoder already holds the per-model ground truth as `{config, board, AuxCoun
   Dual (2 PC). 3–4 PC models (RS-24/32, RS-2/22/30) exist in the decoder but have **no sim ControllerType**, so
   PC C/D can only be validated by unit test against the decoder table, not live.
 
-### OBS-07 — Model ground truth exists but is never used to validate discovery  *(Enhancement)*
-- **Finding:** `PoolConfigurationDecoder::AuxillaryCount()` / `PowerCenterCount()` are defined but **never
-  called**; the `PowerCenters` class (A/B/C/D, caps [7,8,8,8], correct "Aux"/"Aux Bn" naming) is **never
-  instantiated**. The OneTouch version processor reads `Configuration()`/`SystemBoard()` only. So the discovered
-  aux set is accepted with no cross-check — a model expecting 15 aux that scrapes 12 (a wedged/short crawl) is
-  silently accepted.
-- **Opportunity:** after the model is decoded, store expected aux/PC count in DataHub; after the equipment
-  scrape, compare discovered vs expected and warn/expose a mismatch (catches incomplete scrapes, mis-wired
-  panels, and — combined with the BUG-01 fail-fast — repeated model-missing-target failures). Also attribute
-  each aux to its power center via the existing `PowerCenters` class.
-- **Status:** OPEN (enhancement; ground truth already in-tree).
+### OBS-07 — Model ground truth exists but is never used to validate discovery  *(Enhancement)*  — **IMPLEMENTED**
+- **Finding (was):** `PoolConfigurationDecoder::AuxillaryCount()` / `PowerCenterCount()` were defined but never
+  called; the `PowerCenters` class was never instantiated; the discovered aux set was accepted with no cross-check.
+- **Implemented:**
+  - Refactored `PowerCenters` from a (dual-model-incorrect) count allocator into an **attribution container**;
+    membership derives from the scraped aux id via `PowerCenterForAuxId` (id ranges 0x01-07=A, 08-0F=B, 10-17=C,
+    18-1F=D; ExtraAux belongs to none).
+  - DataHub now stores the model's expected aux/PC count (set when the version/StartUp page is decoded) and an
+    `EquipmentValidation` result. `ValidateDiscoveredEquipment` (pure, unit-tested) cross-checks discovered aux
+    relays (numbered + DIP-reconfigured cleaner/spillover/sprinkler) and power-centre span against the model;
+    the OneTouch device runs it at scrape completion / watchdog abort. Exposed via `GET /api/equipment`
+    (`configuration.validation`).
+  - `MenuSurveyResult` reports crawl health: pages reached, whether the core Equipment ON/OFF page was reached,
+    and failed pages split into expected-absent (capability-gated iAqualink/SWG pages via
+    `OneTouchPageCapabilityRequirement`) vs notable. Exposed via `GET /api/diagnostics/emulated-devices`
+    (`menu_survey`).
+- **Verified live:** RS-16 Combo → 15 aux / 2 PC validated clean; RS-8 Combo → 7 aux / 1 PC clean, menu survey
+  24 pages reached + 4 capability-gated pages classified expected-absent + 0 notable. Unit tests cover 1-4 power
+  centers (RS-24/32 decoder-only — no sim ControllerType), DIP-reconfigured relays, incomplete scrapes, stray
+  out-of-range aux, ExtraAux exclusion, and the page capability classifier.
+- **Status:** IMPLEMENTED (commits 66b2028 validation/attribution, a1bc8fc menu survey).
+
+### OBS-08 — Remote power centers (RemAux 0x28) / Dual Spa Switch / Spa Link not modelled  *(Investigate)*
+- **Finding:** the `RemotePowerCenter` device class is recognised at bus `0x28-0x2B` in `jandy_device_types.h`
+  but has **no device handler** — multi-PC aux relays are discovered only via the OneTouch/RSSA scrape labels
+  ("Aux B/C/D"), not via a remote-power-centre device. **Dual Spa Switch** and **Spa Link** are absent from the
+  codebase entirely. The Alwin32 suite has dedicated sims for these (`Remaux.exe`, plus IO/DIP variants driven
+  by `Simio.exe`) that have not been reconciled against the app.
+- **Impact:** 3-4 power centers can't be exercised on the sim via `ControllerType` (caps at 2); a live RemAux
+  device on the bus is not separately modelled (its relays still surface through the menu scrape). DIP-switch
+  power-centre variants (e.g. Aux3↔Cleaner, Spillover present) surface as different scrape labels and ARE handled
+  by the aux factory, but are not specifically validated across DIP configs.
+- **Status:** OPEN (capture/sim-gated; aux-count validation now covers 3-4 PC at the decoder/unit level).
 
 ---
 
