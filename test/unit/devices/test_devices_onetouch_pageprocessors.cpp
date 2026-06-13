@@ -356,3 +356,45 @@ BOOST_AUTO_TEST_CASE(SystemPage_SharedEquipmentLayout_AirTempOnLine6)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// PageProcessor_SetTemperature - heat setpoints (OBS-03)
+//
+// The Set Temperature page lists "Pool Heat" / "Spa Heat" setpoints. The labels are
+// two words and a spa setpoint can be 100`F+ (three digits); previously the temperature
+// converter rejected both, so the setpoints came back null on Combo models even though
+// the page rendered them. Parse them by area.
+// =============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(PageProcessor_SetTemperature_TestSuite, Test::OneTouchDevice)
+
+BOOST_AUTO_TEST_CASE(SetTemperaturePage_DecodesHeatSetpoints_MultiWordLabelAndThreeDigit)
+{
+	const TestPage set_temp =
+	{
+		{ 0x0, "    Set Temp    " },
+		{ 0x1, "                " },
+		{ 0x2, "Pool Heat   80`F" },
+		{ 0x3, "Spa Heat   102`F" },
+		{ 0x4, "                " },
+		{ 0x5, "Maintain     OFF" },
+		{ 0x6, "Hours  12AM-12AM" },
+		{ 0x7, "                " },
+		{ 0x8, "Highlight an    " },
+		{ 0x9, "item and press  " },
+		{ 0xA, "Select          " },
+		{ 0xB, "                " }
+	};
+
+	LoadAndSignalTestPage(set_temp);
+
+	auto pool_sp = DataHub().PoolTempSetpoint();
+	BOOST_REQUIRE(pool_sp.has_value());
+	BOOST_CHECK_CLOSE(pool_sp.value().InFahrenheit().value(), 80.0, 1.0);
+
+	auto spa_sp = DataHub().SpaTempSetpoint();
+	BOOST_REQUIRE(spa_sp.has_value());
+	BOOST_CHECK_CLOSE(spa_sp.value().InFahrenheit().value(), 102.0, 1.0);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

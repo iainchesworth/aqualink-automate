@@ -306,14 +306,38 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
+		// Parse the heat setpoints by their area label ("Pool Heat" / "Spa Heat") rather than a
+		// fixed line. The values live on lines 2/3 on the models seen so far, but scanning by
+		// area is robust to layout shifts and matches the home-page approach. The labels are two
+		// words and spa setpoints can be 100`F+, both of which the temperature converter now
+		// handles (this is what made Combo setpoints decode as null previously -- see OBS-03).
+		for (std::size_t line = 0; line < page.Size(); ++line)
 		{
-			JandyController::m_DataHub->PoolTempSetpoint(temperature().value());
-		}
+			auto temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[line].Text));
+			if (!temp().has_value())
+			{
+				continue;
+			}
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
-		{
-			JandyController::m_DataHub->SpaTempSetpoint(temperature().value());
+			auto area = temp.TemperatureArea();
+			if (!area.has_value())
+			{
+				continue;
+			}
+
+			auto area_lower = area.value();
+			std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+			// "Spa Heat" before "Pool Heat": neither label contains the other's keyword, but
+			// guard order keeps it unambiguous if a future label ever does.
+			if (area_lower.find("spa") != std::string::npos)
+			{
+				JandyController::m_DataHub->SpaTempSetpoint(temp().value());
+			}
+			else if (area_lower.find("pool") != std::string::npos)
+			{
+				JandyController::m_DataHub->PoolTempSetpoint(temp().value());
+			}
 		}
 	}
 
