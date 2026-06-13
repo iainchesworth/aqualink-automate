@@ -32,6 +32,12 @@ node_modules
 test-results
 playwright-report
 
+# Matter bridge sidecar build artifacts (the matter-builder stage runs npm ci +
+# tsc itself, so the host's installed deps / compiled output must neither bloat the
+# context nor shadow the in-image build). The matter-bridge/ source IS included.
+matter-bridge/node_modules
+matter-bridge/dist
+
 CMakeUserPresets.json
 nul
 *.zip

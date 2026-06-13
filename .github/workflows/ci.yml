@@ -125,6 +125,34 @@ jobs:
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
+  matter-bridge:
+    name: Matter Bridge (Node)
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
+    defaults:
+      run:
+        working-directory: matter-bridge
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: matter-bridge/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck (incl. matter.js bridge)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
   version-check:
     name: Version Check
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
@@ -180,5 +208,13 @@ jobs:
           load: true
           tags: aqualink-automate:verify
 
-      - name: Verify runtime starts
-        run: docker run --rm aqualink-automate:verify --version
+      # The runtime image now bundles the Matter sidecar (built by the matter-builder
+      # stage). The --version smoke test exercises the app via the supervising
+      # entrypoint; MATTER_ENABLED=false keeps it focused on the C++ binary.
+      - name: Verify runtime starts (app)
+        run: docker run --rm -e MATTER_ENABLED=false aqualink-automate:verify --version
+
+      # Confirm the bundled sidecar is present and its Node runtime works (without
+      # actually booting the bridge, which would block).
+      - name: Verify Matter sidecar is bundled
+        run: docker run --rm --entrypoint sh aqualink-automate:verify -c "node --version && test -f /opt/matter-bridge/dist/index.js && echo sidecar-present"
