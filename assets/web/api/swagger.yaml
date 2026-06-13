@@ -920,6 +920,35 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/diagnostics/matter:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get Matter bridge status diagnostics
+      description: >
+        Live status of the Matter bridge sidecar: whether it is enabled, running and
+        paired, the number of commissioned fabrics, and the commissioning QR payload +
+        manual pairing code for adding the bridge to a smart-home ecosystem. Returns
+        { "enabled": false } when Matter is opted out, and { "enabled": true,
+        "reachable": false } when enabled but the sidecar is not yet answering.
+      operationId: getMatterDiagnostics
+      responses:
+        '200':
+          description: Matter status (or { enabled:false } when disabled)
+          content:
+            application/json:
+              example:
+                enabled: true
+                status_port: 8099
+                reachable: true
+                running: true
+                paired: false
+                fabrics: 0
+                qr_payload: "MT:Y.K9042C00KA0648G00"
+                manual_code: "34970112332"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/diagnostics/emulated-devices:
     get:
       tags:

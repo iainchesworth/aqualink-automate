@@ -70,9 +70,13 @@ function diagnosticsView() {
         showActualDevices: true,
         showRecording: false,
         showMqtt: false,
+        showMatter: false,
 
         // MQTT broker status diagnostics
         mqtt: { enabled: false },
+
+        // Matter bridge status diagnostics (sidecar status + commissioning QR)
+        matter: { enabled: false },
 
         // Serial recording control state
         recording: { recording: false, file: '', bytes: 0 },
@@ -115,6 +119,10 @@ function diagnosticsView() {
             }
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
+            }
+            this.fetchMatter();
+            if (!_diag.matterTimer) {
+                _diag.matterTimer = setInterval(() => this.fetchMatter(), 2000);
             }
         },
 
@@ -226,6 +234,11 @@ function diagnosticsView() {
                 _diag.mqttTimer = null;
             }
 
+            if (_diag.matterTimer) {
+                clearInterval(_diag.matterTimer);
+                _diag.matterTimer = null;
+            }
+
             if (_diag.statsListener) {
                 window.removeEventListener('stats-updated', _diag.statsListener);
                 _diag.statsListener = null;
@@ -278,6 +291,40 @@ function diagnosticsView() {
                 _diag.warnedOnce['mqtt'] = false;
             } catch (e) {
                 _handlePollFailure('mqtt', null, e);
+            }
+        },
+
+        async fetchMatter() {
+            try {
+                const resp = await fetch('/api/diagnostics/matter');
+                if (!resp.ok) { _handlePollFailure('matter', resp, null); return; }
+                this.matter = await resp.json();
+                _diag.warnedOnce['matter'] = false;
+                this.$nextTick(() => this._renderMatterQr());
+            } catch (e) {
+                _handlePollFailure('matter', null, e);
+            }
+        },
+
+        // Render the commissioning QR into the panel canvas when a QR library is
+        // vendored (window.QRCode, davidshimjs/qrcodejs). Without one we still show the
+        // manual pairing code + QR payload text, which pair every ecosystem.
+        _renderMatterQr() {
+            const payload = this.matter && this.matter.qr_payload;
+            const el = this.$refs && this.$refs.matterQr;
+            if (!el) return;
+            if (!payload || typeof window.QRCode === 'undefined') {
+                el.innerHTML = '';
+                return;
+            }
+            if (_diag.matterQrPayload === payload && el.childElementCount > 0) return;
+            _diag.matterQrPayload = payload;
+            el.innerHTML = '';
+            try {
+                // eslint-disable-next-line no-new
+                new window.QRCode(el, { text: payload, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel.M });
+            } catch (e) {
+                _handlePollFailure('matter-qr', null, e);
             }
         },
 

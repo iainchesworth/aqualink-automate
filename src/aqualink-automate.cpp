@@ -45,6 +45,7 @@
 #include "http/webroute_auth_check.h"
 #include "http/webroute_diagnostics_actualdevices.h"
 #include "http/webroute_diagnostics_devices.h"
+#include "http/webroute_diagnostics_matter.h"
 #include "http/webroute_diagnostics_mqtt.h"
 #include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_diagnostics_options.h"
@@ -160,6 +161,7 @@ int main(int argc, char* argv[])
 				| Add(Options::Developer::OptionsProcessor{})
 				| Add(Options::Equipment::OptionsProcessor{})
 				| Add(Options::History::OptionsProcessor{})
+				| Add(Options::Matter::OptionsProcessor{})
 				| Add(Options::Mqtt::OptionsProcessor{})
 				| Add(Options::Preferences::OptionsProcessor{})
 				| Add(Options::Scheduling::OptionsProcessor{})
@@ -181,6 +183,7 @@ int main(int argc, char* argv[])
 					Options::Developer::OptionsProcessor{},
 					Options::Equipment::OptionsProcessor{},
 					Options::History::OptionsProcessor{},
+					Options::Matter::OptionsProcessor{},
 					Options::Mqtt::OptionsProcessor{},
 					Options::Preferences::OptionsProcessor{},
 					Options::Scheduling::OptionsProcessor{},
@@ -559,6 +562,18 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Mqtt>(hub_locator));
+			{
+				// The Matter stack runs in a sidecar; this route proxies its status/QR.
+				bool matter_enabled{ true };
+				uint16_t matter_status_port{ 8099 };
+				if (auto matter_settings_result = settings.Get<Options::Matter::MatterSettings>(); matter_settings_result)
+				{
+					const auto& matter_settings = matter_settings_result.value().get();
+					matter_enabled = matter_settings.enabled;
+					matter_status_port = matter_settings.status_port;
+				}
+				HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Matter>(matter_enabled, matter_status_port));
+			}
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_ActualDevices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());

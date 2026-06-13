@@ -58,6 +58,7 @@ target_sources(
 	http/webroute_diagnostics_actualdevices.cpp
 	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
+	http/webroute_diagnostics_matter.cpp
 	http/webroute_diagnostics_mqtt.cpp
 	http/webroute_diagnostics_options.cpp
 	http/webroute_diagnostics_recording.cpp
@@ -178,6 +179,7 @@ target_sources(
 	options/options_developer_options.cpp
 	options/options_equipment_options.cpp
 	options/options_history_options.cpp
+	options/options_matter_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
 	options/options_preferences_options.cpp

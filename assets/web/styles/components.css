@@ -1318,3 +1318,25 @@ html.dark .gauge-card {
         justify-content: center;
     }
 }
+
+/* Matter commissioning QR container (diagnostics panel). The QR is rendered into
+   this box by a vendored QR library when present; otherwise the manual pairing
+   code + payload text below it are used to pair. White background so the QR scans
+   regardless of the active theme. */
+.matter-qr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+.matter-qr:not(:empty) {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    width: max-content;
+    margin: 0 auto;
+}
+.matter-qr img,
+.matter-qr canvas {
+    display: block;
+}

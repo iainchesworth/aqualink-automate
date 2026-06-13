@@ -1137,6 +1137,55 @@
             </div>
             </div>
 
+            <!-- Matter Status -->
+            <button class="section-toggle mb-1" @click="showMatter = !showMatter"
+                    :aria-expanded="showMatter" aria-controls="diag-matter">
+                <span class="section-toggle-chevron" :class="{ open: showMatter }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Matter</span>
+            </button>
+            <div id="diag-matter" x-show="showMatter" x-transition.opacity x-cloak>
+            <div class="card mb-2">
+                <div class="card-header card-header-split">
+                    <span>Smart-home Bridge</span>
+                    <span class="badge"
+                          :class="!matter.enabled ? 'badge-status-off' : (matter.paired ? 'badge-freq' : (matter.running ? 'badge-status-warn' : 'badge-status-off'))"
+                          x-text="!matter.enabled ? 'Disabled' : (matter.paired ? ('Paired (' + (matter.fabrics ?? 0) + ')') : (matter.running ? 'Ready to pair' : 'Starting'))"></span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-xs mt-0 mb-1" x-show="!matter.enabled">
+                        Matter is disabled. It is on by default; it was opted out with
+                        <code>--matter false</code> (or <code>matter = false</code> in the config).
+                    </p>
+                    <p class="text-muted text-xs mt-0 mb-1" x-show="matter.enabled &amp;&amp; matter.reachable === false">
+                        The Matter bridge sidecar is enabled but not answering yet (it may still be
+                        starting). Pairing details appear once it is ready.
+                    </p>
+
+                    <template x-if="matter.enabled &amp;&amp; matter.running &amp;&amp; !matter.paired">
+                        <div>
+                            <p class="text-muted text-xs mt-0 mb-1">
+                                Scan this code in Apple Home, Google Home, Alexa or SmartThings to add the pool.
+                            </p>
+                            <div ref="matterQr" class="matter-qr mb-1" aria-label="Matter commissioning QR code"></div>
+                            <div class="emu-kv-grid">
+                                <span class="emu-kv-key">Manual code</span>
+                                <span class="emu-kv-val"><code x-text="matter.manual_code || '--'"></code></span>
+                                <span class="emu-kv-key">QR payload</span>
+                                <span class="emu-kv-val"><code class="text-2xs" x-text="matter.qr_payload || '--'"></code></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="emu-kv-grid" x-show="matter.enabled">
+                        <span class="emu-kv-key">Sidecar</span>
+                        <span class="emu-kv-val" x-text="matter.running ? 'running' : 'not running'"></span>
+                        <span class="emu-kv-key">Paired fabrics</span>
+                        <span class="emu-kv-val" x-text="matter.fabrics ?? 0"></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+
             <!-- Stats connection indicator -->
             <div class="text-muted text-center mt-2 text-2xs">
                 Stats WebSocket:
