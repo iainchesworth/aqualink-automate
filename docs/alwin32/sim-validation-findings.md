@@ -24,9 +24,9 @@ operating modes. Discovery pass first; fixes tracked per entry.
 | ControllerType | App model | App config | bodies | aux | heaters | pumps | notes |
 |---|---|---|---|---|---|---|---|
 | 260808 PD-8 Combo | PD-8 Combo | DualBody_SharedEquipment | Pool,Spa | 7 | 3 | 1 | full scrape OK (after wedge) |
-| 29224 RS-8 Only | RS-8 Only | SingleBody | Pool | — | — | — | config ✓ (equipment not re-checked) |
-| 29221 RS-8 Combo | RS-8 Combo | DualBody_SharedEquipment | Pool,Spa | 7 | 3 | 1 | **full scrape OK after BUG-01 fix** — 28 pages, complete; aux/heaters/pumps all Off (sim idle) |
-| 29234 RS-2/10 Dual | _pending_ | | | | | | |
+| 29221 RS-8 Combo | RS-8 Combo | DualBody_SharedEquipment | Pool,Spa | 7 | 3 | 1 | **full scrape OK after BUG-01 fix** — 28 pages, complete; aux/heaters(Pool/Spa/Solar)/pump(Filter) all Off (sim idle); setpoints null (see OBS-03) |
+| 29224 RS-8 Only | RS-8 Only | SingleBody | Pool | 7 | 1 (Solar) | 1 (Filter) | **full scrape OK** — setpoints decode (pool 80°F / spa 60°F); aux all Off |
+| 29234 RS-2/10 Dual | RS-2/10 Dual | DualBody_DualEquipment | Pool,Spa | 11 | 2 (Pool/Spa) | 2 (Pool/Spa Pump) | **full scrape OK** — B-side aux (Aux B1–B4) + Extra Aux present; **Aux1=On, Extra Aux=On decoded live** (read-path ✓); air temp blank (OBS-04) |
 
 (Filled in as the sweep proceeds.)
 
@@ -74,27 +74,86 @@ panel: `DiagnosticsIAQStatus`, `DiagnosticsIAQRSSI` (iAqualink-only), `Boost`, `
   some config; reconcile which models/revisions the master drives via page-push vs menu.)
 - **Status:** OPEN (investigate — may be expected per model/revision; relevant to the auto-startup data-method choice).
 
-### OBS-03 — Heater / pool / spa setpoints decode as null  *(Investigate)*
-- **Symptom:** after a full PD-8 Combo scrape (model + 7 aux + 3 heaters + 1 pump + air temp), `pool_setpoint`
-  and `spa_setpoint` are still null.
-- **Impact:** unclear whether the Set Temperature page is reached during the scrape, or whether the sim simply
-  reports no setpoint (e.g. with the heater off / no body temp because pumps are off → sensor unavailable).
-- **Next:** confirm the Set Temp page is visited in the scrape log; set a setpoint in the sim and re-scrape.
-- **Status:** OPEN (investigate).
+### OBS-03 — Heater / pool / spa setpoints decode as null on *some* models  *(Investigate)*
+- **Symptom:** `pool_setpoint` / `spa_setpoint` are null after a full scrape on **PD-8 Combo** and **RS-8 Combo**,
+  but **decode correctly on RS-8 Only** (pool 80 °F / spa 60 °F). So it is model/config-dependent, not a blanket
+  failure.
+- **Crawl evidence (RS-8 Combo):** the completed crawl visited `SetTemperature` (22) but **not** `SetPoolHeat` (23)
+  or `SetSpaHeat` (24) — those sub-pages are where the per-body setpoint value lives. On RS-8 Only the value is
+  available from the page that *was* visited. So the gap is likely: on Combo the setpoint sits on a SetPoolHeat/
+  SetSpaHeat sub-page that the discovery crawl does not enter (they are value-edit pages, not discovery targets).
+- **Next:** confirm whether SetPoolHeat/SetSpaHeat should be discovery targets on Combo, or whether the value can
+  be read from the SetTemperature page directly; set a setpoint in the sim and re-scrape to confirm the read path.
+- **Status:** OPEN (investigate; not blocking — read path works on SingleBody).
+
+### OBS-04 — Air temperature blank on RS-2/10 Dual  *(Investigate)*
+- **Symptom:** air temp reads 72 °F on RS-8 Combo and RS-8 Only but is **blank on RS-2/10 Dual** (same idle sim).
+- **Impact:** minor; may be that the dual-equipment model surfaces air temp on a different page/field, or the sim
+  simply does not report it for this model. Reconcile against the dual model's status page.
+- **Status:** OPEN (investigate; low priority).
+
+### OBS-05 — Service/Timeout mode not published to MQTT  *(Minor / easy follow-up)*
+- **Finding:** `EquipmentMode` (Normal/Service/TimeOut, `data_hub.h`) is detected from both the navigation
+  layer (`Navigator::HandleSpecialPage`, Service→Failed, Timeout→recoverable wait) and the RSSA OPMODE
+  (`SerialAdapter_SCS_OpModes`), and IS exposed over the **WebSocket** (`equipment_mode` field, plus a
+  `service_mode` state string) — but is **not** published over **MQTT** (`mqtt_hub.cpp` circulation/config
+  serializers omit it).
+- **Impact:** a Home-Assistant/MQTT-only consumer can't see when the controller is in Service/Timeout. For a
+  smart-home branch this is worth surfacing (a binary_sensor/attribute). Safe additive change.
+- **Status:** OPEN (catalogued; non-blocking).
+
+### OBS-06 — SpaFill / SpaDrain circulation modes defined but unimplemented  *(Minor)*
+- **Finding:** `CirculationModes` (`circulation.h`) declares `Pool, Spa, SpaFill, SpaDrain, Spillover`, but
+  `SerialAdapterDevice::SetCirculationMode` only actions Pool/Spa/Spillover; `SpaFill`/`SpaDrain` hit the
+  `default` branch → logs "Invalid circulation mode" and returns `InvalidValue` (an honest rejection, not a
+  silent no-op).
+- **Impact:** Spa Drain / Spa Fill can't be commanded. On real AquaLink these aren't simple RSSA pump commands
+  (they're valve/service operations), so this likely needs protocol research before it can be implemented — not
+  a regression. "Where it makes sense" this only applies to Combo/Dual (spa-capable) panels.
+- **Status:** OPEN (catalogued; needs protocol basis + design — not a blocking bug).
+
+---
+
+## Operating modes — code-level handling (live mode-driving is GUI-gated)
+
+Driving Service mode / valve modes on the sim requires `Simio.exe`/iodll DIPs (GUI; e.g. S1 bit 0x80 =
+Spillover), so headless live coverage is limited this campaign. Code-level assessment of whether each mode is
+*handled* (per model, where it makes sense):
+
+| Mode | Handled? | Notes |
+|---|---|---|
+| Service mode | ✅ full | nav-blocks (→Failed), `DataHub::Mode`, RSSA OPMODE, WebSocket-exposed; not commandable (correct — it's a physical switch). MQTT gap = OBS-05 |
+| Timeout mode | ✅ full | nav-blocks but recoverable (waits for clear); same state/exposure |
+| Pool / Spa (valve) | ✅ full | `CirculationModes::Pool/Spa`, body `IsActive()`, `SpaMode()`; controllable via RSSA |
+| Spillover | ✅ full | aux trait + RSSA `SPILLOVER` pump command + status decode + MQTT |
+| Spa Drain / Spa Fill | ⚠️ partial | enum members exist; `SetCirculationMode` returns `InvalidValue` (OBS-06) |
+| Heater (Off/Heating/Enabled) | ✅ full | tri-state per pool/spa/solar; `HeaterStatuses` + `HeaterOperatingModes` |
 
 ---
 
 ## Validated (no defect)
 
-- **Config classification** from the scraped model string is correct across models: Combo →
-  `DualBody_SharedEquipment` (Pool+Spa); Only → `SingleBody` (Pool). (PoolConfigurationDecoder on the panel type.)
+- **Config classification** from the scraped model string is correct across all three kinds:
+  Combo → `DualBody_SharedEquipment` (Pool+Spa); Only → `SingleBody` (Pool);
+  Dual → `DualBody_DualEquipment` (Pool+Spa, separate equipment). (PoolConfigurationDecoder on the panel type.)
+- **Equipment set per kind** (post-BUG-01-fix, full crawl): Combo 7 aux / 3 heaters / 1 pump;
+  Only 7 aux / 1 heater / 1 pump; Dual 11 aux (incl. B-side Aux B1–B4 + Extra Aux) / 2 heaters / 2 pumps.
 - **Model/version scrape**: model number, type and `REV T.0.1` read correctly from the live master.
-- **Air temperature** scrapes correctly (72°F).
+- **Live READ-PATH** ✓: the app reflects the master's equipment state. Static: RS-2/10 Dual shows
+  `Aux1=On, Extra Aux=On` decoded from the sim's idle defaults. Dynamic: after a write-path toggle the app
+  re-scraped and detected the `Off→On` (then `On→Off`) state change on Aux1 (RS-8 Only).
+- **Live WRITE-PATH** ✓ (RS-8 Only, OneTouch path): `POST /api/equipment/buttons/{uuid}` → CommandDispatcher
+  → OneTouchDevice menu navigation (`Queued toggle → Beginning toggle navigation → Toggle completed`) → the
+  Pwrcntr master honours the keypress and toggles the relay → app re-scrape confirms. Verified **bidirectional**
+  (Aux1 Off→On→Off). Confirms the OneTouch DeviceActuator is wired end-to-end against a live master.
 - **Live link** is stable and headless (no Pwrcntr deadlock observed this campaign).
 
 ## Still to cover
 
-- Equipment set per remaining model (Dual, 12/16, RS-4/6).
-- Read-path operation: drive sim equipment state (Simio.exe) → app reflects (pool/spa pump on, etc.).
-- Write-path actuation: app commands (setpoint / aux toggle / chlorinator) → master changes → re-scrape confirms.
-- Operating modes per model where applicable: Service mode, valve modes (Spa Drain / Spillover / Spa Mode).
+- Larger models (12/16, RS-4/6) — expected to behave as their kind (Combo/Only/Dual); not re-run.
+- Setpoint write-path: app SetpointController → master (only aux toggle exercised live so far).
+- Chlorinator path on a model WITH an SWG (sim chlorinator sim deadlocks a COM master — see RE notes; needs
+  the app-emulated path or a fixture).
+- Operating modes per model where applicable: Service mode, valve modes (Spa Drain / Spillover / Spa Mode) —
+  these are driven by `Simio.exe`/iodll DIPs (GUI), so headless coverage is limited; see the Operating-modes
+  section below for the code-level handling assessment.
