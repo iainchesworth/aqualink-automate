@@ -419,6 +419,76 @@ BOOST_AUTO_TEST_CASE(TestRecomputeLimit_MaxRecomputes_CausesFailed)
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::AtDestination));
 }
 
+// When a target's menu item does not exist on the current controller model (e.g. the
+// IAQ-only Diagnostics page on a non-iAqualink panel, or the chlorinator Boost/Aquapure
+// pages on a panel with no SWG) the cursor wraps past the missing line, the navigator
+// "proceeds" onto a wrong page, recomputes, and repeats - and the wrong page it lands on
+// can VARY from cycle to cycle. The navigator must detect this after a few cycles
+// (MAX_STUCK_RECOMPUTES) and fail the target FAST so the start-up scrape skips the missing
+// page and moves on, instead of grinding all the way to MAX_RECOMPUTE_COUNT (which wedged
+// the scrape for ~30-50 polls per missing page). The varying-wrong-page case is the one
+// that defeated the earlier (actual,target) keying, which reset the counter whenever the
+// landing page changed; the detector must key on the TARGET alone.
+BOOST_AUTO_TEST_CASE(TestUnreachableTarget_VaryingWrongPages_FailsFast)
+{
+	// Build a model where the target (Boost) is reachable in the GRAPH from every page,
+	// but is never actually reached: the test simulates the cursor landing on a different
+	// recognized page each cycle by feeding a different page after every Select.
+	MenuModel model;
+
+	auto add_page = [&model](PageId id, const std::string& detect)
+	{
+		MenuPage p;
+		p.id = id;
+		p.name = detect;
+		p.detectors = { {0, detect} };
+		p.edges = { { EdgeTrigger::Select, id, PageId::Boost, 0, "" } };
+		model.RegisterPage(std::move(p));
+	};
+
+	add_page(PageId::System, "Home");
+	add_page(PageId::EquipmentOnOff, "EqA");
+	add_page(PageId::SystemSetup, "SetB");
+	add_page(PageId::MenuHelp, "MenuC");
+
+	MenuPage boost_page;
+	boost_page.id = PageId::Boost;
+	boost_page.name = "Boost";
+	boost_page.detectors = { {0, "Boost"} };
+	model.RegisterPage(std::move(boost_page));
+
+	Navigator nav(model);
+
+	// Sync to Home.
+	nav.StartSync();
+	auto home = MakePage({{0, "Home"}});
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(home, 0);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+
+	nav.NavigateTo(PageId::Boost);
+
+	// A page-transition Select waits on two status messages; clear them between cycles.
+	auto settle = [&nav]() { nav.OnStatusMessageReceived(); nav.OnStatusMessageReceived(); };
+
+	auto eqA = MakePage({{0, "EqA"}});
+	auto setB = MakePage({{0, "SetB"}});
+	auto menuC = MakePage({{0, "MenuC"}});
+
+	nav.OnPageUpdate(home, 0);   // executes first Select toward Boost
+	settle();
+	nav.OnPageUpdate(eqA, 0);    // unexpected #1 -> recompute (stuck=1)
+	settle();
+	nav.OnPageUpdate(setB, 0);   // unexpected #2 -> recompute (stuck=2)
+	settle();
+	nav.OnPageUpdate(menuC, 0);  // unexpected #3 -> recompute (stuck=3) -> fail fast
+
+	// Failed well before MAX_RECOMPUTE_COUNT (the old behaviour would still be navigating).
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::Failed));
+}
+
 // =============================================================================
 // Reset
 // =============================================================================

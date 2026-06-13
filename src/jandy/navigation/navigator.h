@@ -43,6 +43,7 @@ namespace AqualinkAutomate::Navigation
 		static constexpr uint32_t MAX_RECOVERY_ATTEMPTS = 3;
 		static constexpr uint32_t MAX_BACK_PRESSES = 10;
 		static constexpr uint32_t MAX_RECOMPUTE_COUNT = 50;      // Prevent infinite recompute loops
+		static constexpr uint32_t MAX_STUCK_RECOMPUTES = 3;      // Fail a target after this many recomputes landing on the SAME page (target unreachable on this model, e.g. an IAQ-only Diagnostics page on a non-iAqualink panel)
 		static constexpr uint32_t MAX_WAIT_CYCLES = 100;         // Timeout after this many page updates with no progress
 		static constexpr uint32_t MAX_TRANSIENT_WAITS = 20;      // Page updates to wait for a transient (splash) page to auto-clear
 		static constexpr uint32_t MAX_CURSOR_MOVES = 15;         // Max cursor moves before declaring wrap
@@ -200,6 +201,16 @@ namespace AqualinkAutomate::Navigation
 
 		// Recompute tracking (to prevent infinite loops)
 		uint32_t m_RecomputeCount{ 0 };
+
+		// Stuck-recompute tracking: when a target page's menu item does not exist on this
+		// model (e.g. an IAQ-only Diagnostics page on a non-iAqualink panel), the cursor
+		// gets stuck, the Navigator "proceeds" onto a wrong page, recomputes the SAME
+		// deterministic failing path, and repeats. Detecting repeated recomputes that land
+		// on the same page for the same target fails the navigation fast (after
+		// MAX_STUCK_RECOMPUTES) instead of grinding to MAX_RECOMPUTE_COUNT.
+		PageId m_LastRecomputeActual{ PageId::Unknown };
+		PageId m_LastRecomputeTarget{ PageId::Unknown };
+		uint32_t m_StuckRecomputeCount{ 0 };
 
 		// Transient-page wait tracking (the cold-start splash auto-advances on its own)
 		uint32_t m_TransientWaitCount{ 0 };

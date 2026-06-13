@@ -49,6 +49,9 @@ namespace AqualinkAutomate::Navigation
 		m_State = State::Navigating;
 		m_PendingStatusMessages = 0;
 		m_RecomputeCount = 0;
+		m_StuckRecomputeCount = 0;
+		m_LastRecomputeActual = PageId::Unknown;
+		m_LastRecomputeTarget = PageId::Unknown;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
 		m_TransientWaitCount = 0;
@@ -70,6 +73,9 @@ namespace AqualinkAutomate::Navigation
 		m_State = State::Navigating;
 		m_PendingStatusMessages = 0;
 		m_RecomputeCount = 0;
+		m_StuckRecomputeCount = 0;
+		m_LastRecomputeActual = PageId::Unknown;
+		m_LastRecomputeTarget = PageId::Unknown;
 		m_RecoveryAttempts = 0;
 		m_RecoveryBackPresses = 0;
 		m_TransientWaitCount = 0;
@@ -308,6 +314,9 @@ namespace AqualinkAutomate::Navigation
 		m_PasswordDigitIndex = 0;
 		m_WaitCycleCount = 0;
 		m_RecomputeCount = 0;
+		m_StuckRecomputeCount = 0;
+		m_LastRecomputeActual = PageId::Unknown;
+		m_LastRecomputeTarget = PageId::Unknown;
 		m_TransientWaitCount = 0;
 		m_SyncDetectedPage = PageId::Unknown;
 		m_SyncConsistentCount = 0;
@@ -832,6 +841,37 @@ namespace AqualinkAutomate::Navigation
 			LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Path recomputed {} times - possible navigation loop",
 				m_RecomputeCount); });
 		}
+
+		// Fail FAST when a target is unreachable on this model: repeatedly landing on an
+		// unexpected page while navigating to the SAME target means that target's menu item
+		// does not exist on this revision (e.g. an IAQ-only Diagnostics page on a non-iAqualink
+		// panel, or the chlorinator Boost/Aquapure pages on a panel with no SWG). The cursor
+		// wraps past the missing menu line, we "proceed" onto a wrong page, recompute, and
+		// repeat - and the wrong page it lands on can VARY from cycle to cycle, so key the
+		// stuck detector on the TARGET alone (not on actual+target, which resets whenever the
+		// wrong landing page changes and lets the loop grind all the way to MAX_RECOMPUTE_COUNT).
+		// Detect it after a few cycles instead, so the start-up scrape skips the missing page
+		// and moves on rather than wedging for ~30-50 polls/page.
+		if (m_TargetPage == m_LastRecomputeTarget)
+		{
+			if (++m_StuckRecomputeCount >= MAX_STUCK_RECOMPUTES)
+			{
+				LogWarning(Channel::Navigation, [&] { return std::format("Navigator: Target {}({}) appears unreachable on this model (recomputed {} times without arriving, last landed on {}) - failing fast",
+					static_cast<uint32_t>(m_TargetPage), target_page ? target_page->name : "Unknown",
+					m_StuckRecomputeCount, static_cast<uint32_t>(actual)); });
+				m_StuckRecomputeCount = 0;
+				m_LastRecomputeActual = PageId::Unknown;
+				m_LastRecomputeTarget = PageId::Unknown;
+				m_State = State::Failed;
+				return;
+			}
+		}
+		else
+		{
+			m_StuckRecomputeCount = 1;
+			m_LastRecomputeTarget = m_TargetPage;
+		}
+		m_LastRecomputeActual = actual;
 
 		// Check for infinite recompute loop
 		if (m_RecomputeCount >= MAX_RECOMPUTE_COUNT)
