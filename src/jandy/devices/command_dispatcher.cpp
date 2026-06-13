@@ -1,21 +1,51 @@
 #include <format>
 
-#include <magic_enum/magic_enum.hpp>
-
-#include "auxillaries/jandy_auxillary_traits_types.h"
+#include "devices/capabilities/chlorinator_controller.h"
+#include "devices/capabilities/circulation_controller.h"
+#include "devices/capabilities/device_actuator.h"
+#include "devices/capabilities/page_navigator.h"
+#include "devices/capabilities/setpoint_controller.h"
 #include "devices/command_dispatcher.h"
-#include "devices/iaq_device.h"
-#include "devices/jandy_device_types.h"
-#include "devices/serial_adapter_device.h"
-#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
-using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
-using namespace AqualinkAutomate::Messages;
 
 namespace AqualinkAutomate::Devices
 {
+
+	namespace
+	{
+		Capabilities::ActuationAction ToActuationAction(Interfaces::ICommandDispatcher::DeviceAction action)
+		{
+			switch (action)
+			{
+			case Interfaces::ICommandDispatcher::DeviceAction::On:  return Capabilities::ActuationAction::On;
+			case Interfaces::ICommandDispatcher::DeviceAction::Off: return Capabilities::ActuationAction::Off;
+			default:                                                return Capabilities::ActuationAction::Toggle;
+			}
+		}
+
+		// Map a controller's ActuationResult back onto the dispatcher's CommandResult.
+		// `when_unsupported` is what to return when the controller reports the action
+		// is not supported -- chosen per call-site to PRESERVE the exact historical
+		// result code for that command kind (e.g. toggles/setpoints reported
+		// NoSerialAdapter; chlorinator/page reported DeviceNotFound).
+		Interfaces::ICommandDispatcher::CommandResult MapActuationResult(Capabilities::ActuationResult result, Interfaces::ICommandDispatcher::CommandResult when_unsupported)
+		{
+			using CR = Interfaces::ICommandDispatcher::CommandResult;
+
+			switch (result)
+			{
+			case Capabilities::ActuationResult::Accepted:      return CR::Success;
+			case Capabilities::ActuationResult::InvalidValue:  return CR::InvalidValue;
+			case Capabilities::ActuationResult::MappingFailed: return CR::UnknownEquipmentType;
+			case Capabilities::ActuationResult::NotSupported:  return when_unsupported;
+			}
+
+			return when_unsupported;
+		}
+	}
+	// unnamed namespace
 
 	CommandDispatcher::CommandDispatcher(std::shared_ptr<Kernel::DataHub> data_hub, std::shared_ptr<Kernel::EquipmentHub> equipment_hub)
 		: m_DataHub(std::move(data_hub))
@@ -42,7 +72,14 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		return DispatchCommand(device, action);
+		auto* actuator = FindCapable<Capabilities::DeviceActuator>();
+		if (nullptr == actuator)
+		{
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can actuate equipment");
+			return CommandResult::NoSerialAdapter;
+		}
+
+		return MapActuationResult(actuator->ActuateDevice(device, ToActuationAction(action)), CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::CommandByLabel(const std::string& label, DeviceAction action)
@@ -54,23 +91,14 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		return DispatchCommand(matches.front(), action);
-	}
-
-	std::optional<std::reference_wrapper<SerialAdapterDevice>> CommandDispatcher::FindSerialAdapter()
-	{
-		auto* rssa_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
+		auto* actuator = FindCapable<Capabilities::DeviceActuator>();
+		if (nullptr == actuator)
 		{
-			auto* jandy_type = dynamic_cast<const JandyDeviceType*>(&dev.DeviceId());
-			return jandy_type && jandy_type->Class() == DeviceClasses::SerialAdapter;
-		});
-
-		if (auto* adapter = rssa_device ? dynamic_cast<SerialAdapterDevice*>(rssa_device) : nullptr)
-		{
-			return std::ref(*adapter);
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can actuate equipment");
+			return CommandResult::NoSerialAdapter;
 		}
 
-		return std::nullopt;
+		return MapActuationResult(actuator->ActuateDevice(matches.front(), ToActuationAction(action)), CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
@@ -81,16 +109,15 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto serial_adapter = FindSerialAdapter();
-		if (!serial_adapter)
+		auto* controller = FindCapable<Capabilities::SetpointController>();
+		if (nullptr == controller)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set a setpoint");
 			return CommandResult::NoSerialAdapter;
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting pool setpoint to {}", temperature));
-		serial_adapter->get().QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
-		return CommandResult::Success;
+		return MapActuationResult(controller->SetPoolSetpoint(temperature), CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
@@ -101,32 +128,15 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto serial_adapter = FindSerialAdapter();
-		if (!serial_adapter)
+		auto* controller = FindCapable<Capabilities::SetpointController>();
+		if (nullptr == controller)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for setpoint command");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set a setpoint");
 			return CommandResult::NoSerialAdapter;
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting spa setpoint to {}", temperature));
-		serial_adapter->get().QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
-		return CommandResult::Success;
-	}
-
-	std::optional<std::reference_wrapper<IAQDevice>> CommandDispatcher::FindIAQDevice()
-	{
-		auto* iaq_device = m_EquipmentHub->FindDevice([](const Interfaces::IDevice& dev) -> bool
-		{
-			auto* jandy_type = dynamic_cast<const JandyDeviceType*>(&dev.DeviceId());
-			return jandy_type && jandy_type->Class() == DeviceClasses::AqualinkTouch;
-		});
-
-		if (auto* device = iaq_device ? dynamic_cast<IAQDevice*>(iaq_device) : nullptr)
-		{
-			return std::ref(*device);
-		}
-
-		return std::nullopt;
+		return MapActuationResult(controller->SetSpaSetpoint(temperature), CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorPercentage(uint8_t percentage)
@@ -137,178 +147,53 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto iaq_device = FindIAQDevice();
-		if (!iaq_device)
+		auto* controller = FindCapable<Capabilities::ChlorinatorController>();
+		if (nullptr == controller)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator percentage command");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can drive the chlorinator");
 			return CommandResult::DeviceNotFound;
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting chlorinator percentage to {}%", percentage));
-		iaq_device->get().QueueChlorinatorPercentage(percentage);
-		return CommandResult::Success;
+		return MapActuationResult(controller->SetChlorinatorPercentage(percentage), CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorBoost(bool enable)
 	{
-		auto iaq_device = FindIAQDevice();
-		if (!iaq_device)
+		auto* controller = FindCapable<Capabilities::ChlorinatorController>();
+		if (nullptr == controller)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ device found for chlorinator boost command");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can drive the chlorinator");
 			return CommandResult::DeviceNotFound;
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: {} chlorinator boost", enable ? "Enabling" : "Disabling"));
-		iaq_device->get().QueueChlorinatorBoost(enable);
-		return CommandResult::Success;
+		return MapActuationResult(controller->SetChlorinatorBoost(enable), CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SelectIAQPageButton(uint8_t button_index)
 	{
-		auto iaq_device = FindIAQDevice();
-		if (!iaq_device)
+		auto* navigator = FindCapable<Capabilities::PageNavigator>();
+		if (nullptr == navigator)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No IAQ/AqualinkTouch device found for page-button select");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller exposes a page UI to navigate");
 			return CommandResult::DeviceNotFound;
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Selecting IAQ page button index {}", static_cast<int>(button_index)));
-		iaq_device->get().SelectPageButton(button_index);
-		return CommandResult::Success;
+		return MapActuationResult(navigator->ActuatePageButton(button_index), CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetCirculationMode(Kernel::CirculationModes mode)
 	{
-		auto serial_adapter = FindSerialAdapter();
-		if (!serial_adapter)
+		auto* controller = FindCapable<Capabilities::CirculationController>();
+		if (nullptr == controller)
 		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found for circulation mode command");
+			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set the circulation mode");
 			return CommandResult::NoSerialAdapter;
 		}
 
-		switch (mode)
-		{
-		case Kernel::CirculationModes::Spa:
-			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spa");
-			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
-			return CommandResult::Success;
-
-		case Kernel::CirculationModes::Pool:
-			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Pool");
-			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff);
-			return CommandResult::Success;
-
-		case Kernel::CirculationModes::Spillover:
-			LogInfo(Channel::Devices, "CommandDispatcher: Setting circulation mode to Spillover");
-			serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
-			return CommandResult::Success;
-
-		default:
-			LogWarning(Channel::Devices, std::format("CommandDispatcher: Invalid circulation mode: {}", magic_enum::enum_name(mode)));
-			return CommandResult::InvalidValue;
-		}
-	}
-
-	CommandDispatcher::CommandResult CommandDispatcher::DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction requested_action)
-	{
-		auto serial_adapter = FindSerialAdapter();
-		if (!serial_adapter)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No SerialAdapter device found in equipment hub");
-			return CommandResult::NoSerialAdapter;
-		}
-
-		// Determine the serial command based on the requested action.
-		auto action = SerialAdapter_CommandTypes::SetOn;
-
-		if (requested_action == DeviceAction::Off)
-		{
-			action = SerialAdapter_CommandTypes::SetOff;
-		}
-		else if (requested_action == DeviceAction::Toggle)
-		{
-			// Auto-detect: default to SetOn; if device is already on, use SetOff.
-			if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
-			{
-				auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
-
-				switch (device_type)
-				{
-				case AuxillaryTypes::Auxillary:
-				case AuxillaryTypes::Cleaner:
-				case AuxillaryTypes::Spillover:
-				case AuxillaryTypes::Sprinkler:
-					if (auto status = device->AuxillaryTraits.TryGet(AuxillaryStatusTrait{}); status.has_value() && *status == Kernel::AuxillaryStatuses::On)
-					{
-						action = SerialAdapter_CommandTypes::SetOff;
-					}
-					break;
-
-				case AuxillaryTypes::Pump:
-					if (auto status = device->AuxillaryTraits.TryGet(PumpStatusTrait{}); status.has_value() && *status == Kernel::PumpStatuses::Running)
-					{
-						action = SerialAdapter_CommandTypes::SetOff;
-					}
-					break;
-
-				default:
-					break;
-				}
-			}
-		}
-
-		// Check if the device has a JandyAuxillaryId trait (i.e. a hardware aux port).
-		if (device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
-		{
-			auto aux_id = *(device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
-			LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching aux command for {} (action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
-			serial_adapter->get().QueueAuxCommand(aux_id, action);
-			return CommandResult::Success;
-		}
-
-		// No aux ID - try to map as a system pump command via type and label.
-		if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
-		{
-			auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
-			auto label_opt = device->AuxillaryTraits.TryGet(LabelTrait{});
-			std::string label = label_opt.has_value() ? *label_opt : "";
-
-			switch (device_type)
-			{
-			case AuxillaryTypes::Pump:
-				if (label.find("Filter") != std::string::npos || label.find("Pump") != std::string::npos)
-				{
-					LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command PUMP (action=0x{:02x})", magic_enum::enum_integer(action)));
-					serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::PUMP, action);
-					return CommandResult::Success;
-				}
-				break;
-
-			case AuxillaryTypes::Cleaner:
-				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command CLEANR (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::CLEANR, action);
-				return CommandResult::Success;
-
-			case AuxillaryTypes::Spillover:
-				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command SPILLOVER (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, action);
-				return CommandResult::Success;
-
-			default:
-				break;
-			}
-
-			// Check if it's a spa device by label.
-			if (label.find("Spa") != std::string::npos)
-			{
-				LogInfo(Channel::Devices, std::format("CommandDispatcher: Dispatching pump command SPA (action=0x{:02x})", magic_enum::enum_integer(action)));
-				serial_adapter->get().QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, action);
-				return CommandResult::Success;
-			}
-		}
-
-		LogWarning(Channel::Devices, "CommandDispatcher: Could not map device to a serial adapter command");
-		return CommandResult::UnknownEquipmentType;
+		return MapActuationResult(controller->SetCirculationMode(mode), CommandResult::NoSerialAdapter);
 	}
 
 }

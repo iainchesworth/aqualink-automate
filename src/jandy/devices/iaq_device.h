@@ -7,8 +7,10 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/chlorinator_controller.h"
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/emulated.h"
+#include "devices/capabilities/page_navigator.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
 #include "devices/iaq/iaq_page_registry.h"
@@ -37,7 +39,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -68,6 +70,13 @@ namespace AqualinkAutomate::Devices
 		// emulated panel navigate the master's pages -- open sub-pages, toggle equipment --
 		// exactly as a physical touch would.
 		void SelectPageButton(uint8_t button_index);
+
+		// Capability implementations (ChlorinatorController / PageNavigator): let the
+		// capability-routed CommandDispatcher drive the chlorinator output/boost and the
+		// page UI through the AqualinkTouch (0x33) panel without knowing IAQ specifics.
+		Capabilities::ActuationResult SetChlorinatorPercentage(uint8_t percentage) override;
+		Capabilities::ActuationResult SetChlorinatorBoost(bool enable) override;
+		Capabilities::ActuationResult ActuatePageButton(uint8_t button_index) override;
 
 		// Arm a start-up PAGE SURVEY: once the home page is established (first MainStatus), an
 		// emulated panel walks `registry`'s data pages -- navigating to each, dwelling so it

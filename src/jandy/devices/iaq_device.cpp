@@ -161,6 +161,24 @@ namespace AqualinkAutomate::Devices
 		m_ControlDataValue.clear();
 	}
 
+	Capabilities::ActuationResult IAQDevice::SetChlorinatorPercentage(uint8_t percentage)
+	{
+		QueueChlorinatorPercentage(percentage);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult IAQDevice::SetChlorinatorBoost(bool enable)
+	{
+		QueueChlorinatorBoost(enable);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult IAQDevice::ActuatePageButton(uint8_t button_index)
+	{
+		SelectPageButton(button_index);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
 	void IAQDevice::ProcessControllerUpdates()
 	{
 		ProcessControllerUpdates(false);

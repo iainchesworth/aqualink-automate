@@ -4,13 +4,17 @@
 #include <magic_enum/magic_enum.hpp>
 #include <nlohmann/json.hpp>
 
+#include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/device_status.h"
 #include "logging/logging.h"
 #include "devices/serial_adapter_device.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Messages;
+using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
 
 namespace AqualinkAutomate::Devices
 {
@@ -211,6 +215,140 @@ namespace AqualinkAutomate::Devices
 	{
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing setpoint command ({}, temperature={})", magic_enum::enum_name(setpoint), temperature));
 		QueueCommand(magic_enum::enum_integer(setpoint), temperature);
+	}
+
+	Capabilities::ActuationResult SerialAdapterDevice::ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction requested_action)
+	{
+		// Determine the serial command based on the requested action.
+		auto action = SerialAdapter_CommandTypes::SetOn;
+
+		if (requested_action == Capabilities::ActuationAction::Off)
+		{
+			action = SerialAdapter_CommandTypes::SetOff;
+		}
+		else if (requested_action == Capabilities::ActuationAction::Toggle)
+		{
+			// Auto-detect: default to SetOn; if device is already on, use SetOff.
+			if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
+			{
+				auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
+
+				switch (device_type)
+				{
+				case AuxillaryTypes::Auxillary:
+				case AuxillaryTypes::Cleaner:
+				case AuxillaryTypes::Spillover:
+				case AuxillaryTypes::Sprinkler:
+					if (auto status = device->AuxillaryTraits.TryGet(AuxillaryStatusTrait{}); status.has_value() && *status == Kernel::AuxillaryStatuses::On)
+					{
+						action = SerialAdapter_CommandTypes::SetOff;
+					}
+					break;
+
+				case AuxillaryTypes::Pump:
+					if (auto status = device->AuxillaryTraits.TryGet(PumpStatusTrait{}); status.has_value() && *status == Kernel::PumpStatuses::Running)
+					{
+						action = SerialAdapter_CommandTypes::SetOff;
+					}
+					break;
+
+				default:
+					break;
+				}
+			}
+		}
+
+		// Check if the device has a JandyAuxillaryId trait (i.e. a hardware aux port).
+		if (device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+		{
+			auto aux_id = *(device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
+			LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating aux command for {} (action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
+			QueueAuxCommand(aux_id, action);
+			return Capabilities::ActuationResult::Accepted;
+		}
+
+		// No aux ID - try to map as a system pump command via type and label.
+		if (device->AuxillaryTraits.Has(AuxillaryTypeTrait{}))
+		{
+			auto device_type = *(device->AuxillaryTraits[AuxillaryTypeTrait{}]);
+			auto label_opt = device->AuxillaryTraits.TryGet(LabelTrait{});
+			std::string label = label_opt.has_value() ? *label_opt : "";
+
+			switch (device_type)
+			{
+			case AuxillaryTypes::Pump:
+				if (label.find("Filter") != std::string::npos || label.find("Pump") != std::string::npos)
+				{
+					LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating pump command PUMP (action=0x{:02x})", magic_enum::enum_integer(action)));
+					QueuePumpCommand(SerialAdapter_SystemPumpCommands::PUMP, action);
+					return Capabilities::ActuationResult::Accepted;
+				}
+				break;
+
+			case AuxillaryTypes::Cleaner:
+				LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating pump command CLEANR (action=0x{:02x})", magic_enum::enum_integer(action)));
+				QueuePumpCommand(SerialAdapter_SystemPumpCommands::CLEANR, action);
+				return Capabilities::ActuationResult::Accepted;
+
+			case AuxillaryTypes::Spillover:
+				LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating pump command SPILLOVER (action=0x{:02x})", magic_enum::enum_integer(action)));
+				QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, action);
+				return Capabilities::ActuationResult::Accepted;
+
+			default:
+				break;
+			}
+
+			// Check if it's a spa device by label.
+			if (label.find("Spa") != std::string::npos)
+			{
+				LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating pump command SPA (action=0x{:02x})", magic_enum::enum_integer(action)));
+				QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, action);
+				return Capabilities::ActuationResult::Accepted;
+			}
+		}
+
+		LogWarning(Channel::Devices, "SerialAdapterDevice: Could not map device to a serial adapter command");
+		return Capabilities::ActuationResult::MappingFailed;
+	}
+
+	Capabilities::ActuationResult SerialAdapterDevice::SetPoolSetpoint(uint8_t temperature)
+	{
+		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting pool setpoint to {}", temperature));
+		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult SerialAdapterDevice::SetSpaSetpoint(uint8_t temperature)
+	{
+		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting spa setpoint to {}", temperature));
+		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult SerialAdapterDevice::SetCirculationMode(Kernel::CirculationModes mode)
+	{
+		switch (mode)
+		{
+		case Kernel::CirculationModes::Spa:
+			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spa");
+			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
+			return Capabilities::ActuationResult::Accepted;
+
+		case Kernel::CirculationModes::Pool:
+			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Pool");
+			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff);
+			return Capabilities::ActuationResult::Accepted;
+
+		case Kernel::CirculationModes::Spillover:
+			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spillover");
+			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
+			return Capabilities::ActuationResult::Accepted;
+
+		default:
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: Invalid circulation mode: {}", magic_enum::enum_name(mode)));
+			return Capabilities::ActuationResult::InvalidValue;
+		}
 	}
 
 	void SerialAdapterDevice::QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)

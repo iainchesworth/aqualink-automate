@@ -1,23 +1,20 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include <boost/uuid/uuid.hpp>
 
+#include "devices/capabilities/actuation_types.h"
 #include "interfaces/icommanddispatcher.h"
+#include "interfaces/idevice.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 
 namespace AqualinkAutomate::Devices
 {
-
-	class IAQDevice;
-	class SerialAdapterDevice;
 
 	class CommandDispatcher : public Interfaces::ICommandDispatcher
 	{
@@ -47,9 +44,43 @@ namespace AqualinkAutomate::Devices
 		CommandResult SelectIAQPageButton(uint8_t button_index) override;
 
 	private:
-		CommandResult DispatchCommand(const std::shared_ptr<Kernel::AuxillaryDevice>& device, DeviceAction action);
-		std::optional<std::reference_wrapper<SerialAdapterDevice>> FindSerialAdapter();
-		std::optional<std::reference_wrapper<IAQDevice>> FindIAQDevice();
+		// Find the connected controller that advertises capability Cap, routing the
+		// command to whatever controller is actually running (Serial Adapter, IAQ /
+		// AqualinkTouch, OneTouch, ...). When several controllers advertise the same
+		// capability (e.g. both a Serial Adapter and an emulated OneTouch can actuate
+		// equipment), the highest-priority one wins where the capability exposes
+		// ControllerPriority(); single-provider capabilities take the first found.
+		template<typename Cap>
+		Cap* FindCapable() const
+		{
+			Cap* best{ nullptr };
+			[[maybe_unused]] Capabilities::ActuationPriority best_priority{ Capabilities::ActuationPriority::Lowest };
+
+			m_EquipmentHub->ForEachDevice([&](Interfaces::IDevice& device)
+			{
+				auto* candidate = dynamic_cast<Cap*>(&device);
+				if (nullptr == candidate)
+				{
+					return;
+				}
+
+				if constexpr (requires { candidate->ControllerPriority(); })
+				{
+					const auto priority = candidate->ControllerPriority();
+					if ((nullptr == best) || (static_cast<int>(priority) < static_cast<int>(best_priority)))
+					{
+						best = candidate;
+						best_priority = priority;
+					}
+				}
+				else if (nullptr == best)
+				{
+					best = candidate;
+				}
+			});
+
+			return best;
+		}
 
 	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub;
