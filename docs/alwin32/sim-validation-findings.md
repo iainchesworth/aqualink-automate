@@ -86,21 +86,21 @@ panel: `DiagnosticsIAQStatus`, `DiagnosticsIAQRSSI` (iAqualink-only), `Boost`, `
   be read from the SetTemperature page directly; set a setpoint in the sim and re-scrape to confirm the read path.
 - **Status:** OPEN (investigate; not blocking — read path works on SingleBody).
 
-### OBS-04 — Air temperature blank on RS-2/10 Dual  *(Investigate)*
-- **Symptom:** air temp reads 72 °F on RS-8 Combo and RS-8 Only but is **blank on RS-2/10 Dual** (same idle sim).
-- **Impact:** minor; may be that the dual-equipment model surfaces air temp on a different page/field, or the sim
-  simply does not report it for this model. Reconcile against the dual model's status page.
-- **Status:** OPEN (investigate; low priority).
+### OBS-04 — Air temperature blank on RS-2/10 Dual  *(Investigate)*  — **FIXED**
+- **Symptom (was):** air temp read 72 °F on RS-8 Combo/Only but was blank on RS-2/10 Dual.
+- **Root cause:** `PageProcessor_System` read air temp from a fixed **line 6**, but the dual-equipment home page
+  lists both Pool Pump and Spa Pump, pushing the air-temp line down to **line 7** (confirmed via trace capture).
+- **Fix (commit b5f6609):** parse the home page by scanning all lines and routing each temperature by its area
+  label ("Air"/"Pool"/"Spa") rather than a fixed line. Regression tests cover both layouts.
+- **Verified live:** RS-2/10 Dual now reports air = 72 °F.
+- **Status:** FIXED.
 
-### OBS-05 — Service/Timeout mode not published to MQTT  *(Minor / easy follow-up)*
-- **Finding:** `EquipmentMode` (Normal/Service/TimeOut, `data_hub.h`) is detected from both the navigation
-  layer (`Navigator::HandleSpecialPage`, Service→Failed, Timeout→recoverable wait) and the RSSA OPMODE
-  (`SerialAdapter_SCS_OpModes`), and IS exposed over the **WebSocket** (`equipment_mode` field, plus a
-  `service_mode` state string) — but is **not** published over **MQTT** (`mqtt_hub.cpp` circulation/config
-  serializers omit it).
-- **Impact:** a Home-Assistant/MQTT-only consumer can't see when the controller is in Service/Timeout. For a
-  smart-home branch this is worth surfacing (a binary_sensor/attribute). Safe additive change.
-- **Status:** OPEN (catalogued; non-blocking).
+### OBS-05 — Service/Timeout mode not published to MQTT  *(Minor)*  — **FIXED**
+- **Finding (was):** `EquipmentMode` (Normal/Service/TimeOut) was exposed over the WebSocket but not MQTT.
+- **Fix (commit c49dbf7):** added `equipment_mode` to the `pool/configuration` MQTT payload
+  (`MqttHub::SerializeConfiguration`) and an "Equipment Mode" Home Assistant sensor (new
+  `HomeAssistantDiscovery::ConfigurationTopic`). Integration test asserts the field is published.
+- **Status:** FIXED.
 
 ### OBS-06 — SpaFill / SpaDrain circulation modes defined but unimplemented  *(Minor)*
 - **Finding:** `CirculationModes` (`circulation.h`) declares `Pool, Spa, SpaFill, SpaDrain, Spillover`, but
