@@ -664,6 +664,13 @@ paths:
                     led_image_seen: true
                     leds: ["on", "off", "blink", "off"]
                     led_image: "05 00 00 00 00"
+              assignments:
+                  - switch: 1
+                    button: 2
+                    function: "Pool Light"
+                  - switch: 2
+                    button: 1
+                    function: "Swim Jet"
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:

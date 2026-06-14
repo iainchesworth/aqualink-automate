@@ -1149,6 +1149,24 @@
                         </div>
                     </div>
                 </template>
+
+                <!-- Decoded button->function assignments from the controller's config page
+                     (iAQ "Spa Remotes" / OneTouch "Spa Switch"). Read-only reference. -->
+                <div class="card mb-2" x-show="spasideAssignments.length > 0">
+                    <div class="card-header">Configured button assignments</div>
+                    <div class="card-body">
+                        <p class="text-muted text-xs mt-0 mb-1">
+                            How the controller maps each spa-side switch button to a function
+                            (switch:button &rarr; function), decoded live from its setup page.
+                        </p>
+                        <template x-for="a in spasideAssignments" :key="a.switch + ':' + a.button">
+                            <div class="flex items-center" style="justify-content: space-between;">
+                                <span class="emu-kv-key" x-text="'Switch ' + a.switch + ' · btn ' + a.button"></span>
+                                <span class="emu-kv-val" x-text="a.function"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </div>
 
             <!-- MQTT Status -->

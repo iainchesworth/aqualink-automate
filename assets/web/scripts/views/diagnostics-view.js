@@ -89,6 +89,10 @@ function diagnosticsView() {
         spasideRemotes: [],
         spasideBusy: false,
 
+        // Decoded spa-switch button->function assignments (from the iAQ/OneTouch config page),
+        // keyed by the controller's switch numbering. [{switch,button,function}, ...]
+        spasideAssignments: [],
+
         // Emulated device diagnostics
         emulatedDevices: [],
 
@@ -304,6 +308,7 @@ function diagnosticsView() {
                 if (!resp.ok) { _handlePollFailure('spaside-remotes', resp, null); return; }
                 const data = await resp.json();
                 this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
+                this.spasideAssignments = (data && Array.isArray(data.assignments)) ? data.assignments : [];
                 _diag.warnedOnce['spaside-remotes'] = false;
             } catch (e) {
                 _handlePollFailure('spaside-remotes', null, e);

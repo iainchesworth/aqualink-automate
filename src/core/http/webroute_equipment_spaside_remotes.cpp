@@ -62,6 +62,7 @@ namespace AqualinkAutomate::HTTP
 		// In dev-mode/replay there is none, and the route should still construct and report an empty
 		// list rather than throw.
 		m_Controller = hub_locator.TryFind<Interfaces::ISpasideRemoteController>();
+		m_DataHub = hub_locator.TryFind<Kernel::DataHub>();
 	}
 
 	HTTP::Message WebRoute_Equipment_SpasideRemotes::OnRequest(const HTTP::Request& req)
@@ -90,7 +91,25 @@ namespace AqualinkAutomate::HTTP
 		}
 		// With no controller the empty list is the correct picture (no spa-side stack running).
 
-		return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(remotes).dump());
+		auto envelope = RemotesToJson(remotes);
+
+		// The controller's decoded button->function assignments (iAQ "Spa Remotes" / OneTouch
+		// "Spa Switch" config), keyed by the controller's own switch numbering (1..3).
+		nlohmann::json assignments = nlohmann::json::array();
+		if (m_DataHub)
+		{
+			for (const auto& [key, function] : m_DataHub->SpaSwitchAssignments())
+			{
+				nlohmann::json entry;
+				entry["switch"] = key.first;
+				entry["button"] = key.second;
+				entry["function"] = function;
+				assignments.push_back(std::move(entry));
+			}
+		}
+		envelope["assignments"] = std::move(assignments);
+
+		return MakeJsonResponse(req, HTTP::Status::ok, envelope.dump());
 	}
 
 	HTTP::Message WebRoute_Equipment_SpasideRemotes::HandlePost(const HTTP::Request& req)

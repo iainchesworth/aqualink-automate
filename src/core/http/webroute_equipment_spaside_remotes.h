@@ -4,6 +4,7 @@
 
 #include "interfaces/ispasideremotecontroller.h"
 #include "interfaces/iwebroute.h"
+#include "kernel/data_hub.h"
 #include "kernel/hub_locator.h"
 
 namespace AqualinkAutomate::HTTP
@@ -31,6 +32,10 @@ namespace AqualinkAutomate::HTTP
 		// when no controller is registered (e.g. dev-mode/replay), in which case GET returns an
 		// empty list and POST is rejected with 503.
 		std::shared_ptr<Interfaces::ISpasideRemoteController> m_Controller;
+
+		// The decoded spa-switch button->function assignments (from the iAQ/OneTouch config UI) live
+		// on the DataHub; GET surfaces them so the UI can label buttons with their real function.
+		std::shared_ptr<Kernel::DataHub> m_DataHub;
 	};
 }
 // namespace AqualinkAutomate::HTTP
