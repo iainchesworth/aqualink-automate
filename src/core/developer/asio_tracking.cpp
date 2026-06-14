@@ -5,6 +5,15 @@
 
 using namespace AqualinkAutomate::Logging;
 
+namespace
+{
+    // MSVC's std::format throws std::format_error when a const char* argument is null.
+    // Asio's handler-tracking instrumentation passes null file/function/op-name pointers
+    // for some operations (e.g. the coroutine resolver op behind the Matter sidecar
+    // status fetch), so render any const char* defensively before formatting.
+    constexpr const char* SafeStr(const char* s) noexcept { return (nullptr != s) ? s : "(unknown)"; }
+}
+
 namespace AqualinkAutomate::Developer
 {
 
@@ -18,9 +27,9 @@ namespace AqualinkAutomate::Developer
             Channel::Developer,
             std::format(
                 "At location {}:{:d} in {}",
-                file_name,
+                SafeStr(file_name),
                 line,
-                function_name
+                SafeStr(function_name)
             )
         );
     }
@@ -56,8 +65,8 @@ namespace AqualinkAutomate::Developer
             Channel::Developer, 
             std::format(
                 "Starting operation {}.{} for native_handle = {}, handler = {}, tree = {}",
-                object_type, 
-                op_name, 
+                SafeStr(object_type),
+                SafeStr(op_name),
                 h.native_handle_, 
                 h.handler_id_, 
                 h.tree_id_
@@ -127,8 +136,8 @@ namespace AqualinkAutomate::Developer
             Channel::Developer,
             std::format(
                 "Performed operation {}.{} for native_handle = {}, ec = {}:{}",
-                h.object_type_,
-                op_name,
+                SafeStr(h.object_type_),
+                SafeStr(op_name),
                 h.native_handle_,
                 ec.category().name(),
                 ec.value()
@@ -143,8 +152,8 @@ namespace AqualinkAutomate::Developer
             Channel::Developer,
             std::format(
                 "Performed operation {}.{} for native_handle = {}, ec = {}:{}, n = {}",
-                h.object_type_,
-                op_name,
+                SafeStr(h.object_type_),
+                SafeStr(op_name),
                 h.native_handle_,
                 ec.category().name(),
                 ec.value(),
