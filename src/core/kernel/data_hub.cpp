@@ -392,5 +392,25 @@ namespace AqualinkAutomate::Kernel
 		return pumps.front();
 	}
 
+	void DataHub::SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
+	{
+		m_SpaSwitchAssignments[std::make_pair(switch_number, button_number)] = function;
+	}
+
+	std::optional<std::string> DataHub::SpaSwitchAssignment(uint8_t switch_number, uint8_t button_number) const
+	{
+		const auto it = m_SpaSwitchAssignments.find(std::make_pair(switch_number, button_number));
+		if (it == m_SpaSwitchAssignments.end())
+		{
+			return std::nullopt;
+		}
+		return it->second;
+	}
+
+	const std::map<std::pair<uint8_t, uint8_t>, std::string>& DataHub::SpaSwitchAssignments() const
+	{
+		return m_SpaSwitchAssignments;
+	}
+
 }
 // namespace AqualinkAutomate::Kernel

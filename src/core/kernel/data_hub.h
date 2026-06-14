@@ -4,9 +4,11 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/signals2.hpp>
@@ -101,6 +103,22 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		Kernel::EquipmentVersions EquipmentVersions;
+
+	//---------------------------------------------------------------------
+	// SPA-SIDE SWITCH BUTTON ASSIGNMENTS
+	//---------------------------------------------------------------------
+	// The controller's spa-side switch button->function map, decoded from its config UI:
+	// the iAQ "Spa Remotes" page or the OneTouch "Spa Switch" menu. Stored CONTROLLER-AGNOSTICALLY
+	// (keyed by 1-based (switch, button)) so whichever controller a given system has populates the
+	// same map -- the read path works for iAQ and OneTouch installs alike.
+
+	public:
+		void SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function);
+		std::optional<std::string> SpaSwitchAssignment(uint8_t switch_number, uint8_t button_number) const;
+		const std::map<std::pair<uint8_t, uint8_t>, std::string>& SpaSwitchAssignments() const;
+
+	private:
+		std::map<std::pair<uint8_t, uint8_t>, std::string> m_SpaSwitchAssignments;
 
 	//---------------------------------------------------------------------
 	// CIRCULATION MODES

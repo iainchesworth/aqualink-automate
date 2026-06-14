@@ -123,6 +123,7 @@ target_sources(
 	unit/utility/test_utility_bandwidthutilisation.cpp
 	unit/utility/test_utility_caseinsensitivecomparison.cpp
 	unit/utility/test_utility_chemistry.cpp
+	unit/utility/test_utility_spa_switch_assignment.cpp
 	unit/utility/test_utility_endpointparser.cpp
 	unit/utility/test_utility_jandychecksum.cpp
 	unit/utility/test_utility_latencytracker.cpp
@@ -143,6 +144,7 @@ target_sources(
 	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp
 	unit/devices/test_devices_iaq.cpp
+	unit/devices/test_devices_iaq_spaswitch_config.cpp
 	unit/devices/test_jandy_iaq_page_registry.cpp
 	unit/devices/test_pentair_vsp_pump.cpp
 	unit/devices/test_pentair_chlorinator.cpp

@@ -131,6 +131,7 @@ target_sources(
 	utility/jandy_null_handler.cpp
 	utility/jandy_pool_configuration_decoder.cpp
 	utility/screen_data_page.cpp
+	utility/spa_switch_assignment.cpp
 	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp
 	utility/screen_data_page_processor.cpp 
 	utility/screen_data_page_updater.cpp

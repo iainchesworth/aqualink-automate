@@ -5,6 +5,7 @@
 #include "logging/logging.h"
 #include "devices/device_status.h"
 #include "devices/iaq_device.h"
+#include "utility/spa_switch_assignment.h"
 #include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -192,6 +193,19 @@ namespace AqualinkAutomate::Devices
 		else
 		{
 			m_TableInfo[msg.LineId()].Text = msg.Line();
+		}
+
+		// Spa-side switch button assignments appear on the iAQ "Spa Remotes" config page as
+		// group-0x00 table rows "<switch>:<button>\t<function>" (the function picker is group
+		// 0x01). Decode them into the controller-agnostic DataHub map. The parser only accepts the
+		// "N:M <function>" shape, so non-assignment group-0 rows are safely ignored.
+		if ((nullptr != m_DataHub) && (0x00 == msg.LineId()))
+		{
+			if (const auto assignment = Utility::ParseSpaSwitchAssignmentLine(msg.Line()))
+			{
+				m_DataHub->SetSpaSwitchAssignment(assignment->switch_number, assignment->button_number, assignment->function);
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): spa-switch assignment {}:{} -> '{}'", DeviceId(), assignment->switch_number, assignment->button_number, assignment->function); });
+			}
 		}
 
 		ProcessControllerUpdates();
