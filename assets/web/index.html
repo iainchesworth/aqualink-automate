@@ -71,6 +71,25 @@
         <symbol id="icon-remote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><line x1="10" y1="12" x2="14" y2="12"/><line x1="10" y1="15" x2="14" y2="15"/>
         </symbol>
+        <!-- About "Features" icons (line-art, matches the sprite above) -->
+        <symbol id="icon-feat-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </symbol>
+        <symbol id="icon-feat-control" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+        </symbol>
+        <symbol id="icon-feat-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </symbol>
+        <symbol id="icon-feat-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </symbol>
+        <symbol id="icon-feat-mobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+        </symbol>
+        <symbol id="icon-feat-api" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+        </symbol>
     </svg>
 
     <!-- ====== LOGIN OVERLAY (WS5) ====== -->
@@ -308,7 +327,8 @@
             <div class="section-title">Water Chemistry</div>
             <div class="gauge-grid mb-2">
                 <template x-for="type in ['ph', 'orp', 'salt']" :key="type">
-                    <div class="gauge-card" x-data="chemistryGauge(type)">
+                    <div class="gauge-card" x-data="chemistryGauge(type)"
+                         :class="{ 'gauge-card--empty': numericValue === null }">
                         <div class="gauge-header">
                             <span class="gauge-label" x-text="cfg.label"></span>
                             <span class="gauge-band-indicator"
@@ -902,12 +922,12 @@
                                x-model="recordingFilename"
                                placeholder="capture.cap"
                                aria-label="Capture file name">
-                        <button class="setpoint-btn"
+                        <button class="btn btn-sm"
                                 :disabled="recordingBusy || !recordingFilename"
                                 @click="startRecording()">Start</button>
                     </div>
                     <div class="flex items-center gap-1 mb-1" x-show="recording.recording">
-                        <button class="setpoint-btn"
+                        <button class="btn btn-sm"
                                 :disabled="recordingBusy"
                                 @click="stopRecording()">Stop</button>
                     </div>
@@ -1014,14 +1034,15 @@
                         <div class="flex items-center" style="gap: 0.5rem; flex-wrap: wrap;">
                             <label class="text-xs">Switch
                                 <input type="number" min="1" max="3" x-model.number="spasideAssign.switch"
-                                       style="width: 3.5rem;" :disabled="spasideBusy">
+                                       class="settings-input" style="width: 4rem;" :disabled="spasideBusy">
                             </label>
                             <label class="text-xs">Button
                                 <input type="number" min="1" max="16" x-model.number="spasideAssign.button"
-                                       style="width: 3.5rem;" :disabled="spasideBusy">
+                                       class="settings-input" style="width: 4rem;" :disabled="spasideBusy">
                             </label>
                             <label class="text-xs">Function
                                 <input type="text" list="spaside-fn-list" x-model="spasideAssign.function"
+                                       class="settings-input" style="width: 12rem;"
                                        placeholder="e.g. Pool Light" :disabled="spasideBusy">
                             </label>
                             <datalist id="spaside-fn-list">
@@ -1175,7 +1196,7 @@
                             <template x-for="s in series" :key="s.key">
                                 <label class="trends-series-toggle">
                                     <input type="checkbox" :checked="selected[s.key]" @change="toggleSeries(s.key)">
-                                    <span x-text="s.key"></span>
+                                    <span x-text="seriesLabel(s.key)"></span>
                                 </label>
                             </template>
                             <span class="text-muted text-xs" x-show="series.length === 0 && !loading">No series recorded yet.</span>
@@ -1269,7 +1290,7 @@
                 <div class="card-header card-header-split">
                     <span>System Preferences</span>
                     <div class="settings-card-actions">
-                        <span class="cmd-badge cmd-applied" x-show="savedFlash" x-cloak>Saved ✓</span>
+                        <span class="badge badge-good" x-show="savedFlash" x-cloak>Saved ✓</span>
                         <button class="sched-new-btn" @click="saveServerPrefs()">Save</button>
                     </div>
                 </div>
@@ -1327,7 +1348,7 @@
                 <div class="card-header card-header-split">
                     <span>Device Names</span>
                     <div class="settings-card-actions" x-show="deviceButtons().length > 0">
-                        <span class="cmd-badge cmd-applied" x-show="savedFlash" x-cloak>Saved ✓</span>
+                        <span class="badge badge-good" x-show="savedFlash" x-cloak>Saved ✓</span>
                         <button class="sched-new-btn" @click="saveLabels()">Save</button>
                     </div>
                 </div>
@@ -1367,26 +1388,28 @@
                                     @click="resetGauge(gauge.key)">Reset</button>
                         </div>
                         <div class="settings-range-grid">
+                            <div class="settings-range-head" aria-hidden="true">
+                                <span></span>
+                                <span>Min</span>
+                                <span></span>
+                                <span>Max</span>
+                            </div>
                             <template x-for="tier in ['good', 'okay', 'bad']" :key="tier">
                                 <div class="settings-range-row">
                                     <span class="gauge-band-indicator settings-tier-label"
                                           :class="'gauge-band-' + tier"
                                           x-text="tier.charAt(0).toUpperCase() + tier.slice(1)"></span>
-                                    <label>
-                                        Min
-                                        <input type="number" class="settings-input"
-                                               :step="gauge.step"
-                                               :value="values[gauge.key][tier + 'Min']"
-                                               @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
-                                    </label>
+                                    <input type="number" class="settings-input"
+                                           :step="gauge.step"
+                                           :aria-label="tier + ' minimum'"
+                                           :value="values[gauge.key][tier + 'Min']"
+                                           @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
                                     <span class="range-separator">&#x2013;</span>
-                                    <label>
-                                        Max
-                                        <input type="number" class="settings-input"
-                                               :step="gauge.step"
-                                               :value="values[gauge.key][tier + 'Max']"
-                                               @change="updateValue(gauge.key, tier + 'Max', $event.target.value)">
-                                    </label>
+                                    <input type="number" class="settings-input"
+                                           :step="gauge.step"
+                                           :aria-label="tier + ' maximum'"
+                                           :value="values[gauge.key][tier + 'Max']"
+                                           @change="updateValue(gauge.key, tier + 'Max', $event.target.value)">
                                 </div>
                             </template>
                         </div>
@@ -1447,27 +1470,27 @@
             <div class="section-title">Features</div>
             <div class="feature-grid mb-3">
                 <div class="feature-card">
-                    <div class="feature-icon">&#x1F321;&#xFE0F;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-monitor"></use></svg>
                     <div class="feature-label">Real-time Monitoring</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">&#x1F3AE;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-control"></use></svg>
                     <div class="feature-label">Remote Control</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">&#x26A1;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-bolt"></use></svg>
                     <div class="feature-label">WebSocket Updates</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">&#x1F4CA;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-chart"></use></svg>
                     <div class="feature-label">Diagnostics</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">&#x1F4F1;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-mobile"></use></svg>
                     <div class="feature-label">Mobile Responsive</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">&#x1F504;</div>
+                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-api"></use></svg>
                     <div class="feature-label">REST API</div>
                 </div>
             </div>
