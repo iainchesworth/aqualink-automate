@@ -338,6 +338,20 @@ function diagnosticsView() {
             }
         },
 
+        // Button layout for a remote. A "Dual Spa Switch" is the 6588 Dual Spa Side Interface
+        // board, which bridges two physical spa-side switches onto the bus: Switch 2 = button
+        // codes 1-4, Switch 3 = codes 5-8 (the "2x4"). Any other class is a single keypad.
+        spasideButtonGroups(remote) {
+            const range = (lo, hi) => { const a = []; for (let b = lo; b <= hi; b++) a.push(b); return a; };
+            if (remote.device_class === 'DualSpaSwitch' && remote.button_count >= 8) {
+                return [
+                    { label: 'Spa Switch 2', buttons: range(1, 4) },
+                    { label: 'Spa Switch 3', buttons: range(5, 8) },
+                ];
+            }
+            return [{ label: '', buttons: range(1, remote.button_count || 0) }];
+        },
+
         // Map an indicator state to an existing badge class (green=on, amber=blink, grey=off).
         spasideLedBadgeClass(state) {
             if (state === 'on') return 'badge-freq';

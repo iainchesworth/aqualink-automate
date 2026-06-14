@@ -1130,14 +1130,22 @@
                             <p class="text-muted text-xs mt-1 mb-1" x-show="!remote.emulated">
                                 Read-only: this is a real remote we observe. Its button presses appear above.
                             </p>
-                            <div class="flex items-center gap-1 flex-wrap" x-show="remote.emulated && remote.button_count > 0">
-                                <template x-for="b in remote.button_count" :key="b">
-                                    <button class="setpoint-btn"
-                                            :disabled="spasideBusy"
-                                            @click="pressSpasideButton(remote.address, b)"
-                                            x-text="b"></button>
-                                </template>
-                            </div>
+                            <!-- Button groups. A Dual Spa Switch (the 6588 Dual Spa Side Interface
+                                 board) bridges two physical switches onto the bus: Switch 2 = codes
+                                 1-4, Switch 3 = codes 5-8. Others are a single keypad. -->
+                            <template x-for="grp in spasideButtonGroups(remote)" :key="grp.label">
+                                <div class="mb-1" x-show="remote.emulated && grp.buttons.length > 0">
+                                    <span class="emu-kv-key" x-show="grp.label" x-text="grp.label"></span>
+                                    <div class="flex items-center gap-1 flex-wrap">
+                                        <template x-for="b in grp.buttons" :key="b">
+                                            <button class="setpoint-btn"
+                                                    :disabled="spasideBusy"
+                                                    @click="pressSpasideButton(remote.address, b)"
+                                                    x-text="b"></button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </template>

@@ -111,6 +111,30 @@ BOOST_AUTO_TEST_CASE(PressButton_BoundaryButtons_AreValid)
 	BOOST_CHECK(controller.PressButton(0x20, 9) == PressResult::Success);
 }
 
+BOOST_AUTO_TEST_CASE(DualSpaSwitch_EmulatesBothInterfaceBoardSwitches)
+{
+	// The 6588 Dual Spa Side Interface board (DualSpaSwitch at 0x10) bridges TWO physical
+	// spa-side switches onto the bus: switch #2 = button codes 1-4, switch #3 = codes 5-8 (the
+	// "2x4"). Emulating it must accept the full 1-8 range so a user without the board can add a
+	// "fake" switch #2 AND switch #3. (See docs/alwin32/spaside-remotes.md, Sheet #6873/PN 6588.)
+	AddRemote(0x10, /*emulated*/ true);
+	SpasideRemoteController controller(hub);
+
+	const auto remotes = controller.Remotes();
+	BOOST_REQUIRE_EQUAL(remotes.size(), 1u);
+	BOOST_CHECK_EQUAL(remotes[0].device_class, "DualSpaSwitch");
+	BOOST_CHECK_EQUAL(static_cast<int>(remotes[0].button_count), 8);
+
+	// Switch #2 (codes 1-4) and switch #3 (codes 5-8) all actuate on the emulated board.
+	for (int code : { 1, 4, 5, 8 })
+	{
+		BOOST_CHECK(controller.PressButton(0x10, static_cast<uint8_t>(code)) == PressResult::Success);
+	}
+
+	// Beyond the 8 interface-board codes is rejected.
+	BOOST_CHECK(controller.PressButton(0x10, 9) == PressResult::InvalidButton);
+}
+
 BOOST_AUTO_TEST_CASE(Remotes_EmptyHub_ReturnsEmpty)
 {
 	SpasideRemoteController controller(hub);

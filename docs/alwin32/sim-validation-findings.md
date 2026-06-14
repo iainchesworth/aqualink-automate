@@ -234,6 +234,19 @@ once the DLE-valued-destination factory bug is fixed.
 - **Generality:** class + button_count (8 Dual Spa Switch / 9 Spa Link) are derived per device class, so every
   instance of either class (0x10-0x13, 0x20-0x23) is supported, including the Spa Link the maintainer lacks.
 
+#### Real-hardware wiring topology (validated 2026-06-14; Jandy Sheet #6873 / PN 6588)
+Live captures from a real Power Center pinned down how spa-side switches reach the bus (full
+detail in `docs/alwin32/spaside-remotes.md`):
+- **Spa Side Switch #1** is hard-wired to the Power Center's 6-pin terminal bar (analog) — it has
+  **no RS-485 presence**. Confirmed: pressing it produced **zero** bus frames, yet the equipment
+  toggled (its "Pool Light" press flipped MainStatus/AuxStatus ~5 s later, seen via normal status
+  decode). So its *effect* is visible, its *button* is not — out of scope for remote decode/emulate.
+- **Spa Side Switches #2 & #3** ride the bus via the **Dual Spa Side Interface PCB (P/N 6588)** — this
+  is the `2x4rem` "Dual Spa Switch" we decode at **0x10**: switch #2 = button codes 1-4 (CONFIRMED on
+  the wire), switch #3 = codes 5-8 (INFERRED from the 8-code model). Phase-1 decode matches byte-for-byte.
+- Emulation models the 6588 board: an emulated DualSpaSwitch (0x10) offers **fake switch #2 (codes 1-4)
+  and switch #3 (codes 5-8)** in the web panel for users without the physical board.
+
 #### Still PAUSED / capture-gated
 - **RemAux (`RemotePowerCenter` 0x28)** — still no handler. Its master→device set-relay commands (`0x08`/`0x09`)
   collide with global ids (`PDA_Highlight`/`PDA_Clear`), so it genuinely needs the per-destination dispatch

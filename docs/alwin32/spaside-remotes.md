@@ -346,6 +346,43 @@ address classes (`0x02`→`0x10`, `0x04`→`0x20`) extend `jandy_device_types.h`
 button-press encoding (`[0x01][0x00][idx]`) and the 2-bit LED image are concrete,
 capture-checkable byte layouts on the existing Jandy generator/factory stack.
 
+## Real-world wiring topology — how spa-side switches reach (or don't reach) the bus
+
+Validated against live hardware (RFC2217 bridge to a real Power Center) + the Jandy
+**Surge Suppression Installation Manual, Sheet #6873 Rev. G** (figures 1 & 4), which document
+the **Dual Spa Side Interface PCB, P/N 6588**. There are **two distinct wiring paths** for
+spa-side switches, and only one is visible on RS-485:
+
+| Spa-side switch | Wiring (per Sheet #6873) | On the RS-485 bus? | What the app sees |
+|---|---|:---:|---|
+| **Switch #1** | Hard-wired to the Power Center's **6-pin terminal bar** (RED/BLACK/GREEN/WHITE/BROWN/BLUE) — a direct analog connection | **No** | Nothing for the press; only the **equipment effect** via normal MainStatus/AuxStatus decode |
+| **Switch #2 & #3** | Wired to the **Dual Spa Side Interface PCB (P/N 6588)**, which bridges them onto the **4-wire RS-485** bus (its 4-wire cable lands on the Surge Suppression PCB's red terminal bar) | **Yes** | A real bus device — the "Dual Spa Switch" / `2x4rem` at **0x10**, button presses as `[0x01][0x00][code]` |
+
+So the `2x4rem` "Dual Spa Switch" we decode at **0x10 is the 6588 interface board**, representing
+**switch #2 (button codes 1–4)** and **switch #3 (codes 5–8)** — the "2×4" = two 4-button switches.
+Switch #1 has no bus presence at all.
+
+### Live-capture validation (real hardware, 2026-06-14)
+- **Switch #2 confirmed on the bus:** pressing its 4 buttons produced `[0x01][0x00][1..4]` acks from
+  0x10 (`captures/spaside_setup_nav.cap`) — our Phase-1 decoder matches byte-for-byte. `[CONFIRMED]`
+- **Switch #1 confirmed invisible:** pressing it (3 buttons, then a clean single press of "Pool Light")
+  produced **zero** RS-485 frames anywhere in the byte stream — yet the equipment toggled: the press of
+  "Pool Light" flipped the controller's MainStatus + AuxStatus (`Pool Light` → on) ~5 s later, seen via
+  normal status decode (`captures/spaside_single.cap`). So switch #1's *effect* is visible, its *button*
+  is not. `[CONFIRMED]`
+- **Switch #3 codes 5–8** are `[INFERRED]` from the 2x4rem 8-code model + the 6588 "dual" design — not
+  yet directly observed on this install (only switch #2 was pressed).
+
+### Implications for aqualink-automate
+- **Decode/emulate covers interface-board switches (#2/#3 via 0x10).** A user with the 6588 board gets
+  full read + emulation + web control of those switches.
+- **Switch #1 (direct-wired) is out of scope for remote decode/emulation by nature** — there is no bus
+  frame to read or reproduce. Its equipment effects are already surfaced by the ordinary status decode,
+  so to *drive* switch-#1 functions the app actuates the equipment through a controller (existing path).
+- **Emulation models the 6588 board:** an emulated `DualSpaSwitch` at 0x10 represents **fake switch #2
+  (press codes 1–4)** and **fake switch #3 (codes 5–8)** — lets users without the physical board add
+  spa-side switches the controller honours.
+
 ### Flagged — needs a live RS-485 capture to confirm
 * **Button-index ↔ physical-function map** (which of the 8/9 indices is Pool/Spa/Aux/Heat/
   etc.) — not labelled in either binary.
