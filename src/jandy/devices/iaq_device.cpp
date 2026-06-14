@@ -476,11 +476,8 @@ namespace AqualinkAutomate::Devices
 				return;
 
 			case IAQ_PAGE_HOME:
-				issue(IAQ_CMD_BACK);                                     // 0x02 -> menu
-				return;
-
 			default:
-				issue(IAQ_CMD_BACK);                                     // unwind toward home/menu
+				issue(IAQ_CMD_BACK);                                     // HOME or unknown: unwind toward menu
 				return;
 			}
 		}

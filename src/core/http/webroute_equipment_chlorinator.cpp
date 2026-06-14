@@ -27,7 +27,7 @@ namespace AqualinkAutomate::HTTP
 			{
 			case CommandResult::Success:             return HTTP::Status::ok;
 			case CommandResult::InvalidValue:        return HTTP::Status::bad_request;
-			case CommandResult::DeviceNotFound:      return HTTP::Status::service_unavailable;
+			case CommandResult::DeviceNotFound:
 			case CommandResult::NoSerialAdapter:     return HTTP::Status::service_unavailable;
 			case CommandResult::UnknownEquipmentType:return HTTP::Status::unprocessable_entity;
 			default:                                 return HTTP::Status::internal_server_error;

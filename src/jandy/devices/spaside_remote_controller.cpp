@@ -143,7 +143,7 @@ namespace AqualinkAutomate::Devices
 			switch (configurator->SetSpaSwitchAssignment(switch_number, button_number, function))
 			{
 			case Capabilities::ActuationResult::Accepted:      return AssignResult::Accepted;
-			case Capabilities::ActuationResult::InvalidValue:  return AssignResult::InvalidRequest;
+			case Capabilities::ActuationResult::InvalidValue:
 			case Capabilities::ActuationResult::MappingFailed: return AssignResult::InvalidRequest;
 			case Capabilities::ActuationResult::NotSupported:
 			default:
