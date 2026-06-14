@@ -4,6 +4,7 @@
 #include <source_location>
 #include <string>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
@@ -49,19 +50,31 @@ namespace AqualinkAutomate::HTTP
 						tcp::resolver resolver(executor);
 						beast::tcp_stream stream(executor);
 
-						auto results = co_await resolver.async_resolve("127.0.0.1", std::to_string(status_port), asio::use_awaitable);
+						// Use as_tuple so failures (a sidecar that isn't running -> refused
+						// connect, etc.) come back as error_codes instead of THROWING
+						// boost::system::system_error -- otherwise every poll of an absent
+						// sidecar raised (and caught) a first-chance exception.
+						auto [resolve_ec, results] = co_await resolver.async_resolve("127.0.0.1", std::to_string(status_port), asio::as_tuple(asio::use_awaitable));
+						if (resolve_ec) { co_return; }
+
 						stream.expires_after(SIDECAR_TIMEOUT);
-						co_await stream.async_connect(results, asio::use_awaitable);
+						auto [connect_ec, connected_endpoint] = co_await stream.async_connect(results, asio::as_tuple(asio::use_awaitable));
+						if (connect_ec) { co_return; }
+						(void)connected_endpoint;
 
 						http::request<http::string_body> req{ http::verb::get, "/matter/status", 11 };
 						req.set(http::field::host, "127.0.0.1");
 						req.set(http::field::user_agent, "aqualink-automate");
 						stream.expires_after(SIDECAR_TIMEOUT);
-						co_await http::async_write(stream, req, asio::use_awaitable);
+						auto [write_ec, bytes_written] = co_await http::async_write(stream, req, asio::as_tuple(asio::use_awaitable));
+						if (write_ec) { co_return; }
+						(void)bytes_written;
 
 						beast::flat_buffer buffer;
 						http::response<http::string_body> res;
-						co_await http::async_read(stream, buffer, res, asio::use_awaitable);
+						auto [read_ec, bytes_read] = co_await http::async_read(stream, buffer, res, asio::as_tuple(asio::use_awaitable));
+						if (read_ec) { co_return; }
+						(void)bytes_read;
 						body = res.body();
 
 						beast::error_code ec;
