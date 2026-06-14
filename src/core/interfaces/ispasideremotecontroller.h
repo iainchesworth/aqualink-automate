@@ -40,6 +40,15 @@ namespace AqualinkAutomate::Interfaces
 			InvalidButton    ///< The button index is outside 1..button_count for that remote.
 		};
 
+		/// @brief Outcome of a SetButtonAssignment request (programming a button's function over the bus).
+		enum class AssignResult
+		{
+			Accepted,        ///< Queued: a controller is driving its config menu to set the assignment.
+			InvalidRequest,  ///< Out-of-range switch/button, or an empty/unrecognised function name.
+			NotAvailable,    ///< No connected controller can program spa-switch assignments (no configurator).
+			Busy             ///< A controller is mid-operation; retry shortly.
+		};
+
 	public:
 		virtual ~ISpasideRemoteController() = default;
 
@@ -49,6 +58,10 @@ namespace AqualinkAutomate::Interfaces
 
 		/// @brief Inject a momentary press of @p button_index on the emulated remote at @p address.
 		virtual PressResult PressButton(uint8_t address, uint8_t button_index) = 0;
+
+		/// @brief Program switch @p switch_number button @p button_number to @p function over the bus
+		///        (drives the controller's Spa Remotes / Spa Switch config menu). 1-based indices.
+		virtual AssignResult SetButtonAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) = 0;
 	};
 }
 // namespace AqualinkAutomate::Interfaces

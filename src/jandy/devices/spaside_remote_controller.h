@@ -24,8 +24,14 @@ namespace AqualinkAutomate::Devices
 	public:
 		std::vector<RemoteState> Remotes() const override;
 		PressResult PressButton(uint8_t address, uint8_t button_index) override;
+		AssignResult SetButtonAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
 
 	private:
+		// Sanity bounds for a config request (the controllers number switches 1..3 and buttons
+		// 1..N small); the chosen controller validates the precise function/button.
+		static constexpr uint8_t MAX_SWITCH_NUMBER{ 3 };
+		static constexpr uint8_t MAX_BUTTON_NUMBER{ 16 };
+
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;
 	};
 

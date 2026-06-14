@@ -135,6 +135,28 @@ BOOST_AUTO_TEST_CASE(DualSpaSwitch_EmulatesBothInterfaceBoardSwitches)
 	BOOST_CHECK(controller.PressButton(0x10, 9) == PressResult::InvalidButton);
 }
 
+BOOST_AUTO_TEST_CASE(SetButtonAssignment_InvalidRequest_IsRejected)
+{
+	SpasideRemoteController controller(hub);
+	using AR = Interfaces::ISpasideRemoteController::AssignResult;
+
+	BOOST_CHECK(controller.SetButtonAssignment(0, 1, "Pool Light") == AR::InvalidRequest);   // switch 0
+	BOOST_CHECK(controller.SetButtonAssignment(1, 0, "Pool Light") == AR::InvalidRequest);   // button 0
+	BOOST_CHECK(controller.SetButtonAssignment(1, 1, "") == AR::InvalidRequest);             // empty function
+	BOOST_CHECK(controller.SetButtonAssignment(99, 1, "Pool Light") == AR::InvalidRequest);  // switch out of range
+}
+
+BOOST_AUTO_TEST_CASE(SetButtonAssignment_NoConfigurator_IsNotAvailable)
+{
+	// A SpasideRemoteDevice is NOT a SpaSwitchConfigurator -- only a controller (OneTouch/iAQ) is.
+	// With none present, a well-formed request reports NotAvailable rather than pretending to work.
+	AddRemote(0x10, /*emulated*/ true);
+	SpasideRemoteController controller(hub);
+
+	BOOST_CHECK(controller.SetButtonAssignment(1, 2, "Pool Light")
+		== Interfaces::ISpasideRemoteController::AssignResult::NotAvailable);
+}
+
 BOOST_AUTO_TEST_CASE(Remotes_EmptyHub_ReturnsEmpty)
 {
 	SpasideRemoteController controller(hub);

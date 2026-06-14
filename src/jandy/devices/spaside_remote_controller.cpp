@@ -5,6 +5,7 @@
 
 #include "devices/spaside_remote_controller.h"
 #include "devices/spaside_remote_device.h"
+#include "devices/capabilities/spa_switch_configurator.h"
 #include "interfaces/idevice.h"
 #include "logging/logging.h"
 
@@ -91,6 +92,59 @@ namespace AqualinkAutomate::Devices
 		LogInfo(Channel::Web, std::format("SpasideRemoteController: injecting press of button {} on emulated remote 0x{:02x}", button_index, address));
 		target->PressButton(button_index);
 		return PressResult::Success;
+	}
+
+	Interfaces::ISpasideRemoteController::AssignResult SpasideRemoteController::SetButtonAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
+	{
+		// Programming is a CONTROLLER-config operation keyed by the controller's own switch
+		// numbering (1..3) and button numbering (1..N), independent of which spa switches are
+		// bus-attached -- so validate against those, not against any decoded remote.
+		if ((switch_number < 1) || (switch_number > MAX_SWITCH_NUMBER) ||
+			(button_number < 1) || (button_number > MAX_BUTTON_NUMBER) ||
+			function.empty())
+		{
+			return AssignResult::InvalidRequest;
+		}
+
+		if (nullptr == m_EquipmentHub)
+		{
+			return AssignResult::NotAvailable;
+		}
+
+		// Find the highest-priority controller that can program assignments (OneTouch / iAQ),
+		// mirroring CommandDispatcher::FindCapable: lowest ActuationPriority wins.
+		Capabilities::SpaSwitchConfigurator* best{ nullptr };
+		Capabilities::ActuationPriority best_priority{ Capabilities::ActuationPriority::Lowest };
+		m_EquipmentHub->ForEachDevice([&best, &best_priority](Interfaces::IDevice& device)
+		{
+			auto* candidate = dynamic_cast<Capabilities::SpaSwitchConfigurator*>(&device);
+			if (nullptr == candidate)
+			{
+				return;
+			}
+			const auto priority = candidate->ControllerPriority();
+			if ((nullptr == best) || (static_cast<int>(priority) < static_cast<int>(best_priority)))
+			{
+				best = candidate;
+				best_priority = priority;
+			}
+		});
+
+		if (nullptr == best)
+		{
+			LogWarning(Channel::Web, std::format("SpasideRemoteController: no controller can program spa-switch assignments (switch {} button {} -> '{}')", switch_number, button_number, function));
+			return AssignResult::NotAvailable;
+		}
+
+		LogInfo(Channel::Web, std::format("SpasideRemoteController: programming switch {} button {} -> '{}'", switch_number, button_number, function));
+		switch (best->SetSpaSwitchAssignment(switch_number, button_number, function))
+		{
+		case Capabilities::ActuationResult::Accepted:      return AssignResult::Accepted;
+		case Capabilities::ActuationResult::InvalidValue:  return AssignResult::InvalidRequest;
+		case Capabilities::ActuationResult::MappingFailed: return AssignResult::InvalidRequest;
+		case Capabilities::ActuationResult::NotSupported:
+		default:                                           return AssignResult::NotAvailable;
+		}
 	}
 
 }

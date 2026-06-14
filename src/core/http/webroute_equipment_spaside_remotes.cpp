@@ -126,50 +126,90 @@ namespace AqualinkAutomate::HTTP
 
 			if (!body.contains("action") || !body["action"].is_string())
 			{
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"json({"error":"Request must contain a string 'action' (currently only 'press')"})json");
+				return MakeJsonResponse(req, HTTP::Status::bad_request, R"json({"error":"Request must contain a string 'action' ('press' or 'assign')"})json");
 			}
 
 			const auto action = body["action"].get<std::string>();
-			if ("press" != action)
+
+			if ("press" == action)
 			{
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'action' must be 'press'"})");
+				if (!body.contains("address") || !body["address"].is_number_unsigned())
+				{
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'press' requires an unsigned integer 'address'"})");
+				}
+				if (!body.contains("button") || !body["button"].is_number_unsigned())
+				{
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'press' requires an unsigned integer 'button'"})");
+				}
+
+				const auto address_value = body["address"].get<std::uint64_t>();
+				const auto button_value = body["button"].get<std::uint64_t>();
+				if ((address_value > 0xFF) || (button_value > 0xFF))
+				{
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'address' and 'button' must each fit in a single byte"})");
+				}
+
+				const auto address = static_cast<uint8_t>(address_value);
+				const auto button = static_cast<uint8_t>(button_value);
+
+				switch (m_Controller->PressButton(address, button))
+				{
+				case Interfaces::ISpasideRemoteController::PressResult::Success:
+					LogInfo(Channel::Web, std::format("Spa-side remote 0x{:02x}: queued press of button {} via web UI", address, button));
+					return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
+
+				case Interfaces::ISpasideRemoteController::PressResult::RemoteNotFound:
+					return MakeJsonResponse(req, HTTP::Status::not_found, R"({"error":"No spa-side remote at that address"})");
+
+				case Interfaces::ISpasideRemoteController::PressResult::NotEmulated:
+					return MakeJsonResponse(req, HTTP::Status::conflict, R"({"error":"That spa-side remote is a real device we only observe; it cannot be actuated"})");
+
+				case Interfaces::ISpasideRemoteController::PressResult::InvalidButton:
+				default:
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"json({"error":"'button' is out of range for that remote (1..button_count)"})json");
+				}
 			}
 
-			if (!body.contains("address") || !body["address"].is_number_unsigned())
+			if ("assign" == action)
 			{
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'press' requires an unsigned integer 'address'"})");
+				// Program switch:button -> function over the bus (drives the controller's config menu).
+				if (!body.contains("switch") || !body["switch"].is_number_unsigned() ||
+					!body.contains("button") || !body["button"].is_number_unsigned() ||
+					!body.contains("function") || !body["function"].is_string())
+				{
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'assign' requires unsigned 'switch', unsigned 'button', and string 'function'"})");
+				}
+
+				const auto switch_value = body["switch"].get<std::uint64_t>();
+				const auto button_value = body["button"].get<std::uint64_t>();
+				const auto function = body["function"].get<std::string>();
+				if ((switch_value > 0xFF) || (button_value > 0xFF))
+				{
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'switch' and 'button' must each fit in a single byte"})");
+				}
+
+				const auto sw = static_cast<uint8_t>(switch_value);
+				const auto btn = static_cast<uint8_t>(button_value);
+
+				switch (m_Controller->SetButtonAssignment(sw, btn, function))
+				{
+				case Interfaces::ISpasideRemoteController::AssignResult::Accepted:
+					LogInfo(Channel::Web, std::format("Spa-switch assign: switch {} button {} -> '{}' queued via web UI", sw, btn, function));
+					return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
+
+				case Interfaces::ISpasideRemoteController::AssignResult::InvalidRequest:
+					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Invalid switch/button/function for assignment"})");
+
+				case Interfaces::ISpasideRemoteController::AssignResult::Busy:
+					return MakeJsonResponse(req, HTTP::Status::conflict, R"({"error":"A controller operation is in progress; retry shortly"})");
+
+				case Interfaces::ISpasideRemoteController::AssignResult::NotAvailable:
+				default:
+					return MakeJsonResponse(req, HTTP::Status::service_unavailable, R"({"error":"No controller can program spa-switch assignments on this system"})");
+				}
 			}
-			if (!body.contains("button") || !body["button"].is_number_unsigned())
-			{
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'press' requires an unsigned integer 'button'"})");
-			}
 
-			const auto address_value = body["address"].get<std::uint64_t>();
-			const auto button_value = body["button"].get<std::uint64_t>();
-			if ((address_value > 0xFF) || (button_value > 0xFF))
-			{
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'address' and 'button' must each fit in a single byte"})");
-			}
-
-			const auto address = static_cast<uint8_t>(address_value);
-			const auto button = static_cast<uint8_t>(button_value);
-
-			switch (m_Controller->PressButton(address, button))
-			{
-			case Interfaces::ISpasideRemoteController::PressResult::Success:
-				LogInfo(Channel::Web, std::format("Spa-side remote 0x{:02x}: queued press of button {} via web UI", address, button));
-				return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
-
-			case Interfaces::ISpasideRemoteController::PressResult::RemoteNotFound:
-				return MakeJsonResponse(req, HTTP::Status::not_found, R"({"error":"No spa-side remote at that address"})");
-
-			case Interfaces::ISpasideRemoteController::PressResult::NotEmulated:
-				return MakeJsonResponse(req, HTTP::Status::conflict, R"({"error":"That spa-side remote is a real device we only observe; it cannot be actuated"})");
-
-			case Interfaces::ISpasideRemoteController::PressResult::InvalidButton:
-			default:
-				return MakeJsonResponse(req, HTTP::Status::bad_request, R"json({"error":"'button' is out of range for that remote (1..button_count)"})json");
-			}
+			return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"'action' must be 'press' or 'assign'"})");
 		}
 		catch (const nlohmann::json::exception&)
 		{
