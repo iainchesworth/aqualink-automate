@@ -448,13 +448,31 @@ pushes the page as `IAQ_PageButton` (0x24) named buttons + `IAQ_TableMessage` (0
 So the iAQ model = open detail → select row → scroll picker so F is at the commit slot → commit, with
 the picker/assignment `group` rows giving live feedback (same shape as the OneTouch executor).
 
-**Still to pin before shipping a GENERAL writer (single-button sample so far):** whether the
-row-select index is DIRECT (a fixed index per `S:B`) or SEQUENTIAL (step down N rows from the top), and
-the exact commit-slot/scroll arithmetic. One more capture editing a DIFFERENT button (e.g. `2:1`)
-disambiguates it. Until then, `IAQDevice::SetSpaSwitchAssignment` returns `NotSupported` and the
-`SpasideRemoteController` **falls through** past the (Medium-priority) iAQ to the (Low-priority)
-OneTouch — the fully-verified writer. When the writer is filled in, its Medium rank takes precedence
-automatically.
+**Index scheme — CROSS-VALIDATED across two buttons** (`1:2` in `iaq_spaswitch_edit.cap`, `2:2` in
+`iaq_spaswitch_edit2.cap`; decoder `captures/decode_iaq_edit2.py`). On the 4-Function detail page
+(`PageStart 0x3b`) the selectable cells form one contiguous page-button index space:
+- **Assignment rows** (`group 0x00`, ordinal O = `(S-1)*4 + B`, so `1:1`=1 … `2:4`=8):
+  **row-select page-button index = O + 4** → `1:1`=idx5, `1:2`=idx6 (`0x17`), `2:2`=idx10 (`0x1b`), …
+- **Picker rows** (`group 0x01`, the 1-based visible row A = 1..7):
+  **commit page-button index = A + 11** → slot1=idx12 (`0x1d`), slot3=idx14 (`0x1f`), …
+- **Open detail** = press idx5 (`0x16`) from the Spa Remotes page (transitions `0x3a`→`0x3b`; idx5 is
+  ordinal-1 / row `1:1`, so opening implicitly lands on row 1:1, then you select the real target row).
+- **Scroll picker** = idx4 (`0x15`), pages the `group 0x01` list by one screen (≈7 items).
+- The **commit press IS the save** — the master immediately re-pushes the changed `group 0x00` row.
+
+Verified end-to-end both ways: `2:2` Swim Jet→Pool Heat = open(0x16) → select-row(0x1b,idx10) →
+commit Pool Heat@slot3 (0x1f,idx14); revert = open → select-row(0x1b) → scroll(0x15) → commit Swim
+Jet@slot1 (0x1d,idx12). `1:2` matches with row-select 0x17.
+
+**General writer algorithm:** nav to Spa Remotes → open detail (0x16) → select row `O+4` →
+read `group 0x01`; if target function F is visible at row A, commit `A+11`; else scroll (0x15) and
+re-read (bounded) → confirm via the re-pushed `group 0x00` row = F. Feedback-driven on the decoded
+picker/assignment table rows, same shape as the OneTouch executor.
+
+**Implementation status:** until the iAQ executor is built, `IAQDevice::SetSpaSwitchAssignment`
+returns `NotSupported` and the `SpasideRemoteController` **falls through** past the (Medium-priority)
+iAQ to the (Low-priority) OneTouch — the fully-verified writer. When the iAQ writer lands, its Medium
+rank takes precedence automatically.
 
 #### Surface
 Both controller paths route through `ISpasideRemoteController::SetButtonAssignment` +
