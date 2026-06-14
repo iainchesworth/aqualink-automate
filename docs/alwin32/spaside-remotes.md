@@ -423,26 +423,38 @@ sibling to the value-edit goal) — the *number-of-switches* page is passed with
 the cursor never moves and the configured switch count is preserved. `OneTouchDevice` implements
 `Capabilities::SpaSwitchConfigurator`; commit "Phase 4b write: OneTouch …".
 
-#### iAQ — navigation + switch-count decoded; per-button function-write NOT decoded
-The iAQ "Spa Remotes" UI (decoded from `captures/spaside_setup_nav.cap`, 0x33 page-button acks
-correlated to the master's `IAQ_Poll`; see `captures/decode_iaq_spaswitch.py`):
-- **Setup** menu → page-button **idx 6** ("Spa Remotes", wire cmd `0x17`) opens the Spa Remotes page.
-- Spa Remotes page buttons: **idx 0** = "4 Function Spa Switch" view, **idx 1** = "8 Function SpaLink"
-  view, **idx 2/3/4** = the switch-COUNT selector "1"/"2"/"3" (cmd `0x13`/`0x14`/`0x15`),
-  **idx 5** = the assignment+device-picker detail (shows the `group-0x00` assignment rows `S:B → F`
-  plus the `group-0x01` device/function picker list).
-- **Verified edit in the capture:** the maintainer changed the iAQ switch COUNT 2→1→2 (idx 2 then
-  idx 3). That is the only iAQ config write present.
+#### iAQ — function-write MECHANISM decoded (`captures/iaq_spaswitch_edit.cap`)
+The iAQ "Spa Remotes" UI is a page-button + table UI on the AqualinkTouch (0x33). Decoders:
+`captures/decode_iaq_spaswitch.py` (overview), `captures/dump_iaq_window.py` (full frame dump of an
+edit window). Commands are the page-RELATIVE press `0x11 + index` in 0x33's IAQ_Poll ACK; the master
+pushes the page as `IAQ_PageButton` (0x24) named buttons + `IAQ_TableMessage` (0x26) rows where
+`group 0x00` = the `S:B → function` assignments and `group 0x01` = the assignable-device PICKER list.
 
-**Gap (capture-gated):** the per-button **function-reassign** command is *not* in any capture — the
-maintainer made the actual function change on the OneTouch, and a full scan of the capture shows **no
-`group-0x00` assignment value ever changed** over the iAQ stream (`captures/scan_iaq_assignment_changes.py`).
-So how the iAQ commits a picked function to a `S:B` row is unknown. Rather than fabricate a wire
-command, `IAQDevice::SetSpaSwitchAssignment` returns `NotSupported`; the `SpasideRemoteController`
-then **falls through** past the (Medium-priority) iAQ to the (Low-priority) OneTouch — the verified
-writer. To close the gap, record an iAQ session that actually changes a button's function via the
-"4 Function Spa Switch" detail, then map the commit command and fill in the iAQ executor (its Medium
-rank will make it take precedence automatically).
+**Navigation (by NAME, generalizable via `FindPageButtonByLabel`):**
+- Setup menu → press the **"Spa Remotes"** button → Spa Remotes page.
+- Spa Remotes page: **idx 0** "4 Function Spa Switch", **idx 1** "8 Function SpaLink",
+  **idx 2/3/4** = switch-COUNT selector "1"/"2"/"3".
+
+**Function-edit (verified vs `iaq_spaswitch_edit.cap`, maintainer changed `1:2` Pool Light→Pool Heat→Pool Light):**
+1. Open the **4-Function Spa Switch detail** (wire `0x16` in the capture) → renders the picker
+   (`group 0x01`) + assignments (`group 0x00`, `1:2` = Pool Light).
+2. **Select the `S:B` assignment row** (wire `0x17` for `1:2`).
+3. **Scroll the picker** (`0x15`) until the target function sits at the **commit slot (picker row 3)** —
+   feedback-driven exactly like the OneTouch value-step (read the `group 0x01` rows each step).
+   (Pool Heat was already at slot 3 → no scroll; reverting to Pool Light needed one `0x15` scroll.)
+4. **Commit** (`0x1f`) → the master writes the function and re-pushes `group 0x00` row `1:2` = the new
+   function. Both the change and the revert used `0x1f` to commit whatever device was at picker slot 3.
+
+So the iAQ model = open detail → select row → scroll picker so F is at the commit slot → commit, with
+the picker/assignment `group` rows giving live feedback (same shape as the OneTouch executor).
+
+**Still to pin before shipping a GENERAL writer (single-button sample so far):** whether the
+row-select index is DIRECT (a fixed index per `S:B`) or SEQUENTIAL (step down N rows from the top), and
+the exact commit-slot/scroll arithmetic. One more capture editing a DIFFERENT button (e.g. `2:1`)
+disambiguates it. Until then, `IAQDevice::SetSpaSwitchAssignment` returns `NotSupported` and the
+`SpasideRemoteController` **falls through** past the (Medium-priority) iAQ to the (Low-priority)
+OneTouch — the fully-verified writer. When the writer is filled in, its Medium rank takes precedence
+automatically.
 
 #### Surface
 Both controller paths route through `ISpasideRemoteController::SetButtonAssignment` +
