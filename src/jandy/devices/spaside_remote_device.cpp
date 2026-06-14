@@ -16,15 +16,59 @@ namespace AqualinkAutomate::Devices
 		Capabilities::Restartable(SPASIDE_TIMEOUT_DURATION),
 		Capabilities::Emulated(is_emulated)
 	{
-		// The master's cmd-0x02 LED-image poll decodes as a Status addressed to our id; use it
-		// purely as the "we were just polled" trigger that arms the button-Ack correlation.
-		m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(
-			std::bind(&SpasideRemoteDevice::Slot_Spaside_Status, this, std::placeholders::_1), (*device_id)());
+		if (IsEmulated())
+		{
+			// We ARE the remote: ACK the master's discovery probe and its cmd-0x02 LED-image
+			// poll, injecting any pending button press into the [0x01][0x00][button] reply.
+			m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Probe>(
+				std::bind(&SpasideRemoteDevice::Slot_Spaside_EmulatedProbe, this, std::placeholders::_1), (*device_id)());
+			m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(
+				std::bind(&SpasideRemoteDevice::Slot_Spaside_EmulatedPoll, this, std::placeholders::_1), (*device_id)());
+		}
+		else
+		{
+			// Passively decode a real remote. The master's cmd-0x02 LED-image poll decodes as a
+			// Status addressed to our id; use it purely as the "we were just polled" trigger that
+			// arms the button-Ack correlation.
+			m_SlotManager.RegisterSlot_FilterByDeviceId<Messages::JandyMessage_Status>(
+				std::bind(&SpasideRemoteDevice::Slot_Spaside_Status, this, std::placeholders::_1), (*device_id)());
 
-		// Button presses are reported as a generic Ack (cmd 0x01) addressed to the MASTER
-		// (0x00), so we CANNOT filter by our own id -- register unfiltered and correlate.
-		m_SlotManager.RegisterSlot<Messages::JandyMessage_Ack>(
-			std::bind(&SpasideRemoteDevice::Slot_Spaside_Ack, this, std::placeholders::_1));
+			// Button presses are reported as a generic Ack (cmd 0x01) addressed to the MASTER
+			// (0x00), so we CANNOT filter by our own id -- register unfiltered and correlate.
+			m_SlotManager.RegisterSlot<Messages::JandyMessage_Ack>(
+				std::bind(&SpasideRemoteDevice::Slot_Spaside_Ack, this, std::placeholders::_1));
+		}
+	}
+
+	void SpasideRemoteDevice::PressButton(uint8_t button_index)
+	{
+		m_PendingButton = button_index;
+		LogInfo(Channel::Devices, [this, button_index]() { return std::format("SpasideRemote (0x{:02x}): queued emulated press of button {}", DeviceId().Id()(), button_index); });
+	}
+
+	void SpasideRemoteDevice::Slot_Spaside_EmulatedProbe(const Messages::JandyMessage_Probe& msg)
+	{
+		SendButtonAck();
+	}
+
+	void SpasideRemoteDevice::Slot_Spaside_EmulatedPoll(const Messages::JandyMessage_Status& msg)
+	{
+		SendButtonAck();
+	}
+
+	void SpasideRemoteDevice::SendButtonAck()
+	{
+		++m_PollCount;
+
+		// Reply [0x01][0x00][button]: ack_type 0x00, command = the pending button (0 = idle).
+		// Signal_AckMessage is gated by Capabilities::Emulated, so it only transmits when emulated.
+		Signal_AckMessage(static_cast<uint8_t>(0x00), m_PendingButton);
+
+		if (m_PendingButton != 0x00)
+		{
+			LogInfo(Channel::Devices, [this]() { return std::format("SpasideRemote (0x{:02x}): reported emulated button {} to the master", DeviceId().Id()(), m_PendingButton); });
+			m_PendingButton = 0x00;   // momentary: release after one report
+		}
 	}
 
 	void SpasideRemoteDevice::ProcessControllerUpdates()

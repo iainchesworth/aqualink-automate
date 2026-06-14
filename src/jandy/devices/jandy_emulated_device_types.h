@@ -10,6 +10,7 @@ namespace AqualinkAutomate::Devices
 		IAQ,
 		PDA,
 		SerialAdapter,
+		SpasideRemote,
 		Unknown
 	};
 

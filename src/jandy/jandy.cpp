@@ -9,6 +9,7 @@
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "devices/spaside_remote_device.h"
 #include "options/options_developer_options.h"
 #include "options/options_jandy.h"
 #include "equipment/jandy_equipment.h"
@@ -108,6 +109,10 @@ namespace AqualinkAutomate::Jandy
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
 					equipment_hub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true));
+					break;
+
+				case Devices::JandyEmulatedDeviceTypes::SpasideRemote:
+					equipment_hub->AddDevice(std::make_unique<Devices::SpasideRemoteDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:

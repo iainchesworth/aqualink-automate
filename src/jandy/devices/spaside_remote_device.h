@@ -12,6 +12,7 @@
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
 #include "messages/jandy_message_ack.h"
+#include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_status.h"
 #include "kernel/hub_locator.h"
 
@@ -52,6 +53,11 @@ namespace AqualinkAutomate::Devices
 		// Number of times the master has polled us (a proxy for "this remote is alive on the bus").
 		uint32_t PollCount() const { return m_PollCount; }
 
+		// EMULATION (is_emulated): queue a button press to inject into our next reply to the
+		// master, so the master actuates whatever that button is mapped to on the controller.
+		// Momentary: cleared after one report (mimics a brief keypress). No-op if not emulated.
+		void PressButton(uint8_t button_index);
+
 	private:
 		void ProcessControllerUpdates() override;
 		void WatchdogTimeoutOccurred() override;
@@ -65,9 +71,16 @@ namespace AqualinkAutomate::Devices
 		// is our pressed-button index.
 		void Slot_Spaside_Ack(const Messages::JandyMessage_Ack& msg);
 
+		// EMULATION: the master addressed us (a discovery Probe or an LED-image poll); reply with
+		// our [0x01][0x00][button] status, injecting any pending button press.
+		void Slot_Spaside_EmulatedProbe(const Messages::JandyMessage_Probe& msg);
+		void Slot_Spaside_EmulatedPoll(const Messages::JandyMessage_Status& msg);
+		void SendButtonAck();
+
 	private:
 		bool m_AwaitingButtonAck{ false };
 		uint8_t m_LastButton{ 0x00 };
+		uint8_t m_PendingButton{ 0x00 };   // emulation: button to inject into the next reply
 		uint32_t m_PollCount{ 0 };
 		std::optional<std::chrono::system_clock::time_point> m_LastButtonAt;
 	};
