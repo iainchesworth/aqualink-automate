@@ -9,6 +9,7 @@
 #include "jandy/generator/jandy_message_generator.h"
 #include "jandy/messages/jandy_message_ack.h"
 #include "jandy/messages/jandy_message_constants.h"
+#include "jandy/messages/jandy_message_status.h"
 #include "jandy/types/jandy_types.h"
 #include "jandy/utility/jandy_null_handler.h"
 
@@ -209,6 +210,42 @@ BOOST_AUTO_TEST_CASE(MessageGenerator_SerializeThenParse_RoundTripsPayloadDle)
 	BOOST_REQUIRE(nullptr != ack);
 	BOOST_CHECK_EQUAL(static_cast<uint8_t>(ack->AckType()), ack_type_value);
 	BOOST_CHECK_EQUAL(ack->Command(), command_with_dle);
+}
+
+// ---------------------------------------------------------------------------
+// 4. Regression: a frame whose DESTINATION byte is 0x10 (== DLE) is stuffed on
+//    the wire as {0x10, 0x00}, which pushes the message-type byte one position
+//    later. The factory selects the type from the still-stuffed bytes, so it must
+//    account for this -- otherwise it reads the inserted 0x00 and mis-types the
+//    frame as a Probe. This is the exact on-wire frame the master sends a spa-side
+//    Dual Spa Switch at 0x10 (a cmd-0x02 LED image); it must decode as a Status
+//    addressed to 0x10, not a Probe. (Bug: any device at 0x10 was never recognised.)
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(MessageGenerator_DleValuedDestination_TypedByRealCommandNotStuffByte)
+{
+	const std::vector<uint8_t> wire =
+	{
+		0x10, 0x02,             // DLE STX (frame start)
+		0x10, 0x00,             // destination 0x10, DLE-stuffed with 0x00
+		0x02,                   // command 0x02 (Status / the LED-image poll)
+		0x00, 0x00, 0x00, 0x00, 0x00,  // payload
+		0x24,                   // checksum = (0x10+0x02+0x10+0x02) & 0xFF
+		0x10, 0x03              // DLE ETX (frame end)
+	};
+
+	boost::circular_buffer<uint8_t> buffer(wire.size());
+	buffer.assign(wire.begin(), wire.end());
+
+	auto result = Generators::GenerateMessageFromRawData(buffer);
+	BOOST_REQUIRE(result.has_value());
+
+	auto base_msg = result.value();
+	BOOST_REQUIRE(nullptr != base_msg);
+
+	// Must be a Status (cmd 0x02) addressed to 0x10 -- NOT a Probe (the 0x00 stuff byte).
+	auto* status = dynamic_cast<JandyMessage_Status*>(base_msg.get());
+	BOOST_REQUIRE_MESSAGE(nullptr != status, "frame to DLE-valued destination 0x10 was mis-typed (expected Status)");
+	BOOST_CHECK_EQUAL(static_cast<unsigned>(status->Destination().Id()()), 0x10u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
