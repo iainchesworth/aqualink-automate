@@ -1196,7 +1196,7 @@
                             <template x-for="s in series" :key="s.key">
                                 <label class="trends-series-toggle">
                                     <input type="checkbox" :checked="selected[s.key]" @change="toggleSeries(s.key)">
-                                    <span x-text="s.key"></span>
+                                    <span x-text="seriesLabel(s.key)"></span>
                                 </label>
                             </template>
                             <span class="text-muted text-xs" x-show="series.length === 0 && !loading">No series recorded yet.</span>

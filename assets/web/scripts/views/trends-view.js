@@ -31,6 +31,22 @@ function _trendColor(key, index) {
     return TREND_COLORS[key] || TREND_PALETTE[index % TREND_PALETTE.length];
 }
 
+// Friendly display name for a series key (the wire keys like
+// "device/air_blower/state" are structured but not pretty to read).
+const TREND_LABELS = {
+    'temp/pool': 'Pool Temp', 'temp/spa': 'Spa Temp', 'temp/air': 'Air Temp',
+    'chem/salt_ppm': 'Salt', 'chem/ph': 'pH', 'chem/orp': 'ORP', 'swg/percent': 'SWG Output',
+};
+function _trendLabel(key) {
+    if (TREND_LABELS[key]) return TREND_LABELS[key];
+    // device/<name>/state -> "Name"; otherwise drop the category and any /state suffix.
+    const m = key.match(/^device\/(.+)\/state$/);
+    const base = m ? m[1] : key.replace(/^[^/]+\//, '').replace(/\/state$/, '');
+    return base.split(/[_/]/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ') || key;
+}
+
 function trendsView() {
     return {
         available: true,     // false when /api/history/series returns 503
@@ -74,6 +90,10 @@ function trendsView() {
             }
         },
 
+        seriesLabel(key) {
+            return _trendLabel(key);
+        },
+
         setRange(seconds) {
             this.rangeSeconds = seconds;
             this.render();
@@ -101,7 +121,7 @@ function trendsView() {
                     if (!resp.ok) continue;
                     const body = await resp.json();
                     datasets.push({
-                        label: key,
+                        label: _trendLabel(key),
                         data: (body.points || []).map((p) => ({ x: p.ts * 1000, y: p.value })),
                         borderColor: _trendColor(key, i),
                         backgroundColor: 'transparent',
