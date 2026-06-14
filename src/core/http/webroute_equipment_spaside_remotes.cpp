@@ -1,4 +1,7 @@
+#include <algorithm>
+#include <cctype>
 #include <format>
+#include <optional>
 #include <source_location>
 #include <string>
 
@@ -7,6 +10,7 @@
 #include "http/webroute_equipment_spaside_remotes.h"
 #include "http/server/server_fields.h"
 #include "logging/logging.h"
+#include "preferences/preferences_service.h"
 #include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -56,13 +60,15 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	WebRoute_Equipment_SpasideRemotes::WebRoute_Equipment_SpasideRemotes(Kernel::HubLocator& hub_locator)
+	WebRoute_Equipment_SpasideRemotes::WebRoute_Equipment_SpasideRemotes(Kernel::HubLocator& hub_locator, std::shared_ptr<Preferences::PreferencesService> preferences_service) :
+		m_PreferencesService(std::move(preferences_service))
 	{
 		// TryFind (not Find): a spa-side controller is only present when the Jandy stack is running.
 		// In dev-mode/replay there is none, and the route should still construct and report an empty
 		// list rather than throw.
 		m_Controller = hub_locator.TryFind<Interfaces::ISpasideRemoteController>();
 		m_DataHub = hub_locator.TryFind<Kernel::DataHub>();
+		m_PreferencesHub = hub_locator.TryFind<Kernel::PreferencesHub>();
 	}
 
 	HTTP::Message WebRoute_Equipment_SpasideRemotes::OnRequest(const HTTP::Request& req)
@@ -108,6 +114,37 @@ namespace AqualinkAutomate::HTTP
 			}
 		}
 		envelope["assignments"] = std::move(assignments);
+
+		// User-requested (desired-state) assignments persisted in PreferencesHub, keyed
+		// "<switch>:<button>". Surfaced so the UI can show intent even before the controller
+		// re-reports it (or, on a read-only system, as an annotation).
+		nlohmann::json requested = nlohmann::json::array();
+		if (m_PreferencesHub)
+		{
+			auto parse_uint = [](const std::string& s) -> std::optional<unsigned long>
+			{
+				if (s.empty() || !std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); }))
+				{
+					return std::nullopt;
+				}
+				return std::stoul(s);
+			};
+
+			for (const auto& [key, function] : m_PreferencesHub->SpaSwitchButtons.items())
+			{
+				const auto colon = key.find(':');
+				if (colon == std::string::npos || !function.is_string()) { continue; }
+				const auto sw = parse_uint(key.substr(0, colon));
+				const auto btn = parse_uint(key.substr(colon + 1));
+				if (!sw.has_value() || !btn.has_value()) { continue; }
+				nlohmann::json entry;
+				entry["switch"] = sw.value();
+				entry["button"] = btn.value();
+				entry["function"] = function.get<std::string>();
+				requested.push_back(std::move(entry));
+			}
+		}
+		envelope["requested"] = std::move(requested);
 
 		return MakeJsonResponse(req, HTTP::Status::ok, envelope.dump());
 	}
@@ -195,6 +232,12 @@ namespace AqualinkAutomate::HTTP
 				{
 				case Interfaces::ISpasideRemoteController::AssignResult::Accepted:
 					LogInfo(Channel::Web, std::format("Spa-switch assign: switch {} button {} -> '{}' queued via web UI", sw, btn, function));
+					// Remember the user's request (desired state) so the UI reflects it and it
+					// survives a restart; the controller's live decoded map remains authoritative.
+					if (m_PreferencesService)
+					{
+						m_PreferencesService->RecordSpaSwitchAssignment(sw, btn, function);
+					}
 					return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
 
 				case Interfaces::ISpasideRemoteController::AssignResult::InvalidRequest:

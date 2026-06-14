@@ -592,7 +592,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_IAQ>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
-			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_SpasideRemotes>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_SpasideRemotes>(hub_locator, preferences_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));

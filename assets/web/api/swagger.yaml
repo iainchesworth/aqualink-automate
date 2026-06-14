@@ -671,6 +671,10 @@ paths:
                   - switch: 2
                     button: 1
                     function: "Swim Jet"
+                requested:
+                  - switch: 1
+                    button: 3
+                    function: "Spillway"
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:

@@ -96,6 +96,9 @@ function diagnosticsView() {
         // "Set assignment" form state: program switch:button -> function over the bus.
         spasideAssign: { switch: 1, button: 1, function: '' },
 
+        // User-requested (desired-state) assignments persisted server-side. [{switch,button,function}]
+        spasideRequested: [],
+
         // Emulated device diagnostics
         emulatedDevices: [],
 
@@ -312,6 +315,7 @@ function diagnosticsView() {
                 const data = await resp.json();
                 this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
                 this.spasideAssignments = (data && Array.isArray(data.assignments)) ? data.assignments : [];
+                this.spasideRequested = (data && Array.isArray(data.requested)) ? data.requested : [];
                 _diag.warnedOnce['spaside-remotes'] = false;
             } catch (e) {
                 _handlePollFailure('spaside-remotes', null, e);
@@ -377,6 +381,14 @@ function diagnosticsView() {
             } finally {
                 this.spasideBusy = false;
             }
+        },
+
+        // A requested assignment is "pending" until the controller's live decoded map reports the
+        // same function for that switch:button (a OneTouch programs asynchronously; an iAQ-only
+        // system never confirms, so it stays a pending annotation).
+        spasideRequestedPending(r) {
+            const live = this.spasideAssignments.find(a => a.switch === r.switch && a.button === r.button);
+            return !live || live.function !== r.function;
         },
 
         // The distinct function names the controller currently reports, to seed the assign datalist.

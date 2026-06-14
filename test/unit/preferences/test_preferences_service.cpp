@@ -97,6 +97,62 @@ BOOST_AUTO_TEST_CASE(ApplyJson_LabelOverridesRoundTripAndValidate)
 	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->LabelOverrides["Aux1"], "Pool Light");
 }
 
+BOOST_AUTO_TEST_CASE(SpaSwitchButtons_RoundTripAndValidate)
+{
+	Options::Preferences::PreferencesSettings settings;
+	Preferences::PreferencesService service(*this, settings);
+	std::string error;
+
+	// A valid "switch:button"->function map applies and round-trips.
+	BOOST_REQUIRE(service.ApplyJson(nlohmann::json{ { "spa_switch_buttons", { { "1:2", "Pool Light" }, { "2:1", "Swim Jet" } } } }, error));
+	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->SpaSwitchButtons["1:2"], "Pool Light");
+	BOOST_CHECK_EQUAL(service.ToJson()["spa_switch_buttons"]["2:1"], "Swim Jet");
+
+	// Non-string value / non-object are rejected and leave the prior map intact.
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "spa_switch_buttons", { { "1:2", 7 } } } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "spa_switch_buttons", "not-an-object" } }, error));
+	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->SpaSwitchButtons["1:2"], "Pool Light");
+}
+
+BOOST_AUTO_TEST_CASE(RecordSpaSwitchAssignment_StoresKeyedRequest)
+{
+	Options::Preferences::PreferencesSettings settings;   // no file -> Save() is a no-op, but the hub updates
+	Preferences::PreferencesService service(*this, settings);
+
+	service.RecordSpaSwitchAssignment(1, 2, "Spillway");
+	service.RecordSpaSwitchAssignment(3, 4, "Air Blower");
+
+	auto hub = Find<Kernel::PreferencesHub>();
+	BOOST_CHECK_EQUAL(hub->SpaSwitchButtons["1:2"], "Spillway");
+	BOOST_CHECK_EQUAL(hub->SpaSwitchButtons["3:4"], "Air Blower");
+	// A re-record overwrites the same key.
+	service.RecordSpaSwitchAssignment(1, 2, "Pool Light");
+	BOOST_CHECK_EQUAL(Find<Kernel::PreferencesHub>()->SpaSwitchButtons["1:2"], "Pool Light");
+}
+
+BOOST_AUTO_TEST_CASE(SpaSwitchButtons_FilePersistsAndReloads)
+{
+	const auto path = (std::filesystem::temp_directory_path() / "aqualink_prefs_spaswitch_test.json").string();
+	std::error_code ec;
+	std::filesystem::remove(path, ec);
+
+	Options::Preferences::PreferencesSettings settings;
+	settings.preferences_file = path;
+
+	{
+		Preferences::PreferencesService service(*this, settings);
+		service.RecordSpaSwitchAssignment(2, 3, "Spa Jets");   // saves
+	}
+
+	Test::HubLocatorInjector fresh_locator;
+	Preferences::PreferencesService reloaded(fresh_locator, settings);
+	reloaded.Start();
+	BOOST_CHECK_EQUAL(fresh_locator.Find<Kernel::PreferencesHub>()->SpaSwitchButtons["2:3"], "Spa Jets");
+
+	std::filesystem::remove(path, ec);
+	std::filesystem::remove(path + ".tmp", ec);
+}
+
 BOOST_AUTO_TEST_CASE(FileRoundTrip_PersistsAndReloads)
 {
 	const auto path = (std::filesystem::temp_directory_path() / "aqualink_prefs_test.json").string();

@@ -1199,6 +1199,21 @@
                             <button class="btn btn-sm" :disabled="spasideBusy"
                                     @click="setSpasideAssignment()">Set</button>
                         </div>
+
+                        <!-- Requested (desired-state) assignments persisted server-side. Marked
+                             "pending" until the controller's live map reports the same function. -->
+                        <div x-show="spasideRequested.length > 0" class="mt-1">
+                            <p class="text-muted text-xs mt-1 mb-1">Requested</p>
+                            <template x-for="r in spasideRequested" :key="'req-' + r.switch + ':' + r.button">
+                                <div class="flex items-center" style="justify-content: space-between;">
+                                    <span class="emu-kv-key" x-text="'Switch ' + r.switch + ' · btn ' + r.button"></span>
+                                    <span>
+                                        <span class="emu-kv-val" x-text="r.function"></span>
+                                        <span class="badge badge-status-warn" x-show="spasideRequestedPending(r)">pending</span>
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>

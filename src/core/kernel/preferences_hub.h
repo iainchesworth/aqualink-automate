@@ -49,6 +49,15 @@ namespace AqualinkAutomate::Kernel
 		nlohmann::json LabelOverrides = nlohmann::json::object();
 
 		nlohmann::json UiPreferences = nlohmann::json::object();
+
+		// Spa-side switch button -> function assignments REQUESTED by the user (via the spaside
+		// "Set" control / assign API), keyed "<switch>:<button>" e.g. {"1:2": "Pool Light"}. This
+		// is the desired-state record: the controller's live decoded map (DataHub) remains the
+		// source of truth, but a OneTouch programs over the bus asynchronously and an iAQ-only
+		// system cannot program at all, so persisting the request lets the UI reflect intent and
+		// gives read-only systems an annotation. Same opaque-blob discipline as LabelOverrides
+		// (copy-init with '=', see the note above).
+		nlohmann::json SpaSwitchButtons = nlohmann::json::object();
 	};
 
 }
