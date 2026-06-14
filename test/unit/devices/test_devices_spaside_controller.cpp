@@ -2,8 +2,10 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "jandy/devices/iaq_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
+#include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/spaside_remote_controller.h"
 #include "jandy/devices/spaside_remote_device.h"
 #include "kernel/equipment_hub.h"
@@ -153,6 +155,34 @@ BOOST_AUTO_TEST_CASE(SetButtonAssignment_NoConfigurator_IsNotAvailable)
 	AddRemote(0x10, /*emulated*/ true);
 	SpasideRemoteController controller(hub);
 
+	BOOST_CHECK(controller.SetButtonAssignment(1, 2, "Pool Light")
+		== Interfaces::ISpasideRemoteController::AssignResult::NotAvailable);
+}
+
+BOOST_AUTO_TEST_CASE(SetButtonAssignment_HigherPriorityIncapableController_FallsThroughToOneTouch)
+{
+	// An iAQ (Medium priority) is present but its per-button function-write is NotSupported (not yet
+	// decoded). An emulated OneTouch (Low priority) CAN program. The controller must FALL THROUGH the
+	// higher-priority-but-incapable iAQ to the OneTouch -> Accepted, rather than let the iAQ shadow it.
+	auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x33));
+	hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, /*emulated*/ true));
+
+	auto ot_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x40));
+	hub->AddDevice(std::make_unique<OneTouchDevice>(ot_id, *this, /*emulated*/ true));
+
+	SpasideRemoteController controller(hub);
+	BOOST_CHECK(controller.SetButtonAssignment(1, 2, "Pool Light")
+		== Interfaces::ISpasideRemoteController::AssignResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(SetButtonAssignment_OnlyIncapableController_IsNotAvailable)
+{
+	// iAQ-only system: the per-button function-write isn't decoded, so every present configurator
+	// reports NotSupported and the request is genuinely unavailable (web maps this to 503).
+	auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x33));
+	hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, /*emulated*/ true));
+
+	SpasideRemoteController controller(hub);
 	BOOST_CHECK(controller.SetButtonAssignment(1, 2, "Pool Light")
 		== Interfaces::ISpasideRemoteController::AssignResult::NotAvailable);
 }

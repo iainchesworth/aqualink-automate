@@ -1,5 +1,8 @@
+#include <algorithm>
 #include <format>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -111,40 +114,48 @@ namespace AqualinkAutomate::Devices
 			return AssignResult::NotAvailable;
 		}
 
-		// Find the highest-priority controller that can program assignments (OneTouch / iAQ),
-		// mirroring CommandDispatcher::FindCapable: lowest ActuationPriority wins.
-		Capabilities::SpaSwitchConfigurator* best{ nullptr };
-		Capabilities::ActuationPriority best_priority{ Capabilities::ActuationPriority::Lowest };
-		m_EquipmentHub->ForEachDevice([&best, &best_priority](Interfaces::IDevice& device)
+		// Collect every controller that can program assignments (OneTouch / iAQ) and order them by
+		// ControllerPriority (lowest value wins, mirroring CommandDispatcher::FindCapable). We then
+		// try them in order and FALL THROUGH past any that returns NotSupported: a higher-priority
+		// controller that is present but cannot perform THIS action (e.g. an iAQ whose per-button
+		// function-write isn't decoded) must not shadow a lower-priority one that can (the OneTouch).
+		std::vector<std::pair<Capabilities::ActuationPriority, Capabilities::SpaSwitchConfigurator*>> configurators;
+		m_EquipmentHub->ForEachDevice([&configurators](Interfaces::IDevice& device)
 		{
-			auto* candidate = dynamic_cast<Capabilities::SpaSwitchConfigurator*>(&device);
-			if (nullptr == candidate)
+			if (auto* candidate = dynamic_cast<Capabilities::SpaSwitchConfigurator*>(&device); nullptr != candidate)
 			{
-				return;
-			}
-			const auto priority = candidate->ControllerPriority();
-			if ((nullptr == best) || (static_cast<int>(priority) < static_cast<int>(best_priority)))
-			{
-				best = candidate;
-				best_priority = priority;
+				configurators.emplace_back(candidate->ControllerPriority(), candidate);
 			}
 		});
 
-		if (nullptr == best)
+		if (configurators.empty())
 		{
 			LogWarning(Channel::Web, std::format("SpasideRemoteController: no controller can program spa-switch assignments (switch {} button {} -> '{}')", switch_number, button_number, function));
 			return AssignResult::NotAvailable;
 		}
 
-		LogInfo(Channel::Web, std::format("SpasideRemoteController: programming switch {} button {} -> '{}'", switch_number, button_number, function));
-		switch (best->SetSpaSwitchAssignment(switch_number, button_number, function))
+		std::stable_sort(configurators.begin(), configurators.end(),
+			[](const auto& a, const auto& b) { return static_cast<int>(a.first) < static_cast<int>(b.first); });
+
+		LogInfo(Channel::Web, std::format("SpasideRemoteController: programming switch {} button {} -> '{}' ({} candidate controller(s))", switch_number, button_number, function, configurators.size()));
+		for (const auto& [priority, configurator] : configurators)
 		{
-		case Capabilities::ActuationResult::Accepted:      return AssignResult::Accepted;
-		case Capabilities::ActuationResult::InvalidValue:  return AssignResult::InvalidRequest;
-		case Capabilities::ActuationResult::MappingFailed: return AssignResult::InvalidRequest;
-		case Capabilities::ActuationResult::NotSupported:
-		default:                                           return AssignResult::NotAvailable;
+			switch (configurator->SetSpaSwitchAssignment(switch_number, button_number, function))
+			{
+			case Capabilities::ActuationResult::Accepted:      return AssignResult::Accepted;
+			case Capabilities::ActuationResult::InvalidValue:  return AssignResult::InvalidRequest;
+			case Capabilities::ActuationResult::MappingFailed: return AssignResult::InvalidRequest;
+			case Capabilities::ActuationResult::NotSupported:
+			default:
+				// This controller can't do it; try the next-lower-priority configurator.
+				continue;
+			}
 		}
+
+		// Every present controller reported NotSupported (e.g. an iAQ-only system whose function-write
+		// isn't decoded, or no emulated controller to transmit) -- the action is genuinely unavailable.
+		LogWarning(Channel::Web, std::format("SpasideRemoteController: no controller could program switch {} button {} -> '{}' (all reported NotSupported)", switch_number, button_number, function));
+		return AssignResult::NotAvailable;
 	}
 
 }

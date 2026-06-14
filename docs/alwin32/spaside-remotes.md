@@ -398,7 +398,9 @@ and reverted button 1:2). Stored controller-agnostically on the DataHub; see the
   (line 0) / `Button Setup` (line 1), rows `"<switch>:<button>   <function>"` (space-padded).
 - One shared parser (`Utility::ParseSpaSwitchAssignmentLine`) handles both → `DataHub` map.
 
-### WRITE (RE complete; implementation pending)
+### WRITE
+
+#### OneTouch — implemented (RE-verified)
 **OneTouch keypress codes** (panel→master Ack, ack_type 0x80, command byte):
 `0x04` = Select (enter page / confirm) · `0x05` = highlight-next (move down a list) ·
 `0x06` = cycle value (step the function picker to the next option) · `0x02` = Back.
@@ -416,11 +418,36 @@ and reverted button 1:2). Stored controller-agnostically on the DataHub; see the
 The function picker cycles a fixed list: All OFF, OneTouch 4h, Clean Mode, Spa Mode, Spillway,
 Air Blower, Pool Light, Swim Jet, Spa Jets, Filter Pump, Spa, Pool Heat, Spa Heat, Solar Heat, …
 
-**Implementation shape:** a new `AssignmentEditGoal` mirroring `OneTouchDevice::ValueEditGoal` but
-cycling a STRING (read the row's function text, press 0x06 until it matches F), plus the Spa-Switch
-config pages added to `onetouch_menu_model.cpp`; an equivalent iAQ page-button flow; surfaced via
-`ISpasideRemoteController::SetButtonAssignment` + `POST /api/equipment/spaside-remotes {action:"assign"}`
-and persisted in `PreferencesHub`. Both controller paths required (generality).
+Implemented as `OneTouchDevice::SpaSwitchEdit_ProcessStep` (a screen-driven `SpaSwitchEditGoal`,
+sibling to the value-edit goal) — the *number-of-switches* page is passed with a **bare Select** so
+the cursor never moves and the configured switch count is preserved. `OneTouchDevice` implements
+`Capabilities::SpaSwitchConfigurator`; commit "Phase 4b write: OneTouch …".
+
+#### iAQ — navigation + switch-count decoded; per-button function-write NOT decoded
+The iAQ "Spa Remotes" UI (decoded from `captures/spaside_setup_nav.cap`, 0x33 page-button acks
+correlated to the master's `IAQ_Poll`; see `captures/decode_iaq_spaswitch.py`):
+- **Setup** menu → page-button **idx 6** ("Spa Remotes", wire cmd `0x17`) opens the Spa Remotes page.
+- Spa Remotes page buttons: **idx 0** = "4 Function Spa Switch" view, **idx 1** = "8 Function SpaLink"
+  view, **idx 2/3/4** = the switch-COUNT selector "1"/"2"/"3" (cmd `0x13`/`0x14`/`0x15`),
+  **idx 5** = the assignment+device-picker detail (shows the `group-0x00` assignment rows `S:B → F`
+  plus the `group-0x01` device/function picker list).
+- **Verified edit in the capture:** the maintainer changed the iAQ switch COUNT 2→1→2 (idx 2 then
+  idx 3). That is the only iAQ config write present.
+
+**Gap (capture-gated):** the per-button **function-reassign** command is *not* in any capture — the
+maintainer made the actual function change on the OneTouch, and a full scan of the capture shows **no
+`group-0x00` assignment value ever changed** over the iAQ stream (`captures/scan_iaq_assignment_changes.py`).
+So how the iAQ commits a picked function to a `S:B` row is unknown. Rather than fabricate a wire
+command, `IAQDevice::SetSpaSwitchAssignment` returns `NotSupported`; the `SpasideRemoteController`
+then **falls through** past the (Medium-priority) iAQ to the (Low-priority) OneTouch — the verified
+writer. To close the gap, record an iAQ session that actually changes a button's function via the
+"4 Function Spa Switch" detail, then map the commit command and fill in the iAQ executor (its Medium
+rank will make it take precedence automatically).
+
+#### Surface
+Both controller paths route through `ISpasideRemoteController::SetButtonAssignment` +
+`POST /api/equipment/spaside-remotes {action:"assign"}`. The requested mapping is persisted in
+`PreferencesHub` so the UI reflects it.
 
 ### Flagged — needs a live RS-485 capture to confirm
 * **Button-index ↔ physical-function map** (which of the 8/9 indices is Pool/Spa/Aux/Heat/

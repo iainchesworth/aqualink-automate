@@ -9,6 +9,8 @@
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 
+#include "jandy/devices/capabilities/actuation_types.h"
+
 #include "support/unit_test_mockreplayharness.h"
 #include "support/unit_test_protocolmessagebuilder.h"
 
@@ -79,6 +81,42 @@ BOOST_AUTO_TEST_CASE(FunctionPickerRows_AreIgnored)
 	});
 
 	BOOST_CHECK(harness.DataHub()->SpaSwitchAssignments().empty());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// iAQ spa-switch WRITE path (SpaSwitchConfigurator). The iAQ "Spa Remotes" page is
+// decoded for read + switch-COUNT, but the per-button FUNCTION-reassign command is
+// not decoded from any capture (in spaside_setup_nav.cap the maintainer changed only
+// the iAQ switch count and did the function edit on the OneTouch). So the iAQ honestly
+// reports NotSupported for a function-write, letting the controller fall through to the
+// OneTouch. See docs/alwin32/spaside-remotes.md.
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(IAQSpaSwitchWrite_TestSuite)
+
+BOOST_AUTO_TEST_CASE(SetSpaSwitchAssignment_NotYetDecoded_ReportsNotSupported)
+{
+	Test::MockReplayHarness harness;
+	auto id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_UI_ID));
+	IAQDevice device(id, harness.HubLocatorRef(), /*is_emulated*/ true);
+
+	// Even an emulated iAQ cannot program a button function over the bus yet: the wire command
+	// is undecoded, so it must report NotSupported rather than fabricate one (or silently no-op).
+	BOOST_CHECK(device.SetSpaSwitchAssignment(1, 2, "Pool Light") == Capabilities::ActuationResult::NotSupported);
+}
+
+BOOST_AUTO_TEST_CASE(ControllerPriority_IsMedium_DirectChannel)
+{
+	// The iAQ effects actions via direct page-button/value-submit commands, so it ranks Medium --
+	// above the OneTouch (Low). The controller's fall-through ensures that this higher rank does NOT
+	// let the (currently NotSupported) iAQ shadow the OneTouch for spa-switch function writes.
+	Test::MockReplayHarness harness;
+	auto id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_UI_ID));
+	IAQDevice device(id, harness.HubLocatorRef(), /*is_emulated*/ true);
+
+	BOOST_CHECK(device.ControllerPriority() == Capabilities::ActuationPriority::Medium);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

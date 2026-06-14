@@ -17,6 +17,7 @@
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
 #include "devices/capabilities/setpoint_controller.h"
+#include "devices/capabilities/spa_switch_configurator.h"
 #include "devices/iaq/iaq_page_registry.h"
 #include "messages/jandy_message_probe.h"
 #include "messages/iaq/iaq_message_aux_status.h"
@@ -43,7 +44,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator, public Capabilities::DeviceActuator, public Capabilities::SetpointController
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::SpaSwitchConfigurator
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -92,6 +93,16 @@ namespace AqualinkAutomate::Devices
 		// submit the absolute value (NOT stepped). Verified vs iaq_aux_setpoint.cap.
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
+
+		// SpaSwitchConfigurator: program a spa-side switch button's function over the bus.
+		// The iAQ "Spa Remotes" page is DECODED for read + switch-count (Setup page-button idx 6 ->
+		// Spa Remotes; idx 0/1 = 4-Function/8-Function view, idx 2/3/4 = switch count "1"/"2"/"3",
+		// idx 5 = the assignment+device-picker detail), but the PER-BUTTON FUNCTION reassign command
+		// is not decoded from any capture (in captures/spaside_setup_nav.cap the maintainer only
+		// changed the iAQ switch COUNT and did the function edit on the OneTouch). So this returns
+		// NotSupported until an iAQ function-edit is captured; the SpasideRemoteController then falls
+		// through to the OneTouch (the verified writer). See docs/alwin32/spaside-remotes.md.
+		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
 
 		// Precedence shared by DeviceActuator + SetpointController + ChlorinatorController
 		// (identical signature). The AqualinkTouch effects actions with DIRECT commands

@@ -299,6 +299,26 @@ namespace AqualinkAutomate::Devices
 		return QueueSetpoint(IAQ_CMD_SELECT_SPA_HEAT, temperature, "spa");
 	}
 
+	Capabilities::ActuationResult IAQDevice::SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
+	{
+		// The iAQ "Spa Remotes" page is decoded for READ (assignment rows arrive as group-0x00
+		// TableMessages) and for the switch-COUNT selector (Setup page-button idx 6 -> Spa Remotes;
+		// idx 2/3/4 = "1"/"2"/"3"). The per-button FUNCTION-reassign command, however, is NOT decoded:
+		// in captures/spaside_setup_nav.cap the maintainer changed only the iAQ switch count and made
+		// the actual function edit on the OneTouch, so no iAQ function-assign frame was ever observed
+		// (verified: no group-0x00 assignment value changes across the whole capture). Rather than
+		// fabricate an unverified wire command, report NotSupported so the SpasideRemoteController
+		// falls through to the OneTouch (the RE-verified writer). When an iAQ function edit is
+		// captured this becomes a real page-button/picker sequence and, being Medium-priority, will
+		// then take precedence over the OneTouch.
+		LogWarning(Channel::Devices, [this, switch_number, button_number, &function]()
+		{
+			return std::format("IAQ ({}): spa-switch function-write not yet decoded (switch {} button {} -> '{}') - deferring to another controller",
+				DeviceId(), switch_number, button_number, function);
+		});
+		return Capabilities::ActuationResult::NotSupported;
+	}
+
 	void IAQDevice::ProcessControllerUpdates()
 	{
 		ProcessControllerUpdates(false);
