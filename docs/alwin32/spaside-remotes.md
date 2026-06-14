@@ -469,10 +469,16 @@ read `group 0x01`; if target function F is visible at row A, commit `A+11`; else
 re-read (bounded) → confirm via the re-pushed `group 0x00` row = F. Feedback-driven on the decoded
 picker/assignment table rows, same shape as the OneTouch executor.
 
-**Implementation status:** until the iAQ executor is built, `IAQDevice::SetSpaSwitchAssignment`
-returns `NotSupported` and the `SpasideRemoteController` **falls through** past the (Medium-priority)
-iAQ to the (Low-priority) OneTouch — the fully-verified writer. When the iAQ writer lands, its Medium
-rank takes precedence automatically.
+**Implementation status: IMPLEMENTED** (`IAQDevice::SetSpaSwitchAssignment` +
+`SpaSwitchWrite_ProcessStep`, page-gated on `IAQMessage_PageStart::PageId()`; commit "Phase 4b write:
+iAQ spa-switch writer"). The iAQ is Medium priority so it takes precedence over the OneTouch (Low)
+for rows it can program. On-screen rows 1–7 are supported; row 8 (`2:4`) and switch>2 need an
+undecoded assignment-list scroll (and `2:4`'s row index would collide with the picker commit range),
+so those are rejected and the `SpasideRemoteController` **falls through** to the OneTouch — the
+fully-verified writer that covers them. Closed-loop wire-assertion tests reproduce both captured byte
+sequences (`1:2`→Pool Heat = `0x17,0x1f`; `2:2` via a picker scroll = `0x1b,0x15,0x1d`). End-to-end on
+real hardware is still pending (emulation/inject paths are sim-unvalidatable — synthetic-frame +
+wire-assertion validated only, like the OneTouch writer).
 
 #### Surface
 Both controller paths route through `ISpasideRemoteController::SetButtonAssignment` +
