@@ -95,14 +95,15 @@ namespace AqualinkAutomate::Devices
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 
-		// SpaSwitchConfigurator: program a spa-side switch button's function over the bus.
-		// The iAQ "Spa Remotes" page is DECODED for read + switch-count (Setup page-button idx 6 ->
-		// Spa Remotes; idx 0/1 = 4-Function/8-Function view, idx 2/3/4 = switch count "1"/"2"/"3",
-		// idx 5 = the assignment+device-picker detail), but the PER-BUTTON FUNCTION reassign command
-		// is not decoded from any capture (in captures/spaside_setup_nav.cap the maintainer only
-		// changed the iAQ switch COUNT and did the function edit on the OneTouch). So this returns
-		// NotSupported until an iAQ function-edit is captured; the SpasideRemoteController then falls
-		// through to the OneTouch (the verified writer). See docs/alwin32/spaside-remotes.md.
+		// SpaSwitchConfigurator: program a spa-side switch button's function over the bus by driving
+		// the AqualinkTouch "4 Function Spa Switch" detail (queues a goal serviced by
+		// SpaSwitchWrite_ProcessStep, page-gated on PageId): navigate -> Spa Remotes -> open detail ->
+		// select the S:B row -> scroll the device picker to the target function -> commit. RE'd +
+		// cross-validated from captures/iaq_spaswitch_edit{,2}.cap. On-screen rows 1-7 are supported;
+		// row 8 (2:4) / switch>2 need an undecoded assignment-list scroll, so those return
+		// NotSupported and the SpasideRemoteController falls through to the OneTouch. The iAQ is
+		// Medium priority, so it takes precedence over the OneTouch for the rows it can program.
+		// See docs/alwin32/spaside-remotes.md.
 		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
 
 		// Precedence shared by DeviceActuator + SetpointController + ChlorinatorController
