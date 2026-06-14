@@ -362,7 +362,7 @@ add_custom_command(
 	TARGET intaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to integration test folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/web"
 )
 
 #------------------------------------------------------------------------------
@@ -423,7 +423,7 @@ add_custom_command(
 	TARGET testaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/web"
 )
 
 #------------------------------------------------------------------------------
