@@ -15,6 +15,7 @@
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "utility/jandy_pool_configuration_decoder.h"
+#include "utility/spa_switch_assignment.h"
 #include "utility/string_manipulation.h"
 #include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "utility/string_conversion/temperature_string_converter.h"
@@ -337,6 +338,36 @@ namespace AqualinkAutomate::Devices
 			else if (area_lower.find("pool") != std::string::npos)
 			{
 				JandyController::m_DataHub->PoolTempSetpoint(temp().value());
+			}
+		}
+	}
+
+	void OneTouchDevice::PageProcessor_SpaSwitch(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SpaSwitch", std::source_location::current());
+
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SpaSwitch page.", DeviceId()); });
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Spa Switch
+			Info:   OneTouch Menu Line 03 = 1:1     Spa Jets
+			Info:   OneTouch Menu Line 04 = 1:2   Pool Light
+			Info:   OneTouch Menu Line 05 = 1:3   Air Blower
+			Info:   OneTouch Menu Line 06 = 1:4     Spillway
+			Info:   OneTouch Menu Line 07 = 2:1     Swim Jet
+			...
+		*/
+
+		// Scan every line for a "<switch>:<button>  <function>" assignment row and store it into the
+		// controller-agnostic DataHub map -- the SAME parser the iAQ path uses. Non-assignment lines
+		// (the title, blanks, footer help text) are rejected by the parser. Gating to this page (the
+		// detector matched "Spa Switch" at line 0) keeps the home-screen clock ("1:20 PM") out.
+		for (std::size_t line = 0; line < page.Size(); ++line)
+		{
+			if (const auto assignment = Utility::ParseSpaSwitchAssignmentLine(page[line].Text))
+			{
+				JandyController::m_DataHub->SetSpaSwitchAssignment(assignment->switch_number, assignment->button_number, assignment->function);
+				LogDebug(Channel::Devices, [this, &assignment]() { return std::format("OneTouch ({}): spa-switch assignment {}:{} -> '{}'", DeviceId(), assignment->switch_number, assignment->button_number, assignment->function); });
 			}
 		}
 	}

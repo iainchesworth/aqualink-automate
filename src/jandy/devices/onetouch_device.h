@@ -176,6 +176,7 @@ namespace AqualinkAutomate::Devices
 		void PageProcessor_CustomLabel(const Utility::ScreenDataPage& page);
 		void PageProcessor_EnterPassword(const Utility::ScreenDataPage& page);
 		void PageProcessor_HelpKeys(const Utility::ScreenDataPage& page);
+		void PageProcessor_SpaSwitch(const Utility::ScreenDataPage& page);
 		void PageProcessor_StartUp(const Utility::ScreenDataPage& page);
 
 	private:
