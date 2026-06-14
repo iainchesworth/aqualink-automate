@@ -177,7 +177,7 @@ The decoder already holds the per-model ground truth as `{config, board, AuxCoun
   out-of-range aux, ExtraAux exclusion, and the page capability classifier.
 - **Status:** IMPLEMENTED (commits 66b2028 validation/attribution, a1bc8fc menu survey).
 
-### OBS-08 — Remote power center (RemAux) / Dual Spa Switch / Spa Link  *(RE done; spaside recognised; full decode PAUSED)*
+### OBS-08 — Remote power center (RemAux) / Dual Spa Switch / Spa Link  *(RE done; spaside FULLY IMPLEMENTED — decode + emulate + LED + web; RemAux still paused)*
 
 **Device mapping (user-confirmed):** `Remaux.exe` = remote auxiliary power center; **`2x4rem.exe` = "Dual Spa
 Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spaside remote).
@@ -199,10 +199,52 @@ Switch"** (2×4 spaside remote); **`8button.exe` = "Spa Link"** (8-button spasid
   `IdentifyAndAddDevice`, so both spaside remotes are now **recognised supported equipment** (they appear in the
   device inventory instead of logging "Device class not supported"). Unit tests: class resolution +
   `InstanceAddressesForClass` + recognition-creates-a-device.
-- **Not done:** a RemAux (`RemotePowerCenter` 0x28) handler — it is not a keypad, so it still falls through to
-  "unsupported"; and the full button/LED/relay **wire-level decode** for all three.
+- **Not done (at that commit):** a RemAux (`RemotePowerCenter` 0x28) handler — it is not a keypad, so it still
+  falls through to "unsupported"; and the full button/LED/relay **wire-level decode** for all three.
 
-#### Why full wire-decode is blocked (the architecture finding)
+#### IMPLEMENTED — full spa-side support (Dual Spa Switch + Spa Link), phased
+The spa-side pair now have a dedicated `SpasideRemoteDevice` (replacing the KeypadDevice shim) with the
+complete decode/emulate/visualise/web stack. The "architecture finding" below was **superseded for the
+spa-side remotes** (it still stands for RemAux): the device-local correlation in Phase 1 sidesteps the core
+poll-source-correlation change, because the cmd-`0x02` poll reliably decodes as a `Status` addressed to our id
+once the DLE-valued-destination factory bug is fixed.
+
+- **Enabler — DLE-destination factory fix (commit e160107):** a frame to dest `0x10` (== the DLE framing byte)
+  is wire-stuffed `{0x10,0x00}`, which pushed the message-type byte one position later; the global factory was
+  typing such frames by the inserted `0x00` → mis-typed as `Probe`, so **any device at 0x10 was never
+  recognised**. `JandyMessageFactoryT::CreateFromSerialData` now shifts the type index when dest==DLE. Regression
+  test in `test_message_dle_stuffing.cpp`.
+- **Phase 1 — decode (read path) (commit df04a81):** `SpasideRemoteDevice` registers a dest-filtered `Status`
+  slot (the cmd-`0x02` poll) that arms a one-shot window, and an unfiltered `Ack` slot that claims the
+  immediately-following `[0x01][0x00][button]` to the master (filtered by `AckType()==0x00`, vs OneTouch 0x80 /
+  PDA 0x40). No core ProtocolTask change needed. Decodes the pressed-button index.
+- **Phase 2 — emulate + inject + relocate (write path) (commits e71f593, 94c7e68):** added `SpasideRemote` to
+  `JandyEmulatedDeviceTypes` + factory + `jandy.cpp` + CLI (`--jandy-device-type spasideremote`); an emulated
+  remote ACKs the master's probe/poll, injecting a `PressButton(N)` into the `[0x01][0x00][N]` reply (momentary).
+  Inherits the generic collision-relocation (real remote at our address → relocate to a free instance of the
+  class). Integration test asserts the injected wire bytes; unit test asserts relocation.
+- **Phase 3 — LED image (visualise master state) (commit 24e18be):** the cmd-`0x02` LED frame decodes as a
+  `Status`; payload byte [0] (= `data[1]` of the 6-byte image) packs four 2-bit indicators (off/on/blink). Added
+  an additive `JandyMessage_Status::RawPayload()` (the structured decode ignores payload[0]); the device decodes
+  + exposes the indicators and the raw image.
+- **Phase 4a — web read-out + interactive control (commit a884bf2):** `ISpasideRemoteController` (core) +
+  `SpasideRemoteController` (Jandy, over the EquipmentHub) + `GET/POST /api/equipment/spaside-remotes` +
+  a "Spa-side Remotes" panel in the diagnostics view (per-remote LED dots, poll/last-press, button row that
+  injects presses on emulated remotes; real/observed remotes are read-only). Swagger documented.
+- **Generality:** class + button_count (8 Dual Spa Switch / 9 Spa Link) are derived per device class, so every
+  instance of either class (0x10-0x13, 0x20-0x23) is supported, including the Spa Link the maintainer lacks.
+
+#### Still PAUSED / capture-gated
+- **RemAux (`RemotePowerCenter` 0x28)** — still no handler. Its master→device set-relay commands (`0x08`/`0x09`)
+  collide with global ids (`PDA_Highlight`/`PDA_Clear`), so it genuinely needs the per-destination dispatch
+  below; its device→master relay bitmask could be decoded with the same device-local correlation trick.
+- **Phase 4b — "program the controller" button→function assignment** — feasibility-gated: needs a **user capture
+  of navigating to the spa-switch setup page** on a real controller to learn whether the assignment is exposed
+  over RS-485 (a OneTouch/IAQ menu page, like the setpoint value-edit) or only set physically. Not started.
+- **Button-index ↔ physical-function map** and the **full LED-byte→indicator map beyond data[1]** still want a
+  **live capture with an actual spa button pressed** (the existing fixtures are all idle, button 0).
+
+#### Why RemAux full wire-decode is still blocked (the architecture finding — spaside now exempt)
 These three devices reuse **generic command bytes** that the app's *global* command→message factory already
 owns, and a device→master frame carries **no source id** (`JandyMessage` exposes only `Destination()`):
 - Their device→master STATUS (RemAux relay bitmask, spaside button press) is an **`Ack` (cmd `0x01`)** — the
@@ -243,8 +285,11 @@ So clean decode needs **two** architectural pieces, neither a routine device-add
   keyed on (class, command).
 - Both validated via `MockReplayHarness` with synthetic RemAux/spaside frames built per the two RE docs.
 
-**Status:** RE COMPLETE; spaside remotes RECOGNISED; full wire-decode + RemAux handler **PAUSED** pending the
-architecture decision above (and ideally real-hardware/capture validation).
+**Status:** RE COMPLETE. **Spa-side remotes FULLY IMPLEMENTED** (decode + emulate + LED visualise + web control,
+Phases 1-4a; commits e160107, df04a81, e71f593, 94c7e68, 24e18be, a884bf2). **RemAux handler** and **Phase 4b
+"program the controller"** remain PAUSED/capture-gated (RemAux needs per-destination dispatch; 4b needs a user
+capture of the spa-switch setup page). Live validation of the button-index↔function map and full LED map awaits
+a user capture with an actual spa button pressed.
 
 ---
 
