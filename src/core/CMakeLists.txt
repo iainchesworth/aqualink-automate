@@ -15,6 +15,7 @@ target_sources(
 	application/application_defaults.cpp
 	certificates/certificate_management.cpp
 	concepts/is_option_processor.cpp
+	devices/capabilities/command_history.cpp
 	devices/capabilities/restartable.cpp
 	utility/slot_connection_manager.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>

@@ -78,6 +78,10 @@ namespace AqualinkAutomate::Kernel
 		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
 		bool EmulationDisabled{ false };
+		// When true, the RSSA presence-gating (auto-suppress an emulated Serial Adapter
+		// on detecting a real one) is disabled. A safety opt-out: the detection can
+		// false-positive on the controller's own status push to our emulated adapter.
+		bool PresenceGatingDisabled{ false };
 
 		// Expected equipment layout for the detected model (from PoolConfigurationDecoder);
 		// 0 until the version page is scraped. Used to validate the discovered equipment set.

@@ -12,6 +12,7 @@
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/chlorinator_controller.h"
+#include "devices/capabilities/command_history.h"
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
@@ -39,7 +40,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::ChlorinatorController, public Capabilities::SpaSwitchConfigurator
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::ChlorinatorController, public Capabilities::SpaSwitchConfigurator, public Capabilities::CommandHistory
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };

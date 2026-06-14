@@ -243,11 +243,13 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::MappingFailed;
 		}
 
-		// A non-emulated (passive) IAQ never transmits, so it cannot actuate. Report
-		// NotSupported so the dispatcher can fall back to another controller.
-		if (!IsEmulated())
+		// A passive IAQ never transmits, so it cannot actuate. This is true both for a
+		// non-emulated instance AND for an emulated one that has been presence-suppressed
+		// (a real device answered at its address), so gate on IsEmulationActive() rather
+		// than IsEmulated(). Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not emulated - cannot actuate equipment", DeviceId()); });
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not actively emulating - cannot actuate equipment", DeviceId()); });
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -259,6 +261,13 @@ namespace AqualinkAutomate::Devices
 		}
 		const std::string target_label{ Utility::TrimWhitespace(label.value()) };
 
+		// LIMITATION (capture-gated follow-up): the IAQ can only actuate a device whose
+		// button is on the CURRENTLY-rendered page. If the target isn't visible we report
+		// MappingFailed; the CommandDispatcher then falls back to another controller (e.g.
+		// an emulated OneTouch, which crawls menus). In an IAQ-only rig the command fails
+		// honestly. A full fix -- navigate to the page that hosts the button before
+		// pressing -- needs the page-navigation command sequence reverse-engineered from a
+		// live capture, so it is deliberately out of scope here.
 		auto button_index = FindPageButtonByLabel(target_label);
 		if (!button_index.has_value())
 		{
@@ -292,9 +301,9 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult IAQDevice::QueueSetpoint(uint8_t select_field_command, uint8_t temperature, const char* body_name)
 	{
-		if (!IsEmulated())
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, [this, body_name]() { return std::format("IAQ ({}): Not emulated - cannot set {} setpoint", DeviceId(), body_name); });
+			LogWarning(Channel::Devices, [this, body_name]() { return std::format("IAQ ({}): Not actively emulating - cannot set {} setpoint", DeviceId(), body_name); });
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -331,9 +340,9 @@ namespace AqualinkAutomate::Devices
 		// "4 Function Spa Switch" detail page (RE'd + cross-validated from iaq_spaswitch_edit{,2}.cap;
 		// see docs/alwin32/spaside-remotes.md). Only an EMULATED panel transmits, so a passive decoder
 		// can't program -- report NotSupported so the controller falls through to another writer.
-		if (!IsEmulated())
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not emulated - cannot program spa-switch assignment", DeviceId()); });
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not actively emulating - cannot program spa-switch assignment", DeviceId()); });
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -707,6 +716,9 @@ namespace AqualinkAutomate::Devices
 		j["command_queue_depth"] = static_cast<uint32_t>(m_CommandQueue.size());
 		j["awaiting_control_ready"] = m_AwaitingControlReady;
 		j["control_data_value"] = m_ControlDataValue;
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
+		j["recent_commands"] = DescribeRecentCommands();
 		j["is_running"] = IsRunning();
 
 		return j;

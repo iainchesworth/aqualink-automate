@@ -163,6 +163,15 @@ namespace AqualinkAutomate::Devices
 			m_StatusMessageReceived = false;
 		}
 
+		// Mark that we have actively claimed this bus address. Only an actively-emulating
+		// instance actually puts a frame on the wire (Signal_AckMessage no-ops otherwise),
+		// so gate on IsEmulationActive(). Presence-gating uses this to tell a solicited
+		// controller status push (after we've claimed the address) from an unsolicited one.
+		if (IsEmulationActive())
+		{
+			m_HasClaimedAddress = true;
+		}
+
 		Signal_AckMessage(ack_type, ack_data_value);
 	}
 
@@ -219,6 +228,17 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult SerialAdapterDevice::ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction requested_action)
 	{
+		// Honest actuation: only an actively-emulating adapter (emulated AND not
+		// presence-suppressed) can put command bytes on the wire. A real or suppressed
+		// adapter would have its ACK silently dropped downstream (see emulated.h
+		// Signal_AckMessage_Impl), so report NotSupported and let the dispatcher fall
+		// back to another controller rather than swallowing the command.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot actuate equipment");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		// Determine the serial command based on the requested action.
 		auto action = SerialAdapter_CommandTypes::SetOn;
 
@@ -314,6 +334,14 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult SerialAdapterDevice::SetPoolSetpoint(uint8_t temperature)
 	{
+		// Only an actively-emulating adapter can transmit; otherwise the queued command
+		// is silently dropped. Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot set pool setpoint");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting pool setpoint to {}", temperature));
 		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
 		return Capabilities::ActuationResult::Accepted;
@@ -321,6 +349,14 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult SerialAdapterDevice::SetSpaSetpoint(uint8_t temperature)
 	{
+		// Only an actively-emulating adapter can transmit; otherwise the queued command
+		// is silently dropped. Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot set spa setpoint");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting spa setpoint to {}", temperature));
 		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
 		return Capabilities::ActuationResult::Accepted;
@@ -328,6 +364,14 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult SerialAdapterDevice::SetCirculationMode(Kernel::CirculationModes mode)
 	{
+		// Only an actively-emulating adapter can transmit; otherwise the queued command
+		// is silently dropped. Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot set circulation mode");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		switch (mode)
 		{
 		case Kernel::CirculationModes::Spa:
@@ -422,6 +466,7 @@ namespace AqualinkAutomate::Devices
 		j["pending_command_count"] = static_cast<uint32_t>(m_PendingCommands.size());
 		j["is_emulated"] = IsEmulated();
 		j["emulation_suppressed"] = IsEmulationSuppressed();
+		j["recent_commands"] = DescribeRecentCommands();
 		j["is_running"] = IsRunning();
 
 		return j;

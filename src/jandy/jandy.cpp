@@ -73,6 +73,16 @@ namespace AqualinkAutomate::Jandy
 			}
 		}
 
+		if (jandy_settings.disable_presence_gating)
+		{
+			auto data_hub = hub_locator.Find<Kernel::DataHub>();
+			if (nullptr != data_hub)
+			{
+				data_hub->PresenceGatingDisabled = true;
+				LogInfo(Channel::Main, "RSSA presence-gating disabled; an emulated Serial Adapter will not auto-suppress on a suspected real adapter");
+			}
+		}
+
 		if (jandy_settings.auto_startup)
 		{
 			// The JandyStartupService (wired in aqualink-automate.cpp on the io_context) detects

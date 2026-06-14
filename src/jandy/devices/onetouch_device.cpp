@@ -318,12 +318,14 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::MappingFailed;
 		}
 
-		// A non-emulated (passive) OneTouch never transmits key commands, so it cannot
-		// actuate. Report NotSupported so the dispatcher can fall back to another
-		// controller (or surface that nothing on the bus can act).
-		if (!IsEmulated())
+		// A passive OneTouch never transmits key commands, so it cannot actuate. This
+		// holds for a non-emulated instance AND an emulated one that has been
+		// presence-suppressed, so gate on IsEmulationActive() rather than IsEmulated().
+		// Report NotSupported so the dispatcher can fall back to another controller (or
+		// surface that nothing on the bus can act).
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot actuate equipment", DeviceId()));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot actuate equipment", DeviceId()));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -478,11 +480,12 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult OneTouchDevice::QueueValueEdit(ValueEditGoal goal)
 	{
-		// A non-emulated (passive) OneTouch never transmits key commands, so it cannot
-		// actuate. Report NotSupported so the dispatcher can fall back to another controller.
-		if (!IsEmulated())
+		// A passive OneTouch never transmits key commands (non-emulated or
+		// presence-suppressed), so it cannot actuate. Report NotSupported so the
+		// dispatcher can fall back to another controller.
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot edit {}", DeviceId(), goal.desc));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot edit {}", DeviceId(), goal.desc));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -502,9 +505,9 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult OneTouchDevice::SetChlorinatorBoost(bool enable)
 	{
-		if (!IsEmulated())
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot {} boost", DeviceId(), enable ? "start" : "stop"));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot {} boost", DeviceId(), enable ? "start" : "stop"));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -863,10 +866,11 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult OneTouchDevice::SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
 	{
-		// A passive (non-emulated) OneTouch never transmits keys, so it cannot program anything.
-		if (!IsEmulated())
+		// A passive OneTouch never transmits keys (non-emulated or presence-suppressed),
+		// so it cannot program anything.
+		if (!IsEmulationActive())
 		{
-			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not emulated - cannot program spa-switch assignment", DeviceId()));
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot program spa-switch assignment", DeviceId()));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -1454,6 +1458,9 @@ namespace AqualinkAutomate::Devices
 		j["highlighted_line"] = m_HighlightedLine;
 		j["pending_key_command"] = std::string(magic_enum::enum_name(m_KeyCommand_ToSend));
 		j["ack_type"] = std::string(magic_enum::enum_name(m_AckType_ToSend));
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
+		j["recent_commands"] = DescribeRecentCommands();
 		j["is_running"] = IsRunning();
 
 		return j;

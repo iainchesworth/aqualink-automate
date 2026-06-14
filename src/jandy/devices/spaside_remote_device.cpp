@@ -220,6 +220,9 @@ namespace AqualinkAutomate::Devices
 			j["last_button_age_seconds"] = nullptr;
 		}
 
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
+
 		return j;
 	}
 

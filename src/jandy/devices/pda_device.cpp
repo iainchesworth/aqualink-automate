@@ -80,6 +80,8 @@ namespace AqualinkAutomate::Devices
 		j["screen"] = DescribeScreen();
 
 		j["scrape_state"] = std::string(magic_enum::enum_name(GetScrapeState()));
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
 		j["is_running"] = IsRunning();
 
 		return j;

@@ -1,4 +1,9 @@
 #include <format>
+#include <memory>
+#include <string>
+#include <string_view>
+
+#include <magic_enum/magic_enum.hpp>
 
 #include "devices/capabilities/chlorinator_controller.h"
 #include "devices/capabilities/circulation_controller.h"
@@ -6,6 +11,7 @@
 #include "devices/capabilities/page_navigator.h"
 #include "devices/capabilities/setpoint_controller.h"
 #include "devices/command_dispatcher.h"
+#include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -25,24 +31,24 @@ namespace AqualinkAutomate::Devices
 			}
 		}
 
-		// Map a controller's ActuationResult back onto the dispatcher's CommandResult.
-		// `when_unsupported` is what to return when the controller reports the action
-		// is not supported -- chosen per call-site to PRESERVE the exact historical
-		// result code for that command kind (e.g. toggles/setpoints reported
-		// NoSerialAdapter; chlorinator/page reported DeviceNotFound).
-		Interfaces::ICommandDispatcher::CommandResult MapActuationResult(Capabilities::ActuationResult result, Interfaces::ICommandDispatcher::CommandResult when_unsupported)
+		std::string_view ActionVerb(Interfaces::ICommandDispatcher::DeviceAction action)
 		{
-			using CR = Interfaces::ICommandDispatcher::CommandResult;
-
-			switch (result)
+			switch (action)
 			{
-			case Capabilities::ActuationResult::Accepted:      return CR::Success;
-			case Capabilities::ActuationResult::InvalidValue:  return CR::InvalidValue;
-			case Capabilities::ActuationResult::MappingFailed: return CR::UnknownEquipmentType;
-			case Capabilities::ActuationResult::NotSupported:  return when_unsupported;
+			case Interfaces::ICommandDispatcher::DeviceAction::On:  return "turn on";
+			case Interfaces::ICommandDispatcher::DeviceAction::Off: return "turn off";
+			default:                                                return "toggle";
+			}
+		}
+
+		std::string DeviceLabel(const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+		{
+			if (device && device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
+			{
+				return *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
 			}
 
-			return when_unsupported;
+			return "equipment";
 		}
 	}
 	// unnamed namespace
@@ -72,14 +78,11 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		auto* actuator = FindCapable<Capabilities::DeviceActuator>();
-		if (nullptr == actuator)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can actuate equipment");
-			return CommandResult::NoSerialAdapter;
-		}
-
-		return MapActuationResult(actuator->ActuateDevice(device, ToActuationAction(action)), CommandResult::NoSerialAdapter);
+		const std::string what{ std::format("{} '{}'", ActionVerb(action), DeviceLabel(device)) };
+		return DispatchToCapable<Capabilities::DeviceActuator>(
+			what,
+			[&](Capabilities::DeviceActuator& actuator) { return actuator.ActuateDevice(device, ToActuationAction(action)); },
+			CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::CommandByLabel(const std::string& label, DeviceAction action)
@@ -91,14 +94,12 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::DeviceNotFound;
 		}
 
-		auto* actuator = FindCapable<Capabilities::DeviceActuator>();
-		if (nullptr == actuator)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can actuate equipment");
-			return CommandResult::NoSerialAdapter;
-		}
-
-		return MapActuationResult(actuator->ActuateDevice(matches.front(), ToActuationAction(action)), CommandResult::NoSerialAdapter);
+		auto device = matches.front();
+		const std::string what{ std::format("{} '{}'", ActionVerb(action), label) };
+		return DispatchToCapable<Capabilities::DeviceActuator>(
+			what,
+			[&](Capabilities::DeviceActuator& actuator) { return actuator.ActuateDevice(device, ToActuationAction(action)); },
+			CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetPoolSetpoint(uint8_t temperature)
@@ -109,15 +110,11 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto* controller = FindCapable<Capabilities::SetpointController>();
-		if (nullptr == controller)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set a setpoint");
-			return CommandResult::NoSerialAdapter;
-		}
-
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting pool setpoint to {}", temperature));
-		return MapActuationResult(controller->SetPoolSetpoint(temperature), CommandResult::NoSerialAdapter);
+		return DispatchToCapable<Capabilities::SetpointController>(
+			std::format("set the pool setpoint to {}", temperature),
+			[&](Capabilities::SetpointController& controller) { return controller.SetPoolSetpoint(temperature); },
+			CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetSpaSetpoint(uint8_t temperature)
@@ -128,15 +125,11 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto* controller = FindCapable<Capabilities::SetpointController>();
-		if (nullptr == controller)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set a setpoint");
-			return CommandResult::NoSerialAdapter;
-		}
-
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting spa setpoint to {}", temperature));
-		return MapActuationResult(controller->SetSpaSetpoint(temperature), CommandResult::NoSerialAdapter);
+		return DispatchToCapable<Capabilities::SetpointController>(
+			std::format("set the spa setpoint to {}", temperature),
+			[&](Capabilities::SetpointController& controller) { return controller.SetSpaSetpoint(temperature); },
+			CommandResult::NoSerialAdapter);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorPercentage(uint8_t percentage)
@@ -147,53 +140,37 @@ namespace AqualinkAutomate::Devices
 			return CommandResult::InvalidValue;
 		}
 
-		auto* controller = FindCapable<Capabilities::ChlorinatorController>();
-		if (nullptr == controller)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can drive the chlorinator");
-			return CommandResult::DeviceNotFound;
-		}
-
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting chlorinator percentage to {}%", percentage));
-		return MapActuationResult(controller->SetChlorinatorPercentage(percentage), CommandResult::DeviceNotFound);
+		return DispatchToCapable<Capabilities::ChlorinatorController>(
+			std::format("set the chlorinator to {}%", percentage),
+			[&](Capabilities::ChlorinatorController& controller) { return controller.SetChlorinatorPercentage(percentage); },
+			CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorBoost(bool enable)
 	{
-		auto* controller = FindCapable<Capabilities::ChlorinatorController>();
-		if (nullptr == controller)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can drive the chlorinator");
-			return CommandResult::DeviceNotFound;
-		}
-
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: {} chlorinator boost", enable ? "Enabling" : "Disabling"));
-		return MapActuationResult(controller->SetChlorinatorBoost(enable), CommandResult::DeviceNotFound);
+		return DispatchToCapable<Capabilities::ChlorinatorController>(
+			std::format("{} chlorinator boost", enable ? "enable" : "disable"),
+			[&](Capabilities::ChlorinatorController& controller) { return controller.SetChlorinatorBoost(enable); },
+			CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SelectIAQPageButton(uint8_t button_index)
 	{
-		auto* navigator = FindCapable<Capabilities::PageNavigator>();
-		if (nullptr == navigator)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller exposes a page UI to navigate");
-			return CommandResult::DeviceNotFound;
-		}
-
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Selecting IAQ page button index {}", static_cast<int>(button_index)));
-		return MapActuationResult(navigator->ActuatePageButton(button_index), CommandResult::DeviceNotFound);
+		return DispatchToCapable<Capabilities::PageNavigator>(
+			std::format("select page button {}", static_cast<int>(button_index)),
+			[&](Capabilities::PageNavigator& navigator) { return navigator.ActuatePageButton(button_index); },
+			CommandResult::DeviceNotFound);
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetCirculationMode(Kernel::CirculationModes mode)
 	{
-		auto* controller = FindCapable<Capabilities::CirculationController>();
-		if (nullptr == controller)
-		{
-			LogWarning(Channel::Devices, "CommandDispatcher: No connected controller can set the circulation mode");
-			return CommandResult::NoSerialAdapter;
-		}
-
-		return MapActuationResult(controller->SetCirculationMode(mode), CommandResult::NoSerialAdapter);
+		return DispatchToCapable<Capabilities::CirculationController>(
+			std::format("set circulation mode to {}", magic_enum::enum_name(mode)),
+			[&](Capabilities::CirculationController& controller) { return controller.SetCirculationMode(mode); },
+			CommandResult::NoSerialAdapter);
 	}
 
 }

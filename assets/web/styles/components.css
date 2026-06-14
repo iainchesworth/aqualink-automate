@@ -1292,6 +1292,129 @@ html.dark .gauge-card {
     margin: 0;
 }
 
+/* ── Shared Device Cards: tailored header, emulation badge, activity pulse,
+      command history (used by both the Emulated and Actual sections) ── */
+
+.device-group {
+    margin-bottom: 0.5rem;
+}
+
+/* Let each key/value pair flow directly into the parent two-column kv grid. */
+.emu-kv-row {
+    display: contents;
+}
+
+.device-card-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.device-card-titles {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    min-width: 0;
+}
+
+.device-card-role {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.device-card-summary {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem;
+}
+
+.device-emu-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.device-emu-badge.active { background: var(--gauge-good); color: #0b1220; }
+.device-emu-badge.passive { background: var(--bg-primary); color: var(--text-muted); border: 1px solid var(--border-color); }
+.device-emu-badge.real { background: var(--accent); color: #0b1220; }
+
+.device-activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    opacity: 0.4;
+    flex-shrink: 0;
+}
+
+.device-activity-dot.pulsing {
+    background: var(--gauge-good);
+    opacity: 1;
+    animation: device-activity-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes device-activity-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(1.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .device-activity-dot.pulsing { animation: none; }
+}
+
+.device-cmd-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+}
+
+.device-cmd-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.device-cmd-time {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.device-cmd-desc {
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.device-cmd-outcome {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.device-cmd-outcome.ok { color: var(--gauge-good); }
+.device-cmd-outcome.err { color: var(--gauge-bad); }
+
+.device-debug {
+    margin-top: 0.4rem;
+}
+
+.device-debug-summary {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
 @media (max-width: 768px) {
     .emu-device-grid {
         grid-template-columns: 1fr;

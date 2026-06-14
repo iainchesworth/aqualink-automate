@@ -10,6 +10,7 @@
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
 #include "devices/capabilities/chlorinator_controller.h"
+#include "devices/capabilities/command_history.h"
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
@@ -44,7 +45,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::SpaSwitchConfigurator
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::SpaSwitchConfigurator, public Capabilities::CommandHistory
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;

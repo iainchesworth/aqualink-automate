@@ -109,6 +109,30 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceTypes_InvalidType_ReturnsError)
 }
 
 //=============================================================================
+// PRESENCE GATING opt-out (--jandy-disable-presence-gating)
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_PresenceGating_DefaultsEnabled)
+{
+	auto result = RunFullPipeline({ "program" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK(!jandy.value().get().disable_presence_gating);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_PresenceGating_DisableFlag)
+{
+	auto result = RunFullPipeline({ "program", "--jandy-disable-presence-gating" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK(jandy.value().get().disable_presence_gating);
+}
+
+//=============================================================================
 // DEVICE IDS: space-separated (multitoken) parsing via the boost::po validator
 //=============================================================================
 

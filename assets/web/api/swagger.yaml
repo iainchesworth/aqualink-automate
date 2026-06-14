@@ -1913,7 +1913,7 @@ components:
       properties:
         device_type:
           type: string
-          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA)
+          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA, SpasideRemote)
           example: "OneTouch"
         device_id:
           type: string
@@ -2016,16 +2016,41 @@ components:
           description: SerialAdapter count of queued pending command ACKs
         is_emulated:
           type: boolean
-          description: SerialAdapter constructed as an emulated (transmitting) device
+          description: >-
+            Device was constructed as an emulated (transmitting) device rather
+            than a real bus-discovered one. Emitted by every controller type.
         emulation_suppressed:
           type: boolean
           description: >-
-            SerialAdapter emulation suppressed at runtime because a real serial
-            adapter was detected on the bus (presence gating). When true the
-            device is a passive decoder and never transmits.
+            Emulation suppressed at runtime because a real device was detected at
+            this bus address (presence gating). When true the device is a passive
+            decoder and never transmits. Emitted by every controller type.
         scrape_state:
           type: string
           description: PDA scrape state
+        recent_commands:
+          type: array
+          description: >-
+            Rolling log (oldest first, max 16) of commands the CommandDispatcher
+            routed to this controller and their outcomes. Present only on
+            command-capable controllers (OneTouch, IAQ, SerialAdapter).
+          items:
+            type: object
+            properties:
+              ts:
+                type: integer
+                description: Unix epoch seconds when the command was recorded
+              age_seconds:
+                type: integer
+                description: Seconds since the command was recorded (server clock)
+              description:
+                type: string
+                description: Human-readable command description
+                example: "toggle 'Pool Light'"
+              outcome:
+                type: string
+                description: CommandResult enumerator name
+                example: "Success"
 
   securitySchemes:
     bearerAuth:

@@ -555,6 +555,17 @@ function diagnosticsView() {
             }
         },
 
+        // The two device sections (Emulated + Actual) render through ONE shared card
+        // definition: the template iterates these groups, so there is a single source of
+        // truth for the card markup, differing only by the bound device list. `openKey`
+        // names the existing collapse flag on this view so each section's toggle persists.
+        deviceGroups() {
+            return [
+                { key: 'emulated', title: 'Emulated Devices', openKey: 'showEmulatedDevices', empty: 'No emulated devices active', devices: this.emulatedDevices },
+                { key: 'actual', title: 'Actual Devices', openKey: 'showActualDevices', empty: 'No actual devices detected', devices: this.actualDevices }
+            ];
+        },
+
         formatUptime(secs) {
             if (secs == null) return '--';
             const h = Math.floor(secs / 3600);

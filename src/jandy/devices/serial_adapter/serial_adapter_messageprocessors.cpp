@@ -239,21 +239,40 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::DetectRealAdapterAndSuppressEmulation(std::string_view observed_message_kind)
 	{
-		// Presence gating (the core bus-safety guarantee): the only way an emulated
-		// instance ever sees a DevReady/DevStatus addressed to its own id is if a
-		// REAL Serial Adapter is answering the master there -- the emulated device
-		// only ever replies to polls with ACKs, it never emits these reply frames.
-		// So on the FIRST such observation we permanently suppress emulation: the
-		// instance keeps decoding (read path stays live) but stops transmitting,
-		// guaranteeing there are never two transmitters on this address.
-		//
 		// A non-emulated instance is already passive, so there is nothing to do.
 		if (!IsEmulated() || IsEmulationSuppressed())
 		{
 			return;
 		}
 
-		LogNotify(Channel::Devices, std::format("Serial Adapter ({}): a REAL adapter was observed ({} frame); handling the bus collision -- relocate to a free instance if possible, else suppress.", DeviceId(), observed_message_kind));
+		// Opt-out (--jandy-disable-presence-gating): never auto-suppress.
+		if ((nullptr != JandyController::m_DataHub) && JandyController::m_DataHub->PresenceGatingDisabled)
+		{
+			return;
+		}
+
+		// Presence gating, corrected against live captures:
+		//
+		// A DevStatus(0x13)/DevReady(0x07) frame addressed to OUR id is the CONTROLLER's
+		// status push to whichever adapter currently owns this address -- it is the normal
+		// RSSA read path, NOT a real adapter's output. (A real adapter answers the master
+		// with an Ack to 0x00; it never emits these inbound frames. Captured live: with no
+		// emulation present, zero such frames appear on the bus; they begin only AFTER an
+		// adapter answers the master's poll and claims the address.)
+		//
+		// So once WE have claimed the address (transmitted at least once as the active
+		// emulation), such a frame is SOLICITED -- the controller talking to us -- and must
+		// NOT suppress. Treating it as a collision was a false positive that silenced our
+		// own emulation on the very first status push. We suppress ONLY on an UNSOLICITED
+		// frame: one seen before we ever claimed the address, which means another (real)
+		// adapter is already conversing here at start-up.
+		if (m_HasClaimedAddress)
+		{
+			LogTrace(Channel::Devices, std::format("Serial Adapter ({}): solicited {} frame (controller status push to our emulation) -- not a real-adapter collision.", DeviceId(), observed_message_kind));
+			return;
+		}
+
+		LogNotify(Channel::Devices, std::format("Serial Adapter ({}): an UNSOLICITED {} frame was observed before we claimed this address -- a REAL adapter is present; handling the bus collision (relocate to a free instance if possible, else suppress).", DeviceId(), observed_message_kind));
 
 		// Prefer relocation to a free SerialAdapter instance (0x48/0x49 both exist) over going
 		// silent; falls back to suppression when no relocation handler / no free instance.
