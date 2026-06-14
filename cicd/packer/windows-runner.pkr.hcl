@@ -95,6 +95,9 @@ source "vsphere-iso" "windows" {
   # C++ builds at -j32; host has ample free RAM, so size for headroom).
   RAM                  = 49152
   RAM_reserve_all      = false
+  # Allow downtime-free CPU/RAM resizes on the running VM (no power-cycle).
+  CPU_hot_plug         = true
+  RAM_hot_plug         = true
   disk_controller_type = ["lsilogic-sas"]
 
   storage {

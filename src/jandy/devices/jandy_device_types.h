@@ -15,8 +15,8 @@ namespace AqualinkAutomate::Devices
 	{
 		AqualinkMaster,
 		RS_Keypad,
-		DualSpaSwitch,
-		SpaRemote,
+		DualSpaSwitch,	// "2x4rem" Dual Spa Switch spa-side keypad (class 0x02, 0x10-0x13)
+		SpaRemote,		// "8button" Spa Link spa-side remote      (class 0x04, 0x20-0x23)
 		OneTouch,
 		LX_Heater,
 		AqualinkTouch,

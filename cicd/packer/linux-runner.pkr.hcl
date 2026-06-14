@@ -92,6 +92,9 @@ source "vsphere-iso" "ubuntu" {
   # The host has ample free RAM, so size for comfortable headroom at full -j32.
   RAM                  = 49152
   RAM_reserve_all      = false
+  # Allow downtime-free CPU/RAM resizes on the running VM (no power-cycle).
+  CPU_hot_plug         = true
+  RAM_hot_plug         = true
   disk_controller_type = ["pvscsi"]
 
   storage {

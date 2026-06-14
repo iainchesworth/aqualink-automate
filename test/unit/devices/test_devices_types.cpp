@@ -23,20 +23,6 @@ BOOST_AUTO_TEST_CASE(ConstructorTest)
     BOOST_CHECK_EQUAL(device2.Id(), 0x09);
 }
 
-BOOST_AUTO_TEST_CASE(SpasideRemoteClasses_ResolveFromBusAddress)
-{
-    using namespace AqualinkAutomate::Devices;
-
-    // "Dual Spa Switch" (2x4rem) lives at 0x10-0x13 (class 0x02); "Spa Link" (8button) at
-    // 0x20-0x23 (class 0x04). The 0x10 class was previously missing from the device map.
-    BOOST_CHECK_EQUAL(JandyDeviceType(0x10).Class(), DeviceClasses::DualSpaSwitch);
-    BOOST_CHECK_EQUAL(JandyDeviceType(0x13).Class(), DeviceClasses::DualSpaSwitch);
-    BOOST_CHECK_EQUAL(JandyDeviceType(0x20).Class(), DeviceClasses::SpaRemote);
-
-    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::DualSpaSwitch)
-        == std::vector<std::uint8_t>{ 0x10, 0x11, 0x12, 0x13 }));
-}
-
 BOOST_AUTO_TEST_CASE(InstanceAddressesForClass_ReturnsEveryInstanceOfTheClass)
 {
     using namespace AqualinkAutomate::Devices;
@@ -49,6 +35,40 @@ BOOST_AUTO_TEST_CASE(InstanceAddressesForClass_ReturnsEveryInstanceOfTheClass)
         == std::vector<std::uint8_t>{ 0x30, 0x31, 0x32, 0x33 }));
     BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SerialAdapter)
         == std::vector<std::uint8_t>{ 0x48, 0x49 }));
+
+    // The two spaside remotes are distinct device families and must not be conflated (see
+    // docs/alwin32/spaside-remotes.md): the "Dual Spa Switch" (2x4rem) is class 0x02 at 0x10-0x13,
+    // whereas the "Spa Link" (8button) is class 0x04 at 0x20-0x23.
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::DualSpaSwitch)
+        == std::vector<std::uint8_t>{ 0x10, 0x11, 0x12, 0x13 }));
+    BOOST_CHECK((JandyDeviceType::InstanceAddressesForClass(DeviceClasses::SpaRemote)
+        == std::vector<std::uint8_t>{ 0x20, 0x21, 0x22, 0x23 }));
+}
+
+BOOST_AUTO_TEST_CASE(SpaRemoteClasses_AreDistinctAndCorrectlyAddressed)
+{
+    using namespace AqualinkAutomate::Devices;
+
+    // Regression: the address map previously had ONLY a single SpaRemote entry at 0x20-0x23 and
+    // no class for 0x10-0x13, conflating the two physical spaside remotes recovered from the
+    // official Jandy Alwin32 simulator suite (docs/alwin32/spaside-remotes.md, RVA-cited):
+    //   * 2x4rem.exe  -> class 0x02, base 0x10  ("Dual Spa Switch")
+    //   * 8button.exe -> class 0x04, base 0x20  ("Spa Link" 8-button remote)
+
+    // Every 0x10-0x13 instance resolves to the Dual Spa Switch class...
+    for (int id : { 0x10, 0x11, 0x12, 0x13 })
+    {
+        BOOST_CHECK_EQUAL(JandyDeviceType(id).Class(), DeviceClasses::DualSpaSwitch);
+    }
+
+    // ...and every 0x20-0x23 instance resolves to the Spa Link (SpaRemote) class.
+    for (int id : { 0x20, 0x21, 0x22, 0x23 })
+    {
+        BOOST_CHECK_EQUAL(JandyDeviceType(id).Class(), DeviceClasses::SpaRemote);
+    }
+
+    // The two classes are genuinely different (the bug was them being one and the same).
+    BOOST_CHECK(JandyDeviceType(0x10).Class() != JandyDeviceType(0x20).Class());
 }
 
 BOOST_AUTO_TEST_CASE(CopyConstructorTest)
