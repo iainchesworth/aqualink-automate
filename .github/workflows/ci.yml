@@ -125,6 +125,117 @@ jobs:
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
+  e2e-ui:
+    name: E2E UI (Playwright)
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Clean workspace (self-hosted)
+        if: contains(vars.RUNNER_LINUX, 'self-hosted')
+        shell: bash
+        run: rm -rf build/
+
+      - uses: ./.github/actions/setup-cpp-toolchain
+        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
+        with:
+          compiler: gcc-15
+
+      - name: Setup vcpkg cache (self-hosted)
+        if: contains(vars.RUNNER_LINUX, 'self-hosted')
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
+      # Shares the "Linux GCC" vcpkg cache populated by the build-and-test job, so
+      # this job only pays the application compile cost, not a vcpkg rebuild.
+      - uses: ./.github/actions/setup-vcpkg-cache
+        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
+        with:
+          cache-key-prefix: Linux GCC
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: config-linux-gcc
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      # Only the app binary is needed for the UI replay run; skipping the test
+      # executables keeps this job lean (the C++ tests run in build-and-test).
+      - name: Build application binary
+        shell: bash
+        run: cmake --build --preset build-linux-gcc --target aqualink-automate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Playwright + Chromium
+        shell: bash
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # The four runs mirror the modes encoded in playwright.config.ts. Each boots
+      # the freshly built binary against the replay fixture; env selects the mode.
+      #   * default        -> every spec except auth (history/scheduler "disabled" paths)
+      #   * AUTH_TOKEN      -> only auth.spec.ts      (token-gated WS auth)
+      #   * HISTORY_DB      -> only trends.spec.ts    (recorded series + chart)
+      #   * SCHEDULES_FILE  -> only schedules.spec.ts (schedule CRUD)
+      - name: E2E — default (unauthenticated)
+        shell: bash
+        run: npx playwright test
+        env:
+          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+
+      - name: E2E — auth enabled
+        shell: bash
+        run: npx playwright test
+        env:
+          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_AUTH_TOKEN: e2e-secret-token
+
+      - name: E2E — history enabled
+        shell: bash
+        run: npx playwright test
+        env:
+          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_HISTORY_DB: ${{ runner.temp }}/e2e-history.db
+
+      - name: E2E — scheduler enabled
+        shell: bash
+        run: npx playwright test
+        env:
+          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_SCHEDULES_FILE: ${{ runner.temp }}/e2e-schedules.json
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   matter-bridge:
     name: Matter Bridge (Node)
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
