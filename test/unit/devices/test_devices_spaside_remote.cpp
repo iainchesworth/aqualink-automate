@@ -34,6 +34,17 @@ namespace
 		(*Messages::JandyMessage_Status::GetSignal())(msg);
 	}
 
+	// As EmitPollTo, but with a chosen LED-indicator byte as payload[0] (data[1] of the cmd-0x02
+	// LED image). The remaining payload bytes are zero. Lets the LED-decode tests drive indicators.
+	void EmitLedPollTo(uint8_t dest, uint8_t led_byte)
+	{
+		const auto frame = Test::MessageBuilder::CreateValidChecksummedMessage(dest, 0x02, { led_byte, 0x00, 0x00, 0x00, 0x00 });
+		Messages::JandyMessage_Status msg;
+		const auto span = std::as_bytes(std::span<const uint8_t>(frame.data(), frame.size()));
+		BOOST_REQUIRE(msg.Deserialize(span));
+		(*Messages::JandyMessage_Status::GetSignal())(msg);
+	}
+
 	// Fire a remote->master button report: an Ack (cmd 0x01) addressed to the master (0x00) with
 	// ack_type + command (the button index).
 	void EmitAck(uint8_t ack_type, uint8_t command)
@@ -109,6 +120,63 @@ BOOST_AUTO_TEST_CASE(IdleAck_ButtonZero_RecordsNoPress)
 	BOOST_CHECK_EQUAL(static_cast<int>(device.LastButton()), 0);
 }
 
+//=============================================================================
+// LED-image decode (Phase 3): the master pushes a cmd-0x02 indicator image; the
+// first payload byte packs four 2-bit indicators (0=off, 1=on, 2/3=blink).
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(LedImage_AllOff_DecodesAllIndicatorsOff)
+{
+	SpasideRemoteDevice device(device_type, *this, false);
+
+	BOOST_CHECK(!device.LedImageSeen());   // nothing decoded before the first poll
+	EmitLedPollTo(0x10, 0x00);
+	BOOST_CHECK(device.LedImageSeen());
+
+	for (std::size_t i = 0; i < 4; ++i)
+	{
+		BOOST_CHECK(device.Led(i) == SpasideLedState::Off);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(LedImage_MixedStates_DecodePerIndicator)
+{
+	SpasideRemoteDevice device(device_type, *this, false);
+
+	// 0b11'10'01'00: LED0=00 off, LED1=01 on, LED2=10 blink, LED3=11 blink.
+	EmitLedPollTo(0x10, 0xE4);
+
+	BOOST_CHECK(device.Led(0) == SpasideLedState::Off);
+	BOOST_CHECK(device.Led(1) == SpasideLedState::On);
+	BOOST_CHECK(device.Led(2) == SpasideLedState::Blink);   // value 2 -> blink
+	BOOST_CHECK(device.Led(3) == SpasideLedState::Blink);   // value 3 -> blink
+}
+
+BOOST_AUTO_TEST_CASE(LedImage_RetainsRawImageBytes)
+{
+	SpasideRemoteDevice device(device_type, *this, false);
+
+	EmitLedPollTo(0x10, 0x05);
+
+	// payload[0] is the LED byte; the rest of the 5-byte payload was zero.
+	BOOST_REQUIRE(!device.LedImage().empty());
+	BOOST_CHECK_EQUAL(static_cast<int>(device.LedImage()[0]), 0x05);
+	BOOST_CHECK_EQUAL(device.LedImage().size(), 5u);
+}
+
+BOOST_AUTO_TEST_CASE(LedImage_LatestPollWins)
+{
+	SpasideRemoteDevice device(device_type, *this, false);
+
+	EmitLedPollTo(0x10, 0xFF);   // all blink
+	EmitLedPollTo(0x10, 0x00);   // then all off
+
+	for (std::size_t i = 0; i < 4; ++i)
+	{
+		BOOST_CHECK(device.Led(i) == SpasideLedState::Off);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(RealCapture_DualSpaSwitch_PolledAndIdle)
 {
 	// End-to-end against the user's REAL capture: the master heavily polls the Dual Spa Switch
@@ -122,6 +190,21 @@ BOOST_AUTO_TEST_CASE(RealCapture_DualSpaSwitch_PolledAndIdle)
 
 	BOOST_CHECK_GT(device.PollCount(), 0u);                       // master polled us on the real bus
 	BOOST_CHECK_EQUAL(static_cast<int>(device.LastButton()), 0);  // no press -> no false positive
+
+	// The real cmd-0x02 polls carry an LED image -> it was decoded. Validate the decode is
+	// self-consistent with the raw byte regardless of which indicators the real system had lit.
+	BOOST_REQUIRE(device.LedImageSeen());
+	BOOST_REQUIRE(!device.LedImage().empty());
+
+	const uint8_t led_byte = device.LedImage()[0];
+	for (std::size_t i = 0; i < 4; ++i)
+	{
+		const uint8_t bits = static_cast<uint8_t>((led_byte >> (2 * i)) & 0x03);
+		const auto expected = (0x00 == bits) ? SpasideLedState::Off
+			: (0x01 == bits) ? SpasideLedState::On
+			: SpasideLedState::Blink;
+		BOOST_CHECK(device.Led(i) == expected);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -53,6 +53,9 @@ namespace AqualinkAutomate::Devices
 
 	void SpasideRemoteDevice::Slot_Spaside_EmulatedPoll(const Messages::JandyMessage_Status& msg)
 	{
+		// We are emulating the remote: the master's cmd-0x02 poll is the LED-image push telling us
+		// what to display, AND the cue to report any pending button. Decode the image first.
+		DecodeLedImage(msg);
 		SendButtonAck();
 	}
 
@@ -82,9 +85,35 @@ namespace AqualinkAutomate::Devices
 	void SpasideRemoteDevice::Slot_Spaside_Status(const Messages::JandyMessage_Status& msg)
 	{
 		// The master addressed us (the LED-image poll). Arm the one-shot window: the next Ack to
-		// the master is our reply. (Phase 3 will decode the LED bytes carried by this frame.)
+		// the master is our reply, and decode the indicator image this frame carries.
 		m_AwaitingButtonAck = true;
 		++m_PollCount;
+		DecodeLedImage(msg);
+	}
+
+	void SpasideRemoteDevice::DecodeLedImage(const Messages::JandyMessage_Status& msg)
+	{
+		// The cmd-0x02 LED image is carried as the Status payload. data[1] of the 6-byte image is
+		// payload byte [0] on the wire (the cmd byte is the message type, not payload). It packs up
+		// to four 2-bit indicator fields: bits [1:0]=LED0, [3:2]=LED1, [5:4]=LED2, [7:6]=LED3, each
+		// 0=off, 1=on, 2/3=blink (docs/alwin32/spaside-remotes.md, Ghidra-confirmed).
+		const auto& payload = msg.RawPayload();
+		if (payload.empty())
+		{
+			return;
+		}
+
+		m_LedImage = payload;
+		m_LedImageSeen = true;
+
+		const uint8_t led_byte = payload[0];
+		for (std::size_t i = 0; i < m_Leds.size(); ++i)
+		{
+			const uint8_t bits = static_cast<uint8_t>((led_byte >> (2 * i)) & 0x03);
+			m_Leds[i] = (0x00 == bits) ? SpasideLedState::Off
+				: (0x01 == bits) ? SpasideLedState::On
+				: SpasideLedState::Blink;
+		}
 	}
 
 	void SpasideRemoteDevice::Slot_Spaside_Ack(const Messages::JandyMessage_Ack& msg)
@@ -124,6 +153,41 @@ namespace AqualinkAutomate::Devices
 		j["device_id"] = std::format("0x{:02x}", DeviceId().Id()());
 		j["poll_count"] = static_cast<int64_t>(m_PollCount);
 		j["last_button"] = static_cast<int>(m_LastButton);
+
+		// Indicator LEDs the master is pushing to this remote (visualise the master's LED state).
+		j["led_image_seen"] = m_LedImageSeen;
+		if (m_LedImageSeen)
+		{
+			const auto led_name = [](SpasideLedState state) -> const char*
+			{
+				switch (state)
+				{
+				case SpasideLedState::On:    return "on";
+				case SpasideLedState::Blink: return "blink";
+				case SpasideLedState::Off:
+				default:                     return "off";
+				}
+			};
+
+			nlohmann::json leds = nlohmann::json::array();
+			for (const auto state : m_Leds)
+			{
+				leds.push_back(led_name(state));
+			}
+			j["leds"] = leds;
+
+			std::string image_hex;
+			image_hex.reserve(m_LedImage.size() * 3);
+			for (const auto byte : m_LedImage)
+			{
+				image_hex += std::format("{:02x} ", byte);
+			}
+			if (!image_hex.empty())
+			{
+				image_hex.pop_back();   // drop trailing space
+			}
+			j["led_image"] = image_hex;
+		}
 
 		if (m_LastButtonAt.has_value())
 		{
