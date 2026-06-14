@@ -1,3 +1,4 @@
+#include <cctype>
 #include <format>
 #include <functional>
 
@@ -40,6 +41,31 @@ namespace AqualinkAutomate::Devices
 		constexpr uint8_t IAQ_CMD_SELECT_SPA_HEAT{ 0x13 };      // Set Temp page: Spa Heat (button index 2)
 
 		constexpr char IAQ_BUTTON_INDEX_POOL{ '1' };            // ASCII value-field prefix for control-data values ("1" + value)
+
+		// Spa-switch button-assignment WRITE (RE'd + cross-validated from
+		// captures/iaq_spaswitch_edit{,2}.cap; see docs/alwin32/spaside-remotes.md). Page ids that
+		// IAQ_PageStart carries, and the page-button command bytes for the 4-Function detail edit.
+		constexpr uint8_t IAQ_PAGE_HOME{ 0x01 };
+		constexpr uint8_t IAQ_PAGE_MENU{ 0x0f };
+		constexpr uint8_t IAQ_PAGE_SETUP{ 0x14 };
+		constexpr uint8_t IAQ_PAGE_SPA_REMOTES{ 0x3a };
+		constexpr uint8_t IAQ_PAGE_SPA_SWITCH_DETAIL{ 0x3b };
+
+		constexpr uint8_t IAQ_CMD_MENU_TO_SETUP{ 0x15 };        // on the menu (0x0f): page-button idx4 -> Setup
+		constexpr uint8_t IAQ_CMD_OPEN_SPASWITCH_DETAIL{ 0x16 };// on Spa Remotes (0x3a): idx5 -> 4-Function detail
+		constexpr uint8_t IAQ_CMD_SCROLL_PICKER{ 0x15 };        // on the detail (0x3b): idx4 -> page the picker
+
+		// On the 4-Function detail, the selectable cells share one page-button index space:
+		//   assignment row (ordinal O = (S-1)*4 + B, 1-based) -> page-button index O + 4
+		//   picker row     (visible slot A, 1-based)          -> page-button index A + 11
+		// As page-button commands (0x11 + index): row-select = 0x15 + O, commit = 0x1c + A.
+		constexpr uint8_t IAQ_SPASWITCH_ROWSELECT_CMD_BASE{ 0x15 };  // + ordinal
+		constexpr uint8_t IAQ_SPASWITCH_COMMIT_CMD_BASE{ 0x1c };     // + picker slot
+		constexpr uint8_t IAQ_SPASWITCH_MAX_VISIBLE_ROW{ 7 };        // rows 1..7 are on-screen; row 8 (2:4) needs an
+		                                                            // assignment-list scroll that is not yet decoded
+		constexpr uint32_t IAQ_SPASWITCH_SETTLE_POLLS{ 4 };         // polls to let the master render after a command
+		constexpr uint32_t IAQ_SPASWITCH_MAX_SCROLLS{ 10 };        // bound the picker scroll search
+		constexpr uint32_t IAQ_SPASWITCH_POLL_LIMIT{ 400 };        // overall backstop (abandon the goal)
 	}
 	// namespace
 
@@ -301,22 +327,239 @@ namespace AqualinkAutomate::Devices
 
 	Capabilities::ActuationResult IAQDevice::SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
 	{
-		// The iAQ "Spa Remotes" page is decoded for READ (assignment rows arrive as group-0x00
-		// TableMessages) and for the switch-COUNT selector (Setup page-button idx 6 -> Spa Remotes;
-		// idx 2/3/4 = "1"/"2"/"3"). The per-button FUNCTION-reassign command, however, is NOT decoded:
-		// in captures/spaside_setup_nav.cap the maintainer changed only the iAQ switch count and made
-		// the actual function edit on the OneTouch, so no iAQ function-assign frame was ever observed
-		// (verified: no group-0x00 assignment value changes across the whole capture). Rather than
-		// fabricate an unverified wire command, report NotSupported so the SpasideRemoteController
-		// falls through to the OneTouch (the RE-verified writer). When an iAQ function edit is
-		// captured this becomes a real page-button/picker sequence and, being Medium-priority, will
-		// then take precedence over the OneTouch.
-		LogWarning(Channel::Devices, [this, switch_number, button_number, &function]()
+		// Program a spa-side switch button's function over the bus by driving the AqualinkTouch (0x33)
+		// "4 Function Spa Switch" detail page (RE'd + cross-validated from iaq_spaswitch_edit{,2}.cap;
+		// see docs/alwin32/spaside-remotes.md). Only an EMULATED panel transmits, so a passive decoder
+		// can't program -- report NotSupported so the controller falls through to another writer.
+		if (!IsEmulated())
 		{
-			return std::format("IAQ ({}): spa-switch function-write not yet decoded (switch {} button {} -> '{}') - deferring to another controller",
-				DeviceId(), switch_number, button_number, function);
-		});
-		return Capabilities::ActuationResult::NotSupported;
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Not emulated - cannot program spa-switch assignment", DeviceId()); });
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		if ((switch_number < 1) || (button_number < 1) || (button_number > 4) || function.empty())
+		{
+			return Capabilities::ActuationResult::InvalidValue;
+		}
+
+		// The detail page lists assignment rows 1..7 on-screen (ordinal = (S-1)*4 + B). Row 8 (2:4)
+		// and any switch >2 need an assignment-list scroll whose protocol is not yet decoded -- and
+		// row 8's page-button index would collide with the picker commit range -- so reject those
+		// rather than risk writing the wrong cell. The OneTouch writer still covers them.
+		const uint32_t ordinal = static_cast<uint32_t>(switch_number - 1) * 4u + button_number;
+		if (ordinal > IAQ_SPASWITCH_MAX_VISIBLE_ROW)
+		{
+			LogWarning(Channel::Devices, [this, switch_number, button_number]() { return std::format("IAQ ({}): spa-switch row {}:{} is not directly selectable on the iAQ detail (needs an undecoded assignment-list scroll) - deferring", DeviceId(), switch_number, button_number); });
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// One goal at a time on the shared panel UI.
+		if (m_PendingSpaSwitchWrite.has_value() || !m_CommandQueue.empty() || m_AwaitingControlReady)
+		{
+			LogWarning(Channel::Devices, [this]() { return std::format("IAQ ({}): Busy - rejecting spa-switch assignment", DeviceId()); });
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		SpaSwitchWriteGoal goal;
+		goal.switch_number = switch_number;
+		goal.button_number = button_number;
+		goal.function = function;
+		goal.row_tag = std::format("{}:{}", switch_number, button_number);
+		goal.desc = std::format("spa-switch {}:{} -> '{}'", switch_number, button_number, function);
+
+		LogInfo(Channel::Devices, [this, &goal]() { return std::format("IAQ ({}): Queued {}", DeviceId(), goal.desc); });
+		m_PendingSpaSwitchWrite = std::move(goal);
+		m_SpaSwitchWritePhase = SpaSwitchWritePhase::Navigate;
+		m_SpaSwitchRowSelected = false;
+		m_SpaSwitchWritePollCount = 0;
+		m_SpaSwitchScrollCount = 0;
+		m_SpaSwitchSettleCount = 0;
+		m_SpaSwitchFirstPickerSeen.reset();
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	void IAQDevice::SpaSwitchWrite_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::SpaSwitchWrite_ProcessStep", std::source_location::current());
+
+		if (!m_PendingSpaSwitchWrite.has_value())
+		{
+			return;
+		}
+		const SpaSwitchWriteGoal& goal = m_PendingSpaSwitchWrite.value();
+
+		auto eq_ci = [](const std::string& a, const std::string& b)
+		{
+			if (a.size() != b.size()) { return false; }
+			for (std::size_t i = 0; i < a.size(); ++i)
+			{
+				if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) { return false; }
+			}
+			return true;
+		};
+
+		// Tear down the goal (reads goal.desc BEFORE resetting -- callers return immediately after).
+		auto finish = [&](bool ok)
+		{
+			if (ok) { LogInfo(Channel::Devices, [&]() { return std::format("IAQ ({}): {} completed", DeviceId(), goal.desc); }); }
+			else    { LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): {} abandoned", DeviceId(), goal.desc); }); }
+			m_PendingCommand = 0x00;
+			m_PendingSpaSwitchWrite.reset();
+			m_SpaSwitchWritePhase = SpaSwitchWritePhase::Navigate;
+			m_SpaSwitchRowSelected = false;
+			m_SpaSwitchScrollCount = 0;
+			m_SpaSwitchSettleCount = 0;
+			m_SpaSwitchFirstPickerSeen.reset();
+		};
+
+		// Overall backstop: never spin forever on a bus that isn't behaving as decoded.
+		if (++m_SpaSwitchWritePollCount > IAQ_SPASWITCH_POLL_LIMIT)
+		{
+			finish(false);
+			return;
+		}
+
+		// Settle: after issuing a command, dwell a few polls so the master renders the new page /
+		// re-pushes the picker before we read state and decide the next step.
+		if (m_SpaSwitchSettleCount > 0)
+		{
+			--m_SpaSwitchSettleCount;
+			m_PendingCommand = 0x00;
+			return;
+		}
+
+		// Issue one command this poll, then settle.
+		auto issue = [&](uint8_t cmd)
+		{
+			m_PendingCommand = cmd;
+			m_SpaSwitchSettleCount = IAQ_SPASWITCH_SETTLE_POLLS;
+		};
+
+		switch (m_SpaSwitchWritePhase)
+		{
+		case SpaSwitchWritePhase::Navigate:
+		{
+			// Page-GATED walk to the 4-Function detail (0x3b). Each hop waits (via settle + page-id
+			// re-evaluation) for the master to land on the next page before the following command.
+			switch (m_CurrentPageId)
+			{
+			case IAQ_PAGE_SPA_SWITCH_DETAIL:
+				m_SpaSwitchWritePhase = SpaSwitchWritePhase::SelectRow;   // arrived; act next poll
+				return;
+
+			case IAQ_PAGE_SPA_REMOTES:
+				issue(IAQ_CMD_OPEN_SPASWITCH_DETAIL);                     // 0x16 -> detail
+				return;
+
+			case IAQ_PAGE_SETUP:
+				if (auto idx = FindPageButtonByLabel("Spa Remotes"); idx.has_value())
+				{
+					issue(static_cast<uint8_t>(IAQ_CMD_PAGE_BUTTON_BASE + idx.value()));
+				}
+				else
+				{
+					m_PendingCommand = 0x00;   // button not rendered yet; dwell one poll
+				}
+				return;
+
+			case IAQ_PAGE_MENU:
+				issue(IAQ_CMD_MENU_TO_SETUP);                            // 0x15 -> Setup
+				return;
+
+			case IAQ_PAGE_HOME:
+				issue(IAQ_CMD_BACK);                                     // 0x02 -> menu
+				return;
+
+			default:
+				issue(IAQ_CMD_BACK);                                     // unwind toward home/menu
+				return;
+			}
+		}
+
+		case SpaSwitchWritePhase::SelectRow:
+		{
+			if (m_CurrentPageId != IAQ_PAGE_SPA_SWITCH_DETAIL)
+			{
+				m_SpaSwitchWritePhase = SpaSwitchWritePhase::Navigate;   // lost the page; re-navigate
+				return;
+			}
+			if (!m_SpaSwitchRowSelected)
+			{
+				const uint32_t ordinal = static_cast<uint32_t>(goal.switch_number - 1) * 4u + goal.button_number;
+				issue(static_cast<uint8_t>(IAQ_SPASWITCH_ROWSELECT_CMD_BASE + ordinal));   // 0x15 + ordinal
+				m_SpaSwitchRowSelected = true;
+			}
+			m_SpaSwitchWritePhase = SpaSwitchWritePhase::FindFunction;
+			m_SpaSwitchFirstPickerSeen.reset();
+			return;
+		}
+
+		case SpaSwitchWritePhase::FindFunction:
+		{
+			if (m_CurrentPageId != IAQ_PAGE_SPA_SWITCH_DETAIL)
+			{
+				m_SpaSwitchWritePhase = SpaSwitchWritePhase::Navigate;
+				return;
+			}
+
+			// Target visible in the current picker page? Commit at its slot (0x1c + slot).
+			for (const auto& [slot, function] : m_SpaSwitchPickerRows)
+			{
+				if (eq_ci(function, goal.function))
+				{
+					issue(static_cast<uint8_t>(IAQ_SPASWITCH_COMMIT_CMD_BASE + slot));
+					m_SpaSwitchWritePhase = SpaSwitchWritePhase::Verify;
+					return;
+				}
+			}
+
+			// Not visible: scroll the picker, with wrap-detection (the first row repeating means we
+			// have cycled the whole list without finding F) and a hard scroll bound.
+			const std::string signature = m_SpaSwitchPickerRows.empty() ? std::string{} : m_SpaSwitchPickerRows.begin()->second;
+			if (!m_SpaSwitchFirstPickerSeen.has_value())
+			{
+				m_SpaSwitchFirstPickerSeen = signature;
+			}
+			else if (!signature.empty() && (m_SpaSwitchScrollCount > 0) && eq_ci(signature, m_SpaSwitchFirstPickerSeen.value()))
+			{
+				LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): function '{}' not offered by the picker for {}", DeviceId(), goal.function, goal.row_tag); });
+				finish(false);
+				return;
+			}
+
+			if (++m_SpaSwitchScrollCount > IAQ_SPASWITCH_MAX_SCROLLS)
+			{
+				LogWarning(Channel::Devices, [&]() { return std::format("IAQ ({}): exhausted picker scroll for {}", DeviceId(), goal.row_tag); });
+				finish(false);
+				return;
+			}
+			issue(IAQ_CMD_SCROLL_PICKER);   // 0x15
+			return;
+		}
+
+		case SpaSwitchWritePhase::Verify:
+		{
+			// The commit press IS the save -- the master re-pushes the group-0x00 row, which the read
+			// path writes to the DataHub. Confirm it now reads the target function.
+			if (nullptr != m_DataHub)
+			{
+				if (auto live = m_DataHub->SpaSwitchAssignment(goal.switch_number, goal.button_number);
+					live.has_value() && eq_ci(live.value(), goal.function))
+				{
+					finish(true);
+					return;
+				}
+			}
+			m_PendingCommand = 0x00;   // dwell until the row re-pushes (or the poll backstop fires)
+			return;
+		}
+
+		case SpaSwitchWritePhase::Done:
+		case SpaSwitchWritePhase::Failed:
+		default:
+			finish(m_SpaSwitchWritePhase == SpaSwitchWritePhase::Done);
+			return;
+		}
 	}
 
 	void IAQDevice::ProcessControllerUpdates()
@@ -369,6 +612,15 @@ namespace AqualinkAutomate::Devices
 			// Device not present yet; nothing to process for this update.
 			break;
 		}
+		}
+
+		// Service an in-flight spa-switch write goal: it inspects the current page + decoded picker
+		// rows and sets m_PendingCommand to the single next command (or leaves it 0 to dwell). Poll
+		// only -- commands ride the poll ACK. The command queue is empty while such a goal is active
+		// (enforced at queue time), so the send block below carries m_PendingCommand on the wire.
+		if (is_poll_message && m_PendingSpaSwitchWrite.has_value())
+		{
+			SpaSwitchWrite_ProcessStep();
 		}
 
 		// Commands can only be sent in response to IAQ_Poll messages.

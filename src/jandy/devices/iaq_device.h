@@ -204,6 +204,54 @@ namespace AqualinkAutomate::Devices
 		};
 		std::map<uint8_t, PageButtonInfo> m_PageButtons;
 
+		// The page identifier of the page the master is currently pushing (IAQ_PageStart's first
+		// payload byte: 0x01 home, 0x0f menu, 0x14 Setup, 0x3a Spa Remotes, 0x3b the 4-Function
+		// detail). Used to page-GATE the spa-switch writer so it never issues a row-select/commit
+		// off the detail page.
+		uint8_t m_CurrentPageId{ 0x00 };
+
+		// The 4-Function detail page's device/function PICKER (group-0x01 TableMessages): the live
+		// slot(attr) -> function rows, rebuilt each time the picker page renders. The writer scrolls
+		// this until the target function appears, then commits at (slot + IAQ_SPASWITCH_COMMIT_BASE).
+		std::map<uint8_t, std::string> m_SpaSwitchPickerRows;
+
+	private:
+		// On-demand spa-switch button-assignment WRITE goal (one at a time). Set by
+		// SetSpaSwitchAssignment, serviced by SpaSwitchWrite_ProcessStep on each poll. Drives the
+		// AqualinkTouch (0x33) UI: navigate Home -> menu -> Setup -> Spa Remotes -> open the
+		// 4-Function detail, select the S:B row, scroll the picker to the target function and commit.
+		// RE'd + cross-validated from captures/iaq_spaswitch_edit{,2}.cap; see
+		// docs/alwin32/spaside-remotes.md.
+		enum class SpaSwitchWritePhase
+		{
+			Navigate,    // page-gated walk to the 4-Function detail (0x3b)
+			SelectRow,   // press the S:B assignment row (page-button (ordinal-1) + IAQ_SPASWITCH_ROW_BASE)
+			FindFunction,// read the picker; scroll (0x15) until F is visible, then commit at slot+commit-base
+			Verify,      // confirm the DataHub assignment now reads F
+			Done,
+			Failed
+		};
+		struct SpaSwitchWriteGoal
+		{
+			uint8_t switch_number{ 0 };
+			uint8_t button_number{ 0 };
+			std::string function;     // target function as the picker lists it
+			std::string row_tag;      // "<switch>:<button>" e.g. "1:2"
+			std::string desc;
+		};
+		std::optional<SpaSwitchWriteGoal> m_PendingSpaSwitchWrite;
+		SpaSwitchWritePhase m_SpaSwitchWritePhase{ SpaSwitchWritePhase::Navigate };
+		bool m_SpaSwitchRowSelected{ false };       // the S:B row-select has been issued
+		uint32_t m_SpaSwitchWritePollCount{ 0 };    // overall backstop
+		uint32_t m_SpaSwitchScrollCount{ 0 };       // picker pages scrolled so far
+		uint32_t m_SpaSwitchSettleCount{ 0 };       // polls waited for a page/picker to settle after a command
+		std::optional<std::string> m_SpaSwitchFirstPickerSeen;  // wrap-detection while scrolling the picker
+
+		// Service the pending spa-switch write goal: examine the current page + decoded picker rows
+		// and emit at most one command (into m_PendingCommand) per poll. Gated on m_CurrentPageId so
+		// a navigation miss can never issue a row-select/commit on the wrong page.
+		void SpaSwitchWrite_ProcessStep();
+
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };
 		bool m_HasReceivedData{ false };       // has any traffic ever been addressed to this id? (distinguishes "not present" from "went silent")

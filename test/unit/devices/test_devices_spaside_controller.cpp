@@ -161,9 +161,25 @@ BOOST_AUTO_TEST_CASE(SetButtonAssignment_NoConfigurator_IsNotAvailable)
 
 BOOST_AUTO_TEST_CASE(SetButtonAssignment_HigherPriorityIncapableController_FallsThroughToOneTouch)
 {
-	// An iAQ (Medium priority) is present but its per-button function-write is NotSupported (not yet
-	// decoded). An emulated OneTouch (Low priority) CAN program. The controller must FALL THROUGH the
-	// higher-priority-but-incapable iAQ to the OneTouch -> Accepted, rather than let the iAQ shadow it.
+	// An emulated iAQ (Medium) AND an emulated OneTouch (Low) are present. Switch 2 button 4 is a row
+	// the iAQ cannot select on its detail page (off-screen -> NotSupported), but the OneTouch CAN
+	// program it. The controller must FALL THROUGH the higher-priority-but-incapable iAQ to the
+	// OneTouch -> Accepted, rather than stop at the iAQ.
+	auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x33));
+	hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, /*emulated*/ true));
+
+	auto ot_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x40));
+	hub->AddDevice(std::make_unique<OneTouchDevice>(ot_id, *this, /*emulated*/ true));
+
+	SpasideRemoteController controller(hub);
+	BOOST_CHECK(controller.SetButtonAssignment(2, 4, "Pool Light")
+		== Interfaces::ISpasideRemoteController::AssignResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(SetButtonAssignment_HigherPriorityController_HandlesItWithoutFallthrough)
+{
+	// For a row the iAQ CAN program (on-screen), the higher-priority (Medium) emulated iAQ takes the
+	// request directly -- the OneTouch (Low) is not needed.
 	auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x33));
 	hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, /*emulated*/ true));
 
@@ -177,13 +193,13 @@ BOOST_AUTO_TEST_CASE(SetButtonAssignment_HigherPriorityIncapableController_Falls
 
 BOOST_AUTO_TEST_CASE(SetButtonAssignment_OnlyIncapableController_IsNotAvailable)
 {
-	// iAQ-only system: the per-button function-write isn't decoded, so every present configurator
-	// reports NotSupported and the request is genuinely unavailable (web maps this to 503).
+	// iAQ-only system, and a row the iAQ can't program (off-screen 2:4) with no OneTouch to fall
+	// through to: every present configurator reports NotSupported -> NotAvailable (web maps to 503).
 	auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x33));
 	hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, /*emulated*/ true));
 
 	SpasideRemoteController controller(hub);
-	BOOST_CHECK(controller.SetButtonAssignment(1, 2, "Pool Light")
+	BOOST_CHECK(controller.SetButtonAssignment(2, 4, "Pool Light")
 		== Interfaces::ISpasideRemoteController::AssignResult::NotAvailable);
 }
 
