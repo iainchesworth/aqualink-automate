@@ -1088,6 +1088,61 @@
             </div>
             </div>
 
+            <!-- Spa-side Remotes -->
+            <button class="section-toggle mb-1" @click="showSpaside = !showSpaside"
+                    :aria-expanded="showSpaside" aria-controls="diag-spaside">
+                <span class="section-toggle-chevron" :class="{ open: showSpaside }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Spa-side Remotes</span>
+            </button>
+            <div id="diag-spaside" x-show="showSpaside" x-transition.opacity x-cloak>
+                <p class="text-muted text-xs mt-0 mb-1" x-show="spasideRemotes.length === 0">
+                    No spa-side remotes (Dual Spa Switch / Spa Link) seen on the bus. They appear here
+                    once the master polls one, or when one is emulated.
+                </p>
+                <template x-for="remote in spasideRemotes" :key="remote.address">
+                    <div class="card mb-2">
+                        <div class="card-header card-header-split">
+                            <span><span x-text="remote.device_class"></span> <code x-text="remote.address"></code></span>
+                            <span class="badge"
+                                  :class="remote.emulated ? 'badge-freq' : 'badge-status-off'"
+                                  x-text="remote.emulated ? 'Emulated' : 'Observed'"></span>
+                        </div>
+                        <div class="card-body">
+                            <div class="emu-kv-grid">
+                                <span class="emu-kv-key">Polls</span>
+                                <span class="emu-kv-val" x-text="remote.poll_count"></span>
+                                <span class="emu-kv-key">Last button</span>
+                                <span class="emu-kv-val" x-text="remote.last_button ? remote.last_button : '--'"></span>
+                                <span class="emu-kv-key">Indicators</span>
+                                <span class="emu-kv-val">
+                                    <template x-if="!remote.led_image_seen"><span class="text-muted">--</span></template>
+                                    <template x-for="(state, i) in remote.leds" :key="i">
+                                        <span class="badge" :class="spasideLedBadgeClass(state)"
+                                              :title="'LED ' + (i+1) + ': ' + state"
+                                              x-text="i+1"></span>
+                                    </template>
+                                </span>
+                            </div>
+                            <p class="text-muted text-xs mt-1 mb-1" x-show="remote.emulated">
+                                Press a button to act as this remote on the bus -- the controller runs
+                                whatever function that button is mapped to.
+                            </p>
+                            <p class="text-muted text-xs mt-1 mb-1" x-show="!remote.emulated">
+                                Read-only: this is a real remote we observe. Its button presses appear above.
+                            </p>
+                            <div class="flex items-center gap-1 flex-wrap" x-show="remote.emulated && remote.button_count > 0">
+                                <template x-for="b in remote.button_count" :key="b">
+                                    <button class="setpoint-btn"
+                                            :disabled="spasideBusy"
+                                            @click="pressSpasideButton(remote.address, b)"
+                                            x-text="b"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
             <!-- MQTT Status -->
             <button class="section-toggle mb-1" @click="showMqtt = !showMqtt"
                     :aria-expanded="showMqtt" aria-controls="diag-mqtt">

@@ -170,6 +170,7 @@ target_sources(
 	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
 	unit/devices/test_devices_spaside_remote.cpp
+	unit/devices/test_devices_spaside_controller.cpp
 	unit/equipment/test_jandy_equipment.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
 	unit/kernel/test_kernel_device_graph.cpp
@@ -300,6 +301,7 @@ target_sources(
 	integration/flows/test_flow_fixture_replay.cpp
 	integration/flows/test_flow_command_to_wire.cpp
 	integration/flows/test_flow_spaside_remote.cpp
+	integration/flows/test_flow_web_spaside_remotes.cpp
 	integration/flows/test_flow_iaq_actuation.cpp
 	integration/flows/test_flow_onetouch_toggle.cpp
 	integration/flows/test_flow_onetouch_setpoint.cpp

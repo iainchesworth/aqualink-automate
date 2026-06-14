@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -79,6 +80,17 @@ namespace AqualinkAutomate::Devices
 		// Raw bytes of the most recent LED image (payload of the cmd-0x02 poll), for diagnostics
 		// and future decode of the higher (capture-unconfirmed) indicator bytes.
 		const std::vector<uint8_t>& LedImage() const { return m_LedImage; }
+
+		// Number of physical keys on this spa-side class: 8 for a Dual Spa Switch (0x10-0x13),
+		// 9 for a Spa Link (0x20-0x23); 0 for an unrecognised class (docs/alwin32/spaside-remotes.md).
+		uint8_t ButtonCount() const;
+
+		// Per-indicator LED state as display strings ("off"/"on"/"blink"); empty until the first
+		// LED image is seen. Single source of the enum->string mapping (used by diagnostics + web).
+		std::vector<std::string> LedStates() const;
+
+		// Hex string of the most recent raw LED image (space-separated bytes); empty until seen.
+		std::string LedImageHex() const;
 
 		// EMULATION (is_emulated): queue a button press to inject into our next reply to the
 		// master, so the master actuates whatever that button is mapped to on the controller.

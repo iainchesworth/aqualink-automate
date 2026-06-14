@@ -635,6 +635,68 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/equipment/spaside-remotes:
+    get:
+      tags:
+        - Equipment
+      summary: List spa-side remotes (Dual Spa Switch / Spa Link)
+      description: >
+        Returns every spa-side remote known on the bus with its decoded state: bus
+        address, device class, whether we emulate it (so its buttons can be pressed),
+        the number of physical keys, how many times the master has polled it, the last
+        decoded button press, and the indicator LEDs the master is pushing to it
+        (`leds`: one of "off"/"on"/"blink" per indicator; `led_image` the raw bytes).
+        Empty list when no spa-side stack is running (e.g. dev-mode/replay).
+      operationId: getSpasideRemotes
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              example:
+                remotes:
+                  - address: "0x20"
+                    device_class: "SpaRemote"
+                    emulated: true
+                    button_count: 9
+                    poll_count: 1234
+                    last_button: 0
+                    led_image_seen: true
+                    leds: ["on", "off", "blink", "off"]
+                    led_image: "05 00 00 00 00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Equipment
+      summary: Press a button on an emulated spa-side remote
+      description: >
+        Injects a momentary button press on the EMULATED spa-side remote at `address`,
+        so the master actuates whatever function that button is mapped to on the
+        controller. `action` must be "press"; `address` and `button` are unsigned bytes
+        (`button` is 1..button_count for that remote). 404 if no remote at that address;
+        409 if the remote is a real device we only observe (cannot be actuated); 400 on
+        a bad value; 503 when no spa-side controller is available (e.g. dev-mode/replay).
+        Returns the refreshed remotes list on success.
+      operationId: pressSpasideRemote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              action: "press"
+              address: 32
+              button: 2
+      responses:
+        '200':
+          description: Press queued; returns the refreshed remotes list
+        '400': { description: Invalid JSON / missing action / out-of-range address or button }
+        '404': { description: No spa-side remote at that address }
+        '409': { description: That remote is a real device we only observe; it cannot be actuated }
+        '503': { description: No spa-side controller available (dev-mode/replay) }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment/setpoints:
     get:
       tags:

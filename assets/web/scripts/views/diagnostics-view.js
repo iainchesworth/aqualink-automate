@@ -69,6 +69,7 @@ function diagnosticsView() {
         showEmulatedDevices: true,
         showActualDevices: true,
         showRecording: false,
+        showSpaside: false,
         showMqtt: false,
         showMatter: false,
 
@@ -82,6 +83,11 @@ function diagnosticsView() {
         recording: { recording: false, file: '', bytes: 0 },
         recordingFilename: 'capture.cap',
         recordingBusy: false,
+
+        // Spa-side remotes (Dual Spa Switch / Spa Link): decoded LEDs + last press, plus
+        // button-press injection on emulated remotes.
+        spasideRemotes: [],
+        spasideBusy: false,
 
         // Emulated device diagnostics
         emulatedDevices: [],
@@ -116,6 +122,10 @@ function diagnosticsView() {
             }
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
+            }
+            this.fetchSpasideRemotes();
+            if (!_diag.spasideTimer) {
+                _diag.spasideTimer = setInterval(() => this.fetchSpasideRemotes(), 2000);
             }
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
@@ -229,6 +239,11 @@ function diagnosticsView() {
                 _diag.recordingTimer = null;
             }
 
+            if (_diag.spasideTimer) {
+                clearInterval(_diag.spasideTimer);
+                _diag.spasideTimer = null;
+            }
+
             if (_diag.mqttTimer) {
                 clearInterval(_diag.mqttTimer);
                 _diag.mqttTimer = null;
@@ -281,6 +296,53 @@ function diagnosticsView() {
             } catch (e) {
                 _handlePollFailure('recording', null, e);
             }
+        },
+
+        async fetchSpasideRemotes() {
+            try {
+                const resp = await fetch('/api/equipment/spaside-remotes');
+                if (!resp.ok) { _handlePollFailure('spaside-remotes', resp, null); return; }
+                const data = await resp.json();
+                this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
+                _diag.warnedOnce['spaside-remotes'] = false;
+            } catch (e) {
+                _handlePollFailure('spaside-remotes', null, e);
+            }
+        },
+
+        // Inject a momentary press of `button` on the emulated remote at `address`. No-op for a
+        // real (observed) remote -- the server rejects it and we surface the reason.
+        async pressSpasideButton(address, button) {
+            if (this.spasideBusy) return;
+            this.spasideBusy = true;
+            try {
+                // The list reports address as a hex string ("0x20") for display; the API expects a
+                // numeric byte. parseInt auto-detects the 0x prefix.
+                const addr = (typeof address === 'string') ? parseInt(address, 16) : address;
+                const resp = await fetch('/api/equipment/spaside-remotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'press', address: addr, button: button })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    if (data && Array.isArray(data.remotes)) { this.spasideRemotes = data.remotes; }
+                    Alpine.store('toast').show('Spa-side button ' + button + ' pressed', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to press spa-side button', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to press spa-side button', 'error');
+            } finally {
+                this.spasideBusy = false;
+            }
+        },
+
+        // Map an indicator state to an existing badge class (green=on, amber=blink, grey=off).
+        spasideLedBadgeClass(state) {
+            if (state === 'on') return 'badge-freq';
+            if (state === 'blink') return 'badge-status-warn';
+            return 'badge-status-off';
         },
 
         async fetchMqtt() {

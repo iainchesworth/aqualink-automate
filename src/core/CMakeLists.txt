@@ -63,6 +63,7 @@ target_sources(
 	http/webroute_diagnostics_options.cpp
 	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp
+	http/webroute_equipment_spaside_remotes.cpp
 	http/webroute_equipment_button.cpp
 	http/webroute_equipment_buttons.cpp
 	http/webroute_equipment_chlorinator.cpp

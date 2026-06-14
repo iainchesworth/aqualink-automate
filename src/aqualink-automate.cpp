@@ -51,6 +51,7 @@
 #include "http/webroute_diagnostics_options.h"
 #include "http/webroute_diagnostics_recording.h"
 #include "http/webroute_equipment.h"
+#include "http/webroute_equipment_spaside_remotes.h"
 #include "http/webroute_equipment_button.h"
 #include "http/webroute_equipment_buttons.h"
 #include "http/webroute_equipment_chlorinator.h"
@@ -99,6 +100,7 @@
 
 // Jandy protocol
 #include "jandy/devices/command_dispatcher.h"
+#include "jandy/devices/spaside_remote_controller.h"
 #include "jandy/options/options_jandy.h"
 #include "jandy/startup/jandy_startup_service.h"
 #include "jandy/jandy.h"
@@ -225,6 +227,11 @@ int main(int argc, char* argv[])
 
 			auto command_dispatcher = std::make_shared<Devices::CommandDispatcher>(data_hub, equipment_hub);
 			hub_locator.Register<Interfaces::ICommandDispatcher>(command_dispatcher);
+
+			// Spa-side remote control surface (read decoded LED/last-press state; inject button
+			// presses on emulated remotes). Resolved by the /api/equipment/spaside-remotes route.
+			auto spaside_controller = std::make_shared<Devices::SpasideRemoteController>(equipment_hub);
+			hub_locator.Register<Interfaces::ISpasideRemoteController>(spaside_controller);
 		}
 
 		//---------------------------------------------------------------------
@@ -585,6 +592,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_IAQ>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_SpasideRemotes>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));

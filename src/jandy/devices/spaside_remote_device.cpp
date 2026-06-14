@@ -145,6 +145,53 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	uint8_t SpasideRemoteDevice::ButtonCount() const
+	{
+		switch (DeviceId().Class())
+		{
+		case DeviceClasses::DualSpaSwitch: return 8;   // 2x4rem: 2 columns x 4 rows
+		case DeviceClasses::SpaRemote:     return 9;   // 8button: 8 keys + a 9th extra/menu key
+		default:                           return 0;
+		}
+	}
+
+	std::vector<std::string> SpasideRemoteDevice::LedStates() const
+	{
+		std::vector<std::string> states;
+		if (!m_LedImageSeen)
+		{
+			return states;   // nothing decoded yet
+		}
+
+		states.reserve(m_Leds.size());
+		for (const auto state : m_Leds)
+		{
+			switch (state)
+			{
+			case SpasideLedState::On:    states.emplace_back("on");    break;
+			case SpasideLedState::Blink: states.emplace_back("blink"); break;
+			case SpasideLedState::Off:
+			default:                     states.emplace_back("off");   break;
+			}
+		}
+		return states;
+	}
+
+	std::string SpasideRemoteDevice::LedImageHex() const
+	{
+		std::string image_hex;
+		image_hex.reserve(m_LedImage.size() * 3);
+		for (const auto byte : m_LedImage)
+		{
+			image_hex += std::format("{:02x} ", byte);
+		}
+		if (!image_hex.empty())
+		{
+			image_hex.pop_back();   // drop trailing space
+		}
+		return image_hex;
+	}
+
 	nlohmann::json SpasideRemoteDevice::DescribeDiagnostics() const
 	{
 		nlohmann::json j;
@@ -158,35 +205,8 @@ namespace AqualinkAutomate::Devices
 		j["led_image_seen"] = m_LedImageSeen;
 		if (m_LedImageSeen)
 		{
-			const auto led_name = [](SpasideLedState state) -> const char*
-			{
-				switch (state)
-				{
-				case SpasideLedState::On:    return "on";
-				case SpasideLedState::Blink: return "blink";
-				case SpasideLedState::Off:
-				default:                     return "off";
-				}
-			};
-
-			nlohmann::json leds = nlohmann::json::array();
-			for (const auto state : m_Leds)
-			{
-				leds.push_back(led_name(state));
-			}
-			j["leds"] = leds;
-
-			std::string image_hex;
-			image_hex.reserve(m_LedImage.size() * 3);
-			for (const auto byte : m_LedImage)
-			{
-				image_hex += std::format("{:02x} ", byte);
-			}
-			if (!image_hex.empty())
-			{
-				image_hex.pop_back();   // drop trailing space
-			}
-			j["led_image"] = image_hex;
+			j["leds"] = LedStates();
+			j["led_image"] = LedImageHex();
 		}
 
 		if (m_LastButtonAt.has_value())
