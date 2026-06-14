@@ -1,8 +1,11 @@
 #include <chrono>
+#include <condition_variable>
 #include <exception>
+#include <mutex>
 #include <optional>
 #include <source_location>
 #include <string>
+#include <thread>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -33,8 +36,10 @@ namespace AqualinkAutomate::HTTP
 		constexpr std::chrono::milliseconds SIDECAR_TIMEOUT{ 750 };
 
 		// Fetch the sidecar's /matter/status over localhost on a throwaway io_context,
-		// bounded so a hung/absent sidecar cannot stall the main loop. Returns the
-		// response body, or nullopt if it could not be reached in time.
+		// bounded so a hung/absent sidecar fails fast. Called ONLY from the route's
+		// background RefreshLoop thread -- never the main io_context -- so the bounded
+		// run_for here can block this thread without ever stalling the serial reader.
+		// Returns the response body, or nullopt if it could not be reached in time.
 		std::optional<std::string> FetchSidecarStatus(uint16_t status_port)
 		{
 			try
@@ -98,6 +103,50 @@ namespace AqualinkAutomate::HTTP
 		m_Enabled(enabled),
 		m_StatusPort(status_port)
 	{
+		// Only spin up the background poller when Matter is actually enabled; a disabled
+		// route answers purely from m_Enabled and never touches the sidecar.
+		if (m_Enabled)
+		{
+			m_RefreshThread = std::thread([this]() { RefreshLoop(); });
+		}
+	}
+
+	WebRoute_Diagnostics_Matter::~WebRoute_Diagnostics_Matter()
+	{
+		{
+			std::lock_guard<std::mutex> lock(m_WakeMutex);
+			m_Stop = true;
+		}
+		m_WakeCv.notify_all();
+
+		if (m_RefreshThread.joinable())
+		{
+			m_RefreshThread.join();
+		}
+	}
+
+	void WebRoute_Diagnostics_Matter::RefreshLoop()
+	{
+		// How often the cached snapshot is refreshed. Each poll runs entirely on THIS
+		// thread (never the main io_context), so a slow/absent sidecar only stalls the
+		// poller, never the serial reader.
+		constexpr std::chrono::seconds REFRESH_INTERVAL{ 5 };
+
+		for (;;)
+		{
+			auto body = FetchSidecarStatus(m_StatusPort);
+			{
+				std::lock_guard<std::mutex> lock(m_StatusMutex);
+				m_CachedStatusBody = std::move(body);
+			}
+
+			std::unique_lock<std::mutex> wake_lock(m_WakeMutex);
+			m_WakeCv.wait_for(wake_lock, REFRESH_INTERVAL, [this]() { return m_Stop; });
+			if (m_Stop)
+			{
+				return;
+			}
+		}
 	}
 
 	HTTP::Message WebRoute_Diagnostics_Matter::OnRequest(const HTTP::Request& req)
@@ -119,7 +168,14 @@ namespace AqualinkAutomate::HTTP
 
 		json["status_port"] = m_StatusPort;
 
-		auto status_body = FetchSidecarStatus(m_StatusPort);
+		// Read the most recent background-refreshed snapshot. This NEVER blocks the main
+		// loop: the actual (potentially slow) sidecar fetch happens on RefreshLoop's thread.
+		std::optional<std::string> status_body;
+		{
+			std::lock_guard<std::mutex> lock(m_StatusMutex);
+			status_body = m_CachedStatusBody;
+		}
+
 		if (!status_body.has_value())
 		{
 			// Enabled but the sidecar is not answering (still starting, or crashed).
