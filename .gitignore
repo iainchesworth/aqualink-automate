@@ -378,3 +378,6 @@ blob-report/
 
 # Local serial capture / replay scratch (recordings + decode logs; large, never source)
 captures/
+
+# Emulated-EEPROM persistence the app writes at runtime; not source
+EEPROM.DAT
