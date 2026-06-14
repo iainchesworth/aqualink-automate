@@ -1167,6 +1167,40 @@
                         </template>
                     </div>
                 </div>
+
+                <!-- Program an assignment over the bus (drives the controller's Spa Switch /
+                     Spa Remotes config). Works on whichever controller can write it (OneTouch
+                     today); an iAQ that can't reports unavailable and we fall through. -->
+                <div class="card mb-2">
+                    <div class="card-header">Set a button assignment</div>
+                    <div class="card-body">
+                        <p class="text-muted text-xs mt-0 mb-1">
+                            Program switch:button &rarr; function on the controller. The list above
+                            updates once the controller re-reports the change.
+                        </p>
+                        <div class="flex items-center" style="gap: 0.5rem; flex-wrap: wrap;">
+                            <label class="text-xs">Switch
+                                <input type="number" min="1" max="3" x-model.number="spasideAssign.switch"
+                                       style="width: 3.5rem;" :disabled="spasideBusy">
+                            </label>
+                            <label class="text-xs">Button
+                                <input type="number" min="1" max="16" x-model.number="spasideAssign.button"
+                                       style="width: 3.5rem;" :disabled="spasideBusy">
+                            </label>
+                            <label class="text-xs">Function
+                                <input type="text" list="spaside-fn-list" x-model="spasideAssign.function"
+                                       placeholder="e.g. Pool Light" :disabled="spasideBusy">
+                            </label>
+                            <datalist id="spaside-fn-list">
+                                <template x-for="fn in spasideKnownFunctions()" :key="fn">
+                                    <option :value="fn"></option>
+                                </template>
+                            </datalist>
+                            <button class="btn btn-sm" :disabled="spasideBusy"
+                                    @click="setSpasideAssignment()">Set</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- MQTT Status -->

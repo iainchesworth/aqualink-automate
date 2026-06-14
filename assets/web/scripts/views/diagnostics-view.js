@@ -93,6 +93,9 @@ function diagnosticsView() {
         // keyed by the controller's switch numbering. [{switch,button,function}, ...]
         spasideAssignments: [],
 
+        // "Set assignment" form state: program switch:button -> function over the bus.
+        spasideAssign: { switch: 1, button: 1, function: '' },
+
         // Emulated device diagnostics
         emulatedDevices: [],
 
@@ -341,6 +344,48 @@ function diagnosticsView() {
             } finally {
                 this.spasideBusy = false;
             }
+        },
+
+        // Program a spa-side switch button's function over the bus (drives the controller's Spa
+        // Switch / Spa Remotes config menu). Takes effect on whichever controller can write it
+        // (OneTouch today; an iAQ that can't reports unavailable and we fall through). The live
+        // assignment list refreshes on the next poll once the controller re-reports it.
+        async setSpasideAssignment() {
+            if (this.spasideBusy) return;
+            const sw = parseInt(this.spasideAssign.switch, 10);
+            const btn = parseInt(this.spasideAssign.button, 10);
+            const fn = (this.spasideAssign.function || '').trim();
+            if (!Number.isInteger(sw) || sw < 1 || !Number.isInteger(btn) || btn < 1 || fn === '') {
+                Alpine.store('toast').show('Enter a switch, button and function to assign', 'error');
+                return;
+            }
+            this.spasideBusy = true;
+            try {
+                const resp = await fetch('/api/equipment/spaside-remotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'assign', switch: sw, button: btn, function: fn })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    Alpine.store('toast').show('Programming switch ' + sw + ' button ' + btn + ' → ' + fn + '…', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to program spa-switch assignment', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to program spa-switch assignment', 'error');
+            } finally {
+                this.spasideBusy = false;
+            }
+        },
+
+        // The distinct function names the controller currently reports, to seed the assign datalist.
+        spasideKnownFunctions() {
+            const seen = [];
+            for (const a of this.spasideAssignments) {
+                if (a.function && !seen.includes(a.function)) { seen.push(a.function); }
+            }
+            return seen;
         },
 
         // Button layout for a remote. A "Dual Spa Switch" is the 6588 Dual Spa Side Interface
