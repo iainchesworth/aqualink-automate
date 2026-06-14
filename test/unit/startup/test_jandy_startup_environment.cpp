@@ -134,6 +134,23 @@ BOOST_AUTO_TEST_CASE(RelocateEmulation_SerialAdapter_MovesFrom0x48To0x49)
 	BOOST_CHECK(HubHasDeviceAt(harness, 0x49));   // the SerialAdapter's only other instance
 }
 
+BOOST_AUTO_TEST_CASE(RelocateEmulation_SpasideRemote_DualSpaSwitch_MovesFrom0x10To0x11)
+{
+	// Open-source generality (Phase 2): spa-side remote emulation inherits the same generic
+	// collision-relocation machinery as every other emulated device. A REAL Dual Spa Switch
+	// appears at our emulated address 0x10 -> we relocate to the next free instance of the same
+	// class (0x10-0x13) instead of going silent. (0x10 is the maintainer's own remote address,
+	// here used as the colliding real device.)
+	Test::MockReplayHarness harness;
+	JandyStartupEnvironment env(harness.HubLocatorRef());
+
+	env.EmulateDevice(DeviceType::SpasideRemote, 0x10, "spaside");
+	BOOST_REQUIRE(HubHasDeviceAt(harness, 0x10));
+
+	BOOST_CHECK(env.RelocateEmulation(DeviceType::SpasideRemote, 0x10));
+	BOOST_CHECK(HubHasDeviceAt(harness, 0x11));   // the next free Dual Spa Switch instance
+}
+
 BOOST_AUTO_TEST_CASE(RelocateEmulation_NoFreeInstance_ReturnsFalse)
 {
 	// Both SerialAdapter instances are already ours -> nowhere to relocate -> false (the caller
