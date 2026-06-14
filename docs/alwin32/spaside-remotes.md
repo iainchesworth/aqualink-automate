@@ -383,6 +383,45 @@ Switch #1 has no bus presence at all.
   (press codes 1–4)** and **fake switch #3 (codes 5–8)** — lets users without the physical board add
   spa-side switches the controller honours.
 
+## Spa-switch button assignment — config protocol over the bus (read + write)
+
+Both controllers expose the spa-side switch button→function map AND let it be programmed over
+RS-485 (RE'd from `captures/spaside_setup_nav.cap`; the maintainer navigated the config + changed
+and reverted button 1:2). Stored controller-agnostically on the DataHub; see the Phase-4b commits.
+
+### READ (implemented)
+- **iAQ** ("Spa Remotes" page): assignment rows arrive as `IAQ_TableMessage` (0x26) group-0x00
+  frames, text `"<switch>:<button>\t<function>"` (the tab + trailing NUL are sanitised to `'?'`).
+  The function-picker is group-0x01. Menu path: Setup (page-button idx 21) → Spa Remotes (idx 6)
+  → "4 Function Spa Switch".
+- **OneTouch** ("Spa Switch" menu): the assignment list is a screen page titled `Spa Switch`
+  (line 0) / `Button Setup` (line 1), rows `"<switch>:<button>   <function>"` (space-padded).
+- One shared parser (`Utility::ParseSpaSwitchAssignmentLine`) handles both → `DataHub` map.
+
+### WRITE (RE complete; implementation pending)
+**OneTouch keypress codes** (panel→master Ack, ack_type 0x80, command byte):
+`0x04` = Select (enter page / confirm) · `0x05` = highlight-next (move down a list) ·
+`0x06` = cycle value (step the function picker to the next option) · `0x02` = Back.
+
+**Sequence to set Switch S, Button B → function F** (verified against the capture's 1:2 edit):
+1. Navigate Program → … → **Spa Switch** (menu item).
+2. Select (0x04) → "Spa Switch Setup" (the *number of switches* page: options 1/2/3).
+3. Select (0x04) → "Button Setup" (the assignment list).
+4. highlight-next (0x05) until the cursor is on row **S:B**.
+5. Select (0x04) → the **"Button S:B"** function picker.
+6. cycle (0x06) until the displayed function reads **F** — feedback-driven, exactly like the
+   numeric SetTemperature value-step (compare on-screen text to F each step).
+7. Select/Back to confirm; the list then shows `S:B  F`.
+
+The function picker cycles a fixed list: All OFF, OneTouch 4h, Clean Mode, Spa Mode, Spillway,
+Air Blower, Pool Light, Swim Jet, Spa Jets, Filter Pump, Spa, Pool Heat, Spa Heat, Solar Heat, …
+
+**Implementation shape:** a new `AssignmentEditGoal` mirroring `OneTouchDevice::ValueEditGoal` but
+cycling a STRING (read the row's function text, press 0x06 until it matches F), plus the Spa-Switch
+config pages added to `onetouch_menu_model.cpp`; an equivalent iAQ page-button flow; surfaced via
+`ISpasideRemoteController::SetButtonAssignment` + `POST /api/equipment/spaside-remotes {action:"assign"}`
+and persisted in `PreferencesHub`. Both controller paths required (generality).
+
 ### Flagged — needs a live RS-485 capture to confirm
 * **Button-index ↔ physical-function map** (which of the 8/9 indices is Pool/Spa/Aux/Heat/
   etc.) — not labelled in either binary.
