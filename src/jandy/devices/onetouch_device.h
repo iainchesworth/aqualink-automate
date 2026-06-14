@@ -18,6 +18,7 @@
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
 #include "devices/capabilities/setpoint_controller.h"
+#include "devices/capabilities/spa_switch_configurator.h"
 #include "messages/jandy_message_ack.h"
 #include "messages/jandy_message_ids.h"
 #include "messages/jandy_message_probe.h"
@@ -38,7 +39,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::ChlorinatorController
+	class OneTouchDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::ChlorinatorController, public Capabilities::SpaSwitchConfigurator
 	{
 		inline static const uint8_t ONETOUCH_PAGE_LINES = 12;
 		inline static const std::chrono::seconds ONETOUCH_TIMEOUT_DURATION{ std::chrono::seconds(30) };
@@ -120,6 +121,20 @@ namespace AqualinkAutomate::Devices
 		// so the IAQ's direct value-submit chlorinator (Medium) is preferred on a combined rig.
 		Capabilities::ActuationResult SetChlorinatorPercentage(uint8_t percentage) override;
 		Capabilities::ActuationResult SetChlorinatorBoost(bool enable) override;
+
+		// SpaSwitchConfigurator: program a spa-side switch button's function by driving the
+		// emulated keypad through the Spa Switch config menu (System Setup -> Spa Switch -> the
+		// number-of-switches page -> Button Setup list -> the "S:B" row -> the function picker),
+		// then cycling the picker until it shows the target function and Select-ing to commit.
+		// Screen-driven (not menu-model pathfinding) because the number-of-switches page must be
+		// passed with a bare Select so the cursor never moves and the switch count is preserved.
+		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
+
+		// Sanitise a screen row's text for function/label comparison: trim surrounding whitespace
+		// and non-printable bytes, yielding the clean displayed text (the controller's inverse-video
+		// highlight is a separate Highlight message, never appended to the row Text). Public+static
+		// for direct unit testing of the picker compare.
+		static std::string SanitiseFunctionText(const std::string& raw);
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -222,6 +237,11 @@ namespace AqualinkAutomate::Devices
 		// 1-degree steps) and chlorinator % (Set AquaPure, 5% steps) alike.
 		void ValueEdit_ProcessStep();
 
+		// On-demand SPA-SWITCH ASSIGNMENT edit (SpaSwitchConfigurator): service a single pending
+		// assignment goal in NormalOperation. Screen-driven phase machine that walks the Spa
+		// Switch config menu and cycles the per-button function picker to the target.
+		void SpaSwitchEdit_ProcessStep();
+
 		// On-demand chlorinator BOOST (ChlorinatorController): service a single pending
 		// boost start/stop goal in NormalOperation via the Boost Pool page - Select on the
 		// "Operate at 100%" page starts it; navigating to the "Stop" item and Select stops it.
@@ -232,8 +252,18 @@ namespace AqualinkAutomate::Devices
 		// rendered, or value blanked mid-edit), so the step loop simply waits.
 		std::optional<int> DisplayedValue(uint8_t line_id) const;
 
-		// True when any on-demand goal (toggle / value-edit / boost) is mid-flight; the single
-		// shared Navigator means goals must never interleave.
+		// Read the function name shown on a row, sanitised for comparison (via SanitiseFunctionText):
+		// the displayed text with surrounding whitespace/non-printable artifacts trimmed (e.g.
+		// "Pool Light" from a Button-Setup row's "S:B  Pool Light"). Empty when the row is
+		// blank/not rendered. Used for the picker compare and to read a row's current function.
+		std::optional<std::string> DisplayedFunctionOnRow(uint8_t line_id) const;
+
+		// Find the first screen line whose text (trimmed) STARTS WITH 'prefix' (case-insensitive);
+		// used to locate the "Spa Switch" menu item and the "S:B" assignment row on screen.
+		std::optional<uint8_t> FindLineStartingWith(const std::string& prefix) const;
+
+		// True when any on-demand goal (toggle / value-edit / boost / spa-switch) is mid-flight; the
+		// single shared Navigator/keypad means goals must never interleave.
 		bool GoalInProgress() const;
 
 		// Convert Navigator key command to device KeyCommand
@@ -311,6 +341,37 @@ namespace AqualinkAutomate::Devices
 		BoostPhase m_BoostPhase{ BoostPhase::Navigating };
 		bool m_BoostInProgress{ false };
 		uint32_t m_BoostStepCount{ 0 };
+
+	private:
+		// On-demand SPA-SWITCH assignment edit goal (one at a time). Set by SetSpaSwitchAssignment,
+		// serviced by SpaSwitchEdit_ProcessStep. Screen-driven: each phase reads the current page and
+		// emits one key. Distinct from the value-edit because it crosses several pages (System Setup
+		// -> Spa Switch -> number page -> Button Setup -> picker) and must NOT move the cursor on the
+		// number-of-switches page (that would change the switch count).
+		enum class SpaSwitchEditPhase
+		{
+			ToSystemSetup,    // Navigator drives to the System Setup menu
+			SelectSpaSwitch,  // move cursor to the "Spa Switch" item, then Select -> number page
+			PassNumberPage,   // bare Select on the number-of-switches page -> Button Setup list
+			ToRow,            // move cursor to the "S:B" row, then Select -> function picker
+			CyclePicker,      // LineUp-cycle the picker until it shows the target function
+			Commit            // Select to write the function and leave the picker
+		};
+		struct SpaSwitchEditGoal
+		{
+			uint8_t switch_number{ 0 };
+			uint8_t button_number{ 0 };
+			std::string function;   // target function name (as the controller's picker lists it)
+			std::string row_tag;    // "<switch>:<button>" e.g. "1:2" -- the Button Setup row label
+			std::string desc;
+		};
+		inline static const uint32_t ONETOUCH_SPASWITCH_STEP_LIMIT{ 800 };  // menu walk + up to a full picker cycle
+		std::optional<SpaSwitchEditGoal> m_PendingSpaSwitchEdit;
+		SpaSwitchEditPhase m_SpaSwitchEditPhase{ SpaSwitchEditPhase::ToSystemSetup };
+		bool m_SpaSwitchEditInProgress{ false };
+		uint32_t m_SpaSwitchEditStepCount{ 0 };
+		std::optional<std::string> m_PickerFirstSeenFunction;  // wrap detection while cycling the picker
+		uint32_t m_SpaSwitchCursorStuck{ 0 };
 
 	private:
 		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore
