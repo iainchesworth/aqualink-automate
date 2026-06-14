@@ -17,6 +17,7 @@
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "devices/spaside_remote_device.h"
 #include "equipment/jandy_equipment.h"
 #include "equipment/master_traffic_snoop.h"
 #include "formatters/jandy_device_formatters.h"
@@ -200,15 +201,13 @@ namespace AqualinkAutomate::Equipment
 
 			case Devices::DeviceClasses::DualSpaSwitch:
 			case Devices::DeviceClasses::SpaRemote:
-				// Spaside remotes ("Dual Spa Switch" = 2x4rem at 0x10, "Spa Link" = 8button at
-				// 0x20) are spa-side keypads. They are recognised via the KeypadDevice handler so
-				// they appear as supported equipment on the bus. NOTE: their wire protocol reuses
-				// generic command bytes (button-press status is an Ack 0x01; the master's LED image
-				// is cmd 0x01/0x02), so the full button/LED decode is not attempted here -- the
-				// global command->message factory cannot distinguish them from Ack/Status, and a
-				// device->master status frame carries no source id (see docs/alwin32/spaside-remotes.md).
+				// Spaside remotes ("Dual Spa Switch" = 2x4rem at 0x10-0x13, "Spa Link" = 8button
+				// at 0x20-0x23) are spa-side keypads. SpasideRemoteDevice decodes their button
+				// presses by correlating the master's poll (a cmd-0x02 Status to our id) with the
+				// generic Ack the remote sends back to the master (see spaside_remote_device.h).
+				// Created non-emulated: passively observe a real remote on the bus.
 				LogInfo(Channel::Equipment, [&] { return std::format("Adding new {} (spaside remote) device with id: {}", magic_enum::enum_name(message.Destination().Class()), message.Destination().Id()); });
-				m_EquipmentHub->AddDevice(std::make_unique<Devices::KeypadDevice>(std::move(device_id), m_HubLocator, false));
+				m_EquipmentHub->AddDevice(std::make_unique<Devices::SpasideRemoteDevice>(std::move(device_id), m_HubLocator, false));
 				break;
 
 			case Devices::DeviceClasses::SerialAdapter:

@@ -32,8 +32,9 @@ target_sources(
 	devices/keypad_device.cpp
 	devices/lights_device.cpp
 	devices/onetouch_device.cpp
-	devices/pda_device.cpp 
-	devices/serial_adapter_device.cpp 
+	devices/pda_device.cpp
+	devices/serial_adapter_device.cpp
+	devices/spaside_remote_device.cpp
 	devices/keypad/keypad_messageprocessors.cpp 
 	devices/onetouch/onetouch_messageprocessors.cpp
 	devices/onetouch/onetouch_pageprocessors.cpp

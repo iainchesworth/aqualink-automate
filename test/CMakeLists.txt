@@ -169,6 +169,7 @@ target_sources(
 	unit/devices/test_devices_lights.cpp
 	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
+	unit/devices/test_devices_spaside_remote.cpp
 	unit/equipment/test_jandy_equipment.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
 	unit/kernel/test_kernel_device_graph.cpp
