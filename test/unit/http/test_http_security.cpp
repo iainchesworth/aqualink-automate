@@ -38,7 +38,7 @@ namespace
 	class TestOkRoute : public Interfaces::IWebRoute<OK_ROUTE_URL>
 	{
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) override
+		HTTP::Response OnRequest(const HTTP::Request& req) override
 		{
 			HTTP::Response res{ boost::beast::http::status::ok, req.version() };
 			res.keep_alive(req.keep_alive());

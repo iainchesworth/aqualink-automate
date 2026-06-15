@@ -344,7 +344,17 @@ namespace AqualinkAutomate::HTTP::Routing
 				}
 
 				LogTrace(Channel::Web, [&] { return std::format("Handling HTTP {} request for {}", magic_enum::enum_name(req.method()), std::string_view(req.target())); });
-				return p->OnRequest(req);
+
+				// Dynamic route responses (API equipment state, diagnostics, etc.)
+				// reflect live data and must never be reused from a cache. The service
+				// worker already treats /api as network-only; stamping no-store here —
+				// the single place a registered route's mutable Response is still in
+				// hand before it is type-erased into a message_generator — is the
+				// defence-in-depth for direct browser fetches and any intermediary,
+				// and means no handler has to remember to set it.
+				HTTP::Response resp = p->OnRequest(req);
+				resp.set(boost::beast::http::field::cache_control, "no-store");
+				return resp;
 			}
 			else if (sf_route.has_value() && sf_route->match(req.target(), static_file_result))
 			{

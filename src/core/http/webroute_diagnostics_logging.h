@@ -13,11 +13,11 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Diagnostics_Logging() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
-		HTTP::Message HandleGet(const HTTP::Request& req);
-		HTTP::Message HandlePost(const HTTP::Request& req);
+		HTTP::Response HandleGet(const HTTP::Request& req);
+		HTTP::Response HandlePost(const HTTP::Request& req);
 	};
 
 }

@@ -48,7 +48,7 @@ namespace AqualinkAutomate::HTTP
 			return envelope;
 		}
 
-		HTTP::Message MakeJsonResponse(const HTTP::Request& req, HTTP::Status code, const std::string& body)
+		HTTP::Response MakeJsonResponse(const HTTP::Request& req, HTTP::Status code, const std::string& body)
 		{
 			HTTP::Response resp{ code, req.version() };
 			resp.set(boost::beast::http::field::server, ServerFields::Server());
@@ -71,7 +71,7 @@ namespace AqualinkAutomate::HTTP
 		m_PreferencesHub = hub_locator.TryFind<Kernel::PreferencesHub>();
 	}
 
-	HTTP::Message WebRoute_Equipment_SpasideRemotes::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_SpasideRemotes::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Equipment_SpasideRemotes::OnRequest", std::source_location::current());
 
@@ -88,7 +88,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	HTTP::Message WebRoute_Equipment_SpasideRemotes::HandleGet(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_SpasideRemotes::HandleGet(const HTTP::Request& req)
 	{
 		std::vector<Interfaces::ISpasideRemoteController::RemoteState> remotes;
 		if (m_Controller)
@@ -149,7 +149,7 @@ namespace AqualinkAutomate::HTTP
 		return MakeJsonResponse(req, HTTP::Status::ok, envelope.dump());
 	}
 
-	HTTP::Message WebRoute_Equipment_SpasideRemotes::HandlePost(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_SpasideRemotes::HandlePost(const HTTP::Request& req)
 	{
 		if (!m_Controller)
 		{

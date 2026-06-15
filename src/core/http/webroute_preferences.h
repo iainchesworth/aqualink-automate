@@ -20,7 +20,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Preferences() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<Preferences::PreferencesService> m_Service;

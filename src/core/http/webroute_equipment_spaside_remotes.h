@@ -29,11 +29,11 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Equipment_SpasideRemotes() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
-		HTTP::Message HandleGet(const HTTP::Request& req);
-		HTTP::Message HandlePost(const HTTP::Request& req);
+		HTTP::Response HandleGet(const HTTP::Request& req);
+		HTTP::Response HandlePost(const HTTP::Request& req);
 
 	private:
 		// Non-owning: the controller is owned by the application for its whole lifetime. nullptr

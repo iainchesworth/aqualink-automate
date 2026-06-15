@@ -69,7 +69,7 @@ namespace
 			req.body() = body;
 			req.prepare_payload();
 
-			auto msg = route.OnRequest(req);
+			HTTP::Message msg = route.OnRequest(req);
 
 			boost::asio::io_context ioc;
 			auto exec = ioc.get_executor();

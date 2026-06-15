@@ -75,6 +75,9 @@ add_custom_command(
 	# Copy beside the executable into web/ to match the runtime default doc-root
 	# (Application::DOC_ROOT = <exe_dir>/web) and the packaged layout (bin/web).
 	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "$<TARGET_FILE_DIR:aqualink-automate>/web"
+	# Stamp the service-worker cache name with the build version: a unique cache
+	# per build whose old offline shells purge on activate (see cmake/stamp_sw_version.cmake).
+	COMMAND ${CMAKE_COMMAND} -D "SW_JS=$<TARGET_FILE_DIR:aqualink-automate>/web/sw.js" -D "AQ_VERSION=${PROJECT_VERSION}" -P "${CMAKE_SOURCE_DIR}/cmake/stamp_sw_version.cmake"
 	COMMENT "Syncing web assets"
 )
 

@@ -78,7 +78,7 @@ namespace
 	// the GET-only shared helper does not support.
 	HTTP::Response InvokeRoute(HTTP::WebRoute_Diagnostics_Recording& route, HTTP::Request& req)
 	{
-		auto msg = route.OnRequest(req);
+		HTTP::Message msg = route.OnRequest(req);
 
 		boost::asio::io_context ioc;
 		auto exec = ioc.get_executor();

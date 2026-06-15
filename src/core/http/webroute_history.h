@@ -26,7 +26,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_History() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<History::HistoryService> m_Service;

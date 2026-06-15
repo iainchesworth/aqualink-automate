@@ -55,7 +55,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	}
 
-	HTTP::Message WebRoute_Schedules::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Schedules::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Schedules::OnRequest", std::source_location::current());
 
@@ -101,7 +101,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	}
 
-	HTTP::Message WebRoute_Schedule::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Schedule::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Schedule::OnRequest", std::source_location::current());
 

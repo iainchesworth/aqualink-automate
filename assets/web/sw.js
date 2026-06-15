@@ -23,9 +23,11 @@
  *   - /ws/*   : never intercepted (WebSocket upgrades are not cacheable and must
  *     reach the backend untouched).
  *
- * The cache name is version-stamped.  Bump CACHE_VERSION whenever the static
- * shell assets change so returning clients pick up the new files (old caches are
- * purged on activate).
+ * The cache name is stamped with the build version at build/package time (see
+ * cmake/stamp_sw_version.cmake), so each release gets its own cache and stale
+ * offline shells purge on activate. The literal below is only the source/dev
+ * fallback when the file is served unstamped (e.g. --doc-root <assets/web>);
+ * with the network-first strategy above, online freshness never depends on it.
  */
 
 const CACHE_VERSION = 'v2';

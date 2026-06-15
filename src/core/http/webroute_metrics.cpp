@@ -120,7 +120,7 @@ namespace AqualinkAutomate::HTTP
 		m_StatisticsHub = hub_locator.Find<Kernel::StatisticsHub>();
 	}
 
-	HTTP::Message WebRoute_Metrics::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Metrics::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Metrics::OnRequest", std::source_location::current());
 

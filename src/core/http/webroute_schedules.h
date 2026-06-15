@@ -24,7 +24,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Schedules() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<Scheduling::SchedulerService> m_Service;
@@ -39,7 +39,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Schedule() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<Scheduling::SchedulerService> m_Service;

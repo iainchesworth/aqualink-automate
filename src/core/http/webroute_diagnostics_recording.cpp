@@ -34,7 +34,7 @@ namespace AqualinkAutomate::HTTP
 			return result;
 		}
 
-		HTTP::Message MakeJsonResponse(const HTTP::Request& req, HTTP::Status code, const std::string& body)
+		HTTP::Response MakeJsonResponse(const HTTP::Request& req, HTTP::Status code, const std::string& body)
 		{
 			HTTP::Response resp{ code, req.version() };
 			resp.set(boost::beast::http::field::server, ServerFields::Server());
@@ -158,7 +158,7 @@ namespace AqualinkAutomate::HTTP
 		m_RecordingController = hub_locator.TryFind<Interfaces::IRecordingController>();
 	}
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Recording::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Recording::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Recording::OnRequest", std::source_location::current());
 
@@ -175,7 +175,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Recording::HandleGet(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Recording::HandleGet(const HTTP::Request& req)
 	{
 		Interfaces::IRecordingController::Status status;
 		if (m_RecordingController)
@@ -188,7 +188,7 @@ namespace AqualinkAutomate::HTTP
 		return MakeJsonResponse(req, HTTP::Status::ok, StatusToJson(status).dump());
 	}
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Recording::HandlePost(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Recording::HandlePost(const HTTP::Request& req)
 	{
 		if (!m_RecordingController)
 		{

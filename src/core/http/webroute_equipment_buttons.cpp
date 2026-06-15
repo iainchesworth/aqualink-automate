@@ -26,7 +26,7 @@ namespace AqualinkAutomate::HTTP
 		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
     }
 
-    HTTP::Message WebRoute_Equipment_Buttons::OnRequest(const HTTP::Request& req)
+    HTTP::Response WebRoute_Equipment_Buttons::OnRequest(const HTTP::Request& req)
     {
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_EquipmentButtons::OnRequest", std::source_location::current());
 
@@ -43,7 +43,7 @@ namespace AqualinkAutomate::HTTP
 		}
     }
 
-	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_Buttons::ButtonCollection_GetHandler(const HTTP::Request& req)
 	{
 		nlohmann::json buttons, all_buttons;
 
@@ -102,7 +102,7 @@ namespace AqualinkAutomate::HTTP
         return resp;
 	}
 
-	HTTP::Message WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_Buttons::ButtonCollection_PostHandler(const HTTP::Request& req)
     {
         HTTP::Response resp{HTTP::Status::ok, req.version()};
 

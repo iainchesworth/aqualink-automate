@@ -149,7 +149,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	HTTP::Message WebRoute_Diagnostics_Matter::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Matter::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Matter::OnRequest", std::source_location::current());
 
