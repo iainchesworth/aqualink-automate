@@ -3,8 +3,13 @@ description: Configure vcpkg binary and download caching with proper cache keys
 
 inputs:
   cache-key-prefix:
-    description: Platform/compiler identifier for cache key (e.g. "Linux GCC")
-    required: true
+    # Retained for backward compatibility with existing callers only. The vcpkg
+    # BINARY cache is now keyed by runner OS, NOT by this per-job prefix, so jobs
+    # that share a triplet (build-and-test + CodeQL + SonarCloud all use the same
+    # x64-linux-gcc triplet) share one cache instead of four disjoint copies.
+    description: "Deprecated/ignored: the binary cache is keyed by runner OS."
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -24,7 +29,7 @@ runs:
         echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
     - name: Cache vcpkg downloads
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/vcpkg/downloads
         key: vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json') }}
@@ -32,14 +37,19 @@ runs:
           vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-
           vcpkg-downloads-
 
+    # Keyed by runner OS (which maps 1:1 to the vcpkg triplet in use here), NOT by
+    # the per-job prefix. This collapses the previously disjoint "Linux GCC" /
+    # "CodeQL" / "SonarCloud" / "MSVCAnalysis" caches (all x64-linux-gcc) into one
+    # shared cache. vcpkg names archives by ABI hash, so multiple triplets would
+    # coexist safely in a single cache dir even if a job introduced one.
     - name: Cache vcpkg binaries
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/vcpkg/archives
-        key: vcpkg-${{ inputs.cache-key-prefix }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
+        key: vcpkg-${{ runner.os }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
         restore-keys: |
-          vcpkg-${{ inputs.cache-key-prefix }}-${{ steps.vcpkg-version.outputs.hash }}-
-          vcpkg-${{ inputs.cache-key-prefix }}-
+          vcpkg-${{ runner.os }}-${{ steps.vcpkg-version.outputs.hash }}-
+          vcpkg-${{ runner.os }}-
 
     - name: Run vcpkg
       uses: lukka/run-vcpkg@v11
