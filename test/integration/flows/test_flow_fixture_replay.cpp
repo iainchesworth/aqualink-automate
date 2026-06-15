@@ -86,6 +86,13 @@ BOOST_AUTO_TEST_CASE(Replay_SampleSession_PopulatesChlorinatorInDataHub)
 // The richer fixture (chlorinator_transitions.cap) changes the generating
 // level and salt twice; the decoded state must reflect the LAST frame of each
 // kind (40% -> 60%, 3200 -> 3000 PPM), proving every frame is applied in order.
+//
+// NOTE: the hub-level SaltLevel is median-of-5 smoothed on the publish path
+// (AquariteDevice::MedianFilteredSalt) so a borderline cell does not sawtooth the
+// graph -- it is therefore NOT simply the last raw frame. With this fixture's two
+// salt readings [3200, 3000] the median (upper-middle for an even count) is 3200.
+// The raw, un-smoothed value still tracks the LAST frame (3000) and is asserted
+// via the device's ReportedSaltConcentration API below.
 //-----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(Replay_TransitionsSession_DecodesFinalStateAfterMultipleUpdates)
 {
@@ -107,9 +114,12 @@ BOOST_AUTO_TEST_CASE(Replay_TransitionsSession_DecodesFinalStateAfterMultipleUpd
 	BOOST_REQUIRE(percentage_trait.has_value());
 	BOOST_CHECK_EQUAL(percentage_trait.value(), static_cast<uint8_t>(60));
 
-	// Final salt level is the SECOND PPM frame's value (3000 PPM).
-	BOOST_CHECK_EQUAL(harness.DataHub()->SaltLevel().value(), 3000.0);
+	// Hub SaltLevel is median-smoothed: the median of the two readings [3200, 3000]
+	// is the upper-middle element, 3200 PPM (see AquariteDevice::MedianFilteredSalt).
+	BOOST_CHECK_EQUAL(harness.DataHub()->SaltLevel().value(), 3200.0);
 
+	// The raw device API is NOT smoothed, so it still reflects the LAST frame
+	// (3000 PPM) -- this is what proves every frame was applied in order.
 	BOOST_CHECK_EQUAL(device.ReportedSaltConcentration().value, static_cast<uint16_t>(3000));
 }
 
