@@ -37,7 +37,7 @@ jobs:
 
     steps:
       # Needed for the "cut from main" guard below (merge-base ancestry check).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -123,180 +123,17 @@ jobs:
             exit 1
           fi
 
+  # Build + test + package on every platform via the same reusable workflow CI
+  # uses, so the suites can never diverge between CI and release. do_package adds
+  # cpack + the per-OS install/extract smoke test + the package artifact upload.
   build-packages:
-    name: Package — ${{ matrix.name }}
+    name: Package
     needs: [resolve-version]
-    runs-on: ${{ fromJSON(matrix.runner) }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: "Linux GCC"
-            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
-            compiler: gcc-15
-            configure_preset: config-linux-gcc
-            build_preset: build-linux-gcc
-            test_preset: test-linux-gcc
-            package_preset: pack-linux-gcc
-          - name: "Windows MSVC"
-            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
-            compiler: msvc
-            configure_preset: config-windows-msvc
-            build_preset: build-windows-msvc
-            test_preset: test-windows-msvc
-            package_preset: pack-windows-msvc
-          - name: "macOS Clang"
-            runner: '["macos-latest"]'
-            compiler: llvm
-            configure_preset: config-macos-llvm
-            build_preset: build-macos-llvm
-            test_preset: test-macos-llvm
-            package_preset: pack-macos-llvm
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Create local tag for dispatch builds
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          git tag "${{ needs.resolve-version.outputs.version_tag }}" HEAD
-
-      - name: Clean workspace (self-hosted)
-        if: contains(matrix.runner, 'self-hosted')
-        shell: bash
-        run: rm -rf build/
-
-      - uses: ./.github/actions/setup-cpp-toolchain
-        if: ${{ !contains(matrix.runner, 'self-hosted') }}
-        with:
-          compiler: ${{ matrix.compiler }}
-
-      # Self-hosted Windows images bake in the VS Build Tools but do not expose
-      # the MSVC environment (cl.exe, INCLUDE/LIB) on the default PATH; mirror
-      # the CI workflow and load it so the Configure step can find the compiler.
-      - name: Setup MSVC environment (self-hosted)
-        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Install NSIS
-        if: runner.os == 'Windows' && !contains(matrix.runner, 'self-hosted')
-        run: choco install nsis -y
-
-      - name: Setup vcpkg cache (self-hosted)
-        if: contains(matrix.runner, 'self-hosted')
-        shell: bash
-        run: |
-          BINARY_DIR="$HOME/.cache/vcpkg/archives"
-          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-          # Convert Git bash paths to native Windows paths for CMake/vcpkg
-          # (vcpkg rejects an MSYS-style VCPKG_DEFAULT_BINARY_CACHE like /c/...).
-          if command -v cygpath >/dev/null 2>&1; then
-            BINARY_DIR=$(cygpath -w "$BINARY_DIR")
-            DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
-          fi
-          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-      - uses: ./.github/actions/setup-vcpkg-cache
-        if: ${{ !contains(matrix.runner, 'self-hosted') }}
-        with:
-          cache-key-prefix: ${{ matrix.name }}
-
-      - name: Bootstrap vcpkg
-        shell: bash
-        run: |
-          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
-            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
-            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
-          fi
-        env:
-          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-
-      # VCPKG_ROOT points lukka/run-cmake (and the in-tree vcpkg toolchain) at the
-      # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
-      # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
-      # overrides that leak, so no special "pin" step is needed (same as Linux/macOS).
-      - name: Configure
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: ${{ matrix.configure_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      - name: Build
-        uses: lukka/run-cmake@v10
-        with:
-          buildPreset: ${{ matrix.build_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      - name: Test
-        uses: lukka/run-cmake@v10
-        with:
-          testPreset: ${{ matrix.test_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      - name: Package
-        run: cpack --preset=${{ matrix.package_preset }}
-
-      # Install/extract the freshly built package on a clean target and run the
-      # binary. This catches missing runtime dependencies (the exact failure
-      # mode of an unbundled dynamic build) BEFORE the package is published.
-      - name: Smoke test — install package & run (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          docker run --rm -v "$PWD/packages:/pkg:ro" ubuntu:25.04 bash -c '
-            set -e
-            apt-get update -qq
-            apt-get install -y -qq /pkg/*.deb
-            aqualink-automate --version'
-
-      - name: Smoke test — extract ZIP & run (Windows)
-        if: runner.os == 'Windows'
-        # Windows PowerShell (always present on self-hosted + GitHub-hosted), NOT
-        # pwsh/PowerShell 7 which the self-hosted runner image does not ship.
-        # All cmdlets used here (Expand-Archive, Get-ChildItem, ...) exist in 5.1.
-        shell: powershell
-        run: |
-          $zip = Get-ChildItem packages/*.zip | Select-Object -First 1
-          if (-not $zip) { throw "No ZIP package was produced" }
-          Expand-Archive -Path $zip.FullName -DestinationPath smoke -Force
-          $exe = Get-ChildItem -Path smoke -Recurse -Filter aqualink-automate.exe | Select-Object -First 1
-          if (-not $exe) { throw "aqualink-automate.exe not found in the package" }
-          & $exe.FullName --version
-          if ($LASTEXITCODE -ne 0) { throw "Binary exited with code $LASTEXITCODE" }
-
-      - name: Smoke test — extract TGZ & run (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          set -e
-          mkdir -p smoke
-          tar xzf packages/*.tar.gz -C smoke
-          BIN="$(find smoke -name aqualink-automate -type f -perm +111 | head -1)"
-          if [ -z "$BIN" ]; then echo "::error::binary not found in package"; exit 1; fi
-          "$BIN" --version
-
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.configure_preset }}
-          if-no-files-found: error
-          path: |
-            packages/*.deb
-            packages/*.rpm
-            packages/*.tar.gz
-            packages/*.zip
-            packages/*.exe
-            packages/*.dmg
-            packages/*.sha512
-          retention-days: 30
+    uses: ./.github/workflows/_build.yml
+    with:
+      do_package: true
+      version_tag: ${{ needs.resolve-version.outputs.version_tag }}
+      fetch_depth: 0
 
   docker-publish:
     name: Docker Publish
@@ -313,11 +150,11 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # The Dockerfile's base images (ubuntu:25.04, node:22-bookworm-slim) are
       # pulled from Docker Hub. Anonymous pulls share the runner's egress IP and
@@ -327,14 +164,14 @@ jobs:
       # credential-less runs still build anonymously. See docs/releasing.md.
       - name: Login to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -342,7 +179,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -360,7 +197,7 @@ jobs:
       # labels come from docker/metadata-action; passing them through env keeps the
       # newline-separated lists intact inside the retry command.
       - name: Build and push runtime image
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         env:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
           IMAGE_LABELS: ${{ steps.meta.outputs.labels }}
@@ -407,7 +244,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Push tag for dispatch builds
         if: github.event_name == 'workflow_dispatch'
@@ -415,6 +252,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: git tag "${{ needs.resolve-version.outputs.version_tag }}" HEAD && git push origin "${{ needs.resolve-version.outputs.version_tag }}"
 
+      # actions/download-artifact has no Node 24 release yet, so it stays on v4
+      # (bumping would not clear the Node 20 warning and risks breaking changes).
       - name: Download all package artifacts
         uses: actions/download-artifact@v4
         with:

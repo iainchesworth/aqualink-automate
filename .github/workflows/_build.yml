@@ -1,0 +1,214 @@
+# Reusable build/test(/package) workflow — the single definition of how the C++
+# project is configured, built, tested and (optionally) packaged on each platform.
+# Called by ci.yml (build-and-test) and release.yml (build-packages) so the two
+# can never drift. Behaviour is identical to the two matrix jobs it replaces; the
+# only parameters are whether to also package (release) and the checkout depth.
+name: Reusable Build
+
+on:
+  workflow_call:
+    inputs:
+      do_package:
+        description: "Also run cpack + the install/extract smoke test + upload packages (release path)."
+        type: boolean
+        default: false
+      version_tag:
+        description: "Resolved v* tag. Used only to create a local tag for workflow_dispatch release builds so `git describe` stamps the right version."
+        type: string
+        default: ""
+      fetch_depth:
+        description: "checkout fetch-depth (0 for releases so `git describe`/cut-from-main see full history + tags; 1 for CI)."
+        type: number
+        default: 1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ fromJSON(matrix.runner) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Linux GCC"
+            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
+            compiler: gcc-15
+            configure_preset: config-linux-gcc
+            build_preset: build-linux-gcc
+            test_preset: test-linux-gcc
+            package_preset: pack-linux-gcc
+          - name: "Windows MSVC"
+            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
+            compiler: msvc
+            configure_preset: config-windows-msvc
+            build_preset: build-windows-msvc
+            test_preset: test-windows-msvc
+            package_preset: pack-windows-msvc
+          - name: "macOS Clang"
+            runner: '["macos-latest"]'
+            compiler: llvm
+            configure_preset: config-macos-llvm
+            build_preset: build-macos-llvm
+            test_preset: test-macos-llvm
+            package_preset: pack-macos-llvm
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: ${{ inputs.fetch_depth }}
+
+      # Release dispatch builds derive the version from `git describe`; create the
+      # not-yet-pushed tag locally so it resolves (tag-push releases already have it,
+      # CI doesn't package). github-release pushes the real tag at the very end.
+      - name: Create local tag for dispatch builds
+        if: inputs.do_package && github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: git tag "${{ inputs.version_tag }}" HEAD
+
+      - name: Clean workspace (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: rm -rf build/
+
+      - uses: ./.github/actions/setup-cpp-toolchain
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      # Self-hosted Windows images bake in the VS Build Tools but do not expose the
+      # MSVC environment (cl.exe, INCLUDE/LIB) on the default PATH; load it so the
+      # Configure step can find the compiler.
+      - name: Setup MSVC environment (self-hosted)
+        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install NSIS (Windows packaging)
+        if: inputs.do_package && runner.os == 'Windows' && !contains(matrix.runner, 'self-hosted')
+        run: choco install nsis -y
+
+      - name: Setup vcpkg cache (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: |
+          BINARY_DIR="$HOME/.cache/vcpkg/archives"
+          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          # Convert Git bash paths to native Windows paths for CMake/vcpkg
+          # (vcpkg rejects an MSYS-style VCPKG_DEFAULT_BINARY_CACHE like /c/...).
+          if command -v cygpath >/dev/null 2>&1; then
+            BINARY_DIR=$(cygpath -w "$BINARY_DIR")
+            DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
+          fi
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/setup-vcpkg-cache
+        if: ${{ !contains(matrix.runner, 'self-hosted') }}
+        with:
+          cache-key-prefix: ${{ matrix.name }}
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
+            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
+            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          fi
+        env:
+          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+
+      # VCPKG_ROOT points lukka/run-cmake (and the in-tree vcpkg toolchain) at the
+      # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
+      # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
+      # overrides that leak, so no special "pin" step is needed (same as Linux/macOS).
+      - name: Configure
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.configure_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.build_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      - name: Show build errors on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "::group::CMake build retry (verbose)"
+          cmake --build --preset ${{ matrix.build_preset }} -- -k 1 2>&1 | tail -200 || true
+          echo "::endgroup::"
+
+      - name: Test
+        uses: lukka/run-cmake@v10
+        with:
+          testPreset: ${{ matrix.test_preset }}
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      # ---------------------------------------------------------------------------
+      # Packaging (release path only — inputs.do_package)
+      # ---------------------------------------------------------------------------
+      - name: Package
+        if: inputs.do_package
+        run: cpack --preset=${{ matrix.package_preset }}
+
+      # Install/extract the freshly built package on a clean target and run the
+      # binary. This catches missing runtime dependencies (the exact failure mode of
+      # an unbundled dynamic build) BEFORE the package is published.
+      - name: Smoke test — install package & run (Linux)
+        if: inputs.do_package && runner.os == 'Linux'
+        run: |
+          docker run --rm -v "$PWD/packages:/pkg:ro" ubuntu:25.04 bash -c '
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq /pkg/*.deb
+            aqualink-automate --version'
+
+      - name: Smoke test — extract ZIP & run (Windows)
+        if: inputs.do_package && runner.os == 'Windows'
+        # Windows PowerShell (always present on self-hosted + GitHub-hosted), NOT
+        # pwsh/PowerShell 7 which the self-hosted runner image does not ship.
+        shell: powershell
+        run: |
+          $zip = Get-ChildItem packages/*.zip | Select-Object -First 1
+          if (-not $zip) { throw "No ZIP package was produced" }
+          Expand-Archive -Path $zip.FullName -DestinationPath smoke -Force
+          $exe = Get-ChildItem -Path smoke -Recurse -Filter aqualink-automate.exe | Select-Object -First 1
+          if (-not $exe) { throw "aqualink-automate.exe not found in the package" }
+          & $exe.FullName --version
+          if ($LASTEXITCODE -ne 0) { throw "Binary exited with code $LASTEXITCODE" }
+
+      - name: Smoke test — extract TGZ & run (macOS)
+        if: inputs.do_package && runner.os == 'macOS'
+        run: |
+          set -e
+          mkdir -p smoke
+          tar xzf packages/*.tar.gz -C smoke
+          BIN="$(find smoke -name aqualink-automate -type f -perm +111 | head -1)"
+          if [ -z "$BIN" ]; then echo "::error::binary not found in package"; exit 1; fi
+          "$BIN" --version
+
+      - name: Upload packages
+        if: inputs.do_package
+        uses: actions/upload-artifact@v6
+        with:
+          name: packages-${{ matrix.configure_preset }}
+          if-no-files-found: error
+          path: |
+            packages/*.deb
+            packages/*.rpm
+            packages/*.tar.gz
+            packages/*.zip
+            packages/*.exe
+            packages/*.dmg
+            packages/*.sha512
+          retention-days: 30
