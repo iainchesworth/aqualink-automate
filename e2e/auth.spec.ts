@@ -23,9 +23,10 @@ test.describe('UI authentication', () => {
     const overlay = page.locator('.login-overlay');
     await expect(overlay).toBeVisible();
 
-    // Scope field/button lookups to the overlay: the `.login-input` class is also
-    // reused by the Schedules form (which lives in the DOM via x-show), so an
-    // unscoped `.login-input` matches multiple elements and trips strict mode.
+    // Scope field/button lookups to the overlay as a defensive measure: even
+    // though `.login-input` is now unique to the overlay (the Schedules form
+    // uses `.sched-input`), scoping keeps these locators robust against any
+    // future class reuse and avoids strict-mode surprises.
     // Wrong token -> error, still on the login overlay.
     await overlay.locator('.login-input').fill('definitely-wrong-token');
     await overlay.locator('.login-submit').click();

@@ -162,7 +162,7 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 | `07-ccache.sh` | ccache (5 GB max, compression enabled) |
 | `08-github-runner.sh` | GitHub Actions runner agent + auto-registration service |
 | `09-sonarcloud-tools.sh` | SonarCloud build-wrapper for Linux |
-| `10-cleanup.sh` | apt clean, log truncation, free space zeroing |
+| `10-cleanup.sh` | apt clean, log truncation, `fstrim` (UNMAP) free-space reclaim to keep the thin vmdk small |
 
 ### Windows Runner
 

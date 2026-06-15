@@ -91,6 +91,14 @@ if [ -z "$REPO_URL" ] || [ -z "$TOKEN" ]; then
     exit 0
 fi
 
+# Give this clone a unique hostname matching its runner name. Together with the
+# reset machine-id (10-cleanup.sh) this stops cloned VMs from presenting an
+# identical DHCP client-id and colliding on the same DHCP lease.
+if [ -n "$NAME" ]; then
+    echo "Setting hostname to '${NAME}'"
+    hostnamectl set-hostname "${NAME}" || true
+fi
+
 echo "Registering runner '${NAME}' for ${REPO_URL}"
 
 cd "${RUNNER_DIR}"

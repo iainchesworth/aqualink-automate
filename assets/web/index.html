@@ -1243,8 +1243,8 @@
                     </div>
 
                     <div x-show="editing !== null" x-cloak class="sched-form">
-                        <label class="sched-field">Name <input type="text" x-model="form.name" class="login-input"></label>
-                        <label class="sched-field">Time <input type="time" x-model="form.time" class="login-input"></label>
+                        <label class="sched-field">Name <input type="text" x-model="form.name" class="sched-input"></label>
+                        <label class="sched-field">Time <input type="time" x-model="form.time" class="sched-input"></label>
                         <div class="sched-field">Days
                             <div class="sched-days">
                                 <template x-for="d in days" :key="d.bit">
@@ -1253,22 +1253,22 @@
                             </div>
                         </div>
                         <label class="sched-field">Action
-                            <select x-model="form.actionType" class="login-input">
+                            <select x-model="form.actionType" class="sched-input">
                                 <template x-for="a in actionTypes" :key="a.value">
                                     <option :value="a.value" x-text="a.label"></option>
                                 </template>
                             </select>
                         </label>
                         <label class="sched-field" x-show="isButtonAction(form.actionType)">Device
-                            <select x-model="form.target" class="login-input">
+                            <select x-model="form.target" class="sched-input">
                                 <template x-for="b in buttons" :key="b"><option :value="b" x-text="b"></option></template>
                             </select>
                         </label>
                         <label class="sched-field" x-show="form.actionType === 'circulation_mode'">Mode
-                            <input type="text" x-model="form.target" class="login-input" placeholder="e.g. Pool">
+                            <input type="text" x-model="form.target" class="sched-input" placeholder="e.g. Pool">
                         </label>
                         <label class="sched-field" x-show="isValueAction(form.actionType)">Value
-                            <input type="number" x-model.number="form.value" class="login-input">
+                            <input type="number" x-model.number="form.value" class="sched-input">
                         </label>
                         <label class="sched-field"><input type="checkbox" x-model="form.enabled"> Enabled</label>
                         <div class="sched-form-actions">
