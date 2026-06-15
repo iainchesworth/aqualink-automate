@@ -163,10 +163,16 @@ jobs:
       # built on the Ubuntu-25.04 runner so the binary's glibc/libstdc++ baseline
       # matches the ubuntu:25.04 Docker runtime base.
       # ---------------------------------------------------------------------------
-      - name: Install (Linux install tree)
+      - name: Install + pack the Linux install tree
         if: inputs.upload_installtree && runner.os == 'Linux'
         shell: bash
-        run: cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
+        run: |
+          cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
+          # Pack as a tarball so the versioned .so SYMLINKS and exec bits survive the
+          # CI artifact round-trip losslessly (a raw upload-artifact mangles symlinks,
+          # and the runtime binary loads libs by their versioned SONAME).
+          tar czf "${{ github.workspace }}/installtree-linux-gcc.tar.gz" \
+            -C "${{ github.workspace }}/install/config-linux-gcc" .
 
       - name: Upload Linux install tree
         if: inputs.upload_installtree && runner.os == 'Linux'
@@ -174,7 +180,7 @@ jobs:
         with:
           name: installtree-linux-gcc
           if-no-files-found: error
-          path: install/config-linux-gcc/
+          path: installtree-linux-gcc.tar.gz
           retention-days: 3
 
       # ---------------------------------------------------------------------------

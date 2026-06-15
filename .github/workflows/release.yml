@@ -198,17 +198,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: installtree-linux-gcc
-          path: docker/context/install/config-linux-gcc
+          path: docker/context
 
       - name: Verify staged install tree
         run: |
-          BIN=docker/context/install/config-linux-gcc/bin/aqualink-automate
-          if [ ! -f "$BIN" ]; then
-            echo "::error::Staged install tree is missing the executable ($BIN) — cannot assemble the image."
+          TARBALL=docker/context/installtree-linux-gcc.tar.gz
+          if [ ! -f "$TARBALL" ]; then
+            echo "::error::Staged install-tree tarball missing ($TARBALL) — cannot assemble the image."
             exit 1
           fi
-          chmod +x "$BIN"
-          echo "Staged install tree OK."
+          tar tzf "$TARBALL" ./bin/aqualink-automate >/dev/null \
+            || { echo "::error::install-tree tarball does not contain ./bin/aqualink-automate"; exit 1; }
+          echo "Staged install tree OK ($(du -h "$TARBALL" | cut -f1))."
 
       # Assemble + push via buildx, wrapped in a bounded retry so a transient Docker
       # Hub CDN blob timeout pulling a base image doesn't fail the release. The image

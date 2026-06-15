@@ -244,6 +244,10 @@ USER aqualink
 
 FROM runtime-base AS runtime-assembled
 
-ARG INSTALL_SRC=docker/context/install/config-linux-gcc
-COPY ${INSTALL_SRC}/ .
+# The install tree arrives as a tarball (lossless symlinks + exec bits through the
+# CI artifact round-trip) and is unpacked here INSIDE the image, so it is correct
+# regardless of the host/runner filesystem (e.g. a Windows box cannot represent the
+# versioned-.so symlinks the binary loads by SONAME).
+COPY docker/context/installtree-linux-gcc.tar.gz /tmp/installtree.tar.gz
+RUN tar xzf /tmp/installtree.tar.gz -C /opt/aqualink-automate && rm /tmp/installtree.tar.gz
 USER aqualink

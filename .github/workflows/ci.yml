@@ -43,11 +43,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: installtree-linux-gcc
-          path: installtree
+          path: installtree-art
 
-      - name: Make binary executable
+      - name: Unpack install tree
         shell: bash
-        run: chmod +x installtree/bin/aqualink-automate
+        run: |
+          mkdir -p installtree
+          tar xzf installtree-art/installtree-linux-gcc.tar.gz -C installtree
+          chmod +x installtree/bin/aqualink-automate
 
       - uses: actions/setup-node@v5
         with:
