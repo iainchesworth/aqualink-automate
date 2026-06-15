@@ -35,7 +35,7 @@ jobs:
         language: [ 'c-cpp' ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: recursive
 
@@ -49,7 +49,7 @@ jobs:
         compiler: gcc-15
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
 
@@ -88,7 +88,7 @@ jobs:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
       with:
         upload: false
 
@@ -102,12 +102,12 @@ jobs:
         output: '../results/cpp.sarif'
 
     - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         category: "/language:${{ matrix.language }}"
 
     - name: Upload Analysis as a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: sarif-results
         path: sarif-results
@@ -123,7 +123,7 @@ jobs:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: recursive
@@ -138,7 +138,7 @@ jobs:
         compiler: gcc-15
 
     - name: Install build-wrapper
-      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
+      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v8
 
     - name: Setup vcpkg cache (self-hosted)
       if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
@@ -172,7 +172,7 @@ jobs:
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build --preset=build-linux-gcc-coverage
 
     - name: Run SonarCloud scan
-      uses: SonarSource/sonarqube-scan-action@v6
+      uses: SonarSource/sonarqube-scan-action@v8
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -193,7 +193,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: recursive
 
@@ -265,12 +265,12 @@ jobs:
         ignoredPaths: ${{ github.workspace }}/deps;${{ github.workspace }}/src/version;${{ github.workspace }}/test
 
     - name: Upload SARIF to GitHub
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
     - name: Upload SARIF as an Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: sarif-file
         path: ${{ steps.run-analysis.outputs.sarif }}
