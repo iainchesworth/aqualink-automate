@@ -5,10 +5,17 @@
  * of scope (see WS7): offline command queueing and push notifications.
  *
  * Caching strategy:
- *   - Static shell (HTML / JS / CSS / icons / fonts-from-same-origin): cache
- *     first, falling back to network and populating the cache on a miss.
- *   - Navigations: serve the cached app shell (index.html) when the network is
- *     unavailable so the SPA still boots offline.
+ *   - Static shell (JS / CSS / icons / fonts-from-same-origin): NETWORK FIRST,
+ *     falling back to the cached copy only when the network is unreachable. The
+ *     server already marks these assets `no-cache` (revalidate via ETag); a
+ *     cache-first service worker silently IGNORES that — the Cache Storage API
+ *     does not honour HTTP cache semantics — and would pin returning clients to
+ *     stale JS/CSS until CACHE_VERSION is bumped, even though the HTML (served
+ *     network-first below) is fresh. That fresh-HTML + stale-JS mismatch breaks
+ *     the UI until a hard reload. Network-first keeps online clients current and
+ *     still boots offline from the last good copy.
+ *   - Navigations: try the network, serve the cached app shell (index.html) when
+ *     the network is unavailable so the SPA still boots offline.
  *   - /api/*  : NETWORK ONLY.  Never cached and never served from cache — API
  *     responses (equipment state, auth checks, etc.) must always be live, and a
  *     stale cached /api/auth/check could wrongly keep an unauthenticated client
@@ -21,7 +28,7 @@
  * purged on activate).
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `aqualink-shell-${CACHE_VERSION}`;
 
 // Core app-shell assets to precache so the UI boots offline.  Kept deliberately
@@ -109,14 +116,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache first, then network (populating the cache on a miss).
+  // Static assets: network first, falling back to cache when offline. Always
+  // prefer the live file so a redeployed JS/CSS bundle reaches the client on the
+  // next normal load (no hard reload needed); refresh the cached copy on every
+  // successful fetch so the offline fallback stays current.
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(request);
-      if (cached) {
-        return cached;
-      }
       try {
         const response = await fetch(request);
         // Only cache successful, basic (same-origin) responses.
@@ -125,6 +131,11 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       } catch (err) {
+        // Offline — serve the last good cached copy if we have one.
+        const cached = await cache.match(request);
+        if (cached) {
+          return cached;
+        }
         // Offline and not cached — surface the network failure.
         throw err;
       }
