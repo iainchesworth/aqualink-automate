@@ -124,12 +124,16 @@ jobs:
       # Stamp the resolved version deterministically: release callers pass the tag
       # via version_tag, which GitVersionDerivation honours OVER `git describe`
       # (eliminating the configure-time tag-race and the need to pre-create a local
-      # tag). CI passes an empty value -> falls back to `git describe`.
+      # tag). CI passes no tag, so use an explicit 0.0.0-dev rather than an empty
+      # override: that stops the configure falling through to `git describe`, which
+      # on the shallow CI checkout (no tags in history) can't resolve a v* tag and
+      # emits a noisy "could not parse a v<...> tag" warning. 0.0.0-dev is exactly
+      # the value that fallback would produce — just without the warning.
       - name: Configure
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
-          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag }}']"
+          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}']"
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
