@@ -32,6 +32,12 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ fromJSON(matrix.runner) }}
+    # ilammy/msvc-dev-cmd (self-hosted Windows MSVC env) is a Node 20 action with no
+    # Node 24 release; opt it into the Node 24 runtime now (what GitHub forces from
+    # 2026-06-16 anyway) so the deprecation warning clears. No-op for the other,
+    # already-Node-24 actions in this job.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     strategy:
       fail-fast: false
       matrix:
