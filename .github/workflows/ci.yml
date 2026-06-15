@@ -182,11 +182,15 @@ jobs:
           echo "Base (${{ github.base_ref }}): $BASE_DESCRIBE"
           echo "Head: $HEAD_DESCRIBE"
 
+          # A PR into main is a release promotion. Block (don't just warn) when the
+          # resolved version is identical to the base — i.e. there is nothing new to
+          # release. Distinct `git describe` output (a different commit distance or a
+          # new tag) is enough to pass; this only fails a genuinely empty promotion.
           if [[ "$HEAD_DESCRIBE" == "$BASE_DESCRIBE" ]]; then
-            echo "::warning::Version appears unchanged between base and PR branch ($HEAD_DESCRIBE). If this PR includes functional changes, consider tagging a new version before merging."
-          else
-            echo "Version info differs: base=$BASE_DESCRIBE, head=$HEAD_DESCRIBE"
+            echo "::error::Version is unchanged between ${{ github.base_ref }} ($BASE_DESCRIBE) and this PR head ($HEAD_DESCRIBE). Nothing new to release."
+            exit 1
           fi
+          echo "Version advances: base=$BASE_DESCRIBE -> head=$HEAD_DESCRIBE"
 
   docker-verify:
     name: Docker Verification

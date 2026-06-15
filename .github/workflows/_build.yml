@@ -13,7 +13,7 @@ on:
         type: boolean
         default: false
       version_tag:
-        description: "Resolved v* tag. Used only to create a local tag for workflow_dispatch release builds so `git describe` stamps the right version."
+        description: "Resolved v* tag, threaded into configure as DERIVED_VERSION_OVERRIDE so the build stamps it deterministically. Empty in CI -> `git describe`."
         type: string
         default: ""
       fetch_depth:
@@ -59,14 +59,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: ${{ inputs.fetch_depth }}
-
-      # Release dispatch builds derive the version from `git describe`; create the
-      # not-yet-pushed tag locally so it resolves (tag-push releases already have it,
-      # CI doesn't package). github-release pushes the real tag at the very end.
-      - name: Create local tag for dispatch builds
-        if: inputs.do_package && github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: git tag "${{ inputs.version_tag }}" HEAD
 
       - name: Clean workspace (self-hosted)
         if: contains(matrix.runner, 'self-hosted')
@@ -125,10 +117,15 @@ jobs:
       # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
       # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
       # overrides that leak, so no special "pin" step is needed (same as Linux/macOS).
+      # Stamp the resolved version deterministically: release callers pass the tag
+      # via version_tag, which GitVersionDerivation honours OVER `git describe`
+      # (eliminating the configure-time tag-race and the need to pre-create a local
+      # tag). CI passes an empty value -> falls back to `git describe`.
       - name: Configure
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
+          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag }}']"
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
