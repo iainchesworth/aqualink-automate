@@ -10,6 +10,7 @@
 #include "jandy/messages/jandy_message_ids.h"
 
 #include "kernel/auxillary_devices/chlorinator_boost_mode.h"
+#include "kernel/auxillary_devices/chlorinator_status.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 
 #include "support/unit_test_hublocatorinjector.h"
@@ -292,6 +293,131 @@ BOOST_AUTO_TEST_CASE(PercentServiceSentinel_ClampsDutyCycleToZero)
 	auto generating = chlorinators.front()->AuxillaryTraits.TryGet(GeneratingPercentageTrait{});
 	BOOST_REQUIRE(generating.has_value());
 	BOOST_CHECK_EQUAL(generating.value(), static_cast<uint8_t>(0));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// AQUARITE_PPM output-smoothing regression tests (sticky low-salt).
+//
+// A borderline AquaRite cell flaps its salt reading AND its low-salt status
+// flag around the cell's own internal threshold.  Captured live, the wire
+// alternated between "2900 ppm / Warning_LowSalt" (the dominant, true state)
+// and short "4000 ppm / On(Ok)" bursts up to ~9 frames long, which the app used
+// to surface raw — strobing the salt graph and the chlorinator-health
+// indicator.  AquariteDevice now smooths the publish path: a median over the
+// last few salt samples, plus an asymmetric dwell on health (raise a warning
+// fast, clear it only after it persists).  These tests drive synthetic PPM
+// frames matching the capture through the full Jandy decode stack and assert
+// the published DataHub state no longer flaps.
+//=============================================================================
+
+namespace
+{
+	constexpr uint8_t AQUARITE_PPM_DEST = 0x00;   // AQUARITE_PPM is sent SWG -> Master (0x00).
+	const uint8_t CMD_AQUARITE_PPM = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::AQUARITE_PPM);
+
+	constexpr uint8_t SALT_BYTE_LOW = 0x1d;   // 0x1d * 100 = 2900 ppm (the borderline-low reading).
+	constexpr uint8_t SALT_BYTE_OK  = 0x28;   // 0x28 * 100 = 4000 ppm (the transient spike reading).
+	constexpr uint8_t STATUS_LOWSALT = 0x02;  // AquariteStatuses::Warning_LowSalt
+	constexpr uint8_t STATUS_ON      = 0x00;  // AquariteStatuses::On
+
+	std::vector<uint8_t> MakePpmFrame(uint8_t salt_byte, uint8_t status_byte)
+	{
+		return Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_PPM_DEST, CMD_AQUARITE_PPM, { salt_byte, status_byte });
+	}
+
+	void AppendFrames(std::vector<std::vector<uint8_t>>& out, std::size_t count, uint8_t salt_byte, uint8_t status_byte)
+	{
+		for (std::size_t i = 0; i < count; ++i)
+		{
+			out.push_back(MakePpmFrame(salt_byte, status_byte));
+		}
+	}
+
+	Kernel::ChlorinatorHealth HealthOf(const Test::MockReplayHarness& harness)
+	{
+		auto chlorinators = harness.DataHub()->Chlorinators();
+		BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+		auto health = chlorinators.front()->AuxillaryTraits.TryGet(AuxillaryTraitsTypes::ChlorinatorHealthTrait{});
+		BOOST_REQUIRE(health.has_value());
+		return health.value();
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(AquariteDevice_PpmSmoothing_TestSuite)
+
+BOOST_AUTO_TEST_CASE(IsolatedSaltSpike_IsMedianFiltered_HealthHeldLowSalt)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	// 4x low-salt, a single OK spike, then 4x low-salt — exactly the kind of
+	// one-frame blip the cell emits on its boundary.
+	std::vector<std::vector<uint8_t>> frames;
+	AppendFrames(frames, 4, SALT_BYTE_LOW, STATUS_LOWSALT);
+	AppendFrames(frames, 1, SALT_BYTE_OK,  STATUS_ON);
+	AppendFrames(frames, 4, SALT_BYTE_LOW, STATUS_LOWSALT);
+	harness.Replay(frames);
+
+	// The single 4000 spike is outvoted in the median window -> salt reads 2900.
+	BOOST_CHECK_CLOSE(harness.DataHub()->SaltLevel().value(), 2900.0, 0.0001);
+
+	// A one-frame OK cannot clear the (sticky) Low-Salt warning.
+	BOOST_CHECK_EQUAL(HealthOf(harness), Kernel::ChlorinatorHealth::Warning_LowSalt);
+}
+
+BOOST_AUTO_TEST_CASE(ShortOkBurst_DoesNotClearLowSalt)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	// A 10-frame OK burst is below the clear threshold (15) -> warning must hold.
+	std::vector<std::vector<uint8_t>> frames;
+	AppendFrames(frames, 5,  SALT_BYTE_LOW, STATUS_LOWSALT);
+	AppendFrames(frames, 10, SALT_BYTE_OK,  STATUS_ON);
+	AppendFrames(frames, 5,  SALT_BYTE_LOW, STATUS_LOWSALT);
+	harness.Replay(frames);
+
+	BOOST_CHECK_EQUAL(HealthOf(harness), Kernel::ChlorinatorHealth::Warning_LowSalt);
+}
+
+BOOST_AUTO_TEST_CASE(SustainedRecovery_ClearsLowSaltAndSaltTracks)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	// A genuinely sustained recovery (20 OK frames > 15) DOES clear the warning,
+	// and the salt median tracks up to the new sustained value.
+	std::vector<std::vector<uint8_t>> frames;
+	AppendFrames(frames, 5,  SALT_BYTE_LOW, STATUS_LOWSALT);
+	AppendFrames(frames, 20, SALT_BYTE_OK,  STATUS_ON);
+	harness.Replay(frames);
+
+	BOOST_CHECK_EQUAL(HealthOf(harness), Kernel::ChlorinatorHealth::Ok);
+	BOOST_CHECK_CLOSE(harness.DataHub()->SaltLevel().value(), 4000.0, 0.0001);
+}
+
+BOOST_AUTO_TEST_CASE(WarningRaisesQuickly)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	// Starting from OK, a warning is surfaced after only a couple of frames.
+	std::vector<std::vector<uint8_t>> frames;
+	AppendFrames(frames, 3, SALT_BYTE_OK,  STATUS_ON);
+	AppendFrames(frames, 2, SALT_BYTE_LOW, STATUS_LOWSALT);
+	harness.Replay(frames);
+
+	BOOST_CHECK_EQUAL(HealthOf(harness), Kernel::ChlorinatorHealth::Warning_LowSalt);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

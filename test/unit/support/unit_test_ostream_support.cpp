@@ -56,6 +56,12 @@ namespace AqualinkAutomate::Kernel
         return os;
     }
 
+    std::ostream& boost_test_print_type(std::ostream& os, ChlorinatorHealth const& right)
+    {
+        os << magic_enum::enum_name(right);
+        return os;
+    }
+
     std::ostream& boost_test_print_type(std::ostream& os, HeaterStatuses const& right)
     {
         os << magic_enum::enum_name(right);

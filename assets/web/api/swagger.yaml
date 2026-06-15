@@ -49,7 +49,10 @@ info:
     `AlertTransition`. The `AlertTransition` payload (fault-detection alerts) is
     `{ "condition": <string>, "state": "raised"|"cleared", "ts": <unix-seconds>,
     "detail": <string> }`, where `condition` is one of `chlorinator_fault`,
-    `salt_low`, `service_mode`, `serial_comms_loss`.
+    `chlorinator_warning`, `salt_low`, `service_mode`, `serial_comms_loss`.
+    `chlorinator_warning` covers the cell warnings (no flow, low/high salt, clean
+    cell, low/high voltage/current, low temperature); the specific warning is
+    named in `detail`.
   version: 1.0.0
   contact:
     name: Aqualink Automate

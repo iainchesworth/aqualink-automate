@@ -9,6 +9,7 @@
 // Friendly labels for the known condition keys (falls back to the raw key).
 const ALERT_LABELS = {
     chlorinator_fault: 'Chlorinator fault',
+    chlorinator_warning: 'Chlorinator warning',
     salt_low: 'Salt low',
     service_mode: 'Service mode',
     serial_comms_loss: 'Serial comms lost',

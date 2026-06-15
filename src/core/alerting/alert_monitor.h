@@ -71,6 +71,7 @@ namespace AqualinkAutomate::Alerting
 
 		// Individual evaluators (exposed for targeted unit tests).
 		void EvaluateSaltLow();
+		void EvaluateChlorinatorWarning();
 		void EvaluateChlorinatorFault();
 		void EvaluateServiceMode();
 		void EvaluateSerialCommsLoss();
