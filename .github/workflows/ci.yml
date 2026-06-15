@@ -295,6 +295,10 @@ jobs:
   docker-verify:
     name: Docker Verification
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
+    # Surfaced so the "Login to Docker Hub" step's `if:` can gate on the optional
+    # secret being present. See release.yml / docs/releasing.md.
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - uses: actions/checkout@v4
@@ -303,21 +307,43 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build CI target
-        uses: docker/build-push-action@v6
+      # Authenticate to Docker Hub when credentials are configured so base-image
+      # pulls (ubuntu:25.04, node:22-bookworm-slim) use the higher authenticated
+      # rate limit instead of the anonymous per-IP quota. Gated so fork PRs (which
+      # receive no secrets) still build anonymously.
+      - name: Login to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
         with:
-          context: .
-          target: ci
-          push: false
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Both builds are wrapped in a bounded retry so a transient Docker Hub CDN
+      # blob timeout pulling a base image doesn't fail CI. A retry reuses the
+      # BuildKit layer cache + the in-Dockerfile ccache/vcpkg cache mounts, so it
+      # only re-fetches the layer that timed out. docker/setup-buildx-action makes
+      # its builder the default, so `docker buildx build` here is equivalent to the
+      # docker/build-push-action invocations it replaces.
+      - name: Build CI target
+        uses: nick-fields/retry@v3
+        with:
+          shell: bash
+          timeout_minutes: 90
+          max_attempts: 3
+          retry_wait_seconds: 30
+          retry_on: error
+          command: docker buildx build --target ci .
 
       - name: Build runtime target
-        uses: docker/build-push-action@v6
+        uses: nick-fields/retry@v3
         with:
-          context: .
-          target: runtime
-          push: false
-          load: true
-          tags: aqualink-automate:verify
+          shell: bash
+          timeout_minutes: 90
+          max_attempts: 3
+          retry_wait_seconds: 30
+          retry_on: error
+          command: docker buildx build --target runtime --load --tag aqualink-automate:verify .
 
       # The runtime image now bundles the Matter sidecar (built by the matter-builder
       # stage). The --version smoke test exercises the app via the supervising

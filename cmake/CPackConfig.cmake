@@ -152,6 +152,18 @@ endif()
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/ssl/ DESTINATION ${AQ_SSL_DESTINATION} COMPONENT SslAssets)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/web/ DESTINATION ${AQ_WEB_DESTINATION} COMPONENT WebAssets)
+
+# Stamp the installed service worker's cache name with the build version (mirrors
+# the dev-tree POST_BUILD step in src/CMakeLists.txt) so a packaged upgrade purges
+# the previous version's offline shell on activate. Declared after the web-asset
+# directory install so it runs once those files are staged.
+install(CODE "
+    execute_process(COMMAND \"${CMAKE_COMMAND}\"
+        -D \"SW_JS=\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${AQ_WEB_DESTINATION}/sw.js\"
+        -D \"AQ_VERSION=${PROJECT_VERSION}\"
+        -P \"${CMAKE_SOURCE_DIR}/cmake/stamp_sw_version.cmake\")
+" COMPONENT WebAssets)
+
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/examples/
     DESTINATION ${AQ_EXAMPLES_DESTINATION}
     COMPONENT ExampleConfigs

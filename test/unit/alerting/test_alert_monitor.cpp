@@ -143,6 +143,64 @@ BOOST_AUTO_TEST_CASE(ChlorinatorFault_RaisesOnGeneralFault_ClearsOnOk)
 	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::ChlorinatorFault), 2u);
 }
 
+// chlorinator_warning raises on ANY cell warning (not just low salt), names the
+// specific warning in the detail, and clears on recovery — without tripping the
+// hard-fault condition.
+BOOST_AUTO_TEST_CASE(ChlorinatorWarning_RaisesOnWarning_NamesIt_ClearsOnOk)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	auto data_hub = Find<Kernel::DataHub>();
+	auto chlor = MakeChlorinator(Kernel::ChlorinatorHealth::Ok);
+	data_hub->Devices.Add(chlor);
+
+	monitor.EvaluateChlorinatorWarning();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorWarning));
+
+	// A No-Flow warning (NOT low salt) must still be surfaced and named.
+	chlor->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::Warning_NoFlow);
+	monitor.EvaluateChlorinatorWarning();
+	monitor.EvaluateChlorinatorFault();
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::ChlorinatorWarning));
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorFault));   // a warning is not a fault
+	BOOST_REQUIRE_EQUAL(rec.CountFor(ConditionKeys::ChlorinatorWarning), 1u);
+	BOOST_CHECK(rec.transitions.back().detail.find("No flow") != std::string::npos);
+
+	// Recovery clears it.
+	chlor->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::Ok);
+	monitor.EvaluateChlorinatorWarning();
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorWarning));
+	BOOST_CHECK_EQUAL(rec.CountFor(ConditionKeys::ChlorinatorWarning), 2u);
+}
+
+// A hard fault raises chlorinator_fault but NOT chlorinator_warning, so the two
+// severities stay distinct; the fault detail names the specific fault.
+BOOST_AUTO_TEST_CASE(ChlorinatorWarning_NotRaisedByHardFault)
+{
+	boost::asio::io_context io;
+	Options::Alerting::AlertingSettings settings;
+
+	AlertMonitor monitor(io, *this, settings);
+	SinkRecorder rec;
+	monitor.AddSink(rec.AsSink());
+
+	auto data_hub = Find<Kernel::DataHub>();
+	auto chlor = MakeChlorinator(Kernel::ChlorinatorHealth::Error_CheckPCB);
+	data_hub->Devices.Add(chlor);
+
+	monitor.EvaluateChlorinatorWarning();
+	monitor.EvaluateChlorinatorFault();
+
+	BOOST_CHECK(!monitor.IsRaised(ConditionKeys::ChlorinatorWarning));
+	BOOST_CHECK(monitor.IsRaised(ConditionKeys::ChlorinatorFault));
+	BOOST_CHECK(rec.transitions.back().detail.find("Check PCB") != std::string::npos);
+}
+
 // service_mode tracks the DataHub equipment mode.
 BOOST_AUTO_TEST_CASE(ServiceMode_TracksEquipmentMode)
 {
@@ -221,6 +279,7 @@ BOOST_AUTO_TEST_CASE(BuildStateJson_ReflectsLatchedState)
 	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::ServiceMode }], "true");
 	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::SaltLow }], "false");
 	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::ChlorinatorFault }], "false");
+	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::ChlorinatorWarning }], "false");
 	BOOST_CHECK_EQUAL(state[std::string{ ConditionKeys::SerialCommsLoss }], "false");
 }
 

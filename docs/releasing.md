@@ -28,6 +28,25 @@ Prerelease versions use the format `<label>.<N>`:
 - **Local builds without tags**: Falls back to `0.0.0-dev`, making it obvious this is not a release build.
 - **CMake `project()`**: Receives only the `M.M.P` portion (CMake doesn't support prerelease in `VERSION`). The full version including prerelease is available via `PROJECT_VERSION_FULL`.
 
+## Repository Configuration
+
+### Docker Hub credentials (optional but recommended)
+
+The `runtime`/`ci` Docker images build `FROM ubuntu:25.04` and `FROM node:22-bookworm-slim`, which are pulled from Docker Hub. Anonymous pulls share the runner's egress IP and are subject to Docker Hub's anonymous per-IP rate limit — a recurring CI reliability risk, especially on **self-hosted runners** (one shared IP across many jobs) and during Docker Hub CDN hiccups.
+
+Configure these **optional** repository secrets to authenticate base-image pulls and get a higher rate limit:
+
+| Secret              | Value                                                                 |
+|---------------------|-----------------------------------------------------------------------|
+| `DOCKERHUB_USERNAME`| A Docker Hub account username                                         |
+| `DOCKERHUB_TOKEN`   | A Docker Hub **access token** (Account Settings → Personal access tokens; `Public Repo Read-only` scope is sufficient) |
+
+Both the release `docker-publish` job and the CI `docker-verify` job log in to Docker Hub **only when both secrets are present** (`if: env.DOCKERHUB_USERNAME != ''`). If they are unset — forks, or before they are configured — the workflows fall back to anonymous pulls and still work. Nothing else is required.
+
+The Docker build steps are additionally wrapped in a **bounded retry** (`nick-fields/retry`, 3 attempts), so a single transient base-image blob timeout retries instead of failing the whole release; the retry reuses the BuildKit layer cache, so it only re-fetches the layer that timed out.
+
+> **Self-hosted runners:** for heavily-used self-hosted runners you can additionally configure a [pull-through registry mirror](https://docs.docker.com/docker-hub/image-library/mirror/) on the runner host (a local registry caching Docker Hub, referenced via `registry-mirrors` in `/etc/docker/daemon.json` and the BuildKit builder config). This is host/daemon configuration — not part of these workflow files — and complements the authentication above.
+
 ## Pre-release Checklist
 
 Before creating a release:
@@ -127,6 +146,14 @@ Ensure tags follow the `v<M>.<M>.<P>` format exactly. Lightweight and annotated 
 ### Package filename doesn't include prerelease
 
 The prerelease suffix is only added when `PROJECT_VERSION_PRERELEASE` is non-empty. Verify the tag includes a prerelease suffix (e.g. `v1.0.0-beta.1`).
+
+### Docker build fails pulling a base image (rate limit or CDN timeout)
+
+Symptoms: `docker-publish` (release) or `docker-verify` (CI) fails while pulling `ubuntu:25.04` or `node:22-bookworm-slim`, with errors like `toomanyrequests: ... rate limit` or `dial tcp ...(production.cloudfront.docker.com): i/o timeout`.
+
+- The build steps already retry up to 3 times, so a one-off CDN timeout should self-heal — check whether the run eventually succeeded on a later attempt.
+- If you see rate-limit (`toomanyrequests`) errors, configure the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` secrets (see [Docker Hub credentials](#docker-hub-credentials-optional-but-recommended)) so pulls are authenticated.
+- On self-hosted runners, consider a pull-through registry mirror (same section) to remove the dependency on Docker Hub's CDN for repeat builds.
 
 ### Manual dispatch tag already exists
 

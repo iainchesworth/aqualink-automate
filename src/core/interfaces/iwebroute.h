@@ -17,7 +17,10 @@ namespace AqualinkAutomate::Interfaces
         virtual const std::string_view Route() const = 0;
 
     public:
-        virtual HTTP::Message OnRequest(const HTTP::Request& req) = 0;
+        // Returns a mutable Response (not a type-erased message_generator) so the
+        // router can stamp response-wide policy — e.g. Cache-Control: no-store on
+        // dynamic API data — in one place before serialising. See HTTP_OnRequest.
+        virtual HTTP::Response OnRequest(const HTTP::Request& req) = 0;
     };
 
 	template<const auto& ROUTE_URL>

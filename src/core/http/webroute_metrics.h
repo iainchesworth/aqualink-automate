@@ -21,7 +21,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Metrics() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		std::shared_ptr<Kernel::StatisticsHub> m_StatisticsHub{ nullptr };

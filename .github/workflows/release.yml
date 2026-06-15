@@ -305,6 +305,12 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     permissions:
       packages: write
+    # Surfaced so the "Login to Docker Hub" step's `if:` can gate on the optional
+    # secret being present (the `secrets` context is not usable in step-level
+    # `if`). Only the username is exposed; the token is referenced directly in the
+    # step's `with:`.
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - uses: actions/checkout@v4
@@ -312,6 +318,20 @@ jobs:
           submodules: recursive
 
       - uses: docker/setup-buildx-action@v3
+
+      # The Dockerfile's base images (ubuntu:25.04, node:22-bookworm-slim) are
+      # pulled from Docker Hub. Anonymous pulls share the runner's egress IP and
+      # hit the strict anonymous rate limit (acute on self-hosted runners) — the
+      # recurring reliability risk. Authenticating raises the pull quota. Gated on
+      # the optional DOCKERHUB_USERNAME/DOCKERHUB_TOKEN secrets so forks and
+      # credential-less runs still build anonymously. See docs/releasing.md.
+      - name: Login to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -331,19 +351,36 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=raw,value=latest,enable=${{ needs.resolve-version.outputs.is_prerelease != 'true' }}
 
+      # Build + push via buildx, wrapped in a bounded retry. A single transient
+      # Docker Hub CDN blob timeout (seen during v0.2.0-beta.1) must not fail the
+      # whole release; a retry reuses the BuildKit layer cache plus the in-Dockerfile
+      # ccache/vcpkg cache mounts, so it only re-fetches the layer that timed out.
+      # docker/setup-buildx-action makes its builder the default, so this is
+      # equivalent to docker/build-push-action (same underlying buildx). Tags and
+      # labels come from docker/metadata-action; passing them through env keeps the
+      # newline-separated lists intact inside the retry command.
       - name: Build and push runtime image
-        uses: docker/build-push-action@v6
+        uses: nick-fields/retry@v3
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+          IMAGE_LABELS: ${{ steps.meta.outputs.labels }}
+          VERSION: ${{ needs.resolve-version.outputs.version_tag }}
         with:
-          context: .
-          target: runtime
-          push: true
-          build-args: |
-            VERSION=${{ needs.resolve-version.outputs.version_tag }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          shell: bash
+          timeout_minutes: 90
+          max_attempts: 3
+          retry_wait_seconds: 30
+          retry_on: error
+          command: |
+            cmd=(docker buildx build --target runtime --push --build-arg "VERSION=${VERSION}")
+            while IFS= read -r tag;   do [ -n "$tag" ]   && cmd+=(--tag   "$tag");   done <<< "${IMAGE_TAGS}"
+            while IFS= read -r label; do [ -n "$label" ] && cmd+=(--label "$label"); done <<< "${IMAGE_LABELS}"
+            cmd+=(.)
+            printf 'Running:'; printf ' %q' "${cmd[@]}"; echo
+            "${cmd[@]}"
 
       # Verify the image we just published is actually pullable from GHCR and
-      # runs. build-push-action pushes straight to the registry without loading
+      # runs. `buildx build --push` pushes straight to the registry without loading
       # the image locally, so `docker pull` here genuinely exercises the published
       # artifact (not a local build cache). Assert it reports the resolved version.
       - name: Smoke test — pull & run the published image

@@ -25,7 +25,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Diagnostics_ActualDevices() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 		// Collect diagnostic JSON for every *non-emulated* device in the hub.
 		nlohmann::json CollectActualDiagnostics() const;

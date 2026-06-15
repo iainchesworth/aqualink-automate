@@ -41,7 +41,7 @@ namespace AqualinkAutomate::HTTP
 			return out;
 		}
 
-		HTTP::Message JsonResponse(const HTTP::Request& req, const nlohmann::json& body)
+		HTTP::Response JsonResponse(const HTTP::Request& req, const nlohmann::json& body)
 		{
 			HTTP::Response resp{ HTTP::Status::ok, req.version() };
 			resp.set(boost::beast::http::field::server, ServerFields::Server());
@@ -59,7 +59,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	}
 
-	HTTP::Message WebRoute_History::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_History::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_History::OnRequest", std::source_location::current());
 

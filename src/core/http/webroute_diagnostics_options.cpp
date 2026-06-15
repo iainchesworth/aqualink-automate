@@ -8,7 +8,7 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Options::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Options::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Options::OnRequest", std::source_location::current());
 
@@ -22,7 +22,7 @@ namespace AqualinkAutomate::HTTP
 		}
 	}
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Options::HandleGet(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Options::HandleGet(const HTTP::Request& req)
 	{
 		nlohmann::json options = nlohmann::json::array();
 		for (const auto& meta : Options::AppOption::RegisteredOptions())

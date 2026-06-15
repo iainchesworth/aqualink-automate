@@ -17,7 +17,7 @@ namespace AqualinkAutomate::HTTP
 		~WebRoute_Diagnostics_Mqtt() override = default;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		// MQTT is constructed AFTER the routes are registered, so resolve it

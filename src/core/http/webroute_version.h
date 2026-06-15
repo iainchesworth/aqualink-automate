@@ -13,7 +13,7 @@ namespace AqualinkAutomate::HTTP
         ~WebRoute_Version() override = default;
 
 	public:
-        HTTP::Message OnRequest(const HTTP::Request& req) final;
+        HTTP::Response OnRequest(const HTTP::Request& req) final;
 	};
 
 }

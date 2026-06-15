@@ -38,7 +38,7 @@ namespace AqualinkAutomate::HTTP
 		WebRoute_Diagnostics_Matter& operator=(WebRoute_Diagnostics_Matter&&) = delete;
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
 		// Background-thread body: polls the sidecar off the main loop and updates the

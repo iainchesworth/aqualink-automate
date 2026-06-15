@@ -40,7 +40,7 @@ namespace AqualinkAutomate::HTTP
 		m_CommandDispatcher = hub_locator.TryFind<Interfaces::ICommandDispatcher>();
 	}
 
-	HTTP::Message WebRoute_Equipment_IAQ::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_IAQ::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Equipment_IAQ::OnRequest", std::source_location::current());
 
@@ -51,7 +51,7 @@ namespace AqualinkAutomate::HTTP
 		return HTTP::Responses::Response_405(req);
 	}
 
-	HTTP::Message WebRoute_Equipment_IAQ::HandlePost(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment_IAQ::HandlePost(const HTTP::Request& req)
 	{
 		if (!m_CommandDispatcher)
 		{

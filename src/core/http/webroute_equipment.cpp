@@ -61,7 +61,7 @@ namespace AqualinkAutomate::HTTP
 		m_PreferencesHub = hub_locator.Find<Kernel::PreferencesHub>();
 	}
 
-	Message WebRoute_Equipment::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Equipment::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Equipment::OnRequest", std::source_location::current());
 

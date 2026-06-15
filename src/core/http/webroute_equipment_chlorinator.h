@@ -20,10 +20,10 @@ namespace AqualinkAutomate::HTTP
 		explicit WebRoute_Equipment_Chlorinator(Kernel::HubLocator& hub_locator);
 
 	public:
-		HTTP::Message OnRequest(const HTTP::Request& req) final;
+		HTTP::Response OnRequest(const HTTP::Request& req) final;
 
 	private:
-		HTTP::Message HandlePost(const HTTP::Request& req);
+		HTTP::Response HandlePost(const HTTP::Request& req);
 
 	private:
 		std::shared_ptr<Interfaces::ICommandDispatcher> m_CommandDispatcher{ nullptr };

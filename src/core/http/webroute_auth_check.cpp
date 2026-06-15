@@ -9,7 +9,7 @@
 namespace AqualinkAutomate::HTTP
 {
 
-	HTTP::Message WebRoute_AuthCheck::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_AuthCheck::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_AuthCheck::OnRequest", std::source_location::current());
 

@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <source_location>
 
 #include <magic_enum/magic_enum.hpp>
@@ -41,6 +43,14 @@ namespace AqualinkAutomate::Devices
 			default:                                                 return Kernel::ChlorinatorHealth::Unknown;
 			}
 		}
+
+		// A "concerning" health is a warning or fault the user should keep seeing;
+		// Ok and the transient TurningOff are benign.  Used to make clearing a
+		// warning slow (sticky) while raising one stays fast.
+		bool IsConcerningHealth(Kernel::ChlorinatorHealth health)
+		{
+			return !(health == Kernel::ChlorinatorHealth::Ok || health == Kernel::ChlorinatorHealth::TurningOff);
+		}
 	}
 	// namespace
 
@@ -75,6 +85,15 @@ namespace AqualinkAutomate::Devices
 		LogWarning(Channel::Devices, [this]() { return std::format("Aquarite (0x{:02x}): Watchdog timeout occurred - marking chlorinator as having lost communications.", DeviceId().Id()()); });
 
 		Status(Devices::DeviceStatus_LostComms{});
+
+		// Reset the publish-path smoothing so that, when communications resume,
+		// the first fresh reading is shown immediately rather than being held back
+		// by the pre-timeout dwell/median history (the watchdog forces the
+		// displayed health to Unknown below, bypassing the dwell state).
+		m_HealthInitialised = false;
+		m_HealthCandidateCount = 0;
+		m_SaltWindowCount = 0;
+		m_SaltWindowNext = 0;
 
 		// Reflect the loss of communications in the DataHub: the chlorinator is no longer
 		// reporting, so drive its operating status Off and health to Unknown rather than
@@ -213,6 +232,81 @@ namespace AqualinkAutomate::Devices
 		device->AuxillaryTraits.Set(DutyCycleTrait{}, clamped_percentage);
 	}
 
+	AquariteDevice::PPM AquariteDevice::MedianFilteredSalt(PPM raw_sample)
+	{
+		m_SaltWindow[m_SaltWindowNext] = raw_sample;
+		m_SaltWindowNext = (m_SaltWindowNext + 1) % SALT_MEDIAN_WINDOW;
+		if (m_SaltWindowCount < SALT_MEDIAN_WINDOW)
+		{
+			++m_SaltWindowCount;
+		}
+
+		// Median of the populated samples.  For an even count this returns the
+		// upper-middle element, which is an acceptable median proxy; the window is
+		// odd-sized and fills within a few frames, so most readings are an exact
+		// median.
+		std::array<PPM, SALT_MEDIAN_WINDOW> scratch = m_SaltWindow;
+		const auto first = scratch.begin();
+		const auto last = first + static_cast<std::ptrdiff_t>(m_SaltWindowCount);
+		const auto middle = first + static_cast<std::ptrdiff_t>(m_SaltWindowCount / 2);
+		std::nth_element(first, middle, last);
+		return *middle;
+	}
+
+	std::optional<Kernel::ChlorinatorHealth> AquariteDevice::DwellChlorinatorHealth(Kernel::ChlorinatorHealth raw_health)
+	{
+		// Never let an undecodable status (Unknown) disturb the displayed health:
+		// hold the last shown value rather than flashing "Unknown".
+		if (raw_health == Kernel::ChlorinatorHealth::Unknown)
+		{
+			return std::nullopt;
+		}
+
+		// The first decodable reading is shown immediately; the dwell governs only
+		// subsequent changes.
+		if (!m_HealthInitialised)
+		{
+			m_HealthInitialised = true;
+			m_DisplayedHealth = raw_health;
+			m_HealthCandidate = raw_health;
+			m_HealthCandidateCount = 0;
+			return raw_health;
+		}
+
+		if (raw_health == m_DisplayedHealth)
+		{
+			// Reading agrees with what we already show -> abandon any pending change.
+			m_HealthCandidate = raw_health;
+			m_HealthCandidateCount = 0;
+			return std::nullopt;
+		}
+
+		// A candidate change: count consecutive frames advocating the same new state.
+		if (raw_health == m_HealthCandidate)
+		{
+			++m_HealthCandidateCount;
+		}
+		else
+		{
+			m_HealthCandidate = raw_health;
+			m_HealthCandidateCount = 1;
+		}
+
+		// Clearing a warning/fault back to a benign state is deliberately slow
+		// (sticky); raising or switching between concerning states is fast.
+		const bool is_clearing = IsConcerningHealth(m_DisplayedHealth) && !IsConcerningHealth(raw_health);
+		const uint32_t threshold = is_clearing ? HEALTH_CLEAR_FRAMES : HEALTH_RAISE_FRAMES;
+
+		if (m_HealthCandidateCount >= threshold)
+		{
+			m_DisplayedHealth = raw_health;
+			m_HealthCandidateCount = 0;
+			return raw_health;
+		}
+
+		return std::nullopt;
+	}
+
 	void AquariteDevice::PushPPMToDataHub(const Messages::AquariteMessage_PPM& msg)
 	{
 		if (!m_DataHub)
@@ -223,7 +317,10 @@ namespace AqualinkAutomate::Devices
 		using namespace Kernel::AuxillaryTraitsTypes;
 		using namespace Units;
 
-		m_DataHub->SaltLevel(static_cast<double>(msg.SaltConcentrationPPM()) * Units::ppm);
+		// Publish a median-smoothed salt level so the cell's transient ppm spikes
+		// do not sawtooth the salt graph / salt-low alert.
+		const PPM smoothed_salt = MedianFilteredSalt(msg.SaltConcentrationPPM());
+		m_DataHub->SaltLevel(static_cast<double>(smoothed_salt) * Units::ppm);
 
 		EnsureChlorinatorDeviceExists();
 
@@ -234,9 +331,17 @@ namespace AqualinkAutomate::Devices
 		}
 
 		auto& device = chlorinators.front();
-		device->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, ConvertToChlorinatorHealthStatus(msg.Status()));
 
-		// Update operating status from AquaRite wire status.
+		// Apply the asymmetric dwell and only write the health trait on a real
+		// (dwelled) transition, so the indicator stops flapping between OK and a
+		// momentary warning when the cell sits on its low-salt boundary.
+		if (auto displayed = DwellChlorinatorHealth(ConvertToChlorinatorHealthStatus(msg.Status())); displayed.has_value())
+		{
+			device->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, displayed.value());
+		}
+
+		// Operating status (On/Off) follows the raw wire status directly: it is a
+		// distinct, stable signal that does not exhibit the boundary flapping.
 		auto operating_status = (msg.Status() == Messages::AquariteStatuses::Off || msg.Status() == Messages::AquariteStatuses::TurningOff)
 			? Kernel::ChlorinatorStatuses::Off
 			: Kernel::ChlorinatorStatuses::On;

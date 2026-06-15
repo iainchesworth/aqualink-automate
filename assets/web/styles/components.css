@@ -873,6 +873,11 @@ html.dark .gauge-card {
 }
 
 .section-toggle .section-title {
+    /* Reset BOTH inherited block margins: the base .section-title has a 0.5rem
+       margin-top, and inside this `align-items: center` flex header that
+       asymmetric top margin shifts the label below the chevron. Zeroing both
+       lets flex centre the text against the chevron. */
+    margin-top: 0;
     margin-bottom: 0;
     color: var(--text-secondary);
 }

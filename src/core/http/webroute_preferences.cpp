@@ -20,7 +20,7 @@ namespace AqualinkAutomate::HTTP
 	{
 	}
 
-	HTTP::Message WebRoute_Preferences::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Preferences::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Preferences::OnRequest", std::source_location::current());
 

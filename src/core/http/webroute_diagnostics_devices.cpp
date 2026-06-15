@@ -56,7 +56,7 @@ namespace AqualinkAutomate::HTTP
 		return CollectDeviceDiagnostics(*m_EquipmentHub, true);
 	}
 
-	boost::beast::http::message_generator WebRoute_Diagnostics_Devices::OnRequest(const HTTP::Request& req)
+	HTTP::Response WebRoute_Diagnostics_Devices::OnRequest(const HTTP::Request& req)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Diagnostics_Devices::OnRequest", std::source_location::current());
 

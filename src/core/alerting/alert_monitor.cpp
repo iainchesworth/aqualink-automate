@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <chrono>
 #include <format>
+#include <optional>
+#include <string_view>
 #include <utility>
 
 #include "alerting/alert_monitor.h"
@@ -25,14 +27,45 @@ namespace AqualinkAutomate::Alerting
 				std::chrono::system_clock::now().time_since_epoch()).count();
 		}
 
-		// A genuine chlorinator FAULT (not a transient warning).  Warnings such as
-		// low/high salt or no-flow are surfaced elsewhere; this condition latches
-		// only on the hard-fault states and clears on Ok/Unknown (and on warnings,
-		// which are not faults).
+		// A genuine chlorinator FAULT (not a transient warning).  This condition
+		// latches only on the hard-fault states; transient warnings are surfaced
+		// by the separate chlorinator_warning condition below.
 		bool IsChlorinatorFault(Kernel::ChlorinatorHealth health)
 		{
 			return health == Kernel::ChlorinatorHealth::Error_CheckPCB
 				|| health == Kernel::ChlorinatorHealth::GeneralFault;
+		}
+
+		// Human-readable label for a hard-fault health state (used in the alert
+		// detail so the log line / UI toast names the specific fault).
+		std::string_view ChlorinatorFaultLabel(Kernel::ChlorinatorHealth health)
+		{
+			switch (health)
+			{
+			case Kernel::ChlorinatorHealth::Error_CheckPCB: return "Check PCB";
+			case Kernel::ChlorinatorHealth::GeneralFault:   return "General fault";
+			default:                                        return "Fault";
+			}
+		}
+
+		// Maps a chlorinator health value to a human-readable WARNING label, or
+		// std::nullopt when the value is not a warning (Ok / TurningOff / a hard
+		// fault / Unknown).  This is the chlorinator-agnostic catalogue of the
+		// cell warnings the AlertMonitor surfaces — every warning the device layer
+		// can report, not just low salt.
+		std::optional<std::string_view> ChlorinatorWarningLabel(Kernel::ChlorinatorHealth health)
+		{
+			switch (health)
+			{
+			case Kernel::ChlorinatorHealth::Warning_NoFlow:         return "No flow";
+			case Kernel::ChlorinatorHealth::Warning_LowSalt:        return "Low salt";
+			case Kernel::ChlorinatorHealth::Warning_HighSalt:       return "High salt";
+			case Kernel::ChlorinatorHealth::Warning_HighCurrent:    return "High current";
+			case Kernel::ChlorinatorHealth::Warning_CleanCell:      return "Clean cell";
+			case Kernel::ChlorinatorHealth::Warning_LowVoltage:     return "Low voltage";
+			case Kernel::ChlorinatorHealth::Warning_LowTemperature: return "Low temperature";
+			default:                                                return std::nullopt;
+			}
 		}
 
 		std::uint64_t TotalMessageCount(const Kernel::StatisticsHub& stats)
@@ -152,6 +185,7 @@ namespace AqualinkAutomate::Alerting
 	void AlertMonitor::EvaluateAll()
 	{
 		EvaluateSaltLow();
+		EvaluateChlorinatorWarning();
 		EvaluateChlorinatorFault();
 		EvaluateServiceMode();
 		EvaluateSerialCommsLoss();
@@ -194,6 +228,36 @@ namespace AqualinkAutomate::Alerting
 		}
 	}
 
+	void AlertMonitor::EvaluateChlorinatorWarning()
+	{
+		if (!m_DataHub)
+		{
+			return;
+		}
+
+		auto chlorinators = m_DataHub->Chlorinators();
+		if (chlorinators.empty())
+		{
+			// No chlorinator discovered -> clear any latched warning.
+			SetCondition(ConditionKeys::ChlorinatorWarning, false, "No chlorinator present");
+			return;
+		}
+
+		auto health = chlorinators.front()->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::ChlorinatorHealthTrait{});
+		std::optional<std::string_view> warning;
+		if (health.has_value())
+		{
+			warning = ChlorinatorWarningLabel(health.value());
+		}
+
+		// Raise while the cell is reporting any warning, naming the specific one
+		// in the detail so the log line / UI toast is actionable.  The health trait
+		// is dwell-smoothed at the device layer, so this does not flap when the
+		// cell sits on a boundary.
+		SetCondition(ConditionKeys::ChlorinatorWarning, warning.has_value(),
+			warning.has_value() ? std::format("Chlorinator warning: {}", warning.value()) : "Chlorinator health OK");
+	}
+
 	void AlertMonitor::EvaluateChlorinatorFault()
 	{
 		if (!m_DataHub)
@@ -213,7 +277,7 @@ namespace AqualinkAutomate::Alerting
 		const bool fault = health.has_value() && IsChlorinatorFault(health.value());
 
 		SetCondition(ConditionKeys::ChlorinatorFault, fault,
-			fault ? "Chlorinator reporting a fault" : "Chlorinator health OK");
+			fault ? std::format("Chlorinator fault: {}", ChlorinatorFaultLabel(health.value())) : "Chlorinator health OK");
 	}
 
 	void AlertMonitor::EvaluateServiceMode()
