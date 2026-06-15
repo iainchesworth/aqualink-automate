@@ -20,6 +20,10 @@ on:
         description: "checkout fetch-depth (0 for releases so `git describe`/cut-from-main see full history + tags; 1 for CI)."
         type: number
         default: 1
+      upload_installtree:
+        description: "On Linux, run `cmake --install` and upload installtree-linux-gcc (the relocatable FHS tree e2e-ui and the assembled Docker image consume instead of recompiling)."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -150,6 +154,28 @@ jobs:
           testPreset: ${{ matrix.test_preset }}
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      # ---------------------------------------------------------------------------
+      # Linux install tree (consumed by e2e-ui and the assembled Docker image so
+      # they do not recompile). This is the same `cmake --install` tree the
+      # Dockerfile assembles the runtime image from: the binary + bundled vcpkg libs
+      # ($ORIGIN RPATH) + web/ssl assets. Linux only (the consumers are Linux), and
+      # built on the Ubuntu-25.04 runner so the binary's glibc/libstdc++ baseline
+      # matches the ubuntu:25.04 Docker runtime base.
+      # ---------------------------------------------------------------------------
+      - name: Install (Linux install tree)
+        if: inputs.upload_installtree && runner.os == 'Linux'
+        shell: bash
+        run: cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
+
+      - name: Upload Linux install tree
+        if: inputs.upload_installtree && runner.os == 'Linux'
+        uses: actions/upload-artifact@v6
+        with:
+          name: installtree-linux-gcc
+          if-no-files-found: error
+          path: install/config-linux-gcc/
+          retention-days: 3
 
       # ---------------------------------------------------------------------------
       # Packaging (release path only — inputs.do_package)

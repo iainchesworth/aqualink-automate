@@ -154,10 +154,17 @@ RUN npm run build \
     && npm prune --omit=dev
 
 # ==============================================================================
-# Stage: runtime (minimal production image)
+# Stage: runtime-base (OS + deps + Matter sidecar + entrypoint, minus the app)
 # ==============================================================================
+#
+# Everything the production image needs EXCEPT the compiled app install tree. The
+# two final stages layer the app on top and differ ONLY in where the install tree
+# comes from, so the runtime contract is defined once here:
+#   - runtime           : app from the `ci` stage (built from source — the cold gate)
+#   - runtime-assembled : app from a prebuilt install tree staged into the context
+#                         (no recompile; used by release.yml docker-publish)
 
-FROM ubuntu:25.04 AS runtime
+FROM ubuntu:25.04 AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -179,12 +186,6 @@ RUN groupadd --gid 10000 aqualink \
 
 WORKDIR /opt/aqualink-automate
 
-# Copy the installed application from the ci stage. The install tree already
-# carries the vcpkg runtime libraries in lib/aqualink-automate/, and the binary
-# is linked with an $ORIGIN-relative RPATH (see cmake/CPackConfig.cmake), so no
-# separate shared-library copy or LD_LIBRARY_PATH is required.
-COPY --from=ci /src/install/config-linux-gcc/ .
-
 # The Matter bridge sidecar (built dist/ + production node_modules) and the
 # supervising entrypoint that launches it alongside the app.
 COPY --from=matter-builder /opt/matter-bridge /opt/matter-bridge
@@ -194,8 +195,6 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Fabric/commissioning persistence for the Matter bridge (mount a volume here so
 # pairing survives container restarts). Owned by the app user.
 RUN mkdir -p /data/matter && chown -R aqualink:aqualink /data/matter
-
-USER aqualink
 
 # 80 = HTTP API. Matter commissioning additionally needs UDP 5540 + mDNS 5353,
 # which require host networking (see docker-compose.yml) -- they cannot be mapped
@@ -214,3 +213,37 @@ ENV MATTER_ENABLED=true \
 # executable (share/aqualink-automate/...), so they do not need to be passed.
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["--address", "0.0.0.0", "--disable-https"]
+
+# ==============================================================================
+# Stage: runtime (from-source — the cold-build gate)
+# ==============================================================================
+#
+# The compiled install tree comes from the `ci` stage (built from source in this
+# very image, so its glibc/libstdc++ is the base image's by construction). CI's
+# docker-verify builds this target, so a vcpkg/Dockerfile/toolchain regression is
+# always caught end to end. The install tree carries the vcpkg runtime libraries in
+# lib/aqualink-automate/ with an $ORIGIN-relative RPATH (see cmake/CPackConfig.cmake),
+# so no separate shared-library copy or LD_LIBRARY_PATH is required.
+
+FROM runtime-base AS runtime
+
+COPY --from=ci /src/install/config-linux-gcc/ .
+USER aqualink
+
+# ==============================================================================
+# Stage: runtime-assembled (prebuilt install tree — no recompile)
+# ==============================================================================
+#
+# The compiled install tree is staged into the build context at docker/context/
+# (release.yml docker-publish downloads installtree-linux-gcc there) and copied
+# straight in — NO vcpkg/source recompile. The install tree MUST be built on Ubuntu
+# 25.04 so its glibc/libstdc++ baseline matches this base image; release.yml builds
+# it on the 25.04 Linux runner. The from-source `runtime` stage (CI docker-verify)
+# remains the cold-build gate that catches any ABI/vcpkg/Dockerfile regression this
+# path cannot.
+
+FROM runtime-base AS runtime-assembled
+
+ARG INSTALL_SRC=docker/context/install/config-linux-gcc
+COPY ${INSTALL_SRC}/ .
+USER aqualink

@@ -134,6 +134,9 @@ jobs:
       do_package: true
       version_tag: ${{ needs.resolve-version.outputs.version_tag }}
       fetch_depth: 0
+      # Publish the relocatable Linux install tree so docker-publish assembles the
+      # runtime image from it instead of recompiling vcpkg from scratch.
+      upload_installtree: true
 
   docker-publish:
     name: Docker Publish
@@ -188,28 +191,45 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=raw,value=latest,enable=${{ needs.resolve-version.outputs.is_prerelease != 'true' }}
 
-      # Build + push via buildx, wrapped in a bounded retry. A single transient
-      # Docker Hub CDN blob timeout (seen during v0.2.0-beta.1) must not fail the
-      # whole release; a retry reuses the BuildKit layer cache plus the in-Dockerfile
-      # ccache/vcpkg cache mounts, so it only re-fetches the layer that timed out.
-      # docker/setup-buildx-action makes its builder the default, so this is
-      # equivalent to docker/build-push-action (same underlying buildx). Tags and
-      # labels come from docker/metadata-action; passing them through env keeps the
-      # newline-separated lists intact inside the retry command.
-      - name: Build and push runtime image
+      # Stage the prebuilt Linux install tree (built + version-stamped by
+      # build-packages on the Ubuntu-25.04 runner) into the build context so the
+      # runtime-assembled stage copies it straight in — NO vcpkg/source recompile.
+      - name: Download Linux install tree
+        uses: actions/download-artifact@v4
+        with:
+          name: installtree-linux-gcc
+          path: docker/context/install/config-linux-gcc
+
+      - name: Verify staged install tree
+        run: |
+          BIN=docker/context/install/config-linux-gcc/bin/aqualink-automate
+          if [ ! -f "$BIN" ]; then
+            echo "::error::Staged install tree is missing the executable ($BIN) — cannot assemble the image."
+            exit 1
+          fi
+          chmod +x "$BIN"
+          echo "Staged install tree OK."
+
+      # Assemble + push via buildx, wrapped in a bounded retry so a transient Docker
+      # Hub CDN blob timeout pulling a base image doesn't fail the release. The image
+      # is assembled from the prebuilt install tree (no C++ recompile); only the
+      # matter sidecar's TypeScript builds (matter-builder stage). The binary is
+      # already version-stamped, so no VERSION build-arg is needed. The "pull & run"
+      # smoke test below is the ABI guard (a glibc/libstdc++ mismatch would fail
+      # --version); CI's from-source docker-verify is the cold-build gate.
+      - name: Build and push runtime image (assembled)
         uses: nick-fields/retry@v4
         env:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
           IMAGE_LABELS: ${{ steps.meta.outputs.labels }}
-          VERSION: ${{ needs.resolve-version.outputs.version_tag }}
         with:
           shell: bash
-          timeout_minutes: 90
+          timeout_minutes: 60
           max_attempts: 3
           retry_wait_seconds: 30
           retry_on: error
           command: |
-            cmd=(docker buildx build --target runtime --push --build-arg "VERSION=${VERSION}")
+            cmd=(docker buildx build --target runtime-assembled --push)
             while IFS= read -r tag;   do [ -n "$tag" ]   && cmd+=(--tag   "$tag");   done <<< "${IMAGE_TAGS}"
             while IFS= read -r label; do [ -n "$label" ] && cmd+=(--label "$label"); done <<< "${IMAGE_LABELS}"
             cmd+=(.)

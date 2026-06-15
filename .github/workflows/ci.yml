@@ -17,12 +17,21 @@ jobs:
   # The configure/build/test matrix lives in the reusable _build.yml so CI and the
   # release pipeline share one definition and can never drift. Runner selection
   # (vars.RUNNER_LINUX / RUNNER_WINDOWS) is handled inside that workflow.
+  # upload_installtree publishes the Linux install tree that e2e-ui consumes below
+  # (so e2e no longer recompiles the app).
   build-and-test:
     name: Build & Test
     uses: ./.github/workflows/_build.yml
+    with:
+      upload_installtree: true
 
+  # Drive the real UI against a replay fixture in a browser. Consumes the binary
+  # built by build-and-test (the installtree-linux-gcc artifact) instead of
+  # recompiling the app. Trade-off: gated behind the whole build matrix, so it
+  # starts later than when it built its own binary — but it never recompiles.
   e2e-ui:
     name: E2E UI (Playwright)
+    needs: build-and-test
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
@@ -30,54 +39,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Clean workspace (self-hosted)
-        if: contains(vars.RUNNER_LINUX, 'self-hosted')
-        shell: bash
-        run: rm -rf build/
-
-      - uses: ./.github/actions/setup-cpp-toolchain
-        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
+      - name: Download Linux install tree
+        uses: actions/download-artifact@v4
         with:
-          compiler: gcc-15
+          name: installtree-linux-gcc
+          path: installtree
 
-      - name: Setup vcpkg cache (self-hosted)
-        if: contains(vars.RUNNER_LINUX, 'self-hosted')
+      - name: Make binary executable
         shell: bash
-        run: |
-          BINARY_DIR="$HOME/.cache/vcpkg/archives"
-          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-      # Shares the vcpkg cache populated by the build-and-test job, so this job only
-      # pays the application compile cost, not a vcpkg rebuild.
-      - uses: ./.github/actions/setup-vcpkg-cache
-        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
-        with:
-          cache-key-prefix: Linux GCC
-
-      - name: Bootstrap vcpkg
-        shell: bash
-        run: |
-          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
-            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          fi
-        env:
-          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-
-      - name: Configure
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: config-linux-gcc
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      # Only the app binary is needed for the UI replay run; skipping the test
-      # executables keeps this job lean (the C++ tests run in build-and-test).
-      - name: Build application binary
-        shell: bash
-        run: cmake --build --preset build-linux-gcc --target aqualink-automate
+        run: chmod +x installtree/bin/aqualink-automate
 
       - uses: actions/setup-node@v5
         with:
@@ -92,7 +62,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       # The four runs mirror the modes encoded in playwright.config.ts. Each boots
-      # the freshly built binary against the replay fixture; env selects the mode.
+      # the downloaded binary against the replay fixture; env selects the mode.
       #   * default        -> every spec except auth (history/scheduler "disabled" paths)
       #   * AUTH_TOKEN      -> only auth.spec.ts      (token-gated WS auth)
       #   * HISTORY_DB      -> only trends.spec.ts    (recorded series + chart)
@@ -101,27 +71,27 @@ jobs:
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
 
       - name: E2E — auth enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_AUTH_TOKEN: e2e-secret-token
 
       - name: E2E — history enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_HISTORY_DB: ${{ runner.temp }}/e2e-history.db
 
       - name: E2E — scheduler enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_SCHEDULES_FILE: ${{ runner.temp }}/e2e-schedules.json
 
       - name: Upload Playwright report
@@ -192,6 +162,10 @@ jobs:
           fi
           echo "Version advances: base=$BASE_DESCRIBE -> head=$HEAD_DESCRIBE"
 
+  # Cold, from-source Docker build kept deliberately as the gate that the
+  # multi-stage Dockerfile + vcpkg toolchain still build end to end (the assembled
+  # runtime path in release.yml's docker-publish skips this, so this is its safety
+  # net). Catches a vcpkg/Dockerfile/ABI regression that the assembly path can't.
   docker-verify:
     name: Docker Verification
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
