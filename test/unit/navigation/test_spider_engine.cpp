@@ -292,10 +292,6 @@ BOOST_AUTO_TEST_CASE(TestFullDiscoveryPolicyAllowsUnreachablePages)
 	FullDiscoveryVisitPolicy policy;
 
 	// These pages have no incoming edges but are still "normal" pages
-	const MenuPage* set_aquapure = model.GetPage(PageId::SetAquapure);
-	BOOST_REQUIRE(set_aquapure != nullptr);
-	BOOST_CHECK(policy.ShouldVisit(PageId::SetAquapure, *set_aquapure));
-
 	const MenuPage* more_onetouch = model.GetPage(PageId::MoreOneTouch);
 	BOOST_REQUIRE(more_onetouch != nullptr);
 	BOOST_CHECK(policy.ShouldVisit(PageId::MoreOneTouch, *more_onetouch));
@@ -308,11 +304,9 @@ BOOST_AUTO_TEST_CASE(TestFullDiscoveryPolicyAllowsUnreachablePages)
 BOOST_AUTO_TEST_CASE(TestUnreachablePagesHaveNoPathFromSystem)
 {
 	// Even though the policy allows these pages, SpiderEngine can't reach them
-	// because no Select edge in the model targets them.
+	// because no Select edge in the model targets them. (SetAquapure is now reachable
+	// from Menu/Help - it carries the chlorinator % editor - so it is no longer here.)
 	auto model = CreateOneTouchMenuModel();
-
-	auto path_aquapure = model.FindPath(PageId::System, PageId::SetAquapure);
-	BOOST_CHECK(path_aquapure.empty());
 
 	auto path_more_onetouch = model.FindPath(PageId::System, PageId::MoreOneTouch);
 	BOOST_CHECK(path_more_onetouch.empty());
@@ -327,7 +321,7 @@ BOOST_AUTO_TEST_CASE(TestUnreachablePagesHaveNoPathFromAnyRoot)
 	auto model = CreateOneTouchMenuModel();
 
 	std::vector<PageId> roots = { PageId::System, PageId::OneTouch, PageId::EquipmentOnOff };
-	std::vector<PageId> unreachable = { PageId::SetAquapure, PageId::MoreOneTouch, PageId::CustomLabel };
+	std::vector<PageId> unreachable = { PageId::MoreOneTouch, PageId::CustomLabel };
 
 	for (auto root : roots)
 	{
@@ -936,7 +930,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // =============================================================================
 BOOST_AUTO_TEST_SUITE(EndToEndScrape_TestSuite)
 
-BOOST_AUTO_TEST_CASE(TestFullDiscoveryCrawlVisits25Pages)
+BOOST_AUTO_TEST_CASE(TestFullDiscoveryCrawlVisits27Pages)
 {
 	auto model = CreateOneTouchMenuModel();
 	auto registry = CreateOneTouchPageContentRegistry();
@@ -986,9 +980,10 @@ BOOST_AUTO_TEST_CASE(TestFullDiscoveryCrawlVisits25Pages)
 
 	BOOST_CHECK(crawl_complete);
 
-	// Verify all 25 reachable pages were visited
+	// Verify all 27 reachable pages were visited (now incl. the chlorinator pages
+	// SetAquapure + Boost, reachable from Menu/Help for chlorinator control).
 	const auto& visited = engine.GetVisitedPages();
-	BOOST_CHECK_EQUAL(visited.size(), 25);
+	BOOST_CHECK_EQUAL(visited.size(), 27);
 
 	// Check all expected reachable pages
 	std::vector<PageId> expected_reachable = {
@@ -997,6 +992,7 @@ BOOST_AUTO_TEST_CASE(TestFullDiscoveryCrawlVisits25Pages)
 		PageId::DiagnosticsSensors, PageId::DiagnosticsRemotes, PageId::DiagnosticsErrors,
 		PageId::DiagnosticsIAQStatus, PageId::DiagnosticsIAQRSSI,
 		PageId::Program, PageId::SetTemperature, PageId::SetTime,
+		PageId::SetAquapure, PageId::Boost,
 		PageId::DisplayLight, PageId::Lockouts, PageId::PasswordSettings,
 		PageId::ProgramGroup, PageId::SystemSetup,
 		PageId::LabelAuxList, PageId::LabelAux,
@@ -1011,8 +1007,8 @@ BOOST_AUTO_TEST_CASE(TestFullDiscoveryCrawlVisits25Pages)
 
 	// Verify unreachable pages were NOT visited
 	std::vector<PageId> unreachable = {
-		PageId::SetAquapure, PageId::MoreOneTouch, PageId::CustomLabel,
-		PageId::EquipmentStatus, PageId::FreezeProtect, PageId::Boost,
+		PageId::MoreOneTouch, PageId::CustomLabel,
+		PageId::EquipmentStatus, PageId::FreezeProtect,
 		PageId::SelectSpeed
 	};
 
@@ -1137,9 +1133,9 @@ BOOST_AUTO_TEST_CASE(TestCrawlFromEquipmentOnOff)
 		"Spider engine starting from EquipmentOnOff did not complete: state="
 		<< static_cast<int>(engine.GetState()) << " after " << iterations << " iterations");
 
-	// Should still visit all 25 reachable pages
+	// Should still visit all 27 reachable pages (incl. the chlorinator SetAquapure + Boost).
 	const auto& visited = engine.GetVisitedPages();
-	BOOST_CHECK_EQUAL(visited.size(), 25);
+	BOOST_CHECK_EQUAL(visited.size(), 27);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

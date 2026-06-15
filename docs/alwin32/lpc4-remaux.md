@@ -10,6 +10,14 @@ Cross-checked against the shared-protocol template `docs/alwin32_simulator_proto
 (frame = `NetIO.dll!CommTx`; addressing = `(class<<3)|instance`; device model =
 `RemoteLogOn` / `GetMasterMessage` / `RemoteStatus`).
 
+**Ghidra cross-check (Remaux):** the Remaux command dispatch (`FUN_004017f3`), the relay
+bitmask builder (`FUN_004015d2`), and the 8-bit/16-bit relay setters (`FUN_004016c8` /
+`FUN_00401755`) were decompiled (project `ghidra-proj/alwin32` → `alwin32-re/decomp-remaux`)
+and **confirm every claim below exactly**: cmd `0x00` poll → 3-byte status; `0x02` 6-byte bulk;
+`0x08` set 16-bit (`idx=data[1]`, `val=data[2..3]` LE) + clear 8-bit; `0x09` set 8-bit
+(`idx=data[1]`, `val=data[2]`) + clear 16-bit; then recompute bitmask + send status. The
+bitmask packs bit `N-1` for relay `N` set iff its 8-bit slot OR 16-bit slot is non-zero.
+
 **Legend:** `[CONFIRMED]` = directly observed in code/data. `[INFERRED]` = deduced from
 data flow, flagged where the wire bytes themselves were not pinned down. Neither binary
 embeds a PDB path; identity rests on resource strings.

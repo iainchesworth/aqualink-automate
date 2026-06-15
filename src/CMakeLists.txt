@@ -72,7 +72,9 @@ add_custom_command(
 	TARGET aqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to build folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "$<TARGET_FILE_DIR:aqualink-automate>/templates"
+	# Copy beside the executable into web/ to match the runtime default doc-root
+	# (Application::DOC_ROOT = <exe_dir>/web) and the packaged layout (bin/web).
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "$<TARGET_FILE_DIR:aqualink-automate>/web"
 	COMMENT "Syncing web assets"
 )
 

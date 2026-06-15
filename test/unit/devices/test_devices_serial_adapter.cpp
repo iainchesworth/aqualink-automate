@@ -8,6 +8,8 @@
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
 #include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/devices/capabilities/actuation_types.h"
+#include "kernel/circulation.h"
 
 #include "support/unit_test_hublocatorinjector.h"
 
@@ -92,6 +94,27 @@ BOOST_AUTO_TEST_CASE(TestQueuePumpCommand_SetOff)
 {
 	SerialAdapterDevice device(device_type, *this, true);
 	BOOST_CHECK_NO_THROW(device.QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOff));
+}
+
+// =============================================================================
+// SetCirculationMode (OBS-06)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSetCirculationMode_PoolSpaSpillover_Accepted)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Pool) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spa) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spillover) == Capabilities::ActuationResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(TestSetCirculationMode_SpaFillDrain_NotSupported)
+{
+	// Spa Fill / Spa Drain have no RS-485 command (valve/service operations) -> NotSupported,
+	// not InvalidValue or a silent accept.
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::SpaFill) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::SpaDrain) == Capabilities::ActuationResult::NotSupported);
 }
 
 // =============================================================================

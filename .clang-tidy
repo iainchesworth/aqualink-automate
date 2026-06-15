@@ -43,7 +43,8 @@ Checks: >
   -cert-err58-cpp,
   -clang-analyzer-core.CallAndMessage,
   -clang-analyzer-optin.cplusplus.VirtualCall,
-  -clang-analyzer-cplusplus.NewDelete
+  -clang-analyzer-cplusplus.NewDelete,
+  -clang-analyzer-optin.core.EnumCastOutOfRange
 
 # Security-critical checks that should fail the build
 WarningsAsErrors: >

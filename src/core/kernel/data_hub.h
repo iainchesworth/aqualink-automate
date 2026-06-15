@@ -4,9 +4,11 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/signals2.hpp>
@@ -15,6 +17,7 @@
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "kernel/circulation.h"
+#include "kernel/equipment_validation.h"
 #include "kernel/equipment_versions.h"
 #include "kernel/hub_events/data_hub_config_event.h"
 #include "utility/timeout_duration_string_converter.h"
@@ -75,6 +78,19 @@ namespace AqualinkAutomate::Kernel
 		Kernel::ConfigurationSource PoolConfigurationSource{ Kernel::ConfigurationSource::Auto };
 		Kernel::SystemBoards SystemBoard{ Kernel::SystemBoards::Unknown };
 		bool EmulationDisabled{ false };
+		// When true, the RSSA presence-gating (auto-suppress an emulated Serial Adapter
+		// on detecting a real one) is disabled. A safety opt-out: the detection can
+		// false-positive on the controller's own status push to our emulated adapter.
+		bool PresenceGatingDisabled{ false };
+
+		// Expected equipment layout for the detected model (from PoolConfigurationDecoder);
+		// 0 until the version page is scraped. Used to validate the discovered equipment set.
+		uint8_t ExpectedAuxillaryCount{ 0 };
+		uint8_t ExpectedPowerCenterCount{ 0 };
+
+		// Outcome of cross-checking discovered equipment against the expected layout; set once
+		// the startup scrape completes (std::nullopt until then).
+		std::optional<Kernel::EquipmentValidation> EquipmentValidationResult;
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT STATUS
@@ -91,6 +107,22 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		Kernel::EquipmentVersions EquipmentVersions;
+
+	//---------------------------------------------------------------------
+	// SPA-SIDE SWITCH BUTTON ASSIGNMENTS
+	//---------------------------------------------------------------------
+	// The controller's spa-side switch button->function map, decoded from its config UI:
+	// the iAQ "Spa Remotes" page or the OneTouch "Spa Switch" menu. Stored CONTROLLER-AGNOSTICALLY
+	// (keyed by 1-based (switch, button)) so whichever controller a given system has populates the
+	// same map -- the read path works for iAQ and OneTouch installs alike.
+
+	public:
+		void SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function);
+		std::optional<std::string> SpaSwitchAssignment(uint8_t switch_number, uint8_t button_number) const;
+		const std::map<std::pair<uint8_t, uint8_t>, std::string>& SpaSwitchAssignments() const;
+
+	private:
+		std::map<std::pair<uint8_t, uint8_t>, std::string> m_SpaSwitchAssignments;
 
 	//---------------------------------------------------------------------
 	// CIRCULATION MODES

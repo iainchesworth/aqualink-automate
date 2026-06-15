@@ -10,9 +10,13 @@
 #include "auxillaries/jandy_auxillary_status.h"
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/circulation_controller.h"
+#include "devices/capabilities/command_history.h"
 #include "devices/capabilities/describable.h"
+#include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
 #include "devices/capabilities/restartable.h"
+#include "devices/capabilities/setpoint_controller.h"
 #include "messages/jandy_message_ack.h"
 #include "messages/jandy_message_probe.h"
 #include "messages/jandy_message_status.h"
@@ -26,7 +30,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::CirculationController, public Capabilities::CommandHistory
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0 };
@@ -50,6 +54,20 @@ namespace AqualinkAutomate::Devices
 		void QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action);
 		void QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action);
 		void QueueSetpointCommand(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
+
+	public:
+		// ----------------------------------------------------------------------
+		// Capability implementations: DeviceActuator / SetpointController /
+		// CirculationController. These let the capability-routed CommandDispatcher
+		// drive equipment through the Serial Adapter without the dispatcher knowing
+		// any Serial-Adapter-specific command codes (that mapping lives here, moved
+		// out of CommandDispatcher::DispatchCommand).
+		// ----------------------------------------------------------------------
+		Capabilities::ActuationResult ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action) override;
+		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
+		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
+		Capabilities::ActuationResult SetCirculationMode(Kernel::CirculationModes mode) override;
+		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::High; }
 
 	public:
 		// CAPTURE-GATED WRITE PATH (AqualinkD-derived, NOT yet validated on this
@@ -112,6 +130,14 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		bool m_StatusMessageReceived;
+
+		// True once the emulated adapter has actively transmitted (answered a master
+		// poll/probe), i.e. it has "claimed" this bus address. Used by presence-gating:
+		// a DevStatus/DevReady at our id AFTER we've claimed the address is the
+		// controller's solicited status push to US (the normal read path), not a real
+		// adapter; only an UNSOLICITED one (before we've claimed it) implies a real
+		// adapter already conversing at this address.
+		bool m_HasClaimedAddress{ false };
 
 	private:
 		// FIFO of pending control ACKs. A single command queues one entry; the

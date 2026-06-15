@@ -65,6 +65,7 @@ namespace AqualinkAutomate::Preferences
 		json["history"] = { { "retention_days", m_Hub->HistoryRetentionDays } };
 		json["label_overrides"] = m_Hub->LabelOverrides;
 		json["ui"] = m_Hub->UiPreferences;
+		json["spa_switch_buttons"] = m_Hub->SpaSwitchButtons;
 		return json;
 	}
 
@@ -89,6 +90,7 @@ namespace AqualinkAutomate::Preferences
 		auto retention = m_Hub->HistoryRetentionDays;
 		auto label_overrides = m_Hub->LabelOverrides;
 		auto ui = m_Hub->UiPreferences;
+		auto spa_switch_buttons = m_Hub->SpaSwitchButtons;
 
 		if (json.contains("temperature_units"))
 		{
@@ -176,6 +178,24 @@ namespace AqualinkAutomate::Preferences
 			ui = json["ui"];
 		}
 
+		if (json.contains("spa_switch_buttons"))
+		{
+			if (!json["spa_switch_buttons"].is_object())
+			{
+				error = "spa_switch_buttons must be an object of \"switch:button\"->function strings";
+				return false;
+			}
+			for (const auto& [key, function] : json["spa_switch_buttons"].items())
+			{
+				if (!function.is_string())
+				{
+					error = "spa_switch_buttons values must be strings";
+					return false;
+				}
+			}
+			spa_switch_buttons = json["spa_switch_buttons"];
+		}
+
 		// Commit + persist.
 		m_Hub->Temperature_DisplayUnits = units;
 		m_Hub->AlertSaltLowPpm = salt;
@@ -184,9 +204,25 @@ namespace AqualinkAutomate::Preferences
 		m_Hub->HistoryRetentionDays = retention;
 		m_Hub->LabelOverrides = std::move(label_overrides);
 		m_Hub->UiPreferences = std::move(ui);
+		m_Hub->SpaSwitchButtons = std::move(spa_switch_buttons);
 
 		Save();
 		return true;
+	}
+
+	void PreferencesService::RecordSpaSwitchAssignment(std::uint8_t switch_number, std::uint8_t button_number, const std::string& function)
+	{
+		if (!m_Hub)
+		{
+			return;
+		}
+
+		// Record the user's REQUESTED mapping (desired state) keyed "<switch>:<button>" and persist.
+		// The controller's live decoded map (DataHub) remains the source of truth; this just lets the
+		// UI reflect intent and survives a restart.
+		const auto key = std::format("{}:{}", switch_number, button_number);
+		m_Hub->SpaSwitchButtons[key] = function;
+		Save();
 	}
 
 	void PreferencesService::Load()

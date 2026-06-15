@@ -15,6 +15,7 @@ target_sources(
 	application/application_defaults.cpp
 	certificates/certificate_management.cpp
 	concepts/is_option_processor.cpp
+	devices/capabilities/command_history.cpp
 	devices/capabilities/restartable.cpp
 	utility/slot_connection_manager.cpp
 	$<$<BOOL:${ENABLE_ASIO_TRACKING}>:developer/asio_tracking.cpp>
@@ -58,10 +59,12 @@ target_sources(
 	http/webroute_diagnostics_actualdevices.cpp
 	http/webroute_diagnostics_devices.cpp
 	http/webroute_diagnostics_logging.cpp
+	http/webroute_diagnostics_matter.cpp
 	http/webroute_diagnostics_mqtt.cpp
 	http/webroute_diagnostics_options.cpp
 	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp
+	http/webroute_equipment_spaside_remotes.cpp
 	http/webroute_equipment_button.cpp
 	http/webroute_equipment_buttons.cpp
 	http/webroute_equipment_chlorinator.cpp
@@ -178,6 +181,7 @@ target_sources(
 	options/options_developer_options.cpp
 	options/options_equipment_options.cpp
 	options/options_history_options.cpp
+	options/options_matter_options.cpp
 	options/options_mqtt_options.cpp
 	options/options_option_type.cpp
 	options/options_preferences_options.cpp

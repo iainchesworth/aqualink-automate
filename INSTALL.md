@@ -164,6 +164,29 @@ Or use Docker Compose:
 docker compose up
 ```
 
+### Matter (smart-home) bridge — host networking required
+
+The runtime image bundles a **Matter bridge sidecar** (a Node.js process built from
+[`matter-bridge/`](matter-bridge/README.md)) that exposes the pool equipment to Apple
+Home, Google Home, Alexa and SmartThings. It is **on by default** and managed by the
+container entrypoint alongside the app.
+
+Matter commissioning uses **IPv6 mDNS (UDP 5540 + 5353)**, which Docker's bridge
+network driver does not forward. The container must therefore run with **host
+networking** for pairing to work:
+
+```bash
+docker run --network host -v aqualink-matter:/data/matter aqualink-automate
+```
+
+`docker compose up` already sets `network_mode: host` and a `matter-data` volume
+(mounted at `/data/matter`) so the commissioned fabrics survive restarts. Open the
+web UI's **Diagnostics → Matter** panel to scan the pairing QR.
+
+Host networking is Linux-only; on Docker Desktop (macOS/Windows) Matter cannot be
+commissioned from the LAN. Disable the bridge there with `-e MATTER_ENABLED=false`
+(or `--matter false`) and keep normal `-p 80:80` port mapping.
+
 ### API Documentation (Swagger UI)
 
 ```bash

@@ -9,6 +9,7 @@
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "devices/spaside_remote_device.h"
 #include "options/options_developer_options.h"
 #include "options/options_jandy.h"
 #include "equipment/jandy_equipment.h"
@@ -72,6 +73,16 @@ namespace AqualinkAutomate::Jandy
 			}
 		}
 
+		if (jandy_settings.disable_presence_gating)
+		{
+			auto data_hub = hub_locator.Find<Kernel::DataHub>();
+			if (nullptr != data_hub)
+			{
+				data_hub->PresenceGatingDisabled = true;
+				LogInfo(Channel::Main, "RSSA presence-gating disabled; an emulated Serial Adapter will not auto-suppress on a suspected real adapter");
+			}
+		}
+
 		if (jandy_settings.auto_startup)
 		{
 			// The JandyStartupService (wired in aqualink-automate.cpp on the io_context) detects
@@ -108,6 +119,10 @@ namespace AqualinkAutomate::Jandy
 
 				case Devices::JandyEmulatedDeviceTypes::SerialAdapter:
 					equipment_hub->AddDevice(std::make_unique<Devices::SerialAdapterDevice>(device_id, hub_locator, true));
+					break;
+
+				case Devices::JandyEmulatedDeviceTypes::SpasideRemote:
+					equipment_hub->AddDevice(std::make_unique<Devices::SpasideRemoteDevice>(device_id, hub_locator, true));
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::Unknown:

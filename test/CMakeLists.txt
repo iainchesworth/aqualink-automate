@@ -123,6 +123,7 @@ target_sources(
 	unit/utility/test_utility_bandwidthutilisation.cpp
 	unit/utility/test_utility_caseinsensitivecomparison.cpp
 	unit/utility/test_utility_chemistry.cpp
+	unit/utility/test_utility_spa_switch_assignment.cpp
 	unit/utility/test_utility_endpointparser.cpp
 	unit/utility/test_utility_jandychecksum.cpp
 	unit/utility/test_utility_latencytracker.cpp
@@ -140,9 +141,12 @@ target_sources(
 	unit/messages/test_chemlink_message_response.cpp
 	unit/messages/test_pentair_message_base.cpp
 	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_devices_capabilities_command_history.cpp
 	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp
 	unit/devices/test_devices_iaq.cpp
+	unit/devices/test_devices_iaq_spaswitch_config.cpp
+	unit/devices/test_devices_onetouch_spaswitch_config.cpp
 	unit/devices/test_jandy_iaq_page_registry.cpp
 	unit/devices/test_pentair_vsp_pump.cpp
 	unit/devices/test_pentair_chlorinator.cpp
@@ -169,6 +173,8 @@ target_sources(
 	unit/devices/test_devices_lights.cpp
 	unit/devices/test_devices_protocol_coverage.cpp
 	unit/devices/test_devices_serial_adapter.cpp
+	unit/devices/test_devices_spaside_remote.cpp
+	unit/devices/test_devices_spaside_controller.cpp
 	unit/equipment/test_jandy_equipment.cpp
 	unit/kernel/test_kernel_hub_locator.cpp
 	unit/kernel/test_kernel_device_graph.cpp
@@ -178,6 +184,7 @@ target_sources(
 	unit/kernel/test_kernel_status_conversions.cpp
 	unit/utility/test_utility_string_manipulation.cpp
 	unit/utility/test_utility_pool_configuration_decoder.cpp
+	unit/utility/test_jandy_equipment_validator.cpp
 	unit/utility/test_utility_auxillary_state_converter.cpp
 	unit/http/test_http_server_fields.cpp
 	unit/profiling/test_profiling_noop.cpp
@@ -297,6 +304,12 @@ target_sources(
 	integration/flows/test_flow_web_commands.cpp
 	integration/flows/test_flow_fixture_replay.cpp
 	integration/flows/test_flow_command_to_wire.cpp
+	integration/flows/test_flow_spaside_remote.cpp
+	integration/flows/test_flow_web_spaside_remotes.cpp
+	integration/flows/test_flow_iaq_actuation.cpp
+	integration/flows/test_flow_onetouch_toggle.cpp
+	integration/flows/test_flow_onetouch_setpoint.cpp
+	integration/flows/test_flow_onetouch_chlorinator.cpp
 	integration/flows/test_flow_rssa_presence_gating.cpp
 	integration/flows/test_flow_autostartup.cpp
 	# IAQ device tests
@@ -349,7 +362,7 @@ add_custom_command(
 	TARGET intaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to integration test folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/web"
 )
 
 #------------------------------------------------------------------------------
@@ -410,7 +423,7 @@ add_custom_command(
 	TARGET testaqualink-automate
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E echo "Copying web assets to test folder..."
-	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/templates"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/assets/web" "${CMAKE_CURRENT_BINARY_DIR}/web"
 )
 
 #------------------------------------------------------------------------------

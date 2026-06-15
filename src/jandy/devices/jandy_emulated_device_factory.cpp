@@ -6,6 +6,7 @@
 #include "devices/onetouch_device.h"
 #include "devices/pda_device.h"
 #include "devices/serial_adapter_device.h"
+#include "devices/spaside_remote_device.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -33,6 +34,9 @@ namespace AqualinkAutomate::Devices
 
 		case JandyEmulatedDeviceTypes::SerialAdapter:
 			return std::make_unique<SerialAdapterDevice>(device_id, hub_locator, true);
+
+		case JandyEmulatedDeviceTypes::SpasideRemote:
+			return std::make_unique<SpasideRemoteDevice>(device_id, hub_locator, true);
 
 		case JandyEmulatedDeviceTypes::Unknown:
 		default:

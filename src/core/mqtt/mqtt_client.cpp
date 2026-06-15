@@ -548,6 +548,9 @@ namespace AqualinkAutomate::Mqtt
 		}
 
 		auto self = shared_from_this();
+		// m_SslStream is engaged here: created in EnterTlsHandshake, and set_verify_callback
+		// above already dereferenced it in this same scope. Guaranteed by the connect state machine.
+		// NOLINTNEXTLINE(bugprone-unchecked-optional-access)
 		m_SslStream->async_handshake(boost::asio::ssl::stream_base::client,
 			[self, this, generation](const boost::system::error_code& ec)
 			{
@@ -578,6 +581,9 @@ namespace AqualinkAutomate::Mqtt
 		// Switch the socket to non-blocking for the subsequent synchronous,
 		// would_block-driven I/O performed in the Connected state machine.
 		boost::system::error_code ec;
+		// m_Socket is engaged once EnterSendingConnect runs (set during the preceding TCP
+		// connect). Guaranteed by the connect state machine.
+		// NOLINTNEXTLINE(bugprone-unchecked-optional-access)
 		m_Socket->non_blocking(true, ec);
 		if (ec)
 		{

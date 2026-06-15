@@ -23,15 +23,18 @@ test.describe('UI authentication', () => {
     const overlay = page.locator('.login-overlay');
     await expect(overlay).toBeVisible();
 
+    // Scope field/button lookups to the overlay: the `.login-input` class is also
+    // reused by the Schedules form (which lives in the DOM via x-show), so an
+    // unscoped `.login-input` matches multiple elements and trips strict mode.
     // Wrong token -> error, still on the login overlay.
-    await page.locator('.login-input').fill('definitely-wrong-token');
-    await page.locator('.login-submit').click();
-    await expect(page.locator('.login-error')).toBeVisible();
+    await overlay.locator('.login-input').fill('definitely-wrong-token');
+    await overlay.locator('.login-submit').click();
+    await expect(overlay.locator('.login-error')).toBeVisible();
     await expect(overlay).toBeVisible();
 
     // Correct token -> overlay hides and the dashboard renders.
-    await page.locator('.login-input').fill(TOKEN);
-    await page.locator('.login-submit').click();
+    await overlay.locator('.login-input').fill(TOKEN);
+    await overlay.locator('.login-submit').click();
     await expect(overlay).toBeHidden();
     await expect(page.locator('.section-title', { hasText: 'Water Chemistry' })).toBeVisible();
 
@@ -49,18 +52,19 @@ test.describe('UI authentication', () => {
     await page.goto('/');
 
     // Log in, choosing "remember on this device" so the token persists a reload.
-    await page.locator('.login-input').fill(TOKEN);
-    await page.locator('.login-remember input').check();
-    await page.locator('.login-submit').click();
-    await expect(page.locator('.login-overlay')).toBeHidden();
+    const overlay = page.locator('.login-overlay');
+    await overlay.locator('.login-input').fill(TOKEN);
+    await overlay.locator('.login-remember input').check();
+    await overlay.locator('.login-submit').click();
+    await expect(overlay).toBeHidden();
 
     // Reload -> still authenticated, no overlay.
     await page.reload();
-    await expect(page.locator('.login-overlay')).toBeHidden();
+    await expect(overlay).toBeHidden();
     await expect(page.locator('.section-title', { hasText: 'Water Chemistry' })).toBeVisible();
 
     // Logout -> overlay returns.
     await page.locator('button[title="Sign out"]').click();
-    await expect(page.locator('.login-overlay')).toBeVisible();
+    await expect(overlay).toBeVisible();
   });
 });

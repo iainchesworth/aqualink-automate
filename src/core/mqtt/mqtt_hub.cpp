@@ -644,6 +644,10 @@ namespace AqualinkAutomate::Mqtt
 		{
 			config["pool_type"] = magic_enum::enum_name(data_hub->PoolConfiguration);
 			config["system_board"] = magic_enum::enum_name(data_hub->SystemBoard);
+			// Controller operating mode (Normal / Service / TimeOut). Previously only on the
+			// WebSocket; surfaced here so an MQTT/Home-Assistant-only consumer can see when the
+			// panel is in Service or Timeout (no control is possible in those modes).
+			config["equipment_mode"] = magic_enum::enum_name(data_hub->Mode);
 			config["date"] = std::format("{:%Y-%m-%d}", data_hub->Date);
 			config["time"] = std::format("{:%H:%M:%S}", data_hub->Time);
 		}

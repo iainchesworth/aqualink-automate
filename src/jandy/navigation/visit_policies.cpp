@@ -60,12 +60,7 @@ namespace AqualinkAutomate::Navigation
 
 		// When aux labels are already seeded (e.g. by a real iAqualink2 on the bus),
 		// skip the slow Label Aux scrape sub-tree entirely.
-		if (m_SkipLabelPages && IsLabelPage(page))
-		{
-			return false;
-		}
-
-		return true;
+		return !(m_SkipLabelPages && IsLabelPage(page));
 	}
 
 	void FullDiscoveryVisitPolicy::OnPageReached(PageId page, const Utility::ScreenDataPage& content)

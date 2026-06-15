@@ -43,6 +43,12 @@ namespace AqualinkAutomate::Preferences
 		// invalid field nothing is applied and `error` describes the problem.
 		bool ApplyJson(const nlohmann::json& json, std::string& error);
 
+		// Record a single REQUESTED spa-switch button->function assignment (keyed
+		// "<switch>:<button>") into PreferencesHub::SpaSwitchButtons and persist. Called by the
+		// spaside assign route when a controller accepts a programming request, so the desired
+		// mapping is remembered (the live decoded map remains authoritative).
+		void RecordSpaSwitchAssignment(std::uint8_t switch_number, std::uint8_t button_number, const std::string& function);
+
 	private:
 		void Load();
 		void Save();

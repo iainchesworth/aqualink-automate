@@ -3,15 +3,30 @@ services:
     build:
       context: .
       target: runtime
-    ports:
-      - "80:80"
     restart: unless-stopped
-    # To use a configuration file instead of CLI arguments, uncomment the
-    # following lines and copy examples/config-docker.conf to ./config.conf:
-    #
-    # volumes:
-    #   - ./config.conf:/etc/aqualink/config.conf:ro
-    # command: ["--config", "/etc/aqualink/config.conf"]
+    # HOST NETWORKING IS REQUIRED FOR MATTER.
+    # The bundled Matter bridge commissions over IPv6 mDNS (UDP 5540 + 5353).
+    # Docker's bridge driver does not forward link-local IPv6 multicast, so
+    # pairing fails under port-mapped bridge networking. Host networking exposes
+    # the app's HTTP API (port 80) AND the Matter discovery traffic directly on
+    # the host. Linux only -- on Docker Desktop (macOS/Windows) host networking is
+    # limited and Matter cannot be commissioned from the LAN; opt out there with
+    # MATTER_ENABLED=false (and re-add a `ports: ["80:80"]` mapping if needed).
+    network_mode: host
+    environment:
+      # Set MATTER_ENABLED=false to disable the Matter bridge sidecar (the app
+      # still runs; this mirrors --matter false).
+      - MATTER_ENABLED=true
+      - MATTER_STORAGE_PATH=/data/matter
+    volumes:
+      # Persist Matter fabric/commissioning state so pairing survives restarts.
+      - matter-data:/data/matter
+      #
+      # To use a configuration file instead of CLI arguments, uncomment the
+      # following line and copy examples/config-docker.conf to ./config.conf,
+      # then add `command: ["--config", "/etc/aqualink/config.conf"]` below:
+      #
+      # - ./config.conf:/etc/aqualink/config.conf:ro
     #
     # For a physical RS-485 serial port, also pass the device:
     # devices:
@@ -26,3 +41,6 @@ services:
       - ./assets/web/api/swagger.yaml:/usr/share/nginx/html/swagger.yaml:ro
     environment:
       URL: /swagger.yaml
+
+volumes:
+  matter-data:

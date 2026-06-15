@@ -16,6 +16,7 @@
 #include "errors/protocol_errors.h"
 #include "formatters/jandy_device_formatters.h"
 #include "formatters/jandy_message_formatters.h"
+#include "messages/jandy_message_constants.h"
 #include "messages/jandy_message_ids.h"
 #include "types/jandy_types.h"
 #include "logging/logging.h"
@@ -133,7 +134,22 @@ namespace AqualinkAutomate::Factory
 			else
 			{
 				auto first_it = std::ranges::begin(message_bytes);
-				auto type_it = first_it + static_cast<std::ptrdiff_t>(Messages::JandyMessage::Index_MessageType);
+
+				// Pick the message-type byte for type selection. NOTE: this reads the raw,
+				// still-DLE-stuffed bytes (the message's own Deserialize() de-stuffs before
+				// reading its fields). A destination byte equal to the DLE framing byte (0x10)
+				// is stuffed on the wire as {0x10, 0x00}, which pushes the message-type byte one
+				// position later than Index_MessageType. Without this adjustment every frame to a
+				// device at address 0x10 (e.g. a spa-side Dual Spa Switch) would be typed by the
+				// inserted 0x00 -- i.e. mis-typed as a Probe -- so the device is never recognised
+				// and its commands never decoded.
+				auto type_offset = static_cast<std::ptrdiff_t>(Messages::JandyMessage::Index_MessageType);
+				const uint8_t dest_byte = *(first_it + static_cast<std::ptrdiff_t>(Messages::JandyMessage::Index_DestinationId));
+				if ((Messages::HEADER_BYTE_DLE == dest_byte) && (0x00 == *(first_it + type_offset)))
+				{
+					++type_offset;
+				}
+				auto type_it = first_it + type_offset;
 				const uint8_t raw_message_type = *type_it;
 
 				const Messages::JandyMessageIds message_type(magic_enum::enum_cast<Messages::JandyMessageIds>(raw_message_type)

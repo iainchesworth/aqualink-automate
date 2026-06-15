@@ -32,8 +32,10 @@ target_sources(
 	devices/keypad_device.cpp
 	devices/lights_device.cpp
 	devices/onetouch_device.cpp
-	devices/pda_device.cpp 
-	devices/serial_adapter_device.cpp 
+	devices/pda_device.cpp
+	devices/serial_adapter_device.cpp
+	devices/spaside_remote_controller.cpp
+	devices/spaside_remote_device.cpp
 	devices/keypad/keypad_messageprocessors.cpp 
 	devices/onetouch/onetouch_messageprocessors.cpp
 	devices/onetouch/onetouch_pageprocessors.cpp
@@ -124,10 +126,12 @@ target_sources(
 	protocol/jandy_protocol_registration.cpp
 	types/jandy_types.cpp
 	utility/filtered_slot.cpp 
-	utility/jandy_checksum.cpp 
-	utility/jandy_null_handler.cpp 
+	utility/jandy_checksum.cpp
+	utility/jandy_equipment_validator.cpp
+	utility/jandy_null_handler.cpp
 	utility/jandy_pool_configuration_decoder.cpp
 	utility/screen_data_page.cpp
+	utility/spa_switch_assignment.cpp
 	utility/screen_data_page_graph/screen_data_page_graph_traverse.cpp
 	utility/screen_data_page_processor.cpp 
 	utility/screen_data_page_updater.cpp

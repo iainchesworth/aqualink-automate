@@ -7,11 +7,13 @@
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "formatters/jandy_device_formatters.h"
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "navigation/onetouch_menu_model.h"
 #include "navigation/visit_policies.h"
+#include "utility/jandy_equipment_validator.h"
 #include "utility/jandy_pool_configuration_decoder.h"
 #include "utility/screen_data_page_processor.h"
 #include "utility/string_manipulation.h"
@@ -65,6 +67,7 @@ namespace AqualinkAutomate::Devices
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_LabelAux, { 2, "Current Label" }, std::bind(&OneTouchDevice::PageProcessor_LabelAux, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetPoolHeat, { 0, "Pool Heat" }, std::bind(&OneTouchDevice::PageProcessor_SetPoolHeat, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SetSpaHeat, { 0, "Spa Heat" }, std::bind(&OneTouchDevice::PageProcessor_SetSpaHeat, this, std::placeholders::_1)),
+				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_SpaSwitch, { 0, "Spa Switch" }, std::bind(&OneTouchDevice::PageProcessor_SpaSwitch, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_MoreOneTouch, { 10, "OneTouch ON/OFF" }, std::bind(&OneTouchDevice::PageProcessor_MoreOneTouch, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_Program, { 0, "Program" }, std::bind(&OneTouchDevice::PageProcessor_Program, this, std::placeholders::_1)),
 				Utility::ScreenDataPage_Processor(Utility::ScreenDataPageTypes::Page_DisplayLight, { 0, "Display Light" }, std::bind(&OneTouchDevice::PageProcessor_DisplayLight, this, std::placeholders::_1)),
@@ -183,6 +186,10 @@ namespace AqualinkAutomate::Devices
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> normal_operation", std::source_location::current());
 			LogTrace(Channel::Devices, std::format("OneTouch ({}): Processing NormalOperation state", DeviceId()));
+			Actuation_ProcessStep();
+			ValueEdit_ProcessStep();
+			Boost_ProcessStep();
+			SpaSwitchEdit_ProcessStep();
 			break;
 		}
 
@@ -235,6 +242,7 @@ namespace AqualinkAutomate::Devices
 			// scraping sequence and fall through to normal (passive) operation
 			// so the device is at least partially functional.
 			LogWarning(Channel::Devices, std::format("OneTouch({}) : Abandoning scraping due to watchdog timeout -> entering NormalOperation", DeviceId()));
+			ValidateDiscoveredEquipment();
 			m_OpState = OperatingStates::NormalOperation;
 			m_ScrapingStallCounter = 0;
 			Status(Devices::DeviceStatus_Normal{});
@@ -301,6 +309,808 @@ namespace AqualinkAutomate::Devices
 		}
 
 		return false;
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action)
+	{
+		if (nullptr == device)
+		{
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		// A passive OneTouch never transmits key commands, so it cannot actuate. This
+		// holds for a non-emulated instance AND an emulated one that has been
+		// presence-suppressed, so gate on IsEmulationActive() rather than IsEmulated().
+		// Report NotSupported so the dispatcher can fall back to another controller (or
+		// surface that nothing on the bus can act).
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot actuate equipment", DeviceId()));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+		if (!label.has_value() || Utility::TrimWhitespace(label.value()).empty())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Cannot actuate a device with no label", DeviceId()));
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+		const std::string target_label{ Utility::TrimWhitespace(label.value()) };
+
+		// The keypad Select is a pure in-place TOGGLE. For an explicit On/Off, only act
+		// when the device's current state differs; if it already matches the request,
+		// succeed as a no-op rather than toggling it the wrong way.
+		if (action != Capabilities::ActuationAction::Toggle)
+		{
+			const bool want_on{ action == Capabilities::ActuationAction::On };
+			if (auto current = CurrentOnState(device); current.has_value() && (current.value() == want_on))
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already {} - no actuation required", DeviceId(), target_label, want_on ? "ON" : "OFF"));
+				return Capabilities::ActuationResult::Accepted;
+			}
+		}
+
+		// One goal at a time: reject a new request while any toggle/setpoint goal is
+		// mid-navigation so two cursor walks never interleave on the single shared Navigator.
+		if (GoalInProgress())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting request for '{}'", DeviceId(), target_label));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		m_PendingActuationLabel = target_label;
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued toggle of '{}'", DeviceId(), target_label));
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::optional<bool> OneTouchDevice::CurrentOnState(const std::shared_ptr<Kernel::AuxillaryDevice>& device) const
+	{
+		namespace ATT = Kernel::AuxillaryTraitsTypes;
+
+		if (!device->AuxillaryTraits.Has(ATT::AuxillaryTypeTrait{}))
+		{
+			return std::nullopt;
+		}
+
+		switch (*(device->AuxillaryTraits[ATT::AuxillaryTypeTrait{}]))
+		{
+		case ATT::AuxillaryTypes::Pump:
+			if (auto s = device->AuxillaryTraits.TryGet(ATT::PumpStatusTrait{}); s.has_value())
+			{
+				return (s.value() == Kernel::PumpStatuses::Running);
+			}
+			return std::nullopt;
+
+		default:
+			if (auto s = device->AuxillaryTraits.TryGet(ATT::AuxillaryStatusTrait{}); s.has_value())
+			{
+				return (s.value() == Kernel::AuxillaryStatuses::On);
+			}
+			return std::nullopt;
+		}
+	}
+
+	void OneTouchDevice::Actuation_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Actuation_ProcessStep", std::source_location::current());
+
+		if (!m_PendingActuationLabel.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		// Kick off the navigation goal once: drive to the Equipment ON/OFF page, find the
+		// row whose label matches the target device, and Select it. The select_target is
+		// the Equipment ON/OFF page itself because an in-place toggle keeps us on that
+		// page (the row re-renders) rather than transitioning elsewhere.
+		if (!m_ActuationInProgress)
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): Beginning toggle navigation for '{}'", DeviceId(), m_PendingActuationLabel.value()));
+			m_Navigator->NavigateToItem(Navigation::PageId::EquipmentOnOff, 0, m_PendingActuationLabel.value(), Navigation::PageId::EquipmentOnOff);
+			m_ActuationInProgress = true;
+			m_ActuationStepCount = 0;
+		}
+
+		// Advance the navigator against the current screen and queue any key it asks for
+		// (actually emitted on the next Status message by ProcessControllerUpdates).
+		if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+		{
+			m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+		}
+
+		// Frame backstop so a mis-detected page can never wedge NormalOperation (the
+		// Navigator's own timeouts normally drive it to Failed first).
+		if (++m_ActuationStepCount > ONETOUCH_ACTUATION_STEP_LIMIT)
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' exceeded {} steps - abandoning", DeviceId(), m_PendingActuationLabel.value(), ONETOUCH_ACTUATION_STEP_LIMIT));
+			m_Navigator->Reset();
+			m_PendingActuationLabel.reset();
+			m_ActuationInProgress = false;
+			return;
+		}
+
+		if (m_Navigator->IsComplete())
+		{
+			if (m_Navigator->IsSuccess())
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' completed", DeviceId(), m_PendingActuationLabel.value()));
+			}
+			else
+			{
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Toggle of '{}' failed during navigation", DeviceId(), m_PendingActuationLabel.value()));
+			}
+			m_Navigator->Reset();
+			m_PendingActuationLabel.reset();
+			m_ActuationInProgress = false;
+		}
+	}
+
+	bool OneTouchDevice::GoalInProgress() const
+	{
+		return m_ActuationInProgress
+			|| m_PendingActuationLabel.has_value()
+			|| m_ValueEditInProgress
+			|| m_PendingValueEdit.has_value()
+			|| m_BoostInProgress
+			|| m_PendingBoost.has_value()
+			|| m_SpaSwitchEditInProgress
+			|| m_PendingSpaSwitchEdit.has_value();
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::SetPoolSetpoint(uint8_t temperature)
+	{
+		return QueueValueEdit({ Navigation::PageId::SetTemperature, SETTEMP_POOL_HEAT_LINE, "Pool Heat", temperature, "pool setpoint" });
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::SetSpaSetpoint(uint8_t temperature)
+	{
+		return QueueValueEdit({ Navigation::PageId::SetTemperature, SETTEMP_SPA_HEAT_LINE, "Spa Heat", temperature, "spa setpoint" });
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::SetChlorinatorPercentage(uint8_t percentage)
+	{
+		// The OneTouch edits AquaPure % in 5% steps, so the target must be a multiple of 5
+		// for the value-step loop to land exactly. Round to the nearest 5 and clamp to 100.
+		const uint8_t clamped = (percentage > 100) ? 100 : percentage;
+		const uint8_t rounded = static_cast<uint8_t>(((clamped + (ONETOUCH_CHLORINATOR_STEP / 2)) / ONETOUCH_CHLORINATOR_STEP) * ONETOUCH_CHLORINATOR_STEP);
+		// Drives the POOL chlorination row ("Set Pool to: NN%") to match the IAQ's single-%
+		// behaviour. Verified vs onetouch_chlorinator.cap (Pool % = Set AquaPure line 3).
+		return QueueValueEdit({ Navigation::PageId::SetAquapure, SETAQUAPURE_POOL_LINE, "Set Pool", rounded, "chlorinator %" });
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::QueueValueEdit(ValueEditGoal goal)
+	{
+		// A passive OneTouch never transmits key commands (non-emulated or
+		// presence-suppressed), so it cannot actuate. Report NotSupported so the
+		// dispatcher can fall back to another controller.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot edit {}", DeviceId(), goal.desc));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// One goal at a time: reject while any goal is mid-navigation so two cursor walks
+		// never interleave on the single shared Navigator.
+		if (GoalInProgress())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting {} request", DeviceId(), goal.desc));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued {} -> {}", DeviceId(), goal.desc, static_cast<int>(goal.target)));
+		m_PendingValueEdit = std::move(goal);
+		m_ValueEditPhase = ValueEditPhase::Navigating;
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::SetChlorinatorBoost(bool enable)
+	{
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot {} boost", DeviceId(), enable ? "start" : "stop"));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		if (GoalInProgress())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting boost {} request", DeviceId(), enable ? "start" : "stop"));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		m_PendingBoost = enable;
+		m_BoostPhase = BoostPhase::Navigating;
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued chlorinator boost {}", DeviceId(), enable ? "start" : "stop"));
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::optional<int> OneTouchDevice::DisplayedValue(uint8_t line_id) const
+	{
+		const auto& page = DisplayedPage();
+		if (line_id >= page.Size())
+		{
+			return std::nullopt;
+		}
+
+		// Read the integer value exactly as shown on the row, e.g. "Pool Heat   30`C" -> 30,
+		// "Pool Heat   90`F" -> 90, "Set Pool to: 45%" -> 45. The on-screen value and the
+		// target are in the same units (the setpoints route converts to the system's units
+		// before dispatch; chlorinator % is unit-less), so the raw displayed integer is
+		// compared directly with the target - NO conversion. Verified against the
+		// onetouch_setpoint_edit.cap (30`C/38`C) and onetouch_chlorinator.cap (40/45%) captures.
+		int value{ 0 };
+		bool found{ false };
+		for (const char c : page[line_id].Text)
+		{
+			if (c >= '0' && c <= '9')
+			{
+				value = (value * 10) + (c - '0');
+				found = true;
+			}
+			else if (found)
+			{
+				break;  // first contiguous digit run only (the value)
+			}
+		}
+
+		return found ? std::optional<int>{ value } : std::nullopt;
+	}
+
+	void OneTouchDevice::ValueEdit_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ValueEdit_ProcessStep", std::source_location::current());
+
+		if (!m_PendingValueEdit.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		const ValueEditGoal& goal = m_PendingValueEdit.value();
+		const uint8_t row_line = goal.line;
+		const std::string& row_label = goal.label;
+		const std::string& desc = goal.desc;
+		const int target = static_cast<int>(goal.target);
+
+		auto finish = [&](bool ok)
+		{
+			if (ok)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): {} edit completed", DeviceId(), desc));
+			}
+			else
+			{
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): {} edit abandoned", DeviceId(), desc));
+			}
+			m_Navigator->Reset();
+			m_PendingValueEdit.reset();
+			m_ValueEditInProgress = false;
+			m_ValueEditPhase = ValueEditPhase::Navigating;
+		};
+
+		// Frame backstop so a mis-detected page can never wedge NormalOperation (the
+		// Navigator's own timeouts normally drive it to Failed first).
+		if (m_ValueEditInProgress && (++m_ValueEditStepCount > ONETOUCH_VALUEEDIT_STEP_LIMIT))
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): {} edit exceeded {} steps - abandoning", DeviceId(), desc, ONETOUCH_VALUEEDIT_STEP_LIMIT));
+			finish(false);
+			return;
+		}
+
+		switch (m_ValueEditPhase)
+		{
+		case ValueEditPhase::Navigating:
+		{
+			// Kick off navigation once: drive to the goal's page and position the cursor on
+			// the value row. select_target is left Unknown so the Navigator stops AT the row
+			// (cursor positioned) instead of pressing Select - the in-place value editor is
+			// driven by this device, not the Navigator.
+			if (!m_ValueEditInProgress)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to '{}' row for {}", DeviceId(), row_label, desc));
+				m_Navigator->NavigateToItem(goal.page, row_line, row_label, Navigation::PageId::Unknown);
+				m_ValueEditInProgress = true;
+				m_ValueEditStepCount = 0;
+			}
+
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+
+			if (m_Navigator->IsComplete())
+			{
+				if (m_Navigator->IsSuccess())
+				{
+					LogInfo(Channel::Devices, std::format("OneTouch ({}): Cursor on '{}' row - entering value editor", DeviceId(), row_label));
+					m_ValueEditPhase = ValueEditPhase::BeginEdit;
+				}
+				else
+				{
+					finish(false);
+				}
+			}
+			break;
+		}
+
+		case ValueEditPhase::BeginEdit:
+		{
+			// Skip the edit entirely if the row already shows the target value (avoids a
+			// pointless enter/exit-edit toggle). Wait if the value isn't readable yet.
+			if (auto current = DisplayedValue(row_line); current.has_value() && current.value() == target)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' already at target {} - no edit required", DeviceId(), row_label, target));
+				finish(true);
+				break;
+			}
+
+			// Select on the highlighted row ENTERS the in-place value editor (verified vs
+			// hardware: Select then arrows change the value).
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to begin editing '{}'", DeviceId(), row_label));
+			m_KeyCommand_ToSend = KeyCommands::Select;
+			m_ValueEditPhase = ValueEditPhase::Stepping;
+			break;
+		}
+
+		case ValueEditPhase::Stepping:
+		{
+			// In edit mode, step toward the target per status cycle: LineUp increments,
+			// LineDown decrements (the device applies its own increment - 1 degree for
+			// setpoints, 5% for chlorinator - so the target must be reachable by it). If the
+			// value isn't parseable yet (page mid-render), wait for the next update.
+			auto current = DisplayedValue(row_line);
+			if (!current.has_value())
+			{
+				LogTrace(Channel::Devices, std::format("OneTouch ({}): '{}' value not yet readable - waiting", DeviceId(), row_label));
+				break;
+			}
+
+			if (current.value() == target)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): '{}' reached target {} - committing", DeviceId(), row_label, target));
+				m_ValueEditPhase = ValueEditPhase::Commit;
+				break;
+			}
+
+			m_KeyCommand_ToSend = (current.value() < target) ? KeyCommands::LineUp : KeyCommands::LineDown;
+			LogTrace(Channel::Devices, std::format("OneTouch ({}): Stepping '{}' {} -> {} ({})", DeviceId(), row_label, current.value(), target, magic_enum::enum_name(m_KeyCommand_ToSend)));
+			break;
+		}
+
+		case ValueEditPhase::Commit:
+		{
+			// Press Select once to COMMIT the edited value and leave the editor (verified vs
+			// hardware: each edit is bracketed Select...Select, NOT Back - Back would navigate
+			// away from the page instead of committing the value in place).
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to commit '{}'", DeviceId(), row_label));
+			m_KeyCommand_ToSend = KeyCommands::Select;
+			finish(true);
+			break;
+		}
+		}
+	}
+
+	void OneTouchDevice::Boost_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::Boost_ProcessStep", std::source_location::current());
+
+		if (!m_PendingBoost.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		const bool want_start = m_PendingBoost.value();
+
+		auto finish = [&](bool ok)
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): chlorinator boost {} {}", DeviceId(), want_start ? "start" : "stop", ok ? "completed" : "abandoned"));
+			m_Navigator->Reset();
+			m_PendingBoost.reset();
+			m_BoostInProgress = false;
+			m_BoostPhase = BoostPhase::Navigating;
+		};
+
+		if (m_BoostInProgress && (++m_BoostStepCount > ONETOUCH_BOOST_STEP_LIMIT))
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): boost {} exceeded {} steps - abandoning", DeviceId(), want_start ? "start" : "stop", ONETOUCH_BOOST_STEP_LIMIT));
+			finish(false);
+			return;
+		}
+
+		// The Boost Pool page shows "Time Remaining" while a boost is running and "Operate ...
+		// at 100%" when idle - used to decide whether an action is actually needed.
+		auto boost_is_running = [this]() -> bool
+		{
+			const auto& page = DisplayedPage();
+			for (std::size_t i = 0; i < page.Size(); ++i)
+			{
+				if (page[i].Text.find("Time Remaining") != std::string::npos)
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+
+		switch (m_BoostPhase)
+		{
+		case BoostPhase::Navigating:
+		{
+			// Drive to the Boost Pool page (no in-place Select yet - we decide the action from
+			// the page state once there).
+			if (!m_BoostInProgress)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to Boost Pool to {} boost", DeviceId(), want_start ? "start" : "stop"));
+				m_Navigator->NavigateTo(Navigation::PageId::Boost);
+				m_BoostInProgress = true;
+				m_BoostStepCount = 0;
+			}
+
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+
+			if (m_Navigator->IsComplete())
+			{
+				if (!m_Navigator->IsSuccess())
+				{
+					finish(false);
+					break;
+				}
+
+				const bool running = boost_is_running();
+				if (want_start && running)
+				{
+					LogInfo(Channel::Devices, std::format("OneTouch ({}): boost already running - nothing to do", DeviceId()));
+					finish(true);
+				}
+				else if (!want_start && !running)
+				{
+					LogInfo(Channel::Devices, std::format("OneTouch ({}): boost already stopped - nothing to do", DeviceId()));
+					finish(true);
+				}
+				else if (want_start)
+				{
+					// Idle page ("Operate the chlorinator at 100%"): a single Select starts boost
+					// (verified vs onetouch_chlorinator.cap).
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Select to start boost", DeviceId()));
+					m_KeyCommand_ToSend = KeyCommands::Select;
+					m_BoostPhase = BoostPhase::Settle;
+				}
+				else
+				{
+					// Running page: navigate to the "Stop" submenu item and Select it in place
+					// (verified vs onetouch_chlorinator.cap - user confirmed the pump stopped).
+					LogDebug(Channel::Devices, std::format("OneTouch ({}): Navigating to 'Stop' to stop boost", DeviceId()));
+					m_Navigator->NavigateToItem(Navigation::PageId::Boost, 0, "Stop", Navigation::PageId::Boost);
+					m_BoostPhase = BoostPhase::Acting;
+				}
+			}
+			break;
+		}
+
+		case BoostPhase::Acting:
+		{
+			// Stop path: let the Navigator walk the cursor to the "Stop" item and Select it.
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(DisplayedPage(), m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+			if (m_Navigator->IsComplete())
+			{
+				finish(m_Navigator->IsSuccess());
+			}
+			break;
+		}
+
+		case BoostPhase::Settle:
+		{
+			// Start path: the Select has been queued; the action is one-shot, so we are done.
+			finish(true);
+			break;
+		}
+		}
+	}
+
+	std::string OneTouchDevice::SanitiseFunctionText(const std::string& raw)
+	{
+		// Trim surrounding whitespace and any non-printable bytes. The row Text is already the
+		// clean line content (the controller's inverse-video highlight arrives as separate
+		// Highlight/HighlightChars messages -> the row's HighlightRange, never the Text), so a
+		// plain trim yields the function/label exactly as displayed.
+		auto is_trim = [](char c)
+		{
+			const auto u = static_cast<unsigned char>(c);
+			return (u < 0x20) || (u == 0x7f) || (c == ' ');
+		};
+		std::size_t b = 0, e = raw.size();
+		while (b < e && is_trim(raw[b])) { ++b; }
+		while (e > b && is_trim(raw[e - 1])) { --e; }
+		return raw.substr(b, e - b);
+	}
+
+	std::optional<std::string> OneTouchDevice::DisplayedFunctionOnRow(uint8_t line_id) const
+	{
+		const auto& page = DisplayedPage();
+		if (line_id >= page.Size())
+		{
+			return std::nullopt;
+		}
+		auto text = SanitiseFunctionText(page[line_id].Text);
+		if (text.empty())
+		{
+			return std::nullopt;
+		}
+		return text;
+	}
+
+	std::optional<uint8_t> OneTouchDevice::FindLineStartingWith(const std::string& prefix) const
+	{
+		auto to_lower = [](std::string s)
+		{
+			for (char& c : s) { c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }
+			return s;
+		};
+		const std::string needle = to_lower(prefix);
+
+		const auto& page = DisplayedPage();
+		for (std::size_t i = 0; i < page.Size(); ++i)
+		{
+			const std::string hay = to_lower(SanitiseFunctionText(page[i].Text));
+			if ((hay.size() >= needle.size()) && (hay.compare(0, needle.size(), needle) == 0))
+			{
+				return static_cast<uint8_t>(i);
+			}
+		}
+		return std::nullopt;
+	}
+
+	Capabilities::ActuationResult OneTouchDevice::SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function)
+	{
+		// A passive OneTouch never transmits keys (non-emulated or presence-suppressed),
+		// so it cannot program anything.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot program spa-switch assignment", DeviceId()));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		if ((switch_number < 1) || (button_number < 1) || function.empty())
+		{
+			return Capabilities::ActuationResult::InvalidValue;
+		}
+
+		// One goal at a time on the single shared keypad.
+		if (GoalInProgress())
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): Busy actuating; rejecting spa-switch assignment {}:{}", DeviceId(), switch_number, button_number));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		SpaSwitchEditGoal goal;
+		goal.switch_number = switch_number;
+		goal.button_number = button_number;
+		goal.function = function;
+		goal.row_tag = std::format("{}:{}", switch_number, button_number);
+		goal.desc = std::format("spa-switch {}:{} -> '{}'", switch_number, button_number, function);
+
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Queued {}", DeviceId(), goal.desc));
+		m_PendingSpaSwitchEdit = std::move(goal);
+		m_SpaSwitchEditPhase = SpaSwitchEditPhase::ToSystemSetup;
+		return Capabilities::ActuationResult::Accepted;
+	}
+
+	void OneTouchDevice::SpaSwitchEdit_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::SpaSwitchEdit_ProcessStep", std::source_location::current());
+
+		if (!m_PendingSpaSwitchEdit.has_value() || !m_Navigator)
+		{
+			return;
+		}
+
+		const SpaSwitchEditGoal& goal = m_PendingSpaSwitchEdit.value();
+
+		// The picker shows the currently-selected function on line 3 (verified vs
+		// spaside_setup_nav.cap: line 3 cycles through the function list as 0x06 is pressed).
+		static constexpr uint8_t PICKER_FUNCTION_LINE{ 3 };
+		// Bound the per-phase scroll so a missing item (e.g. the menu differs on this model) ends
+		// the goal cleanly rather than scrolling forever (the step backstop also covers it).
+		static constexpr uint32_t MAX_SCROLL{ 40 };
+
+		auto finish = [&](bool ok)
+		{
+			if (ok) { LogInfo(Channel::Devices, std::format("OneTouch ({}): {} completed", DeviceId(), goal.desc)); }
+			else    { LogWarning(Channel::Devices, std::format("OneTouch ({}): {} abandoned", DeviceId(), goal.desc)); }
+			m_Navigator->Reset();
+			m_PendingSpaSwitchEdit.reset();
+			m_SpaSwitchEditInProgress = false;
+			m_SpaSwitchEditPhase = SpaSwitchEditPhase::ToSystemSetup;
+			m_PickerFirstSeenFunction.reset();
+			m_SpaSwitchCursorStuck = 0;
+		};
+
+		if (m_SpaSwitchEditInProgress && (++m_SpaSwitchEditStepCount > ONETOUCH_SPASWITCH_STEP_LIMIT))
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): {} exceeded {} steps - abandoning", DeviceId(), goal.desc, ONETOUCH_SPASWITCH_STEP_LIMIT));
+			finish(false);
+			return;
+		}
+
+		const auto& page = DisplayedPage();
+		auto line_text = [&](std::size_t i) -> std::string
+		{
+			return (i < page.Size()) ? SanitiseFunctionText(page[i].Text) : std::string{};
+		};
+		auto equals_ci = [](const std::string& a, const std::string& b)
+		{
+			if (a.size() != b.size()) { return false; }
+			for (std::size_t i = 0; i < a.size(); ++i)
+			{
+				if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) { return false; }
+			}
+			return true;
+		};
+		// Queue one cursor key toward target line L; returns true once the cursor is on L.
+		auto move_cursor_to = [&](uint8_t target_line) -> bool
+		{
+			if (m_HighlightedLine == target_line) { return true; }
+			if (m_HighlightedLine == Navigation::Navigator::CURSOR_LINE_NONE)
+			{
+				m_KeyCommand_ToSend = KeyCommands::LineDown;   // establish a cursor first
+				return false;
+			}
+			m_KeyCommand_ToSend = (m_HighlightedLine < target_line) ? KeyCommands::LineDown : KeyCommands::LineUp;
+			return false;
+		};
+
+		switch (m_SpaSwitchEditPhase)
+		{
+		case SpaSwitchEditPhase::ToSystemSetup:
+		{
+			// Reuse the proven navigator to reach System Setup, then hand off to the screen-driven
+			// walk (the Spa Switch sub-pages -- especially the number-of-switches page -- need bare
+			// Selects without cursor moves, which the navigator's edge model does not express).
+			if (!m_SpaSwitchEditInProgress)
+			{
+				LogInfo(Channel::Devices, std::format("OneTouch ({}): Navigating to System Setup for {}", DeviceId(), goal.desc));
+				m_Navigator->NavigateTo(Navigation::PageId::SystemSetup);
+				m_SpaSwitchEditInProgress = true;
+				m_SpaSwitchEditStepCount = 0;
+			}
+
+			if (auto nav_cmd = m_Navigator->OnPageUpdate(page, m_HighlightedLine); nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+
+			if (m_Navigator->IsComplete())
+			{
+				if (m_Navigator->IsSuccess())
+				{
+					m_Navigator->Reset();   // navigation done; the rest is screen-driven
+					m_SpaSwitchCursorStuck = 0;
+					m_SpaSwitchEditPhase = SpaSwitchEditPhase::SelectSpaSwitch;
+				}
+				else
+				{
+					finish(false);
+				}
+			}
+			break;
+		}
+
+		case SpaSwitchEditPhase::SelectSpaSwitch:
+		{
+			// On the System Setup menu: find the "Spa Switch" item (scrolling if below the fold),
+			// move the cursor onto it, then Select to open the Spa Switch number page.
+			if (auto line = FindLineStartingWith("Spa Switch"); line.has_value())
+			{
+				m_SpaSwitchCursorStuck = 0;
+				if (move_cursor_to(line.value()))
+				{
+					m_KeyCommand_ToSend = KeyCommands::Select;
+					m_SpaSwitchEditPhase = SpaSwitchEditPhase::PassNumberPage;
+				}
+			}
+			else
+			{
+				m_KeyCommand_ToSend = KeyCommands::LineDown;   // scroll the list to reveal it
+				if (++m_SpaSwitchCursorStuck > MAX_SCROLL)
+				{
+					LogWarning(Channel::Devices, std::format("OneTouch ({}): 'Spa Switch' menu item not found", DeviceId()));
+					finish(false);
+				}
+			}
+			break;
+		}
+
+		case SpaSwitchEditPhase::PassNumberPage:
+		{
+			// The "Spa Switch / Setup" number-of-switches page (line 1 == "Setup"). Press a BARE
+			// Select to advance to the Button Setup list WITHOUT moving the cursor -- moving it
+			// would change the configured switch count.
+			if (line_text(1) == "Setup")
+			{
+				m_KeyCommand_ToSend = KeyCommands::Select;
+				m_SpaSwitchEditPhase = SpaSwitchEditPhase::ToRow;
+				m_SpaSwitchCursorStuck = 0;
+			}
+			break;   // else: still transitioning -- wait for the page
+		}
+
+		case SpaSwitchEditPhase::ToRow:
+		{
+			// The "Button Setup" list (line 1 contains "Button Setup"). Find the "S:B" row, move
+			// the cursor onto it, Select to open that button's function picker.
+			if (line_text(1).find("Button Setup") != std::string::npos)
+			{
+				if (auto line = FindLineStartingWith(goal.row_tag); line.has_value())
+				{
+					m_SpaSwitchCursorStuck = 0;
+					if (move_cursor_to(line.value()))
+					{
+						m_KeyCommand_ToSend = KeyCommands::Select;
+						m_PickerFirstSeenFunction.reset();
+						m_SpaSwitchEditPhase = SpaSwitchEditPhase::CyclePicker;
+					}
+				}
+				else
+				{
+					m_KeyCommand_ToSend = KeyCommands::LineDown;   // scroll to reveal the row
+					if (++m_SpaSwitchCursorStuck > MAX_SCROLL)
+					{
+						LogWarning(Channel::Devices, std::format("OneTouch ({}): button row '{}' not found", DeviceId(), goal.row_tag));
+						finish(false);
+					}
+				}
+			}
+			break;   // else: still transitioning -- wait
+		}
+
+		case SpaSwitchEditPhase::CyclePicker:
+		{
+			// The per-button picker (line 1 == "Button <S:B>"). Cycle (LineUp) until the selected
+			// function (line 3) matches the target, then commit. Wrap-detect to bail if the target
+			// is not offered by this controller.
+			if ((line_text(1).find("Button") != std::string::npos) && (line_text(1).find(goal.row_tag) != std::string::npos))
+			{
+				auto current = DisplayedFunctionOnRow(PICKER_FUNCTION_LINE);
+				if (!current.has_value())
+				{
+					break;   // not rendered yet -- wait
+				}
+
+				if (equals_ci(current.value(), goal.function))
+				{
+					m_SpaSwitchEditPhase = SpaSwitchEditPhase::Commit;
+					break;
+				}
+
+				if (!m_PickerFirstSeenFunction.has_value())
+				{
+					m_PickerFirstSeenFunction = current;
+				}
+				else if (equals_ci(current.value(), m_PickerFirstSeenFunction.value()))
+				{
+					LogWarning(Channel::Devices, std::format("OneTouch ({}): function '{}' not offered by the picker for {}", DeviceId(), goal.function, goal.row_tag));
+					finish(false);
+					break;
+				}
+
+				m_KeyCommand_ToSend = KeyCommands::LineUp;   // cycle to the next function
+			}
+			break;   // else: not on the picker yet -- wait
+		}
+
+		case SpaSwitchEditPhase::Commit:
+		{
+			// Select writes the chosen function and leaves the picker (back to the Button Setup
+			// list, which then shows "S:B  <function>").
+			m_KeyCommand_ToSend = KeyCommands::Select;
+			finish(true);
+			break;
+		}
+		}
 	}
 
 	void OneTouchDevice::Scraping_ProcessStep_StartUp()
@@ -372,6 +1182,8 @@ namespace AqualinkAutomate::Devices
 		{
 			LogInfo(Channel::Scraping, std::format("OneTouch ({}): Startup scrape complete ({} pages visited) - entering NormalOperation",
 				DeviceId(), m_SpiderEngine->GetVisitedPages().size()));
+			ReportMenuSurvey();
+			ValidateDiscoveredEquipment();
 			m_Navigator->Reset();
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});
@@ -431,6 +1243,109 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	void OneTouchDevice::ValidateDiscoveredEquipment()
+	{
+		if (!m_DataHub)
+		{
+			return;
+		}
+
+		// Gather the Jandy ids of every numbered auxillary that was discovered.
+		std::vector<Auxillaries::JandyAuxillaryIds> discovered_aux_ids;
+		for (const auto& aux : m_DataHub->Auxillaries())
+		{
+			if (aux && aux->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
+			{
+				discovered_aux_ids.push_back(aux->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
+			}
+		}
+
+		// Equipment occupying an aux relay that is NOT a numbered aux because an IO-board DIP
+		// switch repurposed the relay (cleaner / spillover / sprinkler). Counted toward the
+		// relay total so a DIP-repurposed panel still validates against the model's aux count.
+		const auto reconfigured_aux_relays = static_cast<uint8_t>(
+			m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Cleaner)
+			+ m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Spillover)
+			+ m_DataHub->CountOfType(Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Sprinkler));
+
+		auto result = Utility::ValidateDiscoveredEquipment(
+			m_DataHub->ExpectedAuxillaryCount,
+			m_DataHub->ExpectedPowerCenterCount,
+			discovered_aux_ids,
+			reconfigured_aux_relays);
+
+		if (result.ExpectedAuxillaries == 0)
+		{
+			// The version page was never scraped (no model decoded) - nothing to validate against.
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): Skipping equipment validation - model not yet decoded", DeviceId()));
+		}
+		else if (result.Passed())
+		{
+			LogInfo(Channel::Devices, std::format("OneTouch ({}): Equipment validated - {} aux relay(s) across {} power center(s) match the model",
+				DeviceId(), result.DiscoveredAuxillaries, result.DiscoveredPowerCenters));
+		}
+		else
+		{
+			for (const auto& anomaly : result.Anomalies)
+			{
+				LogWarning(Channel::Devices, std::format("OneTouch ({}): Equipment validation anomaly - {}", DeviceId(), anomaly));
+			}
+		}
+
+		m_DataHub->EquipmentValidationResult = std::move(result);
+	}
+
+	void OneTouchDevice::ReportMenuSurvey()
+	{
+		if (!m_SpiderEngine)
+		{
+			return;
+		}
+
+		const auto& visited = m_SpiderEngine->GetVisitedPages();
+		const auto& failed = m_SpiderEngine->GetFailedPages();
+
+		MenuSurveyResult survey;
+		survey.PagesReached = static_cast<uint32_t>(visited.size() - failed.size());
+		survey.EquipmentPageReached = visited.contains(Navigation::PageId::EquipmentOnOff)
+			&& !failed.contains(Navigation::PageId::EquipmentOnOff);
+
+		for (const auto page : failed)
+		{
+			const auto* page_info = m_MenuModel.GetPage(page);
+			const std::string name = page_info ? page_info->name : std::format("page {}", static_cast<uint32_t>(page));
+
+			if (auto requirement = Navigation::OneTouchPageCapabilityRequirement(page); requirement.has_value())
+			{
+				survey.ExpectedAbsent.push_back(std::format("{} ({})", name, requirement.value()));
+			}
+			else
+			{
+				survey.NotableFailures.push_back(name);
+			}
+		}
+
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): Menu survey - {} page(s) reached, {} expected-absent, {} notable failure(s)",
+			DeviceId(), survey.PagesReached, survey.ExpectedAbsent.size(), survey.NotableFailures.size()));
+
+		if (!survey.EquipmentPageReached)
+		{
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): Menu survey - the Equipment ON/OFF page was not reached; the discovered equipment set may be incomplete", DeviceId()));
+		}
+
+		for (const auto& notable : survey.NotableFailures)
+		{
+			LogWarning(Channel::Scraping, std::format("OneTouch ({}): Menu survey - unexpected failure to reach '{}'", DeviceId(), notable));
+		}
+
+		for (const auto& expected : survey.ExpectedAbsent)
+		{
+			LogDebug(Channel::Scraping, std::format("OneTouch ({}): Menu survey - expected-absent page skipped: {}", DeviceId(), expected));
+		}
+
+		m_MenuSurveyResult = std::move(survey);
+	}
+
 	void OneTouchDevice::PageProcessor_HelpSubmenu(const Utility::ScreenDataPage& page)
 	{
 		LogTrace(Channel::Devices, std::format("OneTouch ({}): PageProcessor_HelpSubmenu invoked", DeviceId()));
@@ -463,6 +1378,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->ExpectedAuxillaryCount = pool_config_decoder.AuxillaryCount();
+		JandyController::m_DataHub->ExpectedPowerCenterCount = pool_config_decoder.PowerCenterCount();
 		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
 		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
@@ -523,10 +1440,27 @@ namespace AqualinkAutomate::Devices
 			j["spider_engine"] = spider;
 		}
 
+		// Menu survey health (populated once the startup crawl completes): which pages were
+		// reached and which could not be, split into expected-absent (capability-gated, e.g.
+		// the iAqualink / chlorinator pages) vs notable failures every panel should have.
+		if (m_MenuSurveyResult.has_value())
+		{
+			const auto& survey = m_MenuSurveyResult.value();
+			nlohmann::json menu_survey;
+			menu_survey["pages_reached"] = survey.PagesReached;
+			menu_survey["equipment_page_reached"] = survey.EquipmentPageReached;
+			menu_survey["expected_absent"] = survey.ExpectedAbsent;
+			menu_survey["notable_failures"] = survey.NotableFailures;
+			j["menu_survey"] = std::move(menu_survey);
+		}
+
 		j["scraping_stall_counter"] = m_ScrapingStallCounter;
 		j["highlighted_line"] = m_HighlightedLine;
 		j["pending_key_command"] = std::string(magic_enum::enum_name(m_KeyCommand_ToSend));
 		j["ack_type"] = std::string(magic_enum::enum_name(m_AckType_ToSend));
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
+		j["recent_commands"] = DescribeRecentCommands();
 		j["is_running"] = IsRunning();
 
 		return j;

@@ -98,6 +98,28 @@ namespace AqualinkAutomate::HTTP
 			nlohmann::json config;
 			config["pool_configuration"] = std::string{ magic_enum::enum_name(m_DataHub->PoolConfiguration) };
 			config["configuration_source"] = std::string{ magic_enum::enum_name(m_DataHub->PoolConfigurationSource) };
+			config["expected_auxillary_count"] = static_cast<int>(m_DataHub->ExpectedAuxillaryCount);
+			config["expected_power_center_count"] = static_cast<int>(m_DataHub->ExpectedPowerCenterCount);
+
+			// Equipment validation (discovered set vs the model's expected layout). Null until
+			// the startup scrape completes; thereafter exposes counts + any anomalies so a
+			// short/incomplete scrape or a mis-wired panel is visible to the UI/integrations.
+			if (m_DataHub->EquipmentValidationResult.has_value())
+			{
+				const auto& validation_result = m_DataHub->EquipmentValidationResult.value();
+				nlohmann::json validation;
+				validation["passed"] = validation_result.Passed();
+				validation["expected_auxillaries"] = static_cast<int>(validation_result.ExpectedAuxillaries);
+				validation["discovered_auxillaries"] = static_cast<int>(validation_result.DiscoveredAuxillaries);
+				validation["expected_power_centers"] = static_cast<int>(validation_result.ExpectedPowerCenters);
+				validation["discovered_power_centers"] = static_cast<int>(validation_result.DiscoveredPowerCenters);
+				validation["anomalies"] = validation_result.Anomalies;
+				config["validation"] = std::move(validation);
+			}
+			else
+			{
+				config["validation"] = nlohmann::json{};
+			}
 
 			nlohmann::json bodies_array = nlohmann::json::array();
 			for (const auto& body : m_DataHub->Bodies())

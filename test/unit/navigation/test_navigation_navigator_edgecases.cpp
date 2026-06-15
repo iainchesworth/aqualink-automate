@@ -4,6 +4,7 @@
 
 #include "navigation/menu_model.h"
 #include "navigation/navigator.h"
+#include "navigation/onetouch_menu_model.h"
 #include "utility/screen_data_page.h"
 
 using namespace AqualinkAutomate::Navigation;
@@ -418,6 +419,76 @@ BOOST_AUTO_TEST_CASE(TestRecomputeLimit_MaxRecomputes_CausesFailed)
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::AtDestination));
 }
 
+// When a target's menu item does not exist on the current controller model (e.g. the
+// IAQ-only Diagnostics page on a non-iAqualink panel, or the chlorinator Boost/Aquapure
+// pages on a panel with no SWG) the cursor wraps past the missing line, the navigator
+// "proceeds" onto a wrong page, recomputes, and repeats - and the wrong page it lands on
+// can VARY from cycle to cycle. The navigator must detect this after a few cycles
+// (MAX_STUCK_RECOMPUTES) and fail the target FAST so the start-up scrape skips the missing
+// page and moves on, instead of grinding all the way to MAX_RECOMPUTE_COUNT (which wedged
+// the scrape for ~30-50 polls per missing page). The varying-wrong-page case is the one
+// that defeated the earlier (actual,target) keying, which reset the counter whenever the
+// landing page changed; the detector must key on the TARGET alone.
+BOOST_AUTO_TEST_CASE(TestUnreachableTarget_VaryingWrongPages_FailsFast)
+{
+	// Build a model where the target (Boost) is reachable in the GRAPH from every page,
+	// but is never actually reached: the test simulates the cursor landing on a different
+	// recognized page each cycle by feeding a different page after every Select.
+	MenuModel model;
+
+	auto add_page = [&model](PageId id, const std::string& detect)
+	{
+		MenuPage p;
+		p.id = id;
+		p.name = detect;
+		p.detectors = { {0, detect} };
+		p.edges = { { EdgeTrigger::Select, id, PageId::Boost, 0, "" } };
+		model.RegisterPage(std::move(p));
+	};
+
+	add_page(PageId::System, "Home");
+	add_page(PageId::EquipmentOnOff, "EqA");
+	add_page(PageId::SystemSetup, "SetB");
+	add_page(PageId::MenuHelp, "MenuC");
+
+	MenuPage boost_page;
+	boost_page.id = PageId::Boost;
+	boost_page.name = "Boost";
+	boost_page.detectors = { {0, "Boost"} };
+	model.RegisterPage(std::move(boost_page));
+
+	Navigator nav(model);
+
+	// Sync to Home.
+	nav.StartSync();
+	auto home = MakePage({{0, "Home"}});
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(home, 0);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+
+	nav.NavigateTo(PageId::Boost);
+
+	// A page-transition Select waits on two status messages; clear them between cycles.
+	auto settle = [&nav]() { nav.OnStatusMessageReceived(); nav.OnStatusMessageReceived(); };
+
+	auto eqA = MakePage({{0, "EqA"}});
+	auto setB = MakePage({{0, "SetB"}});
+	auto menuC = MakePage({{0, "MenuC"}});
+
+	nav.OnPageUpdate(home, 0);   // executes first Select toward Boost
+	settle();
+	nav.OnPageUpdate(eqA, 0);    // unexpected #1 -> recompute (stuck=1)
+	settle();
+	nav.OnPageUpdate(setB, 0);   // unexpected #2 -> recompute (stuck=2)
+	settle();
+	nav.OnPageUpdate(menuC, 0);  // unexpected #3 -> recompute (stuck=3) -> fail fast
+
+	// Failed well before MAX_RECOMPUTE_COUNT (the old behaviour would still be navigating).
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::Failed));
+}
+
 // =============================================================================
 // Reset
 // =============================================================================
@@ -536,6 +607,161 @@ BOOST_AUTO_TEST_CASE(TestSync_InconsistentDetections_ResetsCounter)
 
 	BOOST_CHECK(nav.IsSynced());
 	BOOST_CHECK(nav.GetCurrentPage() == PageId::MenuHelp);
+}
+
+// =============================================================================
+// In-place Select (equipment toggle) and Set-Temperature cursor positioning.
+//
+// These exercise the real OneTouch menu model (CreateOneTouchMenuModel) used in
+// production, with the Equipment ON/OFF page content taken verbatim from the live
+// capture test/fixtures/onetouch_equipment_toggle.cap (decoded screen lines).
+// =============================================================================
+
+namespace
+{
+	// The Equipment ON/OFF page exactly as it appears in onetouch_equipment_toggle.cap.
+	ScreenDataPage MakeEquipmentOnOffPage()
+	{
+		return MakePage({
+			{ 0,  "Filter Pump  OFF" },   // page detector for EquipmentOnOff
+			{ 1,  "Spa          OFF" },
+			{ 2,  "Pool Heat    OFF" },
+			{ 3,  "Spa Heat     OFF" },
+			{ 4,  "Solar Heat   ENA" },
+			{ 5,  "Spa Jets     OFF" },
+			{ 6,  "Swim Jet     OFF" },
+			{ 7,  "Swim Jet     OFF" },
+			{ 8,  "Swim Jet     OFF" },
+			{ 9,  "Spillway      ON" },
+			{ 10, "Spa Mode     OFF" },
+			{ 11, "   ^^ More vv   " },
+		});
+	}
+}
+
+// A toggle goal selects the matched Equipment ON/OFF row IN PLACE: the Navigator
+// emits a single Select and the "page after Select" is the SAME page (an in-place
+// toggle, not a transition). This is the core of OneTouch equipment actuation.
+BOOST_AUTO_TEST_CASE(TestInPlaceSelect_EquipmentOnOff_SelectsRowWithoutLeavingPage)
+{
+	auto model = CreateOneTouchMenuModel();
+	Navigator nav(model);
+
+	auto equip = MakeEquipmentOnOffPage();
+
+	// Sync onto the page with the cursor already on the Spillway row (line 9), so no
+	// cursor walk is needed and the Navigator can Select immediately.
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip, 9);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::EquipmentOnOff);
+
+	// In-place toggle: select_target == the SAME page (EquipmentOnOff).
+	nav.NavigateToItem(PageId::EquipmentOnOff, 0, "Spillway", PageId::EquipmentOnOff);
+
+	auto cmd = nav.OnPageUpdate(equip, 9);
+	BOOST_REQUIRE(cmd.has_value());
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::Select));
+
+	// The "destination after Select" is the Equipment ON/OFF page itself - the row
+	// re-renders in place rather than the UI transitioning elsewhere.
+	BOOST_CHECK(nav.GetTargetPage() == PageId::EquipmentOnOff);
+}
+
+// When the cursor is NOT yet on the target row, the Navigator first walks it there
+// (LineDown toward a lower row) before it would Select - it does not Select blindly.
+BOOST_AUTO_TEST_CASE(TestInPlaceSelect_EquipmentOnOff_WalksCursorToRowFirst)
+{
+	auto model = CreateOneTouchMenuModel();
+	Navigator nav(model);
+
+	auto equip = MakeEquipmentOnOffPage();
+
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip, 0);   // cursor at top
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+
+	nav.NavigateToItem(PageId::EquipmentOnOff, 0, "Spillway", PageId::EquipmentOnOff);
+
+	// Spillway is at line 9, cursor at 0 -> move down toward it (not a Select yet).
+	auto cmd = nav.OnPageUpdate(equip, 0);
+	BOOST_REQUIRE(cmd.has_value());
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::LineDown));
+}
+
+// The Set Temperature setpoint edit begins by positioning the cursor on the Pool/Spa
+// Heat row WITHOUT pressing Select (select_target == Unknown): the OneTouch device
+// then drives the in-place value editor itself. The Navigator must stop AT the row.
+BOOST_AUTO_TEST_CASE(TestSetTemperature_PositionsCursorOnPoolHeat_WithoutSelect)
+{
+	auto model = CreateOneTouchMenuModel();
+	Navigator nav(model);
+
+	// Set Temperature page (see PageProcessor_SetTemperature): Pool Heat line 2, Spa
+	// Heat line 3. Detector is "Set Temp" on line 0.
+	auto settemp = MakePage({
+		{ 0, "    Set Temp    " },
+		{ 2, "Pool Heat    90`F" },
+		{ 3, "Spa Heat    102`F" },
+		{ 8, "Highlight an" },
+		{ 9, "item and press" },
+		{ 10, "Select" },
+	});
+
+	// Sync onto the Set Temperature page with the cursor already on the Pool Heat row.
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(settemp, 2);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::SetTemperature);
+
+	// select_target Unknown -> stop at the row; do NOT emit Select.
+	nav.NavigateToItem(PageId::SetTemperature, 2, "Pool Heat", PageId::Unknown);
+
+	auto cmd = nav.OnPageUpdate(settemp, 2);
+	BOOST_CHECK(!cmd.has_value());                 // no Select - editing is the device's job
+	BOOST_CHECK(nav.IsComplete());
+	BOOST_CHECK(nav.IsSuccess());                  // AtDestination, cursor on the Pool Heat row
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 2);
+}
+
+// The chlorinator % edit positions the cursor on the Set AquaPure "Set Pool to:" row
+// (line 3) without Select - same value-editor entry as the setpoint. Grounded in
+// onetouch_chlorinator.cap (Pool % = Set AquaPure line 3).
+BOOST_AUTO_TEST_CASE(TestSetAquapure_PositionsCursorOnPoolRow_WithoutSelect)
+{
+	auto model = CreateOneTouchMenuModel();
+	Navigator nav(model);
+
+	auto aqua = MakePage({
+		{ 0, "  Set AquaPure  " },     // detector "Set AquaPure"
+		{ 3, "Set Pool to: 40%" },     // pool chlorination row
+		{ 4, "Set Spa to:  40%" },     // spa chlorination row
+	});
+
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(aqua, 3);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::SetAquapure);
+
+	nav.NavigateToItem(PageId::SetAquapure, 3, "Set Pool", PageId::Unknown);
+
+	auto cmd = nav.OnPageUpdate(aqua, 3);
+	BOOST_CHECK(!cmd.has_value());                 // no Select - the device drives the % editor
+	BOOST_CHECK(nav.IsComplete());
+	BOOST_CHECK(nav.IsSuccess());
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

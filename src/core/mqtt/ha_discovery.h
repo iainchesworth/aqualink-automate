@@ -74,6 +74,9 @@ namespace AqualinkAutomate::Mqtt
 		/// Get the pool circulation topic.
 		std::string CirculationTopic() const;
 
+		/// Get the pool configuration topic (pool type, system board, operating mode, date/time).
+		std::string ConfigurationTopic() const;
+
 		/// Get the system status topic.
 		std::string SystemStatusTopic() const;
 

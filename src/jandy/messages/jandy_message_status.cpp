@@ -91,6 +91,11 @@ namespace AqualinkAutomate::Messages
 		return m_SolarHeater;
 	}
 
+	const std::vector<uint8_t>& JandyMessage_Status::RawPayload() const
+	{
+		return m_RawPayload;
+	}
+
 	std::string JandyMessage_Status::ToString() const
 	{
 		return std::format("Packet: {} || Payload: {}", JandyMessage::ToString(), 0);
@@ -115,6 +120,16 @@ namespace AqualinkAutomate::Messages
 	bool JandyMessage_Status::DeserializeContents(std::span<const uint8_t> message_bytes)
 	{
 		LogTrace(Channel::Messages, std::format("Deserialising {} bytes into JandyMessage_Status type", message_bytes.size()));
+
+		// Retain the raw payload verbatim (the bytes between the 4-byte header and 3-byte footer)
+		// so a handler can read payload byte [0] (wire index 4), which the structured Aux*/Heater
+		// decode below does not cover. Used by the spa-side remote's LED-image decode.
+		m_RawPayload.clear();
+		if (message_bytes.size() >= static_cast<std::size_t>(Index_DataStart) + PACKET_FOOTER_LENGTH)
+		{
+			const auto payload = message_bytes.subspan(Index_DataStart, message_bytes.size() - Index_DataStart - PACKET_FOOTER_LENGTH);
+			m_RawPayload.assign(payload.begin(), payload.end());
+		}
 
 		if (message_bytes.size() < static_cast<uint64_t>(JandyMessage::MINIMUM_PACKET_LENGTH + STATUS_PAYLOAD_LENGTH))
 		{

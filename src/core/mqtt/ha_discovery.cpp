@@ -258,6 +258,16 @@ namespace AqualinkAutomate::Mqtt
 			{"value_template", "{{ value_json.mode }}"}
 		};
 
+		// Controller operating mode (Normal / Service / TimeOut) from the configuration topic.
+		// Lets an HA-only user see when the panel is in Service or Timeout (no control possible).
+		cmps["equipment_mode"] = {
+			{"p", "sensor"},
+			{"name", "Equipment Mode"},
+			{"unique_id", UniqueId("equipment_mode")},
+			{"state_topic", ConfigurationTopic()},
+			{"value_template", "{{ value_json.equipment_mode }}"}
+		};
+
 		cmps["spa_mode"] = {
 			{"p", "binary_sensor"},
 			{"name", "Spa Mode"},
@@ -577,6 +587,11 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::CirculationTopic() const
 	{
 		return m_Client->BuildTopic("pool/circulation");
+	}
+
+	std::string HomeAssistantDiscovery::ConfigurationTopic() const
+	{
+		return m_Client->BuildTopic("pool/configuration");
 	}
 
 	std::string HomeAssistantDiscovery::SystemStatusTopic() const

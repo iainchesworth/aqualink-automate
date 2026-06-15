@@ -69,15 +69,35 @@ function diagnosticsView() {
         showEmulatedDevices: true,
         showActualDevices: true,
         showRecording: false,
+        showSpaside: false,
         showMqtt: false,
+        showMatter: false,
 
         // MQTT broker status diagnostics
         mqtt: { enabled: false },
+
+        // Matter bridge status diagnostics (sidecar status + commissioning QR)
+        matter: { enabled: false },
 
         // Serial recording control state
         recording: { recording: false, file: '', bytes: 0 },
         recordingFilename: 'capture.cap',
         recordingBusy: false,
+
+        // Spa-side remotes (Dual Spa Switch / Spa Link): decoded LEDs + last press, plus
+        // button-press injection on emulated remotes.
+        spasideRemotes: [],
+        spasideBusy: false,
+
+        // Decoded spa-switch button->function assignments (from the iAQ/OneTouch config page),
+        // keyed by the controller's switch numbering. [{switch,button,function}, ...]
+        spasideAssignments: [],
+
+        // "Set assignment" form state: program switch:button -> function over the bus.
+        spasideAssign: { switch: 1, button: 1, function: '' },
+
+        // User-requested (desired-state) assignments persisted server-side. [{switch,button,function}]
+        spasideRequested: [],
 
         // Emulated device diagnostics
         emulatedDevices: [],
@@ -113,8 +133,16 @@ function diagnosticsView() {
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
             }
+            this.fetchSpasideRemotes();
+            if (!_diag.spasideTimer) {
+                _diag.spasideTimer = setInterval(() => this.fetchSpasideRemotes(), 2000);
+            }
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
+            }
+            this.fetchMatter();
+            if (!_diag.matterTimer) {
+                _diag.matterTimer = setInterval(() => this.fetchMatter(), 2000);
             }
         },
 
@@ -221,9 +249,19 @@ function diagnosticsView() {
                 _diag.recordingTimer = null;
             }
 
+            if (_diag.spasideTimer) {
+                clearInterval(_diag.spasideTimer);
+                _diag.spasideTimer = null;
+            }
+
             if (_diag.mqttTimer) {
                 clearInterval(_diag.mqttTimer);
                 _diag.mqttTimer = null;
+            }
+
+            if (_diag.matterTimer) {
+                clearInterval(_diag.matterTimer);
+                _diag.matterTimer = null;
             }
 
             if (_diag.statsListener) {
@@ -270,6 +308,119 @@ function diagnosticsView() {
             }
         },
 
+        async fetchSpasideRemotes() {
+            try {
+                const resp = await fetch('/api/equipment/spaside-remotes');
+                if (!resp.ok) { _handlePollFailure('spaside-remotes', resp, null); return; }
+                const data = await resp.json();
+                this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
+                this.spasideAssignments = (data && Array.isArray(data.assignments)) ? data.assignments : [];
+                this.spasideRequested = (data && Array.isArray(data.requested)) ? data.requested : [];
+                _diag.warnedOnce['spaside-remotes'] = false;
+            } catch (e) {
+                _handlePollFailure('spaside-remotes', null, e);
+            }
+        },
+
+        // Inject a momentary press of `button` on the emulated remote at `address`. No-op for a
+        // real (observed) remote -- the server rejects it and we surface the reason.
+        async pressSpasideButton(address, button) {
+            if (this.spasideBusy) return;
+            this.spasideBusy = true;
+            try {
+                // The list reports address as a hex string ("0x20") for display; the API expects a
+                // numeric byte. parseInt auto-detects the 0x prefix.
+                const addr = (typeof address === 'string') ? parseInt(address, 16) : address;
+                const resp = await fetch('/api/equipment/spaside-remotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'press', address: addr, button: button })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    if (data && Array.isArray(data.remotes)) { this.spasideRemotes = data.remotes; }
+                    Alpine.store('toast').show('Spa-side button ' + button + ' pressed', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to press spa-side button', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to press spa-side button', 'error');
+            } finally {
+                this.spasideBusy = false;
+            }
+        },
+
+        // Program a spa-side switch button's function over the bus (drives the controller's Spa
+        // Switch / Spa Remotes config menu). Takes effect on whichever controller can write it
+        // (OneTouch today; an iAQ that can't reports unavailable and we fall through). The live
+        // assignment list refreshes on the next poll once the controller re-reports it.
+        async setSpasideAssignment() {
+            if (this.spasideBusy) return;
+            const sw = parseInt(this.spasideAssign.switch, 10);
+            const btn = parseInt(this.spasideAssign.button, 10);
+            const fn = (this.spasideAssign.function || '').trim();
+            if (!Number.isInteger(sw) || sw < 1 || !Number.isInteger(btn) || btn < 1 || fn === '') {
+                Alpine.store('toast').show('Enter a switch, button and function to assign', 'error');
+                return;
+            }
+            this.spasideBusy = true;
+            try {
+                const resp = await fetch('/api/equipment/spaside-remotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'assign', switch: sw, button: btn, function: fn })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    Alpine.store('toast').show('Programming switch ' + sw + ' button ' + btn + ' → ' + fn + '…', 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || 'Failed to program spa-switch assignment', 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show('Failed to program spa-switch assignment', 'error');
+            } finally {
+                this.spasideBusy = false;
+            }
+        },
+
+        // A requested assignment is "pending" until the controller's live decoded map reports the
+        // same function for that switch:button (a OneTouch programs asynchronously; an iAQ-only
+        // system never confirms, so it stays a pending annotation).
+        spasideRequestedPending(r) {
+            const live = this.spasideAssignments.find(a => a.switch === r.switch && a.button === r.button);
+            return !live || live.function !== r.function;
+        },
+
+        // The distinct function names the controller currently reports, to seed the assign datalist.
+        spasideKnownFunctions() {
+            const seen = [];
+            for (const a of this.spasideAssignments) {
+                if (a.function && !seen.includes(a.function)) { seen.push(a.function); }
+            }
+            return seen;
+        },
+
+        // Button layout for a remote. A "Dual Spa Switch" is the 6588 Dual Spa Side Interface
+        // board, which bridges two physical spa-side switches onto the bus: Switch 2 = button
+        // codes 1-4, Switch 3 = codes 5-8 (the "2x4"). Any other class is a single keypad.
+        spasideButtonGroups(remote) {
+            const range = (lo, hi) => { const a = []; for (let b = lo; b <= hi; b++) a.push(b); return a; };
+            if (remote.device_class === 'DualSpaSwitch' && remote.button_count >= 8) {
+                return [
+                    { label: 'Spa Switch 2', buttons: range(1, 4) },
+                    { label: 'Spa Switch 3', buttons: range(5, 8) },
+                ];
+            }
+            return [{ label: '', buttons: range(1, remote.button_count || 0) }];
+        },
+
+        // Map an indicator state to an existing badge class (green=on, amber=blink, grey=off).
+        spasideLedBadgeClass(state) {
+            if (state === 'on') return 'badge-freq';
+            if (state === 'blink') return 'badge-status-warn';
+            return 'badge-status-off';
+        },
+
         async fetchMqtt() {
             try {
                 const resp = await fetch('/api/diagnostics/mqtt');
@@ -278,6 +429,40 @@ function diagnosticsView() {
                 _diag.warnedOnce['mqtt'] = false;
             } catch (e) {
                 _handlePollFailure('mqtt', null, e);
+            }
+        },
+
+        async fetchMatter() {
+            try {
+                const resp = await fetch('/api/diagnostics/matter');
+                if (!resp.ok) { _handlePollFailure('matter', resp, null); return; }
+                this.matter = await resp.json();
+                _diag.warnedOnce['matter'] = false;
+                this.$nextTick(() => this._renderMatterQr());
+            } catch (e) {
+                _handlePollFailure('matter', null, e);
+            }
+        },
+
+        // Render the commissioning QR into the panel canvas when a QR library is
+        // vendored (window.QRCode, davidshimjs/qrcodejs). Without one we still show the
+        // manual pairing code + QR payload text, which pair every ecosystem.
+        _renderMatterQr() {
+            const payload = this.matter && this.matter.qr_payload;
+            const el = this.$refs && this.$refs.matterQr;
+            if (!el) return;
+            if (!payload || typeof window.QRCode === 'undefined') {
+                el.innerHTML = '';
+                return;
+            }
+            if (_diag.matterQrPayload === payload && el.childElementCount > 0) return;
+            _diag.matterQrPayload = payload;
+            el.innerHTML = '';
+            try {
+                // eslint-disable-next-line no-new
+                new window.QRCode(el, { text: payload, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel.M });
+            } catch (e) {
+                _handlePollFailure('matter-qr', null, e);
             }
         },
 
@@ -368,6 +553,17 @@ function diagnosticsView() {
                 default:
                     return '';
             }
+        },
+
+        // The two device sections (Emulated + Actual) render through ONE shared card
+        // definition: the template iterates these groups, so there is a single source of
+        // truth for the card markup, differing only by the bound device list. `openKey`
+        // names the existing collapse flag on this view so each section's toggle persists.
+        deviceGroups() {
+            return [
+                { key: 'emulated', title: 'Emulated Devices', openKey: 'showEmulatedDevices', empty: 'No emulated devices active', devices: this.emulatedDevices },
+                { key: 'actual', title: 'Actual Devices', openKey: 'showActualDevices', empty: 'No actual devices detected', devices: this.actualDevices }
+            ];
         },
 
         formatUptime(secs) {

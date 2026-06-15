@@ -3,14 +3,22 @@
 #include <chrono>
 #include <cstdint>
 #include <deque>
+#include <map>
+#include <optional>
 #include <string>
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/capabilities/chlorinator_controller.h"
+#include "devices/capabilities/command_history.h"
 #include "devices/capabilities/describable.h"
+#include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
+#include "devices/capabilities/page_navigator.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/screen.h"
+#include "devices/capabilities/setpoint_controller.h"
+#include "devices/capabilities/spa_switch_configurator.h"
 #include "devices/iaq/iaq_page_registry.h"
 #include "messages/jandy_message_probe.h"
 #include "messages/iaq/iaq_message_aux_status.h"
@@ -37,7 +45,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable
+	class IAQDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Screen, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::ChlorinatorController, public Capabilities::PageNavigator, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::SpaSwitchConfigurator, public Capabilities::CommandHistory
 	{
 		inline static const uint8_t IAQ_STATUS_PAGE_LINES = 18;
 		inline static const uint8_t IAQ_MESSAGE_TABLE_LINES = 18;
@@ -68,6 +76,42 @@ namespace AqualinkAutomate::Devices
 		// emulated panel navigate the master's pages -- open sub-pages, toggle equipment --
 		// exactly as a physical touch would.
 		void SelectPageButton(uint8_t button_index);
+
+		// Capability implementations (ChlorinatorController / PageNavigator): let the
+		// capability-routed CommandDispatcher drive the chlorinator output/boost and the
+		// page UI through the AqualinkTouch (0x33) panel without knowing IAQ specifics.
+		Capabilities::ActuationResult SetChlorinatorPercentage(uint8_t percentage) override;
+		Capabilities::ActuationResult SetChlorinatorBoost(bool enable) override;
+		Capabilities::ActuationResult ActuatePageButton(uint8_t button_index) override;
+
+		// DeviceActuator: toggle a logical aux on/off by finding the on-screen PageButton
+		// whose name matches the device label and pressing it (0x11 + index). Verified vs
+		// iaq_aux_setpoint.cap (Pool Light idx9 -> 0x1a, Spillway idx11 -> 0x1c).
+		Capabilities::ActuationResult ActuateDevice(const std::shared_ptr<Kernel::AuxillaryDevice>& device, Capabilities::ActuationAction action) override;
+
+		// SetpointController: set the pool/spa heater setpoint via the value-submit protocol -
+		// navigate to the Set Temperature page, select the Pool Heat / Spa Heat field and
+		// submit the absolute value (NOT stepped). Verified vs iaq_aux_setpoint.cap.
+		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
+		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
+
+		// SpaSwitchConfigurator: program a spa-side switch button's function over the bus by driving
+		// the AqualinkTouch "4 Function Spa Switch" detail (queues a goal serviced by
+		// SpaSwitchWrite_ProcessStep, page-gated on PageId): navigate -> Spa Remotes -> open detail ->
+		// select the S:B row -> scroll the device picker to the target function -> commit. RE'd +
+		// cross-validated from captures/iaq_spaswitch_edit{,2}.cap. On-screen rows 1-7 are supported;
+		// row 8 (2:4) / switch>2 need an undecoded assignment-list scroll, so those return
+		// NotSupported and the SpasideRemoteController falls through to the OneTouch. The iAQ is
+		// Medium priority, so it takes precedence over the OneTouch for the rows it can program.
+		// See docs/alwin32/spaside-remotes.md.
+		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
+
+		// Precedence shared by DeviceActuator + SetpointController + ChlorinatorController
+		// (identical signature). The AqualinkTouch effects actions with DIRECT commands
+		// (page-button press, value-submit), so it ranks Medium - above the OneTouch (Low),
+		// which must crawl menus, and below a Serial Adapter (High). On a combined rig the
+		// faster AqualinkTouch path is therefore preferred over the OneTouch.
+		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::Medium; }
 
 		// Arm a start-up PAGE SURVEY: once the home page is established (first MainStatus), an
 		// emulated panel walks `registry`'s data pages -- navigating to each, dwelling so it
@@ -140,6 +184,75 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		void Signal_ControlDataResponse(const std::string& ascii_data);
+
+		// Queue the value-submit sequence for a heater setpoint: BACK -> open Set Temperature
+		// page -> select the given field button -> submit; the absolute value rides in the
+		// control-data response ("1" + value).
+		Capabilities::ActuationResult QueueSetpoint(uint8_t select_field_command, uint8_t temperature, const char* body_name);
+
+		// Find the index of the on-screen PageButton whose name matches `label` (prefix match,
+		// since home-page button names carry a trailing status suffix e.g. "Pool LightON").
+		std::optional<uint8_t> FindPageButtonByLabel(const std::string& label) const;
+
+	private:
+		// The live on-screen PageButton table for the CURRENT page (index -> name + status),
+		// rebuilt from the master's IAQMessage_PageButton frames. DeviceActuator looks an aux
+		// up here by name to get its (dynamic) button index. Button indices shift as the page's
+		// device list changes, so always resolve by name rather than caching an index.
+		struct PageButtonInfo
+		{
+			std::string name;
+			Messages::ButtonStatuses status{ Messages::ButtonStatuses::Unknown };
+		};
+		std::map<uint8_t, PageButtonInfo> m_PageButtons;
+
+		// The page identifier of the page the master is currently pushing (IAQ_PageStart's first
+		// payload byte: 0x01 home, 0x0f menu, 0x14 Setup, 0x3a Spa Remotes, 0x3b the 4-Function
+		// detail). Used to page-GATE the spa-switch writer so it never issues a row-select/commit
+		// off the detail page.
+		uint8_t m_CurrentPageId{ 0x00 };
+
+		// The 4-Function detail page's device/function PICKER (group-0x01 TableMessages): the live
+		// slot(attr) -> function rows, rebuilt each time the picker page renders. The writer scrolls
+		// this until the target function appears, then commits at (slot + IAQ_SPASWITCH_COMMIT_BASE).
+		std::map<uint8_t, std::string> m_SpaSwitchPickerRows;
+
+	private:
+		// On-demand spa-switch button-assignment WRITE goal (one at a time). Set by
+		// SetSpaSwitchAssignment, serviced by SpaSwitchWrite_ProcessStep on each poll. Drives the
+		// AqualinkTouch (0x33) UI: navigate Home -> menu -> Setup -> Spa Remotes -> open the
+		// 4-Function detail, select the S:B row, scroll the picker to the target function and commit.
+		// RE'd + cross-validated from captures/iaq_spaswitch_edit{,2}.cap; see
+		// docs/alwin32/spaside-remotes.md.
+		enum class SpaSwitchWritePhase
+		{
+			Navigate,    // page-gated walk to the 4-Function detail (0x3b)
+			SelectRow,   // press the S:B assignment row (page-button (ordinal-1) + IAQ_SPASWITCH_ROW_BASE)
+			FindFunction,// read the picker; scroll (0x15) until F is visible, then commit at slot+commit-base
+			Verify,      // confirm the DataHub assignment now reads F
+			Done,
+			Failed
+		};
+		struct SpaSwitchWriteGoal
+		{
+			uint8_t switch_number{ 0 };
+			uint8_t button_number{ 0 };
+			std::string function;     // target function as the picker lists it
+			std::string row_tag;      // "<switch>:<button>" e.g. "1:2"
+			std::string desc;
+		};
+		std::optional<SpaSwitchWriteGoal> m_PendingSpaSwitchWrite;
+		SpaSwitchWritePhase m_SpaSwitchWritePhase{ SpaSwitchWritePhase::Navigate };
+		bool m_SpaSwitchRowSelected{ false };       // the S:B row-select has been issued
+		uint32_t m_SpaSwitchWritePollCount{ 0 };    // overall backstop
+		uint32_t m_SpaSwitchScrollCount{ 0 };       // picker pages scrolled so far
+		uint32_t m_SpaSwitchSettleCount{ 0 };       // polls waited for a page/picker to settle after a command
+		std::optional<std::string> m_SpaSwitchFirstPickerSeen;  // wrap-detection while scrolling the picker
+
+		// Service the pending spa-switch write goal: examine the current page + decoded picker rows
+		// and emit at most one command (into m_PendingCommand) per poll. Gated on m_CurrentPageId so
+		// a navigation miss can never issue a row-select/commit on the wrong page.
+		void SpaSwitchWrite_ProcessStep();
 
 	private:
 		OperatingStates m_OpState{ OperatingStates::StartUp };

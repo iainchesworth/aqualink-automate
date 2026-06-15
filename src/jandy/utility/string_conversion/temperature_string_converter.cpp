@@ -13,7 +13,12 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Utility
 {
-	const std::string TemperatureStringConverter::REGEX_PATTERN{ R"(^([A-Za-z0-9]{1,10})\s{1,10}(-?\d{1,2})`([CF])$)" };
+	// Area label, separator, signed value, degree (`), unit. The area may be MULTIPLE words
+	// (e.g. "Pool Heat" / "Spa Heat" on the Set Temperature page) so it allows internal spaces
+	// via a non-greedy run (the trailing spaces fall to the \s separator); the value allows up
+	// to THREE digits so spa temperatures/setpoints of 100`F+ parse. The ^...$ anchors keep it
+	// a full-string match (regex_search), so trailing junk like "Pool 22`C extra" still fails.
+	const std::string TemperatureStringConverter::REGEX_PATTERN{ R"(^([A-Za-z0-9][A-Za-z0-9 ]{0,14}?)\s{1,10}(-?\d{1,3})`([CF])$)" };
 	const boost::regex TemperatureStringConverter::REGEX_PARSER{ REGEX_PATTERN };
 
 	TemperatureStringConverter::TemperatureStringConverter() noexcept :

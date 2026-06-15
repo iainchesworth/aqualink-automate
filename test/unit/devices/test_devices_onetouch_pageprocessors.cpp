@@ -289,3 +289,112 @@ BOOST_AUTO_TEST_CASE(CheckAquaPure_Line_SetsHealthGeneralFault)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// PageProcessor_System - home-page temperatures parsed by area, not line (OBS-04)
+//
+// The home page lists temperatures labelled by area ("Air"/"Pool"/"Spa"); the line
+// they occupy is model-dependent. A dual-equipment panel lists both Pool Pump and Spa
+// Pump, which pushes the air-temp line down to line 7 (vs line 6 on a shared-equipment
+// panel). Previously air temp was read from a fixed line 6, so it came back blank on
+// dual-equipment models -- it must be matched by area instead.
+// =============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(PageProcessor_System_TestSuite, Test::OneTouchDevice)
+
+BOOST_AUTO_TEST_CASE(SystemPage_DualEquipmentLayout_AirTempOnLine7)
+{
+	// RS-2/10 Dual home page: both pumps listed, so the air-temp line sits on line 7.
+	const TestPage dual_home =
+	{
+		{ 0x0, "                " },
+		{ 0x1, "                " },
+		{ 0x2, "                " },
+		{ 0x3, "Spa Mode     OFF" },
+		{ 0x4, "                " },
+		{ 0x5, "Pool Pump     ON" },
+		{ 0x6, "Spa Pump     OFF" },
+		{ 0x7, "    Air 72`F    " },
+		{ 0x8, "                " },
+		{ 0x9, "Equipment ON/OFF" },
+		{ 0xA, "OneTouch  ON/OFF" },
+		{ 0xB, "   Menu / Help  " }
+	};
+
+	LoadAndSignalTestPage(dual_home);
+
+	auto air = DataHub().AirTemp();
+	BOOST_REQUIRE(air.has_value());
+	BOOST_CHECK_CLOSE(air.value().InFahrenheit().value(), 72.0, 1.0);
+}
+
+BOOST_AUTO_TEST_CASE(SystemPage_SharedEquipmentLayout_AirTempOnLine6)
+{
+	// Shared-equipment / single-body home page: air temp on line 6 (regression guard so
+	// the by-area scan still handles the original layout).
+	const TestPage shared_home =
+	{
+		{ 0x0, "                " },
+		{ 0x1, "                " },
+		{ 0x2, "                " },
+		{ 0x3, "                " },
+		{ 0x4, "                " },
+		{ 0x5, "Filter Pump  OFF" },
+		{ 0x6, "    Air 22`C    " },
+		{ 0x7, "                " },
+		{ 0x8, "                " },
+		{ 0x9, "Equipment ON/OFF" },
+		{ 0xA, "OneTouch  ON/OFF" },
+		{ 0xB, "   Menu / Help  " }
+	};
+
+	LoadAndSignalTestPage(shared_home);
+
+	auto air = DataHub().AirTemp();
+	BOOST_REQUIRE(air.has_value());
+	BOOST_CHECK_CLOSE(air.value().InCelsius().value(), 22.0, 1.0);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// PageProcessor_SetTemperature - heat setpoints (OBS-03)
+//
+// The Set Temperature page lists "Pool Heat" / "Spa Heat" setpoints. The labels are
+// two words and a spa setpoint can be 100`F+ (three digits); previously the temperature
+// converter rejected both, so the setpoints came back null on Combo models even though
+// the page rendered them. Parse them by area.
+// =============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(PageProcessor_SetTemperature_TestSuite, Test::OneTouchDevice)
+
+BOOST_AUTO_TEST_CASE(SetTemperaturePage_DecodesHeatSetpoints_MultiWordLabelAndThreeDigit)
+{
+	const TestPage set_temp =
+	{
+		{ 0x0, "    Set Temp    " },
+		{ 0x1, "                " },
+		{ 0x2, "Pool Heat   80`F" },
+		{ 0x3, "Spa Heat   102`F" },
+		{ 0x4, "                " },
+		{ 0x5, "Maintain     OFF" },
+		{ 0x6, "Hours  12AM-12AM" },
+		{ 0x7, "                " },
+		{ 0x8, "Highlight an    " },
+		{ 0x9, "item and press  " },
+		{ 0xA, "Select          " },
+		{ 0xB, "                " }
+	};
+
+	LoadAndSignalTestPage(set_temp);
+
+	auto pool_sp = DataHub().PoolTempSetpoint();
+	BOOST_REQUIRE(pool_sp.has_value());
+	BOOST_CHECK_CLOSE(pool_sp.value().InFahrenheit().value(), 80.0, 1.0);
+
+	auto spa_sp = DataHub().SpaTempSetpoint();
+	BOOST_REQUIRE(spa_sp.has_value());
+	BOOST_CHECK_CLOSE(spa_sp.value().InFahrenheit().value(), 102.0, 1.0);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

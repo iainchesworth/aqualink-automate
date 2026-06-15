@@ -15,6 +15,7 @@
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "utility/jandy_pool_configuration_decoder.h"
+#include "utility/spa_switch_assignment.h"
 #include "utility/string_manipulation.h"
 #include "utility/string_conversion/auxillary_state_string_converter.h"
 #include "utility/string_conversion/temperature_string_converter.h"
@@ -47,30 +48,41 @@ namespace AqualinkAutomate::Devices
 
 		JandyController::m_DataHub->Mode = Kernel::EquipmentMode::Normal;
 
-		// When the filter pump is running, line 5 shows pool or spa water
-		// temperature (e.g. "Pool 82`F" or "Spa 100`F") instead of
-		// "Filter Pump OFF".  Try to parse it as a temperature.
-		if (auto water_temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[5].Text)); water_temp().has_value())
+		// Parse the temperature readings on the home page and route each by its area label
+		// ("Air"/"Pool"/"Spa") rather than a fixed line number. The layout is model-dependent:
+		// a single-body / shared-equipment panel shows water temp on line 5 and air on line 6,
+		// but a dual-equipment panel lists both Pool Pump and Spa Pump, which pushes the air
+		// line down (air is on line 7 on an RS-2/10 Dual). Scanning by area handles every
+		// layout. Water temps only appear here while the corresponding pump is running.
+		for (std::size_t line = 0; line < page.Size(); ++line)
 		{
-			if (auto area = water_temp.TemperatureArea(); area.has_value())
+			auto temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[line].Text));
+			if (!temp().has_value())
 			{
-				auto area_lower = area.value();
-				std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
-
-				if (area_lower.find("pool") != std::string::npos)
-				{
-					JandyController::m_DataHub->PoolTemp(water_temp().value());
-				}
-				else if (area_lower.find("spa") != std::string::npos)
-				{
-					JandyController::m_DataHub->SpaTemp(water_temp().value());
-				}
+				continue;
 			}
-		}
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[6].Text)); temperature().has_value())
-		{
-			JandyController::m_DataHub->AirTemp(temperature().value());
+			auto area = temp.TemperatureArea();
+			if (!area.has_value())
+			{
+				continue;
+			}
+
+			auto area_lower = area.value();
+			std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+			if (area_lower.find("air") != std::string::npos)
+			{
+				JandyController::m_DataHub->AirTemp(temp().value());
+			}
+			else if (area_lower.find("pool") != std::string::npos)
+			{
+				JandyController::m_DataHub->PoolTemp(temp().value());
+			}
+			else if (area_lower.find("spa") != std::string::npos)
+			{
+				JandyController::m_DataHub->SpaTemp(temp().value());
+			}
 		}
 	}
 
@@ -295,14 +307,68 @@ namespace AqualinkAutomate::Devices
 			Info:   OneTouch Menu Line 11 =
 		*/
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[2].Text)); temperature().has_value())
+		// Parse the heat setpoints by their area label ("Pool Heat" / "Spa Heat") rather than a
+		// fixed line. The values live on lines 2/3 on the models seen so far, but scanning by
+		// area is robust to layout shifts and matches the home-page approach. The labels are two
+		// words and spa setpoints can be 100`F+, both of which the temperature converter now
+		// handles (this is what made Combo setpoints decode as null previously -- see OBS-03).
+		for (std::size_t line = 0; line < page.Size(); ++line)
 		{
-			JandyController::m_DataHub->PoolTempSetpoint(temperature().value());
-		}
+			auto temp = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[line].Text));
+			if (!temp().has_value())
+			{
+				continue;
+			}
 
-		if (auto temperature = Utility::TemperatureStringConverter(Utility::TrimWhitespace(page[3].Text)); temperature().has_value())
+			auto area = temp.TemperatureArea();
+			if (!area.has_value())
+			{
+				continue;
+			}
+
+			auto area_lower = area.value();
+			std::transform(area_lower.begin(), area_lower.end(), area_lower.begin(), [](unsigned char c){ return std::tolower(c); });
+
+			// "Spa Heat" before "Pool Heat": neither label contains the other's keyword, but
+			// guard order keeps it unambiguous if a future label ever does.
+			if (area_lower.find("spa") != std::string::npos)
+			{
+				JandyController::m_DataHub->SpaTempSetpoint(temp().value());
+			}
+			else if (area_lower.find("pool") != std::string::npos)
+			{
+				JandyController::m_DataHub->PoolTempSetpoint(temp().value());
+			}
+		}
+	}
+
+	void OneTouchDevice::PageProcessor_SpaSwitch(const Utility::ScreenDataPage& page)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SpaSwitch", std::source_location::current());
+
+		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SpaSwitch page.", DeviceId()); });
+
+		/*
+			Info:   OneTouch Menu Line 00 =    Spa Switch
+			Info:   OneTouch Menu Line 03 = 1:1     Spa Jets
+			Info:   OneTouch Menu Line 04 = 1:2   Pool Light
+			Info:   OneTouch Menu Line 05 = 1:3   Air Blower
+			Info:   OneTouch Menu Line 06 = 1:4     Spillway
+			Info:   OneTouch Menu Line 07 = 2:1     Swim Jet
+			...
+		*/
+
+		// Scan every line for a "<switch>:<button>  <function>" assignment row and store it into the
+		// controller-agnostic DataHub map -- the SAME parser the iAQ path uses. Non-assignment lines
+		// (the title, blanks, footer help text) are rejected by the parser. Gating to this page (the
+		// detector matched "Spa Switch" at line 0) keeps the home-screen clock ("1:20 PM") out.
+		for (std::size_t line = 0; line < page.Size(); ++line)
 		{
-			JandyController::m_DataHub->SpaTempSetpoint(temperature().value());
+			if (const auto assignment = Utility::ParseSpaSwitchAssignmentLine(page[line].Text))
+			{
+				JandyController::m_DataHub->SetSpaSwitchAssignment(assignment->switch_number, assignment->button_number, assignment->function);
+				LogDebug(Channel::Devices, [this, &assignment]() { return std::format("OneTouch ({}): spa-switch assignment {}:{} -> '{}'", DeviceId(), assignment->switch_number, assignment->button_number, assignment->function); });
+			}
 		}
 	}
 
@@ -403,6 +469,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		JandyController::m_DataHub->SystemBoard = pool_config_decoder.SystemBoard();
+		JandyController::m_DataHub->ExpectedAuxillaryCount = pool_config_decoder.AuxillaryCount();
+		JandyController::m_DataHub->ExpectedPowerCenterCount = pool_config_decoder.PowerCenterCount();
 		JandyController::m_DataHub->EquipmentVersions.Set("Model", model_number);
 		JandyController::m_DataHub->EquipmentVersions.Set("Type", panel_type);
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);

@@ -91,8 +91,13 @@ source "vsphere-iso" "windows" {
   vm_name              = var.vm_name
   guest_os_type        = "windows2019srvNext_64Guest"
   CPUs                 = 32
-  RAM                  = 24576
+  # 48 GB: match the Linux runner (24 GB OOM-killed cc1plus during parallel
+  # C++ builds at -j32; host has ample free RAM, so size for headroom).
+  RAM                  = 49152
   RAM_reserve_all      = false
+  # Allow downtime-free CPU/RAM resizes on the running VM (no power-cycle).
+  CPU_hot_plug         = true
+  RAM_hot_plug         = true
   disk_controller_type = ["lsilogic-sas"]
 
   storage {

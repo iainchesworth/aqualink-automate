@@ -85,6 +85,33 @@ BOOST_AUTO_TEST_CASE(Test_Temperature_ValidTemperatureStrings)
     }
 
     {
+        // Multi-word area label (Set Temperature page setpoint line).
+        TemperatureStringConverter temp("Pool Heat   80`F");
+        BOOST_REQUIRE(temp().has_value());
+        BOOST_CHECK_CLOSE(80.0, temp().value().InFahrenheit().value(), 0.001);
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_CHECK("Pool Heat" == *(temp.TemperatureArea()));
+    }
+
+    {
+        // Multi-word area label + three-digit value (spa heat setpoint).
+        TemperatureStringConverter temp("Spa Heat   102`F");
+        BOOST_REQUIRE(temp().has_value());
+        BOOST_CHECK_CLOSE(102.0, temp().value().InFahrenheit().value(), 0.001);
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_CHECK("Spa Heat" == *(temp.TemperatureArea()));
+    }
+
+    {
+        // Single-word area, three-digit value (spa water temp of 100`F+).
+        TemperatureStringConverter temp("Spa 100`F");
+        BOOST_REQUIRE(temp().has_value());
+        BOOST_CHECK_CLOSE(100.0, temp().value().InFahrenheit().value(), 0.001);
+        BOOST_REQUIRE(temp.TemperatureArea().has_value());
+        BOOST_CHECK("Spa" == *(temp.TemperatureArea()));
+    }
+
+    {
         TemperatureStringConverter temp("Pool        22`C");
         BOOST_REQUIRE(temp().has_value());
         BOOST_CHECK(22.0f == temp().value().InCelsius().value());

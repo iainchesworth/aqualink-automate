@@ -251,32 +251,68 @@ BOOST_AUTO_TEST_CASE(Read_AuxState_DecodeIntoDataHub)
 }
 
 //=============================================================================
-// (c) PRESENCE GATING: once a real adapter is observed, the emulated instance
-// must permanently stop transmitting (never two transmitters on 0x48).
+// (c) PRESENCE GATING (corrected): suppress ONLY on an UNSOLICITED reply.
+//
+// A DevStatus addressed to 0x48 is the CONTROLLER's status push to whichever
+// adapter owns the address -- the normal RSSA read path, NOT a real adapter's
+// output. Live captures confirm these frames appear only AFTER an adapter answers
+// the master's poll and claims the address. So:
+//   * once our emulation has claimed the address (answered a poll), a DevStatus is
+//     SOLICITED and must NOT suppress -- the old code wrongly silenced emulation on
+//     the first one (regression: a SerialAdapter-only emulation could never command);
+//   * a DevStatus seen BEFORE we claim the address is UNSOLICITED -> a real adapter
+//     is already conversing there, so suppress.
 //=============================================================================
 
-BOOST_AUTO_TEST_CASE(PresenceGating_RealDevStatus_SilencesEmulatedAdapter)
+BOOST_AUTO_TEST_CASE(PresenceGating_SolicitedDevStatus_DoesNotSuppress)
 {
-	// Before detection the emulated device answers polls (it is the only adapter).
+	// Claim the address by answering a master poll (the emulated adapter transmits).
 	ClearWire();
 	ReplaySerialAdapterStatus();
 	BOOST_REQUIRE(!Wire().empty());
-	BOOST_CHECK(!sa_device->IsEmulationSuppressed());
+	BOOST_REQUIRE(!sa_device->IsEmulationSuppressed());
 
-	// A REAL adapter answers the master at 0x48 (DevStatus reply). The emulated
-	// instance observes it and must latch emulation off permanently.
+	// The controller now pushes a status frame to US. Solicited (we own the address):
+	// it must decode but must NOT suppress emulation.
+	ReplayDevStatus(static_cast<uint8_t>(SerialAdapter_SystemTemperatureCommands::UNITS), 0x00, 0x01, 0x00);
+	BOOST_CHECK(!sa_device->IsEmulationSuppressed());
+	BOOST_CHECK(data_hub->SystemTemperatureUnits() == TemperatureUnits::Celsius);
+
+	// Emulation is still alive: a further poll still produces a wire response.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(!Wire().empty());
+}
+
+BOOST_AUTO_TEST_CASE(PresenceGating_UnsolicitedDevStatus_Suppresses)
+{
+	// A DevStatus seen BEFORE we have claimed the address (never answered a poll /
+	// transmitted) means a real adapter is already conversing at 0x48 -- latch off so
+	// there are never two transmitters on the address.
+	BOOST_REQUIRE(!sa_device->IsEmulationSuppressed());
 	ReplayDevStatus(static_cast<uint8_t>(SerialAdapter_SystemTemperatureCommands::UNITS), 0x00, 0x00, 0x00);
 	BOOST_CHECK(sa_device->IsEmulationSuppressed());
 
-	// From now on, NO further master poll may produce ANY wire output from the
-	// emulated instance -- otherwise two transmitters would collide on 0x48.
+	// ... and thereafter it never transmits on a poll.
 	ClearWire();
 	ReplaySerialAdapterStatus();
 	BOOST_CHECK(Wire().empty());
+}
 
+BOOST_AUTO_TEST_CASE(PresenceGating_OptOut_NeverSuppresses)
+{
+	// With presence-gating disabled (--jandy-disable-presence-gating -> DataHub flag),
+	// even an unsolicited DevStatus must not suppress.
+	data_hub->PresenceGatingDisabled = true;
+
+	ReplayDevStatus(static_cast<uint8_t>(SerialAdapter_SystemTemperatureCommands::UNITS), 0x00, 0x01, 0x00);
+	BOOST_CHECK(!sa_device->IsEmulationSuppressed());
+	BOOST_CHECK(data_hub->SystemTemperatureUnits() == TemperatureUnits::Celsius);
+
+	// Still answers polls (emulation remains active).
 	ClearWire();
 	ReplaySerialAdapterStatus();
-	BOOST_CHECK(Wire().empty());
+	BOOST_CHECK(!Wire().empty());
 }
 
 BOOST_AUTO_TEST_CASE(PresenceGating_SuppressedAdapter_DropsQueuedCommands)

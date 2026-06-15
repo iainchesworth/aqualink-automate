@@ -51,6 +51,7 @@ namespace AqualinkAutomate::Utility
 		Page_StartUp,
 		Page_SystemStatus,
 		Page_CloudLink,
+		Page_SpaSwitch,
 		Page_Unknown
 	};
 

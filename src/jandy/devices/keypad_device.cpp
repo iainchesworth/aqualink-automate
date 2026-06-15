@@ -46,6 +46,8 @@ namespace AqualinkAutomate::Devices
 
 		j["screen"] = DescribeScreen();
 
+		j["is_emulated"] = IsEmulated();
+		j["emulation_suppressed"] = IsEmulationSuppressed();
 		j["is_running"] = IsRunning();
 
 		return j;

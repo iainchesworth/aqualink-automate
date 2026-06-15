@@ -5,6 +5,8 @@
 #include "logging/logging.h"
 #include "devices/device_status.h"
 #include "devices/iaq_device.h"
+#include "utility/spa_switch_assignment.h"
+#include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
 using namespace AqualinkAutomate::Profiling;
@@ -88,7 +90,11 @@ namespace AqualinkAutomate::Devices
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("IAQDevice::Slot_IAQ_PageStart", std::source_location::current(), UnitColours::Red);
 
-		LogTrace(Channel::Devices, [this]() { return std::format("IAQ ({}): Received IAQMessage_PageStart", DeviceId()); });
+		LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_PageStart: page_id=0x{:02x}", DeviceId(), msg.PageId()); });
+
+		// Remember which page the master is now pushing -- the spa-switch writer page-GATES on this
+		// (0x3b = the 4-Function detail) so it never issues a row-select/commit off that page.
+		m_CurrentPageId = msg.PageId();
 
 		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evSequenceStart());
 		m_SM_PageUpdate.process_event(Utility::ScreenDataPageUpdaterImpl::evClear());
@@ -149,6 +155,19 @@ namespace AqualinkAutomate::Devices
 		LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): Received IAQMessage_PageButton: index={}, name='{}', type={}, status={}",
 			DeviceId(), msg.ButtonIndex(), msg.ButtonName(), magic_enum::enum_name(msg.ButtonType()), magic_enum::enum_name(msg.ButtonStatus())); });
 
+		// Retain the live button table (index -> name + status) for the CURRENT page so
+		// DeviceActuator can resolve a logical aux to its on-screen button index by name.
+		// A named button refreshes its entry; an empty/blank name clears that slot so a
+		// stale name can't be matched after the page changes.
+		if (Utility::TrimWhitespace(msg.ButtonName()).empty())
+		{
+			m_PageButtons.erase(msg.ButtonIndex());
+		}
+		else
+		{
+			m_PageButtons[msg.ButtonIndex()] = PageButtonInfo{ msg.ButtonName(), msg.ButtonStatus() };
+		}
+
 		ProcessControllerUpdates();
 
 		Restartable::Kick();
@@ -178,6 +197,40 @@ namespace AqualinkAutomate::Devices
 		else
 		{
 			m_TableInfo[msg.LineId()].Text = msg.Line();
+		}
+
+		// Spa-side switch button assignments appear on the iAQ "Spa Remotes" config page as
+		// group-0x00 table rows "<switch>:<button>\t<function>" (the function picker is group
+		// 0x01). Decode them into the controller-agnostic DataHub map. The parser only accepts the
+		// "N:M <function>" shape, so non-assignment group-0 rows are safely ignored.
+		if ((nullptr != m_DataHub) && (0x00 == msg.LineId()))
+		{
+			if (const auto assignment = Utility::ParseSpaSwitchAssignmentLine(msg.Line()))
+			{
+				m_DataHub->SetSpaSwitchAssignment(assignment->switch_number, assignment->button_number, assignment->function);
+				LogDebug(Channel::Devices, [&]() { return std::format("IAQ ({}): spa-switch assignment {}:{} -> '{}'", DeviceId(), assignment->switch_number, assignment->button_number, assignment->function); });
+			}
+		}
+
+		// Group-0x01 rows are the device/function PICKER on the 4-Function Spa Switch detail. The
+		// spa-switch writer reads + scrolls these to find the target function, then commits at its
+		// slot. Attribute 0 is the "Devices /" header = the start of a fresh picker batch (clear so a
+		// scrolled page replaces, not accumulates); attributes 1..N are the functions at those slots.
+		if (0x01 == msg.LineId())
+		{
+			if (0x00 == msg.Attribute())
+			{
+				m_SpaSwitchPickerRows.clear();
+			}
+			else
+			{
+				// The row text carries a trailing NUL terminator that the message layer sanitises to
+				// '?'; drop it (and anything after) so the picker function compares cleanly. Function
+				// names contain no '?', so truncating at the first one is safe.
+				std::string function = msg.Line();
+				if (const auto q = function.find('?'); q != std::string::npos) { function.erase(q); }
+				m_SpaSwitchPickerRows[msg.Attribute()] = Utility::TrimWhitespace(function);
+			}
 		}
 
 		ProcessControllerUpdates();

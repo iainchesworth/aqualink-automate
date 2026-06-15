@@ -635,6 +635,103 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/equipment/spaside-remotes:
+    get:
+      tags:
+        - Equipment
+      summary: List spa-side remotes (Dual Spa Switch / Spa Link)
+      description: >
+        Returns every spa-side remote known on the bus with its decoded state: bus
+        address, device class, whether we emulate it (so its buttons can be pressed),
+        the number of physical keys, how many times the master has polled it, the last
+        decoded button press, and the indicator LEDs the master is pushing to it
+        (`leds`: one of "off"/"on"/"blink" per indicator; `led_image` the raw bytes).
+        Empty list when no spa-side stack is running (e.g. dev-mode/replay).
+      operationId: getSpasideRemotes
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              example:
+                remotes:
+                  - address: "0x20"
+                    device_class: "SpaRemote"
+                    emulated: true
+                    button_count: 9
+                    poll_count: 1234
+                    last_button: 0
+                    led_image_seen: true
+                    leds: ["on", "off", "blink", "off"]
+                    led_image: "05 00 00 00 00"
+                assignments:
+                  - switch: 1
+                    button: 2
+                    function: "Pool Light"
+                  - switch: 2
+                    button: 1
+                    function: "Swim Jet"
+                requested:
+                  - switch: 1
+                    button: 3
+                    function: "Spillway"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Equipment
+      summary: Press a button, or program a button's function, on a spa-side remote
+      description: >
+        Two actions, selected by the `action` field.
+
+
+        `action: "press"` injects a momentary button press on the EMULATED spa-side
+        remote at `address`, so the master actuates whatever function that button is
+        mapped to on the controller. `address` and `button` are unsigned bytes (`button`
+        is 1..button_count for that remote). 404 if no remote at that address; 409 if the
+        remote is a real device we only observe (cannot be actuated); 400 on a bad value.
+
+
+        `action: "assign"` programs a spa-side switch button's FUNCTION over the bus by
+        driving the controller's Spa Switch / Spa Remotes config menu. `switch` (1..3) and
+        `button` (1..N) are unsigned; `function` is the function name as the controller's
+        picker lists it (e.g. "Pool Light"). Performed by whichever controller can write it
+        (OneTouch today); 400 on a bad value; 409 if a controller op is in progress; 503 if
+        no controller can program assignments (e.g. an iAQ-only system whose function-write
+        is not yet decoded, or dev-mode/replay).
+
+
+        Either action returns the refreshed remotes list on success. 503 when no spa-side
+        controller is available at all.
+      operationId: commandSpasideRemote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              press:
+                summary: Press a button on an emulated remote
+                value:
+                  action: "press"
+                  address: 32
+                  button: 2
+              assign:
+                summary: Program switch 1 button 2 to "Pool Light"
+                value:
+                  action: "assign"
+                  switch: 1
+                  button: 2
+                  function: "Pool Light"
+      responses:
+        '200':
+          description: Command queued; returns the refreshed remotes list
+        '400': { description: Invalid JSON / missing or unknown action / out-of-range fields }
+        '404': { description: No spa-side remote at that address (press) }
+        '409': { description: Real-only remote (press), or a controller op is in progress (assign) }
+        '503': { description: No spa-side controller can perform the action (dev-mode/replay, or undecoded) }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment/setpoints:
     get:
       tags:
@@ -917,6 +1014,35 @@ paths:
                 published: 1284
                 dropped: 0
                 last_error: ""
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/diagnostics/matter:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get Matter bridge status diagnostics
+      description: >
+        Live status of the Matter bridge sidecar: whether it is enabled, running and
+        paired, the number of commissioned fabrics, and the commissioning QR payload +
+        manual pairing code for adding the bridge to a smart-home ecosystem. Returns
+        { "enabled": false } when Matter is opted out, and { "enabled": true,
+        "reachable": false } when enabled but the sidecar is not yet answering.
+      operationId: getMatterDiagnostics
+      responses:
+        '200':
+          description: Matter status (or { enabled:false } when disabled)
+          content:
+            application/json:
+              example:
+                enabled: true
+                status_port: 8099
+                reachable: true
+                running: true
+                paired: false
+                fabrics: 0
+                qr_payload: "MT:Y.K9042C00KA0648G00"
+                manual_code: "34970112332"
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1787,7 +1913,7 @@ components:
       properties:
         device_type:
           type: string
-          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA)
+          description: Device class name (OneTouch, IAQ, SerialAdapter, Keypad, PDA, SpasideRemote)
           example: "OneTouch"
         device_id:
           type: string
@@ -1890,16 +2016,41 @@ components:
           description: SerialAdapter count of queued pending command ACKs
         is_emulated:
           type: boolean
-          description: SerialAdapter constructed as an emulated (transmitting) device
+          description: >-
+            Device was constructed as an emulated (transmitting) device rather
+            than a real bus-discovered one. Emitted by every controller type.
         emulation_suppressed:
           type: boolean
           description: >-
-            SerialAdapter emulation suppressed at runtime because a real serial
-            adapter was detected on the bus (presence gating). When true the
-            device is a passive decoder and never transmits.
+            Emulation suppressed at runtime because a real device was detected at
+            this bus address (presence gating). When true the device is a passive
+            decoder and never transmits. Emitted by every controller type.
         scrape_state:
           type: string
           description: PDA scrape state
+        recent_commands:
+          type: array
+          description: >-
+            Rolling log (oldest first, max 16) of commands the CommandDispatcher
+            routed to this controller and their outcomes. Present only on
+            command-capable controllers (OneTouch, IAQ, SerialAdapter).
+          items:
+            type: object
+            properties:
+              ts:
+                type: integer
+                description: Unix epoch seconds when the command was recorded
+              age_seconds:
+                type: integer
+                description: Seconds since the command was recorded (server clock)
+              description:
+                type: string
+                description: Human-readable command description
+                example: "toggle 'Pool Light'"
+              outcome:
+                type: string
+                description: CommandResult enumerator name
+                example: "Success"
 
   securitySchemes:
     bearerAuth:

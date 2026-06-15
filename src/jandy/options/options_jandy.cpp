@@ -70,6 +70,11 @@ namespace AqualinkAutomate::Jandy::Options
 			settings.disable_emulation = OPTION_DISABLEEMULATION->As<bool>(vm);
 		}
 
+		if (OPTION_DISABLEPRESENCEGATING->IsPresent(vm))
+		{
+			settings.disable_presence_gating = OPTION_DISABLEPRESENCEGATING->As<bool>(vm);
+		}
+
 		if (OPTION_AUTOSTARTUP->IsPresent(vm))
 		{
 			settings.auto_startup = OPTION_AUTOSTARTUP->As<bool>(vm);

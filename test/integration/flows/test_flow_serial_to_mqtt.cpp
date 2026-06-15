@@ -88,6 +88,8 @@ BOOST_AUTO_TEST_CASE(Test_Flow_PoolOnly_ConfigurationTopicPublished)
 
 	auto payload = nlohmann::json::parse(config_msgs[0].payload);
 	BOOST_CHECK(payload.contains("pool_type"));
+	// Controller operating mode (Normal/Service/TimeOut) is published for MQTT-only consumers.
+	BOOST_CHECK(payload.contains("equipment_mode"));
 }
 
 BOOST_AUTO_TEST_CASE(Test_Flow_PoolOnly_DeviceTopicsPublished)

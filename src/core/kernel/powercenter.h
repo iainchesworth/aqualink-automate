@@ -1,49 +1,54 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
-#include <variant>
+#include <string>
 #include <vector>
-
-#include "kernel/auxillary_devices/auxillary_device.h"
 
 namespace AqualinkAutomate::Kernel
 {
 
-	enum class RemotePowerCenterIds
+	// The Jandy AquaLink RS supports up to four power centers (relay banks): a local
+	// one (A) and up to three remote ones (B/C/D). Auxillary relays are numbered per
+	// centre -- "Aux1".."Aux7" on A, "Aux B1".."Aux B8" on B, and so on.
+	enum class PowerCenterIds : uint8_t
 	{
-		B,
-		C,
-		D
+		A = 0,
+		B = 1,
+		C = 2,
+		D = 3
 	};
 
-	struct PowerCenter_NotInstalled {};
+	inline constexpr uint8_t MAX_POWER_CENTERS = 4;
 
-	using PowerCenter = std::vector<AuxillaryDevice>;
-	using RemotePowerCenter = std::variant<PowerCenter_NotInstalled, PowerCenter>;
-	
+	// Per-centre maximum aux capacity (local A holds 7, each remote B/C/D holds 8).
+	// Confirmed live against the Alwin32 simulator (RS-16 Combo => A=7 + B=8 = 15 aux).
+	inline constexpr std::array<uint8_t, MAX_POWER_CENTERS> POWER_CENTER_AUX_CAPACITY{ 7, 8, 8, 8 };
+
+	// Attribution container: discovered auxillaries are sorted into their power centre.
+	// Membership derives from the scraped aux id/label, NOT from a count -- dual-equipment
+	// models split relays unevenly across centres (e.g. RS-2/10 is A=6 + B=4, not A=7 + B=3)
+	// and the IO-board DIP switches can repurpose an individual relay (e.g. Aux3 -> Cleaner),
+	// so a count-based allocation cannot reconstruct the real layout.
 	class PowerCenters
-	{		
+	{
 	public:
-		PowerCenters(const uint8_t total_auxillary_count);
+		// Attribute one discovered auxillary (by label) to a power centre.
+		void Assign(PowerCenterIds pc, const std::string& aux_label);
 
-	public:
-		PowerCenter& LocalPowerCenter();
+		const std::vector<std::string>& AuxillariesIn(PowerCenterIds pc) const;
+
+		// A centre is "installed" once at least one auxillary has been attributed to it.
+		bool IsInstalled(PowerCenterIds pc) const;
+
+		// Number of centres with at least one auxillary attributed.
+		uint8_t InstalledCount() const;
+
+		// Total auxillaries attributed across all centres.
+		uint8_t TotalAuxillaries() const;
 
 	private:
-		PowerCenter m_PC_A;
-
-	public:
-		bool IsRemotePowerCenterInstalled(const RemotePowerCenterIds& rpc_id);
-		PowerCenter& RemotePowerCenter(const RemotePowerCenterIds& id);
-
-	private:
-		void AllocateAuxillaries(uint8_t total_auxillary_count);
-
-	private:
-		std::variant<PowerCenter_NotInstalled, PowerCenter> m_RPC_B;
-		std::variant<PowerCenter_NotInstalled, PowerCenter> m_RPC_C;
-		std::variant<PowerCenter_NotInstalled, PowerCenter> m_RPC_D;
-		PowerCenter m_NonExistentRPC;
+		std::array<std::vector<std::string>, MAX_POWER_CENTERS> m_Centers;
 	};
 
 }

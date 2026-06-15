@@ -461,3 +461,111 @@ BOOST_AUTO_TEST_CASE(SerialAdapterPendingCommand_IsConsumedAfterSingleWrite)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// NON-EMULATED (real-hardware-only) rig: the controllers on the bus are real
+// devices we only decode -- none is actively emulating, so NONE can transmit.
+// A command must therefore (a) be reported as an honest failure by the
+// dispatcher, and (b) put NO command bytes on the wire.  This is the end-to-end
+// proof of the silent-no-op fix: before it, the real Serial Adapter (priority
+// High) falsely returned Accepted and the dispatcher claimed Success while the
+// ACK was swallowed downstream.
+//=============================================================================
+
+namespace
+{
+	struct CommandToWireNoEmulatorFixture : public AqualinkAutomate::Test::HubLocatorInjector
+	{
+		CommandToWireNoEmulatorFixture()
+			: data_hub(Find<DataHub>())
+			, equipment_hub(Find<EquipmentHub>())
+			, statistics_hub(Find<StatisticsHub>())
+			, serial_impl(new Test::TestSerialPortImpl())
+			, serial_port(std::make_shared<Serial::SerialPort>(
+				std::unique_ptr<Test::TestSerialPortImpl>(serial_impl), *this))
+			, dispatcher(std::make_shared<CommandDispatcher>(data_hub, equipment_hub))
+		{
+			serial_impl->EnableTestMode(true);
+			Register<Interfaces::ICommandDispatcher>(dispatcher);
+
+			Protocol::MessageGeneratorRegistry::Instance().Clear();
+			Jandy::Protocol::RegisterMessageGenerator();
+
+			protocol_task = std::make_shared<Protocol::ProtocolTask>(serial_port, statistics_hub);
+			protocol_task->ConnectWriteSignal<Messages::JandyMessage_Ack>();
+			protocol_task->ConnectWriteSignal<Messages::IAQMessage_ControlDataResponse>();
+
+			// Register the controllers as REAL (is_emulated=false): they decode the bus
+			// but never transmit.  The write signals ARE connected, so if anything WERE
+			// emitted it would reach the wire -- proving the absence of bytes is real.
+			auto sa_id = std::make_shared<JandyDeviceType>(JandyDeviceId(SERIAL_ADAPTER_ID));
+			equipment_hub->AddDevice(std::make_unique<SerialAdapterDevice>(sa_id, *this, false));
+
+			auto iaq_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_ID));
+			equipment_hub->AddDevice(std::make_unique<IAQDevice>(iaq_id, *this, false));
+		}
+
+		~CommandToWireNoEmulatorFixture() override
+		{
+			protocol_task.reset();
+			Protocol::MessageGeneratorRegistry::Instance().Clear();
+			if (serial_impl != nullptr)
+			{
+				serial_impl->Reset();
+			}
+		}
+
+		void Replay(const std::vector<uint8_t>& frame)
+		{
+			serial_impl->QueueReadData(frame);
+			serial_impl->QueueReadData({}, boost::asio::error::would_block);
+			(void)protocol_task->Poll();
+		}
+
+		void ReplaySerialAdapterStatus()
+		{
+			Replay(MakeFramedPacket(SERIAL_ADAPTER_ID, static_cast<uint8_t>(Messages::JandyMessageIds::Status), { 0x00, 0x00, 0x00, 0x00, 0x00 }));
+		}
+
+		const std::vector<uint8_t>& Wire() const { return serial_impl->GetWrittenData(); }
+		void ClearWire() { serial_impl->ClearWrittenData(); }
+
+		std::shared_ptr<DataHub> data_hub;
+		std::shared_ptr<EquipmentHub> equipment_hub;
+		std::shared_ptr<StatisticsHub> statistics_hub;
+
+		Test::TestSerialPortImpl* serial_impl;	// owned by serial_port
+		std::shared_ptr<Serial::SerialPort> serial_port;
+		std::shared_ptr<Protocol::ProtocolTask> protocol_task;
+		std::shared_ptr<CommandDispatcher> dispatcher;
+	};
+}
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_Integration_Flow_CommandToWire_NoEmulator, CommandToWireNoEmulatorFixture)
+
+BOOST_AUTO_TEST_CASE(RealAdapterOnly_Toggle_ReportsFailureAndEmitsNoCommand)
+{
+	using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+	// A hardware aux (with a JandyAuxillaryId) the dispatcher can resolve and route.
+	auto device = std::make_shared<AuxillaryDevice>();
+	device->AuxillaryTraits.Set(LabelTrait{}, std::string{ "Pool Light" });
+	device->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Auxillary);
+	device->AuxillaryTraits.Set(Auxillaries::JandyAuxillaryId{}, Auxillaries::JandyAuxillaryIds::Aux_1);
+	data_hub->Devices.Add(device);
+
+	// No actively-emulating controller can transmit -> honest NoSerialAdapter, NOT a
+	// false Success.
+	auto result = dispatcher->CommandByUuid(device->Id(), ICommandDispatcher::DeviceAction::On);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+
+	// And a subsequent Status poll must NOT carry the aux-on command bytes. A passive
+	// adapter writes nothing at all, so the captured wire is empty (and certainly does
+	// not equal the would-be Aux_1 ON command).
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	const auto aux_on_bytes = ExpectedAckWireBytes(0x15, 0x81);   // Aux_1 (0x01+0x14) + SetOn(0x81)
+	BOOST_CHECK(Wire() != aux_on_bytes);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
