@@ -171,12 +171,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates for TLS; curl for the container HEALTHCHECK (also used here to
 # import the NodeSource signing key); tini as a tiny init that reaps zombies and
 # forwards signals to docker-entrypoint.sh (which supervises the app + Matter
-# sidecar); Node.js 22 (NodeSource) to run the Matter bridge sidecar. gnupg is only
+# sidecar); Node.js 22 (NodeSource) to run the Matter bridge sidecar; gosu so the
+# entrypoint can drop from root to the configurable PUID/PGID. gnupg is only
 # needed to import the key, so it is purged afterwards; curl is intentionally kept
 # (a few hundred KB) so the HEALTHCHECK and compose examples can use the standard
 # `curl --fail` probe.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg tini \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg tini gosu \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
     && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
@@ -205,9 +206,14 @@ RUN mkdir -p /data/matter && chown -R aqualink:aqualink /data/matter
 # through Docker's bridge driver, so EXPOSE alone is insufficient for Matter.
 EXPOSE 80
 
+# PUID/PGID: the uid:gid the app is run as. The entrypoint (started as root) remaps
+# the bundled `aqualink` user to these, chowns the writable paths, then drops to them
+# via gosu. Override per-deployment; PUID=0 keeps the container running as root.
 ENV MATTER_ENABLED=true \
     MATTER_STORAGE_PATH=/data/matter \
-    AQUALINK_API_URL=http://127.0.0.1:80
+    AQUALINK_API_URL=http://127.0.0.1:80 \
+    PUID=10000 \
+    PGID=10000
 
 # Container liveness probe: GET /api/health (unauthenticated by design, so it works
 # even when --api-auth-token is set). `curl --fail` exits non-zero on any status >= 400
@@ -242,7 +248,8 @@ CMD ["--address", "0.0.0.0", "--disable-https"]
 FROM runtime-base AS runtime
 
 COPY --from=ci /src/install/config-linux-gcc/ .
-USER aqualink
+# No USER directive: the image starts as root so the entrypoint can apply PUID/PGID
+# and drop privileges via gosu (set PUID=0 to stay root). See docker-entrypoint.sh.
 
 # ==============================================================================
 # Stage: runtime-assembled (prebuilt install tree — no recompile)
@@ -264,4 +271,5 @@ FROM runtime-base AS runtime-assembled
 # versioned-.so symlinks the binary loads by SONAME).
 COPY docker/context/installtree-linux-gcc.tar.gz /tmp/installtree.tar.gz
 RUN tar xzf /tmp/installtree.tar.gz -C /opt/aqualink-automate && rm /tmp/installtree.tar.gz
-USER aqualink
+# No USER directive: starts as root; the entrypoint applies PUID/PGID then drops
+# privileges via gosu (set PUID=0 to stay root). See docker-entrypoint.sh.
