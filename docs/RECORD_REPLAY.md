@@ -1,4 +1,6 @@
-# Serial Record / Replay
+# Serial record / replay
+
+*For contributors capturing real RS-485 traffic and replaying it (live or as a test fixture). Full developer-option semantics live in [docs/configuration.md](configuration.md); the runtime recording route lives in [docs/usage-and-api.md](usage-and-api.md).*
 
 Aqualink-Automate can **record** the raw RS-485 serial traffic it exchanges with
 real hardware to a capture file, and later **replay** that file instead of a real
@@ -8,6 +10,9 @@ cleanly and replays as-is — including as a reusable test fixture.
 - Recorder: `src/core/developer/recording_serial_port_impl.cpp`
 - Replayer: `src/core/developer/mock_serial_port_impl.cpp` (`HandleFileRead` / `DecodeReplayLine`)
 
+CLI options are written with their leading dashes (e.g. `--replay-filename`).
+Config-file keys are the same long name without the dashes (`replay-filename`).
+
 ---
 
 ## 1. Record against real hardware
@@ -15,7 +20,7 @@ cleanly and replays as-is — including as a reusable test fixture.
 Recording wraps the *real* serial port (physical or network), so you must point
 the app at actual hardware as well as giving it a capture path:
 
-```sh
+```bash
 # Physical RS-485 adapter
 aqualink-automate --serial-port /dev/ttyUSB0 --record-serial session.cap
 
@@ -32,15 +37,60 @@ replay at once).
 
 ## 2. Replay a capture
 
-Replaying needs developer mode and a capture file; no hardware is touched:
+Replaying touches no hardware, but `--replay-filename` has hard option
+dependencies that **every** replay command must satisfy or option validation
+rejects the invocation:
 
-```sh
-aqualink-automate --dev-mode --replay-filename session.cap
+- `--dev-mode` — replay is a developer-mode feature.
+- `--profiler <tool>` — accepts `tracy`, `uprof`, or `vtune`. Tracy is not
+  compiled into a normal build, so the profiler factory falls back to a no-op
+  profiler; the value still has to be present to clear the dependency.
+- **Every** per-channel `--loglevel-<channel> <severity>` option. These options
+  carry no default, so the dependency only clears when each of the 18 channels is
+  passed explicitly. The 18 channels are: `certificates`, `coroutines`,
+  `developer`, `devices`, `equipment`, `exceptions`, `main`, `messages`, `mqtt`,
+  `navigation`, `options`, `platform`, `profiling`, `protocol`, `scraping`,
+  `serial`, `signals`, `web`. Each takes a `Severity`: one of `trace`, `debug`,
+  `info`, `notify`, `warning`, `error`, `fatal`.
+
+**Important:** a bare `aqualink-automate --dev-mode --replay-filename session.cap`
+**fails** dependency validation. It is missing `--profiler` and the per-channel
+log levels. Use a complete command like the one below.
+
+A complete, validation-passing replay command (mirrors the working invocation in
+`playwright.config.ts`):
+
+```bash
+aqualink-automate \
+  --dev-mode \
+  --replay-filename session.cap \
+  --profiler tracy \
+  --loglevel-certificates info \
+  --loglevel-coroutines info \
+  --loglevel-developer info \
+  --loglevel-devices info \
+  --loglevel-equipment info \
+  --loglevel-exceptions info \
+  --loglevel-main info \
+  --loglevel-messages info \
+  --loglevel-mqtt info \
+  --loglevel-navigation info \
+  --loglevel-options info \
+  --loglevel-platform info \
+  --loglevel-profiling info \
+  --loglevel-protocol info \
+  --loglevel-scraping info \
+  --loglevel-serial info \
+  --loglevel-signals info \
+  --loglevel-web info
 ```
 
 The app feeds the capture's **R-direction** bytes into the decode pipeline
-exactly as if they had arrived from a real device. `--replay-filename` requires
-`--dev-mode`.
+exactly as if they had arrived from a real device.
+
+**Tip:** scripting the log levels is less error-prone than typing all 18 by
+hand. The Playwright config does exactly this — it generates one
+`--loglevel-<channel> info` per channel and appends them to the command.
 
 ### Replay pacing
 
@@ -57,25 +107,38 @@ also keeps the read aligned with the fixed-size circular buffer; an unpaced
 replay of a long capture slurps the whole file in one frame and overruns the
 buffer, losing everything but the tail.
 
-| Flag | Default | Meaning |
-|------|---------|---------|
-| `--replay-frame-period <ms>` | `15` | Wall-clock period per replay frame. `0` = unpaced (free-running, as fast as possible — the old behaviour). |
-| `--replay-speed <factor>` | `1.0` | Scales the period: `>1` faster, `<1` slower (e.g. `--replay-speed 10` ≈ 1.5 ms/frame). |
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--replay-frame-period` | | `uint32` (ms) | `15` | Wall-clock period per replay frame. `0` = unpaced (free-running, as fast as possible — the old behaviour). |
+| `--replay-speed` | | `double` | `1.0` | Scales the period: `>1` faster, `<1` slower (e.g. `--replay-speed 10` ≈ 1.5 ms/frame). |
 
-```sh
+Because the same dependency rules apply, the pacing examples below carry the full
+`--profiler` + per-channel `--loglevel-*` set. The log-level block is collapsed
+to `--loglevel-... info` for readability — substitute the 18 explicit options
+from the complete command above.
+
+```bash
 # Default ≈15 ms/frame pacing
-aqualink-automate --dev-mode --replay-filename session.cap
+aqualink-automate --dev-mode --replay-filename session.cap \
+  --profiler tracy --loglevel-... info   # ... = the 18 --loglevel-<channel> info options
 
 # 10x faster (still paced; no buffer overflow)
-aqualink-automate --dev-mode --replay-filename session.cap --replay-speed 10
+aqualink-automate --dev-mode --replay-filename session.cap \
+  --profiler tracy --loglevel-... info \
+  --replay-speed 10
 
 # Unpaced — consume the capture as fast as possible
-aqualink-automate --dev-mode --replay-filename session.cap --replay-frame-period 0
+aqualink-automate --dev-mode --replay-filename session.cap \
+  --profiler tracy --loglevel-... info \
+  --replay-frame-period 0
 ```
 
 Pacing applies only to the `--replay-filename` path; real serial ports already
 self-pace (the frame loop keeps its normal adaptive, low-latency step), and the
 unit-test replay harness runs unbounded for speed.
+
+For the full semantics of these developer options, see
+[docs/configuration.md](configuration.md).
 
 ---
 
@@ -158,3 +221,7 @@ A file produced by `--record-serial` (section 1) is already in this exact format
 — copy it straight into `test/fixtures/` and load it with `LoadFixture`. No
 conversion step is needed; that round-trip (record → replay-as-fixture) is
 covered by `test/unit/protocol/test_record_replay_roundtrip.cpp`.
+
+You can also start and stop recording on a **running** system through the
+diagnostics web UI / REST route rather than from boot — see the recording route
+in [docs/usage-and-api.md](usage-and-api.md).

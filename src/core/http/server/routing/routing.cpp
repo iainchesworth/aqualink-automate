@@ -319,8 +319,10 @@ namespace AqualinkAutomate::HTTP::Routing
 			// routes (incl. /api and /metrics) and unmatched paths are gated, but
 			// static assets are served WITHOUT authentication so a token-protected
 			// deployment can still load index.html / scripts / css to render the
-			// login screen.  When the policy is disabled (the default) EvaluateSecurity
-			// is a cheap no-op, so behaviour is byte-identical to before.
+			// login screen.  A registered route may additionally opt OUT of the policy
+			// via IWebRouteBase::RequiresAuthentication() (the /api/health probe does).
+			// When the policy is disabled (the default) EvaluateSecurity is a cheap
+			// no-op, so behaviour is byte-identical to before.
 			std::filesystem::path static_file_result;
 			HTTP::Routing::matches m;
 
@@ -337,10 +339,15 @@ namespace AqualinkAutomate::HTTP::Routing
 			}
 			else if (auto p = http_routes.find_impl(*path, matches_it, ids_it, matches_end, ids_end); nullptr != p)
 			{
-				// Registered route -> enforce security before dispatch.
-				if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+				// Registered route -> enforce security before dispatch, unless the
+				// route opts out (e.g. the unauthenticated /api/health liveness probe,
+				// which an orchestrator must reach without the operator's bearer token).
+				if (p->RequiresAuthentication())
 				{
-					return std::move(*rejection);
+					if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+					{
+						return std::move(*rejection);
+					}
 				}
 
 				LogTrace(Channel::Web, [&] { return std::format("Handling HTTP {} request for {}", magic_enum::enum_name(req.method()), std::string_view(req.target())); });

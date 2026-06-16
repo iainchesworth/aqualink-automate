@@ -153,7 +153,7 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 
 | Script | Packages |
 |--------|----------|
-| `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip |
+| `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip; enables `discard` (continuous TRIM) on the root fs **and** sets `fstrim.timer` to hourly so the thin vmdk stays lean under churny CI |
 | `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15, update-alternatives symlinks |
 | `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev from apt.llvm.org |
 | `04-cmake-ninja.sh` | CMake 3.31.6 (Kitware binary), ninja-build |

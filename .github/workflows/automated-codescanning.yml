@@ -1,12 +1,22 @@
 name: Automated Code Scanning
 
 on:
-  push:
-    branches: [ "main", "feature/**", "bug/**" ]
+  # Code scanning is SLOW (full per-platform builds), so only scan code where it
+  # is genuinely NEW:
+  #   * pull_request into develop -> feature work entering the integration branch
+  #   * pull_request into main    -> code arriving on the release branch, EXCEPT a
+  #       develop->main promotion (skipped per-job below: that code was already
+  #       scanned when it entered develop, so re-scanning the promotion is pure
+  #       duplication and was the long redundant run we removed)
+  #   * schedule -> weekly baseline of the default branch (Security tab)
+  #   * workflow_dispatch -> on demand
+  # The former `push: [main, feature/**, bug/**]` triggers re-scanned the
+  # post-merge main commit and every WIP feature push, all already covered above.
   pull_request:
     branches: [ "develop", "main" ]
   schedule:
     - cron: '42 21 * * 2'
+  workflow_dispatch:
 
 concurrency:
   group: code-scanning-${{ github.event.pull_request.number || github.ref }}
@@ -23,6 +33,12 @@ jobs:
   ##
 
   CodeScanning_CodeQL:
+    # Skip a develop->main promotion PR (already scanned on develop entry); run for
+    # everything else (PR into develop, non-develop PR into main, schedule, dispatch).
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'develop' ||
+      github.base_ref != 'main'
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     timeout-minutes: 360
     permissions:
@@ -118,6 +134,11 @@ jobs:
   ##
 
   CodeScanning_SonarCloud:
+    # Skip a develop->main promotion PR (already scanned on develop entry).
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'develop' ||
+      github.base_ref != 'main'
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
@@ -187,7 +208,16 @@ jobs:
   ##
 
   CodeScanning_MSVCCodeAnalysis:
+    # Skip a develop->main promotion PR (already scanned on develop entry).
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.head_ref != 'develop' ||
+      github.base_ref != 'main'
     runs-on: ${{ fromJSON(vars.RUNNER_WINDOWS || '["windows-latest"]') }}
+    # ilammy/msvc-dev-cmd is a Node 20 action with no Node 24 release; opt it into the
+    # Node 24 runtime now (forced by GitHub from 2026-06-16) to clear the warning.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     permissions:
       actions: read
       contents: read

@@ -18,6 +18,20 @@ services:
       # still runs; this mirrors --matter false).
       - MATTER_ENABLED=true
       - MATTER_STORAGE_PATH=/data/matter
+    # Liveness health check. The image already bakes in an identical HEALTHCHECK,
+    # so this block is optional -- it is spelled out here so it is visible and easy
+    # to tune. It probes the unauthenticated GET /api/health liveness endpoint, so
+    # it keeps working even if you set --api-auth-token. `restart: unless-stopped`
+    # (above) then restarts the container if it is reported unhealthy.
+    #   - If you change the app's --http-port, update the URL below to match.
+    #   - If you serve HTTPS only, switch to `https://localhost:<port>/api/health`
+    #     and add `--insecure` for a self-signed certificate.
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--max-time", "4", "http://127.0.0.1:80/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       # Persist Matter fabric/commissioning state so pairing survives restarts.
       - matter-data:/data/matter

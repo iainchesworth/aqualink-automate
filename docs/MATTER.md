@@ -1,13 +1,21 @@
 # Matter (smart-home) support
 
+*For pool owners pairing the equipment with Apple Home, Google Home, Alexa or
+SmartThings over Matter. CLI/config option semantics live in
+[Configuration reference](configuration.md); the Docker host-networking requirement
+lives in [INSTALL.md](../INSTALL.md#matter-bridge-and-host-networking).*
+
 aqualink-automate exposes the pool equipment to **Apple Home, Google Home, Amazon
 Alexa and Samsung SmartThings** over [Matter](https://csa-iot.org/all-solutions/matter/),
 so a single QR-code pairing covers every major ecosystem.
 
 Matter is implemented as a **sidecar bridge** ([`matter-bridge/`](../matter-bridge/README.md)):
-a small Node.js process that consumes the existing HTTP/WebSocket equipment API and
+a separate Node.js process that consumes the existing HTTP/WebSocket equipment API and
 presents the equipment as a Matter *Aggregator*. It does **not** link into the C++
-build — keeping the C++/MSVC build untouched and the image small.
+build — keeping the C++/MSVC build untouched and the image small. The sidecar depends
+on [`@matter/main`](https://www.npmjs.com/package/@matter/main) `^0.12.0` and `ws`, and
+requires **Node.js ≥ 20** (the published Docker image ships Node 22, which satisfies
+that floor).
 
 ```
  Apple Home / Google / Alexa / SmartThings
@@ -48,7 +56,7 @@ with *any* controller can be controlled, and the most direct channel present win
 | --------------------------------------- | ----------------------- | ---------------------------------------- |
 | Pump (single/two-speed)                 | On/Off Plug-in Unit     | on/off (VSP speed not a command yet)     |
 | Aux / Cleaner / Spillover / Sprinkler   | On/Off Plug-in Unit     | toggle                                   |
-| Light                                   | On/Off Plug-in Unit (v1)| dimmable/colour pending a JSON change    |
+| Light                                   | On/Off Plug-in Unit (v1)| on/off only; dimmable/colour is **planned**, not yet shipped |
 | Heater                                  | Thermostat (heat)       | setpoint per body (pool/spa)             |
 | Chlorinator (SWG)                       | On/Off + Level Control  | level = generating %; boost = 101        |
 | Pool / Spa / Air temperature            | Temperature Sensor      | read-only                                |
@@ -56,13 +64,17 @@ with *any* controller can be controlled, and the most direct channel present win
 
 ## Enabling / disabling
 
-Matter is **on by default (opt-out)**.
+Matter is **on by default (opt-out)**. `--matter` is a `value<bool>` with an implicit
+`true`, so omitting it or passing a bare `--matter` leaves the bridge on; only an
+explicit false turns it off. Config-file keys are the option long name without the
+leading dashes (so `matter = false`). See the
+[Configuration reference](configuration.md) for the full option semantics.
 
 - App flag: `--matter false` (or `matter = false` in the config file).
 - Docker: `-e MATTER_ENABLED=false` (read by the container entrypoint).
-- Tunables: `--matter-storage-path`, `--matter-status-port`, `--matter-passcode`,
-  `--matter-discriminator` (passcode/discriminator `0` ⇒ the sidecar generates and
-  persists random values).
+- Tunables: `--matter-storage-path` (default `/data/matter`), `--matter-status-port`
+  (default `8099`, localhost only), `--matter-passcode`, `--matter-discriminator`
+  (passcode/discriminator `0` ⇒ the sidecar generates and persists random values).
 
 ## Networking requirement (Docker)
 
@@ -77,13 +89,16 @@ docker compose up      # compose sets network_mode: host + a matter-data volume
 
 The fabric-state volume (`/data/matter`) makes pairing survive restarts. Host
 networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
-`MATTER_ENABLED=false`.
+`MATTER_ENABLED=false`. The Docker setup is covered in full in
+[INSTALL.md](../INSTALL.md#matter-bridge-and-host-networking).
 
 ## Pairing
 
 1. Open the web UI → **Diagnostics → Matter**. When the badge reads **"Ready to
    pair"** the QR code and an 11-digit manual pairing code are shown. (The code is
-   also printed in the container logs on first boot.)
+   also printed in the container logs on first boot.) The badge is backed by the
+   `GET /api/diagnostics/matter` status route — see
+   [Usage and API](usage-and-api.md#diagnostics).
 2. **Apple Home:** Home app → **+** → *Add Accessory* → scan the QR (or *More
    options…* → enter the manual code). Approve the "uncertified accessory" prompt
    (the bridge uses a test vendor ID).
@@ -98,6 +113,11 @@ networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
    confirm it actuates on the bus, and that controller-side changes reflect back.
 
 ## Verification status
+
+**Note:** The table below records the outcome of a specific test run (case counts,
+`tsc`-clean, Docker build stages) at the time it was captured, not a continuously
+verified guarantee. Treat it as a time-stamped snapshot; re-run the suites for the
+current state.
 
 | Check                                                                   | Status |
 | ----------------------------------------------------------------------- | ------ |

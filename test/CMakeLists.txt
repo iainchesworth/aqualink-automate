@@ -34,6 +34,7 @@ target_sources(
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp
+	unit/http/test_http_health_detailed.cpp
 	unit/http/test_http_security.cpp
 	unit/http/test_http_make_response.cpp
 	unit/http/test_http_sessions.cpp
@@ -221,6 +222,9 @@ target_link_libraries(
 )
 
 add_test(NAME AqualinkAutomateUnitTests COMMAND testaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+# Label so callers can gate suites: `ctest --preset <p> -L unit` (fast, local /
+# PR) vs `-L integration` (the slower fixture-replay suite). See docs/releasing.md.
+set_tests_properties(AqualinkAutomateUnitTests PROPERTIES LABELS "unit")
 
 if(ENABLE_COVERAGE)
 
@@ -352,6 +356,7 @@ target_link_libraries(
 )
 
 add_test(NAME AqualinkAutomateIntegrationTests COMMAND intaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(AqualinkAutomateIntegrationTests PROPERTIES LABELS "integration")
 
 if(ENABLE_SANITIZERS)
 target_enable_sanitizers(intaqualink-automate)
@@ -405,6 +410,7 @@ target_link_libraries(
 )
 
 add_test(NAME AqualinkAutomatePerfTests COMMAND perfaqualink-automate WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(AqualinkAutomatePerfTests PROPERTIES LABELS "perf")
 
 if(ENABLE_SANITIZERS)
 target_enable_sanitizers(perfaqualink-automate)

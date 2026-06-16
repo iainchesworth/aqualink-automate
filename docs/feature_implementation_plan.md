@@ -1,9 +1,35 @@
-# Feature Implementation Plan — June 2026
+# Feature implementation plan
 
-Seven workstreams extending aqualink-automate from a live observe-and-command mirror into a
+*For a maintainer or implementing agent. This is the internal workstream (WS) tracker for the
+post-mirror feature set. All seven workstreams have shipped; this file is now a record of what
+was built, not an open backlog. The two genuinely-open follow-ups (WS1 verification, capture-gated
+items) are flagged below.*
+
+Seven workstreams extended aqualink-automate from a live observe-and-command mirror into a
 system with memory (history), a clock (scheduling), and a voice (alerting), plus security and
-polish items. Each workstream (WS) is independently implementable in its own worktree/branch
-and lists its own acceptance criteria. Merge order is at the end.
+polish items. Each workstream was independently implemented in its own worktree/branch and
+lists its own acceptance criteria. Merge order is at the end.
+
+## Status at a glance
+
+The user-facing surfaces these workstreams shipped (auth token, history API, scheduler API) are
+documented in [usage-and-api.md](usage-and-api.md). The e2e-ui jobs that exercise them on every
+push live in [ci-cd.md](ci-cd.md) and in `.github/workflows/ci.yml`.
+
+| WS | Area | Status | Notes |
+|---|---|---|---|
+| WS1 | Chemistry tests + OneTouch AquaPure status processors | **DONE** (one OPEN check) | AquaRite regression tests landed (`test/unit/devices/test_devices_aquarite.cpp`, `test/unit/messages/test_aquarite_message_*.cpp`). OPEN: whether the OneTouch status processors match real screen lines is still capture-gated/unverified. |
+| WS2 | History / SQLite persistence + API + trends UI | **DONE** | `src/core/history/`, `WebRoute_History`, `--history-db`, swagger `/api/history/*`, `e2e/trends.spec.ts`. `sqlite3` is a bundled runtime dependency. |
+| WS3 | Fault detection + alerting | **DONE** | `src/core/alerting/` (`AlertMonitor`, `webhook_sink`), HA problem entities via `ha_discovery`, `options_alerting_options`. |
+| WS4 | Scheduler | **DONE** | `src/core/scheduling/`, `WebRoute_Schedules`, `--schedules-file`, swagger `/api/schedules*`, `e2e/schedules.spec.ts`. |
+| WS5 | UI authentication | **DONE** | WebSocket subprotocol auth, `GET /api/auth/check`, login overlay, `e2e/auth.spec.ts`. The transport gap is fixed; the UI works with a token set. |
+| WS6 | Prometheus `/metrics` | **DONE** | `WebRoute_Metrics`, swagger `/metrics`. |
+| WS7 | PWA polish | **DONE** | `assets/web/manifest.json`, `assets/web/sw.js`, `e2e/pwa.spec.ts`. |
+
+**Note:** the per-WS sections below preserve the original design notes for reference. Where a
+section's "current state" describes a broken or missing behavior, that text describes the state
+*before* the workstream shipped — the per-WS **Status** header records the as-delivered status.
+Use the table above and each WS's Status line as the source of truth for what exists today.
 
 **Audience:** an implementing agent working cold. Everything needed is in this file, the
 referenced source files, and the project skills. When a WS touches an area covered by a
@@ -19,7 +45,12 @@ These are non-negotiable project conventions; violating them has broken builds/m
 
 1. **Build/test invocation (Windows).** `cmake`/`ctest`/`ninja` are NOT on PATH in agent
    shells. In ONE PowerShell command, dot-launch the VS dev shell first:
-   `& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation | Out-Null`
+   ```powershell
+   # The VS install path below is environment-specific (this box has VS 18 Community at
+   # this location). Adjust the path to your own Visual Studio edition/version/install — it
+   # is NOT a repo-portable constant.
+   & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation | Out-Null
+   ```
    then build with preset `config-windows-msvc-debug` (NOT the LLVM debug preset). The test
    exe also needs the dev shell (debug-CRT DLLs) and must be run **from
    `build/<preset>/test/`** as cwd so `test/fixtures/*.cap` resolve.
@@ -60,7 +91,8 @@ These are non-negotiable project conventions; violating them has broken builds/m
    workstreams add Playwright e2e specs (`e2e/*.spec.ts`; config boots the real app on a
    replay fixture — see the repo `playwright.config.ts` and `docs/RECORD_REPLAY.md`).
 9. **Route registration anchor.** HTTP routes register in
-   `src/aqualink-automate.cpp` (~lines 413–427) inside the `web_settings_result` block.
+   `src/aqualink-automate.cpp` (the `HTTP::Routing::Add` block, ~lines 569–605) inside the
+   `web_settings_result` block.
    Several workstreams add lines there — keep each addition on its own line, alphabetised
    with the existing `HTTP::Routing::Add` calls, to make merges trivial.
 
@@ -68,20 +100,25 @@ These are non-negotiable project conventions; violating them has broken builds/m
 
 ## WS1 — Chemistry path regression tests + OneTouch AquaPure status-processor verification
 
+**Status: DONE (one OPEN check).** Regression tests landed
+(`test/unit/devices/test_devices_aquarite.cpp`, `test/unit/messages/test_aquarite_message_*.cpp`).
+OPEN: whether the OneTouch status processors match real Equipment Status screen lines remains
+capture-gated and unverified — see task 2 below.
+
 **Size:** small. **Risk:** low. **Dependencies:** none.
 
 ### Current state
 Two historical AquaRite bugs are ALREADY FIXED — do not re-fix:
-- `src/jandy/devices/aquarite_device.cpp:67-68` — `AquariteMessage_PPM` is registered
+- `src/jandy/devices/aquarite_device.cpp:77-78` — `AquariteMessage_PPM` is registered
   **unfiltered** (PPM frames go SWG→Master, destination 0x00, so device-id filtering on
   0x50 would drop them; the comment in code explains this).
-- `aquarite_device.cpp:157` — the PPM handler calls `ReportedSaltConcentration(...)`
-  (correct setter), not the generating-level setter.
+- `aquarite_device.cpp:176` (inside `Slot_Aquarite_PPM`, line 170) — the PPM handler calls
+  `ReportedSaltConcentration(...)` (correct setter), not the generating-level setter.
 
 What remains open is a historical observation that the OneTouch screen-scrape status
 processors `StatusProcessor_AquaPurePercentage`
 (`src/jandy/devices/onetouch/onetouch_statusprocessors.cpp:393`) and
-`StatusProcessor_CheckAquaPure` (`:483`) **never matched against live screen content**. They
+`StatusProcessor_CheckAquaPure` (`:490`) **never matched against live screen content**. They
 have since been reworked; whether they now match real Equipment Status page lines is
 unverified.
 
@@ -126,11 +163,17 @@ unverified.
 
 ## WS2 — History / persistence (SQLite time-series + history API + trends UI)
 
-**Size:** large. **Risk:** medium. **Dependencies:** none (merge after the small WSs).
+**Status: DONE.** Shipped as `src/core/history/` (`HistoryService`), `WebRoute_History`, options
+`--history-db` / `--history-retention-days` / `--history-flush-seconds`, swagger `/api/history/*`,
+the Trends UI, and `e2e/trends.spec.ts` (run by the `E2E — history enabled` job via
+`AQUALINK_HISTORY_DB`). `sqlite3` is already a declared `vcpkg.json` dependency and a bundled
+runtime library (`cmake/CPackConfig.cmake`); it does NOT need adding.
+
+**Size:** large. **Risk:** medium. **Dependencies:** none (merged after the small WSs).
 
 ### Goal
-Everything is currently ephemeral in-memory; restart loses all data. Add an embedded
-SQLite-backed sampler recording temperatures, chemistry (pH/ORP/salt/SWG %), and
+Before this workstream, all state was ephemeral in-memory and restart lost it. WS2 added an
+embedded SQLite-backed sampler recording temperatures, chemistry (pH/ORP/salt/SWG %), and
 button/device state transitions, a read API with downsampling, and a trends UI.
 
 ### Design
@@ -161,9 +204,10 @@ button/device state transitions, a read API with downsampling, and a trends UI.
   buffer samples in memory and flush in one transaction on an asio timer (default every
   10 s) so the main loop never blocks on fsync. Flush on clean shutdown.
 - **Retention:** daily purge timer deleting rows older than `--history-retention-days`.
-- **Dependency:** add `"sqlite3"` to `vcpkg.json` and `find_package(unofficial-sqlite3
-  CONFIG REQUIRED)` per vcpkg usage docs. Wrap the C API in a small RAII helper inside
-  `src/core/history/` (statement/transaction guards); do not pull in an ORM.
+- **Dependency:** `"sqlite3"` is in `vcpkg.json` and bundled at install time (see
+  `cmake/CPackConfig.cmake`); consume it with `find_package(unofficial-sqlite3 CONFIG REQUIRED)`
+  per vcpkg usage docs. The C API is wrapped in a small RAII helper inside `src/core/history/`
+  (statement/transaction guards); no ORM.
 
 ### Options (follow ground rule 5)
 New area `src/core/options/options_history.{h,cpp}` (or `src/core/history/options/` if
@@ -174,9 +218,11 @@ matching subsystem-local precedent — check where `options_web` lives and mirro
 Validate: retention/flush must be > 0.
 
 ### API (swagger update REQUIRED)
-New `WebRoute_History` in `src/core/http/`:
-- `GET /api/history/series` → `[{key, unit, first_ts, last_ts, count}]`.
-- `GET /api/history/series/{key}?from=<unix>&to=<unix>&max_points=<n>` → bucket-averaged
+New `WebRoute_History` in `src/core/http/` — a single route (`/api/history/series`) with two
+behaviours selected by the optional `?key=` query param (series keys contain `/`, so the key
+travels as a query parameter, not a path segment):
+- `GET /api/history/series` (no `key`) → `[{key, unit, first_ts, last_ts, count}]`.
+- `GET /api/history/series?key=<key>&from=<unix>&to=<unix>&max_points=<n>` → bucket-averaged
   downsample server-side (simple time-bucket mean is sufficient; cap `max_points` ≤ 2000,
   default 500). 404 unknown key, 400 bad range, 503 if history disabled.
 Register both in `aqualink-automate.cpp` (ground rule 9) only when history is enabled —
@@ -208,6 +254,10 @@ self-describing).
 ---
 
 ## WS3 — Fault detection + alerting (HA problem entities, webhook, UI surfacing)
+
+**Status: DONE.** Shipped as `src/core/alerting/` (`AlertMonitor`, `webhook_sink`), HA problem
+entities via `src/core/mqtt/ha_discovery.{h,cpp}`, and options `options_alerting_options`
+(`--alert-salt-low-ppm` / `--alert-webhook-url` / `--alert-comms-timeout-seconds`).
 
 **Size:** medium. **Risk:** medium. **Dependencies:** none (textual merge overlap with WS2
 in registration blocks only).
@@ -271,8 +321,13 @@ New area `options_alerting.{h,cpp}`: `--alert-salt-low-ppm` (default 2600, range
 
 ## WS4 — Scheduler (app-side time-based automation)
 
+**Status: DONE.** Shipped as `src/core/scheduling/` (`SchedulerService`), `WebRoute_Schedules`,
+option `--schedules-file` (`options_scheduling_options`), swagger `/api/schedules` +
+`/api/schedules/{uuid}`, the Schedules UI, and `e2e/schedules.spec.ts` (run by the
+`E2E — scheduler enabled` job via `AQUALINK_SCHEDULES_FILE`).
+
 **Size:** large. **Risk:** medium. **Dependencies:** none (JSON-file persistence keeps it
-independent of WS2; merge last).
+independent of WS2; merged last).
 
 ### Goal
 A clock-driven engine executing existing dispatcher commands: "pump on 08:00 weekdays",
@@ -308,7 +363,9 @@ A clock-driven engine executing existing dispatcher commands: "pump on 08:00 wee
 `options_scheduling.{h,cpp}`: `--schedules-file <path>` only (keep v1 minimal).
 
 ### API (swagger update REQUIRED)
-New `WebRoute_Schedules`:
+Two route classes in the same `src/core/http/webroute_schedules.h`: the collection route
+`WebRoute_Schedules` (`/api/schedules`) and the separate item route `WebRoute_Schedule`
+(`/api/schedules/{uuid}`).
 - `GET /api/schedules` → full list.
 - `POST /api/schedules` → create (server assigns uuid), 201 + entity.
 - `PUT /api/schedules/{uuid}` → replace, 200 + entity.
@@ -344,15 +401,23 @@ New `WebRoute_Schedules`:
 
 ## WS5 — UI authentication (login + browser-compatible WebSocket auth)
 
+**Status: DONE.** The WebSocket-subprotocol auth transport, the login overlay, `GET /api/auth/check`
+(swagger documented), and the token-attaching fetch/WS helpers all shipped. The
+`E2E — auth enabled` job (`AQUALINK_AUTH_TOKEN`) runs `e2e/auth.spec.ts` against a token-gated
+build. With a token set, the web UI works (login → live WebSocket). The shipped auth surface is
+documented in [usage-and-api.md](usage-and-api.md).
+
 **Size:** medium. **Risk:** medium (touches the security path). **Dependencies:** none.
 
-### Current state & the critical gap
+### The problem this workstream solved
 `--api-auth-token` enforces `Authorization: Bearer <token>` on routes AND WebSocket
-upgrades (`src/core/http/server/routing/routing.cpp:172-183`, constant-time compare,
-401 + `WWW-Authenticate: Bearer` on failure). The UI has no login and never attaches the
-header — and **browsers cannot set arbitrary headers on WebSocket upgrades**, so even a
-token-aware UI cannot authenticate `/ws/*` today. When the token is set, the web UI is
-currently unusable. Fixing that transport gap is the heart of this WS.
+upgrades (`EvaluateSecurity` in `src/core/http/server/routing/routing.cpp:184-251`,
+constant-time compare at ~210-235; the 401 + `WWW-Authenticate: Bearer` response is built
+in `MakeSecurityResponse` at ~100-101. The WebSocket-subprotocol bearer-extraction helper
+is `WebSocketSubprotocolTokenMatches` at ~148-178). Before WS5, the UI had no login and never
+attached the header — and **browsers cannot set arbitrary headers on WebSocket upgrades**, so
+even a token-aware UI could not authenticate `/ws/*`, leaving the web UI unusable whenever a token
+was set. WS5 closed that transport gap (see the design below); it is the as-delivered behavior.
 
 ### Design
 1. **WS auth transport:** accept the token on WebSocket upgrades via the
@@ -394,6 +459,9 @@ currently unusable. Fixing that transport gap is the heart of this WS.
 
 ## WS6 — Prometheus `/metrics` endpoint
 
+**Status: DONE.** Shipped as `WebRoute_Metrics` serving `GET /metrics` (swagger documented,
+`text/plain` exposition).
+
 **Size:** small. **Risk:** low. **Dependencies:** none. Good first merge after WS1.
 
 ### Design
@@ -423,6 +491,9 @@ rules manually or a format unit test); full suite passes; swagger updated.
 ---
 
 ## WS7 — PWA polish
+
+**Status: DONE.** Shipped as `assets/web/manifest.json`, `assets/web/sw.js`, and
+`e2e/pwa.spec.ts`.
 
 **Size:** small. **Risk:** low. **Dependencies:** merge after WS5 (the service worker must
 not cache auth-gated API responses; coordinate cache strategy with the login flow).
@@ -461,14 +532,16 @@ forbidden. They are listed so nobody "helpfully" implements them:
 
 ---
 
-## Orchestration & merge order
+## Orchestration & merge order (historical record)
 
-Each WS on its own branch/worktree per ground rule 2. Merge into `develop` sequentially,
-rebasing each branch on the live tip immediately before merging (the repo sees concurrent
-sessions; use the atomic `git update-ref refs/heads/develop <new> <old>` compare-and-swap
-if landing without a checkout, and re-verify your files survived afterwards).
+All seven workstreams have merged into `develop`. This section records the order they landed in,
+kept for context; it is not an open plan. Each WS was developed on its own branch/worktree per
+ground rule 2 and merged sequentially, rebasing each branch on the live tip immediately before
+merging (the repo sees concurrent sessions; the atomic
+`git update-ref refs/heads/develop <new> <old>` compare-and-swap was used when landing without a
+checkout, re-verifying files survived afterwards).
 
-Order (small/additive → large; later items absorb the registration-block merge noise):
+Order (small/additive → large; later items absorbed the registration-block merge noise):
 
 1. **WS1** — tests/verification only; zero conflict surface.
 2. **WS6** — one route + swagger.

@@ -48,3 +48,11 @@ nul
 *.dmg
 *.pdb
 *.ilk
+
+# The release pipeline stages a prebuilt Linux install tree here so the
+# `runtime-assembled` Dockerfile stage can COPY it without recompiling. The
+# `install`/`build` rules above are root-anchored and do not match this nested
+# path, but re-include it explicitly so the assembled COPY can never silently
+# produce an empty image.
+!docker/context
+!docker/context/**

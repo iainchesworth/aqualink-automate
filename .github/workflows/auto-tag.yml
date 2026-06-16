@@ -1,0 +1,83 @@
+name: Auto Tag (opt-in)
+
+# Opt-in helper that advances the prerelease tag on a push to main, which fires
+# release.yml exactly as a manual tag push would. Does NOTHING unless the
+# AUTO_TAG_ENABLED repo variable is "true" — by default versions are tagged by
+# hand, and the manual hand-push stays the escape hatch.
+#
+# Scope is deliberately conservative and git-describe-compatible: it only advances
+# the prerelease COUNTER (vX.Y.Z-<channel>.N -> .N+1), the project's actual release
+# cadence. Base bumps (minor/major) and channel changes stay MANUAL so a human
+# decides when a release line advances — avoiding the dual-source-of-truth / wrong
+# auto-bump risk the redesign critique flagged against release-please-style tools.
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    if: vars.AUTO_TAG_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compute and push the next prerelease tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANNEL: ${{ vars.AUTO_TAG_CHANNEL || 'beta' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LAST=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST" ]; then
+            echo "No existing v* tag — refusing to invent the first version. Tag it manually."
+            exit 0
+          fi
+          echo "Last tag: $LAST"
+
+          # Only advance a prerelease counter; a stable or non-<channel>.N tag is left
+          # alone (base bumps are a human decision).
+          if [[ ! "$LAST" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-([a-z]+)\.([0-9]+)$ ]]; then
+            echo "Last tag $LAST is not a '<channel>.N' prerelease — auto-tag only advances the prerelease counter. Tag manually."
+            exit 0
+          fi
+          MAJOR="${BASH_REMATCH[1]}"; MINOR="${BASH_REMATCH[2]}"; PATCH="${BASH_REMATCH[3]}"
+          LASTCH="${BASH_REMATCH[4]}"; N="${BASH_REMATCH[5]}"
+
+          if [ "$LASTCH" != "$CHANNEL" ]; then
+            echo "Last tag channel '$LASTCH' != configured AUTO_TAG_CHANNEL '$CHANNEL' — tag manually to switch channels."
+            exit 0
+          fi
+
+          COUNT=$(git rev-list "${LAST}..HEAD" --count)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No new commits since $LAST — nothing to release."
+            exit 0
+          fi
+
+          NEXT="v${MAJOR}.${MINOR}.${PATCH}-${CHANNEL}.$((N + 1))"
+          echo "Computed next tag: $NEXT ($COUNT new commits since $LAST)"
+
+          if gh api "repos/${{ github.repository }}/git/ref/tags/${NEXT}" >/dev/null 2>&1; then
+            echo "::error::$NEXT already exists — aborting."
+            exit 1
+          fi
+
+          git tag -a "$NEXT" -m "Release $NEXT (auto-tagged)"
+          git push origin "$NEXT"
+          echo "Pushed $NEXT — release.yml will run for it."
+
+          {
+            echo "### Auto-tag"
+            echo ""
+            echo "| From | To | New commits |"
+            echo "|------|----|-------------|"
+            echo "| \`$LAST\` | \`$NEXT\` | $COUNT |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,91 +1,192 @@
 # Contributing to Aqualink Automate
 
-Here are guidelines we would like you to follow are:
+*For contributors sending pull requests. Covers the branch model, the Conventional Commits format used in this repo, and what to run before you push. Building from source lives in [INSTALL.md](INSTALL.md).*
 
- - [Git Workflow](#git-workflow)
- - [Submission Guidelines](#submitting-a-pull-request-pr)
- - [Commit Message Guidelines](#git-commit-guidelines)
+These are the guidelines we ask you to follow:
 
-### Git Workflow
+- [Git workflow](#git-workflow)
+- [Submitting a pull request](#submitting-a-pull-request)
+- [Merging](#merging)
+- [Commit message format](#commit-message-format)
+- [Allowed types and scopes](#allowed-types-and-scopes)
+- [No attribution trailers](#no-attribution-trailers)
+- [Release tagging](#release-tagging)
+- [Building and testing before you push](#building-and-testing-before-you-push)
 
-This repository has two core branches: **main** (production) and **develop**.
+**Security:** do not report security vulnerabilities as normal issues or pull requests. Follow the private process in [SECURITY.md](SECURITY.md) instead.
 
-Normal workflow: `develop` -> `main` (tag latest commit)
+There is no pull request or issue template in this repository — this guide is self-sufficient, so follow it directly.
 
-#### Feature Branches
+## Git workflow
 
-New features should have its own branches with name format: `[type]/[branch-name]` where type follows [commit type](#type).
+The repository has two core branches:
 
-#### Release Tag
+| Branch    | Purpose                                                    |
+|-----------|-----------------------------------------------------------|
+| `main`    | Production. Released, tagged code only.                    |
+| `develop` | Integration branch. All non-hotfix work merges here first.|
 
-Release tag should be made on the **latest** in master after merging `develop` to `main`.
+The normal flow is `develop` -> `main`: features land on `develop`, and when a release is cut, `develop` is merged into `main` and a tag is created on `main` (see [Release tagging](#release-tagging)).
 
-Naming convention with semantic versioning: release-YYYYMMDD-vX.Y.Z
+### Feature and bug branches
 
-#### Hotfix branch
+Create one branch per change, named `<type>/<branch-name>`, where `<type>` is one of the [allowed commit types](#allowed-types-and-scopes). Continuous integration triggers on the `feature/**` and `bug/**` namespaces, as well as on `main` and `develop` (see `.github/workflows/ci.yml`).
 
-Branch off of main and upon completion of fix, merge into `main` (tag hotfix) and `develop` as a **merge commit**. 
+```bash
+git switch develop
+git switch -c feature/spaside-led-map      # a new feature
+git switch -c bug/heater-setpoint-decode   # a bug fix
+```
 
-### Submitting a Pull Request (PR)
+### Hotfix branches
 
-Before you submit your Pull Request (PR) for a **non-hotfix** task, consider the following guidelines:
+A hotfix is an urgent fix that must reach production without waiting for the next `develop` release. Branch a hotfix off `main`:
 
-1. Branch off of `develop` as `feature/my-new-feature`
-2. Add your update, **including appropriate test cases.**
-3. Run the full test suite and ensure all tests pass.
-4. Commit your changes using a descriptive commit message that follows our [commit message conventions](#commit).
-5. Open PR to `develop` and make any requested changes (if any)
+```bash
+git switch main
+git switch -c fix/crash-on-empty-config
+```
 
-#### Merging your pull request (non-hotfix)
+A hotfix merges into `main` (which is then tagged) and is also merged into `develop` so the fix is not lost on the next release.
 
-If you're merging a PR that addresses one single feature or bugfix:
+## Submitting a pull request
 
-1. Before merging your PR, please change the name as the name must follow [commit message conventions](#commit)
-2. **Squash and Merge** your changes into `develop`, this will make it easier to revert specific features, bugfixes, or issues if the need arises.
+For a **non-hotfix** change:
 
-If you're merging a PR that addresses multiple features and/or bugfixes:
+1. Branch off `develop` (for example `feature/my-new-feature`).
+2. Make your change, **including appropriate test cases**.
+3. Run the full test suite and confirm it passes — see [Building and testing before you push](#building-and-testing-before-you-push).
+4. Commit using the [Conventional Commits format](#commit-message-format).
+5. Open a pull request targeting `develop` and address any review feedback.
 
-1. Use your best judgement whether to `Squash and Merge` or `Create a merge commit`
-  * `Squash and merge` will merge your changes into `develop` as a single commit
-  * `Create a merge commit` will merge your changes into `develop` including all the commits made in your main branch. 
+For a **hotfix** change:
 
-#### Merging your hotfix pull requests
+1. Branch off `main`.
+2. Open a pull request targeting `main`.
+3. After it merges to `main`, also merge the fix into `develop`.
 
-When submitting your PR for a **hotfix** tasks, please follow the following:
-1. Branch off the `main` branch
-2. Open PR to `main`
-3. After hotfix is merged into main, merge the hotfix changes to develop as a `merge commit` type.
+Every pull request must include test coverage for the change and must pass the full suite. CI runs the C++ build and tests, the Playwright UI end-to-end specs, the Matter bridge checks, and a Docker image verification on each pull request. See [docs/ci-cd.md](docs/ci-cd.md) for the catalogue of what runs and where, and [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the authoritative list of PR checks.
 
-### Git Commit Guidelines
+## Merging
 
-We have guidelines on how git commit messages can be formatted.  This leads to **more readable messages** that are easy to follow when looking through the **project history**.
+The default is **Squash and Merge** into `develop`. A single squashed commit per feature or bug fix keeps history readable and makes it straightforward to revert one change in isolation.
 
-#### Commit Message Format
+Before merging, set the pull request title to a valid [Conventional Commit](#commit-message-format) — the squash commit uses the pull request title as its subject.
 
-TBC
+If a pull request bundles several distinct features or fixes, use your judgement:
 
-#### Revert
+- **Squash and Merge** collapses everything into one commit on `develop`.
+- **Create a merge commit** preserves the individual commits from your branch.
 
-TBC
+Prefer Squash and Merge unless preserving the separate commits adds real value.
 
-### Type
+## Commit message format
 
-Must be one of the following:
+This project uses [Conventional Commits](https://www.conventionalcommits.org/). Each commit message has this shape:
 
-TBC
+```
+<type>(<scope>): <subject>
 
-#### Scope
+<body>
 
-TBC
+<footer>
+```
 
-#### Subject
+- **type** — required. One of the [allowed types](#allowed-types-and-scopes).
+- **scope** — optional. The area of the codebase affected, in parentheses. Multiple scopes are comma-separated.
+- **subject** — required. A short, imperative, present-tense summary on the first line ("add", not "added" or "adds"). No trailing period; keep it under about 72 characters.
+- **body** — optional. Explains the motivation and what changed, in present tense. Separate it from the subject with a blank line.
+- **footer** — optional. References issues (for example `Closes #42`) and records breaking changes.
 
-TBC
+Real examples from this repository:
 
-#### Body
+```text
+fix(cicd): keep runner thin disks lean with discard + hourly fstrim
+ci(codescanning): scan only new code; skip the develop->main duplicate
+test(integration): expect median-smoothed hub salt in transitions replay
+refactor(webui): give Schedules form inputs their own .sched-input class
+feat(webui,jandy): tailored device cards, robust command dispatch, RSSA presence-gating fix
+docs(spaside): mark the iAQ spa-switch writer IMPLEMENTED
+```
 
-TBC
+A complete message with a body and footer:
 
-#### Footer
+```text
+fix(chlorinator): smooth AquaRite salt/health flapping
 
-TBC
+The reported salt concentration flapped between adjacent samples because
+each raw reading was published unfiltered. Apply median smoothing before
+writing to the DataHub and surface cell warnings.
+
+Closes #57
+```
+
+### Breaking changes
+
+Mark a backward-incompatible change with a `!` before the colon, and describe it in a `BREAKING CHANGE:` footer:
+
+```text
+feat(api)!: rename expected_auxillary_count to expected_aux_count
+
+BREAKING CHANGE: the /api/equipment response field expected_auxillary_count
+is renamed to expected_aux_count. Update any client that reads it.
+```
+
+### Reverts
+
+To revert a previous commit, use the `revert` type and name the reverted subject and hash in the body:
+
+```text
+revert: feat(webui,jandy): tailored device cards and robust command dispatch
+
+This reverts commit a1b2c3d. The command-dispatch change regressed the
+OneTouch home page; reverting until the RSSA gating is fixed.
+```
+
+## Allowed types and scopes
+
+Use one of these types. Put the area of the code in the **scope**, not the type.
+
+| Type       | Use for                                                        |
+|------------|----------------------------------------------------------------|
+| `feat`     | A new feature or capability.                                    |
+| `fix`      | A bug fix.                                                      |
+| `docs`     | Documentation only.                                             |
+| `ci`       | CI/CD workflows, GitHub Actions, runner configuration.         |
+| `test`     | Adding or correcting tests.                                    |
+| `refactor` | A code change that neither fixes a bug nor adds a feature.      |
+| `chore`    | Maintenance, tooling, dependencies, housekeeping.              |
+| `build`    | Build system, CMake, vcpkg, packaging.                         |
+| `perf`     | A change that improves performance.                            |
+
+**Scopes** name the affected area and are free-form, but stay consistent with what history already uses. Common scopes include `jandy`, `pentair`, `webui`, `chlorinator`, `cicd`, `matter`, `spaside`, `iaq`, `http`, and `integration`. Combine scopes with commas when a change spans areas, for example `feat(webui,jandy): ...`.
+
+**Important:** older commits use ad-hoc prefixes such as `jandy:`, `release:`, `spaside:`, `epump:`, `core:`, and `docker:` as the type. These are **not** valid Conventional Commit types — they are scopes. Use a type from the table above and move the area name into the scope: write `fix(jandy): ...`, not `jandy: ...`.
+
+## No attribution trailers
+
+Do not add attribution or co-authorship trailers to commit messages, pull request descriptions, or any generated text. This includes `Co-Authored-By:` lines and any equivalent "co-authored" or attribution statement. This is a hard project rule — keep commits and pull request bodies free of attribution trailers.
+
+## Release tagging
+
+Releases are tagged on `main` using a plain semantic-version tag prefixed with `v` — for example `v1.0.0`, or a prerelease such as `v1.0.0-beta.1`. Pushing a `v*` tag triggers the release pipeline (`.github/workflows/release.yml`), which builds, packages, publishes the Docker image, and creates the GitHub release. The pipeline rejects any tag that is not a valid `v<MAJOR>.<MINOR>.<PATCH>[-(alpha|beta|rc).<N>]` and requires the tagged commit to be contained in `main`.
+
+Do not use the old `release-YYYYMMDD-vX.Y.Z` naming — it is not what the pipeline matches.
+
+For the full version scheme, prerelease labels, and the step-by-step release procedure, see [docs/releasing.md](docs/releasing.md). Most contributors do not tag releases.
+
+## Building and testing before you push
+
+Build the project and run the full test suite before opening a pull request. The repository ships convenience build scripts and CMake presets; the full setup, prerequisites, and per-platform notes are in [INSTALL.md](INSTALL.md).
+
+Configure, build, and test with the matching presets (replace `config-`/`build-`/`test-` to pick the platform preset listed in [INSTALL.md](INSTALL.md)):
+
+```bash
+cmake --preset config-linux-gcc
+cmake --build --preset build-linux-gcc
+ctest --preset test-linux-gcc
+```
+
+On Windows the equivalent presets are `config-windows-msvc-debug`, `build-windows-msvc-debug`, and `test-windows-msvc-debug`.
+
+All tests must pass and your change must include tests covering it. A bug fix must add a regression test that fails before the fix and passes after it.

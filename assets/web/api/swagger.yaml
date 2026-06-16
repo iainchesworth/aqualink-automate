@@ -29,6 +29,12 @@ info:
     auth state: it returns `200` when authorized (or when auth is disabled) and
     `401` otherwise.
 
+    **`GET /api/health` is also exempt** — the liveness probe is always
+    unauthenticated so a container/orchestrator health check can reach it without
+    the bearer token. It carries no sensitive data. The richer
+    `GET /api/health/detailed` is **not** exempt — it exposes internal subsystem
+    state and is gated like every other route.
+
     **WebSocket auth:** browsers cannot set an `Authorization` header on a
     WebSocket upgrade, so the client offers the token via the
     `Sec-WebSocket-Protocol` header as `aqualink, bearer.<token>`. The server
@@ -64,6 +70,8 @@ servers:
     description: Local server
 
 tags:
+  - name: Health
+    description: Liveness probe for container/orchestrator health checks
   - name: Version
     description: Application and equipment version information
   - name: Equipment
@@ -184,6 +192,124 @@ paths:
                 authenticated: true
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe for container/orchestrator health checks
+      description: >
+        Lightweight liveness check intended for Docker HEALTHCHECK, Kubernetes
+        liveness probes, and load balancers. Returns 200 with a tiny JSON body as
+        long as the process is alive and the HTTP server is responding; a hung
+        event loop simply never answers, which a probe treats as unhealthy.
+
+        Unlike every other endpoint this route is **always unauthenticated** — it
+        is reachable without the bearer token even when `--api-auth-token` is set,
+        so an orchestrator's health check needs no secret. The body deliberately
+        carries no version/build details (those live behind the gated
+        `GET /api/version`), so nothing sensitive is exposed.
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: The service is alive and responding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthInfo'
+              example:
+                status: ok
+                uptime_seconds: 3600
+
+  /api/health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health / readiness report
+      description: >
+        Richer health view for operators and monitoring, complementing the bare
+        liveness probe at `GET /api/health`. Reports overall readiness plus a
+        per-subsystem breakdown (configuration + equipment validation, discovered
+        equipment count, and MQTT connectivity).
+
+        **Readiness drives the status code:** `200` once the system has determined
+        its pool configuration (the same gate the command endpoints use), `503`
+        while it is still starting / unconfigured — so this endpoint can serve as a
+        Kubernetes readiness probe (distinct from `/api/health`'s liveness role).
+
+        Unlike `/api/health` this route is **subject to the bearer-token policy**
+        (it exposes internal subsystem state), so it returns `401` when a token is
+        required and not supplied. Serial/protocol counters are not duplicated here
+        — those live in the Prometheus exposition at `GET /metrics`.
+      operationId: getHealthDetailed
+      responses:
+        '200':
+          description: The system is ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDetail'
+              example:
+                status: ok
+                ready: true
+                uptime_seconds: 3600
+                version:
+                  name: "Aqualink Automate"
+                  version: "1.0.0"
+                  commit_sha1: "abc123def456"
+                checks:
+                  configuration:
+                    status: ok
+                    ready: true
+                    pool_configuration: "SingleBody"
+                    system_board: "RS8_Only"
+                    mode: "Normal"
+                    emulation_disabled: false
+                    equipment_validation:
+                      passed: true
+                      expected_auxillaries: 5
+                      discovered_auxillaries: 5
+                      expected_power_centers: 1
+                      discovered_power_centers: 1
+                      anomalies: []
+                  equipment:
+                    status: ok
+                    device_count: 7
+                  mqtt:
+                    enabled: true
+                    running: true
+                    connected: true
+        '503':
+          description: The system is alive but not yet ready (e.g. pool configuration not yet determined).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDetail'
+              example:
+                status: starting
+                ready: false
+                uptime_seconds: 4
+                version:
+                  name: "Aqualink Automate"
+                  version: "1.0.0"
+                checks:
+                  configuration:
+                    status: pending
+                    ready: false
+                    pool_configuration: "Unknown"
+                    system_board: "Unknown"
+                    mode: "Normal"
+                    emulation_disabled: false
+                  equipment:
+                    status: pending
+                    device_count: 0
+                  mqtt:
+                    enabled: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          description: Method not allowed (use GET).
 
   /api/history/series:
     get:
@@ -1348,6 +1474,120 @@ components:
           type: integer
           description: Server uptime in seconds
           example: 3600
+
+    HealthInfo:
+      type: object
+      description: Liveness response from GET /api/health.
+      required:
+        - status
+        - uptime_seconds
+      properties:
+        status:
+          type: string
+          description: Always "ok" when the service is responding.
+          example: ok
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: Seconds since the process started (monotonic).
+          example: 3600
+
+    HealthDetail:
+      type: object
+      description: Detailed health / readiness report from GET /api/health/detailed.
+      required:
+        - status
+        - ready
+        - uptime_seconds
+        - checks
+      properties:
+        status:
+          type: string
+          description: '"ok" when ready, "starting" when not yet ready.'
+          enum: [ok, starting]
+          example: ok
+        ready:
+          type: boolean
+          description: True once the pool configuration has been determined. Mirrors the HTTP status (200 vs 503).
+          example: true
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: Seconds since the process started (monotonic).
+          example: 3600
+        version:
+          type: object
+          description: Build identity (mirrors a subset of /api/version).
+          properties:
+            name:
+              type: string
+              example: "Aqualink Automate"
+            version:
+              type: string
+              example: "1.0.0"
+            commit_sha1:
+              type: string
+              description: Present only when git metadata is compiled in.
+              example: "abc123def456"
+        checks:
+          type: object
+          description: Per-subsystem health. Subsystems not registered report status "unavailable".
+          properties:
+            configuration:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ok, pending, unavailable]
+                ready:
+                  type: boolean
+                pool_configuration:
+                  type: string
+                  example: "SingleBody"
+                system_board:
+                  type: string
+                  example: "RS8_Only"
+                mode:
+                  type: string
+                  example: "Normal"
+                emulation_disabled:
+                  type: boolean
+                equipment_validation:
+                  type: object
+                  description: Present once the startup equipment scrape has completed.
+                  properties:
+                    passed:
+                      type: boolean
+                    expected_auxillaries:
+                      type: integer
+                    discovered_auxillaries:
+                      type: integer
+                    expected_power_centers:
+                      type: integer
+                    discovered_power_centers:
+                      type: integer
+                    anomalies:
+                      type: array
+                      items:
+                        type: string
+            equipment:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ok, pending, unavailable]
+                device_count:
+                  type: integer
+                  example: 7
+            mqtt:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                running:
+                  type: boolean
+                connected:
+                  type: boolean
 
     Temperature:
       type: object

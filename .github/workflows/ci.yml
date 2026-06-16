@@ -14,176 +14,45 @@ permissions:
   contents: read
 
 jobs:
-  # Runner selection: set RUNNER_LINUX / RUNNER_WINDOWS repository variables
-  # to use self-hosted runners (e.g. '["self-hosted","linux","x64"]').
-  # Leave unset to fall back to GitHub-hosted runners.
+  # The configure/build/test matrix lives in the reusable _build.yml so CI and the
+  # release pipeline share one definition and can never drift. Runner selection
+  # (vars.RUNNER_LINUX / RUNNER_WINDOWS) is handled inside that workflow.
+  # upload_installtree publishes the Linux install tree that e2e-ui consumes below
+  # (so e2e no longer recompiles the app).
   build-and-test:
-    name: ${{ matrix.name }}
-    runs-on: ${{ fromJSON(matrix.runner) }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: "Linux GCC"
-            runner: ${{ vars.RUNNER_LINUX || '["ubuntu-latest"]' }}
-            compiler: gcc-15
-            configure_preset: config-linux-gcc
-            build_preset: build-linux-gcc
-            test_preset: test-linux-gcc
-          - name: "Windows MSVC"
-            runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
-            compiler: msvc
-            configure_preset: config-windows-msvc
-            build_preset: build-windows-msvc
-            test_preset: test-windows-msvc
-          - name: "macOS Clang"
-            runner: '["macos-latest"]'
-            compiler: llvm
-            configure_preset: config-macos-llvm
-            build_preset: build-macos-llvm
-            test_preset: test-macos-llvm
+    name: Build & Test
+    uses: ./.github/workflows/_build.yml
+    with:
+      upload_installtree: true
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Clean workspace (self-hosted)
-        if: contains(matrix.runner, 'self-hosted')
-        shell: bash
-        run: rm -rf build/
-
-      - uses: ./.github/actions/setup-cpp-toolchain
-        if: ${{ !contains(matrix.runner, 'self-hosted') }}
-        with:
-          compiler: ${{ matrix.compiler }}
-
-      - name: Setup MSVC environment (self-hosted)
-        if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Setup vcpkg cache (self-hosted)
-        if: contains(matrix.runner, 'self-hosted')
-        shell: bash
-        run: |
-          BINARY_DIR="$HOME/.cache/vcpkg/archives"
-          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-          # Convert Git bash paths to native Windows paths for CMake/vcpkg
-          if command -v cygpath >/dev/null 2>&1; then
-            BINARY_DIR=$(cygpath -w "$BINARY_DIR")
-            DOWNLOADS_DIR=$(cygpath -w "$DOWNLOADS_DIR")
-          fi
-          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
-
-      - uses: ./.github/actions/setup-vcpkg-cache
-        if: ${{ !contains(matrix.runner, 'self-hosted') }}
-        with:
-          cache-key-prefix: ${{ matrix.name }}
-
-      - name: Bootstrap vcpkg
-        shell: bash
-        run: |
-          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
-            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          elif [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" ]; then
-            "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
-          fi
-        env:
-          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-
-      # VCPKG_ROOT points lukka/run-cmake (and the in-tree vcpkg toolchain) at the
-      # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
-      # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
-      # overrides that leak, so no special "pin" step is needed (same as Linux/macOS).
-      - name: Configure
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: ${{ matrix.configure_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      - name: Build
-        uses: lukka/run-cmake@v10
-        with:
-          buildPreset: ${{ matrix.build_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      - name: Show build errors on failure
-        if: failure()
-        run: |
-          echo "::group::CMake build retry (verbose)"
-          cmake --build --preset ${{ matrix.build_preset }} -- -k 1 2>&1 | tail -200 || true
-          echo "::endgroup::"
-
-      - name: Test
-        uses: lukka/run-cmake@v10
-        with:
-          testPreset: ${{ matrix.test_preset }}
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
+  # Drive the real UI against a replay fixture in a browser. Consumes the binary
+  # built by build-and-test (the installtree-linux-gcc artifact) instead of
+  # recompiling the app. Trade-off: gated behind the whole build matrix, so it
+  # starts later than when it built its own binary — but it never recompiles.
   e2e-ui:
     name: E2E UI (Playwright)
+    needs: build-and-test
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - name: Clean workspace (self-hosted)
-        if: contains(vars.RUNNER_LINUX, 'self-hosted')
-        shell: bash
-        run: rm -rf build/
-
-      - uses: ./.github/actions/setup-cpp-toolchain
-        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
+      - name: Download Linux install tree
+        uses: actions/download-artifact@v4
         with:
-          compiler: gcc-15
+          name: installtree-linux-gcc
+          path: installtree-art
 
-      - name: Setup vcpkg cache (self-hosted)
-        if: contains(vars.RUNNER_LINUX, 'self-hosted')
+      - name: Unpack install tree
         shell: bash
         run: |
-          BINARY_DIR="$HOME/.cache/vcpkg/archives"
-          DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
-          echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
-          echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+          mkdir -p installtree
+          tar xzf installtree-art/installtree-linux-gcc.tar.gz -C installtree
+          chmod +x installtree/bin/aqualink-automate
 
-      # Shares the "Linux GCC" vcpkg cache populated by the build-and-test job, so
-      # this job only pays the application compile cost, not a vcpkg rebuild.
-      - uses: ./.github/actions/setup-vcpkg-cache
-        if: ${{ !contains(vars.RUNNER_LINUX, 'self-hosted') }}
-        with:
-          cache-key-prefix: Linux GCC
-
-      - name: Bootstrap vcpkg
-        shell: bash
-        run: |
-          if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
-            bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          fi
-        env:
-          VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-
-      - name: Configure
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: config-linux-gcc
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
-
-      # Only the app binary is needed for the UI replay run; skipping the test
-      # executables keeps this job lean (the C++ tests run in build-and-test).
-      - name: Build application binary
-        shell: bash
-        run: cmake --build --preset build-linux-gcc --target aqualink-automate
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -196,7 +65,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       # The four runs mirror the modes encoded in playwright.config.ts. Each boots
-      # the freshly built binary against the replay fixture; env selects the mode.
+      # the downloaded binary against the replay fixture; env selects the mode.
       #   * default        -> every spec except auth (history/scheduler "disabled" paths)
       #   * AUTH_TOKEN      -> only auth.spec.ts      (token-gated WS auth)
       #   * HISTORY_DB      -> only trends.spec.ts    (recorded series + chart)
@@ -205,32 +74,32 @@ jobs:
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
 
       - name: E2E — auth enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_AUTH_TOKEN: e2e-secret-token
 
       - name: E2E — history enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_HISTORY_DB: ${{ runner.temp }}/e2e-history.db
 
       - name: E2E — scheduler enabled
         shell: bash
         run: npx playwright test
         env:
-          AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc/src/aqualink-automate
+          AQUALINK_EXE: ${{ github.workspace }}/installtree/bin/aqualink-automate
           AQUALINK_SCHEDULES_FILE: ${{ runner.temp }}/e2e-schedules.json
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report
           path: playwright-report/
@@ -244,9 +113,9 @@ jobs:
         working-directory: matter-bridge
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -270,7 +139,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -286,12 +155,20 @@ jobs:
           echo "Base (${{ github.base_ref }}): $BASE_DESCRIBE"
           echo "Head: $HEAD_DESCRIBE"
 
+          # A PR into main is a release promotion. Block (don't just warn) when the
+          # resolved version is identical to the base — i.e. there is nothing new to
+          # release. Distinct `git describe` output (a different commit distance or a
+          # new tag) is enough to pass; this only fails a genuinely empty promotion.
           if [[ "$HEAD_DESCRIBE" == "$BASE_DESCRIBE" ]]; then
-            echo "::warning::Version appears unchanged between base and PR branch ($HEAD_DESCRIBE). If this PR includes functional changes, consider tagging a new version before merging."
-          else
-            echo "Version info differs: base=$BASE_DESCRIBE, head=$HEAD_DESCRIBE"
+            echo "::error::Version is unchanged between ${{ github.base_ref }} ($BASE_DESCRIBE) and this PR head ($HEAD_DESCRIBE). Nothing new to release."
+            exit 1
           fi
+          echo "Version advances: base=$BASE_DESCRIBE -> head=$HEAD_DESCRIBE"
 
+  # Cold, from-source Docker build kept deliberately as the gate that the
+  # multi-stage Dockerfile + vcpkg toolchain still build end to end (the assembled
+  # runtime path in release.yml's docker-publish skips this, so this is its safety
+  # net). Catches a vcpkg/Dockerfile/ABI regression that the assembly path can't.
   docker-verify:
     name: Docker Verification
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
@@ -301,11 +178,11 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Authenticate to Docker Hub when credentials are configured so base-image
       # pulls (ubuntu:25.04, node:22-bookworm-slim) use the higher authenticated
@@ -313,7 +190,7 @@ jobs:
       # receive no secrets) still build anonymously.
       - name: Login to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -326,7 +203,7 @@ jobs:
       # its builder the default, so `docker buildx build` here is equivalent to the
       # docker/build-push-action invocations it replaces.
       - name: Build CI target
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           shell: bash
           timeout_minutes: 90
@@ -336,7 +213,7 @@ jobs:
           command: docker buildx build --target ci .
 
       - name: Build runtime target
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           shell: bash
           timeout_minutes: 90
