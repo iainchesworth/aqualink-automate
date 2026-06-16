@@ -33,6 +33,14 @@ void Initialise()
 	boost::shared_ptr<std::ostream> stream(&std::clog, boost::null_deleter());
 	sink->locked_backend()->add_stream(stream);
 
+	// Flush the underlying stream after every record. std::clog is fully buffered,
+	// so without this the records sit in the C++ stream buffer and are not written
+	// to stderr until the buffer fills or the process exits. Under a container
+	// (stdout/stderr is a pipe, not a TTY) that buffering makes `docker logs` appear
+	// to stall or truncate mid-startup and loses any buffered tail on a crash.
+	// auto_flush trades a little throughput for real-time, crash-safe log delivery.
+	sink->locked_backend()->auto_flush(true);
+
 	boost::log::add_common_attributes();
 	boost::log::core::get()->add_global_attribute("Scope", boost::log::attributes::named_scope());
 }
