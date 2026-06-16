@@ -1,6 +1,8 @@
 # Releasing Aqualink Automate
 
-## Version Scheme
+*For maintainers cutting a tagged release. Building from source lives in [INSTALL.md](../INSTALL.md); the workflow internals live in [docs/ci-cd.md](ci-cd.md) (the original redesign plan is in [docs/cicd-redesign.md](cicd-redesign.md)).*
+
+## Version scheme
 
 This project follows [Semantic Versioning 2.0.0](https://semver.org/):
 
@@ -12,7 +14,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/):
 - **MINOR** — new features, backward-compatible
 - **PATCH** — bug fixes, backward-compatible
 
-### Prerelease Labels
+### Prerelease labels
 
 Prerelease versions use the format `<label>.<N>`:
 
@@ -22,13 +24,15 @@ Prerelease versions use the format `<label>.<N>`:
 | `beta`   | Feature-complete, testing in progress| `1.0.0-beta.2` |
 | `rc`     | Release candidate, final validation  | `1.0.0-rc.1`   |
 
-## Version Source of Truth
+The release workflow validates every tag against `v<M>.<M>.<P>[-(alpha|beta|rc).<N>]`. Keep tag naming aligned with the conventions in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Version source of truth
 
 - **CI builds**: Version is derived from git tags at configure time via `cmake/GitVersionDerivation.cmake`. The tag `v1.0.0` produces version `1.0.0`; `v1.0.0-beta.2` produces version `1.0.0` with prerelease `beta.2`.
 - **Local builds without tags**: Falls back to `0.0.0-dev`, making it obvious this is not a release build.
 - **CMake `project()`**: Receives only the `M.M.P` portion (CMake doesn't support prerelease in `VERSION`). The full version including prerelease is available via `PROJECT_VERSION_FULL`.
 
-## Repository Configuration
+## Repository configuration
 
 ### Docker Hub credentials (optional but recommended)
 
@@ -47,17 +51,29 @@ The Docker build steps are additionally wrapped in a **bounded retry** (`nick-fi
 
 > **Self-hosted runners:** for heavily-used self-hosted runners you can additionally configure a [pull-through registry mirror](https://docs.docker.com/docker-hub/image-library/mirror/) on the runner host (a local registry caching Docker Hub, referenced via `registry-mirrors` in `/etc/docker/daemon.json` and the BuildKit builder config). This is host/daemon configuration — not part of these workflow files — and complements the authentication above.
 
-## Pre-release Checklist
+## Pre-release checklist
 
 Before creating a release:
 
-1. CI is green on `main` (all platforms pass)
-2. All intended changes are merged to `main`
-3. Example configs in `examples/` are current
-4. Changelog / release notes are prepared
-5. Run a local build to verify version output: `./aqualink-automate --version`
+1. CI is green on `main` (all platforms pass).
+2. All intended changes are merged to `main`. Real releases must be **cut from main**: the release commit has to be an ancestor of `origin/main`. The `resolve-version` job enforces this with `git merge-base --is-ancestor` and hard-fails any non-dry-run release whose commit is not contained in `main` (merge `develop` → `main` first, then tag `main`). Dry runs are exempt, so you can validate the pipeline from `develop`.
+3. Example configs in `examples/` are current.
+4. Release notes are reviewed. The `github-release` job auto-generates the notes with `gh release create --generate-notes` (from merged PRs and commits since the previous tag), so you do not hand-write them. Make sure [CHANGELOG.md](../CHANGELOG.md) and the relevant PR titles read well — that is what ends up in the generated notes. You can edit the published release body afterward if needed.
+5. Run a local build to verify version output: `./aqualink-automate --version`.
 
-## Option A: Tag-Based Release
+### Run the test suites by label
+
+CTest tags each suite with a label (`unit`, `integration`, `perf`), so you can gate which tests run before tagging:
+
+```bash
+ctest --preset test-windows-msvc-debug -L unit          # fast suite — local / PR gate
+ctest --preset test-windows-msvc-debug -L integration   # slower fixture-replay suite
+ctest --preset test-windows-msvc-debug -L perf          # Google Benchmark performance tests
+```
+
+CTest `--preset` only accepts a **test** preset, so use the `test-*` preset that matches the configure preset you built with — swap the `config-` prefix for `test-` (see [INSTALL.md](../INSTALL.md)). Omit `-L` to run every registered suite.
+
+## Option A: tag-based release
 
 This is the standard release method. Pushing a `v*` tag triggers the release workflow automatically.
 
@@ -80,36 +96,36 @@ git push origin v1.0.0-beta.1
 
 Monitor the release at: **Actions > Release** in GitHub.
 
-## Option B: Manual Dispatch
+## Option B: manual dispatch
 
-Use the GitHub Actions UI to trigger a release manually. This is useful for creating releases from specific commits or for testing.
+Use the GitHub Actions UI to trigger a release manually. This is useful for creating releases from a specific commit (still constrained to commits already on `main`) or for testing.
 
-1. Go to **Actions > Release > Run workflow**
+1. Go to **Actions > Release > Run workflow**.
 2. Fill in the inputs:
-   - **version**: e.g. `v1.0.0` or `v1.0.0-rc.1`
-   - **prerelease**: check if this is a prerelease (auto-detected from tag suffix)
-   - **dry_run**: check to build packages without creating a GitHub Release
+   - **version**: e.g. `v1.0.0` or `v1.0.0-rc.1`.
+   - **prerelease**: check if this is a prerelease (auto-detected from tag suffix).
+   - **dry_run**: check to build packages without creating a GitHub Release.
 
-The workflow will create and push the tag to the repository.
+For a manual dispatch the tag does **not** exist yet. The `resolve-version` job fails fast if the tag is already present (so you don't build every package only to collide at the end), and the tag is created and pushed by the `github-release` job **at the end of a successful run** — after the build, Docker publish, and package jobs all pass. A failed dispatch therefore leaves no tag behind, so you can fix the problem and re-run the same version.
 
-## Dry Run
+## Dry run
 
-A dry run builds packages on all platforms without creating a GitHub Release or publishing Docker images. Use this to verify packaging before a real release.
+A dry run builds packages on all platforms without creating a GitHub Release or publishing Docker images. Use this to verify packaging before a real release. Dry runs are exempt from the "cut from main" guard, so you can run one from `develop`.
 
-1. Go to **Actions > Release > Run workflow**
-2. Enter the version tag
-3. Check **dry_run**
-4. Download build artifacts from the workflow run to inspect packages
+1. Go to **Actions > Release > Run workflow**.
+2. Enter the version tag.
+3. Check **dry_run**.
+4. Download build artifacts from the workflow run to inspect packages.
 
-## Post-Release
+## Post-release
 
 After a release is published:
 
-1. Verify the GitHub Release page has all expected artifacts
-2. Verify Docker images are published to GHCR
-3. Verify the release notes are accurate
+1. Verify the GitHub Release page has all expected artifacts.
+2. Verify Docker images are published to GHCR.
+3. Verify the auto-generated release notes are accurate; edit the release body if anything reads poorly.
 
-## Release Artifacts
+## Release artifacts
 
 Each release includes:
 
@@ -120,9 +136,12 @@ Each release includes:
 | macOS    | `.tgz`, `.dmg`               |
 
 Additionally:
-- **Checksums**: `.sha512` files for every package
-- **Example configs**: Bundled in the `examples/` directory within each package
-- **Docker image**: Published to `ghcr.io/<owner>/aqualink-automate` (not for prereleases tagged `latest`)
+- **Checksums**: `.sha512` files for every package (`CPACK_PACKAGE_CHECKSUM SHA512`).
+- **Bundled runtime libraries**: the vcpkg-provided shared libraries ship inside each package (private lib dir with RPATH/loader-path), so the binary runs without a separate dependency install.
+- **Example configs**: the `examples/*.conf` files are bundled in each package.
+- **Docker image**: Published to `ghcr.io/<owner>/aqualink-automate` (the `latest` tag is only applied to non-prereleases).
+
+These packages are produced by CPack via the matching `pack-*` presets. `pack-*` presets exist only for the **Release** configure presets (those with no `-debug`/`-coverage` suffix), so swap the `config-` prefix for `pack-` only on a Release preset — for example `config-linux-gcc` → `pack-linux-gcc`. See [INSTALL.md](../INSTALL.md) for the local pack-* preset workflow.
 
 ## Troubleshooting
 
@@ -147,6 +166,10 @@ Ensure tags follow the `v<M>.<M>.<P>` format exactly. Lightweight and annotated 
 
 The prerelease suffix is only added when `PROJECT_VERSION_PRERELEASE` is non-empty. Verify the tag includes a prerelease suffix (e.g. `v1.0.0-beta.1`).
 
+### Release fails because the commit is not on main
+
+The `resolve-version` job rejects any non-dry-run release whose commit is not an ancestor of `origin/main` (`git merge-base --is-ancestor`). Merge your changes to `main` first (`develop` → `main`), then tag or dispatch from a commit on `main`. To validate the pipeline from another branch without merging, use a dry run.
+
 ### Docker build fails pulling a base image (rate limit or CDN timeout)
 
 Symptoms: `docker-publish` (release) or `docker-verify` (CI) fails while pulling `ubuntu:25.04` or `node:22-bookworm-slim`, with errors like `toomanyrequests: ... rate limit` or `dial tcp ...(production.cloudfront.docker.com): i/o timeout`.
@@ -157,7 +180,7 @@ Symptoms: `docker-publish` (release) or `docker-verify` (CI) fails while pulling
 
 ### Manual dispatch tag already exists
 
-If the tag already exists on the remote, the workflow will fail when trying to push it. Delete the existing tag first:
+The `resolve-version` job rejects a dispatch whose tag already exists on the remote (rather than failing later at the push step). Delete the existing tag first, then re-run:
 
 ```bash
 git push origin :refs/tags/v1.0.0-beta.1

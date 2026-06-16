@@ -1,8 +1,49 @@
-# CI/CD Redesign — Build-Once → Promote
+# CI/CD redesign plan
+
+*Internal progress tracker for the maintainer. It records what the CI/CD redesign set out to do and how much has shipped. For the accurate, current description of how the pipelines actually work, read [ci-cd.md](ci-cd.md); for the release pipeline specifically, [releasing.md](releasing.md).*
 
 > Produced by a multi-agent analysis of the GitHub CI / release / packaging / tagging flow
 > (2026-06-15). The **plan** (synthesis) is followed by an **adversarial critique** that corrects
 > several over-claims. Read both — the critique's MUST-FIX items qualify the plan.
+
+## Status banner — what has shipped
+
+This document is the original plan; it is **partly implemented**. Use this table to tell shipped
+work from work still in progress. Phases 0–2 are done; phases 3–6 are **in progress (being
+implemented)**.
+
+| Phase | Summary | Status |
+|---|---|---|
+| **0** | CTest LABELS (`unit`/`integration`/`perf`) on the three suites | **DONE** — `test/CMakeLists.txt:226,358,412` |
+| **1** | OS/triplet-keyed vcpkg binary cache (per-job prefix dropped) | **DONE** — `.github/actions/setup-vcpkg-cache/action.yml:45-52` |
+| **2** | Reusable `_build.yml` (`workflow_call`); `ci.yml`/`release.yml` call it | **DONE** — `.github/workflows/_build.yml` exists |
+| **3** | Assembly-only Docker (pre-built install tree; `!docker/context/` carve-out) | **IN PROGRESS** — `docker-verify` still compiles from source |
+| **4** | Consumers stop compiling; fold scanners; delete `automated-codescanning.yml` | **IN PROGRESS** — see "Reality vs. plan" below |
+| **5** | Versioning hardening (blocking `version-check`, concurrency guard, tag-after-success) | **IN PROGRESS** — partial; see below |
+| **6** | Auto-tag-on-merge (optional) | **IN PROGRESS** |
+
+**Reality vs. plan (state as of 2026-06-15 — phases 3–6 are being implemented):**
+
+- `e2e-ui` and `docker-verify` in `ci.yml` **still compile from source** — they do not download a
+  pre-built install artifact (`ci.yml:78-80` builds the app binary; `ci.yml:224-242` runs
+  `docker buildx build --target ci`/`--target runtime`).
+- `automated-codescanning.yml` **still exists** — it was not deleted or folded into `ci.yml`.
+- `version-check` is **non-blocking** — on mismatch it emits a `::warning::`, not a failure
+  (`ci.yml:185-186`).
+- `ci.yml` concurrency **does not exclude `main`/`develop`** — the group is
+  `ci-${{ github.event.pull_request.number || github.ref }}` with `cancel-in-progress: true` for all
+  refs (`ci.yml:9-12`).
+- `releasing.md` now carries the `ctest -L` note the plan references (Phase 0).
+
+**How the version is actually threaded (corrects the plan's `DERIVED_VERSION_OVERRIDE` claim):** the
+implemented `_build.yml` does **not** accept a `version_override` input and does **not** pass
+`-DDERIVED_VERSION_OVERRIDE`. Its inputs are `do_package`, `version_tag`, and `fetch_depth`
+(`_build.yml:10-23`). For `workflow_dispatch` release builds it creates a **local git tag** so
+`git describe` stamps the right version (`_build.yml:66-69`); tag-push releases already have the tag.
+`release.yml` calls it with `do_package: true`, `version_tag`, `fetch_depth: 0`
+(`release.yml:132-136`), and pushes the real tag last in `github-release` (`release.yml:249-253`).
+The plan's `_build.yml` input list below (`run_integration`, `upload_buildtree`, etc.) is the
+original design, **not** what shipped.
 
 ## TL;DR — recommended order
 
@@ -31,9 +72,10 @@ MSVC-analysis = ×3) + `release.yml build-packages` (×3 again) + `release.yml d
 (rebuilds the `ci` stage from scratch inside Docker). Root causes are structural: **no build
 artifact ever crosses a job or workflow boundary** (every job re-runs `configure → vcpkg → build`),
 the Docker `runtime` stage does `COPY --from=ci /src/install/config-linux-gcc/` so the `ci` stage
-recompiles everything (`Dockerfile:186` / `:100-133`), and the three CTest cases —
+recompiles everything (`Dockerfile:186` / `:100-133`), and ~~the three CTest cases —
 `AqualinkAutomateUnitTests` (`test/CMakeLists.txt:223`), `AqualinkAutomateIntegrationTests` (`:354`),
-`AqualinkAutomatePerfTests` (`:407`) — carry **no labels**, so `ctest --preset test-linux-gcc` runs
+`AqualinkAutomatePerfTests` (`:407`) — carry **no labels**~~ **[FIXED — Phase 0 shipped; labels now
+exist at `test/CMakeLists.txt:226,358,412`]**, so `ctest --preset test-linux-gcc` runs
 the slow integration binary in *both* CI and release with no way to gate it on a PR. Consequences
 seen this week: hours-long releases; Docker Hub CDN/rate-limit flakiness; self-hosted runner
 saturation (a beta stuck `queued` ~2h); and a real beta that **failed at `ctest` during
@@ -42,7 +84,9 @@ surfaced *after* packaging. Tagging is fully manual (admin-merge develop→main,
 leaving orphaned beta tags.
 
 **Base design chosen:** "build-once-promote" as the spine — its `workflow_call` reusable build,
-`DERIVED_VERSION_OVERRIDE` threading, and triplet-keyed cache are the strongest, lowest-risk core.
+~~`DERIVED_VERSION_OVERRIDE` threading~~ **[the shipped `_build.yml` threads the version via a local
+git tag, not `-DDERIVED_VERSION_OVERRIDE`; see the status banner]**, and triplet-keyed cache are the
+strongest, lowest-risk core.
 Grafted in: **CTest LABELS** (Phase 0, cheapest highest-value fix), an explicit `.dockerignore`
 carve-out + dedicated Docker context, and a **concurrency guard excluding `main`/`develop`**.
 Deliberately **deferred** (scope-creep / dual-source-of-truth risk): release-please / auto-tag-on-merge
@@ -153,15 +197,15 @@ cache and consolidating runners, not eliminating the compile.
 
 ## 6. Phased migration (each phase independently shippable & green)
 
-| Phase | Change | Risk |
-|---|---|---|
-| **0** | `test/CMakeLists.txt` LABELS; `docs/releasing.md` `ctest -L` note. Pure CMake. **Ship now.** | very low |
-| **1** | OS/triplet-key the vcpkg binary cache; narrow `cleanup-branch-caches.yml`. | low |
-| **2** | Extract `_build.yml` (`workflow_call`); `ci`/`release` call it (compile count unchanged — one build *definition*). | medium |
-| **3** | Assembly-only Docker (`!docker/context/` carve-out; `type=gha` cache); re-prove the smoke tests. | medium |
-| **4** | Consumers stop compiling: `e2e-ui`/`docker-verify` download artifacts; fold scanners; delete codescanning; narrow triggers. | low–med |
-| **5** | Versioning hardening: thread `version_override`; shared parse-version action; `version-check` blocking; orphan-tag finalizer; tag-after-success; concurrency guard; required checks. | medium |
-| **6 (optional)** | Auto-tag-on-merge + `gh release create --notes-file`. Opt-in; manual hand-push stays. **Defer.** | medium-high |
+| Phase | Change | Risk | Status |
+|---|---|---|---|
+| **0** | `test/CMakeLists.txt` LABELS; `docs/releasing.md` `ctest -L` note. Pure CMake. **Ship now.** | very low | **DONE** (labels + `releasing.md` `ctest -L` note) |
+| **1** | OS/triplet-key the vcpkg binary cache; narrow `cleanup-branch-caches.yml`. | low | **DONE** (cache re-key) |
+| **2** | Extract `_build.yml` (`workflow_call`); `ci`/`release` call it (compile count unchanged — one build *definition*). | medium | **DONE** |
+| **3** | Assembly-only Docker (`!docker/context/` carve-out; `type=gha` cache); re-prove the smoke tests. | medium | IN PROGRESS |
+| **4** | Consumers stop compiling: `e2e-ui`/`docker-verify` download artifacts; fold scanners; delete codescanning; narrow triggers. | low–med | IN PROGRESS |
+| **5** | Versioning hardening: thread the version; shared parse-version action; `version-check` blocking; orphan-tag finalizer; tag-after-success; concurrency guard; required checks. | medium | IN PROGRESS (`version-check` still warns; tag-after-success shipped via `_build.yml`/`github-release`) |
+| **6 (optional)** | Auto-tag-on-merge + `gh release create --notes-file`. Opt-in; manual hand-push stays. | medium-high | IN PROGRESS |
 
 ## 7. Trade-offs & risks (plan's own list — see critique for corrections)
 
@@ -177,9 +221,13 @@ cache and consolidating runners, not eliminating the compile.
 
 # Adversarial critique
 
-Verified against the repo: CTest labels genuinely absent (`test/CMakeLists.txt:223/354/407`); CPack
+Verified against the repo (at time of writing): ~~CTest labels genuinely absent
+(`test/CMakeLists.txt:223/354/407`)~~ **[now SHIPPED — labels exist at
+`test/CMakeLists.txt:226,358,412`; Phase 0 done]**; CPack
 reads `${CMAKE_BINARY_DIR}/vcpkg_installed/` (`CPackConfig.cmake:26-27`); `DERIVED_VERSION_OVERRIDE`
-honored (`GitVersionDerivation.cmake:48`); `.dockerignore:12-15` excludes `install`/`build`/`vcpkg_installed`;
+honored (`GitVersionDerivation.cmake:48`) **— but note the shipped `_build.yml` does not use it; it
+threads the version via a local git tag instead**; `.dockerignore:12-15` excludes
+`install`/`build`/`vcpkg_installed`;
 `COPY --from=ci` at `Dockerfile:186`. The plan's factual anchors hold, but several **feasibility**
 claims do not.
 
@@ -227,8 +275,9 @@ claims do not.
 
 ## MINOR / correct-as-claimed
 
-10. CTest LABELS (Phase 0) — correct & low-risk; remember to add `-L` to the ctest *invocation*
-    (presets have no filter, so labels alone change nothing in CI until then).
+10. CTest LABELS (Phase 0) — **SHIPPED** (`test/CMakeLists.txt:226,358,412`); correct & low-risk.
+    Caveat still applies: the test presets carry no `-L` filter, so the labels do not yet gate
+    anything in CI until a `ctest … -L unit`/`-L integration` invocation is added.
 11. `.dockerignore` `!docker/context/` carve-out — sound but a footgun; smoke tests are the guardrail.
 12. **OS/triplet-keying the vcpkg binary cache + dropping the per-job prefix is the highest-true-value
     change in the plan** and is correct — vcpkg binaries are config-independent.

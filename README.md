@@ -1,95 +1,90 @@
 # Aqualink Automate
 
-A service designed to seamlessly integrate Jandy/Fluidra Aqualink RS pool controllers with Smart Homes without the need for cloud services and platforms. It exposes local control options via a Web UI or via MQTT and HTTP APIs allowing you to have more intuitive control over your Aqualink RS system.
+Local control of Jandy/Zodiac (Fluidra) Aqualink RS pool controllers over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge, with no cloud service required.
 
-## Table Of Content
+Aqualink Automate is a C++ service that talks to your pool equipment over an RS-485 serial link and exposes it on your own network. It reads status from the panel and lets you control it through a built-in Web UI, an HTTP and WebSocket API, MQTT (with Home Assistant discovery), and a Matter bridge for Apple Home, Google Home, Alexa, and SmartThings. Everything runs on hardware you own; nothing is sent to a vendor cloud.
+
+## Table of contents
 
 - [Features](#features)
-- [Getting Started](#getting-started)
-- [Development](#development)
-- [CI/CD Overview](#cicd-overview)
+- [Quick start](#quick-start)
+- [Documentation](#documentation)
+- [Supported equipment and protocols](#supported-equipment-and-protocols)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
 - [License](#license)
+- [Credits and references](#credits-and-references)
 
-# Features
+## Features
 
-- Local control of your pool system, bypassing the need for cloud services
-- Intuitive web-based user interface for easy control and monitoring
-- Full API support (HTTP and MQTT) for custom integrations with Smart Homes
-- **Matter** bridge for Apple Home / Google Home / Alexa / SmartThings (on by default; scan a QR to pair) — see [docs/MATTER.md](docs/MATTER.md)
-- Detailed status information of your Aqualink RS system
-- 
-# Getting Started
+- Local control of your pool system over RS-485, with no cloud service required.
+- Two RS-485 protocols supported: Jandy/Zodiac (Fluidra) Aqualink RS and Pentair. The active protocol is auto-detected from the wire traffic.
+- A built-in web user interface for control and monitoring.
+- HTTP and WebSocket API for custom integrations.
+- MQTT publishing with Home Assistant auto-discovery.
+- A Matter bridge so the pool can be paired into Apple Home, Google Home, Alexa, or SmartThings by scanning a QR code. On by default — see [docs/MATTER.md](docs/MATTER.md).
+- Connectivity over a physical USB-to-RS485 adapter or a remote serial port (serial-over-ethernet) using RFC2217 or raw TCP.
+- Detailed status reporting for your Aqualink RS system.
 
-See [INSTALL.md](INSTALL.md) for complete instructions covering pre-built binaries, building from source, dev containers, and Docker deployment.
+**Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
 
-Quick start:
+## Quick start
+
+Clone the repository (with submodules) and run the build script for your platform. The scripts validate dependencies, bootstrap vcpkg, and run configure, build, and test.
 
 ```bash
 git clone --recurse-submodules https://github.com/iainchesworth/aqualink-automate.git
 cd aqualink-automate
 
-# Linux/macOS
+# Linux / macOS
 ./cicd/build.sh
+```
 
+```powershell
 # Windows (PowerShell)
 .\cicd\build.ps1
 ```
 
-The build scripts validate dependencies, bootstrap vcpkg, and run configure/build/test automatically.
+For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](INSTALL.md).
 
-# Development
+## Documentation
 
-A VS Code **Dev Container** is provided with GCC 15, Clang 21, CMake, Ninja, and ccache pre-installed. Open the repository in VS Code and select **Reopen in Container**. See [INSTALL.md](INSTALL.md#development-container) for details.
+| Guide | What it covers |
+|-------|----------------|
+| [INSTALL.md](INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
+| [docs/configuration.md](docs/configuration.md) | CLI options and config-file reference. |
+| [docs/usage-and-api.md](docs/usage-and-api.md) | Running the service and the HTTP and WebSocket API. |
+| [docs/mqtt-home-assistant.md](docs/mqtt-home-assistant.md) | MQTT topics and Home Assistant discovery. |
+| [docs/MATTER.md](docs/MATTER.md) | Pairing the Matter bridge into a smart-home platform. |
+| [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md) | RS-485 wiring and serial connectivity. |
+| [docs/hardware-server-automation.md](docs/hardware-server-automation.md) | Host and server hosting requirements. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute code and report issues. |
+| [SECURITY.md](SECURITY.md) | Security policy and reporting. |
+| [docs/releasing.md](docs/releasing.md) | Cutting and publishing a release. |
+| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows and self-hosted runner configuration. |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes per release. |
 
-For native development, the build scripts handle everything:
-- `cicd/build.sh` — Linux and macOS (GCC or Clang)
-- `cicd/build.ps1` — Windows (MSVC or Clang)
+## Supported equipment and protocols
 
-# CI/CD Overview
+Aqualink Automate decodes two RS-485 wire protocols and selects the right one automatically from the traffic on the bus:
 
-## Workflows
+- **Jandy/Zodiac (Fluidra) Aqualink RS** — the primary target: control panels, OneTouch interfaces, equipment, and the AquaPure/AquaRite salt-water chlorinator.
+- **Pentair** — a full implemented stack covering the VSP/IntelliFlo pump, IntelliChlor salt-water generator, and the IntelliCenter/EasyTouch controller. Pentair frames are recognized by their `0xFF 0x00 0xFF 0xA5` preamble, and the Pentair message generator is registered ahead of the Jandy one so it can lift a Pentair frame out of the buffer before Jandy processing runs.
 
-| Workflow | Job | Trigger |
-|----------|-----|---------|
-| `ci.yml` | Build and test (Linux, Windows, macOS) | Push to `main`/`feature/**`/`bug/**`, PRs to `develop`/`main` |
-| `ci.yml` | Docker verification | Same as above |
-| `automated-codescanning.yml` | CodeQL analysis | Push to `main`/`feature/**`/`bug/**`, PRs to `develop`/`main`, weekly schedule |
-| `automated-codescanning.yml` | SonarCloud scan | Same as above |
-| `automated-codescanning.yml` | MSVC code analysis | Same as above |
-| `release.yml` | Package (Linux, Windows, macOS) | Push to `main`, version tags (`v*`) |
-| `release.yml` | Docker publish (GHCR) | Push to `main`, version tags (`v*`) |
-| `release.yml` | GitHub Release | Version tags only (`v*`) |
+Connect the panel to the host through a physical USB-to-RS485 adapter or a remote serial port. Remote ports default to RFC2217 and can also use raw TCP. For wiring details and adapter options, see [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md).
 
-## Runner Configuration
+## Contributing
 
-Workflows support both GitHub-hosted and self-hosted runners. By default, GitHub-hosted runners are used (`ubuntu-latest`, `windows-latest`, `macos-latest`).
+Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what the project is working toward.
 
-To use self-hosted runners, set these **repository variables** (Settings > Variables > Actions):
+## Changelog
 
-| Variable | Value | Example |
-|----------|-------|---------|
-| `RUNNER_LINUX` | JSON runner label array | `["self-hosted","linux","x64"]` |
-| `RUNNER_WINDOWS` | JSON runner label array | `["self-hosted","windows","x64"]` |
+Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md), which follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-macOS CI always runs on `macos-latest` (GitHub-hosted). If the variables are unset or the runners go offline, workflows automatically fall back to GitHub-hosted runners.
+## License
 
-See [cicd/packer/README.md](cicd/packer/README.md) for instructions on provisioning self-hosted runner VMs.
+This project is licensed under the GNU General Public License v3.0. The full text is in [LICENSE.txt](LICENSE.txt).
 
-# Changelog
+## Credits and references
 
-You can view a comprehensive log of all changes, updates, and bug fixes in the [CHANGELOG.md](CHANGELOG.md) file. This document is updated with every release and is a great way to stay informed about the latest improvements to Aqualink Automate.
-
-# License
-
-The code in this repository is licensed under the GNU General Public License v3.0. See the [LICENSE.txt](LICENSE.txt) file for details.
-
-# Getting Involved
-
-Contributions are welcome to help the project grow and improve; the key focus areas are currently:
-- New Features: There's a long list of features that are necessary to achieve v1.0.0.
-- Bug Fixes: If you've noticed a bug or have suggestions of how to address one, raise an issue in the issue tracker or submit a pull-request.
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions on how to contribute.
-
-# Credits and References
-
-This project has been heavily influenced by sfeakes' [AqualinkD](https://github.com/sfeakes/AqualinkD).  The original "itch" that this project intended to scratch was to make a variant of AqualinkD that works on Windows and MacOS.
+This project was influenced by sfeakes' [AqualinkD](https://github.com/sfeakes/AqualinkD). The original goal was a variant that also runs on Windows and macOS.
