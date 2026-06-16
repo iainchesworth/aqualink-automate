@@ -15,7 +15,6 @@ import {
   TemperatureSensorDevice,
 } from "@matter/main/devices";
 import { BridgedDeviceBasicInformationServer } from "@matter/main/behaviors/bridged-device-basic-information";
-import { ThermostatServer } from "@matter/main/behaviors/thermostat";
 import { Thermostat } from "@matter/main/clusters";
 
 import type { BridgeConfig } from "./config.js";
@@ -25,6 +24,7 @@ import {
   type TemperatureSensorSpec,
   MatterKind,
 } from "./device-map.js";
+import { AqualinkIdentifyServer, AqualinkThermostatServer } from "./matter-servers.js";
 
 /** Celsius -> Matter centi-degrees (1/100 °C), the wire unit for measured/setpoint. */
 const toCenti = (c: number): number => Math.round(c * 100);
@@ -181,7 +181,7 @@ export class MatterBridge {
   }
 
   private async addOnOff(device: BridgedDevice): Promise<void> {
-    const endpoint = new Endpoint(OnOffPlugInUnitDevice.with(BridgedDeviceBasicInformationServer), {
+    const endpoint = new Endpoint(OnOffPlugInUnitDevice.with(BridgedDeviceBasicInformationServer, AqualinkIdentifyServer), {
       id: MatterBridge.endpointId("aux", device.uuid),
       bridgedDeviceBasicInformation: this.bridgedBasicInfo(device),
       onOff: { onOff: device.on },
@@ -203,7 +203,7 @@ export class MatterBridge {
 
   private async addChlorinator(device: BridgedDevice): Promise<void> {
     const level = Math.max(0, Math.min(254, device.level ?? 0));
-    const endpoint = new Endpoint(DimmablePlugInUnitDevice.with(BridgedDeviceBasicInformationServer), {
+    const endpoint = new Endpoint(DimmablePlugInUnitDevice.with(BridgedDeviceBasicInformationServer, AqualinkIdentifyServer), {
       id: MatterBridge.endpointId("swg", device.uuid),
       bridgedDeviceBasicInformation: this.bridgedBasicInfo(device),
       onOff: { onOff: device.on },
@@ -225,7 +225,7 @@ export class MatterBridge {
   private async addThermostat(device: BridgedDevice): Promise<void> {
     // A heat-only thermostat: localTemperature (read) + occupiedHeatingSetpoint (write).
     const endpoint = new Endpoint(
-      ThermostatDevice.with(BridgedDeviceBasicInformationServer, ThermostatServer.with("Heating")),
+      ThermostatDevice.with(BridgedDeviceBasicInformationServer, AqualinkIdentifyServer, AqualinkThermostatServer),
       {
         id: MatterBridge.endpointId("heat", device.uuid),
         bridgedDeviceBasicInformation: this.bridgedBasicInfo(device),
@@ -299,7 +299,7 @@ export class MatterBridge {
         await setState(existing, { temperatureMeasurement: { measuredValue: measured } });
         continue;
       }
-      const endpoint = new Endpoint(TemperatureSensorDevice.with(BridgedDeviceBasicInformationServer), {
+      const endpoint = new Endpoint(TemperatureSensorDevice.with(BridgedDeviceBasicInformationServer, AqualinkIdentifyServer), {
         id: `temp-${spec.id}`,
         bridgedDeviceBasicInformation: {
           nodeLabel: spec.label,
