@@ -59,6 +59,8 @@
 #include "http/webroute_equipment_iaq.h"
 #include "http/webroute_equipment_setpoints.h"
 #include "http/webroute_equipment_version.h"
+#include "http/webroute_health.h"
+#include "http/webroute_health_detailed.h"
 #include "http/webroute_metrics.h"
 #include "http/webroute_version.h"
 #include "http/websocket_equipment.h"
@@ -594,6 +596,8 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_SpasideRemotes>(hub_locator, preferences_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Version>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Health>());
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_HealthDetailed>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_History>(history_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Preferences>(preferences_service));

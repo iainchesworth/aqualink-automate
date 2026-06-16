@@ -34,6 +34,7 @@ target_sources(
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_recording.cpp
 	unit/http/test_http_error_responses.cpp
+	unit/http/test_http_health_detailed.cpp
 	unit/http/test_http_security.cpp
 	unit/http/test_http_make_response.cpp
 	unit/http/test_http_sessions.cpp

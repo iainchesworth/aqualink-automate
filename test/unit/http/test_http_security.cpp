@@ -20,9 +20,12 @@
 #include "http/server/server_types.h"
 #include "http/server/static_file_handler.h"
 #include "http/webroute_auth_check.h"
+#include "http/webroute_health.h"
+#include "http/webroute_health_detailed.h"
 #include "interfaces/iwebroute.h"
 
 #include "mocks/mock_beast_basicstream_with_timeout.h"
+#include "support/unit_test_hublocatorinjector.h"
 
 using namespace AqualinkAutomate;
 
@@ -534,6 +537,96 @@ BOOST_AUTO_TEST_CASE(Test_AuthCheck_TokenSetCorrectBearer_Returns200)
 	req.set(boost::beast::http::field::authorization, "Bearer the-token");
 	auto resp = RunRequest(req);
 	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	HTTP::Routing::Clear();
+}
+
+// =============================================================================
+// /api/health liveness probe. Unlike every other route it is auth-EXEMPT
+// (RequiresAuthentication() -> false) so a container/orchestrator health check
+// reaches it without the operator's bearer token.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Health_AuthDisabled_Returns200WithStatusOk)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Health>());
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::HEALTH_ROUTE_URL);
+	auto resp = RunRequest(req);
+
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+	BOOST_CHECK(resp.body().find("\"status\":\"ok\"") != std::string::npos);
+	BOOST_CHECK(resp.body().find("uptime_seconds") != std::string::npos);
+
+	HTTP::Routing::Clear();
+}
+
+// The Docker-healthcheck guarantee: a token-protected server must STILL serve
+// /api/health to a request carrying NO credentials (other routes would 401 here).
+BOOST_AUTO_TEST_CASE(Test_Health_TokenSetNoCredentials_StillReturns200)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Health>());
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::HEALTH_ROUTE_URL);
+	auto resp = RunRequest(req);
+
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	HTTP::Routing::Clear();
+}
+
+// The exemption bypasses the WHOLE policy, not just the bearer check: with an
+// Origin allow-list configured and no Origin header (which 403s a gated route),
+// the probe must still pass.
+BOOST_AUTO_TEST_CASE(Test_Health_OriginAllowlist_StillReturns200)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Health>());
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AllowedOrigins = { "https://trusted.example" };
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	auto req = MakeRequest(boost::beast::http::verb::get, HTTP::HEALTH_ROUTE_URL);
+	auto resp = RunRequest(req);
+
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	HTTP::Routing::Clear();
+}
+
+// With BOTH health routes registered and a token required, the router must resolve
+// the two prefix-sharing paths to their distinct handlers AND apply per-route auth:
+// the exempt liveness probe answers 200 unauthenticated, while the gated detailed
+// route answers 401. This guards against a trie collision serving the detailed
+// (internal-state) report without authentication.
+BOOST_AUTO_TEST_CASE(Test_Health_BothRoutes_PerRouteAuthEnforced)
+{
+	Test::HubLocatorInjector hub_locator;
+
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Health>());
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_HealthDetailed>(hub_locator));
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	// Liveness probe: exempt -> 200 without credentials.
+	auto health_req = MakeRequest(boost::beast::http::verb::get, HTTP::HEALTH_ROUTE_URL);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, RunRequest(health_req).result());
+
+	// Detailed report: gated -> 401 without credentials.
+	auto detailed_req = MakeRequest(boost::beast::http::verb::get, HTTP::HEALTH_DETAILED_ROUTE_URL);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, RunRequest(detailed_req).result());
+
+	// With the correct token the detailed route is reachable (503 here: the injector's
+	// DataHub has no pool configuration, so the system reports not-ready).
+	detailed_req.set(boost::beast::http::field::authorization, "Bearer the-token");
+	BOOST_CHECK_EQUAL(boost::beast::http::status::service_unavailable, RunRequest(detailed_req).result());
 
 	HTTP::Routing::Clear();
 }

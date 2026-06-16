@@ -168,9 +168,13 @@ FROM ubuntu:25.04 AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ca-certificates for TLS; tini as a tiny init that reaps zombies and forwards
-# signals to docker-entrypoint.sh (which supervises the app + Matter sidecar);
-# Node.js 22 (NodeSource) to run the Matter bridge sidecar.
+# ca-certificates for TLS; curl for the container HEALTHCHECK (also used here to
+# import the NodeSource signing key); tini as a tiny init that reaps zombies and
+# forwards signals to docker-entrypoint.sh (which supervises the app + Matter
+# sidecar); Node.js 22 (NodeSource) to run the Matter bridge sidecar. gnupg is only
+# needed to import the key, so it is purged afterwards; curl is intentionally kept
+# (a few hundred KB) so the HEALTHCHECK and compose examples can use the standard
+# `curl --fail` probe.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg tini \
     && mkdir -p /etc/apt/keyrings \
@@ -178,7 +182,7 @@ RUN apt-get update \
     && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
-    && apt-get purge -y --auto-remove curl gnupg \
+    && apt-get purge -y --auto-remove gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 10000 aqualink \
@@ -204,6 +208,16 @@ EXPOSE 80
 ENV MATTER_ENABLED=true \
     MATTER_STORAGE_PATH=/data/matter \
     AQUALINK_API_URL=http://127.0.0.1:80
+
+# Container liveness probe: GET /api/health (unauthenticated by design, so it works
+# even when --api-auth-token is set). `curl --fail` exits non-zero on any status >= 400
+# or a connection error, and --max-time bounds a stalled request; a hung poll loop
+# never answers -> the probe trips and the orchestrator can restart. Reuses
+# AQUALINK_API_URL so it tracks the same in-container API endpoint the Matter sidecar
+# talks to -- override that env (or this HEALTHCHECK) if you change the app's
+# --http-port or move it behind HTTPS-only.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl --fail --silent --show-error --max-time 4 "${AQUALINK_API_URL}/api/health" || exit 1
 
 # tini (PID 1) reaps zombies + forwards signals to the entrypoint, which supervises
 # the app and (unless MATTER_ENABLED=false) the Matter sidecar. CMD is forwarded to

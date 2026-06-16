@@ -72,6 +72,8 @@ target_sources(
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
+	http/webroute_health.cpp
+	http/webroute_health_detailed.cpp
 	http/webroute_history.cpp
 	http/webroute_metrics.cpp
 	http/webroute_preferences.cpp
