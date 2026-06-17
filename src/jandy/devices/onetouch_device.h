@@ -50,6 +50,7 @@ namespace AqualinkAutomate::Devices
 		inline static const uint32_t ONETOUCH_VALUEEDIT_STEP_LIMIT{ 500 };  // frame backstop for a value-edit goal (navigation + the value-step loop)
 		inline static const uint32_t ONETOUCH_BOOST_STEP_LIMIT{ 500 };      // frame backstop for a chlorinator-boost goal
 		inline static const uint32_t ONETOUCH_SETPOINT_REFRESH_STEP_LIMIT{ 500 };  // frame backstop for a read-only setpoint re-scrape crawl
+		inline static const uint32_t ONETOUCH_FAULT_RECOVERY_STATUS_FRAMES{ 3 };   // consecutive recognised-page Status frames required to trust a faulted controller again before recovering to NormalOperation
 
 		enum class OperatingStates
 		{
@@ -146,10 +147,32 @@ namespace AqualinkAutomate::Devices
 		static std::string SanitiseFunctionText(const std::string& raw);
 
 	protected:
-		// Test seam: force the unrecoverable ScrapingFaulted operating state so a test can verify
-		// that actuation is refused (NotSupported) rather than falsely accepted while the
-		// controller is in a fault. Not used in production code.
+		// Test seam: force the ScrapingFaulted operating state so a test can verify that actuation
+		// is refused (NotSupported) rather than falsely accepted while the controller is in a fault,
+		// and that the device subsequently recovers when comms resume. Not used in production code.
 		void ForceScrapingFaultedForTest() { m_OpState = OperatingStates::ScrapingFaulted; }
+
+		// Test seam: force the FaultHasOccurred operating state (the watchdog-during-startup fault)
+		// so the comms-resumed recovery path can be exercised from it too. Not used in production.
+		void ForceFaultHasOccurredForTest() { m_OpState = OperatingStates::FaultHasOccurred; }
+
+		// Test seam: true once the device has recovered to NormalOperation (the OperatingStates
+		// enum is private, so a test cannot read m_OpState directly). Not used in production.
+		bool IsInNormalOperationForTest() const { return m_OpState == OperatingStates::NormalOperation; }
+
+		// Test seam: render text onto a screen line exactly as an incoming MessageLong would, so a
+		// test can present a recognised page before driving a Status frame. Not used in production.
+		void RenderScreenLineForTest(uint8_t line_id, const std::string& text)
+		{
+			ScreenMode(Capabilities::ScreenModes::Updating);
+			ProcessScreenEvent(Utility::ScreenDataPageUpdaterImpl::evUpdate(line_id, text));
+			ProcessScreenUpdates();
+		}
+
+		// Test seam: drive one Status-message controller update as if a Status frame arrived for our
+		// device id (render the page with RenderScreenLineForTest first). Exercises the real
+		// fault-recovery decision in ProcessControllerUpdates without a wire frame. Not used in production.
+		void DeliverStatusFrameForTest() { ProcessControllerUpdates(true); }
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -157,6 +180,15 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		void WatchdogTimeoutOccurred() override;
+
+		// Recovery from the otherwise-dead-end fault states (ScrapingFaulted / FaultHasOccurred):
+		// when a Status frame carrying a RECOGNISED page arrives for our device id while faulted,
+		// the controller has resumed coherent comms. After ONETOUCH_FAULT_RECOVERY_STATUS_FRAMES
+		// consecutive such frames (hysteresis, so a noisy/garbled bus never thrashes us out of the
+		// fault), degrade straight to NormalOperation -- mirroring the watchdog Scraping->Normal
+		// path -- so the device becomes actuatable again instead of staying stuck until a process
+		// restart. Called only from the faulted switch arms in ProcessControllerUpdates(bool).
+		void AttemptFaultRecovery(bool is_status_message);
 
 	private:
 		void Slot_OneTouch_Ack(const Messages::JandyMessage_Ack& msg);
@@ -308,6 +340,7 @@ namespace AqualinkAutomate::Devices
 	private:
 		OperatingStates m_OpState{ OperatingStates::ColdStart };
 		uint32_t m_ScrapingStallCounter{ 0 };
+		uint32_t m_FaultRecoveryStatusCount{ 0 };  // consecutive recognised-page Status frames seen during the current faulted dwell (drives AttemptFaultRecovery's hysteresis)
 		uint8_t m_HighlightedLine{ 0 };
 		std::optional<MenuSurveyResult> m_MenuSurveyResult;  // populated when the startup crawl completes
 

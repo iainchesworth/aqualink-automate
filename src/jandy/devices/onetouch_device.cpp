@@ -199,7 +199,9 @@ namespace AqualinkAutomate::Devices
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> scraping_faulted", std::source_location::current());
 			LogWarning(Channel::Scraping, std::format("OneTouch ({}): ScrapingFaulted state - device in unknown state, no commands will be sent", DeviceId()));
-			// Do not send any commands - device state is unknown
+			// Do not send any commands - device state is unknown. But if the controller has
+			// resumed coherent comms, this attempts to recover us back to NormalOperation.
+			AttemptFaultRecovery(is_status_message);
 			break;
 		}
 
@@ -207,6 +209,8 @@ namespace AqualinkAutomate::Devices
 		{
 			auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::ProcessControllerUpdates -> fault", std::source_location::current());
 			LogWarning(Channel::Devices, std::format("OneTouch ({}): Processing FaultHasOccurred state", DeviceId()));
+			// As for ScrapingFaulted: try to recover once the controller is talking coherently again.
+			AttemptFaultRecovery(is_status_message);
 			break;
 		}
 		}
@@ -260,6 +264,64 @@ namespace AqualinkAutomate::Devices
 			m_OpState = OperatingStates::FaultHasOccurred;
 			Status(Devices::DeviceStatus_FaultOccurred{});
 		}
+	}
+
+	void OneTouchDevice::AttemptFaultRecovery(bool is_status_message)
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::AttemptFaultRecovery", std::source_location::current());
+
+		// Only a Status frame marks a fully-rendered, coherent page (the per-line MessageLong /
+		// Highlight frames arrive mid-update). Counting only Status frames makes the hysteresis a
+		// genuine "N coherent screen refreshes" confidence measure rather than per-byte noise.
+		if (!is_status_message)
+		{
+			return;
+		}
+
+		// A RECOGNISED page is the evidence that the controller is talking coherently to our device
+		// id again. An Unknown page (line noise, a partial/garbled screen, or a page this model does
+		// not expose) breaks the streak, so recovery needs CONSECUTIVE good frames. This is the
+		// backoff: a permanently-broken controller that never sustains a recognised page never
+		// crosses the threshold and stays safely faulted (honestly reporting NotSupported) instead
+		// of thrashing in and out of NormalOperation.
+		const auto detected = m_MenuModel.DetectPage(DisplayedPage());
+		if (Navigation::PageId::Unknown == detected)
+		{
+			if (0 != m_FaultRecoveryStatusCount)
+			{
+				LogDebug(Channel::Devices, std::format("OneTouch ({}): fault-recovery streak reset (no recognised page while {})", DeviceId(), magic_enum::enum_name(m_OpState)));
+			}
+			m_FaultRecoveryStatusCount = 0;
+			return;
+		}
+
+		if (++m_FaultRecoveryStatusCount < ONETOUCH_FAULT_RECOVERY_STATUS_FRAMES)
+		{
+			LogDebug(Channel::Devices, std::format("OneTouch ({}): controller responding while {} (page '{}', {}/{} good frames)",
+				DeviceId(), magic_enum::enum_name(m_OpState), magic_enum::enum_name(detected), m_FaultRecoveryStatusCount, ONETOUCH_FAULT_RECOVERY_STATUS_FRAMES));
+			return;
+		}
+
+		// Threshold reached: the controller is coherent again. Degrade straight to NormalOperation,
+		// mirroring the watchdog Scraping->NormalOperation recovery. We deliberately do NOT re-run
+		// the full menu crawl: re-scraping would drive the keypad through the whole menu tree from a
+		// controller whose responsiveness is still suspect, whereas NormalOperation restores actuation
+		// immediately and re-acquires state passively + via the periodic setpoint refresh. Re-validate
+		// the discovered equipment, allow the refresh to run, and reset the shared Navigator so the
+		// first on-demand goal starts clean.
+		LogWarning(Channel::Devices, std::format("OneTouch ({}): controller resumed comms (page '{}') - recovering from {} to NormalOperation",
+			DeviceId(), magic_enum::enum_name(detected), magic_enum::enum_name(m_OpState)));
+
+		ValidateDiscoveredEquipment();
+		m_RefreshState.MarkStartupComplete();
+		if (m_Navigator)
+		{
+			m_Navigator->Reset();
+		}
+		m_OpState = OperatingStates::NormalOperation;
+		m_ScrapingStallCounter = 0;
+		m_FaultRecoveryStatusCount = 0;
+		Status(Devices::DeviceStatus_Normal{});
 	}
 
 	OneTouchDevice::KeyCommands OneTouchDevice::ConvertNavKeyCommand(Navigation::NavKeyCommand nav_cmd)
