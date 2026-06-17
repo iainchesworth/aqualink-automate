@@ -190,6 +190,12 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=raw,value=latest,enable=${{ needs.resolve-version.outputs.is_prerelease != 'true' }}
+            # `edge` floats to the newest PRERELEASE so users can track betas via a
+            # fixed tag (image: ...:edge) without editing their compose file. It is
+            # the prerelease counterpart of `latest` (stable-only, above); the two
+            # are mutually exclusive per release and never point at the same image.
+            # NOTE: docker/metadata-action skips {{major}}.{{minor}} for prereleases,
+            # so before this `edge` existed a prerelease had no floating tag at all.
             type=raw,value=edge,enable=${{ needs.resolve-version.outputs.is_prerelease == 'true' }}
 
       # Stage the prebuilt Linux install tree (built + version-stamped by
