@@ -211,4 +211,71 @@ BOOST_AUTO_TEST_CASE(RecordState_StoresTransitionsAsStateSeries)
 	BOOST_CHECK_EQUAL(series.front().count, 2);
 }
 
+BOOST_AUTO_TEST_CASE(RecordDeviceState_KeysByUuidAndCarriesLabel)
+{
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 100;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	service.RecordDeviceState("device/uuid-aux5", "Pool Light", 1.0);
+
+	auto series = service.ListSeries();
+	BOOST_REQUIRE_EQUAL(series.size(), 1u);
+	BOOST_CHECK_EQUAL(series.front().key, "device/uuid-aux5");
+	BOOST_CHECK_EQUAL(series.front().unit, "state");
+	BOOST_CHECK_EQUAL(series.front().label, "Pool Light");
+	BOOST_CHECK_EQUAL(series.front().count, 1);
+}
+
+BOOST_AUTO_TEST_CASE(RecordDeviceState_RelabelUpdatesInPlaceWithoutDuplicating)
+{
+	// A device boots as "Aux5" then is renamed "Pool Light" once discovered. The
+	// UUID key is stable across the rename, so a single series accumulates and the
+	// most-recent label wins — this is the duplicate-in-the-filter fix.
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 100;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	service.RecordDeviceState("device/uuid-1", "Aux5", 1.0);
+	now += 5;
+	service.RecordDeviceState("device/uuid-1", "Pool Light", 0.0);
+
+	auto series = service.ListSeries();
+	BOOST_REQUIRE_EQUAL(series.size(), 1u);
+	BOOST_CHECK_EQUAL(series.front().key, "device/uuid-1");
+	BOOST_CHECK_EQUAL(series.front().label, "Pool Light");
+	BOOST_CHECK_EQUAL(series.front().count, 2);
+}
+
+BOOST_AUTO_TEST_CASE(RecordDeviceState_FoldsLegacyLabelKeyedSeries)
+{
+	// Simulate an old database holding a legacy label-keyed series. The first
+	// UUID-keyed recording with the matching label folds the legacy samples into
+	// the canonical series and drops the legacy row, leaving exactly one series.
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 100;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	service.RecordState("device/pool_light/state", 1.0);   // legacy scheme
+	now += 5;
+	service.RecordState("device/pool_light/state", 0.0);
+	service.Flush();
+
+	now += 5;
+	service.RecordDeviceState("device/uuid-1", "Pool Light", 1.0);   // canonical scheme
+	service.Flush();
+
+	auto series = service.ListSeries();
+	BOOST_REQUIRE_EQUAL(series.size(), 1u);
+	BOOST_CHECK_EQUAL(series.front().key, "device/uuid-1");
+	BOOST_CHECK_EQUAL(series.front().label, "Pool Light");
+	BOOST_CHECK_EQUAL(series.front().count, 3);   // 2 legacy + 1 new, merged
+}
+
 BOOST_AUTO_TEST_SUITE_END()

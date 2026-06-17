@@ -4,6 +4,8 @@
 #include <cmath>
 #include <format>
 
+#include <boost/uuid/uuid_io.hpp>
+
 #include "history/history_service.h"
 #include "history/sqlite_db.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
@@ -74,12 +76,16 @@ namespace AqualinkAutomate::History
 			"CREATE TABLE IF NOT EXISTS series ("
 			"  id INTEGER PRIMARY KEY,"
 			"  key TEXT UNIQUE NOT NULL,"
-			"  unit TEXT);"
+			"  unit TEXT,"
+			"  label TEXT);"
 			"CREATE TABLE IF NOT EXISTS samples ("
 			"  series_id INTEGER NOT NULL REFERENCES series(id),"
 			"  ts INTEGER NOT NULL,"
 			"  value REAL NOT NULL);"
 			"CREATE INDEX IF NOT EXISTS idx_samples_series_ts ON samples(series_id, ts);");
+
+		// Bring a pre-existing database (created before the `label` column) up to date.
+		MigrateSchema();
 
 		m_Running = true;
 
@@ -138,11 +144,11 @@ namespace AqualinkAutomate::History
 			}
 			else if (auto button = std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_ButtonStateChange>(event))
 			{
-				const std::string label{ button->Label() };
-				if (!label.empty())
-				{
-					RecordState(std::format("device/{}/state", Utility::Slugify(label)), StateToValue(button->Status()));
-				}
+				// Key on the button's stable UUID, not its (mutable) label: a device
+				// that boots as "Aux5" and is renamed "Pool Light" once discovered
+				// keeps a single series instead of spawning a second one.
+				const std::string key = std::format("device/{}", boost::uuids::to_string(button->ButtonId()));
+				RecordDeviceState(key, std::string{ button->Label() }, StateToValue(button->Status()));
 			}
 		}
 		catch (const std::exception& ex)
@@ -177,17 +183,29 @@ namespace AqualinkAutomate::History
 		}
 	}
 
-	std::int64_t HistoryService::EnsureSeries(const std::string& key, const std::string& unit)
+	std::int64_t HistoryService::EnsureSeries(const std::string& key, const std::string& unit, const std::string& label)
 	{
-		if (auto it = m_SeriesIds.find(key); it != m_SeriesIds.end())
+		const auto cached = m_SeriesIds.find(key);
+		if (cached != m_SeriesIds.end())
 		{
-			return it->second;
+			// Known series — update the friendly label in place if it changed
+			// (a device discovered after boot, e.g. "Aux5" -> "Pool Light").
+			if (!label.empty() && m_SeriesLabels[key] != label)
+			{
+				SqliteStmt update(*m_Db, "UPDATE series SET label = ? WHERE key = ?");
+				update.Bind(1, label);
+				update.Bind(2, key);
+				update.Step();
+				m_SeriesLabels[key] = label;
+			}
+			return cached->second;
 		}
 
 		{
-			SqliteStmt insert(*m_Db, "INSERT OR IGNORE INTO series(key, unit) VALUES(?, ?)");
+			SqliteStmt insert(*m_Db, "INSERT OR IGNORE INTO series(key, unit, label) VALUES(?, ?, ?)");
 			insert.Bind(1, key);
 			insert.Bind(2, unit);
+			insert.Bind(3, label);
 			insert.Step();
 		}
 
@@ -202,7 +220,82 @@ namespace AqualinkAutomate::History
 		}
 
 		m_SeriesIds[key] = id;
+		if (!label.empty()) { m_SeriesLabels[key] = label; }
 		return id;
+	}
+
+	void HistoryService::MigrateSchema()
+	{
+		if (!m_Db)
+		{
+			return;
+		}
+
+		// Add the `label` column to databases created before it existed. SQLite
+		// has no "ADD COLUMN IF NOT EXISTS", so probe the table and ALTER only when
+		// the column is absent.
+		try
+		{
+			bool has_label = false;
+			{
+				SqliteStmt info(*m_Db, "PRAGMA table_info(series)");
+				while (info.Step())
+				{
+					if (info.ColumnText(1) == "label") { has_label = true; break; }
+				}
+			}
+			if (!has_label)
+			{
+				m_Db->Exec("ALTER TABLE series ADD COLUMN label TEXT");
+			}
+		}
+		catch (const std::exception& ex)
+		{
+			LogWarning(Channel::Main, [&] { return std::format("History schema migration failed: {}", ex.what()); });
+		}
+	}
+
+	void HistoryService::MergeLegacyDeviceSeries(const std::string& legacy_key, std::int64_t target_id)
+	{
+		// Find the legacy label-keyed series, if any.
+		std::int64_t legacy_id = 0;
+		{
+			SqliteStmt select(*m_Db, "SELECT id FROM series WHERE key = ?");
+			select.Bind(1, legacy_key);
+			if (!select.Step())
+			{
+				return;   // no legacy series for this label — nothing to fold
+			}
+			legacy_id = select.ColumnInt64(0);
+		}
+
+		if (legacy_id == target_id)
+		{
+			return;
+		}
+
+		// Re-point the legacy samples onto the canonical (UUID) series, then drop
+		// the now-empty legacy series row, in one transaction.
+		SqliteTransaction txn(*m_Db);
+		{
+			SqliteStmt repoint(*m_Db, "UPDATE samples SET series_id = ? WHERE series_id = ?");
+			repoint.Bind(1, target_id);
+			repoint.Bind(2, legacy_id);
+			repoint.Step();
+		}
+		{
+			SqliteStmt drop(*m_Db, "DELETE FROM series WHERE id = ?");
+			drop.Bind(1, legacy_id);
+			drop.Step();
+		}
+		txn.Commit();
+
+		// Forget any cached state for the now-deleted legacy key.
+		m_SeriesIds.erase(legacy_key);
+		m_SeriesLabels.erase(legacy_key);
+		m_LastSampleTs.erase(legacy_key);
+
+		LogInfo(Channel::Main, [&] { return std::format("History merged legacy device series '{}' into the UUID-keyed series", legacy_key); });
 	}
 
 	void HistoryService::RecordNumeric(const std::string& key, const std::string& unit, double value, bool is_heartbeat)
@@ -252,6 +345,38 @@ namespace AqualinkAutomate::History
 		catch (const std::exception& ex)
 		{
 			LogWarning(Channel::Main, [&] { return std::format("History RecordState('{}') failed: {}", key, ex.what()); });
+		}
+	}
+
+	void HistoryService::RecordDeviceState(const std::string& key, const std::string& label, double value)
+	{
+		if (!m_Running || !m_Db)
+		{
+			return;
+		}
+
+		try
+		{
+			const std::int64_t series_id = EnsureSeries(key, "state", label);
+
+			// One-time fold of any legacy label-keyed series (`device/<slug>/state`,
+			// the pre-UUID scheme) into this canonical series. Runs at most once per
+			// observed label so the cost is a single lookup per device per process.
+			if (!label.empty())
+			{
+				const std::string legacy_key = std::format("device/{}/state", Utility::Slugify(label));
+				if (legacy_key != key && m_DeviceMergeChecked.insert(legacy_key).second)
+				{
+					MergeLegacyDeviceSeries(legacy_key, series_id);
+				}
+			}
+
+			m_Buffer.push_back(Buffered{ series_id, m_Clock(), value });
+			m_LastSampleTs[key] = m_Clock();
+		}
+		catch (const std::exception& ex)
+		{
+			LogWarning(Channel::Main, [&] { return std::format("History RecordDeviceState('{}') failed: {}", key, ex.what()); });
 		}
 	}
 
@@ -322,7 +447,7 @@ namespace AqualinkAutomate::History
 		Flush();
 
 		SqliteStmt stmt(*m_Db,
-			"SELECT s.key, s.unit, MIN(sm.ts), MAX(sm.ts), COUNT(*) "
+			"SELECT s.key, s.unit, s.label, MIN(sm.ts), MAX(sm.ts), COUNT(*) "
 			"FROM series s JOIN samples sm ON sm.series_id = s.id "
 			"GROUP BY s.id ORDER BY s.key");
 		while (stmt.Step())
@@ -330,9 +455,10 @@ namespace AqualinkAutomate::History
 			SeriesInfo info;
 			info.key = stmt.ColumnText(0);
 			info.unit = stmt.ColumnText(1);
-			info.first_ts = stmt.ColumnInt64(2);
-			info.last_ts = stmt.ColumnInt64(3);
-			info.count = stmt.ColumnInt64(4);
+			info.label = stmt.ColumnText(2);   // empty for analog series / NULL rows
+			info.first_ts = stmt.ColumnInt64(3);
+			info.last_ts = stmt.ColumnInt64(4);
+			info.count = stmt.ColumnInt64(5);
 			result.push_back(std::move(info));
 		}
 		return result;
