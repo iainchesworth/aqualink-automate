@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.3.0-beta.3] - 2026-06-17
+
+### Added
+
+- **Chlorinator output setpoint in the web UI.** The dashboard now shows the chlorinator's *configured* output setpoint — distinct from the instantaneous generating percentage — with per-body pool and spa values where the controller reports them. The app keeps the figure current by proactively re-reading it (periodically and after a communications recovery) from the controller's Set AquaPure menu, and it is exposed on `/api/equipment` and in the OpenAPI spec.
+
+### Fixed
+
+- **Web-UI equipment toggles now reliably reach the controller.** Clicking an equipment button while emulating a OneTouch and/or RS Serial Adapter could appear to succeed while nothing actually changed. The RS Serial Adapter now sends the aux on/off command in the byte order the controller expects; an adapter the master is not polling — or a controller still starting up or in a fault state — no longer silently swallows the command, but instead routes to a controller that can act (or reports an honest failure). The web UI no longer shows a premature "Applied": a command stays pending until the controller confirms the new state, or it times out.
+
 ## [0.3.0-beta.2] - 2026-06-17
 
 ### Changed
