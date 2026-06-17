@@ -58,7 +58,7 @@ Before creating a release:
 1. CI is green on `main` (all platforms pass).
 2. All intended changes are merged to `main`. Real releases must be **cut from main**: the release commit has to be an ancestor of `origin/main`. The `resolve-version` job enforces this with `git merge-base --is-ancestor` and hard-fails any non-dry-run release whose commit is not contained in `main` (merge `develop` → `main` first, then tag `main`). Dry runs are exempt, so you can validate the pipeline from `develop`.
 3. Example configs in `examples/` are current.
-4. Release notes are reviewed. The `github-release` job auto-generates the notes with `gh release create --generate-notes` (from merged PRs and commits since the previous tag), so you do not hand-write them. Make sure [CHANGELOG.md](../CHANGELOG.md) and the relevant PR titles read well — that is what ends up in the generated notes. You can edit the published release body afterward if needed.
+4. Release notes are reviewed. The `github-release` job seeds the release body with `gh release create --generate-notes` (a flat list of merged PRs / commits since the previous tag) — treat that as a **first draft only**. Make sure [CHANGELOG.md](../CHANGELOG.md) and the PR titles read well (they feed the draft), then **curate the published body to the project's established pattern** — this is a required step, described under [Post-release](#post-release).
 5. Run a local build to verify version output: `./aqualink-automate --version`.
 
 ### Run the test suites by label
@@ -121,9 +121,22 @@ A dry run builds packages on all platforms without creating a GitHub Release or 
 
 After a release is published:
 
-1. Verify the GitHub Release page has all expected artifacts.
-2. Verify Docker images are published to GHCR.
-3. Verify the auto-generated release notes are accurate; edit the release body if anything reads poorly.
+1. **Curate the release notes to the established pattern (required).** The auto-generated body (`--generate-notes`) is only a starting point; rewrite it so the notes read as a coherent, user-facing changelog consistent with the previous releases. Use a prior release as the template (`gh release view v0.2.0-beta.1 --json body --jq .body`) and mirror the matching `## [x.y.z]` section of [CHANGELOG.md](../CHANGELOG.md). The pattern:
+   - A one-line **intro** summarising the release (e.g. "… on top of `v<prev>`").
+   - Thematic `##` **sections** — grouped by subsystem (e.g. *Trends*, *Web UI*) or as Added / Changed / Fixed — with **bold lead-in** bullets describing each change in user-facing terms (not raw commit subjects).
+   - An `## Artifacts` table (Linux / Windows / macOS / Docker, including the `ghcr.io/<owner>/aqualink-automate:<version>` image tag).
+   - The `**Full Changelog**: …/compare/v<prev>...v<this>` link (keep the one from the generated notes).
+   - For prereleases, a trailing `> Pre-release.` caveat blockquote (e.g. the unverified-Pentair-decoding caveat).
+
+   Apply the curated body with:
+
+   ```bash
+   gh release edit vX.Y.Z[-beta.N] --notes-file notes.md
+   ```
+
+2. Verify the GitHub Release page has all expected artifacts.
+3. Verify Docker images are published to GHCR.
+4. Verify the curated notes render correctly and read well; tweak the body if anything reads poorly.
 
 ## Release artifacts
 
