@@ -8,8 +8,11 @@
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/serial_adapter/serial_adapter_message_dev_status.h"
 #include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/devices/capabilities/actuation_types.h"
 #include "kernel/circulation.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 
 #include "support/unit_test_hublocatorinjector.h"
 
@@ -131,6 +134,57 @@ BOOST_AUTO_TEST_CASE(TestQueueAuxCommand_SetOn)
 {
 	SerialAdapterDevice device(device_type, *this, true);
 	BOOST_CHECK_NO_THROW(device.QueueAuxCommand(AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_3, SerialAdapter_CommandTypes::SetOn));
+}
+
+// =============================================================================
+// ActuateDevice deliverability gate (regression: auto-mode "click does nothing")
+//
+// An emulated adapter only transmits in response to a master poll; every poll
+// Kick()s the watchdog, so IsRunning() reflects whether the master is actively
+// polling our address. When the master never polls 0x48 (the RS Serial Adapter is
+// an optional add-on), IsRunning() falls false and a queued command would never be
+// transmitted. ActuateDevice must therefore report NotSupported (so the dispatcher
+// falls back to a controller the master IS polling, e.g. an emulated OneTouch), NOT
+// a false Accepted. (The positive end-to-end path -- a real setDev {state, devID}
+// frame on the wire -- is covered in test_flow_command_to_wire.cpp.)
+// =============================================================================
+
+namespace
+{
+	// Test shim: exposes the protected watchdog Stop() so a test can simulate "the master
+	// is not polling this adapter" (IsRunning() == false) without waiting out the real 30s
+	// watchdog timeout.
+	struct StoppableSerialAdapterDevice : public SerialAdapterDevice
+	{
+		using SerialAdapterDevice::SerialAdapterDevice;
+		void SimulateNotPolled() { Stop(); }
+	};
+}
+
+BOOST_AUTO_TEST_CASE(TestActuateDevice_NotRunning_ReturnsNotSupported)
+{
+	using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+	// An otherwise fully-actuatable hardware aux (label + type + aux id).
+	auto aux = std::make_shared<AqualinkAutomate::Kernel::AuxillaryDevice>();
+	aux->AuxillaryTraits.Set(LabelTrait{}, std::string{ "Pool Light" });
+	aux->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Auxillary);
+	aux->AuxillaryTraits.Set(AqualinkAutomate::Auxillaries::JandyAuxillaryId{}, AqualinkAutomate::Auxillaries::JandyAuxillaryIds::Aux_5);
+
+	// Emulated and actively polled (running from construction): the gate passes and the
+	// command is accepted -- proving the aux IS mappable, so it is the gate (not a mapping
+	// failure) that blocks the not-running case below.
+	StoppableSerialAdapterDevice running(device_type, *this, true);
+	BOOST_CHECK(running.ActuateDevice(aux, Capabilities::ActuationAction::On) == Capabilities::ActuationResult::Accepted);
+
+	// Emulated but the master is NOT polling our address (watchdog stopped): the queued
+	// command could never be transmitted, so ActuateDevice must report NotSupported, never
+	// a false Accepted.
+	StoppableSerialAdapterDevice not_polled(device_type, *this, true);
+	not_polled.SimulateNotPolled();
+	BOOST_CHECK(not_polled.ActuateDevice(aux, Capabilities::ActuationAction::On) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(not_polled.ActuateDevice(aux, Capabilities::ActuationAction::Off) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(not_polled.ActuateDevice(aux, Capabilities::ActuationAction::Toggle) == Capabilities::ActuationResult::NotSupported);
 }
 
 // =============================================================================

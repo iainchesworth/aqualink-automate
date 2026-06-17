@@ -153,10 +153,44 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("CommandDispatcher: Setting chlorinator percentage to {}%", percentage));
-		return DispatchToCapable<Capabilities::ChlorinatorController>(
+		const auto result = DispatchToCapable<Capabilities::ChlorinatorController>(
 			std::format("set the chlorinator to {}%", percentage),
 			[&](Capabilities::ChlorinatorController& controller) { return controller.SetChlorinatorPercentage(percentage); },
 			CommandResult::DeviceNotFound);
+
+		// Write-through cache: on a successfully-queued set, optimistically update the SAME
+		// configured-setpoint trait the Set-AquaPure menu scrape populates, so the dashboard
+		// reflects the new target immediately rather than waiting for the next re-scrape. The
+		// single-% command drives the POOL row (see OneTouch/IAQ SetChlorinatorPercentage), so
+		// it writes the Pool setpoint; a later scrape reconciles any device-side rounding.
+		if (result == CommandResult::Success)
+		{
+			WriteThroughChlorinatorSetpoint(percentage);
+		}
+
+		return result;
+	}
+
+	void CommandDispatcher::WriteThroughChlorinatorSetpoint(uint8_t percentage)
+	{
+		if (!m_DataHub)
+		{
+			return;
+		}
+
+		using namespace Kernel::AuxillaryTraitsTypes;
+
+		// Only update an EXISTING chlorinator: if the user can set it, the device is present
+		// (the dashboard shows the control only when a chlorinator is discovered). When none
+		// exists yet, the wire / menu-scrape path will create and populate it.
+		auto chlorinators = m_DataHub->Chlorinators();
+		if (chlorinators.empty())
+		{
+			return;
+		}
+
+		chlorinators.front()->AuxillaryTraits.Set(ChlorinatorPoolSetpointTrait{}, percentage);
+		LogDebug(Channel::Devices, std::format("CommandDispatcher: wrote chlorinator Pool setpoint {}% through to cache", percentage));
 	}
 
 	CommandDispatcher::CommandResult CommandDispatcher::SetChlorinatorBoost(bool enable)

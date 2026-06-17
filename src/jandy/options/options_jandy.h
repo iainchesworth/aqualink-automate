@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <expected>
 #include <string>
 #include <vector>
@@ -37,7 +38,8 @@ namespace AqualinkAutomate::Jandy::Options
 			disable_presence_gating{ false },
 			auto_startup{ false },
 			emulated_devices{},
-			navigation_password{}
+			navigation_password{},
+			chlorinator_setpoint_refresh_interval{ 300 }
 		{
 		}
 
@@ -46,6 +48,7 @@ namespace AqualinkAutomate::Jandy::Options
 		bool auto_startup;                // detect the controller from the bus and choose what to emulate
 		JandyEmulatedDeviceCollection emulated_devices;
 		std::string navigation_password;  // 4-digit password for menu navigation
+		std::uint32_t chlorinator_setpoint_refresh_interval;  // seconds between Set-AquaPure menu re-scrapes of the configured chlorinator % (0 = disabled)
 	};
 
 	class OptionsProcessor
@@ -57,6 +60,7 @@ namespace AqualinkAutomate::Jandy::Options
 		AppOptionPtr OPTION_EMULATEDDEVICETYPE{ make_appoption("jandy-device-type", "Space-separated Jandy emulation types (e.g. iaq onetouch)", boost::program_options::value<std::vector<Devices::JandyEmulatedDeviceTypes>>()->multitoken()) };
 		AppOptionPtr OPTION_EMULATEDDEVICEID{ make_appoption("jandy-device-id", "Space-separated hex device IDs (e.g. 0xa1 0x41)", boost::program_options::value<std::vector<Devices::JandyDeviceId>>()->multitoken()) };
 		AppOptionPtr OPTION_NAVPASSWORD{ make_appoption("jandy-nav-password", "4-digit password for navigating Jandy password-protected menus", boost::program_options::value<std::string>()->default_value("")) };
+		AppOptionPtr OPTION_CHLORINATORSETPOINTREFRESH{ make_appoption("chlorinator-setpoint-refresh-interval", "Seconds between Set-AquaPure menu re-scrapes of the configured chlorinator Pool/Spa % (0 disables; requires active OneTouch/iAQ emulation)", boost::program_options::value<std::uint32_t>()->default_value(300)) };
 
 		const std::vector<AppOptionPtr> JandyOptionsCollection
 		{
@@ -65,7 +69,8 @@ namespace AqualinkAutomate::Jandy::Options
 			OPTION_AUTOSTARTUP,
 			OPTION_EMULATEDDEVICETYPE,
 			OPTION_EMULATEDDEVICEID,
-			OPTION_NAVPASSWORD
+			OPTION_NAVPASSWORD,
+			OPTION_CHLORINATORSETPOINTREFRESH
 		};
 
 	public:

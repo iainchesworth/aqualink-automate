@@ -14,6 +14,8 @@
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/onetouch_device.h"
 #include "factories/jandy_auxillary_factory.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
 #include "utility/jandy_pool_configuration_decoder.h"
@@ -429,6 +431,87 @@ namespace AqualinkAutomate::Devices
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::PageProcessor_SetAquapure", std::source_location::current());
 
 		LogDebug(Channel::Devices, [this]() { return std::format("OneTouch ({}): OneTouch device is processing a PageProcessor_SetAquapure page.", DeviceId()); });
+
+		/*
+			Set AquaPure page (verified vs onetouch_chlorinator.cap):
+			Info:   OneTouch Menu Line 00 = Set AQUAPURE
+			Info:   OneTouch Menu Line 01 =
+			Info:   OneTouch Menu Line 02 =
+			Info:   OneTouch Menu Line 03 = Set Pool to:  45%
+			Info:   OneTouch Menu Line 04 = Set Spa to:   50%
+			...
+			Pool % = line 3, Spa % = line 4 - the same rows the value editor drives
+			(see SETAQUAPURE_POOL_LINE / SETAQUAPURE_SPA_LINE and ValueEdit_ProcessStep).
+		*/
+
+		// Read the first contiguous digit run of a row as a 0-100 percentage, mirroring
+		// DisplayedValue(); returns nullopt when the row carries no parseable value yet
+		// (page not fully rendered / value blanked mid-edit), so we simply wait.
+		const auto parse_percent = [](const std::string& text) -> std::optional<uint8_t>
+		{
+			int value{ 0 };
+			bool found{ false };
+			for (const char c : text)
+			{
+				if (c >= '0' && c <= '9') { value = (value * 10) + (c - '0'); found = true; }
+				else if (found) { break; }
+			}
+			if (!found || value > 100) { return std::nullopt; }
+			return static_cast<uint8_t>(value);
+		};
+
+		const auto pool_pct = (page.Size() > SETAQUAPURE_POOL_LINE) ? parse_percent(page[SETAQUAPURE_POOL_LINE].Text) : std::nullopt;
+		const auto spa_pct = (page.Size() > SETAQUAPURE_SPA_LINE) ? parse_percent(page[SETAQUAPURE_SPA_LINE].Text) : std::nullopt;
+
+		if (!pool_pct.has_value() && !spa_pct.has_value())
+		{
+			// Nothing parseable on this render - wait for the next page update.
+			return;
+		}
+
+		if (!JandyController::m_DataHub)
+		{
+			return;
+		}
+
+		using namespace Kernel::AuxillaryTraitsTypes;
+
+		// The Set AquaPure page only exists on a panel with a salt chlorinator, so reaching
+		// it proves an SWG is present.  Create the chlorinator auxillary if the AquaRite wire
+		// path has not already (AQUARITE_Percent only creates it once the cell first generates),
+		// mirroring AquariteDevice::EnsureChlorinatorDeviceExists so the configured setpoint can
+		// be shown even while the cell is idle.
+		auto chlorinators = JandyController::m_DataHub->Chlorinators();
+		if (chlorinators.empty())
+		{
+			LogInfo(Channel::Devices, [this]() { return std::format("OneTouch ({}): Creating chlorinator device from Set AquaPure menu scrape", DeviceId()); });
+
+			auto ptr = std::make_shared<Kernel::AuxillaryDevice>();
+			ptr->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+			ptr->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+			ptr->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::Off);
+			ptr->AuxillaryTraits.Set(BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Shared);
+			JandyController::m_DataHub->Devices.Add(std::move(ptr));
+
+			chlorinators = JandyController::m_DataHub->Chlorinators();
+		}
+
+		if (chlorinators.empty())
+		{
+			return;
+		}
+
+		auto& device = chlorinators.front();
+		if (pool_pct.has_value())
+		{
+			device->AuxillaryTraits.Set(ChlorinatorPoolSetpointTrait{}, pool_pct.value());
+			LogDebug(Channel::Devices, [this, &pool_pct]() { return std::format("OneTouch ({}): scraped configured Pool chlorinator setpoint -> {}%", DeviceId(), pool_pct.value()); });
+		}
+		if (spa_pct.has_value())
+		{
+			device->AuxillaryTraits.Set(ChlorinatorSpaSetpointTrait{}, spa_pct.value());
+			LogDebug(Channel::Devices, [this, &spa_pct]() { return std::format("OneTouch ({}): scraped configured Spa chlorinator setpoint -> {}%", DeviceId(), spa_pct.value()); });
+		}
 	}
 
 	void OneTouchDevice::PageProcessor_Version(const Utility::ScreenDataPage& page)

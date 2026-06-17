@@ -118,6 +118,33 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		TraitKey Name() const final { return std::string{"ChlorinatorHealthTrait"}; }
 	};
 
+	// Configured POOL output setpoint % (the value the user has dialled in on the
+	// "Set AquaPure" menu), as distinct from GeneratingPercentageTrait which is the
+	// instantaneous output (0 while the cell is idle). Populated by the OneTouch/iAQ
+	// menu scrape; persists across idle periods so the dashboard can show a target.
+	class ChlorinatorPoolSetpointTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		TraitKey Name() const final { return std::string{"ChlorinatorPoolSetpointTrait"}; }
+	};
+
+	// Configured SPA output setpoint % (see ChlorinatorPoolSetpointTrait).
+	class ChlorinatorSpaSetpointTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		TraitKey Name() const final { return std::string{"ChlorinatorSpaSetpointTrait"}; }
+	};
+
+	// Passive fallback for the configured setpoint when no menu scrape is available
+	// (e.g. pure passive-sniff mode): the last REAL, non-zero generating % seen on the
+	// AQUARITE_Percent (0x11) wire stream, excluding the 0-idle / 101-boost / 255-service
+	// sentinels. Used to seed the dashboard target until/unless an authoritative scrape lands.
+	class ChlorinatorLastGeneratingTrait : public MutableTraitType<uint8_t>
+	{
+	public:
+		TraitKey Name() const final { return std::string{"ChlorinatorLastGeneratingTrait"}; }
+	};
+
 	//---------------------------------------------------------------------
 	// HEATER TRAITS
 	//---------------------------------------------------------------------

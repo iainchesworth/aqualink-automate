@@ -295,6 +295,55 @@ BOOST_AUTO_TEST_CASE(PercentServiceSentinel_ClampsDutyCycleToZero)
 	BOOST_CHECK_EQUAL(generating.value(), static_cast<uint8_t>(0));
 }
 
+// The passive fallback (ChlorinatorLastGeneratingTrait) must remember the last REAL, non-zero
+// generating % so the dashboard target survives the cell going idle (0x11 -> 0): the
+// instantaneous GeneratingPercentageTrait follows the wire to 0, but the last-known stays put.
+BOOST_AUTO_TEST_CASE(LastGenerating_PersistsAcrossIdleZero)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	// A real 60% setpoint, then the cell goes idle (0%).
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_DEVICE_ID, CMD_AQUARITE_PERCENT, { 0x3C }));
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_DEVICE_ID, CMD_AQUARITE_PERCENT, { 0x00 }));
+
+	auto chlorinators = harness.DataHub()->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	// Instantaneous output follows the wire down to 0...
+	auto generating = chlorinators.front()->AuxillaryTraits.TryGet(GeneratingPercentageTrait{});
+	BOOST_REQUIRE(generating.has_value());
+	BOOST_CHECK_EQUAL(generating.value(), static_cast<uint8_t>(0));
+
+	// ...but the passive last-known setpoint stays at the last real value.
+	auto last_gen = chlorinators.front()->AuxillaryTraits.TryGet(ChlorinatorLastGeneratingTrait{});
+	BOOST_REQUIRE(last_gen.has_value());
+	BOOST_CHECK_EQUAL(last_gen.value(), static_cast<uint8_t>(60));
+}
+
+// Boost (101) and Service (255) are sentinels, not setpoints, so they must NOT overwrite the
+// last-known generating %.
+BOOST_AUTO_TEST_CASE(LastGenerating_IgnoresBoostAndServiceSentinels)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(AQUARITE_DEVICE_ID));
+	harness.AddDevice<AquariteDevice>(device_id);
+
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_DEVICE_ID, CMD_AQUARITE_PERCENT, { 0x3C }));  // 60%
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_DEVICE_ID, CMD_AQUARITE_PERCENT, { 0x65 }));  // boost (101)
+	harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(AQUARITE_DEVICE_ID, CMD_AQUARITE_PERCENT, { 0xFF }));  // service (255)
+
+	auto chlorinators = harness.DataHub()->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	auto last_gen = chlorinators.front()->AuxillaryTraits.TryGet(ChlorinatorLastGeneratingTrait{});
+	BOOST_REQUIRE(last_gen.has_value());
+	BOOST_CHECK_EQUAL(last_gen.value(), static_cast<uint8_t>(60));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 //=============================================================================

@@ -221,6 +221,8 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_ChemistryNestedShape_WithChlor
 		chlorinator->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
 		chlorinator->AuxillaryTraits.Set(GeneratingPercentageTrait{}, static_cast<uint8_t>(60));
 		chlorinator->AuxillaryTraits.Set(DutyCycleTrait{}, static_cast<uint8_t>(60));
+		chlorinator->AuxillaryTraits.Set(ChlorinatorPoolSetpointTrait{}, static_cast<uint8_t>(45));
+		chlorinator->AuxillaryTraits.Set(ChlorinatorSpaSetpointTrait{}, static_cast<uint8_t>(50));
 		chlorinator->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
 		chlorinator->AuxillaryTraits.Set(ChlorinatorHealthTrait{}, Kernel::ChlorinatorHealth::Ok);
 		DataHub().Devices.Add(std::move(chlorinator));
@@ -261,6 +263,50 @@ BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_ChemistryNestedShape_WithChlor
 	BOOST_CHECK_EQUAL("On", chlorinator["status"]);
 	BOOST_REQUIRE(chlorinator.contains("health"));
 	BOOST_CHECK_EQUAL("Ok", chlorinator["health"]);
+
+	// Configured Pool / Spa setpoints surfaced, plus the resolved headline target. With no
+	// active spa body configured, the headline setpoint resolves to the Pool value.
+	BOOST_REQUIRE(chlorinator.contains("pool_setpoint_percent"));
+	BOOST_CHECK_EQUAL(45, chlorinator["pool_setpoint_percent"]);
+	BOOST_REQUIRE(chlorinator.contains("spa_setpoint_percent"));
+	BOOST_CHECK_EQUAL(50, chlorinator["spa_setpoint_percent"]);
+	BOOST_REQUIRE(chlorinator.contains("setpoint_percent"));
+	BOOST_CHECK_EQUAL(45, chlorinator["setpoint_percent"]);
+}
+
+// When no menu scrape has populated a Pool/Spa setpoint, the headline setpoint_percent falls
+// back to the passive last-known generating %, while the per-body setpoints remain null.
+BOOST_AUTO_TEST_CASE(Test_HttpRoutes_ApiEquipment_ChlorinatorSetpointFallback)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	HTTP::Routing::Clear();
+
+	{
+		auto chlorinator = std::make_shared<Kernel::AuxillaryDevice>();
+		chlorinator->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		chlorinator->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+		chlorinator->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, Kernel::ChlorinatorStatuses::On);
+		// No pool/spa setpoint scraped yet; only the passive last-known generating %.
+		chlorinator->AuxillaryTraits.Set(ChlorinatorLastGeneratingTrait{}, static_cast<uint8_t>(55));
+		DataHub().Devices.Add(std::move(chlorinator));
+	}
+
+	auto route = std::make_unique<HTTP::WebRoute_Equipment>(*this);
+	const auto route_url = route->Route();
+	HTTP::Routing::Add(std::move(route));
+
+	auto resp = Test::PerformHttpRequestResponse(route_url);
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+
+	const auto json_response = nlohmann::json::parse(resp.body());
+	const auto& chlorinator = json_response["chemistry"]["chlorinator"];
+	BOOST_REQUIRE(!chlorinator.is_null());
+
+	BOOST_CHECK(chlorinator["pool_setpoint_percent"].is_null());
+	BOOST_CHECK(chlorinator["spa_setpoint_percent"].is_null());
+	BOOST_REQUIRE(chlorinator.contains("setpoint_percent"));
+	BOOST_CHECK_EQUAL(55, chlorinator["setpoint_percent"]);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

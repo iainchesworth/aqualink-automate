@@ -144,6 +144,7 @@ target_sources(
 	unit/messages/test_chemlink_message_response.cpp
 	unit/messages/test_pentair_message_base.cpp
 	unit/devices/test_devices_aquarite.cpp
+	unit/devices/test_chlorinator_setpoint_refresh.cpp
 	unit/devices/test_devices_capabilities_command_history.cpp
 	unit/devices/test_devices_capabilities_restartable.cpp
 	unit/devices/test_devices_command_dispatcher.cpp

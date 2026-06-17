@@ -139,6 +139,12 @@ namespace AqualinkAutomate::Devices
 		}
 
 	private:
+		// Optimistic write-through of a successfully-queued chlorinator % set into the configured
+		// Pool-setpoint trait that the Set-AquaPure menu scrape also populates, so reads (the
+		// dashboard) reflect the new target immediately. No-op when no chlorinator is discovered.
+		void WriteThroughChlorinatorSetpoint(uint8_t percentage);
+
+	private:
 		std::shared_ptr<Kernel::DataHub> m_DataHub;
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;
 	};

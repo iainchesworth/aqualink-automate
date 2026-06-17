@@ -280,8 +280,10 @@ BOOST_AUTO_TEST_CASE(SetCirculationMode_Spillover_WritesSpilloverOnAckToWire)
 
 //=============================================================================
 // Aux/label/uuid-routed commands: ToggleByUuid / ToggleByLabel / CommandByUuid
-// / CommandByLabel route through DispatchCommand, which maps a hardware-aux
-// device to a QueueAuxCommand -> single ACK on the next Status poll.
+// / CommandByLabel route through DispatchToCapable, which maps a hardware-aux
+// device to QueueAuxToggleWrite -> a single setDev {state, devID} ACK on the next
+// Status poll. (The emulated adapter is "running" from construction, so it passes
+// ActuateDevice's IsRunning() deliverability gate.)
 //=============================================================================
 
 namespace
@@ -310,8 +312,8 @@ BOOST_AUTO_TEST_CASE(CommandByUuid_On_WritesAuxOnAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// Aux_1 = 0x01 + SERIALADAPTER_AUX_ID_OFFSET(0x14) = 0x15; SetOn = 0x81.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x15, 0x81));
+	// setDev {ack_type=state, data=devID}: Aux_1 (0x01+0x14=0x15) ON -> {0x81, 0x15}.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x15));
 }
 
 BOOST_AUTO_TEST_CASE(CommandByLabel_Off_WritesAuxOffAckToWire)
@@ -324,8 +326,8 @@ BOOST_AUTO_TEST_CASE(CommandByLabel_Off_WritesAuxOffAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// Aux_2 = 0x02 + 0x14 = 0x16; SetOff = 0x80.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x16, 0x80));
+	// setDev {ack_type=state, data=devID}: Aux_2 (0x02+0x14=0x16) OFF -> {0x80, 0x16}.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x80, 0x16));
 }
 
 BOOST_AUTO_TEST_CASE(ToggleByUuid_OffDevice_WritesAuxOnAckToWire)
@@ -339,8 +341,8 @@ BOOST_AUTO_TEST_CASE(ToggleByUuid_OffDevice_WritesAuxOnAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// Aux_3 = 0x03 + 0x14 = 0x17; default toggle => SetOn = 0x81.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x17, 0x81));
+	// setDev {ack_type=state, data=devID}: Aux_3 (0x03+0x14=0x17) default toggle => ON -> {0x81, 0x17}.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x17));
 }
 
 BOOST_AUTO_TEST_CASE(ToggleByLabel_OnDevice_WritesAuxOffAckToWire)
@@ -357,8 +359,8 @@ BOOST_AUTO_TEST_CASE(ToggleByLabel_OnDevice_WritesAuxOffAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// Aux_4 = 0x04 + 0x14 = 0x18; On => toggle to SetOff = 0x80.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x18, 0x80));
+	// setDev {ack_type=state, data=devID}: Aux_4 (0x04+0x14=0x18) On => toggle to OFF -> {0x80, 0x18}.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x80, 0x18));
 }
 
 //=============================================================================
@@ -564,7 +566,7 @@ BOOST_AUTO_TEST_CASE(RealAdapterOnly_Toggle_ReportsFailureAndEmitsNoCommand)
 	// not equal the would-be Aux_1 ON command).
 	ClearWire();
 	ReplaySerialAdapterStatus();
-	const auto aux_on_bytes = ExpectedAckWireBytes(0x15, 0x81);   // Aux_1 (0x01+0x14) + SetOn(0x81)
+	const auto aux_on_bytes = ExpectedAckWireBytes(0x81, 0x15);   // setDev {state, devID}: Aux_1 ON
 	BOOST_CHECK(Wire() != aux_on_bytes);
 }
 

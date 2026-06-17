@@ -335,6 +335,50 @@ BOOST_AUTO_TEST_CASE(TestSetChlorinatorPercentage_PassiveOneTouch_FallsThrough)
 	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::DeviceNotFound));
 }
 
+// On a SUCCESSFUL set, the value is written through to the same configured Pool-setpoint trait
+// the menu scrape populates, so the dashboard reflects the new target without waiting for a
+// re-scrape.
+BOOST_AUTO_TEST_CASE(TestSetChlorinatorPercentage_WritesThroughToCache)
+{
+	{
+		auto chlorinator = std::make_shared<Kernel::AuxillaryDevice>();
+		chlorinator->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		chlorinator->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+		chlorinator->AuxillaryTraits.Set(ChlorinatorStatusTrait{}, ChlorinatorStatuses::On);
+		data_hub->Devices.Add(std::move(chlorinator));
+	}
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, true));
+
+	auto result = dispatcher.SetChlorinatorPercentage(45);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	auto chlorinators = data_hub->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+	auto pool = chlorinators.front()->AuxillaryTraits.TryGet(ChlorinatorPoolSetpointTrait{});
+	BOOST_REQUIRE(pool.has_value());
+	BOOST_CHECK_EQUAL(pool.value(), static_cast<uint8_t>(45));
+}
+
+// A REJECTED set (no controller can actually act) must NOT write through a phantom setpoint.
+BOOST_AUTO_TEST_CASE(TestSetChlorinatorPercentage_RejectedDoesNotWriteThrough)
+{
+	{
+		auto chlorinator = std::make_shared<Kernel::AuxillaryDevice>();
+		chlorinator->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Chlorinator);
+		chlorinator->AuxillaryTraits.Set(LabelTrait{}, std::string{ "AquaPure" });
+		data_hub->Devices.Add(std::move(chlorinator));
+	}
+	// A passive OneTouch cannot transmit -> DeviceNotFound; nothing should be written through.
+	equipment_hub->AddDevice(MakeOneTouch(*this, 0x41, false));
+
+	auto result = dispatcher.SetChlorinatorPercentage(45);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::DeviceNotFound));
+
+	auto chlorinators = data_hub->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+	BOOST_CHECK(!chlorinators.front()->AuxillaryTraits.TryGet(ChlorinatorPoolSetpointTrait{}).has_value());
+}
+
 // =============================================================================
 // Honest actuation + priority-ordered fallback.
 //

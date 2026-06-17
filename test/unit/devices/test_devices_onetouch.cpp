@@ -158,6 +158,52 @@ BOOST_AUTO_TEST_CASE(TestSetpoint_NonEmulated_NotSupported)
 		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
 }
 
+// =============================================================================
+// Operating-state gate (regression: false "Applied" while the controller is faulted)
+//
+// ScrapingFaulted / FaultHasOccurred are unrecoverable dead-end states whose queued
+// goals are never serviced (the per-frame service step runs only in NormalOperation).
+// Every actuation path must refuse honestly (NotSupported) in a fault rather than
+// queue a goal and falsely report Accepted. A fresh (pre-fault) emulated device still
+// accepts, proving it is the fault -- not the request -- that blocks it.
+// =============================================================================
+
+namespace
+{
+	// Exposes the protected test seam so a test can drive the unrecoverable fault state.
+	struct FaultableOneTouchDevice : public OneTouchDevice
+	{
+		using OneTouchDevice::OneTouchDevice;
+		using OneTouchDevice::ForceScrapingFaultedForTest;
+	};
+}
+
+BOOST_AUTO_TEST_CASE(TestActuate_FaultState_Refused)
+{
+	using namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
+
+	auto aux = std::make_shared<Kernel::AuxillaryDevice>();
+	aux->AuxillaryTraits.Set(LabelTrait{}, std::string{ "Pool Light" });
+	aux->AuxillaryTraits.Set(AuxillaryTypeTrait{}, AuxillaryTypes::Auxillary);
+	aux->AuxillaryTraits.Set(Auxillaries::JandyAuxillaryId{}, Auxillaries::JandyAuxillaryIds::Aux_5);
+
+	// Fresh emulated device (ColdStart, not faulted): a toggle is accepted/queued -- proving it
+	// is the fault, not the request, that blocks the faulted case below.
+	FaultableOneTouchDevice fresh(device_type, *this, true);
+	BOOST_CHECK(fresh.ActuateDevice(aux, Capabilities::ActuationAction::Toggle) == Capabilities::ActuationResult::Accepted);
+
+	// Same kind of device, driven into the unrecoverable ScrapingFaulted state: every actuation
+	// path refuses honestly. The fault gate runs before any goal is queued, so the calls do not
+	// interfere with one another (none of them sets a pending goal).
+	FaultableOneTouchDevice faulted(device_type, *this, true);
+	faulted.ForceScrapingFaultedForTest();
+	BOOST_CHECK(faulted.ActuateDevice(aux, Capabilities::ActuationAction::Toggle) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(faulted.SetPoolSetpoint(82) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(faulted.SetSpaSetpoint(100) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(faulted.SetChlorinatorPercentage(50) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(faulted.SetChlorinatorBoost(true) == Capabilities::ActuationResult::NotSupported);
+}
+
 BOOST_AUTO_TEST_CASE(TestSetpoint_RejectsSecondGoalWhileBusy)
 {
 	// One goal at a time: a second request while the first is still pending is rejected

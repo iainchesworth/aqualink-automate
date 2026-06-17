@@ -11,6 +11,7 @@
 
 #include "devices/jandy_controller.h"
 #include "devices/jandy_device_types.h"
+#include "devices/chlorinator_setpoint_refresh.h"
 #include "devices/capabilities/chlorinator_controller.h"
 #include "devices/capabilities/command_history.h"
 #include "devices/capabilities/describable.h"
@@ -48,6 +49,7 @@ namespace AqualinkAutomate::Devices
 		inline static const uint32_t ONETOUCH_ACTUATION_STEP_LIMIT{ 500 };  // frame backstop so a toggle goal can never wedge NormalOperation (the Navigator's own timeouts normally end it first)
 		inline static const uint32_t ONETOUCH_VALUEEDIT_STEP_LIMIT{ 500 };  // frame backstop for a value-edit goal (navigation + the value-step loop)
 		inline static const uint32_t ONETOUCH_BOOST_STEP_LIMIT{ 500 };      // frame backstop for a chlorinator-boost goal
+		inline static const uint32_t ONETOUCH_SETPOINT_REFRESH_STEP_LIMIT{ 500 };  // frame backstop for a read-only setpoint re-scrape crawl
 
 		enum class OperatingStates
 		{
@@ -97,6 +99,12 @@ namespace AqualinkAutomate::Devices
 		// startup. Exposed for diagnostics and for validating the skip decision.
 		bool DataHubHasSeededAuxLabels() const;
 
+		// Configure proactive re-acquisition of the configured chlorinator setpoint by
+		// periodically (+ on comms-recovery) scraping the Set AquaPure menu (0 = disabled).
+		// Applied post-construction (settings are not available to the constructor); only an
+		// actively-emulating device ever navigates. See ChlorinatorSetpointRefresh.
+		void EnableChlorinatorSetpointRefresh(std::chrono::seconds interval);
+
 	public:
 		// DeviceActuator: actuate (toggle/on/off) a pool device by driving the emulated
 		// keypad to the Equipment ON/OFF page and Selecting the row whose label matches
@@ -136,6 +144,12 @@ namespace AqualinkAutomate::Devices
 		// highlight is a separate Highlight message, never appended to the row Text). Public+static
 		// for direct unit testing of the picker compare.
 		static std::string SanitiseFunctionText(const std::string& raw);
+
+	protected:
+		// Test seam: force the unrecoverable ScrapingFaulted operating state so a test can verify
+		// that actuation is refused (NotSupported) rather than falsely accepted while the
+		// controller is in a fault. Not used in production code.
+		void ForceScrapingFaultedForTest() { m_OpState = OperatingStates::ScrapingFaulted; }
 
 	private:
 		void ProcessControllerUpdates() override;
@@ -248,6 +262,19 @@ namespace AqualinkAutomate::Devices
 		// "Operate at 100%" page starts it; navigating to the "Stop" item and Select stops it.
 		void Boost_ProcessStep();
 
+		// Proactive chlorinator-setpoint re-acquisition (the GET): periodically (and on a
+		// chlorinator offline->online edge) drive a READ-ONLY menu visit to the Set AquaPure
+		// page so PageProcessor_SetAquapure re-scrapes the configured Pool/Spa %. Runs 5th in
+		// NormalOperation; deferred while any user/SET goal is in flight; gated on active
+		// emulation. The visit reuses the SpiderEngine with a single-page TargetedVisitPolicy
+		// and submits NO value (read-only). m_RefreshInProgress makes it count as a goal so a
+		// user command cannot interleave on the single shared Navigator.
+		void SetpointRefresh_ProcessStep();
+
+		// True when the DataHub chlorinator is reporting (ChlorinatorStatusTrait not Off/Unknown);
+		// the offline->online edge of this drives a one-shot recovery re-scrape.
+		bool DataHubChlorinatorOnline() const;
+
 		// Read the currently displayed integer value from a row (e.g. "Pool Heat   90`F" -> 90,
 		// "Set Pool to: 45%" -> 45). Returns nullopt when no value is parseable yet (page not
 		// rendered, or value blanked mid-edit), so the step loop simply waits.
@@ -263,8 +290,10 @@ namespace AqualinkAutomate::Devices
 		// used to locate the "Spa Switch" menu item and the "S:B" assignment row on screen.
 		std::optional<uint8_t> FindLineStartingWith(const std::string& prefix) const;
 
-		// True when any on-demand goal (toggle / value-edit / boost / spa-switch) is mid-flight; the
-		// single shared Navigator/keypad means goals must never interleave.
+		// True when any on-demand goal (toggle / value-edit / boost / spa-switch / setpoint
+		// refresh) is mid-flight; the single shared Navigator/keypad means goals must never
+		// interleave. Including the read-only setpoint refresh here makes a user command arriving
+		// mid-refresh be rejected rather than corrupt the in-flight navigation.
 		bool GoalInProgress() const;
 
 		// Convert Navigator key command to device KeyCommand
@@ -318,6 +347,7 @@ namespace AqualinkAutomate::Devices
 		inline static const uint8_t SETTEMP_POOL_HEAT_LINE{ 2 };
 		inline static const uint8_t SETTEMP_SPA_HEAT_LINE{ 3 };
 		inline static const uint8_t SETAQUAPURE_POOL_LINE{ 3 };
+		inline static const uint8_t SETAQUAPURE_SPA_LINE{ 4 };       // Spa % row on Set AquaPure (verified vs onetouch_chlorinator.cap)
 		inline static const uint8_t ONETOUCH_CHLORINATOR_STEP{ 5 };  // the OneTouch edits AquaPure % in 5% increments
 
 		std::optional<ValueEditGoal> m_PendingValueEdit;
@@ -373,6 +403,15 @@ namespace AqualinkAutomate::Devices
 		uint32_t m_SpaSwitchEditStepCount{ 0 };
 		std::optional<std::string> m_PickerFirstSeenFunction;  // wrap detection while cycling the picker
 		uint32_t m_SpaSwitchCursorStuck{ 0 };
+
+	private:
+		// Proactive chlorinator-setpoint refresh (read-only Set AquaPure re-scrape). m_RefreshState
+		// holds the "when to scrape" policy; m_RefreshInProgress tracks an in-flight visit (counts
+		// as a goal, so it blocks user commands on the shared Navigator) and is driven step-by-step
+		// with m_RefreshStepCount as a frame backstop.
+		ChlorinatorSetpointRefresh m_RefreshState;
+		bool m_RefreshInProgress{ false };
+		uint32_t m_RefreshStepCount{ 0 };
 
 	private:
 		// AqualinkD always uses 0x80 (V2_Normal) for ACKs. The controller may ignore
