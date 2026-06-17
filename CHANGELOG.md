@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.3.0-beta.2] - 2026-06-17
+
+### Changed
+
+- **Prerelease Docker images are tagged `edge`.** Stable releases continue to move the `latest` tag on GHCR; prereleases now move a rolling `edge` tag (in addition to the exact `<version>` tag), so you can track the newest prerelease with `ghcr.io/<owner>/aqualink-automate:edge`.
+
+### Fixed
+
+- **Trends chart renders when the page opens.** The Trends graph could appear blank when the app opened directly on that view, because the chart tried to draw before its panel had been laid out. It now draws as soon as the panel has a size, and redraws on window resize.
+- **Trends selections survive a reload.** The chosen metrics, time range, and the show-inactive toggle are remembered across page reloads.
+
 ## [0.3.0-beta.1] - 2026-06-17
 
 ### Added

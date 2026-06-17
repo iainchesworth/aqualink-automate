@@ -1,0 +1,53 @@
+name: Suggest Version
+
+# PROPOSE-ONLY. On a develop -> main release PR, compute the next tag from the
+# Conventional Commits being published (per SemVer) and post it as a sticky PR
+# comment plus a job summary. This NEVER creates or pushes a tag — a human still
+# decides when a release line advances and pushes the tag (see docs/releasing.md
+# and scripts/next-version.sh, which is also runnable locally).
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: suggest-version-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  suggest:
+    name: Suggest next version
+    runs-on: ubuntu-latest
+    steps:
+      # Full history + tags so the script can anchor on the highest v* tag and
+      # examine every commit being published.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compute suggested next version
+        shell: bash
+        run: |
+          bash scripts/next-version.sh --markdown | tee suggestion.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert sticky PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('suggestion.md', 'utf8');
+            const marker = '<!-- next-version-suggestion -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

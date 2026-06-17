@@ -95,9 +95,29 @@ function trendsView() {
         _model: [],          // full model incl. hidden/inactive
 
         onShown() {
-            if (this._loaded) { this.render(); return; }
+            if (this._loaded) { this.refresh(); return; }
             this._loaded = true;
+            this._loadPrefs();
             this.loadSeries();
+        },
+
+        // Restore the last-used range / selection / inactive toggle across reloads.
+        _loadPrefs() {
+            try {
+                const p = JSON.parse(localStorage.getItem('aqualink.trends.prefs') || '{}');
+                if (typeof p.rangeSeconds === 'number') this.rangeSeconds = p.rangeSeconds;
+                if (typeof p.showInactive === 'boolean') this.showInactive = p.showInactive;
+                if (p.selected && typeof p.selected === 'object') this.selected = { ...p.selected };
+            } catch (_) { /* corrupt prefs — fall back to defaults */ }
+        },
+        _savePrefs() {
+            try {
+                localStorage.setItem('aqualink.trends.prefs', JSON.stringify({
+                    rangeSeconds: this.rangeSeconds,
+                    showInactive: this.showInactive,
+                    selected: this.selected,
+                }));
+            } catch (_) { /* storage unavailable — non-fatal */ }
         },
 
         // --- data ---------------------------------------------------------
@@ -199,9 +219,9 @@ function trendsView() {
 
         // --- interaction --------------------------------------------------
 
-        setRange(seconds) { this.rangeSeconds = seconds; this.refresh(); },
-        toggleSeries(key) { this.selected[key] = !this.selected[key]; this.refresh(); },
-        toggleInactive() { this.showInactive = !this.showInactive; this.refresh(); },
+        setRange(seconds) { this.rangeSeconds = seconds; this._savePrefs(); this.refresh(); },
+        toggleSeries(key) { this.selected[key] = !this.selected[key]; this._savePrefs(); this.refresh(); },
+        toggleInactive() { this.showInactive = !this.showInactive; this._savePrefs(); this.refresh(); },
 
         // Latest fetched value for a selected series (chip / used by stats).
         currentValue(key) {
@@ -238,6 +258,14 @@ function trendsView() {
                 this.$refs.trendsReadout.style.display = 'none';
                 this.draw();
             });
+            // The first draw can run while the view is still being laid out (the
+            // route just switched, so clientWidth is 0 and draw() bails). Redraw
+            // whenever the canvas gains or changes its layout size — this covers
+            // both the initial reveal and window resizes.
+            if (window.ResizeObserver) {
+                _trends.ro = new ResizeObserver(() => this.draw());
+                _trends.ro.observe(canvas);
+            }
         },
 
         // --- drawing ------------------------------------------------------
@@ -261,8 +289,14 @@ function trendsView() {
             const cssH = TOP + TH + GAP + CH + GAP + EH + AXH;
 
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = cssW * dpr; canvas.height = cssH * dpr;
-            canvas.style.height = cssH + 'px';
+            // Only reassign the canvas size when it actually changes — resizing it
+            // alters its layout height and would re-trigger the ResizeObserver in a
+            // loop otherwise.
+            const wantW = Math.round(cssW * dpr), wantH = Math.round(cssH * dpr);
+            if (canvas.width !== wantW || canvas.height !== wantH) {
+                canvas.width = wantW; canvas.height = wantH;
+                canvas.style.height = cssH + 'px';
+            }
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, cssW, cssH);
 
