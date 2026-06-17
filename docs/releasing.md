@@ -121,12 +121,13 @@ A dry run builds packages on all platforms without creating a GitHub Release or 
 
 After a release is published:
 
-1. **Curate the release notes to the established pattern (required).** The auto-generated body (`--generate-notes`) is only a starting point; rewrite it so the notes read as a coherent, user-facing changelog consistent with the previous releases. Use a prior release as the template (`gh release view v0.2.0-beta.1 --json body --jq .body`) and mirror the matching `## [x.y.z]` section of [CHANGELOG.md](../CHANGELOG.md). The pattern:
-   - A one-line **intro** summarising the release (e.g. "… on top of `v<prev>`").
-   - Thematic `##` **sections** — grouped by subsystem (e.g. *Trends*, *Web UI*) or as Added / Changed / Fixed — with **bold lead-in** bullets describing each change in user-facing terms (not raw commit subjects).
-   - An `## Artifacts` table (Linux / Windows / macOS / Docker, including the `ghcr.io/<owner>/aqualink-automate:<version>` image tag).
-   - The `**Full Changelog**: …/compare/v<prev>...v<this>` link (keep the one from the generated notes).
-   - For prereleases, a trailing `> Pre-release.` caveat blockquote (e.g. the unverified-Pentair-decoding caveat).
+1. **Curate the release notes to the established pattern (required).** The auto-generated body (`--generate-notes`) is only a starting point; rewrite it so the notes read as a coherent, user-facing changelog consistent with the previous releases. Use a prior release as the template (`gh release view v0.2.0-beta.1 --json body --jq .body`) and mirror the matching `## [x.y.z]` section of [CHANGELOG.md](../CHANGELOG.md). The structure, **in this order**:
+   1. `## What's Changed since v<prev>` heading (for the very first release: `## What's Changed`).
+   2. A one-line **summary** of the release.
+   3. The changes as `###` subsections — grouped by subsystem (e.g. *Trends*, *Web UI*) or as *Added* / *Changed* / *Fixed* — with **bold lead-in** bullets in user-facing terms (not raw commit subjects). A short release may use a flat **bold-lead-in** bullet list instead of subsections.
+   4. An `## Artifacts` section: the "Self-contained, SHA-512-summed" table (Linux / Windows / macOS / Docker, including the `ghcr.io/<owner>/aqualink-automate:<version>` image tag), then the `aqualink-automate --help` / [INSTALL.md](../INSTALL.md) pointer line.
+   5. The `**Full Changelog**: …/compare/v<prev>...v<this>` link (keep the one from the generated notes; omit for the first release).
+   6. For prereleases, a trailing `> **Pre-release.**` caveat blockquote (e.g. the unverified-Pentair-decoding caveat).
 
    Apply the curated body with:
 
