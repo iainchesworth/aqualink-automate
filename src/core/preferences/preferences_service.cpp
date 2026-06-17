@@ -64,6 +64,7 @@ namespace AqualinkAutomate::Preferences
 		};
 		json["history"] = { { "retention_days", m_Hub->HistoryRetentionDays } };
 		json["label_overrides"] = m_Hub->LabelOverrides;
+		json["show_aux_id_in_label"] = m_Hub->ShowAuxIdInLabel;
 		json["ui"] = m_Hub->UiPreferences;
 		json["spa_switch_buttons"] = m_Hub->SpaSwitchButtons;
 		return json;
@@ -89,6 +90,7 @@ namespace AqualinkAutomate::Preferences
 		auto webhook = m_Hub->AlertWebhookUrl;
 		auto retention = m_Hub->HistoryRetentionDays;
 		auto label_overrides = m_Hub->LabelOverrides;
+		auto show_aux_id = m_Hub->ShowAuxIdInLabel;
 		auto ui = m_Hub->UiPreferences;
 		auto spa_switch_buttons = m_Hub->SpaSwitchButtons;
 
@@ -168,6 +170,16 @@ namespace AqualinkAutomate::Preferences
 			label_overrides = json["label_overrides"];
 		}
 
+		if (json.contains("show_aux_id_in_label"))
+		{
+			if (!json["show_aux_id_in_label"].is_boolean())
+			{
+				error = "show_aux_id_in_label must be a boolean";
+				return false;
+			}
+			show_aux_id = json["show_aux_id_in_label"].get<bool>();
+		}
+
 		if (json.contains("ui"))
 		{
 			if (!json["ui"].is_object())
@@ -203,6 +215,7 @@ namespace AqualinkAutomate::Preferences
 		m_Hub->AlertWebhookUrl = std::move(webhook);
 		m_Hub->HistoryRetentionDays = retention;
 		m_Hub->LabelOverrides = std::move(label_overrides);
+		m_Hub->ShowAuxIdInLabel = show_aux_id;
 		m_Hub->UiPreferences = std::move(ui);
 		m_Hub->SpaSwitchButtons = std::move(spa_switch_buttons);
 

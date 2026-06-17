@@ -1,5 +1,6 @@
 #include <boost/algorithm/string.hpp>
 
+#include "auxillaries/jandy_auxillary_id.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "errors/jandy_errors_auxillary_factory.h"
 #include "factories/jandy_auxillary_factory.h"
@@ -65,17 +66,10 @@ namespace AqualinkAutomate::Factory
 			LogDebug(Channel::Equipment, "Received an invalid auxillary status; factory cannot create a new device using auxillary status");
 			ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_ReceivedInvalidAuxillaryStatus);
 		}
-		else if (IsAuxillaryDevice(aux_state.Label().value()))
+		else if (auto aux_id = Auxillaries::ParseAuxId(aux_state.Label().value()); aux_id.has_value())
 		{
-			if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(aux_state.Label().value()); !aux_id.has_value())
-			{
-				ec = make_error_code(ErrorCodes::Factory_ErrorCodes::Error_CannotCastToJandyAuxillaryId);
-			}
-			else
-			{
-				DeviceData data{ AuxillaryDevice_Data{ std::nullopt, aux_id.value(), aux_state.State().value_or(Kernel::AuxillaryStatuses::Unknown) }};
-				return CreateDevice_Impl(data);
-			}
+			DeviceData data{ AuxillaryDevice_Data{ std::nullopt, aux_id.value(), aux_state.State().value_or(Kernel::AuxillaryStatuses::Unknown) }};
+			return CreateDevice_Impl(data);
 		}
 		else if (IsChlorinatorDevice(aux_state.Label().value()))
 		{
@@ -126,33 +120,10 @@ namespace AqualinkAutomate::Factory
 
 	bool JandyAuxillaryFactory::IsAuxillaryDevice(const std::string& label) const
 	{
-		if (EXTRA_AUX == label)
-		{
-			return true;
-		}
-		else if (label.starts_with(AUX_PREFIX))
-		{
-			// Generic auxillary labels are "Aux1" or "Aux B1" so 4 or 6 characters.
-			static const uint8_t AUX_LABEL_LENGTH = 4;
-			static const uint8_t AUX_LABEL_RPC_LENGTH = 6;
-
-			switch (label.size())
-			{
-			case AUX_LABEL_LENGTH:
-			case AUX_LABEL_RPC_LENGTH:
-				return true;
-
-			default:
-				// Auxillary label length is not as expected.
-				break;
-			}
-		}
-		else
-		{
-			// Doesn't appear to be a valid auxillary label
-		}
-
-		return false;
+		// Defer to the single normalising parser so "Aux5", "Aux 5", "AuxB1", "Aux B1" and
+		// "Extra Aux" are all recognised consistently (the old length-gate rejected the
+		// space/no-space variants).
+		return Auxillaries::ParseAuxId(label).has_value();
 	}
 
 	bool JandyAuxillaryFactory::IsChlorinatorDevice(const std::string& label) const
@@ -198,9 +169,17 @@ namespace AqualinkAutomate::Factory
 				{
 					[&aux_ptr](const AuxillaryDevice_Data& data)
 					{
+						// Construct with a DETERMINISTIC id derived from the aux id so a
+						// cache-restored device and a live-discovered device for the SAME aux
+						// reconcile to one identity (the cache, being protocol-agnostic, cannot
+						// persist the JandyAuxillaryId trait but does persist this stable id).
+						aux_ptr = std::make_shared<Kernel::AuxillaryDevice>(Auxillaries::AuxStableId(data.Id));
 						aux_ptr->AuxillaryTraits.Set(AuxillaryTraitsTypes::AuxillaryTypeTrait{}, AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, data.Label.value_or(std::string{ magic_enum::enum_name(data.Id) }));
 						aux_ptr->AuxillaryTraits.Set(Auxillaries::JandyAuxillaryId{}, data.Id);
+						// Immutable hardware id ("Aux5") - set ONCE here; carries the aux id to
+						// the cache + web display layers that cannot read JandyAuxillaryId.
+						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HardwareLabelTrait{}, std::string{ magic_enum::enum_name(data.Id) });
 						aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, data.Status.value_or(Kernel::AuxillaryStatuses::Unknown));
 					},
 					[&aux_ptr](const ChlorinatorDevice_Data& data)

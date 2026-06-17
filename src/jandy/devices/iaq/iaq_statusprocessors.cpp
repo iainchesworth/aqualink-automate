@@ -12,6 +12,7 @@
 #include "devices/capabilities/screen.h"
 #include "devices/iaq_device.h"
 #include "auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_reconciliation.h"
 #include "auxillaries/jandy_auxillary_status.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "factories/jandy_auxillary_factory.h"
@@ -313,22 +314,15 @@ namespace AqualinkAutomate::Devices
 
 			const auto status = info.is_on ? Auxillaries::JandyAuxillaryStatuses::On : Auxillaries::JandyAuxillaryStatuses::Off;
 
-			// Find or create the auxillary device.
+			// Find or create the auxillary device, reconciling by the stable id derived from the
+			// aux id - this matches a cache-restored placeholder regardless of its label.
 			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
-			auto auxillaries = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{});
 
-			auto aux_has_id = [&aux_id](auto& potential_match) -> bool
+			if (auto existing = m_DataHub->Devices.FindById(Auxillaries::AuxStableId(aux_id.value())); nullptr != existing)
 			{
-				if (nullptr == potential_match || !potential_match->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
-				{
-					return false;
-				}
-				return (*(potential_match->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]) == aux_id.value());
-			};
-
-			if (auto auxillary_it = std::find_if(auxillaries.begin(), auxillaries.end(), aux_has_id); auxillaries.end() != auxillary_it)
-			{
-				aux_ptr = *auxillary_it;
+				aux_ptr = existing;
+				// Grant the aux identity to a cache-restored placeholder (which lacks it).
+				Auxillaries::EnsureAuxIdentity(aux_ptr, aux_id.value());
 			}
 			else if (auto new_aux_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value(), status); new_aux_ptr.has_value())
 			{
@@ -364,6 +358,10 @@ namespace AqualinkAutomate::Devices
 					}
 					aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 				}
+
+				// Drop any legacy label-only cache placeholder now superseded by this device
+				// (one-time cleanup when upgrading from a pre-stable-id cache).
+				Auxillaries::RemoveOrphanAuxPlaceholders(m_DataHub->Devices, info.name, aux_ptr);
 			}
 
 			// Signal that a button state change has occurred.

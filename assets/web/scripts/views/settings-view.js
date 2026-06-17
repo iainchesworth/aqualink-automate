@@ -59,6 +59,10 @@ function settingsView() {
         // Friendly display-name overrides keyed by canonical device label.
         labelOverrides: {},
 
+        // When true, device display names are suffixed with the protocol aux id,
+        // e.g. "Pool Light (Aux5)". Display-only; the canonical label is unchanged.
+        showAuxIdInLabel: false,
+
         // Alpine auto-calls init() on the component.
         async init() {
             try {
@@ -71,6 +75,7 @@ function settingsView() {
                 this.prefs.webhook_url = (p.alert && p.alert.webhook_url) || '';
                 this.prefs.retention_days = (p.history && p.history.retention_days) ?? 90;
                 this.labelOverrides = (p.label_overrides && typeof p.label_overrides === 'object') ? p.label_overrides : {};
+                this.showAuxIdInLabel = (typeof p.show_aux_id_in_label === 'boolean') ? p.show_aux_id_in_label : false;
 
                 // Server-stored chemistry bands take precedence (cross-device).
                 if (p.ui && p.ui.chemistryBands) {
@@ -133,6 +138,14 @@ function settingsView() {
             this.labelOverrides = cleaned;
             await this._putPrefs({ label_overrides: cleaned });
             // Refresh the dashboard so the new display names take effect immediately.
+            if (this.$store.pool && typeof this.$store.pool._fetchButtons === 'function') {
+                this.$store.pool._fetchButtons();
+            }
+        },
+
+        // Toggle "show aux id alongside the friendly name" and refresh the dashboard.
+        async saveShowAuxId() {
+            await this._putPrefs({ show_aux_id_in_label: !!this.showAuxIdInLabel });
             if (this.$store.pool && typeof this.$store.pool._fetchButtons === 'function') {
                 this.$store.pool._fetchButtons();
             }

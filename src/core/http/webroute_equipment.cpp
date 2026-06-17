@@ -137,7 +137,7 @@ namespace AqualinkAutomate::HTTP
 			jandy_equipment_json["configuration"] = std::move(config);
 		}
 
-		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object());
+		jandy_equipment_json["devices"] = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object(), m_PreferencesHub && m_PreferencesHub->ShowAuxIdInLabel);
 		jandy_equipment_json["stats"] = JSON::GenerateJson_Equipment_Stats(m_StatisticsHub);
 		jandy_equipment_json["version"] = JSON::GenerateJson_Equipment_Version(m_DataHub);
 

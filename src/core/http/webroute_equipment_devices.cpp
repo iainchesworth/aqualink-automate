@@ -21,7 +21,7 @@ namespace AqualinkAutomate::HTTP
         resp.set(boost::beast::http::field::server, ServerFields::Server());
         resp.set(boost::beast::http::field::content_type, ContentTypes::APPLICATION_JSON);
         resp.keep_alive(req.keep_alive());
-        resp.body() = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object()).dump();
+        resp.body() = JSON::GenerateJson_Equipment_Devices(m_DataHub, m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object(), m_PreferencesHub && m_PreferencesHub->ShowAuxIdInLabel).dump();
         resp.prepare_payload();
 
         zone->Value(resp.body().size());

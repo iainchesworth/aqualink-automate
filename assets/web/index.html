@@ -1180,31 +1180,80 @@
 
         <!-- ====== TRENDS VIEW (WS2) ====== -->
         <div x-show="route === 'trends'" x-cloak x-data="trendsView()" x-effect="if (route === 'trends') onShown()">
-            <div class="section-title">Trends</div>
+            <div class="trends-head">
+                <div class="section-title" style="margin:0">Trends</div>
+                <div class="trends-ranges" x-show="available">
+                    <template x-for="r in ranges" :key="r.label">
+                        <button class="trends-range-btn" :class="{ active: rangeSeconds === r.seconds }" @click="setRange(r.seconds)" x-text="r.label"></button>
+                    </template>
+                </div>
+            </div>
+
             <template x-if="!available">
                 <p class="text-muted text-xs">History is disabled. Start the server with <code>--history-db &lt;path&gt;</code> to record and chart time-series data.</p>
             </template>
+
             <template x-if="available">
                 <div>
-                    <div class="trends-controls">
-                        <div class="trends-ranges">
-                            <template x-for="r in ranges" :key="r.label">
-                                <button class="trends-range-btn" :class="{ active: rangeSeconds === r.seconds }" @click="setRange(r.seconds)" x-text="r.label"></button>
-                            </template>
-                        </div>
-                        <div class="trends-series">
-                            <template x-for="s in series" :key="s.key">
-                                <label class="trends-series-toggle">
-                                    <input type="checkbox" :checked="selected[s.key]" @change="toggleSeries(s.key)">
-                                    <span x-text="seriesLabel(s.key)"></span>
-                                </label>
-                            </template>
-                            <span class="text-muted text-xs" x-show="series.length === 0 && !loading">No series recorded yet.</span>
-                        </div>
-                    </div>
                     <p class="trends-error" x-show="error" x-cloak x-text="error"></p>
-                    <div class="trends-chart-wrap">
+
+                    <div class="trends-chart-card">
                         <canvas x-ref="trendsCanvas"></canvas>
+                        <div class="trends-readout" x-ref="trendsReadout" style="display:none"></div>
+                    </div>
+
+                    <div class="trends-stats" x-show="statCards.length">
+                        <template x-for="c in statCards" :key="c.key">
+                            <div class="trends-stat">
+                                <div class="trends-stat-label"><span class="trends-swatch" :style="`background:${c.color}`"></span><span x-text="c.name"></span></div>
+                                <div class="trends-stat-value" x-text="c.now"></div>
+                                <div class="trends-stat-sub" x-text="c.sub"></div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="trends-pickers">
+                        <div class="trends-group" x-show="groupSeries('temp').length">
+                            <div class="trends-group-label">Temperatures</div>
+                            <div class="trends-chips">
+                                <template x-for="s in groupSeries('temp')" :key="s.key">
+                                    <button class="trends-chip" :class="{ on: selected[s.key] }" @click="toggleSeries(s.key)">
+                                        <span class="trends-swatch" :style="selected[s.key] ? `background:${s.color}` : `border:1px solid ${s.color}`"></span>
+                                        <span x-text="s.name"></span>
+                                        <span class="trends-chip-val" x-show="selected[s.key] && currentLabel(s)" x-text="currentLabel(s)"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="trends-group" x-show="groupSeries('chem').length">
+                            <div class="trends-group-label">Water chemistry</div>
+                            <div class="trends-chips">
+                                <template x-for="s in groupSeries('chem')" :key="s.key">
+                                    <button class="trends-chip" :class="{ on: selected[s.key] }" @click="toggleSeries(s.key)">
+                                        <span class="trends-swatch" :style="selected[s.key] ? `background:${s.color}` : `border:1px solid ${s.color}`"></span>
+                                        <span x-text="s.name"></span>
+                                        <span class="trends-chip-val" x-show="selected[s.key] && currentLabel(s)" x-text="currentLabel(s)"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="trends-group" x-show="groupSeries('device').length || inactiveCount">
+                            <div class="trends-group-label">Equipment runtime</div>
+                            <div class="trends-chips">
+                                <template x-for="s in groupSeries('device')" :key="s.key">
+                                    <button class="trends-chip" :class="{ on: selected[s.key] }" @click="toggleSeries(s.key)">
+                                        <span class="trends-swatch" :style="selected[s.key] ? `background:${s.color}` : `border:1px solid ${s.color}`"></span>
+                                        <span x-text="s.name"></span>
+                                    </button>
+                                </template>
+                                <button class="trends-inactive-btn" x-show="inactiveCount" @click="toggleInactive()"
+                                        x-text="showInactive ? 'Hide inactive' : ('Show inactive (' + inactiveCount + ')')"></button>
+                            </div>
+                        </div>
+
+                        <span class="text-muted text-xs" x-show="series.length === 0 && !loading">No series recorded yet.</span>
                     </div>
                 </div>
             </template>
@@ -1357,6 +1406,10 @@
                         Friendly dashboard names for auxiliaries. Blank keeps the original; the underlying
                         control name (commands, MQTT, Home Assistant) is unchanged.
                     </p>
+                    <div class="settings-field">
+                        <label for="show-aux-id">Show aux id in names (e.g. "Pool Light (Aux5)")</label>
+                        <input id="show-aux-id" type="checkbox" x-model="showAuxIdInLabel" @change="saveShowAuxId()">
+                    </div>
                     <template x-if="deviceButtons().length > 0">
                         <div>
                             <template x-for="button in deviceButtons()" :key="button.id">

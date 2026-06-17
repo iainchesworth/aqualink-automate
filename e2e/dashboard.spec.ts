@@ -25,7 +25,9 @@ test('buttons API exposes a controllable flag; chlorinator/unknown are not contr
 
 test('dashboard has one consolidated chemistry section — no duplicate chlorinator card', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Water Chemistry')).toBeVisible();
+  // Exact match: the Trends view also has a "Water chemistry" group label, so a loose
+  // (case-insensitive substring) match would resolve to two elements across the SPA.
+  await expect(page.getByText('Water Chemistry', { exact: true })).toBeVisible();
   await expect(page.getByText('Chemistry / Chlorinator')).toHaveCount(0);
 });
 

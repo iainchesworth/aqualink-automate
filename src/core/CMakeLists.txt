@@ -130,7 +130,8 @@ target_sources(
 	kernel/auxillary_devices/pump_speed.cpp
 	kernel/auxillary_devices/pump_status.cpp
 	kernel/auxillary_devices/pump_type.cpp
-	kernel/auxillary_traits/auxillary_traits.cpp 
+	kernel/auxillary_devices/stable_id.cpp
+	kernel/auxillary_traits/auxillary_traits.cpp
 	kernel/auxillary_traits/auxillary_traits_base.cpp 
 	kernel/auxillary_traits/auxillary_traits_helpers.cpp
 	kernel/auxillary_traits/auxillary_traits_proxy.cpp 

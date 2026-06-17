@@ -80,6 +80,7 @@ namespace AqualinkAutomate::HTTP
 				arr.push_back({
 					{ "key", series.key },
 					{ "unit", series.unit },
+					{ "label", series.label },   // friendly name for device series; "" otherwise
 					{ "first_ts", series.first_ts },
 					{ "last_ts", series.last_ts },
 					{ "count", series.count },

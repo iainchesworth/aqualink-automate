@@ -10,6 +10,7 @@
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/page_navigator.h"
 #include "devices/capabilities/setpoint_controller.h"
+#include "auxillaries/jandy_auxillary_id.h"
 #include "devices/command_dispatcher.h"
 #include "kernel/auxillary_traits/auxillary_traits_helpers.h"
 #include "logging/logging.h"
@@ -88,13 +89,24 @@ namespace AqualinkAutomate::Devices
 	CommandDispatcher::CommandResult CommandDispatcher::CommandByLabel(const std::string& label, DeviceAction action)
 	{
 		auto matches = m_DataHub->Devices.FindByLabel(label);
-		if (matches.empty())
+		std::shared_ptr<Kernel::AuxillaryDevice> device;
+		if (!matches.empty())
+		{
+			device = matches.front();
+		}
+		else if (auto aux_id = Auxillaries::ParseAuxId(label); aux_id.has_value())
+		{
+			// The caller supplied an aux-id form ("Aux5" / "Aux 5" / "AuxB1") rather than the
+			// device's friendly label - resolve it by the stable id so every variant works.
+			device = m_DataHub->Devices.FindById(Auxillaries::AuxStableId(aux_id.value()));
+		}
+
+		if (!device)
 		{
 			LogWarning(Channel::Devices, std::format("CommandDispatcher: No device found with label '{}'", label));
 			return CommandResult::DeviceNotFound;
 		}
 
-		auto device = matches.front();
 		const std::string what{ std::format("{} '{}'", ActionVerb(action), label) };
 		return DispatchToCapable<Capabilities::DeviceActuator>(
 			what,

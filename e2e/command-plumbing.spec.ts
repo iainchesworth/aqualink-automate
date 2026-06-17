@@ -25,7 +25,9 @@ test('chlorinator is read-only in chemistry, and the command endpoint still hand
   await page.goto('/');
 
   // The chlorinator lives in Water Chemistry now (SWG output), not the controls.
-  await expect(page.getByText('Water Chemistry')).toBeVisible();
+  // Exact match: the Trends view also has a "Water chemistry" group label, so a loose
+  // (case-insensitive substring) match would resolve to two elements across the SPA.
+  await expect(page.getByText('Water Chemistry', { exact: true })).toBeVisible();
   await expect(page.locator('.eq-control').filter({ hasText: /AquaPure/i })).toHaveCount(0);
 
   // Commands are enabled in replay mode (system reports "ready").

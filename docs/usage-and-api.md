@@ -389,8 +389,15 @@ curl http://127.0.0.1:8080/api/history/series
 ```
 
 ```json
-[ { "key": "pool_temp", "unit": "celsius", "first_ts": 1700000000, "last_ts": 1700090000, "count": 900 } ]
+[
+  { "key": "temp/pool", "unit": "C", "label": "", "first_ts": 1700000000, "last_ts": 1700090000, "count": 900 },
+  { "key": "device/4b8c1e2a-7f3d-4a9b-bc10-2f5e6d7a8b90", "unit": "state", "label": "Pool Light", "first_ts": 1700000000, "last_ts": 1700090000, "count": 18 }
+]
 ```
+
+`label` is the friendly display name. Device series are keyed by the stable
+button UUID (`device/<uuid>`) so a device that is renamed after discovery (e.g.
+`Aux5` → `Pool Light`) stays a single series; analog series use an empty label.
 
 ```bash
 # Query a single series within a time window
