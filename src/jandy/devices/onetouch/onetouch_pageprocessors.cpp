@@ -9,6 +9,8 @@
 #include <boost/regex.hpp>
 
 #include "logging/logging.h"
+#include "auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_reconciliation.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/onetouch_device.h"
 #include "factories/jandy_auxillary_factory.h"
@@ -190,20 +192,22 @@ namespace AqualinkAutomate::Devices
 			{
 				auto new_device = aux_ptr.value();
 
-				// For aux devices with JandyAuxillaryId, check if the device already exists in the
-				// graph (possibly with a custom label from LabelAux). If so, update the existing
-				// device's status rather than adding a duplicate (operator== compares labels, so a
-				// device with custom label "Swim Jet" wouldn't match one with default label "Aux2").
+				// Aux devices carry a DETERMINISTIC stable id derived from the aux id, so a
+				// device that already carries that id - a steady-state cache placeholder or one
+				// discovered earlier this run - is found by id (independent of any custom label)
+				// and updated in place. A LEGACY pre-stable-id cache placeholder (random id) is
+				// NOT matched here; it is reconciled + pruned later by PageProcessor_LabelAux (or
+				// the IAQ AuxStatus path) once the custom label is known.
 				if (new_device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
 				{
-					auto aux_id_val = new_device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}];
-					auto existing = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id_val);
-					if (!existing.empty())
+					const auto aux_id = *(new_device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
+					if (auto existing = JandyController::m_DataHub->Devices.FindById(new_device->Id()); nullptr != existing)
 					{
-						// Update status on existing device (preserving its custom label)
+						// Grant the aux identity to a cache-restored placeholder (which lacks it).
+						Auxillaries::EnsureAuxIdentity(existing, aux_id);
 						if (auto status_opt = new_device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}); status_opt.has_value())
 						{
-							existing.front()->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, status_opt.value());
+							existing->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, status_opt.value());
 						}
 						continue;
 					}
@@ -621,7 +625,7 @@ namespace AqualinkAutomate::Devices
 		{
 			LogDebug(Channel::Devices, [this, &page]() { return std::format("OneTouch ({}): Failed to parse the row text looking for an auxillary id; text was {}", DeviceId(), Utility::TrimWhitespace(page[0].Text)); });
 		}
-		else if (auto aux_id = magic_enum::enum_cast<Auxillaries::JandyAuxillaryIds>(matches[2].str()); !aux_id.has_value())
+		else if (auto aux_id = Auxillaries::ParseAuxId(matches[2].str()); !aux_id.has_value())
 		{
 			LogDebug(Channel::Devices, [this, &matches]() { return std::format("OneTouch ({}): Failed to generate the id for Auxillary Device given string {}", DeviceId(), matches[2].str()); });
 		}
@@ -630,25 +634,20 @@ namespace AqualinkAutomate::Devices
 			std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
 			bool newly_created = false;
 
-			if (auto aux_collection = m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{}, aux_id.value()); aux_collection.empty())
+			// Reconcile by the stable id derived from the aux id: matches a cache-restored
+			// placeholder or a device already discovered via the Equipment On/Off page.
+			if (auto existing = m_DataHub->Devices.FindById(Auxillaries::AuxStableId(aux_id.value())); nullptr != existing)
 			{
-				if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); !temp_ptr.has_value())
-				{
-					LogDebug(Channel::Devices, [this, &aux_id]() { return std::format("OneTouch ({}): Failed to create a new Auxillary Device for aux id: {}", DeviceId(), magic_enum::enum_name(aux_id.value())); });
-				}
-				else
-				{
-					aux_ptr = temp_ptr.value();
-					newly_created = true;
-				}
+				aux_ptr = existing;
 			}
-			else if (1 < aux_collection.size())
+			else if (auto temp_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id.value()); !temp_ptr.has_value())
 			{
-				LogDebug(Channel::Devices, [this, &aux_collection, &aux_id]() { return std::format("OneTouch ({}): Found {} instances of Auxillary Device with aux id: {}; cannot attach custom label", DeviceId(), aux_collection.size(), magic_enum::enum_name(aux_id.value())); });
+				LogDebug(Channel::Devices, [this, &aux_id]() { return std::format("OneTouch ({}): Failed to create a new Auxillary Device for aux id: {}", DeviceId(), magic_enum::enum_name(aux_id.value())); });
 			}
 			else
 			{
-				aux_ptr = aux_collection.front();
+				aux_ptr = temp_ptr.value();
+				newly_created = true;
 			}
 
 			if (nullptr == aux_ptr)
@@ -657,6 +656,9 @@ namespace AqualinkAutomate::Devices
 			}
 			else
 			{
+				// Grant the aux identity to a cache-restored placeholder (which lacks it), then
+				// apply the custom label.
+				Auxillaries::EnsureAuxIdentity(aux_ptr, aux_id.value());
 				aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, aux_custom_label);
 
 				// If this device was newly created (not found in graph), add it now
@@ -665,6 +667,10 @@ namespace AqualinkAutomate::Devices
 					LogDebug(Channel::Devices, [this, &aux_custom_label, &aux_id]() { return std::format("OneTouch ({}): Adding newly created Auxillary Device with custom label '{}' for aux id: {}", DeviceId(), aux_custom_label, magic_enum::enum_name(aux_id.value())); });
 					JandyController::m_DataHub->Devices.Add(aux_ptr);
 				}
+
+				// Drop any legacy label-only cache placeholder now superseded by this device
+				// (one-time cleanup when upgrading from a pre-stable-id cache).
+				Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_custom_label, aux_ptr);
 			}
 		}
 	}

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <optional>
 #include <vector>
 
 #include <boost/asio/error.hpp>
@@ -67,6 +68,10 @@ namespace AqualinkAutomate::EquipmentCache
 			{
 				d["body_of_water"] = std::string{ magic_enum::enum_name(*(device->AuxillaryTraits[Traits::BodyOfWaterTrait{}])) };
 			}
+			if (device->AuxillaryTraits.Has(Traits::HardwareLabelTrait{}))
+			{
+				d["hardware_id"] = std::string{ *(device->AuxillaryTraits[Traits::HardwareLabelTrait{}]) };
+			}
 
 			devices.push_back(std::move(d));
 		}
@@ -105,26 +110,39 @@ namespace AqualinkAutomate::EquipmentCache
 			if (!d.contains("label") || !d["label"].is_string()) { continue; }
 			const std::string label = d["label"].get<std::string>();
 
-			// Merge by label: never duplicate a device live discovery already made.
-			if (!m_DataHub->Devices.FindByLabel(label).empty()) { continue; }
-
-			std::shared_ptr<Kernel::AuxillaryDevice> device;
+			// Reconstruct the (stable) id up front so we can dedup on identity, not label.
+			// A cached device and a live-discovered device for the same hardware share a
+			// deterministic id (see DeriveStableUuid), so id is the reliable key; with
+			// distinct ids per aux, same-label devices are each restored rather than
+			// collapsed into one. Fall back to label only when no id was persisted.
+			std::optional<boost::uuids::uuid> id;
 			if (d.contains("id") && d["id"].is_string())
 			{
 				try
 				{
 					boost::uuids::string_generator gen;
-					device = std::make_shared<Kernel::AuxillaryDevice>(gen(d["id"].get<std::string>()));
+					id = gen(d["id"].get<std::string>());
 				}
 				catch (const std::exception&)
 				{
-					device = std::make_shared<Kernel::AuxillaryDevice>();
+					// Malformed id: treat as no-id (dedup by label, fresh random id).
 				}
 			}
-			else
+
+			// Skip if this identity is already present (live discovery ran first, or a
+			// duplicate cache entry).
+			if (id.has_value())
 			{
-				device = std::make_shared<Kernel::AuxillaryDevice>();
+				if (nullptr != m_DataHub->Devices.FindById(id.value())) { continue; }
 			}
+			else if (!m_DataHub->Devices.FindByLabel(label).empty())
+			{
+				continue;
+			}
+
+			auto device = id.has_value()
+				? std::make_shared<Kernel::AuxillaryDevice>(id.value())
+				: std::make_shared<Kernel::AuxillaryDevice>();
 
 			device->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
 
@@ -141,6 +159,10 @@ namespace AqualinkAutomate::EquipmentCache
 				{
 					device->AuxillaryTraits.Set(Traits::BodyOfWaterTrait{}, body.value());
 				}
+			}
+			if (d.contains("hardware_id") && d["hardware_id"].is_string())
+			{
+				device->AuxillaryTraits.Set(Traits::HardwareLabelTrait{}, d["hardware_id"].get<std::string>());
 			}
 
 			m_DataHub->Devices.Add(std::move(device));
@@ -238,6 +260,11 @@ namespace AqualinkAutomate::EquipmentCache
 			if (device->AuxillaryTraits.Has(Traits::AuxillaryTypeTrait{}))
 			{
 				part += std::string{ magic_enum::enum_name(*(device->AuxillaryTraits[Traits::AuxillaryTypeTrait{}])) };
+			}
+			part += '/';
+			if (device->AuxillaryTraits.Has(Traits::HardwareLabelTrait{}))
+			{
+				part += std::string{ *(device->AuxillaryTraits[Traits::HardwareLabelTrait{}]) };
 			}
 			device_parts.push_back(std::move(part));
 		}

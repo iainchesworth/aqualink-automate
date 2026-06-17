@@ -16,11 +16,9 @@ namespace AqualinkAutomate::Factory
 
 	class JandyAuxillaryFactory
 	{
-		inline static const std::string AUX_PREFIX { "Aux" };
 		inline static const std::string AQUAPURE { "AquaPure" };
 		inline static const std::string CHLORINATOR { "Chlorinator" };
 		inline static const std::string CLEANER { "Cleaner" };
-		inline static const std::string EXTRA_AUX { "Extra Aux" };
 		inline static const std::string HEAT { "Heat" };
 		inline static const std::string HEATER { "Heater" };
 		inline static const std::string PUMP { "Pump" };

@@ -6,6 +6,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "http/webroute_equipment_buttons.h"
+#include "http/json/json_equipment.h"
 #include "http/server/parse_query_string.h"
 #include "http/server/server_fields.h"
 #include "http/server/responses/response_405.h"
@@ -49,22 +50,31 @@ namespace AqualinkAutomate::HTTP
 
 		// User-friendly display names keyed by canonical label (empty if none).
 		const nlohmann::json label_overrides = m_PreferencesHub ? m_PreferencesHub->LabelOverrides : nlohmann::json::object();
+		const bool show_aux_id = m_PreferencesHub && m_PreferencesHub->ShowAuxIdInLabel;
 
 		const auto all_devices = m_DataHub->Devices.FindByTrait(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{});
-		std::for_each(all_devices.begin(), all_devices.end(), [&buttons, &label_overrides](const auto& device)
+		std::for_each(all_devices.begin(), all_devices.end(), [&buttons, &label_overrides, show_aux_id](const auto& device)
 			{
 				nlohmann::json button;
 
 				button["id"] = boost::uuids::to_string(device->Id());
+
+				// The protocol-native short id ("Aux5"), if known - lets the UI show
+				// "friendly name (aux id)" and resolve a device by its hardware label.
+				std::string hardware_id;
+				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::HardwareLabelTrait{}))
+				{
+					hardware_id = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::HardwareLabelTrait{}]);
+					button["hardware_id"] = hardware_id;
+				}
 
 				if (device->AuxillaryTraits.Has(Kernel::AuxillaryTraitsTypes::LabelTrait{}))
 				{
 					const std::string label = *(device->AuxillaryTraits[Kernel::AuxillaryTraitsTypes::LabelTrait{}]);
 					button["label"] = label;
 
-					// display_label = override for this canonical label, else the label.
-					const auto it = label_overrides.is_object() ? label_overrides.find(label) : label_overrides.end();
-					button["display_label"] = (it != label_overrides.end() && it->is_string()) ? it->get<std::string>() : label;
+					// display_label = override (else canonical label), optionally + " (Aux5)".
+					button["display_label"] = HTTP::JSON::ComputeDisplayLabel(label, hardware_id, label_overrides, show_aux_id);
 				}
 				
 				if (Kernel::AuxillaryTraitsTypes::HasStatus(device))

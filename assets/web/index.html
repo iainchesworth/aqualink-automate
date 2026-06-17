@@ -1357,6 +1357,10 @@
                         Friendly dashboard names for auxiliaries. Blank keeps the original; the underlying
                         control name (commands, MQTT, Home Assistant) is unchanged.
                     </p>
+                    <div class="settings-field">
+                        <label for="show-aux-id">Show aux id in names (e.g. "Pool Light (Aux5)")</label>
+                        <input id="show-aux-id" type="checkbox" x-model="showAuxIdInLabel" @change="saveShowAuxId()">
+                    </div>
                     <template x-if="deviceButtons().length > 0">
                         <div>
                             <template x-for="button in deviceButtons()" :key="button.id">

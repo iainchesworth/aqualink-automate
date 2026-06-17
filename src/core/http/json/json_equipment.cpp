@@ -11,7 +11,18 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::HTTP::JSON
 {
 
-	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub, const nlohmann::json& label_overrides)
+	std::string ComputeDisplayLabel(const std::string& canonical_label, const std::string& hardware_id, const nlohmann::json& label_overrides, bool show_aux_id_in_label)
+	{
+		const auto it = label_overrides.is_object() ? label_overrides.find(canonical_label) : label_overrides.end();
+		std::string display = (it != label_overrides.end() && it->is_string()) ? it->get<std::string>() : canonical_label;
+		if (show_aux_id_in_label && !hardware_id.empty())
+		{
+			display += std::format(" ({})", hardware_id);
+		}
+		return display;
+	}
+
+	nlohmann::json GenerateJson_Equipment_Devices(const std::shared_ptr<Kernel::DataHub>& data_hub, const nlohmann::json& label_overrides, bool show_aux_id_in_label)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("JSON::GenerateJson_Equipment_Devices", std::source_location::current());
 		LogTrace(Channel::Web, "Generating equipment devices JSON");
@@ -22,17 +33,19 @@ namespace AqualinkAutomate::HTTP::JSON
 		nlohmann::json pumps;
 
 		// Stamp a display_label onto the most-recently-pushed device: the user
-		// override for its canonical label, or the canonical label itself. The
-		// canonical "label" is left untouched (it still drives dispatch/MQTT/HA).
-		auto stamp_display_label = [&label_overrides](nlohmann::json& device_array)
+		// override for its canonical label, or the canonical label itself, optionally
+		// suffixed with the aux id. The canonical "label" is left untouched (it still
+		// drives dispatch/MQTT/HA).
+		auto stamp_display_label = [&label_overrides, show_aux_id_in_label](nlohmann::json& device_array)
 		{
 			if (device_array.empty() || !device_array.back().contains("label") || !device_array.back()["label"].is_string())
 			{
 				return;
 			}
 			const std::string label = device_array.back()["label"].get<std::string>();
-			const auto it = label_overrides.is_object() ? label_overrides.find(label) : label_overrides.end();
-			device_array.back()["display_label"] = (it != label_overrides.end() && it->is_string()) ? it->get<std::string>() : label;
+			const std::string hardware_id = (device_array.back().contains("hardware_id") && device_array.back()["hardware_id"].is_string())
+				? device_array.back()["hardware_id"].get<std::string>() : std::string{};
+			device_array.back()["display_label"] = ComputeDisplayLabel(label, hardware_id, label_overrides, show_aux_id_in_label);
 		};
 
 		std::size_t aux_count{ 0 };

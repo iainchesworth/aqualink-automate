@@ -10,6 +10,8 @@ add_library(libaqualink-jandy)
 target_sources( 
 	libaqualink-jandy
 	PRIVATE
+	auxillaries/jandy_auxillary_id.cpp
+	auxillaries/jandy_auxillary_reconciliation.cpp
 	concepts/jandy_message_type.cpp
 	devices/aquarite_device.cpp
 	devices/command_dispatcher.cpp

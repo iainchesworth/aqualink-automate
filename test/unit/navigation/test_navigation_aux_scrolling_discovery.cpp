@@ -14,10 +14,13 @@
 #include "navigation/visit_policies.h"
 #include "utility/screen_data_page.h"
 
+#include "jandy/auxillaries/jandy_auxillary_id.h"
+#include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 
@@ -622,6 +625,46 @@ BOOST_AUTO_TEST_CASE(Replay_PowerCenterDAuxDetailPage_RegistersDevice)
 	BOOST_CHECK_EQUAL(harness.StatisticsHub()->MessageErrors.ChecksumFailures, 0u);
 	BOOST_CHECK_MESSAGE(DataHubHasAuxLabel(harness, "Deck Jets"),
 		"Power center D aux (Aux D8) was not registered with its custom label after replay");
+
+	onetouch.reset();
+}
+
+// Regression for the reported bug: after the equipment cache restores an aux placeholder at
+// boot, live discovery must reconcile WITH it (by stable id) rather than create a duplicate.
+// Pre-fix the cache stored only the label (no Jandy aux id), so the LabelAux reconcile-by-
+// aux-id missed it and a second "Swim Jet" was added.
+BOOST_AUTO_TEST_CASE(Replay_LabelAux_AfterCacheRestore_DoesNotDuplicate)
+{
+	Test::MockReplayHarness harness;
+
+	auto device_id = std::make_shared<Devices::JandyDeviceType>(Devices::JandyDeviceId(ONETOUCH_TEST_DEVICE_ID));
+	auto onetouch = std::make_shared<Devices::OneTouchDevice>(device_id, harness.HubLocatorRef(), false);
+
+	// Simulate the cache-restored placeholder: stable id + custom label + hardware id, but NO
+	// Jandy aux-id trait (the cache is protocol-agnostic and cannot persist it).
+	auto phantom = std::make_shared<Kernel::AuxillaryDevice>(Auxillaries::AuxStableId(Auxillaries::JandyAuxillaryIds::Aux_B1));
+	phantom->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryTypeTrait{}, Kernel::AuxillaryTraitsTypes::AuxillaryTypes::Auxillary);
+	phantom->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, std::string{ "Swim Jet" });
+	phantom->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::HardwareLabelTrait{}, std::string{ "Aux B1" });
+	harness.DataHub()->Devices.Add(phantom);
+
+	// Live discovery scrapes the Label Aux B1 page assigning the SAME custom label.
+	ReplayLabelAuxDetailPage(harness, {
+		{ 0x0, "  Label Aux B1  " },
+		{ 0x2, " Current Label  " },
+		{ 0x3, "   Swim Jet     " },
+		{ 0x5, "General Labels >" },
+		{ 0x6, "Light   Labels >" },
+		{ 0x7, "Wtrfall Labels >" },
+	});
+
+	// Exactly ONE "Swim Jet" must remain (the reconciled placeholder), not two.
+	BOOST_CHECK_EQUAL(harness.DataHub()->Devices.CountByLabel("Swim Jet"), 1u);
+
+	// ...and it now carries the aux identity, so it can be actuated.
+	auto matches = harness.DataHub()->Devices.FindByLabel("Swim Jet");
+	BOOST_REQUIRE_EQUAL(matches.size(), 1u);
+	BOOST_CHECK(matches.front()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
 
 	onetouch.reset();
 }

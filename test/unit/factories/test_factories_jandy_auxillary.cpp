@@ -2,6 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "jandy/auxillaries/jandy_auxillary_id.h"
 #include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/factories/jandy_auxillary_factory.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
@@ -19,7 +20,53 @@ BOOST_AUTO_TEST_CASE(Instance_Test)
     BOOST_TEST(&instance1 == &instance2);
 }
 
-BOOST_AUTO_TEST_CASE(SerialAdapterDevice_CreateDevice_Test) 
+BOOST_AUTO_TEST_CASE(CreateDevice_AuxHasDeterministicIdAndHardwareLabel)
+{
+    Factory::JandyAuxillaryFactory& factory = Factory::JandyAuxillaryFactory::Instance();
+
+    auto a = factory.SerialAdapterDevice_CreateDevice(Auxillaries::JandyAuxillaryIds::Aux_5);
+    auto b = factory.SerialAdapterDevice_CreateDevice(Auxillaries::JandyAuxillaryIds::Aux_5);
+    BOOST_TEST_REQUIRE(a.has_value());
+    BOOST_TEST_REQUIRE(b.has_value());
+
+    // Same aux id -> SAME deterministic id, so a cache-restored device and a live-discovered
+    // device for the same aux reconcile to one identity.
+    BOOST_CHECK(a.value()->Id() == b.value()->Id());
+    BOOST_CHECK(a.value()->Id() == Auxillaries::AuxStableId(Auxillaries::JandyAuxillaryIds::Aux_5));
+
+    // Different aux id -> different id.
+    auto c = factory.SerialAdapterDevice_CreateDevice(Auxillaries::JandyAuxillaryIds::Aux_6);
+    BOOST_TEST_REQUIRE(c.has_value());
+    BOOST_CHECK(a.value()->Id() != c.value()->Id());
+
+    // The immutable hardware label carries the canonical aux-id form.
+    BOOST_TEST_REQUIRE(a.value()->AuxillaryTraits.Has(AuxillaryTraitsTypes::HardwareLabelTrait{}));
+    BOOST_CHECK_EQUAL(std::string{ *(a.value()->AuxillaryTraits.Get(AuxillaryTraitsTypes::HardwareLabelTrait{})) }, "Aux5");
+}
+
+// Variant spellings that the old length-gate rejected must now create an aux device. Rows
+// are exactly 16 chars wide (the OneTouch screen width the state converter requires).
+BOOST_AUTO_TEST_CASE(OneTouchDevice_CreateDevice_AcceptsAuxIdVariants)
+{
+    Factory::JandyAuxillaryFactory& factory = Factory::JandyAuxillaryFactory::Instance();
+
+    const std::vector<std::string> rows =
+    {
+        std::string{ "Aux 5" } + std::string(8, ' ') + "OFF",   // 5 + 8 + 3 = 16
+        std::string{ "AuxB1" } + std::string(9, ' ') + "ON",    // 5 + 9 + 2 = 16
+    };
+
+    for (const auto& row : rows)
+    {
+        BOOST_TEST_REQUIRE(row.size() == 16u);
+        Utility::AuxillaryStateStringConverter state{ row };
+        auto dev = factory.OneTouchDevice_CreateDevice(state);
+        BOOST_TEST_REQUIRE(dev.has_value());
+        BOOST_TEST(dev.value()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(SerialAdapterDevice_CreateDevice_Test)
 {
     Factory::JandyAuxillaryFactory& factory = Factory::JandyAuxillaryFactory::Instance();
 

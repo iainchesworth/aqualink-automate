@@ -490,6 +490,7 @@ paths:
                 alert: { salt_low_ppm: 2600, comms_timeout_seconds: 60, webhook_url: "" }
                 history: { retention_days: 90 }
                 label_overrides: { "Aux1": "Pool Light", "Aux2": "Waterfall" }
+                show_aux_id_in_label: false
                 ui: { chemistryBands: {} }
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -502,8 +503,11 @@ paths:
         (when --preferences-file is set). Ranges enforced: salt_low_ppm 0..6000
         (0 disables), comms_timeout_seconds > 0, retention_days > 0, webhook_url
         empty or absolute http/https, temperature_units Celsius|Fahrenheit,
-        label_overrides an object of canonical-label -> friendly-name strings. A
-        single invalid field rejects the whole request (nothing is applied).
+        label_overrides an object of canonical-label -> friendly-name strings,
+        show_aux_id_in_label a boolean (when true the display name is suffixed with
+        the protocol aux id, e.g. "Pool Light (Aux5)"; affects display only, not the
+        canonical label used for dispatch/MQTT/Home Assistant). A single invalid
+        field rejects the whole request (nothing is applied).
       operationId: updatePreferences
       requestBody:
         required: true
@@ -1623,8 +1627,17 @@ components:
           type: string
           description: >
             User-facing name to show in UIs: the preferences label_overrides entry
-            for this canonical label, or the canonical label itself when none is set.
+            for this canonical label, or the canonical label itself when none is set,
+            optionally suffixed with the aux id ("Pool Light (Aux5)") when the
+            show_aux_id_in_label preference is enabled.
           example: "Pool Light"
+        hardware_id:
+          type: string
+          description: >
+            The protocol-native short id of the device ("Aux5"), when known. Present for
+            Jandy auxiliaries; absent for devices without a hardware aux id. Lets a UI show
+            "friendly name (aux id)" and resolve a device by its hardware label.
+          example: "Aux5"
         controllable:
           type: boolean
           description: >
@@ -1691,7 +1704,19 @@ components:
           description: Unique identifier for the device
         label:
           type: string
-          description: Human-readable label for the device
+          description: Canonical label for the device (drives command dispatch, MQTT and Home Assistant)
+        display_label:
+          type: string
+          description: >
+            User-facing name to show in UIs: the preferences label_overrides entry
+            for this canonical label, or the canonical label itself when none is set,
+            optionally suffixed with the aux id ("Pool Light (Aux5)") when the
+            show_aux_id_in_label preference is enabled.
+        hardware_id:
+          type: string
+          description: >
+            The protocol-native short id of the device ("Aux5"), when known. Present for
+            Jandy auxiliaries; absent for devices without a hardware aux id.
         state:
           type: string
           description: Current state of the device (same values as Button status)

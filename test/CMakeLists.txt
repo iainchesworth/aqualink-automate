@@ -12,6 +12,7 @@ target_sources(
 	PRIVATE
 	unit/test_main.cpp
 	unit/application/test_application_defaults.cpp
+	unit/auxillaries/test_jandy_auxillary_id.cpp
 	unit/concepts/test_concept_is_c_array.cpp
 	unit/equipment_cache/test_equipment_cache_service.cpp
 	unit/errors/test_error_categories.cpp
@@ -30,6 +31,7 @@ target_sources(
 	unit/generators/test_jandy_message_generator.cpp 
 	unit/http/test_api_equipment.cpp
 	unit/http/test_api_metrics.cpp
+	unit/http/test_display_label.cpp
 	unit/http/test_http_chlorinator.cpp
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_recording.cpp

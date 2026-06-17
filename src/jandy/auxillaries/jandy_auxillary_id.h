@@ -1,5 +1,10 @@
 #pragma once
 
+#include <optional>
+#include <string>
+#include <string_view>
+
+#include <boost/uuid/uuid.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 namespace AqualinkAutomate::Auxillaries
@@ -44,6 +49,19 @@ namespace AqualinkAutomate::Auxillaries
 
 		ExtraAux = 0x00
 	};
+
+	// Parse a human / screen-scraped aux-id label into the canonical enum, tolerant of the
+	// no-space vs single-space bank forms and interior-whitespace scraping artefacts:
+	// "Aux5", "Aux 5", "AuxB1", "Aux B1", "Aux  B1", "Extra Aux", "ExtraAux" all resolve.
+	// Returns nullopt for non-aux strings ("Pool Light", "pool light", "Aux11", "Aux E1").
+	std::optional<JandyAuxillaryIds> ParseAuxId(std::string_view label);
+
+	// The protocol-native key ("jandy:aux:<n>") and the deterministic stable device UUID
+	// derived from it. Keyed on the enum's INTEGER value so every spelling of an aux maps to
+	// ONE identity. Used by the factory (at device creation) and by every reconciliation site
+	// so a cache-restored device and a live-discovered device for the same aux share identity.
+	std::string AuxNativeKey(JandyAuxillaryIds id);
+	boost::uuids::uuid AuxStableId(JandyAuxillaryIds id);
 
 }
 // namespace AqualinkAutomate::Auxillaries

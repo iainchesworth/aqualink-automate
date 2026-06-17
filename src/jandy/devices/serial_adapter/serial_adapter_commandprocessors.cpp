@@ -3,6 +3,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "auxillaries/jandy_auxillary_id.h"
+#include "auxillaries/jandy_auxillary_reconciliation.h"
 #include "auxillaries/jandy_auxillary_traits_types.h"
 #include "devices/serial_adapter_device.h"
 #include "factories/jandy_auxillary_factory.h"
@@ -89,28 +91,20 @@ namespace AqualinkAutomate::Devices
 		std::shared_ptr<Kernel::AuxillaryDevice> aux_ptr(nullptr);
 
 		//
-		// Find (or create) a device that matches this auxillary.
+		// Find (or create) a device that matches this auxillary, reconciling by the stable id
+		// derived from the aux id (matches a cache-restored placeholder regardless of label).
 		//
 
-		auto auxillaries = JandyController::m_DataHub->Devices.FindByTrait(Auxillaries::JandyAuxillaryId{});
-
-		auto aux_has_id = [&aux_id](auto& potential_match) -> bool
+		if (auto existing = JandyController::m_DataHub->Devices.FindById(Auxillaries::AuxStableId(aux_id)); nullptr != existing)
 		{
-			if (nullptr == potential_match || !potential_match->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
-			{
-				return false;
-			}
-			return (*(potential_match->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]) == aux_id);
-		};
-
-		if (auto auxillary_it = std::find_if(auxillaries.begin(), auxillaries.end(), aux_has_id); auxillaries.end() != auxillary_it)
-		{
-			aux_ptr = *auxillary_it;
+			aux_ptr = existing;
+			// Grant the aux identity to a cache-restored placeholder (which lacks it).
+			Auxillaries::EnsureAuxIdentity(aux_ptr, aux_id);
 		}
 		else if (auto new_aux_ptr = Factory::JandyAuxillaryFactory::Instance().SerialAdapterDevice_CreateDevice(aux_id, status); new_aux_ptr.has_value())
 		{
 			JandyController::m_DataHub->Devices.Add(new_aux_ptr.value());
-			aux_ptr = new_aux_ptr.value();			
+			aux_ptr = new_aux_ptr.value();
 		}
 		else
 		{

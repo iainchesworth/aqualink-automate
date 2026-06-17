@@ -62,6 +62,13 @@ namespace AqualinkAutomate::Kernel
 			json_payload["body_of_water"] = std::string(magic_enum::enum_name(*(device.AuxillaryTraits[AuxillaryTraitsTypes::BodyOfWaterTrait{}])));
 		}
 
+		// The protocol-native short id ("Aux5") - exposed so the UI can show
+		// "friendly name (aux id)" and resolve a device by its hardware label.
+		if (device.AuxillaryTraits.Has(AuxillaryTraitsTypes::HardwareLabelTrait{}))
+		{
+			json_payload["hardware_id"] = std::string{ *(device.AuxillaryTraits[AuxillaryTraitsTypes::HardwareLabelTrait{}]) };
+		}
+
 		j = json_payload;
 	}
 

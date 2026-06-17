@@ -64,6 +64,16 @@ namespace AqualinkAutomate::Kernel::AuxillaryTraitsTypes
 		TraitKey Name() const final { return std::string{"LabelTrait"}; }
 	};
 
+	// The protocol-native short identity label for a device (e.g. "Aux5"), as opposed to
+	// the user-facing LabelTrait (which may be a friendly name like "Pool Light"). Immutable
+	// because it reflects the hardware address, not a name the user can change. Carries the
+	// aux id to layers (core cache, web display) that cannot see protocol-specific traits.
+	class HardwareLabelTrait : public ImmutableTraitType<const std::string>
+	{
+	public:
+		TraitKey Name() const final { return std::string{"HardwareLabelTrait"}; }
+	};
+
 	class StatusTrait : public ImmutableTraitType<const std::string>
 	{
 	public:
