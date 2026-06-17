@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -62,6 +63,7 @@ namespace AqualinkAutomate::History
 		{
 			std::string key;
 			std::string unit;
+			std::string label;   // friendly display name (device series); empty for analog
 			std::int64_t first_ts{ 0 };
 			std::int64_t last_ts{ 0 };
 			std::int64_t count{ 0 };
@@ -89,13 +91,23 @@ namespace AqualinkAutomate::History
 		void RecordNumeric(const std::string& key, const std::string& unit, double value, bool is_heartbeat = false);
 		// Record a device-state transition (never throttled, no heartbeat).
 		void RecordState(const std::string& key, double value);
+		// Record a device-state transition keyed by the button's stable identity,
+		// carrying the (mutable) friendly label as series metadata. The canonical
+		// key is the button UUID so a device that gets relabelled mid-session
+		// (e.g. "Aux5" -> "Pool Light") never produces two series. Public for tests.
+		void RecordDeviceState(const std::string& key, const std::string& label, double value);
 
 		void SetClock(ClockFn clock) { m_Clock = std::move(clock); }
 
 	private:
 		void OnConfigEvent(const std::shared_ptr<Kernel::DataHub_ConfigEvent>& event);
 		void SampleCurrentState(bool is_heartbeat);
-		std::int64_t EnsureSeries(const std::string& key, const std::string& unit);
+		std::int64_t EnsureSeries(const std::string& key, const std::string& unit, const std::string& label = {});
+		// Add the `label` column to pre-existing databases (idempotent).
+		void MigrateSchema();
+		// Fold a legacy label-keyed device series into the UUID-keyed series, then
+		// drop the legacy row. No-op when the legacy series does not exist.
+		void MergeLegacyDeviceSeries(const std::string& legacy_key, std::int64_t target_id);
 		void ScheduleFlush();
 		void ScheduleHeartbeat();
 		void SchedulePurge();
@@ -112,6 +124,13 @@ namespace AqualinkAutomate::History
 
 		// key -> series row id (cache so we insert each series once).
 		std::map<std::string, std::int64_t> m_SeriesIds;
+
+		// key -> last persisted label, so a relabel updates the row only on change.
+		std::map<std::string, std::string> m_SeriesLabels;
+
+		// Legacy device-series keys whose merge has already been attempted, so the
+		// one-time fold runs at most once per (legacy-key) per process.
+		std::set<std::string> m_DeviceMergeChecked;
 
 		// Throttle bookkeeping: key -> last buffered sample timestamp.
 		std::map<std::string, std::int64_t> m_LastSampleTs;

@@ -353,9 +353,15 @@ paths:
               examples:
                 seriesList:
                   summary: Series list (no key)
+                  description: >
+                    Each entry carries a `label` (friendly display name). Device
+                    series are keyed by the stable button UUID (`device/<uuid>`)
+                    and carry their current label; analog series (temperatures,
+                    chemistry, SWG) use an empty label.
                   value:
-                    - { key: "temp/pool", unit: "C", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
-                    - { key: "chem/salt_ppm", unit: "ppm", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                    - { key: "temp/pool", unit: "C", label: "", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                    - { key: "chem/salt_ppm", unit: "ppm", label: "", first_ts: 1717000000, last_ts: 1717003600, count: 60 }
+                    - { key: "device/4b8c1e2a-7f3d-4a9b-bc10-2f5e6d7a8b90", unit: "state", label: "Pool Light", first_ts: 1717000000, last_ts: 1717003600, count: 18 }
                 points:
                   summary: Downsampled points (with key)
                   value:

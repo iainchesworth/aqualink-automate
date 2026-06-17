@@ -30,7 +30,7 @@ test('Trends lists series and renders the chart when history is on', async ({ pa
   await page.waitForTimeout(4000);
   await page.locator('.nav-link', { hasText: 'Trends' }).click();
 
-  // At least one series toggle appears and the chart canvas is present.
-  await expect(page.locator('.trends-series-toggle').first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('.trends-chart-wrap canvas')).toBeVisible();
+  // At least one metric chip appears and the chart canvas is present.
+  await expect(page.locator('.trends-chip').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.trends-chart-card canvas')).toBeVisible();
 });
