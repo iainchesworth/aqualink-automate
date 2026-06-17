@@ -440,7 +440,7 @@ int main(int argc, char* argv[])
 		std::shared_ptr<Jandy::Startup::JandyStartupService> jandy_startup_service;
 		if (auto jandy_result = settings.Get<Jandy::Options::JandySettings>(); jandy_result && jandy_result.value().get().auto_startup)
 		{
-			jandy_startup_service = std::make_shared<Jandy::Startup::JandyStartupService>(io_context, hub_locator);
+			jandy_startup_service = std::make_shared<Jandy::Startup::JandyStartupService>(io_context, hub_locator, std::chrono::seconds{ jandy_result.value().get().chlorinator_setpoint_refresh_interval });
 			jandy_startup_service->Start();
 		}
 

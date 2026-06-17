@@ -230,6 +230,16 @@ namespace AqualinkAutomate::Devices
 		device->AuxillaryTraits.Set(GeneratingPercentageTrait{}, clamped_percentage);
 		device->AuxillaryTraits.Set(BoostModeTrait{}, msg.IsBoostMode() ? Kernel::ChlorinatorBoostModes::Boost : Kernel::ChlorinatorBoostModes::Off);
 		device->AuxillaryTraits.Set(DutyCycleTrait{}, clamped_percentage);
+
+		// Passive fallback for the dashboard target: remember the last REAL, non-zero
+		// generating % - a genuine setpoint while the cell runs - so the configured value
+		// survives the cell going idle (0x11 -> 0) when no authoritative menu scrape is
+		// available.  Boost (101) and Service (255) are sentinels, not setpoints, so they
+		// are excluded; a non-boost, non-service value in 1..100 is a real output %.
+		if (!msg.IsBoostMode() && !msg.IsServiceMode() && clamped_percentage >= 1)
+		{
+			device->AuxillaryTraits.Set(ChlorinatorLastGeneratingTrait{}, clamped_percentage);
+		}
 	}
 
 	AquariteDevice::PPM AquariteDevice::MedianFilteredSalt(PPM raw_sample)

@@ -89,6 +89,11 @@ namespace AqualinkAutomate::Jandy::Options
 			}
 		}
 
+		if (OPTION_CHLORINATORSETPOINTREFRESH->IsPresent(vm))
+		{
+			settings.chlorinator_setpoint_refresh_interval = OPTION_CHLORINATORSETPOINTREFRESH->As<std::uint32_t>(vm);
+		}
+
 		if (!OPTION_EMULATEDDEVICETYPE->IsPresent(vm))
 		{
 			// No explicit device types specified — use default set.

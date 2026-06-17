@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <optional>
 
 #include <nlohmann/json.hpp>
 #include <magic_enum/magic_enum.hpp>
@@ -47,6 +48,39 @@ namespace AqualinkAutomate::HTTP
 			chlorinator["health"] = device->AuxillaryTraits.Has(ChlorinatorHealthTrait{})
 				? nlohmann::json(std::string{ magic_enum::enum_name(*(device->AuxillaryTraits[ChlorinatorHealthTrait{}])) })
 				: nlohmann::json(std::string{ magic_enum::enum_name(Kernel::ChlorinatorHealth::Unknown) });
+
+			// Configured Pool / Spa output setpoints (scraped from the Set AquaPure menu),
+			// distinct from generating_percent (the instantaneous output, 0 while idle).
+			const auto pool_setpoint = device->AuxillaryTraits.Has(ChlorinatorPoolSetpointTrait{})
+				? std::optional<uint8_t>(static_cast<uint8_t>(*(device->AuxillaryTraits[ChlorinatorPoolSetpointTrait{}])))
+				: std::nullopt;
+			const auto spa_setpoint = device->AuxillaryTraits.Has(ChlorinatorSpaSetpointTrait{})
+				? std::optional<uint8_t>(static_cast<uint8_t>(*(device->AuxillaryTraits[ChlorinatorSpaSetpointTrait{}])))
+				: std::nullopt;
+			const auto last_generating = device->AuxillaryTraits.Has(ChlorinatorLastGeneratingTrait{})
+				? std::optional<uint8_t>(static_cast<uint8_t>(*(device->AuxillaryTraits[ChlorinatorLastGeneratingTrait{}])))
+				: std::nullopt;
+
+			chlorinator["pool_setpoint_percent"] = pool_setpoint.has_value() ? nlohmann::json(pool_setpoint.value()) : nlohmann::json{};
+			chlorinator["spa_setpoint_percent"] = spa_setpoint.has_value() ? nlohmann::json(spa_setpoint.value()) : nlohmann::json{};
+
+			// Headline target = the configured setpoint of whichever body is currently active
+			// (spa vs pool), falling back to the other body's value, then to the passive
+			// last-known generating %, so the dashboard always shows a meaningful target.
+			bool spa_active = false;
+			for (const auto& body : data_hub->Bodies())
+			{
+				if (body.IsActive() && body.Id() == Kernel::BodyOfWaterIds::Spa) { spa_active = true; break; }
+			}
+
+			std::optional<uint8_t> resolved_setpoint;
+			if (spa_active && spa_setpoint.has_value()) { resolved_setpoint = spa_setpoint; }
+			else if (!spa_active && pool_setpoint.has_value()) { resolved_setpoint = pool_setpoint; }
+			else if (pool_setpoint.has_value()) { resolved_setpoint = pool_setpoint; }   // active body unknown -> prefer pool
+			else if (spa_setpoint.has_value()) { resolved_setpoint = spa_setpoint; }
+			else { resolved_setpoint = last_generating; }                                // passive fallback
+
+			chlorinator["setpoint_percent"] = resolved_setpoint.has_value() ? nlohmann::json(resolved_setpoint.value()) : nlohmann::json{};
 
 			return chlorinator;
 		}

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <memory>
 
 #include "logging/logging.h"
@@ -102,7 +103,11 @@ namespace AqualinkAutomate::Jandy
 				switch (controller_type)
 				{
 				case Devices::JandyEmulatedDeviceTypes::OneTouch:
-					equipment_hub->AddDevice(std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true));
+					{
+						auto onetouch = std::make_unique<Devices::OneTouchDevice>(device_id, hub_locator, true);
+						onetouch->EnableChlorinatorSetpointRefresh(std::chrono::seconds{ jandy_settings.chlorinator_setpoint_refresh_interval });
+						equipment_hub->AddDevice(std::move(onetouch));
+					}
 					break;
 
 				case Devices::JandyEmulatedDeviceTypes::RS_Keypad:

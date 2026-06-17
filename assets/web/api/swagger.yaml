@@ -1849,6 +1849,30 @@ components:
                   maximum: 100
                   description: Chlorinator duty cycle percentage (0-100)
                   example: 50
+                pool_setpoint_percent:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Configured Pool output setpoint percentage (0-100), scraped from the Set AquaPure menu; null until known
+                  example: 45
+                spa_setpoint_percent:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: Configured Spa output setpoint percentage (0-100), scraped from the Set AquaPure menu; null until known
+                  example: 50
+                setpoint_percent:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  description: >-
+                    Headline configured output setpoint percentage for the currently active body of water
+                    (resolves to pool_setpoint_percent or spa_setpoint_percent; falls back to the last-known
+                    generating percentage when no menu scrape is available). Null when no setpoint is known.
+                  example: 45
                 status:
                   type: string
                   description: Chlorinator operating status
