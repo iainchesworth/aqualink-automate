@@ -189,7 +189,7 @@ Presents as **AutoClear / AquaPure / AquaRite** (resource strings `0x2aec0`); fi
   | `0x00` | poll / keep-alive | |
   | `0x11` | **set output %** — `data[1]` = percent (0–100, 101=boost, 255=service) | confirms project |
   | `0x14` | **Get ID / model** — replies with identity ("AquaRite"/"AquaPure"/"BOOST") | confirms project |
-  | `0x15` | output-% variant (handled like `0x11`) | **not previously in project notes** |
+  | `0x15` | output-% variant — same handler as `0x11` (`0x401683`), but the sim stores `data[1]÷10` into its value field (`0x40169a`: `idiv 10`) rather than `data[1]` verbatim | **not previously in project notes** |
 
 * **Outbound response** (`0x401540`, via `RemoteStatus`): `0x12` idle (3 B) when offline;
   **`0x16`** (`AQUARITE_PPM`) 5-byte when active = `[0x16][saltPPM÷100][status-bits][16-bit]`.
@@ -197,6 +197,30 @@ Presents as **AutoClear / AquaPure / AquaRite** (resource strings `0x2aec0`); fi
   - `payload[2]` is a **bit-packed status byte** (`0x4015b6`) — the `AquariteStatuses` enum is a
     true bitfield, one flag per bit.
   - `payload[3..4]` = a 16-bit field (`+0x90`) — **new**; identify on a capture.
+
+* **No "get output level / setpoint" command — verified exhaustive (instruction-level).** The
+  inbound dispatcher `0x4015dd` is the SWG's *only* master-message handler (`GetMasterMessage` has
+  a single call site). It reads the command byte (`0x40160d`: `mov bl,[edi]`) and routes it through
+  a subtract-chain that matches **exactly four** opcodes — `0x00`, `0x11`, `0x14`, `0x15` — and
+  `jmp`s every other value straight to the epilogue with **no reply** (`0x401628`→`0x4016f2`, which
+  `xor eax,eax; ret 8`). None of the four queries the chlorinator's current output %:
+  - `0x00` → 3-byte idle keep-alive (`0x12`, buffer `+0xb1`, `0x4016d8`);
+  - `0x11`/`0x15` → the salt-PPM + status frame (`0x16` built by `0x401540`) — it reports salt and
+    status bits, **never the output %**;
+  - `0x14` → the 18-byte model-identity string ("AquaRite"/"AquaPure"/"BOOST", `0x40162d`).
+
+  So the output level is **master-PUSH-only**: the controller *sets* it (`0x11`/`0x15`) and the SWG
+  never echoes, stores-for-readback, or reports it. There is **no SWG-side wire command to read the
+  configured Pool/Spa setpoint** — confirmed against the official Rev T.0.1 vendor simulator.
+
+  > **Implication for aqualink-automate.** Reading the *configured* chlorinator setpoint can only be
+  > done by navigating the OneTouch/iAQ menu to the **Set AquaPure** page and screen-scraping it
+  > (`OneTouchDevice::PageProcessor_SetAquapure`, Pool % = line 3 / Spa % = line 4), with proactive
+  > re-acquisition driven by `Devices::ChlorinatorSetpointRefresh`
+  > (`src/jandy/devices/chlorinator_setpoint_refresh.h`). A direct SWG query is **not** an available
+  > alternative — this RE rules it out at the instruction level. The live `AQUARITE_Percent` (0x11)
+  > the app already decodes is the master's *push*, i.e. the instantaneous output (0 while idle), not
+  > a value the SWG can be asked for.
 
 ---
 
