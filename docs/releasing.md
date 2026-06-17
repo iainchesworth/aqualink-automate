@@ -60,6 +60,15 @@ Before creating a release:
 3. Example configs in `examples/` are current.
 4. Release notes are reviewed. The `github-release` job seeds the release body with `gh release create --generate-notes` (a flat list of merged PRs / commits since the previous tag) — treat that as a **first draft only**. Make sure [CHANGELOG.md](../CHANGELOG.md) and the PR titles read well (they feed the draft), then **curate the published body to the project's established pattern** — this is a required step, described under [Post-release](#post-release).
 5. Run a local build to verify version output: `./aqualink-automate --version`.
+6. Decide the version tag. You don't have to compute the SemVer bump by hand: the `develop` → `main` release PR gets an automatic **suggested next tag** comment (the `Suggest Version` workflow runs `scripts/next-version.sh`, which classifies the Conventional Commits being published and applies the 0.x policy below). Run the same script locally any time with `scripts/next-version.sh` (or `--markdown` / `--tag`). The suggestion is **advisory** — you still choose the tag and push it; nothing is auto-tagged.
+
+   | Highest-impact change | Bump (while 0.x) |
+   |-----------------------|------------------|
+   | `feat`, or a breaking change (`type!:` / `BREAKING CHANGE:`) | MINOR (`0.3.x` → `0.4.0`) |
+   | `fix`, `perf` | PATCH (`0.3.0` → `0.3.1`) |
+   | `docs`, `ci`, `chore`, `refactor`, `test`, `style`, `build` | not release-worthy on their own |
+
+   Within an in-progress prerelease line, advancing the counter (`-beta.N` → `-beta.N+1`) carries the accumulated changes toward the same target; starting a **new** minor line is the human "the release line advances" decision the suggester surfaces but never makes for you. (`1.0.0` is reserved for the first stable, so breaking changes bump the minor until then.)
 
 ### Run the test suites by label
 
