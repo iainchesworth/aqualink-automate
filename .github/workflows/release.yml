@@ -190,6 +190,7 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve-version.outputs.version_tag }}
             type=raw,value=latest,enable=${{ needs.resolve-version.outputs.is_prerelease != 'true' }}
+            type=raw,value=edge,enable=${{ needs.resolve-version.outputs.is_prerelease == 'true' }}
 
       # Stage the prebuilt Linux install tree (built + version-stamped by
       # build-packages on the Ubuntu-25.04 runner) into the build context so the
