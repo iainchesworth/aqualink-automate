@@ -153,7 +153,7 @@ Additionally:
 - **Checksums**: `.sha512` files for every package (`CPACK_PACKAGE_CHECKSUM SHA512`).
 - **Bundled runtime libraries**: the vcpkg-provided shared libraries ship inside each package (private lib dir with RPATH/loader-path), so the binary runs without a separate dependency install.
 - **Example configs**: the `examples/*.conf` files are bundled in each package.
-- **Docker image**: Published to `ghcr.io/<owner>/aqualink-automate` (the `latest` tag is only applied to non-prereleases).
+- **Docker image**: Published to `ghcr.io/<owner>/aqualink-automate`. A stable release also moves the `latest` tag; a prerelease moves the `edge` tag instead. Both carry the exact `<version>` tag (e.g. `0.3.0-beta.2`); prereleases do not move the `<major>.<minor>` tag.
 
 These packages are produced by CPack via the matching `pack-*` presets. `pack-*` presets exist only for the **Release** configure presets (those with no `-debug`/`-coverage` suffix), so swap the `config-` prefix for `pack-` only on a Release preset — for example `config-linux-gcc` → `pack-linux-gcc`. See [INSTALL.md](../INSTALL.md) for the local pack-* preset workflow.
 
