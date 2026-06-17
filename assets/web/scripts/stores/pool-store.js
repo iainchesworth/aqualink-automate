@@ -23,6 +23,15 @@
 // command waits before it is considered timed out.
 const COMMAND_STATE_CLEAR_MS = 3000;
 const COMMAND_SENDING_TIMEOUT_MS = 5000;
+// After the server accepts a button command (HTTP 200), the equipment has NOT
+// changed yet — the command still has to traverse the RS-485 bus, the controller
+// has to actuate the relay, and the new state has to be decoded back and pushed as
+// a 'ButtonStateChange'. We hold the command 'sending' until that authoritative
+// confirmation arrives, or until this (longer) window elapses and we surface an
+// honest 'timedout'. Sized for the controller round-trip (the RSSA status-poll
+// rotation / a OneTouch menu re-scrape); tune if confirmations routinely arrive
+// later than this on real hardware.
+const COMMAND_CONFIRM_TIMEOUT_MS = 20000;
 
 // Re-fetch interval when the buttons endpoint reports it is not yet ready.
 const BUTTONS_RETRY_MS = 5000;
@@ -280,6 +289,12 @@ document.addEventListener('alpine:init', () => {
                             const updates = { status: msg.payload.status };
                             if (msg.payload.label) updates.label = msg.payload.label;
                             this.buttons[idx] = { ...this.buttons[idx], ...updates };
+                            // If a command for this button was in flight, the controller has
+                            // now reported the resulting state — confirm it as 'applied'
+                            // (this is the authoritative success signal, not the HTTP 200).
+                            if (this.commandStates[msg.payload.button_id]?.state === 'sending') {
+                                this._setCommandState(msg.payload.button_id, 'applied');
+                            }
                         } else {
                             // New button discovered — re-fetch to get full data (device_type, etc.)
                             this._fetchButtons();
@@ -299,21 +314,23 @@ document.addEventListener('alpine:init', () => {
             this.commandStates = rest;
         },
 
-        _setCommandState(key, state) {
+        _setCommandState(key, state, sendingTimeoutMs = COMMAND_SENDING_TIMEOUT_MS) {
             const prev = this.commandStates[key];
             if (prev?.timer) clearTimeout(prev.timer);
 
             let timer;
             if (state === 'sending') {
-                // In-flight command: if it has not resolved by the timeout,
-                // surface a distinct 'timedout' state (then auto-clear it).
+                // In-flight command: if it has not resolved by the timeout (either no
+                // HTTP response, or — after a 200 — no authoritative ButtonStateChange
+                // confirming the controller actually changed the equipment), surface a
+                // distinct 'timedout' state (then auto-clear it).
                 timer = setTimeout(() => {
                     if (this.commandStates[key]?.state === 'sending') {
-                        console.warn(`Command '${key}' timed out after ${COMMAND_SENDING_TIMEOUT_MS}ms`);
-                        Alpine.store('toast').show('Command timed out — no response from server', 'warn');
+                        console.warn(`Command '${key}' timed out after ${sendingTimeoutMs}ms`);
+                        Alpine.store('toast').show('Command timed out — no confirmation received from the controller', 'warn');
                         this.commandStates = { ...this.commandStates, [key]: { state: 'timedout', timer: this._scheduleClear(key) } };
                     }
-                }, COMMAND_SENDING_TIMEOUT_MS);
+                }, sendingTimeoutMs);
             } else {
                 // Terminal state ('applied'/'rejected'/'blocked'/'timedout'): auto-clear.
                 timer = this._scheduleClear(key);
@@ -428,18 +445,17 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
-                let data = null;
-                try { data = await resp.json(); } catch (_) { /* tolerate empty/non-JSON body */ }
-                // Apply the optimistic status only when the server actually
-                // reported one; otherwise leave the existing status untouched
-                // rather than overwriting it with undefined.
-                if (data && data.status != null) {
-                    const idx = this.buttons.findIndex(b => b.id === id);
-                    if (idx !== -1) {
-                        this.buttons[idx] = { ...this.buttons[idx], status: data.status };
-                    }
-                }
-                this._setCommandState(id, 'applied');
+                // HTTP 200 means the controller ACCEPTED the command for transmission, NOT
+                // that the equipment has changed yet. The response body's status is the
+                // PRE-toggle state, so we deliberately do NOT paint it as the new status and
+                // do NOT mark the command 'applied' here — doing so was the optimistic bug
+                // that showed false success when a command silently did nothing. Instead we
+                // keep the command in-flight ('sending') and wait for the authoritative
+                // 'ButtonStateChange' WS event to confirm the real new state (-> 'applied').
+                // If no confirmation arrives within COMMAND_CONFIRM_TIMEOUT_MS the command
+                // honestly resolves to 'timedout'.
+                try { await resp.json(); } catch (_) { /* body intentionally ignored */ }
+                this._setCommandState(id, 'sending', COMMAND_CONFIRM_TIMEOUT_MS);
             } catch (e) {
                 console.error('Failed to toggle button:', e);
                 this._setCommandState(id, 'rejected');

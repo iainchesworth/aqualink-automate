@@ -335,6 +335,19 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
+		// Operating-state gate: ScrapingFaulted / FaultHasOccurred are unrecoverable dead-end
+		// states (the on-screen state is unknown and the per-frame service step that drains a
+		// queued goal runs ONLY in NormalOperation). Queuing here would strand the goal forever
+		// while the caller is told it succeeded. Refuse honestly with NotSupported so the
+		// dispatcher can fall back (or surface the failure) instead of a false Accepted. Transient
+		// startup states (ColdStart/StartUp/Scraping) are intentionally NOT blocked: the goal is
+		// serviced as soon as scraping completes (or the watchdog forces NormalOperation).
+		if (OperatingStates::ScrapingFaulted == m_OpState || OperatingStates::FaultHasOccurred == m_OpState)
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): controller is in fault state {} - cannot actuate equipment", DeviceId(), magic_enum::enum_name(m_OpState)));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
 		if (!label.has_value() || Utility::TrimWhitespace(label.value()).empty())
 		{
@@ -597,6 +610,14 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
+		// Dead-end fault states never run the value-edit service step (NormalOperation only), so
+		// a queued edit would be stranded. Refuse honestly rather than returning a false Accepted.
+		if (OperatingStates::ScrapingFaulted == m_OpState || OperatingStates::FaultHasOccurred == m_OpState)
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): controller is in fault state {} - cannot edit {}", DeviceId(), magic_enum::enum_name(m_OpState), goal.desc));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
 		// One goal at a time: reject while any goal is mid-navigation so two cursor walks
 		// never interleave on the single shared Navigator.
 		if (GoalInProgress())
@@ -616,6 +637,14 @@ namespace AqualinkAutomate::Devices
 		if (!IsEmulationActive())
 		{
 			LogWarning(Channel::Devices, std::format("OneTouch ({}): Not actively emulating - cannot {} boost", DeviceId(), enable ? "start" : "stop"));
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// Dead-end fault states never run the boost service step (NormalOperation only), so a
+		// queued boost would be stranded. Refuse honestly rather than returning a false Accepted.
+		if (OperatingStates::ScrapingFaulted == m_OpState || OperatingStates::FaultHasOccurred == m_OpState)
+		{
+			LogWarning(Channel::Devices, std::format("OneTouch ({}): controller is in fault state {} - cannot {} boost", DeviceId(), magic_enum::enum_name(m_OpState), enable ? "start" : "stop"));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 

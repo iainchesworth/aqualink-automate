@@ -216,6 +216,10 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action)
 	{
+		// LEGACY byte order {ack_type = devID, data = state} -- NOT used by ActuateDevice anymore
+		// (the master does not recognise it as a set command). Production aux toggles go through
+		// QueueAuxToggleWrite() which emits AqualinkD's {state, devID} setDev frame. Retained only
+		// for the lower-level queue/sequencing unit tests; do not use for new actuation paths.
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing aux command ({}, action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
 		QueueCommand(magic_enum::enum_integer(aux_id) + Messages::SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET, magic_enum::enum_integer(action));
 	}
@@ -236,6 +240,20 @@ namespace AqualinkAutomate::Devices
 		if (!IsEmulationActive())
 		{
 			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot actuate equipment");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// Deliverability gate: an emulated adapter can only put command bytes on the wire when
+		// the master is actively polling our address -- every poll/probe Kick()s the watchdog and
+		// drives ProcessControllerUpdates, which is what drains the pending-command queue. Once no
+		// poll has arrived within the watchdog window IsRunning() is false (the RS Serial Adapter
+		// is an optional add-on many systems never poll), so a queued command would sit forever,
+		// never transmitted, while the caller is told it succeeded. Report NotSupported so the
+		// CommandDispatcher falls back to a controller the master IS polling (e.g. an emulated
+		// OneTouch), instead of this adapter silently swallowing the command.
+		if (!IsRunning())
+		{
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice ({}): master is not polling this adapter's address - cannot actuate; deferring to another controller", DeviceId()));
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
@@ -282,8 +300,14 @@ namespace AqualinkAutomate::Devices
 		if (device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
 		{
 			auto aux_id = *(device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
-			LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating aux command for {} (action=0x{:02x})", magic_enum::enum_name(aux_id), magic_enum::enum_integer(action)));
-			QueueAuxCommand(aux_id, action);
+			const bool turn_on{ action == SerialAdapter_CommandTypes::SetOn };
+			LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Actuating aux command for {} ({})", magic_enum::enum_name(aux_id), turn_on ? "ON" : "OFF"));
+			// Emit AqualinkD's validated setDev frame {state, devID} via QueueAuxToggleWrite.
+			// The older QueueAuxCommand emitted the bytes in the REVERSE order {devID, state},
+			// which the master does not recognise as an aux set command (its state byte 0x80/0x81
+			// is the recognised command code, and the device id belongs in the data byte - mirroring
+			// the aux STATUS query, which already sends {ack_type=0x00, data=devID}).
+			QueueAuxToggleWrite(aux_id, turn_on);
 			return Capabilities::ActuationResult::Accepted;
 		}
 
@@ -432,16 +456,17 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on)
 	{
-		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, aux on/off toggle).
+		// AUX ON/OFF WRITE (AqualinkD source/serialadapter.c, setDev). This is the aux-toggle
+		// frame ActuateDevice() emits for a hardware aux.
 		//   setDev[] = {0x00, 0x01, state, devID}, state = RS_SA_ON(0x81)/OFF(0x80).
 		//   -> ACK {ack_type = state, data = devID(aux + SERIALADAPTER_AUX_ID_OFFSET)}
 		//
-		// NOTE the byte ORDER differs from the existing QueueAuxCommand() (which
-		// sends {ack_type = devID, data = state}). AqualinkD's setDev puts the state
-		// in the command byte and the device id in the value byte. This ordering is
-		// AqualinkD-derived and NOT yet validated on this project's live bus -- it is
-		// proven only by synthetic round-trip tests here and MUST be reconciled
-		// against a live Brainboxes capture before it is used to drive hardware.
+		// NOTE the byte ORDER is the REVERSE of the legacy QueueAuxCommand() (which sent
+		// {ack_type = devID, data = state}); AqualinkD puts the state in the command byte and
+		// the device id in the value byte, matching the aux STATUS query ({ack_type = 0x00,
+		// data = devID}). The legacy order is not recognised by the master as a set command.
+		// This {state, devID} order is AqualinkD-derived; it is being confirmed on a live bus
+		// (2026-06-17) -- if that test refutes it, revert ActuateDevice to the other order.
 		const uint8_t state{ static_cast<uint8_t>(turn_on ? Messages::SerialAdapter_CommandTypes::SetOn : Messages::SerialAdapter_CommandTypes::SetOff) };
 		const uint8_t dev_id{ static_cast<uint8_t>(magic_enum::enum_integer(aux_id) + Messages::SerialAdapterMessage_DevStatus::SERIALADAPTER_AUX_ID_OFFSET) };
 

@@ -145,6 +145,12 @@ namespace AqualinkAutomate::Devices
 		// for direct unit testing of the picker compare.
 		static std::string SanitiseFunctionText(const std::string& raw);
 
+	protected:
+		// Test seam: force the unrecoverable ScrapingFaulted operating state so a test can verify
+		// that actuation is refused (NotSupported) rather than falsely accepted while the
+		// controller is in a fault. Not used in production code.
+		void ForceScrapingFaultedForTest() { m_OpState = OperatingStates::ScrapingFaulted; }
+
 	private:
 		void ProcessControllerUpdates() override;
 		void ProcessControllerUpdates(bool is_status_message);
