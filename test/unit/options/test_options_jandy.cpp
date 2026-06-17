@@ -193,4 +193,38 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DefaultIds_Assigned)
 	BOOST_CHECK_EQUAL(devices[1].second.Id()(), 0x41);  // Default OneTouch id
 }
 
+//=============================================================================
+// CHLORINATOR SETPOINT REFRESH INTERVAL (--chlorinator-setpoint-refresh-interval)
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_ChlorinatorSetpointRefresh_DefaultsTo300)
+{
+	auto result = RunFullPipeline({ "program" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK_EQUAL(jandy.value().get().chlorinator_setpoint_refresh_interval, 300u);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_ChlorinatorSetpointRefresh_ExplicitValue)
+{
+	auto result = RunFullPipeline({ "program", "--chlorinator-setpoint-refresh-interval", "120" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK_EQUAL(jandy.value().get().chlorinator_setpoint_refresh_interval, 120u);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_ChlorinatorSetpointRefresh_ZeroDisables)
+{
+	auto result = RunFullPipeline({ "program", "--chlorinator-setpoint-refresh-interval", "0" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK_EQUAL(jandy.value().get().chlorinator_setpoint_refresh_interval, 0u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

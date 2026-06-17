@@ -291,6 +291,70 @@ BOOST_AUTO_TEST_CASE(CheckAquaPure_Line_SetsHealthGeneralFault)
 BOOST_AUTO_TEST_SUITE_END()
 
 // =============================================================================
+// OneTouch "Set AquaPure" page — configured Pool / Spa setpoint scrape.
+//
+// The page shows the CONFIGURED output setpoints (distinct from the instantaneous
+// AQUARITE_Percent output): Pool % on line 3, Spa % on line 4 (verified vs
+// onetouch_chlorinator.cap; see SETAQUAPURE_POOL_LINE / SETAQUAPURE_SPA_LINE).
+// Reaching the page proves an SWG is installed, so the processor also creates the
+// chlorinator auxillary if the AquaRite wire path has not already.
+// =============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(PageProcessor_SetAquapure_TestSuite, Test::OneTouchDevice)
+
+namespace
+{
+	// A 12-line "Set AQUAPURE" page (line 0 is the title that routes to
+	// PageProcessor_SetAquapure) carrying the Pool % on line 3 and Spa % on line 4.
+	Test::OneTouchDevice::TestPage MakeSetAquapurePage(const std::string& pool_line, const std::string& spa_line)
+	{
+		return Test::OneTouchDevice::TestPage
+		{
+			{ 0x0, "Set AQUAPURE    " },
+			{ 0x1, "                " },
+			{ 0x2, "                " },
+			{ 0x3, pool_line          },
+			{ 0x4, spa_line           },
+			{ 0x5, "                " },
+			{ 0x6, "                " },
+			{ 0x7, "                " },
+			{ 0x8, "                " },
+			{ 0x9, "                " },
+			{ 0xA, "                " },
+			{ 0xB, "                " }
+		};
+	}
+}
+
+// The configured Pool % (line 3) and Spa % (line 4) are scraped onto the chlorinator
+// device, and the chlorinator auxillary is created from the scrape when none exists yet.
+BOOST_AUTO_TEST_CASE(SetAquapure_ScrapesPoolAndSpaSetpoints)
+{
+	using namespace Kernel::AuxillaryTraitsTypes;
+
+	LoadAndSignalTestPage(MakeSetAquapurePage("Set Pool to:  45%", "Set Spa to:   50%"));
+
+	auto chlorinators = DataHub().Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+
+	auto& device = chlorinators.front();
+
+	auto label = device->AuxillaryTraits.TryGet(LabelTrait{});
+	BOOST_REQUIRE(label.has_value());
+	BOOST_CHECK_EQUAL(label.value(), std::string{ "AquaPure" });
+
+	auto pool = device->AuxillaryTraits.TryGet(ChlorinatorPoolSetpointTrait{});
+	BOOST_REQUIRE(pool.has_value());
+	BOOST_CHECK_EQUAL(pool.value(), static_cast<uint8_t>(45));
+
+	auto spa = device->AuxillaryTraits.TryGet(ChlorinatorSpaSetpointTrait{});
+	BOOST_REQUIRE(spa.has_value());
+	BOOST_CHECK_EQUAL(spa.value(), static_cast<uint8_t>(50));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
 // PageProcessor_System - home-page temperatures parsed by area, not line (OBS-04)
 //
 // The home page lists temperatures labelled by area ("Air"/"Pool"/"Spa"); the line

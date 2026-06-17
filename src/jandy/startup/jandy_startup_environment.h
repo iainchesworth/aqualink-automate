@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <set>
@@ -34,7 +35,7 @@ namespace AqualinkAutomate::Jandy::Startup
 	class JandyStartupEnvironment : public IStartupEnvironment
 	{
 	public:
-		explicit JandyStartupEnvironment(Kernel::HubLocator& hub_locator);
+		explicit JandyStartupEnvironment(Kernel::HubLocator& hub_locator, std::chrono::seconds chlorinator_setpoint_refresh_interval = std::chrono::seconds{ 300 });
 
 	public:
 		void EmulateDevice(Devices::JandyEmulatedDeviceTypes type, std::uint8_t id, std::string_view role) override;
@@ -54,6 +55,7 @@ namespace AqualinkAutomate::Jandy::Startup
 		Kernel::HubLocator& m_HubLocator;
 		std::shared_ptr<Kernel::EquipmentHub> m_EquipmentHub;
 		std::shared_ptr<Kernel::DataHub> m_DataHub;
+		std::chrono::seconds m_ChlorinatorSetpointRefreshInterval{ 300 };  // applied to an emulated OneTouch in EmulateDevice
 
 		std::set<std::uint8_t> m_ProbedIds;     // addresses the master probed (cmd 0x00)
 		std::set<std::uint8_t> m_RespondedIds;  // addresses a device answered from

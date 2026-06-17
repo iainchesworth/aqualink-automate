@@ -5,12 +5,21 @@
  *
  * Commands go via POST /api/equipment/chlorinator (ICommandDispatcher::
  * SetChlorinatorPercentage / SetChlorinatorBoost, which the backend turns into
- * iAQ panel navigation). The target slider seeds from the live actual output
- * until the user grabs it, then submits on "Set".
+ * iAQ panel navigation). The target slider seeds from the live CONFIGURED setpoint
+ * (chlorinator.setpoint_percent) until the user grabs it, then submits on "Set".
+ * "SWG Output" still shows the instantaneous generating %, which is 0 while idle.
  */
 function chlorinatorControl() {
+    // Instantaneous reported output (the "SWG Output" gauge); 0 while the cell is idle.
     function actualNum() {
         const v = Alpine.store('pool').swgGeneratingPercent;
+        const n = (v === '--' || v == null) ? NaN : Number(v);
+        return isNaN(n) ? null : Math.max(0, Math.min(100, Math.round(n)));
+    }
+
+    // Configured output setpoint for the active body (what the Target slider should show).
+    function setpointNum() {
+        const v = Alpine.store('pool').swgSetpointPercent;
         const n = (v === '--' || v == null) ? NaN : Number(v);
         return isNaN(n) ? null : Math.max(0, Math.min(100, Math.round(n)));
     }
@@ -31,8 +40,13 @@ function chlorinatorControl() {
         get actual() { const n = actualNum(); return n == null ? 0 : n; },
         get actualLabel() { const n = actualNum(); return n == null ? '--' : (n + '%'); },
 
-        // Target differs from actual => "Set" is meaningful.
-        get changed() { return Number(this.target) !== this.actual; },
+        // "Set" is meaningful when the target differs from the configured setpoint
+        // (or, until that is known, the live actual output).
+        get changed() {
+            const ref = setpointNum();
+            const base = (ref == null) ? this.actual : ref;
+            return Number(this.target) !== base;
+        },
 
         // Health -> colour + band + label.
         get healthColor() {
@@ -56,13 +70,14 @@ function chlorinatorControl() {
         },
 
         init() {
-            // The actual output usually arrives on the ~2s poll AFTER this mounts,
-            // so keep the target slider tracking the live value until the user grabs it.
-            if (!this._seed()) {
-                this._timer = setInterval(() => {
-                    if (this.touched || this._seed()) { clearInterval(this._timer); this._timer = null; }
-                }, 1000);
-            }
+            // Track the live CONFIGURED setpoint into the target slider until the user grabs
+            // it. The setpoint usually arrives on a poll AFTER this mounts, and can update
+            // later (e.g. a fresh menu scrape), so keep re-seeding rather than latching once.
+            this._seed();
+            this._timer = setInterval(() => {
+                if (this.touched) { clearInterval(this._timer); this._timer = null; return; }
+                this._seed();
+            }, 1000);
         },
 
         destroy() {
@@ -71,7 +86,7 @@ function chlorinatorControl() {
 
         _seed() {
             if (this.touched) { return true; }
-            const n = actualNum();
+            const n = setpointNum();
             if (n == null) { return false; }
             this.target = n;
             return true;

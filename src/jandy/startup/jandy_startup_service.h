@@ -21,7 +21,7 @@ namespace AqualinkAutomate::Jandy::Startup
 	class JandyStartupService
 	{
 	public:
-		JandyStartupService(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator);
+		JandyStartupService(boost::asio::io_context& io_context, Kernel::HubLocator& hub_locator, std::chrono::seconds chlorinator_setpoint_refresh_interval = std::chrono::seconds{ 300 });
 		~JandyStartupService();
 
 	public:

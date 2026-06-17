@@ -8,6 +8,7 @@
 #include "devices/device_status.h"
 #include "devices/onetouch_device.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "formatters/jandy_device_formatters.h"
 #include "kernel/body_of_water.h"
 #include "kernel/body_of_water_ids.h"
@@ -190,6 +191,7 @@ namespace AqualinkAutomate::Devices
 			ValueEdit_ProcessStep();
 			Boost_ProcessStep();
 			SpaSwitchEdit_ProcessStep();
+			SetpointRefresh_ProcessStep();
 			break;
 		}
 
@@ -243,6 +245,10 @@ namespace AqualinkAutomate::Devices
 			// so the device is at least partially functional.
 			LogWarning(Channel::Devices, std::format("OneTouch({}) : Abandoning scraping due to watchdog timeout -> entering NormalOperation", DeviceId()));
 			ValidateDiscoveredEquipment();
+			// Startup discovery is over (degraded): allow periodic refresh, but do NOT seed the
+			// timer - the timed-out crawl may never have reached Set AquaPure, so let the first
+			// periodic re-scrape happen promptly to recover the configured setpoint.
+			m_RefreshState.MarkStartupComplete();
 			m_OpState = OperatingStates::NormalOperation;
 			m_ScrapingStallCounter = 0;
 			Status(Devices::DeviceStatus_Normal{});
@@ -454,7 +460,109 @@ namespace AqualinkAutomate::Devices
 			|| m_BoostInProgress
 			|| m_PendingBoost.has_value()
 			|| m_SpaSwitchEditInProgress
-			|| m_PendingSpaSwitchEdit.has_value();
+			|| m_PendingSpaSwitchEdit.has_value()
+			|| m_RefreshInProgress;
+	}
+
+	void OneTouchDevice::EnableChlorinatorSetpointRefresh(std::chrono::seconds interval)
+	{
+		m_RefreshState.Configure(interval);
+		LogInfo(Channel::Devices, std::format("OneTouch ({}): Chlorinator setpoint refresh {} (interval {}s)",
+			DeviceId(), m_RefreshState.IsEnabled() ? "enabled" : "disabled", interval.count()));
+	}
+
+	bool OneTouchDevice::DataHubChlorinatorOnline() const
+	{
+		if (!JandyController::m_DataHub)
+		{
+			return false;
+		}
+
+		using namespace Kernel::AuxillaryTraitsTypes;
+
+		auto chlorinators = JandyController::m_DataHub->Chlorinators();
+		if (chlorinators.empty())
+		{
+			return false;
+		}
+
+		const auto& device = chlorinators.front();
+		if (!device->AuxillaryTraits.Has(ChlorinatorStatusTrait{}))
+		{
+			return false;
+		}
+
+		const auto status = *(device->AuxillaryTraits[ChlorinatorStatusTrait{}]);
+		return (status != Kernel::ChlorinatorStatuses::Off) && (status != Kernel::ChlorinatorStatuses::Unknown);
+	}
+
+	void OneTouchDevice::SetpointRefresh_ProcessStep()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("OneTouchDevice::SetpointRefresh_ProcessStep", std::source_location::current());
+
+		if (!m_SpiderEngine || !m_Navigator)
+		{
+			return;
+		}
+
+		// Drive an in-flight read-only refresh crawl (visit Set AquaPure so its page processor
+		// re-scrapes the configured %, then let the controller time out back to its default screen).
+		if (m_RefreshInProgress)
+		{
+			if (++m_RefreshStepCount > ONETOUCH_SETPOINT_REFRESH_STEP_LIMIT)
+			{
+				LogDebug(Channel::Scraping, std::format("OneTouch ({}): setpoint refresh exceeded step limit - abandoning", DeviceId()));
+				m_Navigator->Reset();
+				m_RefreshInProgress = false;
+				m_RefreshState.NotifyScrapeFinished(std::chrono::steady_clock::now());
+				return;
+			}
+
+			const auto nav_cmd = m_SpiderEngine->ProcessStep(DisplayedPage(), m_HighlightedLine);
+			const auto state = m_SpiderEngine->GetState();
+
+			if (state == Navigation::SpiderEngine::State::Complete || state == Navigation::SpiderEngine::State::Failed)
+			{
+				LogDebug(Channel::Scraping, std::format("OneTouch ({}): setpoint refresh crawl {} ({} pages visited)",
+					DeviceId(),
+					(state == Navigation::SpiderEngine::State::Complete) ? "complete" : "failed",
+					m_SpiderEngine->GetVisitedPages().size()));
+				m_Navigator->Reset();
+				m_RefreshInProgress = false;
+				m_RefreshState.NotifyScrapeFinished(std::chrono::steady_clock::now());
+				return;
+			}
+
+			if (nav_cmd.has_value())
+			{
+				m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+			}
+			return;
+		}
+
+		// Not in progress: decide whether to start a refresh this tick. The decision struct
+		// applies all the gating (enabled / configured / actively emulating / menu free / startup
+		// finished / interval-or-recovery), so a passive or busy device never navigates.
+		if (m_RefreshState.Evaluate(IsEmulationActive(), GoalInProgress(), DataHubChlorinatorOnline(), std::chrono::steady_clock::now()) != ChlorinatorSetpointRefresh::Action::Scrape)
+		{
+			return;
+		}
+
+		LogInfo(Channel::Scraping, std::format("OneTouch ({}): starting read-only Set AquaPure setpoint refresh", DeviceId()));
+
+		auto policy = std::make_unique<Navigation::TargetedVisitPolicy>(
+			std::set<Navigation::PageId>{ Navigation::PageId::SetAquapure });
+		m_SpiderEngine->StartCrawl(std::move(policy));
+		m_RefreshInProgress = true;
+		m_RefreshStepCount = 0;
+		m_RefreshState.NotifyScrapeStarted(std::chrono::steady_clock::now());
+
+		// Drive the first step immediately (mirrors Scraping_ProcessStep_StartUp).
+		const auto nav_cmd = m_SpiderEngine->ProcessStep(DisplayedPage(), m_HighlightedLine);
+		if (nav_cmd.has_value())
+		{
+			m_KeyCommand_ToSend = ConvertNavKeyCommand(nav_cmd.value());
+		}
 	}
 
 	Capabilities::ActuationResult OneTouchDevice::SetPoolSetpoint(uint8_t temperature)
@@ -1184,6 +1292,19 @@ namespace AqualinkAutomate::Devices
 				DeviceId(), m_SpiderEngine->GetVisitedPages().size()));
 			ReportMenuSurvey();
 			ValidateDiscoveredEquipment();
+
+			// The startup crawl already visited Set AquaPure (its page processor scraped the
+			// configured %), so mark startup complete and seed the refresh timer from now - the
+			// first periodic re-scrape is then a full interval away rather than immediate. If the
+			// crawl could not reach Set AquaPure, there is no chlorinator on this panel, so disable
+			// periodic refresh entirely (it would only ever fail).
+			if (m_SpiderEngine->GetFailedPages().contains(Navigation::PageId::SetAquapure))
+			{
+				m_RefreshState.Disable();
+			}
+			m_RefreshState.MarkStartupComplete();
+			m_RefreshState.NotifyScrapeFinished(std::chrono::steady_clock::now());
+
 			m_Navigator->Reset();
 			m_OpState = OperatingStates::NormalOperation;
 			Status(Devices::DeviceStatus_Normal{});

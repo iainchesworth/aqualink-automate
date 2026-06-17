@@ -4,7 +4,9 @@
  * REST API field mapping:
  *   /api/equipment          → temperatures, chemistry, buttons, devices, stats, version
  *                             chemistry = { salt_ppm, orp_mv, ph,
- *                                           chlorinator: { generating_percent, duty_cycle, status, health } }
+ *                                           chlorinator: { generating_percent, duty_cycle,
+ *                                                          pool_setpoint_percent, spa_setpoint_percent,
+ *                                                          setpoint_percent, status, health } }
  *   /api/equipment/buttons  → { buttons: [{ id, label, status }] }
  *   /api/equipment/version  → { fields: [{ label, value }], model_number, fw_revision }
  *   /api/version            → { software_version: { name, version, description, homepage }, git_info: { ... } }
@@ -63,6 +65,12 @@ document.addEventListener('alpine:init', () => {
         chlorinatorPresent: false,
         swgGeneratingPercent: '--',
         swgDutyCycle: '--',
+        // Configured output setpoint(s) — distinct from the instantaneous generating %.
+        // swgSetpointPercent is the headline target for the active body; pool/spa are the
+        // per-body configured values. A setpoint of 0 is valid (treated as known, not '--').
+        swgSetpointPercent: '--',
+        swgPoolSetpoint: '--',
+        swgSpaSetpoint: '--',
         chlorinatorStatus: '--',
         chlorinatorHealth: '--',
 
@@ -143,6 +151,10 @@ document.addEventListener('alpine:init', () => {
                         this.chlorinatorPresent = true;
                         this.swgGeneratingPercent = (swg.generating_percent != null) ? swg.generating_percent : '--';
                         this.swgDutyCycle = (swg.duty_cycle != null) ? swg.duty_cycle : '--';
+                        // Setpoints may legitimately be 0, so test against null only.
+                        this.swgSetpointPercent = (swg.setpoint_percent != null) ? swg.setpoint_percent : '--';
+                        this.swgPoolSetpoint = (swg.pool_setpoint_percent != null) ? swg.pool_setpoint_percent : '--';
+                        this.swgSpaSetpoint = (swg.spa_setpoint_percent != null) ? swg.spa_setpoint_percent : '--';
                         this.chlorinatorStatus = swg.status || '--';
                         this.chlorinatorHealth = swg.health || '--';
                     } else {

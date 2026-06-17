@@ -6,6 +6,7 @@
 
 #include "devices/capabilities/emulated.h"
 #include "devices/iaq_device.h"
+#include "devices/onetouch_device.h"
 #include "devices/iaq/iaq_page_registry.h"
 #include "devices/jandy_device_id.h"
 #include "devices/jandy_device_types.h"
@@ -24,10 +25,11 @@ using namespace AqualinkAutomate::Logging;
 namespace AqualinkAutomate::Jandy::Startup
 {
 
-	JandyStartupEnvironment::JandyStartupEnvironment(Kernel::HubLocator& hub_locator)
+	JandyStartupEnvironment::JandyStartupEnvironment(Kernel::HubLocator& hub_locator, std::chrono::seconds chlorinator_setpoint_refresh_interval)
 		: m_HubLocator(hub_locator)
 		, m_EquipmentHub(hub_locator.Find<Kernel::EquipmentHub>())
 		, m_DataHub(hub_locator.Find<Kernel::DataHub>())
+		, m_ChlorinatorSetpointRefreshInterval(chlorinator_setpoint_refresh_interval)
 	{
 		// Observe the master's discovery probes (cmd 0x00) -- the controller-type signal.
 		if (auto probe_signal = Messages::JandyMessage_Probe::GetSignal())
@@ -95,6 +97,16 @@ namespace AqualinkAutomate::Jandy::Startup
 				if (auto* iaq_device = dynamic_cast<Devices::IAQDevice*>(device.get()); iaq_device != nullptr)
 				{
 					iaq_device->EnablePageSurvey(Devices::IAQ::DefaultAqualinkTouchRegistry());
+				}
+			}
+
+			// An emulated OneTouch can proactively re-scrape the configured chlorinator setpoint
+			// from the Set AquaPure menu -- arm its periodic refresh with the configured interval.
+			if (type == Devices::JandyEmulatedDeviceTypes::OneTouch)
+			{
+				if (auto* onetouch_device = dynamic_cast<Devices::OneTouchDevice*>(device.get()); onetouch_device != nullptr)
+				{
+					onetouch_device->EnableChlorinatorSetpointRefresh(m_ChlorinatorSetpointRefreshInterval);
 				}
 			}
 
