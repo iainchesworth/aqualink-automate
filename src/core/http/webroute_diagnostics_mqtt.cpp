@@ -52,6 +52,7 @@ namespace AqualinkAutomate::HTTP
 			json["broker_host"] = s.broker_host;
 			json["broker_port"] = s.broker_port;
 			json["tls"] = s.use_tls;
+			json["protocol_version"] = std::string{ Options::Mqtt::ToString(s.protocol_version) };
 			json["topic_prefix"] = s.topic_prefix;
 			json["client_id"] = client->ClientId();
 			json["home_assistant_enabled"] = s.home_assistant_enabled;

@@ -1,5 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
+#include <boost/any.hpp>
 #include <boost/program_options.hpp>
 
 #include "options/options_mqtt_options.h"
@@ -429,6 +430,94 @@ BOOST_AUTO_TEST_CASE(Test_MqttOptions_FullPipeline_HaDependencyFails)
 
 	// HA requires MQTT - this should fail validation
 	BOOST_CHECK_THROW(processor.Validate(vm), Exceptions::Options_MissingDependency);
+}
+
+//-----------------------------------------------------------------------------
+// PROTOCOL VERSION (admin-selectable 3.1.1- vs 5.0-compatible MQTT)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_DefaultsTo311)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program" });
+
+	BOOST_CHECK_NO_THROW(processor.Validate(vm));
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK(result.value().protocol_version == Options::Mqtt::ProtocolVersion::v3_1_1);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_Selects50)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt-protocol-version", "5.0" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK(result.value().protocol_version == Options::Mqtt::ProtocolVersion::v5);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_Selects311Explicitly)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt-protocol-version", "3.1.1" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK(result.value().protocol_version == Options::Mqtt::ProtocolVersion::v3_1_1);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_AcceptsAliases)
+{
+	{
+		Options::Mqtt::OptionsProcessor processor;
+		auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt-protocol-version", "v5" });
+		auto result = processor.Process(vm);
+		BOOST_REQUIRE(result.has_value());
+		BOOST_CHECK(result.value().protocol_version == Options::Mqtt::ProtocolVersion::v5);
+	}
+	{
+		Options::Mqtt::OptionsProcessor processor;
+		auto vm = Test::ParseMqttOptions(processor, { "program", "--mqtt-protocol-version", "311" });
+		auto result = processor.Process(vm);
+		BOOST_REQUIRE(result.has_value());
+		BOOST_CHECK(result.value().protocol_version == Options::Mqtt::ProtocolVersion::v3_1_1);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_InvalidRejected)
+{
+	Options::Mqtt::OptionsProcessor processor;
+	// Parse-time validation: the validator throws (validation_error derives from
+	// boost::program_options::error) during po::store inside ParseMqttOptions.
+	BOOST_CHECK_THROW(
+		Test::ParseMqttOptions(processor, { "program", "--mqtt-protocol-version", "4.0" }),
+		boost::program_options::error);
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_ToStringCanonical)
+{
+	BOOST_CHECK_EQUAL(std::string{ Options::Mqtt::ToString(Options::Mqtt::ProtocolVersion::v3_1_1) }, "3.1.1");
+	BOOST_CHECK_EQUAL(std::string{ Options::Mqtt::ToString(Options::Mqtt::ProtocolVersion::v5) }, "5.0");
+}
+
+BOOST_AUTO_TEST_CASE(Test_MqttOptions_ProtocolVersion_ValidatorDirectly)
+{
+	{
+		boost::any val;
+		Options::Mqtt::ProtocolVersion target{};
+		const std::vector<std::string> values{ "5.0" };
+		Options::Mqtt::validate(val, values, &target, 0);
+		BOOST_CHECK(boost::any_cast<Options::Mqtt::ProtocolVersion>(val) == Options::Mqtt::ProtocolVersion::v5);
+	}
+	{
+		// Empty value must fail cleanly (no out-of-bounds read), like the other enum validators.
+		boost::any val;
+		Options::Mqtt::ProtocolVersion target{};
+		const std::vector<std::string> values{ std::string{} };
+		BOOST_CHECK_THROW(Options::Mqtt::validate(val, values, &target, 0), boost::program_options::validation_error);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

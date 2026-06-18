@@ -1156,10 +1156,10 @@ paths:
         - Diagnostics
       summary: Get MQTT status diagnostics
       description: >
-        Live MQTT broker status: connection state, broker address, TLS, Home
-        Assistant discovery, publish-queue depth, and reconnect/published/dropped
-        counters plus the last error. Returns { "enabled": false } when MQTT is
-        disabled.
+        Live MQTT broker status: connection state, broker address, TLS, the
+        selected wire protocol version (3.1.1 or 5.0), Home Assistant discovery,
+        publish-queue depth, and reconnect/published/dropped counters plus the
+        last error. Returns { "enabled": false } when MQTT is disabled.
       operationId: getMqttDiagnostics
       responses:
         '200':
@@ -1174,6 +1174,7 @@ paths:
                 broker_host: "192.168.1.10"
                 broker_port: 1883
                 tls: false
+                protocol_version: "3.1.1"
                 topic_prefix: "aqualink"
                 client_id: "aqualink-abc123"
                 home_assistant_enabled: true
