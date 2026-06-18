@@ -123,6 +123,23 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
+      # At the 2026.06.01 vcpkg baseline the libbacktrace port (a boost-stacktrace
+      # dependency) regenerates its configure via autoreconf, so the build host now
+      # needs autoconf / autoconf-archive / automake / libtool. The self-hosted Linux
+      # image bakes these in (cicd/packer/scripts/linux/06-dev-tools.sh), but install
+      # them here too so the build also works on a not-yet-rebuilt image and on the
+      # GitHub-hosted macOS runner. Windows builds libbacktrace without this path.
+      - name: Install autotools for libbacktrace (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq autoconf autoconf-archive automake libtool
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install autoconf autoconf-archive automake libtool
+          fi
+
       # VCPKG_ROOT points lukka/run-cmake (and the in-tree vcpkg toolchain) at the
       # project's deps/vcpkg. On self-hosted Windows, vcvarsall (msvc-dev-cmd) leaks
       # VCPKG_ROOT -> the VS-bundled, manifest-less vcpkg; this step-level env value
