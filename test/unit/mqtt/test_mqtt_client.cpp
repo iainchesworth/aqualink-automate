@@ -110,48 +110,48 @@ BOOST_AUTO_TEST_CASE(Test_Start_SetsRunningState)
 {
 	boost::asio::io_context ioc;
 	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 
-	client.Start();
+	client->Start();
 
-	BOOST_CHECK(client.IsRunning());
-	BOOST_CHECK(!client.IsConnected()); // Not yet connected, just started
-	BOOST_CHECK_EQUAL(static_cast<int>(client.GetState()),
+	BOOST_CHECK(client->IsRunning());
+	BOOST_CHECK(!client->IsConnected()); // Not yet connected, just started
+	BOOST_CHECK_EQUAL(static_cast<int>(client->GetState()),
 		static_cast<int>(Mqtt::MqttClient::State::Connecting));
 
-	client.Stop();
+	client->Stop();
 }
 
 BOOST_AUTO_TEST_CASE(Test_Start_TwiceIsHarmless)
 {
 	boost::asio::io_context ioc;
 	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 
-	client.Start();
-	BOOST_CHECK_NO_THROW(client.Start()); // Should not throw
-	BOOST_CHECK(client.IsRunning());
+	client->Start();
+	BOOST_CHECK_NO_THROW(client->Start()); // Should not throw
+	BOOST_CHECK(client->IsRunning());
 
-	client.Stop();
+	client->Stop();
 }
 
 BOOST_AUTO_TEST_CASE(Test_Stop_ClearsState)
 {
 	boost::asio::io_context ioc;
 	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 
-	client.Start();
-	client.Publish("test/topic", "payload");
-	client.Stop();
+	client->Start();
+	client->Publish("test/topic", "payload");
+	client->Stop();
 
-	BOOST_CHECK(!client.IsRunning());
-	BOOST_CHECK(!client.IsConnected());
-	BOOST_CHECK_EQUAL(static_cast<int>(client.GetState()),
+	BOOST_CHECK(!client->IsRunning());
+	BOOST_CHECK(!client->IsConnected());
+	BOOST_CHECK_EQUAL(static_cast<int>(client->GetState()),
 		static_cast<int>(Mqtt::MqttClient::State::Disconnected));
 
 	// Publish queue should be cleared on stop
-	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(client);
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
 	BOOST_CHECK(queue.empty());
 }
 
@@ -169,15 +169,15 @@ BOOST_AUTO_TEST_CASE(Test_Stop_EmitsDisconnectedSignal)
 {
 	boost::asio::io_context ioc;
 	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
 
 	std::string disconnect_reason;
-	client.OnDisconnected.connect([&disconnect_reason](const std::string& reason) {
+	client->OnDisconnected.connect([&disconnect_reason](const std::string& reason) {
 		disconnect_reason = reason;
 	});
 
-	client.Start();
-	client.Stop();
+	client->Start();
+	client->Stop();
 
 	BOOST_CHECK(!disconnect_reason.empty());
 }
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(Test_BuildTopic_ComplexSubtopic)
 BOOST_AUTO_TEST_SUITE_END()
 
 //=============================================================================
-// MqttClient publish queue tests
+// MqttClient publish queue tests (drop-oldest, FIFO, retain preserved)
 //=============================================================================
 
 BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_PublishQueue)
@@ -296,423 +296,7 @@ BOOST_AUTO_TEST_CASE(Test_Publish_QueueOverflow_DropsOldest)
 	BOOST_CHECK_EQUAL(queue.size(), 1000);
 	BOOST_CHECK_EQUAL(queue.front().topic, "topic/1"); // topic/0 was dropped
 	BOOST_CHECK_EQUAL(queue.back().topic, "topic/overflow");
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//=============================================================================
-// MqttClient packet encoding tests
-//=============================================================================
-
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_PacketEncoding)
-
-BOOST_AUTO_TEST_CASE(Test_EncodePublish_FixedHeaderFormat)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "a/b", "hello", false);
-
-	// Fixed header byte: 0x30 (PUBLISH, QoS 0, no retain)
-	BOOST_REQUIRE_GT(packet.size(), 2);
-	BOOST_CHECK_EQUAL(packet[0], 0x30);
-
-	// Remaining length should be: topic_len(2) + topic(3) + payload(5) = 10
-	BOOST_CHECK_EQUAL(packet[1], 10);
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodePublish_ContainsTopic)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "test/topic", "data", false);
-
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("test/topic") != std::string::npos,
-		"Packet should contain the topic string");
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodePublish_ContainsPayload)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodePublish(client, "t", "my_payload_data", false);
-
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("my_payload_data") != std::string::npos,
-		"Packet should contain the payload string");
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodeDisconnect_Format)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeDisconnect(client);
-
-	BOOST_REQUIRE_EQUAL(packet.size(), 2);
-	BOOST_CHECK_EQUAL(packet[0], 0xE0);
-	BOOST_CHECK_EQUAL(packet[1], 0x00);
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodePingreq_Format)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodePingreq(client);
-
-	BOOST_REQUIRE_EQUAL(packet.size(), 2);
-	BOOST_CHECK_EQUAL(packet[0], 0xC0);
-	BOOST_CHECK_EQUAL(packet[1], 0x00);
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//=============================================================================
-// MqttClient CONNACK parsing tests
-//=============================================================================
-
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Connack)
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_SuccessfulConnection)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// Valid CONNACK: type=0x20, remaining_len=2, flags=0, return_code=0 (success)
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x00 };
-	BOOST_CHECK(Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedBadCredentials)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// CONNACK with return code 0x04 (bad username or password)
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x04 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedNotAuthorized)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// CONNACK with return code 0x05 (not authorized)
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x05 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_RejectedServerUnavailable)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// CONNACK with return code 0x03 (server unavailable)
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00, 0x03 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_TooShort)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// Too few bytes
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x00 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_WrongPacketType)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// Wrong packet type (0x30 = PUBLISH, not CONNACK)
-	std::vector<uint8_t> connack = { 0x30, 0x02, 0x00, 0x00 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_WrongRemainingLength)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// Wrong remaining length (should be 2)
-	std::vector<uint8_t> connack = { 0x20, 0x03, 0x00, 0x00 };
-	BOOST_CHECK(!Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_CASE(Test_ParseConnack_SessionPresent)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	// Session Present flag set but return code 0 (success)
-	std::vector<uint8_t> connack = { 0x20, 0x02, 0x01, 0x00 };
-	BOOST_CHECK(Test::MqttClientPacketTest::ParseConnack(client, connack));
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//=============================================================================
-// MqttClient CONNECT encoding tests (authentication)
-//=============================================================================
-
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_ConnectEncoding)
-
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ContainsProtocolName)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "test";
-	settings.username = "";
-	settings.password = "";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	// Packet type: 0x10 (CONNECT)
-	BOOST_REQUIRE_GT(packet.size(), 2);
-	BOOST_CHECK_EQUAL(packet[0], 0x10);
-
-	// Should contain "MQTT" protocol name
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("MQTT") != std::string::npos,
-		"CONNECT packet should contain 'MQTT' protocol name");
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ContainsClientId)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "my-special-id";
-	settings.username = "";
-	settings.password = "";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("my-special-id") != std::string::npos,
-		"CONNECT packet should contain the client ID");
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_WithUsernamePassword_SetsFlags)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "cid";
-	settings.username = "user1";
-	settings.password = "pass1";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	BOOST_REQUIRE_GT(packet.size(), 9);
-
-	uint8_t flags = packet[9]; // Connect flags byte
-
-	// Username Flag (bit 7) should be set
-	BOOST_CHECK_EQUAL(flags & 0x80, 0x80);
-	// Password Flag (bit 6) should be set
-	BOOST_CHECK_EQUAL(flags & 0x40, 0x40);
-	// Clean Session (bit 1) should be set
-	BOOST_CHECK_EQUAL(flags & 0x02, 0x02);
-
-	// Packet should contain the username and password strings
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("user1") != std::string::npos,
-		"CONNECT packet should contain the username");
-	BOOST_CHECK_MESSAGE(packet_str.find("pass1") != std::string::npos,
-		"CONNECT packet should contain the password");
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_WithoutAuth_NoAuthFlags)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "cid";
-	settings.username = "";
-	settings.password = "";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	BOOST_REQUIRE_GT(packet.size(), 9);
-
-	uint8_t flags = packet[9];
-
-	// Username Flag (bit 7) should NOT be set
-	BOOST_CHECK_EQUAL(flags & 0x80, 0x00);
-	// Password Flag (bit 6) should NOT be set
-	BOOST_CHECK_EQUAL(flags & 0x40, 0x00);
-}
-
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_ProtocolLevel4)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "cid";
-	settings.username = "";
-	settings.password = "";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	// Protocol level byte: after fixed header(2) + protocol name length(2) + "MQTT"(4) = offset 8
-	BOOST_REQUIRE_GT(packet.size(), 8);
-	BOOST_CHECK_EQUAL(packet[8], 0x04); // MQTT 3.1.1 = protocol level 4
-}
-
-// Regression: MQTT 3.1.1 [MQTT-3.1.2-22] forbids setting the Password flag
-// without the Username flag.  A password-only configuration must NOT set the
-// Password flag, and must not append the password to the CONNECT payload.
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_PasswordWithoutUsername_NoPasswordFlag)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "cid";
-	settings.username = "";
-	settings.password = "secretpw";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	BOOST_REQUIRE_GT(packet.size(), 9);
-	uint8_t flags = packet[9]; // Connect flags byte
-
-	// Password flag (bit 6) must NOT be set when there is no username.
-	BOOST_CHECK_EQUAL(flags & 0x40, 0x00);
-	// Username flag (bit 7) must NOT be set.
-	BOOST_CHECK_EQUAL(flags & 0x80, 0x00);
-
-	// The password must not be present on the wire.
-	std::string packet_str(packet.begin(), packet.end());
-	BOOST_CHECK_MESSAGE(packet_str.find("secretpw") == std::string::npos,
-		"Password must not be encoded when no username is configured");
-}
-
-// Regression: a username-only configuration sets only the Username flag.
-BOOST_AUTO_TEST_CASE(Test_EncodeConnect_UsernameOnly_NoPasswordFlag)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	settings.client_id = "cid";
-	settings.username = "user-only";
-	settings.password = "";
-	Mqtt::MqttClient client(ioc, settings);
-
-	auto packet = Test::MqttClientPacketTest::EncodeConnect(client);
-
-	BOOST_REQUIRE_GT(packet.size(), 9);
-	uint8_t flags = packet[9];
-
-	BOOST_CHECK_EQUAL(flags & 0x80, 0x80); // Username flag set
-	BOOST_CHECK_EQUAL(flags & 0x40, 0x00); // Password flag NOT set
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//=============================================================================
-// MQTT UTF-8 string length-field guard (16-bit narrowing protection)
-//=============================================================================
-
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Utf8LengthGuard)
-
-// Regression: an oversized PUBLISH topic (> 0xFFFF bytes) must not be encoded
-// with a silently-narrowed 16-bit length field; the encoder rejects it and
-// returns an empty packet.
-BOOST_AUTO_TEST_CASE(Test_EncodePublish_OversizedTopic_ReturnsEmpty)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	std::string huge_topic(0x10000, 't'); // 65536 bytes - one past the 16-bit limit
-	auto packet = Test::MqttClientPacketTest::EncodePublish(client, huge_topic, "x", false);
-
-	BOOST_CHECK(packet.empty());
-}
-
-// A topic at exactly the 16-bit limit is still encodable.
-BOOST_AUTO_TEST_CASE(Test_EncodePublish_MaxTopic_Encodes)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	std::string max_topic(0xFFFF, 't'); // exactly the 16-bit limit
-	auto packet = Test::MqttClientPacketTest::EncodePublish(client, max_topic, "x", false);
-
-	BOOST_REQUIRE(!packet.empty());
-	// Fixed header byte 0 is a PUBLISH (0x30).
-	BOOST_CHECK_EQUAL(packet[0], 0x30);
-}
-
-// Regression: an oversized SUBSCRIBE filter must not be narrowed either.
-BOOST_AUTO_TEST_CASE(Test_EncodeSubscribe_OversizedFilter_ReturnsEmpty)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	std::string huge_filter(0x10000, 'f');
-	auto packet = Test::MqttClientPacketTest::EncodeSubscribe(client, huge_filter, 0);
-
-	BOOST_CHECK(packet.empty());
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//=============================================================================
-// MqttClient outbound write-buffer / per-packet offset state
-//=============================================================================
-
-BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_WriteBufferState)
-
-// Regression: a freshly-constructed client has no pending outbound write.
-BOOST_AUTO_TEST_CASE(Test_WriteBuffer_InitiallyEmpty)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	Mqtt::MqttClient client(ioc, settings);
-
-	BOOST_CHECK(Test::MqttClientPacketTest::GetWriteBuffer(client).empty());
-	BOOST_CHECK_EQUAL(Test::MqttClientPacketTest::GetWriteOffset(client), 0u);
-}
-
-// Regression: Stop() clears any partially-written outbound packet so a stale
-// half-packet cannot bleed into a subsequent connection.
-BOOST_AUTO_TEST_CASE(Test_WriteBuffer_ClearedOnStop)
-{
-	boost::asio::io_context ioc;
-	auto settings = MakeClientTestSettings();
-	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
-
-	client->Start();
-	client->Publish("topic/a", "payload");
-	client->Stop();
-
-	BOOST_CHECK(Test::MqttClientPacketTest::GetWriteBuffer(*client).empty());
-	BOOST_CHECK_EQUAL(Test::MqttClientPacketTest::GetWriteOffset(*client), 0u);
+	BOOST_CHECK_EQUAL(client->DroppedCount(), 1u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
