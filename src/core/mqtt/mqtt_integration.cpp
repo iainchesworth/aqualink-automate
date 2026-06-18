@@ -85,14 +85,6 @@ namespace AqualinkAutomate::Mqtt
 			m_Hub = std::make_shared<MqttHub>(io_context, settings);
 			RegisterDefaultCommands();
 
-			// The v5 wire backend ships with the async-mqtt client integration
-			// (docs/async_migration_analysis.md, Phase 5). Until then the client
-			// speaks 3.1.1; warn rather than silently ignore a 5.0 selection.
-			if (m_Settings.protocol_version == Options::Mqtt::ProtocolVersion::v5)
-			{
-				LogWarning(Channel::Mqtt, "MQTT protocol 5.0 selected, but the 5.0 backend is not yet available; the client will use MQTT 3.1.1 for now.");
-			}
-
 			if (m_Settings.home_assistant_enabled)
 			{
 				auto client = m_Hub->GetMqttClient();
