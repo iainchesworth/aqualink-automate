@@ -8,6 +8,7 @@ apt-get install -y --no-install-recommends \
     python3-pip \
     python3-venv \
     autoconf \
+    autoconf-archive \
     automake \
     libtool \
     rpm \
