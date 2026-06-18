@@ -207,4 +207,57 @@ BOOST_AUTO_TEST_CASE(RealCapture_DualSpaSwitch_PolledAndIdle)
 	}
 }
 
+//=============================================================================
+// ButtonLayout(): the per-key wire-index -> controller switch:button mapping the
+// web layer uses to label and program each key. The 6588 Dual Spa Switch bridges
+// two switches (keys 1-4 = Switch 2, keys 5-8 = Switch 3); a Spa Link's mapping
+// is undecoded, so its keys are listed but not assignable.
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(ButtonLayout_DualSpaSwitch_MapsKeysToSwitches2And3)
+{
+	SpasideRemoteDevice device(device_type, *this, true);   // 0x10 Dual Spa Switch (emulated)
+
+	const auto layout = device.ButtonLayout();
+	BOOST_REQUIRE_EQUAL(layout.size(), 8u);   // matches ButtonCount()
+
+	for (std::size_t i = 0; i < layout.size(); ++i)
+	{
+		const auto& b = layout[i];
+		BOOST_CHECK_EQUAL(static_cast<int>(b.index), static_cast<int>(i + 1));
+		BOOST_CHECK(b.assignable);   // the Dual Spa Switch mapping is decoded
+	}
+
+	// Keys 1-4 -> Switch 2 buttons 1-4.
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[0].switch_number), 2);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[0].button_number), 1);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[3].switch_number), 2);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[3].button_number), 4);
+	// Keys 5-8 -> Switch 3 buttons 1-4.
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[4].switch_number), 3);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[4].button_number), 1);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[7].switch_number), 3);
+	BOOST_CHECK_EQUAL(static_cast<int>(layout[7].button_number), 4);
+}
+
+BOOST_AUTO_TEST_CASE(ButtonLayout_SpaLink_KeysNotAssignable)
+{
+	// A Spa Link at 0x20: 9 keys, but the key->switch:button mapping is undecoded, so we never
+	// fabricate a coordinate -- every key is listed (still pressable) but not assignable.
+	auto spalink_id = std::make_shared<JandyDeviceType>(JandyDeviceId(0x20));
+	SpasideRemoteDevice device(spalink_id, *this, true);
+
+	const auto layout = device.ButtonLayout();
+	BOOST_REQUIRE_EQUAL(layout.size(), 9u);
+
+	for (std::size_t i = 0; i < layout.size(); ++i)
+	{
+		const auto& b = layout[i];
+		BOOST_CHECK_EQUAL(static_cast<int>(b.index), static_cast<int>(i + 1));
+		BOOST_CHECK(!b.assignable);
+		BOOST_CHECK_EQUAL(static_cast<int>(b.switch_number), 0);
+		BOOST_CHECK_EQUAL(static_cast<int>(b.button_number), 0);
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

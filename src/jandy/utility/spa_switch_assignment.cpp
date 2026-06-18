@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace AqualinkAutomate::Utility
 {
@@ -78,6 +79,31 @@ namespace AqualinkAutomate::Utility
 		out.button_number = static_cast<uint8_t>(btn);
 		out.function = function;
 		return out;
+	}
+
+	const std::vector<std::string>& KnownSpaSwitchFunctions()
+	{
+		// The function picker the OneTouch cycles (0x06) and the iAQ scrolls (group 0x01), in the
+		// order they appear on the controller (docs/alwin32/spaside-remotes.md, RE-verified against
+		// captures/spaside_setup_nav.cap). "All OFF" clears the button; the rest map to a pool
+		// function the controller can drive. Kept as a static so callers can return a const ref.
+		static const std::vector<std::string> functions{
+			"All OFF",
+			"OneTouch 4h",
+			"Clean Mode",
+			"Spa Mode",
+			"Spillway",
+			"Air Blower",
+			"Pool Light",
+			"Swim Jet",
+			"Spa Jets",
+			"Filter Pump",
+			"Spa",
+			"Pool Heat",
+			"Spa Heat",
+			"Solar Heat",
+		};
+		return functions;
 	}
 
 }

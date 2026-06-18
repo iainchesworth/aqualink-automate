@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -209,6 +210,18 @@ BOOST_AUTO_TEST_CASE(ControllerPriority_IsMedium_DirectChannel)
 	IAQDevice device(id, harness.HubLocatorRef(), /*is_emulated*/ true);
 
 	BOOST_CHECK(device.ControllerPriority() == Capabilities::ActuationPriority::Medium);
+}
+
+BOOST_AUTO_TEST_CASE(AvailableFunctions_AreTheControllerPickerSet)
+{
+	// The iAQ surfaces the same canonical assignable-function set the UI offers as the strict chooser.
+	Test::MockReplayHarness harness;
+	auto id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_UI_ID));
+	IAQDevice device(id, harness.HubLocatorRef(), /*is_emulated*/ true);
+
+	const auto functions = device.AvailableFunctions();
+	BOOST_REQUIRE(!functions.empty());
+	BOOST_CHECK(std::find(functions.begin(), functions.end(), "Pool Light") != functions.end());
 }
 
 // Closed-loop wire-assertion: drive an emulated iAQ already on the 4-Function detail and assert it

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 
 #include <boost/test/unit_test.hpp>
@@ -170,6 +171,16 @@ BOOST_AUTO_TEST_CASE(ControllerPriority_IsLow_MenuNavigationChannel)
 	// controller (e.g. iAQ page-edit) when both can configure spa-switch buttons.
 	auto dev = MakeDevice(/*emulated*/ true);
 	BOOST_CHECK(dev->ControllerPriority() == Devices::Capabilities::ActuationPriority::Low);
+}
+
+BOOST_AUTO_TEST_CASE(AvailableFunctions_AreTheControllerPickerSet)
+{
+	// The assignable-function list (the bound the UI offers) is the controller's picker set.
+	auto dev = MakeDevice(/*emulated*/ true);
+	const auto functions = dev->AvailableFunctions();
+	BOOST_REQUIRE(!functions.empty());
+	BOOST_CHECK(std::find(functions.begin(), functions.end(), "Pool Light") != functions.end());
+	BOOST_CHECK(std::find(functions.begin(), functions.end(), "All OFF") != functions.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1495,6 +1495,145 @@ html.dark .gauge-card {
     user-select: none;
 }
 
+/* ── Spa-side remote keypad (on the SpasideRemote device card): one tile per key
+      showing its programmed function; press to emulate, ⚙ to reprogram ── */
+
+.spaside-indicators {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+    font-size: 0.78rem;
+}
+
+.spaside-keypad {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.spaside-switch-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.spaside-key-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.4rem;
+}
+
+/* Each key is a tile: the press surface fills it; the ⚙ edit button overlays the
+   top-right corner; the inline function picker drops below when opened. */
+.spaside-key {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+}
+
+.spaside-key.is-assigned {
+    border-left-color: var(--accent);
+}
+
+.spaside-key.is-pending {
+    border-left-color: var(--gauge-warn);
+}
+
+.spaside-key-press {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    width: 100%;
+    padding: 0.4rem 1.6rem 0.4rem 0.5rem;   /* right padding clears the ⚙ button */
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.spaside-key-press:not(:disabled):hover {
+    background: var(--bg-hover, rgba(148, 163, 184, 0.12));
+}
+
+.spaside-key-press:not(:disabled):active {
+    transform: translateY(1px);
+}
+
+.spaside-key-press:disabled {
+    cursor: default;
+}
+
+.spaside-key-index {
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+
+.spaside-key-fn {
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.15;
+}
+
+/* "Unassigned" keys read muted (the .is-assigned accent + this rule diverge intentionally). */
+.spaside-key:not(.is-assigned) .spaside-key-fn {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.spaside-key-pending {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--gauge-warn);
+}
+
+.spaside-key-edit {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.spaside-key-edit:not(:disabled):hover {
+    color: var(--accent);
+    background: var(--bg-hover, rgba(148, 163, 184, 0.12));
+}
+
+.spaside-key-edit:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.spaside-key-editor {
+    padding: 0 0.5rem 0.5rem;
+}
+
+.spaside-fn-select {
+    width: 100%;
+    font-size: 0.78rem;
+}
+
 @media (max-width: 768px) {
     .emu-device-grid {
         grid-template-columns: 1fr;

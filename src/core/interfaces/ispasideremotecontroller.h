@@ -17,6 +17,16 @@ namespace AqualinkAutomate::Interfaces
 	class ISpasideRemoteController
 	{
 	public:
+		/// @brief One physical key on a spa-side remote: its wire press index and -- where the
+		///        device class's mapping is decoded -- its controller config switch:button coordinate.
+		struct Button
+		{
+			uint8_t index{ 0 };          ///< 1..button_count -- wire code used to PRESS this key.
+			uint8_t switch_number{ 0 };  ///< Controller config switch for ASSIGN; 0 if mapping unknown.
+			uint8_t button_number{ 0 };  ///< Controller config button within the switch; 0 if unknown.
+			bool assignable{ false };    ///< True iff switch/button are a known mapping (so it is programmable).
+		};
+
 		/// @brief Snapshot of one spa-side remote on the bus.
 		struct RemoteState
 		{
@@ -29,6 +39,7 @@ namespace AqualinkAutomate::Interfaces
 			bool led_image_seen{ false };    ///< True once the master has pushed an LED image.
 			std::vector<std::string> leds;   ///< Per-indicator state: "off" / "on" / "blink" (empty until seen).
 			std::string led_image;           ///< Raw LED image bytes as a hex string (empty until seen).
+			std::vector<Button> buttons;     ///< The remote's physical keys (press index + config coordinate).
 		};
 
 		/// @brief Outcome of a PressButton request.
@@ -62,6 +73,11 @@ namespace AqualinkAutomate::Interfaces
 		/// @brief Program switch @p switch_number button @p button_number to @p function over the bus
 		///        (drives the controller's Spa Remotes / Spa Switch config menu). 1-based indices.
 		virtual AssignResult SetButtonAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) = 0;
+
+		/// @brief The functions a connected controller can assign to a spa-switch button -- the valid
+		///        choices for SetButtonAssignment, so the UI can offer only what the controller can do.
+		///        Empty when no controller able to program assignments is present.
+		virtual std::vector<std::string> AvailableFunctions() const = 0;
 	};
 }
 // namespace AqualinkAutomate::Interfaces

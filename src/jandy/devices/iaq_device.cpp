@@ -12,6 +12,7 @@
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "messages/iaq/iaq_message_control_data_response.h"
+#include "utility/spa_switch_assignment.h"
 #include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -385,6 +386,13 @@ namespace AqualinkAutomate::Devices
 		m_SpaSwitchSettleCount = 0;
 		m_SpaSwitchFirstPickerSeen.reset();
 		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::vector<std::string> IAQDevice::AvailableFunctions() const
+	{
+		// The iAQ's live picker (group 0x01) is only present transiently mid-edit; absent a
+		// persisted decode, surface the shared canonical list (docs/alwin32/spaside-remotes.md).
+		return Utility::KnownSpaSwitchFunctions();
 	}
 
 	void IAQDevice::SpaSwitchWrite_ProcessStep()

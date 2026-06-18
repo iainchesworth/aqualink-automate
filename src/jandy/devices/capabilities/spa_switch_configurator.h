@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "devices/capabilities/actuation_types.h"
 
@@ -21,6 +22,11 @@ namespace AqualinkAutomate::Devices::Capabilities
 		virtual ~SpaSwitchConfigurator() = default;
 
 		virtual ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) = 0;
+
+		// The functions this controller's picker can assign to a button -- the bound on what
+		// SetSpaSwitchAssignment will accept, surfaced so the UI offers only valid choices. In the
+		// controller's own picker order.
+		virtual std::vector<std::string> AvailableFunctions() const = 0;
 
 		// Precedence when several SpaSwitchConfigurators are connected at once.
 		virtual ActuationPriority ControllerPriority() const = 0;

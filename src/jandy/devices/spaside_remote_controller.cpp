@@ -50,6 +50,18 @@ namespace AqualinkAutomate::Devices
 			state.leds = spaside->LedStates();
 			state.led_image = spaside->LedImageHex();
 
+			// The device owns the protocol knowledge of how each physical key maps to a config
+			// switch:button (the web layer must not encode it). Copy it into the plain interface type.
+			for (const auto& button : spaside->ButtonLayout())
+			{
+				Interfaces::ISpasideRemoteController::Button b;
+				b.index = button.index;
+				b.switch_number = button.switch_number;
+				b.button_number = button.button_number;
+				b.assignable = button.assignable;
+				state.buttons.push_back(b);
+			}
+
 			remotes.push_back(std::move(state));
 		});
 
@@ -156,6 +168,45 @@ namespace AqualinkAutomate::Devices
 		// isn't decoded, or no emulated controller to transmit) -- the action is genuinely unavailable.
 		LogWarning(Channel::Web, std::format("SpasideRemoteController: no controller could program switch {} button {} -> '{}' (all reported NotSupported)", switch_number, button_number, function));
 		return AssignResult::NotAvailable;
+	}
+
+	std::vector<std::string> SpasideRemoteController::AvailableFunctions() const
+	{
+		// Union the assignable-function lists of every connected configurator (OneTouch / iAQ),
+		// ordered by ControllerPriority (lowest first, as in SetButtonAssignment), deduping while
+		// preserving first-seen order. Both currently return the same canonical list, so in practice
+		// this yields that list; the dedup keeps it stable if a controller ever reports a richer set.
+		std::vector<std::string> functions;
+
+		if (nullptr == m_EquipmentHub)
+		{
+			return functions;
+		}
+
+		std::vector<std::pair<Capabilities::ActuationPriority, Capabilities::SpaSwitchConfigurator*>> configurators;
+		m_EquipmentHub->ForEachDevice([&configurators](Interfaces::IDevice& device)
+		{
+			if (auto* candidate = dynamic_cast<Capabilities::SpaSwitchConfigurator*>(&device); nullptr != candidate)
+			{
+				configurators.emplace_back(candidate->ControllerPriority(), candidate);
+			}
+		});
+
+		std::stable_sort(configurators.begin(), configurators.end(),
+			[](const auto& a, const auto& b) { return static_cast<int>(a.first) < static_cast<int>(b.first); });
+
+		for (const auto& [priority, configurator] : configurators)
+		{
+			for (auto& fn : configurator->AvailableFunctions())
+			{
+				if (std::find(functions.begin(), functions.end(), fn) == functions.end())
+				{
+					functions.push_back(std::move(fn));
+				}
+			}
+		}
+
+		return functions;
 	}
 
 }

@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <nlohmann/json.hpp>
+
 #include "interfaces/ispasideremotecontroller.h"
 #include "interfaces/iwebroute.h"
 #include "kernel/data_hub.h"
@@ -34,6 +36,14 @@ namespace AqualinkAutomate::HTTP
 	private:
 		HTTP::Response HandleGet(const HTTP::Request& req);
 		HTTP::Response HandlePost(const HTTP::Request& req);
+
+		// Build the full GET/command response envelope: every remote (with its per-key `buttons`
+		// joined to the live decoded function, the requested function and a pending flag), the flat
+		// `assignments`/`requested` lists (back-compat), and `available_functions` (the controller's
+		// assignable set unioned with any function already in use -- so a strict UI chooser never
+		// hides a valid assignment). Shared by GET and the POST success responses so both carry the
+		// same shape. Safe with any hub null (returns the empty-but-well-formed envelope).
+		nlohmann::json BuildEnvelope() const;
 
 	private:
 		// Non-owning: the controller is owned by the application for its whole lifetime. nullptr
