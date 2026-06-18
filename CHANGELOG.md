@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.4.0-beta.1] - 2026-06-18
+
+### Added
+
+- **Spa-side remote button programming, redesigned.** Each spa-side remote (Dual Spa Switch / Spa Link) now appears as a visual keypad on its card in the *Emulated*/*Actual Devices* sections of Diagnostics, showing what every button is mapped to and its live indicator state. On an emulated remote you can press a key to act as that remote on the bus; on any remote whose button-to-switch mapping is known, you can reprogram a key's function inline — choosing only from the functions the pool controller can actually assign (the controller's own picker list). This replaces the separate spa-side section and its free-text assignment form.
+- **Matter commissioning QR code.** The diagnostics page renders the Matter commissioning QR code, so the bridge can be paired by scanning rather than typing the manual pairing code.
+
+### Fixed
+
+- **OneTouch recovers from controller fault states.** When controller communications resume after a fault, an emulated OneTouch now returns to normal operation instead of remaining stuck in the fault state.
+
 ## [0.3.0-beta.3] - 2026-06-17
 
 ### Added
