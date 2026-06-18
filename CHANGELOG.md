@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.5.0-beta.1] - 2026-06-19
+
+### Added
+
+- **Selectable MQTT protocol version (3.1.1 or 5.0).** A new `--mqtt-protocol-version` option (config-file key `mqtt-protocol-version`; default `3.1.1`) selects whether the MQTT client speaks MQTT 3.1.1 or 5.0, so a deployment can match the dialect its broker and Home Assistant install expect. The active version is reported on `GET /api/diagnostics/mqtt`.
+
+### Changed
+
+- **MQTT client rebuilt on the async-mqtt library.** The hand-rolled MQTT engine is replaced by the maintained async-mqtt (Boost.Asio) library, which now owns wire framing, keep-alive, and packet encoding/decoding. MQTT 5.0 is fully supported as a result (previously 3.1.1 only). Reconnection with exponential backoff, the bounded drop-oldest publish queue, Last-Will, TLS with hostname verification, and Home Assistant auto-discovery are unchanged. Connecting, subscribing, and publishing were verified against a live broker on both protocol versions.
+
 ## [0.4.0-beta.1] - 2026-06-18
 
 ### Added
