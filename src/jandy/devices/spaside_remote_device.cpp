@@ -155,6 +155,39 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	std::vector<SpasideButton> SpasideRemoteDevice::ButtonLayout() const
+	{
+		const uint8_t count = ButtonCount();
+		std::vector<SpasideButton> layout;
+		layout.reserve(count);
+
+		// The 6588 Dual Spa Side Interface board (class DualSpaSwitch at 0x10) bridges two physical
+		// 4-button switches onto the bus: wire codes 1-4 = Switch 2, codes 5-8 = Switch 3
+		// (CONFIRMED against real hardware + Sheet #6873; docs/alwin32/spaside-remotes.md). So each
+		// key's config coordinate is (switch, button-within-switch) with 4 buttons per switch.
+		const bool dual = (DeviceClasses::DualSpaSwitch == DeviceId().Class());
+
+		for (uint8_t index = 1; index <= count; ++index)
+		{
+			SpasideButton button;
+			button.index = index;
+			if (dual)
+			{
+				static constexpr uint8_t BUTTONS_PER_SWITCH{ 4 };
+				static constexpr uint8_t FIRST_SWITCH{ 2 };   // the 6588 bridges Switch 2 and Switch 3
+				button.switch_number = static_cast<uint8_t>(FIRST_SWITCH + (index - 1) / BUTTONS_PER_SWITCH);
+				button.button_number = static_cast<uint8_t>((index - 1) % BUTTONS_PER_SWITCH + 1);
+				button.assignable = true;
+			}
+			// Spa Link / unrecognised classes: mapping undecoded -> leave switch/button at 0 and
+			// assignable=false. The key is still listed (so it can be pressed when emulated); it
+			// simply cannot be programmed until the mapping is captured.
+			layout.push_back(button);
+		}
+
+		return layout;
+	}
+
 	std::vector<std::string> SpasideRemoteDevice::LedStates() const
 	{
 		std::vector<std::string> states;

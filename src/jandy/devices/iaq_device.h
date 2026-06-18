@@ -106,6 +106,11 @@ namespace AqualinkAutomate::Devices
 		// See docs/alwin32/spaside-remotes.md.
 		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
 
+		// SpaSwitchConfigurator: the assignable function set. The iAQ scrolls a live picker (group
+		// 0x01) during an edit, but that is only present transiently mid-edit; absent a persisted
+		// decode we return the shared canonical list (the same set the OneTouch cycles).
+		std::vector<std::string> AvailableFunctions() const override;
+
 		// Precedence shared by DeviceActuator + SetpointController + ChlorinatorController
 		// (identical signature). The AqualinkTouch effects actions with DIRECT commands
 		// (page-button press, value-submit), so it ranks Medium - above the OneTouch (Low),

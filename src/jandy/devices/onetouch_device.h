@@ -140,6 +140,9 @@ namespace AqualinkAutomate::Devices
 		// passed with a bare Select so the cursor never moves and the switch count is preserved.
 		Capabilities::ActuationResult SetSpaSwitchAssignment(uint8_t switch_number, uint8_t button_number, const std::string& function) override;
 
+		// SpaSwitchConfigurator: the function set the OneTouch picker cycles (the canonical list).
+		std::vector<std::string> AvailableFunctions() const override;
+
 		// Sanitise a screen row's text for function/label comparison: trim surrounding whitespace
 		// and non-printable bytes, yielding the clean displayed text (the controller's inverse-video
 		// highlight is a separate Highlight message, never appended to the row Text). Public+static

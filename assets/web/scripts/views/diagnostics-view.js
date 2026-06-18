@@ -69,7 +69,6 @@ function diagnosticsView() {
         showEmulatedDevices: true,
         showActualDevices: true,
         showRecording: false,
-        showSpaside: false,
         showMqtt: false,
         showMatter: false,
 
@@ -84,20 +83,19 @@ function diagnosticsView() {
         recordingFilename: 'capture.cap',
         recordingBusy: false,
 
-        // Spa-side remotes (Dual Spa Switch / Spa Link): decoded LEDs + last press, plus
-        // button-press injection on emulated remotes.
+        // Spa-side remotes (Dual Spa Switch / Spa Link). Each remote carries a per-key `buttons`
+        // array (wire press index + controller switch:button coordinate + live/requested function);
+        // the keypad is rendered on the device card via spasideForDevice(). Press injection works on
+        // emulated remotes; per-key programming works on any remote whose key mapping is decoded.
         spasideRemotes: [],
         spasideBusy: false,
 
-        // Decoded spa-switch button->function assignments (from the iAQ/OneTouch config page),
-        // keyed by the controller's switch numbering. [{switch,button,function}, ...]
-        spasideAssignments: [],
+        // The functions a connected controller can assign to a button (the strict chooser's options),
+        // unioned server-side with any function already in use. [] when no controller can program.
+        spasideAvailableFunctions: [],
 
-        // "Set assignment" form state: program switch:button -> function over the bus.
-        spasideAssign: { switch: 1, button: 1, function: '' },
-
-        // User-requested (desired-state) assignments persisted server-side. [{switch,button,function}]
-        spasideRequested: [],
+        // Which key's inline function editor is open, as "<address>:<index>" (only one at a time).
+        spasideEditKey: null,
 
         // Emulated device diagnostics
         emulatedDevices: [],
@@ -313,17 +311,30 @@ function diagnosticsView() {
                 const resp = await fetch('/api/equipment/spaside-remotes');
                 if (!resp.ok) { _handlePollFailure('spaside-remotes', resp, null); return; }
                 const data = await resp.json();
-                this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
-                this.spasideAssignments = (data && Array.isArray(data.assignments)) ? data.assignments : [];
-                this.spasideRequested = (data && Array.isArray(data.requested)) ? data.requested : [];
+                this._applySpasideData(data);
                 _diag.warnedOnce['spaside-remotes'] = false;
             } catch (e) {
                 _handlePollFailure('spaside-remotes', null, e);
             }
         },
 
-        // Inject a momentary press of `button` on the emulated remote at `address`. No-op for a
-        // real (observed) remote -- the server rejects it and we surface the reason.
+        // Apply a spaside-remotes envelope (GET poll or a press/assign POST response) to view state.
+        _applySpasideData(data) {
+            this.spasideRemotes = (data && Array.isArray(data.remotes)) ? data.remotes : [];
+            this.spasideAvailableFunctions = (data && Array.isArray(data.available_functions)) ? data.available_functions : [];
+        },
+
+        // The rich spaside remote matching a device card, by bus address. The diagnostics device
+        // card is keyed by device_id ("0x10"); the equipment endpoint keys remotes by address in the
+        // same form, so a direct match joins the two feeds. Returns null when no match (e.g. the
+        // equipment controller isn't registered) -> the card simply omits the keypad.
+        spasideForDevice(dev) {
+            if (!dev || dev.device_type !== 'SpasideRemote') return null;
+            return this.spasideRemotes.find(r => r.address === dev.device_id) || null;
+        },
+
+        // Inject a momentary press of `button` (wire index) on the emulated remote at `address`.
+        // No-op for a real (observed) remote -- the server rejects it and we surface the reason.
         async pressSpasideButton(address, button) {
             if (this.spasideBusy) return;
             this.spasideBusy = true;
@@ -338,7 +349,7 @@ function diagnosticsView() {
                 });
                 const data = await resp.json().catch(() => ({}));
                 if (resp.ok) {
-                    if (data && Array.isArray(data.remotes)) { this.spasideRemotes = data.remotes; }
+                    this._applySpasideData(data);
                     Alpine.store('toast').show('Spa-side button ' + button + ' pressed', 'info');
                 } else {
                     Alpine.store('toast').show(data.error || 'Failed to press spa-side button', 'error');
@@ -350,17 +361,25 @@ function diagnosticsView() {
             }
         },
 
-        // Program a spa-side switch button's function over the bus (drives the controller's Spa
-        // Switch / Spa Remotes config menu). Takes effect on whichever controller can write it
-        // (OneTouch today; an iAQ that can't reports unavailable and we fall through). The live
-        // assignment list refreshes on the next poll once the controller re-reports it.
-        async setSpasideAssignment() {
+        // Toggle the inline function editor for one key. Identified by "<address>:<index>" so only
+        // one editor is open at a time across all remote cards.
+        spasideEditId(address, index) { return address + ':' + index; },
+        toggleSpasideEdit(address, index) {
+            const id = this.spasideEditId(address, index);
+            this.spasideEditKey = (this.spasideEditKey === id) ? null : id;
+        },
+
+        // Program a key's function over the bus by its controller config switch:button coordinate
+        // (drives the controller's Spa Switch / Spa Remotes config). Takes effect on whichever
+        // controller can write it; the live function on the key refreshes once it re-reports. `fn`
+        // comes straight from the strict dropdown of available functions, so no validation here.
+        async setSpasideAssignment(sw, btn, fn) {
             if (this.spasideBusy) return;
-            const sw = parseInt(this.spasideAssign.switch, 10);
-            const btn = parseInt(this.spasideAssign.button, 10);
-            const fn = (this.spasideAssign.function || '').trim();
+            sw = parseInt(sw, 10);
+            btn = parseInt(btn, 10);
+            fn = (fn || '').trim();
             if (!Number.isInteger(sw) || sw < 1 || !Number.isInteger(btn) || btn < 1 || fn === '') {
-                Alpine.store('toast').show('Enter a switch, button and function to assign', 'error');
+                Alpine.store('toast').show('Pick a function to assign', 'error');
                 return;
             }
             this.spasideBusy = true;
@@ -372,6 +391,8 @@ function diagnosticsView() {
                 });
                 const data = await resp.json().catch(() => ({}));
                 if (resp.ok) {
+                    this._applySpasideData(data);
+                    this.spasideEditKey = null;
                     Alpine.store('toast').show('Programming switch ' + sw + ' button ' + btn + ' → ' + fn + '…', 'info');
                 } else {
                     Alpine.store('toast').show(data.error || 'Failed to program spa-switch assignment', 'error');
@@ -383,42 +404,33 @@ function diagnosticsView() {
             }
         },
 
-        // A requested assignment is "pending" until the controller's live decoded map reports the
-        // same function for that switch:button (a OneTouch programs asynchronously; an iAQ-only
-        // system never confirms, so it stays a pending annotation).
-        spasideRequestedPending(r) {
-            const live = this.spasideAssignments.find(a => a.switch === r.switch && a.button === r.button);
-            return !live || live.function !== r.function;
-        },
-
-        // The distinct function names the controller currently reports, to seed the assign datalist.
-        spasideKnownFunctions() {
-            const seen = [];
-            for (const a of this.spasideAssignments) {
-                if (a.function && !seen.includes(a.function)) { seen.push(a.function); }
-            }
-            return seen;
-        },
-
-        // Button layout for a remote. A "Dual Spa Switch" is the 6588 Dual Spa Side Interface
-        // board, which bridges two physical spa-side switches onto the bus: Switch 2 = button
-        // codes 1-4, Switch 3 = codes 5-8 (the "2x4"). Any other class is a single keypad.
-        spasideButtonGroups(remote) {
-            const range = (lo, hi) => { const a = []; for (let b = lo; b <= hi; b++) a.push(b); return a; };
-            if (remote.device_class === 'DualSpaSwitch' && remote.button_count >= 8) {
-                return [
-                    { label: 'Spa Switch 2', buttons: range(1, 4) },
-                    { label: 'Spa Switch 3', buttons: range(5, 8) },
-                ];
-            }
-            return [{ label: '', buttons: range(1, remote.button_count || 0) }];
-        },
-
         // Map an indicator state to an existing badge class (green=on, amber=blink, grey=off).
         spasideLedBadgeClass(state) {
             if (state === 'on') return 'badge-freq';
             if (state === 'blink') return 'badge-status-warn';
             return 'badge-status-off';
+        },
+
+        // Group a device card's keys for the keypad. A Dual Spa Switch (6588 board) bridges two
+        // physical switches, so the backend tags keys 1-4 with switch 2 and keys 5-8 with switch 3;
+        // group by that switch number with a heading. Keys with no decoded mapping (assignable=false)
+        // fall into a single unlabelled group. Driven entirely by backend `buttons` data (no protocol
+        // knowledge here). Takes the diagnostics `dev` and joins to the rich remote by address.
+        spasideKeyGroups(dev) {
+            const remote = this.spasideForDevice(dev);
+            const buttons = (remote && Array.isArray(remote.buttons)) ? remote.buttons : [];
+            const groups = [];
+            const bySwitch = new Map();
+            for (const b of buttons) {
+                const key = b.assignable ? ('Switch ' + b.switch) : '';
+                if (!bySwitch.has(key)) {
+                    const g = { label: key, buttons: [] };
+                    bySwitch.set(key, g);
+                    groups.push(g);
+                }
+                bySwitch.get(key).buttons.push(b);
+            }
+            return groups;
         },
 
         async fetchMqtt() {

@@ -17,6 +17,7 @@
 #include "utility/jandy_equipment_validator.h"
 #include "utility/jandy_pool_configuration_decoder.h"
 #include "utility/screen_data_page_processor.h"
+#include "utility/spa_switch_assignment.h"
 #include "utility/string_manipulation.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -1096,6 +1097,12 @@ namespace AqualinkAutomate::Devices
 		m_PendingSpaSwitchEdit = std::move(goal);
 		m_SpaSwitchEditPhase = SpaSwitchEditPhase::ToSystemSetup;
 		return Capabilities::ActuationResult::Accepted;
+	}
+
+	std::vector<std::string> OneTouchDevice::AvailableFunctions() const
+	{
+		// The OneTouch picker cycles the shared canonical list (docs/alwin32/spaside-remotes.md).
+		return Utility::KnownSpaSwitchFunctions();
 	}
 
 	void OneTouchDevice::SpaSwitchEdit_ProcessStep()

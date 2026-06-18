@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace AqualinkAutomate::Utility
 {
@@ -25,6 +26,16 @@ namespace AqualinkAutomate::Utility
 	// Returns the assignment on a match, or std::nullopt for any line that is not an
 	// assignment row (headers, blank lines, the function-picker list, etc.).
 	std::optional<SpaSwitchAssignment> ParseSpaSwitchAssignmentLine(const std::string& line);
+
+	// The canonical set of functions a controller's spa-switch picker can assign to a button,
+	// recovered from the OneTouch/iAQ config UI (docs/alwin32/spaside-remotes.md). This is the
+	// authoritative "what the controller can actually do" list that bounds the web UI's function
+	// chooser -- a press only ever runs a function the controller already supports. Returned in the
+	// controller's own picker order (so the UI lists them as the user would see when cycling it).
+	// Shared/controller-agnostic so OneTouch and iAQ surface the same set; a controller that decodes
+	// its live picker may override with a more precise list. The web layer additionally unions in any
+	// function already in use on the install, so a strict chooser never hides a valid assignment.
+	const std::vector<std::string>& KnownSpaSwitchFunctions();
 
 }
 // namespace AqualinkAutomate::Utility

@@ -785,7 +785,21 @@ paths:
         the number of physical keys, how many times the master has polled it, the last
         decoded button press, and the indicator LEDs the master is pushing to it
         (`leds`: one of "off"/"on"/"blink" per indicator; `led_image` the raw bytes).
-        Empty list when no spa-side stack is running (e.g. dev-mode/replay).
+
+
+        Each remote also carries a per-key `buttons` array: `index` is the wire press code
+        (1..button_count); `switch`/`button` are the controller config coordinate used to
+        program the key (0 when the class's mapping is not decoded); `assignable` is true
+        only when that mapping is known (so the key is programmable); `pressable` mirrors
+        `emulated`; `function` is the live decoded function the key runs (empty if none);
+        `requested` is a user-requested function not yet confirmed, with `pending` true
+        while it differs from the live function.
+
+
+        Top-level `available_functions` is the set of functions a connected controller can
+        assign to a button (its picker list), unioned with any function already in use, so a
+        UI can offer only valid choices without ever hiding a current assignment. Empty list
+        / empty arrays when no spa-side stack is running (e.g. dev-mode/replay).
       operationId: getSpasideRemotes
       responses:
         '200':
@@ -794,26 +808,42 @@ paths:
             application/json:
               example:
                 remotes:
-                  - address: "0x20"
-                    device_class: "SpaRemote"
+                  - address: "0x10"
+                    device_class: "DualSpaSwitch"
                     emulated: true
-                    button_count: 9
+                    button_count: 8
                     poll_count: 1234
                     last_button: 0
                     led_image_seen: true
                     leds: ["on", "off", "blink", "off"]
                     led_image: "05 00 00 00 00"
+                    buttons:
+                      - index: 1
+                        switch: 2
+                        button: 1
+                        assignable: true
+                        pressable: true
+                        function: "Pool Light"
+                        requested: ""
+                        pending: false
+                      - index: 5
+                        switch: 3
+                        button: 1
+                        assignable: true
+                        pressable: true
+                        function: ""
+                        requested: "Spillway"
+                        pending: true
                 assignments:
-                  - switch: 1
-                    button: 2
-                    function: "Pool Light"
                   - switch: 2
                     button: 1
-                    function: "Swim Jet"
+                    function: "Pool Light"
                 requested:
-                  - switch: 1
-                    button: 3
+                  - switch: 3
+                    button: 1
                     function: "Spillway"
+                available_functions:
+                  ["All OFF", "Pool Light", "Spa Jets", "Spillway", "Pool Heat"]
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:

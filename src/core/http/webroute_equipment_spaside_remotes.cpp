@@ -1,9 +1,12 @@
 #include <algorithm>
 #include <cctype>
 #include <format>
+#include <map>
 #include <optional>
 #include <source_location>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -20,34 +23,6 @@ namespace AqualinkAutomate::HTTP
 
 	namespace
 	{
-		nlohmann::json RemoteToJson(const Interfaces::ISpasideRemoteController::RemoteState& remote)
-		{
-			nlohmann::json j;
-			j["address"] = std::format("0x{:02x}", remote.address);
-			j["device_class"] = remote.device_class;
-			j["emulated"] = remote.emulated;
-			j["button_count"] = remote.button_count;
-			j["poll_count"] = remote.poll_count;
-			j["last_button"] = remote.last_button;
-			j["led_image_seen"] = remote.led_image_seen;
-			j["leds"] = remote.leds;
-			j["led_image"] = remote.led_image;
-			return j;
-		}
-
-		nlohmann::json RemotesToJson(const std::vector<Interfaces::ISpasideRemoteController::RemoteState>& remotes)
-		{
-			nlohmann::json list = nlohmann::json::array();
-			for (const auto& remote : remotes)
-			{
-				list.push_back(RemoteToJson(remote));
-			}
-
-			nlohmann::json envelope;
-			envelope["remotes"] = std::move(list);
-			return envelope;
-		}
-
 		HTTP::Response MakeJsonResponse(const HTTP::Request& req, HTTP::Status code, const std::string& body)
 		{
 			HTTP::Response resp{ code, req.version() };
@@ -90,46 +65,37 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP::Response WebRoute_Equipment_SpasideRemotes::HandleGet(const HTTP::Request& req)
 	{
-		std::vector<Interfaces::ISpasideRemoteController::RemoteState> remotes;
-		if (m_Controller)
-		{
-			remotes = m_Controller->Remotes();
-		}
-		// With no controller the empty list is the correct picture (no spa-side stack running).
+		// With no controller the empty (but well-formed) envelope is the correct picture -- no
+		// spa-side stack is running (e.g. dev-mode/replay).
+		return MakeJsonResponse(req, HTTP::Status::ok, BuildEnvelope().dump());
+	}
 
-		auto envelope = RemotesToJson(remotes);
-
-		// The controller's decoded button->function assignments (iAQ "Spa Remotes" / OneTouch
-		// "Spa Switch" config), keyed by the controller's own switch numbering (1..3).
-		nlohmann::json assignments = nlohmann::json::array();
+	nlohmann::json WebRoute_Equipment_SpasideRemotes::BuildEnvelope() const
+	{
+		// --- Live decoded assignments (iAQ "Spa Remotes" / OneTouch "Spa Switch" config), keyed by
+		// the controller's switch:button numbering. Used both for the flat `assignments` list and to
+		// label each remote key with its real function.
+		std::map<std::pair<uint8_t, uint8_t>, std::string> live;
 		if (m_DataHub)
 		{
-			for (const auto& [key, function] : m_DataHub->SpaSwitchAssignments())
-			{
-				nlohmann::json entry;
-				entry["switch"] = key.first;
-				entry["button"] = key.second;
-				entry["function"] = function;
-				assignments.push_back(std::move(entry));
-			}
+			live = m_DataHub->SpaSwitchAssignments();
 		}
-		envelope["assignments"] = std::move(assignments);
 
-		// User-requested (desired-state) assignments persisted in PreferencesHub, keyed
-		// "<switch>:<button>". Surfaced so the UI can show intent even before the controller
-		// re-reports it (or, on a read-only system, as an annotation).
-		nlohmann::json requested = nlohmann::json::array();
+		// --- User-requested (desired-state) assignments persisted in PreferencesHub, keyed
+		// "<switch>:<button>". Surfaced so the UI shows intent even before the controller re-reports
+		// it (or, on a read-only/iAQ-only system, as a pending annotation).
+		auto parse_uint = [](const std::string& s) -> std::optional<unsigned long>
+		{
+			if (s.empty() || !std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); }))
+			{
+				return std::nullopt;
+			}
+			return std::stoul(s);
+		};
+
+		std::map<std::pair<uint8_t, uint8_t>, std::string> requested_map;
 		if (m_PreferencesHub)
 		{
-			auto parse_uint = [](const std::string& s) -> std::optional<unsigned long>
-			{
-				if (s.empty() || !std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); }))
-				{
-					return std::nullopt;
-				}
-				return std::stoul(s);
-			};
-
 			for (const auto& [key, function] : m_PreferencesHub->SpaSwitchButtons.items())
 			{
 				const auto colon = key.find(':');
@@ -137,16 +103,107 @@ namespace AqualinkAutomate::HTTP
 				const auto sw = parse_uint(key.substr(0, colon));
 				const auto btn = parse_uint(key.substr(colon + 1));
 				if (!sw.has_value() || !btn.has_value()) { continue; }
-				nlohmann::json entry;
-				entry["switch"] = sw.value();
-				entry["button"] = btn.value();
-				entry["function"] = function.get<std::string>();
-				requested.push_back(std::move(entry));
+				if (sw.value() > 0xFF || btn.value() > 0xFF) { continue; }
+				requested_map[{ static_cast<uint8_t>(sw.value()), static_cast<uint8_t>(btn.value()) }] = function.get<std::string>();
 			}
+		}
+
+		// --- Remotes, each enriched with a per-key `buttons` list joining the wire press index, the
+		// controller config switch:button coordinate, the live function, the requested function and a
+		// pending flag (requested but not yet confirmed by the live map). `pressable` mirrors the
+		// remote's emulated flag (only an emulated remote can have a press injected).
+		nlohmann::json remotes_json = nlohmann::json::array();
+		if (m_Controller)
+		{
+			for (const auto& remote : m_Controller->Remotes())
+			{
+				nlohmann::json j;
+				j["address"] = std::format("0x{:02x}", remote.address);
+				j["device_class"] = remote.device_class;
+				j["emulated"] = remote.emulated;
+				j["button_count"] = remote.button_count;
+				j["poll_count"] = remote.poll_count;
+				j["last_button"] = remote.last_button;
+				j["led_image_seen"] = remote.led_image_seen;
+				j["leds"] = remote.leds;
+				j["led_image"] = remote.led_image;
+
+				nlohmann::json buttons = nlohmann::json::array();
+				for (const auto& button : remote.buttons)
+				{
+					nlohmann::json b;
+					b["index"] = button.index;
+					b["switch"] = button.switch_number;
+					b["button"] = button.button_number;
+					b["assignable"] = button.assignable;
+					b["pressable"] = remote.emulated;
+
+					const std::pair<uint8_t, uint8_t> key{ button.switch_number, button.button_number };
+					const auto live_it = button.assignable ? live.find(key) : live.end();
+					const auto req_it = button.assignable ? requested_map.find(key) : requested_map.end();
+					b["function"] = (live_it != live.end()) ? live_it->second : std::string{};
+					b["requested"] = (req_it != requested_map.end()) ? req_it->second : std::string{};
+					// Pending iff a request exists and the live map does not (yet) confirm the same function.
+					b["pending"] = (req_it != requested_map.end()) &&
+						((live_it == live.end()) || (live_it->second != req_it->second));
+
+					buttons.push_back(std::move(b));
+				}
+				j["buttons"] = std::move(buttons);
+
+				remotes_json.push_back(std::move(j));
+			}
+		}
+
+		nlohmann::json envelope;
+		envelope["remotes"] = std::move(remotes_json);
+
+		// Flat back-compat lists.
+		nlohmann::json assignments = nlohmann::json::array();
+		for (const auto& [key, function] : live)
+		{
+			nlohmann::json entry;
+			entry["switch"] = key.first;
+			entry["button"] = key.second;
+			entry["function"] = function;
+			assignments.push_back(std::move(entry));
+		}
+		envelope["assignments"] = std::move(assignments);
+
+		nlohmann::json requested = nlohmann::json::array();
+		for (const auto& [key, function] : requested_map)
+		{
+			nlohmann::json entry;
+			entry["switch"] = key.first;
+			entry["button"] = key.second;
+			entry["function"] = function;
+			requested.push_back(std::move(entry));
 		}
 		envelope["requested"] = std::move(requested);
 
-		return MakeJsonResponse(req, HTTP::Status::ok, envelope.dump());
+		// --- Assignable functions: the controller's picker set unioned with any function already in
+		// use (so a strict UI chooser can never hide a currently-assigned function). First-seen order
+		// is preserved: controller order first, then any extra in-use functions.
+		nlohmann::json available = nlohmann::json::array();
+		std::vector<std::string> available_list;
+		if (m_Controller)
+		{
+			available_list = m_Controller->AvailableFunctions();
+		}
+		for (const auto& [key, function] : live)
+		{
+			if (std::find(available_list.begin(), available_list.end(), function) == available_list.end())
+			{
+				available_list.push_back(function);
+			}
+		}
+		for (const auto& function : available_list)
+		{
+			available.push_back(function);
+		}
+		envelope["available_functions"] = std::move(available);
+
+		return envelope;
 	}
 
 	HTTP::Response WebRoute_Equipment_SpasideRemotes::HandlePost(const HTTP::Request& req)
@@ -193,7 +250,7 @@ namespace AqualinkAutomate::HTTP
 				{
 				case Interfaces::ISpasideRemoteController::PressResult::Success:
 					LogInfo(Channel::Web, std::format("Spa-side remote 0x{:02x}: queued press of button {} via web UI", address, button));
-					return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
+					return MakeJsonResponse(req, HTTP::Status::ok, BuildEnvelope().dump());
 
 				case Interfaces::ISpasideRemoteController::PressResult::RemoteNotFound:
 					return MakeJsonResponse(req, HTTP::Status::not_found, R"({"error":"No spa-side remote at that address"})");
@@ -238,7 +295,7 @@ namespace AqualinkAutomate::HTTP
 					{
 						m_PreferencesService->RecordSpaSwitchAssignment(sw, btn, function);
 					}
-					return MakeJsonResponse(req, HTTP::Status::ok, RemotesToJson(m_Controller->Remotes()).dump());
+					return MakeJsonResponse(req, HTTP::Status::ok, BuildEnvelope().dump());
 
 				case Interfaces::ISpasideRemoteController::AssignResult::InvalidRequest:
 					return MakeJsonResponse(req, HTTP::Status::bad_request, R"({"error":"Invalid switch/button/function for assignment"})");

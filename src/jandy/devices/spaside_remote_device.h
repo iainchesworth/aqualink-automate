@@ -46,6 +46,18 @@ namespace AqualinkAutomate::Devices
 		Blink = 2
 	};
 
+	// One physical key on a spa-side remote, tying together the two coordinate systems the rest
+	// of the stack uses: the wire button INDEX (1..button_count, the code sent in a press) and the
+	// controller's CONFIG coordinate (switch_number:button_number, used to program the key's
+	// function). The two only coincide for classes whose mapping is decoded.
+	struct SpasideButton
+	{
+		uint8_t index{ 0 };          // 1..button_count -- wire code used to PRESS this key
+		uint8_t switch_number{ 0 };  // controller config switch for ASSIGN; 0 when the mapping is unknown
+		uint8_t button_number{ 0 };  // controller config button within the switch; 0 when unknown
+		bool assignable{ false };    // true iff switch_number/button_number are a known mapping for this class
+	};
+
 	class SpasideRemoteDevice : public JandyController,
 								public Capabilities::Restartable,
 								public Capabilities::Emulated,
@@ -84,6 +96,15 @@ namespace AqualinkAutomate::Devices
 		// Number of physical keys on this spa-side class: 8 for a Dual Spa Switch (0x10-0x13),
 		// 9 for a Spa Link (0x20-0x23); 0 for an unrecognised class (docs/alwin32/spaside-remotes.md).
 		uint8_t ButtonCount() const;
+
+		// The physical keys of this remote, each carrying its wire press index AND -- where the
+		// class's mapping is decoded -- its controller config switch:button coordinate. A Dual Spa
+		// Switch (the 6588 board at 0x10) bridges two switches: keys 1-4 = Switch 2, keys 5-8 =
+		// Switch 3 (CONFIRMED, docs/alwin32/spaside-remotes.md), so those keys are `assignable`. A
+		// Spa Link's key->switch:button mapping is not yet decoded, so its keys report
+		// `assignable=false` (we never fabricate a coordinate) -- still pressable, just not
+		// programmable until a capture pins the mapping down. Single source of truth for the web layer.
+		std::vector<SpasideButton> ButtonLayout() const;
 
 		// Per-indicator LED state as display strings ("off"/"on"/"blink"); empty until the first
 		// LED image is seen. Single source of the enum->string mapping (used by diagnostics + web).

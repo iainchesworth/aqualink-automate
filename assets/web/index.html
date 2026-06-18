@@ -676,6 +676,74 @@
                                     <div class="emu-device-body">
                                         <p class="device-card-summary" x-text="summary(dev)"></p>
 
+                                        <!-- Spa-side remote keypad: program what each key does, and (emulated only)
+                                             press it. Joined by bus address to the rich /api/equipment/spaside-remotes
+                                             feed via spasideForDevice(); omitted when no match. The per-key switch:button
+                                             mapping + assignable/pressable flags come from the backend (no protocol
+                                             knowledge here). All handlers take the diagnostics `dev` (its device_id IS the
+                                             bus address, e.g. "0x10"), so no nested scope is needed. -->
+                                        <template x-if="dev.device_type === 'SpasideRemote' && spasideForDevice(dev)">
+                                            <div class="emu-device-section">
+                                                <div class="emu-section-label">
+                                                    Keypad
+                                                    <span class="text-muted text-xs" x-show="dev.is_emulated">— tap a key to press · &#9881; to program</span>
+                                                    <span class="text-muted text-xs" x-show="!dev.is_emulated">— observed · &#9881; to program</span>
+                                                </div>
+
+                                                <!-- Indicator LEDs the master is pushing (distinct from the keys: 2 on a
+                                                     Dual Spa Switch, up to 4 on a Spa Link). -->
+                                                <div class="spaside-indicators" x-show="dev.led_image_seen">
+                                                    <span class="emu-kv-key">Indicators</span>
+                                                    <template x-for="(state, i) in (dev.leds || [])" :key="i">
+                                                        <span class="badge" :class="spasideLedBadgeClass(state)"
+                                                              :title="'Indicator ' + (i+1) + ': ' + state" x-text="i+1"></span>
+                                                    </template>
+                                                </div>
+
+                                                <div class="spaside-keypad">
+                                                    <template x-for="grp in spasideKeyGroups(dev)" :key="grp.label || 'keys'">
+                                                        <div class="spaside-switch-group">
+                                                            <div class="spaside-switch-label" x-show="grp.label" x-text="grp.label"></div>
+                                                            <div class="spaside-key-grid">
+                                                                <template x-for="b in grp.buttons" :key="b.index">
+                                                                    <div class="spaside-key" :class="{ 'is-assigned': b.function, 'is-pending': b.pending }">
+                                                                        <!-- Press surface: enabled only on an emulated remote. -->
+                                                                        <button class="spaside-key-press"
+                                                                                :disabled="!b.pressable || spasideBusy"
+                                                                                @click="b.pressable && pressSpasideButton(dev.device_id, b.index)"
+                                                                                :title="b.pressable ? ('Press key ' + b.index) : 'Observed remote — its button cannot be pressed'">
+                                                                            <span class="spaside-key-index" x-text="b.index"></span>
+                                                                            <span class="spaside-key-fn" x-text="b.function || 'Unassigned'"></span>
+                                                                            <span class="spaside-key-pending" x-show="b.pending" x-text="'→ ' + b.requested"></span>
+                                                                        </button>
+                                                                        <!-- Program affordance: works on any remote whose key mapping is decoded. -->
+                                                                        <button class="spaside-key-edit"
+                                                                                :disabled="!b.assignable || spasideBusy || spasideAvailableFunctions.length === 0"
+                                                                                @click="toggleSpasideEdit(dev.device_id, b.index)"
+                                                                                :title="!b.assignable ? 'This remote’s key→switch mapping is not decoded yet'
+                                                                                        : (spasideAvailableFunctions.length === 0 ? 'No controller can program assignments right now'
+                                                                                        : 'Program this key’s function')"
+                                                                                aria-label="Program key">&#9881;</button>
+                                                                        <!-- Inline STRICT function picker (no free text). -->
+                                                                        <div class="spaside-key-editor"
+                                                                             x-show="spasideEditKey === spasideEditId(dev.device_id, b.index)" x-cloak>
+                                                                            <select class="settings-input spaside-fn-select" :disabled="spasideBusy"
+                                                                                    @change="setSpasideAssignment(b.switch, b.button, $event.target.value)">
+                                                                                <option value="" x-text="b.function ? 'Change function…' : 'Pick a function…'"></option>
+                                                                                <template x-for="fn in spasideAvailableFunctions" :key="fn">
+                                                                                    <option :value="fn" :selected="fn === b.function" x-text="fn"></option>
+                                                                                </template>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+
                                         <!-- Tailored detail sections (data-driven; no per-type markup) -->
                                         <template x-for="(sec, si) in sections(dev)" :key="si">
                                             <div class="emu-device-section">
@@ -940,137 +1008,6 @@
                     </div>
                 </div>
             </div>
-            </div>
-
-            <!-- Spa-side Remotes -->
-            <button class="section-toggle mb-1" @click="showSpaside = !showSpaside"
-                    :aria-expanded="showSpaside" aria-controls="diag-spaside">
-                <span class="section-toggle-chevron" :class="{ open: showSpaside }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Spa-side Remotes</span>
-            </button>
-            <div id="diag-spaside" x-show="showSpaside" x-transition.opacity x-cloak>
-                <p class="text-muted text-xs mt-0 mb-1" x-show="spasideRemotes.length === 0">
-                    No spa-side remotes (Dual Spa Switch / Spa Link) seen on the bus. They appear here
-                    once the master polls one, or when one is emulated.
-                </p>
-                <template x-for="remote in spasideRemotes" :key="remote.address">
-                    <div class="card mb-2">
-                        <div class="card-header card-header-split">
-                            <span><span x-text="remote.device_class"></span> <code x-text="remote.address"></code></span>
-                            <span class="badge"
-                                  :class="remote.emulated ? 'badge-freq' : 'badge-status-off'"
-                                  x-text="remote.emulated ? 'Emulated' : 'Observed'"></span>
-                        </div>
-                        <div class="card-body">
-                            <div class="emu-kv-grid">
-                                <span class="emu-kv-key">Polls</span>
-                                <span class="emu-kv-val" x-text="remote.poll_count"></span>
-                                <span class="emu-kv-key">Last button</span>
-                                <span class="emu-kv-val" x-text="remote.last_button ? remote.last_button : '--'"></span>
-                                <span class="emu-kv-key">Indicators</span>
-                                <span class="emu-kv-val">
-                                    <template x-if="!remote.led_image_seen"><span class="text-muted">--</span></template>
-                                    <template x-for="(state, i) in remote.leds" :key="i">
-                                        <span class="badge" :class="spasideLedBadgeClass(state)"
-                                              :title="'LED ' + (i+1) + ': ' + state"
-                                              x-text="i+1"></span>
-                                    </template>
-                                </span>
-                            </div>
-                            <p class="text-muted text-xs mt-1 mb-1" x-show="remote.emulated">
-                                Press a button to act as this remote on the bus -- the controller runs
-                                whatever function that button is mapped to.
-                            </p>
-                            <p class="text-muted text-xs mt-1 mb-1" x-show="!remote.emulated">
-                                Read-only: this is a real remote we observe. Its button presses appear above.
-                            </p>
-                            <!-- Button groups. A Dual Spa Switch (the 6588 Dual Spa Side Interface
-                                 board) bridges two physical switches onto the bus: Switch 2 = codes
-                                 1-4, Switch 3 = codes 5-8. Others are a single keypad. -->
-                            <template x-for="grp in spasideButtonGroups(remote)" :key="grp.label">
-                                <div class="mb-1" x-show="remote.emulated && grp.buttons.length > 0">
-                                    <span class="emu-kv-key" x-show="grp.label" x-text="grp.label"></span>
-                                    <div class="flex items-center gap-1 flex-wrap">
-                                        <template x-for="b in grp.buttons" :key="b">
-                                            <button class="setpoint-btn"
-                                                    :disabled="spasideBusy"
-                                                    @click="pressSpasideButton(remote.address, b)"
-                                                    x-text="b"></button>
-                                        </template>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-
-                <!-- Decoded button->function assignments from the controller's config page
-                     (iAQ "Spa Remotes" / OneTouch "Spa Switch"). Read-only reference. -->
-                <div class="card mb-2" x-show="spasideAssignments.length > 0">
-                    <div class="card-header">Configured button assignments</div>
-                    <div class="card-body">
-                        <p class="text-muted text-xs mt-0 mb-1">
-                            How the controller maps each spa-side switch button to a function
-                            (switch:button &rarr; function), decoded live from its setup page.
-                        </p>
-                        <template x-for="a in spasideAssignments" :key="a.switch + ':' + a.button">
-                            <div class="flex items-center" style="justify-content: space-between;">
-                                <span class="emu-kv-key" x-text="'Switch ' + a.switch + ' · btn ' + a.button"></span>
-                                <span class="emu-kv-val" x-text="a.function"></span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Program an assignment over the bus (drives the controller's Spa Switch /
-                     Spa Remotes config). Works on whichever controller can write it (OneTouch
-                     today); an iAQ that can't reports unavailable and we fall through. -->
-                <div class="card mb-2">
-                    <div class="card-header">Set a button assignment</div>
-                    <div class="card-body">
-                        <p class="text-muted text-xs mt-0 mb-1">
-                            Program switch:button &rarr; function on the controller. The list above
-                            updates once the controller re-reports the change.
-                        </p>
-                        <div class="flex items-center" style="gap: 0.5rem; flex-wrap: wrap;">
-                            <label class="text-xs">Switch
-                                <input type="number" min="1" max="3" x-model.number="spasideAssign.switch"
-                                       class="settings-input" style="width: 4rem;" :disabled="spasideBusy">
-                            </label>
-                            <label class="text-xs">Button
-                                <input type="number" min="1" max="16" x-model.number="spasideAssign.button"
-                                       class="settings-input" style="width: 4rem;" :disabled="spasideBusy">
-                            </label>
-                            <label class="text-xs">Function
-                                <input type="text" list="spaside-fn-list" x-model="spasideAssign.function"
-                                       class="settings-input" style="width: 12rem;"
-                                       placeholder="e.g. Pool Light" :disabled="spasideBusy">
-                            </label>
-                            <datalist id="spaside-fn-list">
-                                <template x-for="fn in spasideKnownFunctions()" :key="fn">
-                                    <option :value="fn"></option>
-                                </template>
-                            </datalist>
-                            <button class="btn btn-sm" :disabled="spasideBusy"
-                                    @click="setSpasideAssignment()">Set</button>
-                        </div>
-
-                        <!-- Requested (desired-state) assignments persisted server-side. Marked
-                             "pending" until the controller's live map reports the same function. -->
-                        <div x-show="spasideRequested.length > 0" class="mt-1">
-                            <p class="text-muted text-xs mt-1 mb-1">Requested</p>
-                            <template x-for="r in spasideRequested" :key="'req-' + r.switch + ':' + r.button">
-                                <div class="flex items-center" style="justify-content: space-between;">
-                                    <span class="emu-kv-key" x-text="'Switch ' + r.switch + ' · btn ' + r.button"></span>
-                                    <span>
-                                        <span class="emu-kv-val" x-text="r.function"></span>
-                                        <span class="badge badge-status-warn" x-show="spasideRequestedPending(r)">pending</span>
-                                    </span>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- MQTT Status -->
