@@ -6,8 +6,8 @@ Packer templates for building self-hosted GitHub Actions runner VMs on VMware vS
 
 | Runner | Base OS | CPUs | RAM | Disk | Pre-installed toolchain |
 |--------|---------|------|-----|------|------------------------|
-| Linux | Ubuntu 24.04 LTS | 8 | 12 GB | 100 GB | GCC 14, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
-| Windows | Windows Server 2022 | 8 | 12 GB | 150 GB | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
+| Linux | Ubuntu 25.04 | 32 | 48 GB | 150 GB | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
+| Windows | Windows Server 2022 | 32 | 48 GB | 150 GB | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
 
 macOS CI stays on GitHub-hosted `macos-latest` runners.
 
@@ -15,9 +15,11 @@ macOS CI stays on GitHub-hosted `macos-latest` runners.
 
 - [Packer](https://www.packer.io/) 1.9+
 - VMware vSphere / ESXi with vCenter access
-- OS installation ISOs:
-  - Ubuntu 24.04 LTS Server (repacked with autoinstall for unattended install)
-  - Windows Server 2022
+- `xorriso`, `curl`, and `sha256sum` (available in WSL/Linux) for the Ubuntu repack step
+- Internet access — the OS ISOs are **downloaded on demand** at build time rather than
+  stored in the repo:
+  - Ubuntu 25.04 Server source → fetched + repacked with autoinstall by `repack-iso.sh`
+  - Windows Server 2022 evaluation → fetched directly by Packer from its default `iso_url`
 
 ## Configuration
 
@@ -31,7 +33,10 @@ cp secrets.auto.pkrvars.hcl.example secrets.auto.pkrvars.hcl
 
 ### 2. Edit `variables.pkrvars.hcl`
 
-Fill in your vSphere connection details, ISO paths, and runner version:
+Fill in your vSphere connection details and runner version. ISO sources are **not** set
+here — each template defaults its own `iso_url` (Ubuntu → the local repack output,
+Windows → the Microsoft eval download), so this shared file can't accidentally feed one
+OS's ISO to the other build:
 
 ```hcl
 vcenter_server     = "vcenter.example.com"
@@ -41,8 +46,6 @@ vcenter_cluster    = "Cluster"
 vcenter_datastore  = "datastore1"
 vcenter_network    = "VM Network"
 vcenter_folder     = "Templates"
-
-iso_url = "ISOs/ubuntu-24.04.4-autoinstall.iso"
 
 github_runner_version = "2.321.0"
 ```
@@ -67,23 +70,41 @@ packer init linux-runner.pkr.hcl
 packer init windows-runner.pkr.hcl
 ```
 
-Build the VM templates:
+### Linux
+
+Download the upstream Ubuntu source and repack it with autoinstall (run in WSL/Linux —
+needs `xorriso`/`curl`/`sha256sum`). With no arguments it fetches the default Ubuntu
+25.04 source from old-releases, verifies its SHA256, caches it under `ISOs/`, and writes
+`ISOs/ubuntu-25.04-autoinstall.iso`:
 
 ```bash
-# Linux runner
-packer build -force \
-  -var-file=variables.pkrvars.hcl \
-  -var-file=secrets.auto.pkrvars.hcl \
-  -var iso_url="ISOs/ubuntu-24.04.4-autoinstall.iso" \
-  linux-runner.pkr.hcl
+./repack-iso.sh
+```
 
-# Windows runner
+Then build — no `-var iso_url=` needed, the template defaults to the repack output:
+
+```bash
 packer build -force \
   -var-file=variables.pkrvars.hcl \
   -var-file=secrets.auto.pkrvars.hcl \
-  -var iso_url="ISOs/windows-server-2022.iso" \
+  linux-runner.pkr.hcl
+```
+
+### Windows
+
+Packer downloads the eval ISO itself (into `packer_cache/`) from the default `iso_url`,
+so there is nothing to pre-stage:
+
+```bash
+packer build -force \
+  -var-file=variables.pkrvars.hcl \
+  -var-file=secrets.auto.pkrvars.hcl \
   windows-runner.pkr.hcl
 ```
+
+> If Microsoft refreshes the eval build, the bundled `iso_checksum` will mismatch and the
+> download fails fast — update `iso_url`/`iso_checksum` in `windows-runner.pkr.hcl` (or
+> override with `-var`) to match the current build.
 
 This creates two VM templates in vCenter:
 - `tpl-github-runner-linux`
@@ -183,13 +204,30 @@ The GitHub Actions runner agent auto-updates itself. No manual intervention need
 
 ### Rebuilding templates
 
-When toolchain versions change, update the provisioning scripts and rebuild:
+When toolchain versions change, update the provisioning scripts and rebuild (re-run
+`./repack-iso.sh` first for Linux — it reuses the cached source if present):
 
 ```bash
 packer build -force -var-file=variables.pkrvars.hcl -var-file=secrets.auto.pkrvars.hcl linux-runner.pkr.hcl
 ```
 
 Then deploy new VMs from the updated template and re-register.
+
+### Reclaiming disk space
+
+The ISOs are transient — fetched on demand and regenerated on the next build. Free the
+disk between builds by emptying `ISOs/` and `packer_cache/` (both gitignored):
+
+```powershell
+./clean-isos.ps1 -WhatIf   # preview what would be removed
+./clean-isos.ps1           # reclaim the space
+```
+
+WSL/bash equivalent:
+
+```bash
+rm -rf ISOs/* packer_cache/*
+```
 
 ### Fallback to GitHub-hosted
 
@@ -199,10 +237,12 @@ Remove the `RUNNER_LINUX` and `RUNNER_WINDOWS` repository variables. Workflows a
 
 ```
 cicd/packer/
-  linux-runner.pkr.hcl              # Packer template — Ubuntu 24.04
+  linux-runner.pkr.hcl              # Packer template — Ubuntu 25.04
   windows-runner.pkr.hcl            # Packer template — Windows Server 2022
   variables.pkrvars.hcl.example     # vSphere variables (copy and fill in)
   secrets.auto.pkrvars.hcl.example  # Passwords (copy and fill in)
+  repack-iso.sh                     # Download + repack the Ubuntu source ISO (autoinstall)
+  clean-isos.ps1                    # Delete ISOs/ + packer_cache/ to reclaim disk
   http/
     linux/
       meta-data                     # cloud-init metadata
@@ -213,6 +253,6 @@ cicd/packer/
   scripts/
     linux/                          # Linux provisioning scripts (01-10)
     windows/                        # Windows provisioning scripts (01-06)
-  ISOs/                             # OS ISOs (gitignored)
-  packer_cache/                     # Packer download cache (gitignored)
+  ISOs/                             # Downloaded/repacked ISOs (gitignored; cleared by clean-isos.ps1)
+  packer_cache/                     # Packer download cache (gitignored; cleared by clean-isos.ps1)
 ```

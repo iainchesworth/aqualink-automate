@@ -11,8 +11,11 @@ vcenter_datastore  = "datastore1"
 vcenter_network    = "VM Network"
 vcenter_folder     = "Templates"
 
-# ISO - local path (Packer uploads to datastore automatically)
-iso_url = "ISOs/ubuntu-24.04.4-autoinstall.iso"
+# ISO sources are NOT set here — each template defaults its own iso_url so this
+# shared var file can't accidentally feed one OS's ISO to the other build:
+#   - Linux:   repack-iso.sh downloads + repacks the Ubuntu source on demand.
+#   - Windows: Packer downloads the eval ISO straight from the default iso_url.
+# Override per build with `-var iso_url=...` only if you need a different image.
 
 # Runner agent version
 github_runner_version = "2.321.0"

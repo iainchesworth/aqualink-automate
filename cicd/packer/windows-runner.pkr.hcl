@@ -48,12 +48,18 @@ variable "vcenter_folder" {
 
 variable "iso_url" {
   type        = string
-  description = "Local path or URL to Windows Server 2022 ISO"
+  description = <<-EOT
+    URL (or local path) to the Windows Server 2022 evaluation ISO. Defaults to the
+    Microsoft Evaluation Center download — Packer fetches it into packer_cache/ on
+    build, so no ISO is stored in the repo. If Microsoft refreshes the eval build the
+    checksum below will mismatch; update iso_url and iso_checksum together.
+  EOT
+  default     = "https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso"
 }
 
 variable "iso_checksum" {
   type    = string
-  default = "none"
+  default = "sha256:3e4fa6d8507b554856fc9ca6079cc402df11a8b79344871669f0251535255325"
 }
 
 variable "vm_name" {
