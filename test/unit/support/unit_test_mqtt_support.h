@@ -1,10 +1,6 @@
 #pragma once
 
-#include <cstdint>
 #include <deque>
-#include <optional>
-#include <string>
-#include <vector>
 
 #include "mqtt/mqtt_client.h"
 #include "options/options_mqtt_options.h"
@@ -13,68 +9,31 @@ namespace AqualinkAutomate::Test
 {
 
 //=============================================================================
-// Friend test class for MQTT protocol encoding/parsing and queue inspection.
-// Single definition shared across all test TUs to avoid ODR violations.
+// Friend test seam for the MQTT client: publish-queue inspection and forcing
+// the connected state. A single definition shared across all test TUs to avoid
+// ODR violations.
+//
+// (Wire-format / packet-encoding is now owned by the async_mqtt library and is
+// no longer hand-rolled here, so the former Encode*/Parse* accessors are gone.)
 //=============================================================================
 
 class MqttClientPacketTest
 {
 public:
+	/// Inspect the pending outbound publish queue (topics/payloads/retain) that
+	/// the hub / HA-discovery paths enqueued.
 	static const std::deque<Mqtt::MqttClient::PendingPublish>& GetPublishQueue(const Mqtt::MqttClient& client)
 	{
 		return client.m_PublishQueue;
 	}
 
-	static std::vector<uint8_t> EncodeConnect(Mqtt::MqttClient& client)
-	{
-		return client.EncodeConnect();
-	}
-
-	static std::vector<uint8_t> EncodePublish(Mqtt::MqttClient& client, const std::string& topic, const std::string& payload, bool retain)
-	{
-		return client.EncodePublish(topic, payload, retain);
-	}
-
-	static std::vector<uint8_t> EncodeDisconnect(Mqtt::MqttClient& client)
-	{
-		return client.EncodeDisconnect();
-	}
-
-	static std::vector<uint8_t> EncodePingreq(Mqtt::MqttClient& client)
-	{
-		return client.EncodePingreq();
-	}
-
-	static std::vector<uint8_t> EncodeSubscribe(Mqtt::MqttClient& client, const std::string& topic_filter, uint8_t qos)
-	{
-		return client.EncodeSubscribe(topic_filter, qos);
-	}
-
-	static bool ParseConnack(Mqtt::MqttClient& client, const std::vector<uint8_t>& data)
-	{
-		return client.ParseConnack(data);
-	}
-
-	/// Force the client into the Connected state for integration testing.
-	/// This allows MqttHub publish methods to run without a real broker.
+	/// Force the client into the Connected state for integration testing, so the
+	/// MqttHub / HA-discovery publish paths run (and enqueue) without a real
+	/// broker. The queued publishes can then be inspected via GetPublishQueue().
 	static void ForceConnectedState(Mqtt::MqttClient& client)
 	{
 		client.m_State = Mqtt::MqttClient::State::Connected;
 		client.m_Running = true;
-	}
-
-	//-------------------------------------------------------------------------
-	// Outbound write-buffer inspection (partial-write / per-packet offset tests)
-	//-------------------------------------------------------------------------
-
-	static const std::vector<uint8_t>& GetWriteBuffer(const Mqtt::MqttClient& client)
-	{
-		return client.m_WriteBuffer;
-	}
-
-	static std::size_t GetWriteOffset(const Mqtt::MqttClient& client)
-	{
-		return client.m_WriteOffset;
 	}
 };
 

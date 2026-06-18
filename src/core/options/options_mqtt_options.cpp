@@ -2,6 +2,7 @@
 #include <format>
 #include <string>
 
+#include <boost/program_options/errors.hpp>
 #include <boost/program_options/value_semantic.hpp>
 
 #include "logging/logging.h"
@@ -14,6 +15,46 @@ using namespace AqualinkAutomate::Logging;
 
 namespace AqualinkAutomate::Options::Mqtt
 {
+
+	// boost::program_options validator for the MQTT protocol-version option.
+	// In the validated type's namespace so it is found by ADL. Accepts friendly
+	// admin spellings ("3.1.1"/"5.0" + aliases) rather than the enumerator names.
+	void validate(boost::any& v, const std::vector<std::string>& values, ProtocolVersion*, int)
+	{
+		boost::program_options::validators::check_first_occurrence(v);
+		const std::string& token = boost::program_options::validators::get_single_string(values);
+
+		// Normalise: drop whitespace, lower-case, strip a leading 'v' so "3.1.1",
+		// "v3.1.1", "5", "v5", "5.0" all resolve naturally. No indexing of the raw
+		// string, so an empty value fails cleanly via validation_error below.
+		std::string norm;
+		norm.reserve(token.size());
+		for (char c : token)
+		{
+			if (!std::isspace(static_cast<unsigned char>(c)))
+			{
+				norm += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+			}
+		}
+		if (!norm.empty() && norm.front() == 'v')
+		{
+			norm.erase(norm.begin());
+		}
+
+		if ((norm == "3.1.1") || (norm == "3.1") || (norm == "311") || (norm == "3"))
+		{
+			v = boost::any(ProtocolVersion::v3_1_1);
+		}
+		else if ((norm == "5") || (norm == "5.0"))
+		{
+			v = boost::any(ProtocolVersion::v5);
+		}
+		else
+		{
+			LogDebug(Channel::Options, std::format("Invalid MQTT protocol version -> provided string was: '{}'", token));
+			throw boost::program_options::validation_error(boost::program_options::validation_error::invalid_option_value);
+		}
+	}
 
 	boost::program_options::options_description OptionsProcessor::Options() const
 	{
@@ -49,6 +90,12 @@ namespace AqualinkAutomate::Options::Mqtt
 		if (OPTION_ENABLE->IsPresent(vm))
 		{
 			settings.enabled = OPTION_ENABLE->As<bool>(vm);
+		}
+
+		// Protocol version (admin selects 3.1.1- or 5.0-compatible MQTT)
+		if (OPTION_PROTOCOL_VERSION->IsPresent(vm))
+		{
+			settings.protocol_version = OPTION_PROTOCOL_VERSION->As<ProtocolVersion>(vm);
 		}
 
 		// Broker connection
@@ -173,8 +220,8 @@ namespace AqualinkAutomate::Options::Mqtt
 			settings.ha_device_id = std::format("aqualink_{}", slug);
 		}
 
-		LogInfo(Channel::Options, std::format("MQTT settings: enabled={}, broker={}:{}, tls={}, ha={}",
-			settings.enabled, settings.broker_host, settings.broker_port, settings.use_tls, settings.home_assistant_enabled));
+		LogInfo(Channel::Options, std::format("MQTT settings: enabled={}, broker={}:{}, tls={}, protocol={}, ha={}",
+			settings.enabled, settings.broker_host, settings.broker_port, settings.use_tls, ToString(settings.protocol_version), settings.home_assistant_enabled));
 
 		return settings;
 	}

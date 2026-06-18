@@ -48,10 +48,16 @@ variable "vcenter_folder" {
 
 variable "iso_url" {
   type        = string
-  description = "Local path or URL to Ubuntu 25.04 Server ISO"
+  description = <<-EOT
+    Path to the autoinstall Ubuntu ISO that Packer boots. Produced by repack-iso.sh,
+    which downloads the upstream Ubuntu source on demand (and caches it under ISOs/)
+    rather than keeping it in the repo. Run ./repack-iso.sh before building.
+  EOT
+  default     = "ISOs/ubuntu-25.04-autoinstall.iso"
 }
 
 variable "iso_checksum" {
+  # Locally generated artifact (repack-iso.sh output) — nothing to verify against.
   type    = string
   default = "none"
 }

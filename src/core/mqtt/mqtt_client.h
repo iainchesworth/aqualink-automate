@@ -5,13 +5,9 @@
 #include <deque>
 #include <memory>
 #include <optional>
-#include <span>
 #include <string>
-#include <vector>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl.hpp>
 #include <boost/signals2.hpp>
 
 #include "options/options_mqtt_options.h"
@@ -21,38 +17,27 @@ namespace AqualinkAutomate::Test { class MqttClientPacketTest; }
 namespace AqualinkAutomate::Mqtt
 {
 
-	/// MQTT 3.1.1 control packet types (high nibble of the fixed-header byte).
-	///
-	/// Shared by both the encode and decode paths so that no magic packet-type
-	/// numbers are scattered across the implementation.
-	enum class PacketType : uint8_t
-	{
-		Connect = 1,
-		Connack = 2,
-		Publish = 3,
-		Puback = 4,
-		Subscribe = 8,
-		Suback = 9,
-		Unsubscribe = 10,
-		Unsuback = 11,
-		Pingreq = 12,
-		Pingresp = 13,
-		Disconnect = 14
-	};
-
-	/// Poll-based MQTT 3.1.1 client with an asynchronous, non-blocking state machine.
+	/// Asynchronous MQTT client backed by the async_mqtt library (header-only,
+	/// Boost.Asio based). Speaks MQTT 3.1.1 or 5.0 — selected at runtime from
+	/// settings.protocol_version — over plain TCP or TLS.
 	///
 	/// Thread-safety contract: This class is NOT thread-safe. All public methods
-	/// (including Publish(), Poll(), Start(), Stop()) must be called from the
-	/// same thread that runs the associated io_context. The internal publish
-	/// queue and connection state are accessed without synchronization,
-	/// relying on single-threaded execution within the io_context poll loop.
+	/// (Publish(), Poll(), Start(), Stop(), Subscribe(), ...) must be called from
+	/// the same thread that runs the associated io_context. The client is driven
+	/// cooperatively: the async_mqtt completion handlers advance whenever
+	/// io_context.poll()/run() executes ready handlers (the host frame loop already
+	/// pumps the io_context). A slow or unreachable broker never blocks the loop —
+	/// name resolution, connect, the TLS handshake and the CONNECT/CONNACK exchange
+	/// are all asynchronous.
 	///
-	/// Connection establishment (DNS resolve, TCP connect, TLS handshake) is fully
-	/// non-blocking: each phase is launched with an Asio async operation whose
-	/// completion handler advances the state machine. The handlers are driven by
-	/// the shared io_context.poll() that the host frame loop already runs, so a
-	/// slow or unreachable broker never blocks the ~1ms cooperative frame loop.
+	/// Reconnection (exponential backoff + jitter) and the bounded, drop-oldest
+	/// outbound publish queue are managed here; async_mqtt itself does not
+	/// auto-reconnect. Framing, partial I/O, keep-alive PINGREQ and packet
+	/// encode/decode are owned by async_mqtt.
+	///
+	/// The async_mqtt types are confined to the .cpp behind a pimpl so neither the
+	/// MQTT hub/integration/diagnostics consumers nor the unit tests pay the (heavy,
+	/// template-instantiation) compile cost of the library.
 	class MqttClient : public std::enable_shared_from_this<MqttClient>
 	{
 	public:
@@ -65,8 +50,6 @@ namespace AqualinkAutomate::Mqtt
 		{
 			Disconnected,
 			Connecting,
-			SendingConnect,
-			WaitingConnack,
 			Connected,
 			Reconnecting
 		};
@@ -106,9 +89,9 @@ namespace AqualinkAutomate::Mqtt
 		const std::string& TopicPrefix() const noexcept;
 
 	public:
-		// Read-only diagnostics accessors. Safe to call from the HTTP handler:
-		// the client is single-threaded and the handler runs on the same
-		// io_context thread, so no synchronisation is required.
+		// Read-only diagnostics accessors. Safe to call from the HTTP handler: the
+		// client is single-threaded and the handler runs on the same io_context
+		// thread, so no synchronisation is required.
 		const Options::Mqtt::MqttSettings& Settings() const noexcept { return m_Settings; }
 		std::size_t PublishQueueDepth() const noexcept { return m_PublishQueue.size(); }
 		std::uint16_t ReconnectAttempts() const noexcept { return m_ReconnectAttempts; }
@@ -123,129 +106,58 @@ namespace AqualinkAutomate::Mqtt
 		ErrorSignal OnError;
 
 	private:
-		void PollConnecting();
-		void PollSendingConnect();
-		void PollWaitingConnack();
-		void PollConnected();
-		void PollReconnecting();
+		// async_mqtt-backed implementation: the (TCP or TLS) endpoint and the
+		// reconnect timer. A nested type defined in the .cpp so the heavy async_mqtt
+		// templates instantiate exactly once. It drains sends from m_PublishQueue.
+		struct Impl;
 
-		// Non-blocking connection establishment (driven by the shared io_context).
-		void BeginConnect();
-		void OnResolveComplete(uint64_t generation, const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& endpoints);
-		void OnTcpConnectComplete(uint64_t generation, const boost::system::error_code& ec);
-		void OnTlsHandshakeComplete(uint64_t generation, const boost::system::error_code& ec);
-		void StartTlsHandshake(uint64_t generation);
-		void EnterSendingConnect();
-
-		// Schedule a transition into the Reconnecting state with backoff, replacing
-		// the duplicated "CloseSocket + set Reconnecting + schedule + ++attempts"
-		// block that previously appeared at every failure site.
-		void ScheduleReconnect(const std::string& reason, bool emit_disconnect = false);
-
-		bool DrainWriteBuffer(boost::system::error_code& ec);
-		void SendPendingPublishes();
-		void ReadIncoming();
-		void SendPingreq();
-
-		// MQTT 3.1.1 packet encoding
-		std::vector<uint8_t> EncodeConnect();
-		std::vector<uint8_t> EncodePublish(const std::string& topic, const std::string& payload, bool retain = false);
-		std::vector<uint8_t> EncodeSubscribe(const std::string& topic_filter, uint8_t qos);
-		std::vector<uint8_t> EncodePingreq();
-		std::vector<uint8_t> EncodeDisconnect();
-
-		// MQTT packet parsing
-		bool ParseConnack(const std::vector<uint8_t>& data);
-
-		std::string GenerateClientId() const;
-		std::chrono::seconds CalculateReconnectDelay() const;
-
-	private:
-		void InitializeSslContext();
-
-		// I/O helpers that work with both plain and TLS sockets
-		std::size_t WriteSocket(std::span<const uint8_t> data, boost::system::error_code& ec);
-		std::size_t ReadSocket(std::span<uint8_t> buffer, boost::system::error_code& ec);
-		void CloseSocket();
-		bool IsSocketOpen() const;
-
-		// Test access
-		friend class AqualinkAutomate::Test::MqttClientPacketTest;
-
-	private:
-		boost::asio::io_context& m_IoContext;
-		const Options::Mqtt::MqttSettings m_Settings;
-
-		State m_State{ State::Disconnected };
-		bool m_Running{ false };
-		std::string m_ClientId;
-
-		// TCP socket (non-blocking)
-		std::optional<boost::asio::ip::tcp::socket> m_Socket;
-
-		// Asynchronous connection establishment
-		boost::asio::ip::tcp::resolver m_Resolver;
-		bool m_ConnectInProgress{ false };
-		// Generation token: incremented on every Stop()/reconnect/CloseSocket so that
-		// completion handlers from a stale connection attempt are recognised and ignored.
-		uint64_t m_ConnectGeneration{ 0 };
-
-		// TLS support
-		std::optional<boost::asio::ssl::context> m_SslContext;
-		std::optional<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> m_SslStream;
-
-		// Pending publishes
+		// A queued outbound publish. Kept in the facade (plain data, no async_mqtt)
+		// so the publish / drop-oldest behaviour stays unit-testable without the
+		// library, and inspectable by the test seam below.
 		struct PendingPublish
 		{
 			std::string topic;
 			std::string payload;
 			bool retain{ false };
 		};
-		std::deque<PendingPublish> m_PublishQueue;
 
-		// Outbound write buffer + offset.  A queued publish (or a control packet) is
-		// serialised into m_WriteBuffer and only considered fully sent once
-		// m_WriteOffset == m_WriteBuffer.size().  This guards against partial socket
-		// writes silently truncating MQTT packets.
-		std::vector<uint8_t> m_WriteBuffer;
-		std::size_t m_WriteOffset{ 0 };
+		std::string GenerateClientId() const;
+		std::chrono::seconds CalculateReconnectDelay() const;
 
-		// Security: Maximum publish queue size to prevent memory exhaustion
-		static constexpr std::size_t MAX_PUBLISH_QUEUE_SIZE = 1000;
+		// Test seam: inspect the publish queue / force the connected state.
+		friend class AqualinkAutomate::Test::MqttClientPacketTest;
 
-		// Read buffer
-		std::vector<uint8_t> m_ReadBuffer;
-		static constexpr std::size_t READ_CHUNK_SIZE = 4096;
+	private:
+		boost::asio::io_context& m_IoContext;
+		const Options::Mqtt::MqttSettings m_Settings;
 
-		// Security: Maximum read buffer size to prevent memory exhaustion from malicious brokers
-		static constexpr std::size_t MAX_READ_BUFFER_SIZE = 1024 * 1024;  // 1MB
+		std::string m_ClientId;
+		std::optional<WillConfig> m_WillConfig;
 
-		// Keepalive: the wire value (seconds) is derived from the interval so the two
-		// can never drift apart by hand.
-		static constexpr auto KEEPALIVE_INTERVAL = std::chrono::seconds(60);
-		static constexpr uint16_t KEEPALIVE_SECONDS = static_cast<uint16_t>(KEEPALIVE_INTERVAL.count());
-		static_assert(KEEPALIVE_INTERVAL.count() <= 0xFFFF, "MQTT keep-alive must fit in a 16-bit field");
+		State m_State{ State::Disconnected };
+		bool m_Running{ false };
 
-		// How long to wait for a CONNACK after sending CONNECT before giving up.
-		static constexpr auto CONNACK_TIMEOUT = std::chrono::seconds(10);
-
-		std::chrono::steady_clock::time_point m_LastPingSent;
-		std::chrono::steady_clock::time_point m_LastActivity;
-
-		// Packet ID for Subscribe
-		uint16_t m_NextPacketId{ 1 };
-
-		// Reconnection
-		uint16_t m_ReconnectAttempts{ 0 };
-		std::chrono::steady_clock::time_point m_ReconnectTime;
-
-		// Diagnostics counters (surfaced via /api/diagnostics/mqtt).
+		// Diagnostics counters (surfaced via /api/diagnostics/mqtt). Mutated by Impl.
+		std::uint16_t m_ReconnectAttempts{ 0 };
 		std::uint64_t m_PublishedCount{ 0 };
 		std::uint64_t m_DroppedCount{ 0 };
 		std::string m_LastError;
 
-		// Last Will and Testament
-		std::optional<WillConfig> m_WillConfig;
+		// Outbound publish queue, drained by Impl once connected. Bounded with
+		// drop-oldest semantics (see MAX_PUBLISH_QUEUE_SIZE).
+		std::deque<PendingPublish> m_PublishQueue;
+
+		// Security: bound the outbound queue (drop-oldest) to prevent memory
+		// exhaustion if the broker is unreachable for a long time.
+		static constexpr std::size_t MAX_PUBLISH_QUEUE_SIZE = 1000;
+
+		// MQTT keep-alive (seconds) advertised in CONNECT. async_mqtt sends PINGREQ
+		// automatically at this interval (set_pingreq_send_interval).
+		static constexpr std::uint16_t KEEPALIVE_SECONDS = 60;
+
+		// Owns the async_mqtt endpoint + queue + reconnect timer. Destroyed (in the
+		// .cpp, where Impl is complete) by the out-of-line destructor.
+		std::unique_ptr<Impl> m_Impl;
 	};
 
 }

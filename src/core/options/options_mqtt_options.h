@@ -4,8 +4,10 @@
 #include <cstdint>
 #include <expected>
 #include <string>
+#include <string_view>
 #include <vector>
 
+#include <boost/any.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
@@ -22,6 +24,36 @@ namespace AqualinkAutomate::Options::Mqtt
 		AtLeastOnce = 1,  // Acknowledged delivery - may be delivered more than once
 		ExactlyOnce = 2   // Assured delivery - exactly once
 	};
+
+	/// MQTT wire-protocol version the client speaks to the broker. Administrator-
+	/// selectable (via --mqtt-protocol-version / config) so a deployment can match
+	/// the dialect its broker and Home Assistant install expect. Default v3_1_1
+	/// preserves the historical behaviour. The v5 wire backend is delivered by the
+	/// async-mqtt client integration (see docs/async_migration_analysis.md, Phase 5).
+	enum class ProtocolVersion : uint8_t
+	{
+		v3_1_1 = 0,  // MQTT 3.1.1 (default)
+		v5 = 1       // MQTT 5.0
+	};
+
+	/// Canonical "3.1.1" / "5.0" label for logs, the config file, and the
+	/// /api/diagnostics/mqtt response (magic_enum would yield "v3_1_1"/"v5").
+	[[nodiscard]] constexpr std::string_view ToString(ProtocolVersion version) noexcept
+	{
+		switch (version)
+		{
+		case ProtocolVersion::v5:    return "5.0";
+		case ProtocolVersion::v3_1_1:
+		default:                     return "3.1.1";
+		}
+	}
+
+	/// boost::program_options validator for ProtocolVersion. Declared in the
+	/// validated type's namespace so it is found by ADL wherever
+	/// value<ProtocolVersion>() is instantiated; defined in the .cpp. Accepts the
+	/// friendly admin spellings "3.1.1" / "5.0" (and aliases like "v5"), not the
+	/// enumerator identifiers, so the CLI/config reads naturally.
+	void validate(boost::any& v, const std::vector<std::string>& values, ProtocolVersion*, int);
 
 	/// MQTT connection and publishing settings
 	typedef struct tagMqttSettings
@@ -40,6 +72,14 @@ namespace AqualinkAutomate::Options::Mqtt
 
 		/// Enable or disable MQTT functionality
 		bool enabled{ false };
+
+		//---------------------------------------------------------------------
+		// PROTOCOL VERSION
+		//---------------------------------------------------------------------
+
+		/// MQTT wire-protocol version the client speaks (admin-selectable:
+		/// 3.1.1- or 5.0-compatible). Default 3.1.1.
+		ProtocolVersion protocol_version{ ProtocolVersion::v3_1_1 };
 
 		//---------------------------------------------------------------------
 		// BROKER CONNECTION
@@ -132,6 +172,9 @@ namespace AqualinkAutomate::Options::Mqtt
 		// Enable/disable
 		AppOptionPtr OPTION_ENABLE{ make_appoption("mqtt", "Enable MQTT client for publishing pool data", boost::program_options::bool_switch()->default_value(false)) };
 
+		// Protocol version (admin selects 3.1.1- or 5.0-compatible MQTT)
+		AppOptionPtr OPTION_PROTOCOL_VERSION{ make_appoption("mqtt-protocol-version", "MQTT wire-protocol version the client speaks: '3.1.1' or '5.0'", boost::program_options::value<ProtocolVersion>()->default_value(ProtocolVersion::v3_1_1, "3.1.1")) };
+
 		// Broker connection
 		AppOptionPtr OPTION_BROKER_HOST{ make_appoption("mqtt-host", "MQTT broker hostname or IP address", boost::program_options::value<std::string>()->default_value("localhost")) };
 		AppOptionPtr OPTION_BROKER_PORT{ make_appoption("mqtt-port", "MQTT broker port", boost::program_options::value<uint16_t>()->default_value(1883)) };
@@ -162,6 +205,7 @@ namespace AqualinkAutomate::Options::Mqtt
 		const std::vector<AppOptionPtr> MqttOptionsCollection
 		{
 			OPTION_ENABLE,
+			OPTION_PROTOCOL_VERSION,
 			OPTION_BROKER_HOST,
 			OPTION_BROKER_PORT,
 			OPTION_USE_TLS,
