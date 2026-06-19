@@ -188,6 +188,36 @@
     },
 
     {
+      "name": "config-linux-gcc-arm64",
+      "inherits": [ "release", "core" ],
+      "displayName": "Linux GCC Release (arm64)",
+      "description": "Native arm64 (aarch64) release build for Raspberry Pi and other arm64 hosts. Runs on an aarch64 Linux runner; the triplet/toolchain select the target arch, so the host condition is still Linux.",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-linux-gcc",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "config-linux-gcc-arm64-debug",
+      "inherits": [ "debug", "core" ],
+      "displayName": "Linux GCC Debug (arm64)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-linux-gcc",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.gcc.toolchain.cmake"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+
+    {
       "name": "config-linux-llvm",
       "inherits": [ "release", "core" ],
       "displayName": "Linux LLVM Release",
@@ -298,6 +328,18 @@
       "targets": [ "coverage-testaqualink-automate" ]
     },
     {
+      "name": "build-linux-gcc-arm64",
+      "configurePreset": "config-linux-gcc-arm64",
+      "displayName": "Linux GCC Release (arm64)",
+      "configuration": "Release"
+    },
+    {
+      "name": "build-linux-gcc-arm64-debug",
+      "configurePreset": "config-linux-gcc-arm64-debug",
+      "displayName": "Linux GCC Debug (arm64)",
+      "configuration": "Debug"
+    },
+    {
       "name": "build-linux-llvm",
       "configurePreset": "config-linux-llvm",
       "displayName": "Linux LLVM Release",
@@ -381,6 +423,20 @@
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {
+      "name": "test-linux-gcc-arm64",
+      "configurePreset": "config-linux-gcc-arm64",
+      "displayName": "Linux GCC Release Tests (arm64)",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-gcc-arm64-debug",
+      "configurePreset": "config-linux-gcc-arm64-debug",
+      "displayName": "Linux GCC Debug Tests (arm64)",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
       "name": "test-linux-llvm",
       "configurePreset": "config-linux-llvm",
       "displayName": "Linux LLVM Release Tests",
@@ -433,6 +489,13 @@
       "packageDirectory": "${sourceDir}/packages"
     },
     {
+      "name": "pack-linux-gcc-arm64",
+      "displayName": "Linux GCC Package (arm64)",
+      "configurePreset": "config-linux-gcc-arm64",
+      "generators": [ "TGZ", "DEB", "RPM" ],
+      "packageDirectory": "${sourceDir}/packages"
+    },
+    {
       "name": "pack-linux-llvm",
       "displayName": "Linux LLVM Package",
       "configurePreset": "config-linux-llvm",
@@ -477,6 +540,16 @@
         { "type": "build", "name": "build-linux-gcc" },
         { "type": "test", "name": "test-linux-gcc" },
         { "type": "package", "name": "pack-linux-gcc" }
+      ]
+    },
+    {
+      "name": "ci-linux-gcc-arm64",
+      "displayName": "Linux GCC CI Workflow (arm64)",
+      "steps": [
+        { "type": "configure", "name": "config-linux-gcc-arm64" },
+        { "type": "build", "name": "build-linux-gcc-arm64" },
+        { "type": "test", "name": "test-linux-gcc-arm64" },
+        { "type": "package", "name": "pack-linux-gcc-arm64" }
       ]
     },
     {
