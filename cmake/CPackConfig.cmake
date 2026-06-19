@@ -188,11 +188,24 @@ set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 
 # DEB/RPM architecture and metadata defaults. These come BEFORE the prerelease
 # block so a prerelease build can override CPACK_RPM_PACKAGE_RELEASE.
-set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+#
+# The architecture is DERIVED from the build's target processor (set by the
+# toolchain: x86_64 or aarch64) rather than hardcoded, so a native arm64 build
+# is labelled arm64/aarch64 — otherwise an arm64 .deb would be stamped amd64 and
+# apt would refuse to install it on a Raspberry Pi. DEB-DEFAULT/RPM-DEFAULT embed
+# this architecture in the package filename, so the two arches never collide.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(AQ_ARCH_LABEL "arm64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
+else()
+    set(AQ_ARCH_LABEL "amd64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+endif()
 set(CPACK_DEBIAN_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_RPM_PACKAGE_RELEASE 1)
-set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
 
 # Encode any prerelease label (alpha/beta/rc) so prerelease packages do not
 # collide with — and sort BEFORE — their eventual final release.
@@ -206,6 +219,25 @@ if(PROJECT_VERSION_PRERELEASE)
     # before the final release's Release value (1).
     set(CPACK_RPM_PACKAGE_VERSION "${PROJECT_VERSION}")
     set(CPACK_RPM_PACKAGE_RELEASE "0.${PROJECT_VERSION_PRERELEASE}")
+endif()
+
+# Disambiguate the per-arch Linux archive (TGZ). The DEB/RPM names already embed
+# the architecture (via *-DEFAULT + CPACK_*_PACKAGE_ARCHITECTURE) and ignore
+# CPACK_PACKAGE_FILE_NAME, but the TGZ name is "<name>-<version>[-<pre>]-Linux"
+# with NO arch — so an x64 and an arm64 build would produce identically named
+# tarballs that clobber each other when every platform's packages are gathered
+# into a single GitHub release. Fold the arch into CPACK_PACKAGE_FILE_NAME on
+# Linux (this drives the TGZ name; deb/rpm are unaffected — verified empirically:
+# CPACK_ARCHIVE_FILE_NAME is NOT honoured by the archive generator here, the TGZ
+# follows CPACK_PACKAGE_FILE_NAME). Windows/macOS keep their single-arch names.
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    if(PROJECT_VERSION_PRERELEASE)
+        set(CPACK_PACKAGE_FILE_NAME
+            "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${PROJECT_VERSION_PRERELEASE}-${CMAKE_SYSTEM_NAME}-${AQ_ARCH_LABEL}")
+    else()
+        set(CPACK_PACKAGE_FILE_NAME
+            "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${AQ_ARCH_LABEL}")
+    endif()
 endif()
 
 #------------------------------------------------------------------------------

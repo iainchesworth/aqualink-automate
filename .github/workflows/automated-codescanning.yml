@@ -214,10 +214,6 @@ jobs:
       github.head_ref != 'develop' ||
       github.base_ref != 'main'
     runs-on: ${{ fromJSON(vars.RUNNER_WINDOWS || '["windows-latest"]') }}
-    # ilammy/msvc-dev-cmd is a Node 20 action with no Node 24 release; opt it into the
-    # Node 24 runtime now (forced by GitHub from 2026-06-16) to clear the warning.
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     permissions:
       actions: read
       contents: read
@@ -237,9 +233,11 @@ jobs:
       with:
         compiler: msvc
 
+    # Pure-PowerShell local composite (no Node) — replaces ilammy/msvc-dev-cmd,
+    # which only ships a deprecated Node 20 runtime.
     - name: Setup MSVC environment (self-hosted)
       if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: ./.github/actions/setup-msvc-env
 
     - name: Setup vcpkg cache (self-hosted)
       if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')

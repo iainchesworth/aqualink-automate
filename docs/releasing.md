@@ -154,7 +154,8 @@ Each release includes:
 
 | Platform | Packages                     |
 |----------|------------------------------|
-| Linux    | `.tgz`, `.deb`, `.rpm`       |
+| Linux (amd64) | `.tgz`, `.deb`, `.rpm`  |
+| Linux (arm64) | `.tgz`, `.deb`, `.rpm`  |
 | Windows  | `.zip`, `.exe` (NSIS)        |
 | macOS    | `.tgz`, `.dmg`               |
 

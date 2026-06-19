@@ -24,7 +24,7 @@ Download the package for your platform from the [GitHub Releases](https://github
 | Platform | Package types | Notes |
 |----------|---------------|-------|
 | Windows  | `.exe` (NSIS installer), `.zip` | Run the installer, or unzip the portable build anywhere. |
-| Linux    | `.deb`, `.rpm`, `.tgz` | Install the `.deb`/`.rpm` with your package manager, or unpack the `.tgz`. |
+| Linux    | `.deb`, `.rpm`, `.tgz` | Built for **`amd64`** and **`arm64`** (Raspberry Pi 3/4/5 and other aarch64 hosts on a 64-bit OS). Pick the package matching your architecture (`dpkg --print-architecture` / `uname -m`), then install the `.deb`/`.rpm` with your package manager or unpack the `.tgz`. |
 | macOS    | `.dmg`, `.tgz` | Open the disk image and drag the app across, or unpack the `.tgz`. |
 
 Every release artifact ships with a matching `.sha512` checksum file. Verify the download before installing.
