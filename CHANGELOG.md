@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.6.0-beta.1] - 2026-06-19
+
+### Added
+
+- **Native arm64 (Raspberry Pi) packages.** `.deb`, `.rpm`, and `.tar.gz` are now built for 64-bit ARM (aarch64) alongside the existing x86-64 builds, so Aqualink-Automate installs on a Raspberry Pi (3 / 4 / 5 and Zero 2 running a 64-bit OS) and other arm64 Linux hosts. The arm64 binaries are built natively on an `ubuntu-24.04-arm` runner — not cross-compiled or emulated — run the full test suite before packaging, and the `.deb` carries the correct `Architecture: arm64`. Pick the package matching your machine (`dpkg --print-architecture` / `uname -m`). The Docker image remains `linux/amd64` only.
+
+### Fixed
+
+- **Matter commissioning QR code now renders.** The diagnostics page's Matter pairing QR (added in 0.4.0-beta.1) did not draw; it now displays correctly, so the bridge can be paired by scanning rather than entering the manual pairing code.
+
 ## [0.5.0-beta.1] - 2026-06-19
 
 ### Added
