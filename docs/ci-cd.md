@@ -69,17 +69,20 @@ Concurrency is keyed on the PR number (or the ref for branch pushes) with `cance
 
 ### The matrix
 
-The job runs a three-row matrix with `fail-fast: false`, so one platform failing does not cancel the others:
+The job runs a four-row matrix with `fail-fast: false`, so one platform failing does not cancel the others:
 
 | Name | Compiler | Configure preset | Build preset | Test preset | Package preset |
 |------|----------|------------------|--------------|-------------|----------------|
 | Linux GCC | `gcc-15` | `config-linux-gcc` | `build-linux-gcc` | `test-linux-gcc` | `pack-linux-gcc` |
+| Linux GCC (arm64) | `gcc-15` | `config-linux-gcc-arm64` | `build-linux-gcc-arm64` | `test-linux-gcc-arm64` | `pack-linux-gcc-arm64` |
 | Windows MSVC | `msvc` | `config-windows-msvc` | `build-windows-msvc` | `test-windows-msvc` | `pack-windows-msvc` |
 | macOS Clang | `llvm` | `config-macos-llvm` | `build-macos-llvm` | `test-macos-llvm` | `pack-macos-llvm` |
 
 These are the same presets you use locally — see [INSTALL.md](../INSTALL.md).
 
-Runner selection per row is `vars.RUNNER_LINUX` / `vars.RUNNER_WINDOWS` with a GitHub-hosted fallback; macOS always runs on `macos-latest`. See [Self-hosted runners](#self-hosted-runners).
+The arm64 row builds **natively** on an aarch64 runner (no cross-compile / QEMU) so the `.deb`/`.rpm`/`.tgz` install on a Raspberry Pi and other arm64 hosts; CPack derives the package architecture from the target, so the packages are correctly labelled `arm64`/`aarch64`. The install-tree upload (consumed by `e2e-ui` and the Docker image) stays on the x64 `config-linux-gcc` row only.
+
+Runner selection per row is `vars.RUNNER_LINUX` / `vars.RUNNER_LINUX_ARM` / `vars.RUNNER_WINDOWS` with a GitHub-hosted fallback (the arm64 row falls back to `ubuntu-24.04-arm`); macOS always runs on `macos-latest`. See [Self-hosted runners](#self-hosted-runners).
 
 ### Test scope
 
@@ -208,7 +211,8 @@ Set these under **Settings > Variables > Actions**. Each value is a JSON array o
 
 | Variable | Type | Example | Applies to |
 |----------|------|---------|------------|
-| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, SonarCloud |
+| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | x64 Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, SonarCloud |
+| `RUNNER_LINUX_ARM` | JSON label array | `["self-hosted","linux","arm64"]` | The arm64 Linux row of `_build.yml`. Falls back to the GitHub-hosted `ubuntu-24.04-arm` (free for public repos). |
 | `RUNNER_WINDOWS` | JSON label array | `["self-hosted","windows","x64"]` | Windows row of `_build.yml`, MSVC code analysis |
 
 ### Fallback

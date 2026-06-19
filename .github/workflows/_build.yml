@@ -49,6 +49,17 @@ jobs:
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc
             package_preset: pack-linux-gcc
+          # Native arm64 build so the .deb/.rpm/.tgz install on a Raspberry Pi and
+          # other aarch64 hosts. ubuntu-24.04-arm is a GitHub-hosted arm64 runner
+          # (free for public repos); override RUNNER_LINUX_ARM to use a self-hosted
+          # arm runner. The triplet/toolchain target aarch64, so no cross-compile.
+          - name: "Linux GCC (arm64)"
+            runner: ${{ vars.RUNNER_LINUX_ARM || '["ubuntu-24.04-arm"]' }}
+            compiler: gcc-15
+            configure_preset: config-linux-gcc-arm64
+            build_preset: build-linux-gcc-arm64
+            test_preset: test-linux-gcc-arm64
+            package_preset: pack-linux-gcc-arm64
           - name: "Windows MSVC"
             runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
@@ -190,8 +201,10 @@ jobs:
       # built on the Ubuntu-25.04 runner so the binary's glibc/libstdc++ baseline
       # matches the ubuntu:25.04 Docker runtime base.
       # ---------------------------------------------------------------------------
+      # x64 only: the install tree feeds the (x64) Docker image + e2e-ui, and the
+      # artifact name is fixed, so the arm64 Linux entry must NOT also upload it.
       - name: Install + pack the Linux install tree
-        if: inputs.upload_installtree && runner.os == 'Linux'
+        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc'
         shell: bash
         run: |
           cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
@@ -202,7 +215,7 @@ jobs:
             -C "${{ github.workspace }}/install/config-linux-gcc" .
 
       - name: Upload Linux install tree
-        if: inputs.upload_installtree && runner.os == 'Linux'
+        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc'
         uses: actions/upload-artifact@v6
         with:
           name: installtree-linux-gcc
