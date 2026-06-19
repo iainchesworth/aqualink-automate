@@ -215,7 +215,7 @@ Set these under **Settings > Variables > Actions**. Each value is a JSON array o
 
 The pattern in the workflows is `${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}` (and the Windows equivalent). If the variable is unset, or the self-hosted runners go offline, jobs fall back to the GitHub-hosted runners automatically. To force the fallback, remove the repository variables.
 
-Self-hosted jobs also run extra steps the hosted jobs skip — they clean the workspace, point vcpkg at a persistent `~/.cache/vcpkg`, and (on Windows) load the MSVC environment with `ilammy/msvc-dev-cmd`.
+Self-hosted jobs also run extra steps the hosted jobs skip — they clean the workspace, point vcpkg at a persistent `~/.cache/vcpkg`, and (on Windows) load the MSVC environment with the local `./.github/actions/setup-msvc-env` composite action (pure PowerShell; sources `vcvars64.bat` and exports the env delta to `$GITHUB_ENV`).
 
 ### Provisioning
 

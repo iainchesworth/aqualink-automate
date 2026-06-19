@@ -32,12 +32,6 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ fromJSON(matrix.runner) }}
-    # ilammy/msvc-dev-cmd (self-hosted Windows MSVC env) is a Node 20 action with no
-    # Node 24 release; opt it into the Node 24 runtime now (what GitHub forces from
-    # 2026-06-16 anyway) so the deprecation warning clears. No-op for the other,
-    # already-Node-24 actions in this job.
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -82,10 +76,13 @@ jobs:
 
       # Self-hosted Windows images bake in the VS Build Tools but do not expose the
       # MSVC environment (cl.exe, INCLUDE/LIB) on the default PATH; load it so the
-      # Configure step can find the compiler.
+      # Configure step can find the compiler. Pure-PowerShell local composite (no
+      # Node) — replaces ilammy/msvc-dev-cmd, which only ships a deprecated Node 20
+      # runtime. (vcvars also leaks VCPKG_ROOT -> the VS-bundled vcpkg, same as the
+      # old action; the Configure/Build/Test steps override it per-step.)
       - name: Setup MSVC environment (self-hosted)
         if: contains(matrix.runner, 'self-hosted') && runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ./.github/actions/setup-msvc-env
 
       - name: Install NSIS (Windows packaging)
         if: inputs.do_package && runner.os == 'Windows' && !contains(matrix.runner, 'self-hosted')
