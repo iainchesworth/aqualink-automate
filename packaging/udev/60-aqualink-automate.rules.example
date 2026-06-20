@@ -1,0 +1,26 @@
+# Stable device name for your RS-485 adapter (EXAMPLE / template).
+#
+# A USB-RS485 adapter enumerates as /dev/ttyUSB0, /dev/ttyUSB1, ... and the number
+# can change across reboots or replugs. This rule pins it to a fixed name,
+# /dev/aqualink-rs485, so the config never has to change.
+#
+# 1. Find your adapter's identifiers:
+#       udevadm info -a -n /dev/ttyUSB0 | grep -E 'idVendor|idProduct|serial'
+# 2. Copy this file to /etc/udev/rules.d/60-aqualink-automate.rules, uncomment the
+#    line that matches your adapter (or add your own idVendor/idProduct/serial).
+# 3. Reload:
+#       sudo udevadm control --reload-rules && sudo udevadm trigger
+# 4. Set in /etc/aqualink-automate/aqualink-automate.conf:
+#       serial-port = /dev/aqualink-rs485
+#
+# FTDI FT232 (very common):
+#SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="aqualink-rs485", GROUP="dialout", MODE="0660"
+#
+# WCH CH340/CH341:
+#SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="aqualink-rs485", GROUP="dialout", MODE="0660"
+#
+# Silicon Labs CP2102:
+#SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="aqualink-rs485", GROUP="dialout", MODE="0660"
+#
+# Pin a SPECIFIC adapter by serial number (when you have several of the same model):
+#SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{serial}=="A12345BC", SYMLINK+="aqualink-rs485", GROUP="dialout", MODE="0660"
