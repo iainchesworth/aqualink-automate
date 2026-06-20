@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.7.0-beta.1] - 2026-06-20
+
+### Added
+
+- **Runs on stock Raspberry Pi OS / Debian Bookworm.** The Linux `.deb`/`.rpm`/`.tgz` are now built on a glibc-2.36 base and bundle the gcc-15 C++ runtime, so they install and run on Raspberry Pi OS Bookworm (and every newer distro) on both `amd64` and `arm64`. Previously they required a too-new glibc/libstdc++ and would not even load on a stock Pi.
+- **Installs as a `systemd` service.** The `.deb`/`.rpm` create an `aqualink` service account (in `dialout` for serial access), install a default config at `/etc/aqualink-automate/aqualink-automate.conf`, and a hardened `systemd` unit (enabled on boot; start it once your serial port is set). The `.tgz` ships an `install.sh` that does the same.
+- **APT and DNF package repositories.** Install and stay updated with your package manager from a signed repository — `curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-apt.sh | sh` then `sudo apt install aqualink-automate` (and a `dnf` equivalent). See [INSTALL.md](INSTALL.md).
+- **Multi-arch Docker image.** The GHCR image is now `linux/amd64` + `linux/arm64`, so a Raspberry Pi pulls the arm64 variant from the same tag.
+- **Raspberry Pi guide** ([docs/raspberry-pi.md](docs/raspberry-pi.md)): install, RS-485 hardware (USB adapter vs GPIO UART), udev stable device naming, the service, and troubleshooting.
+
 ## [0.6.0-beta.1] - 2026-06-19
 
 ### Added
