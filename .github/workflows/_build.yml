@@ -52,6 +52,9 @@ jobs:
             # Release packages build in this glibc-2.36 container (Debian Bookworm /
             # Raspberry Pi OS baseline) so they run on a stock Pi; CI builds on the host.
             docker_platform: linux/amd64
+            # Install-tree artifact name (consumed by e2e-ui + the multi-arch Docker
+            # image). The x64 name is unsuffixed for back-compat with the e2e-ui job.
+            installtree_name: installtree-linux-gcc
           # Native arm64 build so the .deb/.rpm/.tgz install on a Raspberry Pi and
           # other aarch64 hosts. ubuntu-24.04-arm is a GitHub-hosted arm64 runner
           # (free for public repos); override RUNNER_LINUX_ARM to use a self-hosted
@@ -64,6 +67,7 @@ jobs:
             test_preset: test-linux-gcc-arm64
             package_preset: pack-linux-gcc-arm64
             docker_platform: linux/arm64
+            installtree_name: installtree-linux-gcc-arm64
           - name: "Windows MSVC"
             runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
@@ -235,15 +239,17 @@ jobs:
           BUILD_PRESET: ${{ matrix.build_preset }}
           TEST_PRESET: ${{ matrix.test_preset }}
           PACKAGE_PRESET: ${{ matrix.package_preset }}
-          # The x64 leg also produces the install tree the Docker image consumes.
-          PACK_INSTALLTREE: ${{ inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc' }}
+          # Both Linux legs produce a per-arch install tree the multi-arch Docker
+          # image consumes (and e2e-ui consumes the x64 one).
+          PACK_INSTALLTREE: ${{ inputs.upload_installtree }}
+          INSTALLTREE_NAME: ${{ matrix.installtree_name }}
         run: |
           mkdir -p "$HOME/.cache/vcpkg-bookworm"
           docker run --rm --platform ${{ matrix.docker_platform }} \
             -v "${{ github.workspace }}":/work -w /work \
             -v "$HOME/.cache/vcpkg-bookworm":/vcpkgcache \
             -e VERSION_OVERRIDE -e CONFIGURE_PRESET -e BUILD_PRESET -e TEST_PRESET \
-            -e PACKAGE_PRESET -e PACK_INSTALLTREE \
+            -e PACKAGE_PRESET -e PACK_INSTALLTREE -e INSTALLTREE_NAME \
             gcc:15-bookworm bash -eu -c '
               export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
@@ -265,7 +271,7 @@ jobs:
               ctest --preset "$TEST_PRESET"
               if [ "$PACK_INSTALLTREE" = "true" ]; then
                 cmake --install "build/$CONFIGURE_PRESET" --prefix "install/$CONFIGURE_PRESET"
-                tar czf installtree-linux-gcc.tar.gz -C "install/$CONFIGURE_PRESET" .
+                tar czf "${INSTALLTREE_NAME}.tar.gz" -C "install/$CONFIGURE_PRESET" .
               fi
               cpack --preset "$PACKAGE_PRESET"
             '
@@ -293,13 +299,15 @@ jobs:
           tar czf "${{ github.workspace }}/installtree-linux-gcc.tar.gz" \
             -C "${{ github.workspace }}/install/config-linux-gcc" .
 
+      # CI uploads only the x64 tree (for e2e-ui); a release uploads both Linux legs'
+      # trees (x64 + arm64) for the multi-arch Docker image. Per-arch artifact name.
       - name: Upload Linux install tree
-        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc'
+        if: inputs.upload_installtree && runner.os == 'Linux' && (inputs.do_package || matrix.configure_preset == 'config-linux-gcc')
         uses: actions/upload-artifact@v6
         with:
-          name: installtree-linux-gcc
+          name: ${{ matrix.installtree_name }}
           if-no-files-found: error
-          path: installtree-linux-gcc.tar.gz
+          path: ${{ matrix.installtree_name }}.tar.gz
           retention-days: 3
 
       # ---------------------------------------------------------------------------
