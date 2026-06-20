@@ -104,18 +104,95 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
             PATTERN "pkgconfig" EXCLUDE
             PATTERN "cmake" EXCLUDE)
 
+    # Bundle the C++ runtime (libstdc++ / libgcc) alongside the vcpkg libraries.
+    # The project is built with a newer gcc than stable distros ship (e.g. gcc-15
+    # vs gcc-12 on Debian Bookworm / Raspberry Pi OS), so the binary AND the
+    # vcpkg .so files require a newer GLIBCXX/CXXABI than the target system has —
+    # without this they fail to load with "version `GLIBCXX_3.4.3x' not found".
+    # These libs are NOT under vcpkg_installed; locate the compiler's own copies
+    # and drop them into the same private dir, where the executable's $ORIGIN
+    # RPATH (and each vcpkg .so's own $ORIGIN RPATH) resolves them. (glibc itself
+    # cannot be bundled — that is handled by building on an old-glibc base.)
+    foreach(_aq_runtime_lib libstdc++.so.6 libgcc_s.so.1)
+        execute_process(
+            COMMAND "${CMAKE_CXX_COMPILER}" "-print-file-name=${_aq_runtime_lib}"
+            OUTPUT_VARIABLE _aq_runtime_lib_path
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        get_filename_component(_aq_runtime_lib_path "${_aq_runtime_lib_path}" REALPATH)
+        if(EXISTS "${_aq_runtime_lib_path}")
+            # RENAME to the SONAME so the loader finds it by the name the binary needs.
+            install(FILES "${_aq_runtime_lib_path}"
+                DESTINATION ${AQ_PRIVATE_LIBDIR}
+                COMPONENT Runtime
+                RENAME ${_aq_runtime_lib})
+        else()
+            message(WARNING "Could not locate ${_aq_runtime_lib} to bundle (got '${_aq_runtime_lib_path}')")
+        endif()
+    endforeach()
+
     # System installation packages for unix systems
     set(CPACK_GENERATOR "TGZ;DEB;RPM" CACHE STRING "Package targets")
 
-    # The dependency libraries are bundled privately, so dpkg-shlibdeps must NOT
-    # try to resolve them against system packages (it would fail / mis-declare).
-    # Declare only the genuine system runtime dependencies explicitly.
+    # The dependency libraries — including the C++ runtime above — are bundled
+    # privately, so dpkg-shlibdeps must NOT try to resolve them against system
+    # packages. The ONLY genuine system runtime dependency is glibc. The version
+    # floor matches the build base: the release packages are built on a glibc-2.36
+    # base (Debian Bookworm / Raspberry Pi OS) so they run there and on every newer
+    # distro; keep this in lockstep with the package build environment.
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libstdc++6, libgcc-s1")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.36), systemd")
     set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
     # RPM's automatic dependency scanner sees the bundled .so as both provided
     # (by the private lib dir) and required (by the binary), so it self-resolves.
     set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
+
+    # -----------------------------------------------------------------------
+    # System integration — systemd service, /etc config, service account.
+    # (See packaging/README.md.) Installed for every Linux generator; the .deb/
+    # .rpm control scripts create the 'aqualink' account + enable the unit, and
+    # the relocatable .tgz ships packaging/tarball/install.sh which does the same.
+    # -----------------------------------------------------------------------
+    set(AQ_PACKAGING_DIR "${CMAKE_SOURCE_DIR}/packaging")
+
+    # systemd vendor unit -> /usr/lib/systemd/system; sysusers declaration ->
+    # /usr/lib/sysusers.d (both relative to the /usr package prefix).
+    install(FILES "${AQ_PACKAGING_DIR}/systemd/aqualink-automate.service"
+        DESTINATION lib/systemd/system COMPONENT Runtime)
+    install(FILES "${AQ_PACKAGING_DIR}/sysusers.d/aqualink-automate.conf"
+        DESTINATION lib/sysusers.d COMPONENT Runtime)
+
+    # Default config -> /etc (ABSOLUTE: /etc is outside the /usr prefix). Marked
+    # as a conffile (deb, via the control file) / %config(noreplace) (rpm, below)
+    # so admin edits survive upgrades.
+    install(FILES "${AQ_PACKAGING_DIR}/config/aqualink-automate.conf"
+        DESTINATION /etc/aqualink-automate COMPONENT Runtime)
+
+    # RS-485 udev naming template, alongside the example configs.
+    install(FILES "${AQ_PACKAGING_DIR}/udev/60-aqualink-automate.rules.example"
+        DESTINATION ${AQ_EXAMPLES_DESTINATION} COMPONENT ExampleConfigs)
+
+    # Ship the packaging sources inside the archive so the relocatable .tgz's
+    # install.sh can place them (deb/rpm ignore these — they use the copies above
+    # plus their control scripts), and the .tgz installer/uninstaller at the root.
+    install(DIRECTORY
+        "${AQ_PACKAGING_DIR}/systemd" "${AQ_PACKAGING_DIR}/config" "${AQ_PACKAGING_DIR}/sysusers.d"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/aqualink-automate/packaging COMPONENT Runtime)
+    install(PROGRAMS
+        "${AQ_PACKAGING_DIR}/tarball/install.sh" "${AQ_PACKAGING_DIR}/tarball/uninstall.sh"
+        DESTINATION . COMPONENT Runtime)
+
+    # .deb maintainer scripts (create account, enable unit) + conffiles list.
+    set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+        "${AQ_PACKAGING_DIR}/deb/postinst"
+        "${AQ_PACKAGING_DIR}/deb/prerm"
+        "${AQ_PACKAGING_DIR}/deb/postrm"
+        "${AQ_PACKAGING_DIR}/deb/conffiles")
+
+    # .rpm scriptlets + protect the config on upgrade + systemd runtime dep.
+    set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${AQ_PACKAGING_DIR}/rpm/post.sh")
+    set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${AQ_PACKAGING_DIR}/rpm/preun.sh")
+    set(CPACK_RPM_USER_FILELIST "%config(noreplace) /etc/aqualink-automate/aqualink-automate.conf")
+    set(CPACK_RPM_PACKAGE_REQUIRES "systemd")
 
  else()
 

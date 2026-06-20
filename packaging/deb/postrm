@@ -1,0 +1,22 @@
+#!/bin/sh
+# Aqualink Automate - Debian postrm
+set -e
+
+case "$1" in
+    remove)
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload >/dev/null 2>&1 || true
+        fi
+        ;;
+    purge)
+        # Remove configuration and runtime state. The service account is left in
+        # place (removing system users on purge is discouraged and risks orphaned
+        # file ownership elsewhere).
+        rm -rf /etc/aqualink-automate /var/lib/aqualink-automate
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+exit 0
