@@ -43,6 +43,12 @@ jobs:
             build_preset: build-linux-gcc
             test_preset: test-linux-gcc
             package_preset: pack-linux-gcc
+            # Release packages build in this glibc-2.36 container (Debian Bookworm /
+            # Raspberry Pi OS baseline) so they run on a stock Pi; CI builds on the host.
+            docker_platform: linux/amd64
+            # Install-tree artifact name (consumed by e2e-ui + the multi-arch Docker
+            # image). The x64 name is unsuffixed for back-compat with the e2e-ui job.
+            installtree_name: installtree-linux-gcc
           # Native arm64 build so the .deb/.rpm/.tgz install on a Raspberry Pi and
           # other aarch64 hosts. ubuntu-24.04-arm is a GitHub-hosted arm64 runner
           # (free for public repos); override RUNNER_LINUX_ARM to use a self-hosted
@@ -54,6 +60,8 @@ jobs:
             build_preset: build-linux-gcc-arm64
             test_preset: test-linux-gcc-arm64
             package_preset: pack-linux-gcc-arm64
+            docker_platform: linux/arm64
+            installtree_name: installtree-linux-gcc-arm64
           - name: "Windows MSVC"
             runner: ${{ vars.RUNNER_WINDOWS || '["windows-latest"]' }}
             compiler: msvc
@@ -120,7 +128,12 @@ jobs:
         with:
           cache-key-prefix: ${{ matrix.name }}
 
+      # Host build path (CI on every platform + the Windows/macOS release builds).
+      # The Linux RELEASE build runs in a glibc-2.36 container instead (see the
+      # "Build, test & package (glibc-2.36 container)" step below), so these host
+      # steps skip for it.
       - name: Bootstrap vcpkg
+        if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
         shell: bash
         run: |
           if [ -f "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" ]; then
@@ -138,7 +151,7 @@ jobs:
       # them here too so the build also works on a not-yet-rebuilt image and on the
       # GitHub-hosted macOS runner. Windows builds libbacktrace without this path.
       - name: Install autotools for libbacktrace (Linux/macOS)
-        if: runner.os != 'Windows'
+        if: ${{ runner.os != 'Windows' && !(inputs.do_package && runner.os == 'Linux') }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
@@ -161,6 +174,7 @@ jobs:
       # emits a noisy "could not parse a v<...> tag" warning. 0.0.0-dev is exactly
       # the value that fallback would produce — just without the warning.
       - name: Configure
+        if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.configure_preset }}
@@ -169,6 +183,7 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Build
+        if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.build_preset }}
@@ -176,7 +191,7 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Show build errors on failure
-        if: failure()
+        if: ${{ failure() && !(inputs.do_package && runner.os == 'Linux') }}
         shell: bash
         run: |
           echo "::group::CMake build retry (verbose)"
@@ -184,11 +199,79 @@ jobs:
           echo "::endgroup::"
 
       - name: Test
+        if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
         uses: lukka/run-cmake@v10
         with:
           testPreset: ${{ matrix.test_preset }}
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+      # Persist the glibc-2.36 container's vcpkg binary cache. On self-hosted runners
+      # $HOME/.cache survives across runs already; this restores it for the
+      # GitHub-hosted arm64 runner. Keyed separately from the host (Ubuntu-25.04)
+      # cache so the two glibc baselines never share archives.
+      - name: Cache vcpkg (glibc-2.36 container)
+        if: ${{ inputs.do_package && runner.os == 'Linux' && !contains(matrix.runner, 'self-hosted') }}
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/vcpkg-bookworm
+          key: vcpkg-bookworm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg/triplets/**') }}
+          restore-keys: |
+            vcpkg-bookworm-${{ runner.os }}-${{ runner.arch }}-
+
+      # ---------------------------------------------------------------------------
+      # Linux RELEASE build — inside a glibc-2.36 container (Debian Bookworm /
+      # Raspberry Pi OS baseline) so the .deb/.rpm/.tgz run on a stock Pi and every
+      # newer distro. Native per-arch (linux/amd64 on the x64 runner, linux/arm64 on
+      # the arm runner — no QEMU). The job stays on the host, so the deb smoke test
+      # below still has Docker. The bundled gcc-15 libstdc++/libgcc (see
+      # cmake/CPackConfig.cmake) make the older-glibc base safe for the C++23 code.
+      # ---------------------------------------------------------------------------
+      - name: Build, test & package (glibc-2.36 container)
+        if: ${{ inputs.do_package && runner.os == 'Linux' }}
+        shell: bash
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version_tag || '0.0.0-dev' }}
+          CONFIGURE_PRESET: ${{ matrix.configure_preset }}
+          BUILD_PRESET: ${{ matrix.build_preset }}
+          TEST_PRESET: ${{ matrix.test_preset }}
+          PACKAGE_PRESET: ${{ matrix.package_preset }}
+          # Both Linux legs produce a per-arch install tree the multi-arch Docker
+          # image consumes (and e2e-ui consumes the x64 one).
+          PACK_INSTALLTREE: ${{ inputs.upload_installtree }}
+          INSTALLTREE_NAME: ${{ matrix.installtree_name }}
+        run: |
+          mkdir -p "$HOME/.cache/vcpkg-bookworm"
+          docker run --rm --platform ${{ matrix.docker_platform }} \
+            -v "${{ github.workspace }}":/work -w /work \
+            -v "$HOME/.cache/vcpkg-bookworm":/vcpkgcache \
+            -e VERSION_OVERRIDE -e CONFIGURE_PRESET -e BUILD_PRESET -e TEST_PRESET \
+            -e PACKAGE_PRESET -e PACK_INSTALLTREE -e INSTALLTREE_NAME \
+            gcc:15-bookworm bash -eu -c '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y -qq --no-install-recommends \
+                ninja-build git ca-certificates curl zip unzip tar make \
+                autoconf autoconf-archive automake libtool pkg-config python3 \
+                binutils file rpm fakeroot >/dev/null
+              ARCH=$(uname -m)
+              curl -fsSL "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-${ARCH}.tar.gz" | tar xz -C /opt
+              export PATH="/opt/cmake-3.31.6-linux-${ARCH}/bin:$PATH"
+              # Restore exec bits on the maintainer scripts (lost on a Windows checkout).
+              chmod +x packaging/deb/postinst packaging/deb/prerm packaging/deb/postrm packaging/rpm/*.sh packaging/tarball/*.sh
+              git config --global --add safe.directory /work
+              git config --global --add safe.directory /work/deps/vcpkg
+              export VCPKG_DEFAULT_BINARY_CACHE=/vcpkgcache
+              ./deps/vcpkg/bootstrap-vcpkg.sh -disableMetrics >/dev/null
+              cmake --preset "$CONFIGURE_PRESET" -DDERIVED_VERSION_OVERRIDE="$VERSION_OVERRIDE"
+              cmake --build --preset "$BUILD_PRESET"
+              ctest --preset "$TEST_PRESET"
+              if [ "$PACK_INSTALLTREE" = "true" ]; then
+                cmake --install "build/$CONFIGURE_PRESET" --prefix "install/$CONFIGURE_PRESET"
+                tar czf "${INSTALLTREE_NAME}.tar.gz" -C "install/$CONFIGURE_PRESET" .
+              fi
+              cpack --preset "$PACKAGE_PRESET"
+            '
 
       # ---------------------------------------------------------------------------
       # Linux install tree (consumed by e2e-ui and the assembled Docker image so
@@ -200,8 +283,10 @@ jobs:
       # ---------------------------------------------------------------------------
       # x64 only: the install tree feeds the (x64) Docker image + e2e-ui, and the
       # artifact name is fixed, so the arm64 Linux entry must NOT also upload it.
+      # CI builds the tree here on the host; the RELEASE tree is produced inside the
+      # glibc-2.36 container step above (so the Docker image runs on a stock Pi too).
       - name: Install + pack the Linux install tree
-        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc'
+        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc' && !inputs.do_package
         shell: bash
         run: |
           cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
@@ -211,33 +296,42 @@ jobs:
           tar czf "${{ github.workspace }}/installtree-linux-gcc.tar.gz" \
             -C "${{ github.workspace }}/install/config-linux-gcc" .
 
+      # CI uploads only the x64 tree (for e2e-ui); a release uploads both Linux legs'
+      # trees (x64 + arm64) for the multi-arch Docker image. Per-arch artifact name.
       - name: Upload Linux install tree
-        if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc'
+        if: inputs.upload_installtree && runner.os == 'Linux' && (inputs.do_package || matrix.configure_preset == 'config-linux-gcc')
         uses: actions/upload-artifact@v6
         with:
-          name: installtree-linux-gcc
+          name: ${{ matrix.installtree_name }}
           if-no-files-found: error
-          path: installtree-linux-gcc.tar.gz
+          path: ${{ matrix.installtree_name }}.tar.gz
           retention-days: 3
 
       # ---------------------------------------------------------------------------
       # Packaging (release path only — inputs.do_package)
       # ---------------------------------------------------------------------------
+      # Windows/macOS package on the host; Linux packages are built by the
+      # glibc-2.36 container step above (cpack runs inside it).
       - name: Package
-        if: inputs.do_package
+        if: inputs.do_package && runner.os != 'Linux'
         run: cpack --preset=${{ matrix.package_preset }}
 
-      # Install/extract the freshly built package on a clean target and run the
-      # binary. This catches missing runtime dependencies (the exact failure mode of
-      # an unbundled dynamic build) BEFORE the package is published.
+      # Install the freshly built .deb on a CLEAN debian:bookworm (the Raspberry Pi
+      # OS baseline: glibc 2.36, gcc-12 system libstdc++) and run it. This is the
+      # guard that the packages still run on a stock Pi — it catches both a missing
+      # runtime dependency AND a regression to a too-new glibc/libstdc++ baseline
+      # (which an ubuntu:25.04 test would silently pass). Runs natively per arch.
       - name: Smoke test — install package & run (Linux)
         if: inputs.do_package && runner.os == 'Linux'
         run: |
-          docker run --rm -v "$PWD/packages:/pkg:ro" ubuntu:25.04 bash -c '
+          docker run --rm --platform ${{ matrix.docker_platform }} \
+            -v "$PWD/packages:/pkg:ro" debian:bookworm bash -c '
             set -e
             apt-get update -qq
             apt-get install -y -qq /pkg/*.deb
-            aqualink-automate --version'
+            aqualink-automate --version
+            test -f /etc/aqualink-automate/aqualink-automate.conf
+            getent passwd aqualink >/dev/null'
 
       - name: Smoke test — extract ZIP & run (Windows)
         if: inputs.do_package && runner.os == 'Windows'

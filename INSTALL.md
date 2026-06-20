@@ -17,9 +17,29 @@ This is the single authoritative guide for getting Aqualink Automate onto a mach
 - [Development container](#development-container)
 - [Docker](#docker)
 
+## Linux: APT / DNF repository (recommended)
+
+On Debian / Ubuntu / **Raspberry Pi OS** (`amd64` or `arm64`), add the signed APT
+repository — you then get `apt upgrade` updates and a managed `systemd` service:
+
+```bash
+curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-apt.sh | sh
+```
+
+On Fedora / RHEL / openSUSE:
+
+```bash
+curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-dnf.sh | sh
+```
+
+After installing, set your serial port in `/etc/aqualink-automate/aqualink-automate.conf`
+and `sudo systemctl start aqualink-automate`. See the [Raspberry Pi guide](docs/raspberry-pi.md).
+There is also a [Docker image](#docker) (multi-arch: `linux/amd64` + `linux/arm64`).
+
 ## Pre-built binaries
 
-Download the package for your platform from the [GitHub Releases](https://github.com/iainchesworth/aqualink-automate/releases) page.
+Prefer the repository above on Linux; otherwise download the package for your platform
+from the [GitHub Releases](https://github.com/iainchesworth/aqualink-automate/releases) page.
 
 | Platform | Package types | Notes |
 |----------|---------------|-------|

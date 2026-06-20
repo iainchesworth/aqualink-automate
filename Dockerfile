@@ -265,11 +265,17 @@ COPY --from=ci /src/install/config-linux-gcc/ .
 
 FROM runtime-base AS runtime-assembled
 
+# Multi-arch: buildx builds this stage once per --platform, setting TARGETARCH
+# (amd64 / arm64). Each install tree is built in the glibc-2.36 container for its
+# arch (release.yml docker-publish stages both under docker/context/ as
+# installtree-linux-gcc-<arch>.tar.gz); pick the matching one. The runtime base
+# (ubuntu:25.04, glibc 2.41) is newer than the package floor, so the tree runs.
+ARG TARGETARCH
 # The install tree arrives as a tarball (lossless symlinks + exec bits through the
 # CI artifact round-trip) and is unpacked here INSIDE the image, so it is correct
 # regardless of the host/runner filesystem (e.g. a Windows box cannot represent the
 # versioned-.so symlinks the binary loads by SONAME).
-COPY docker/context/installtree-linux-gcc.tar.gz /tmp/installtree.tar.gz
+COPY docker/context/installtree-linux-gcc-${TARGETARCH}.tar.gz /tmp/installtree.tar.gz
 RUN tar xzf /tmp/installtree.tar.gz -C /opt/aqualink-automate && rm /tmp/installtree.tar.gz
 # No USER directive: starts as root; the entrypoint applies PUID/PGID then drops
 # privileges via gosu (set PUID=0 to stay root). See docker-entrypoint.sh.
