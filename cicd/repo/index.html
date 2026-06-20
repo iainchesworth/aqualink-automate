@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aqualink Automate — package repositories</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.6 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1rem; }
+  h1 { margin-bottom: 0; }
+  p.lead { color: gray; margin-top: .25rem; }
+  pre { background: rgba(127,127,127,.12); padding: .9rem 1rem; border-radius: 8px; overflow-x: auto; }
+  code { font-family: ui-monospace, monospace; }
+  h2 { margin-top: 2rem; }
+  a { color: #2b7; }
+</style>
+</head>
+<body>
+  <h1>Aqualink Automate</h1>
+  <p class="lead">APT &amp; DNF package repositories — install and stay up to date with your system package manager.</p>
+
+  <h2>Debian / Ubuntu / Raspberry Pi OS (APT)</h2>
+  <pre><code>curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-apt.sh | sh</code></pre>
+  <p>Then <code>sudo apt upgrade</code> keeps it current. Builds for <code>amd64</code> and <code>arm64</code> (Raspberry Pi).</p>
+
+  <h2>Fedora / RHEL / openSUSE (DNF/YUM)</h2>
+  <pre><code>curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-dnf.sh | sh</code></pre>
+
+  <h2>After installing</h2>
+  <pre><code>sudoedit /etc/aqualink-automate/aqualink-automate.conf   # set serial-port = ...
+sudo systemctl start aqualink-automate
+journalctl -u aqualink-automate -f</code></pre>
+
+  <p>
+    Signing key: <a href="key.gpg">key.gpg</a> ·
+    <a href="https://github.com/iainchesworth/aqualink-automate">Project &amp; docs</a> ·
+    <a href="https://github.com/iainchesworth/aqualink-automate/blob/main/docs/raspberry-pi.md">Raspberry Pi guide</a>
+  </p>
+</body>
+</html>
