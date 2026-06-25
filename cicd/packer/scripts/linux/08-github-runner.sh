@@ -81,13 +81,16 @@ REPO_URL=$(get_guestinfo "runner_repo")
 TOKEN=$(get_guestinfo "runner_token")
 NAME=$(get_guestinfo "runner_name")
 LABELS=$(get_guestinfo "runner_labels")
+PAT=$(get_guestinfo "runner_pat")
 
 # Fall back to defaults
 NAME="${NAME:-$(hostname)}"
 LABELS="${LABELS:-self-hosted,linux,x64}"
 
-if [ -z "$REPO_URL" ] || [ -z "$TOKEN" ]; then
-    echo "Missing guestinfo.runner_repo or guestinfo.runner_token, skipping auto-register"
+# Need the repo, plus EITHER a one-shot registration token (persistent mode) OR a PAT
+# (ephemeral mode, which mints its own tokens each loop).
+if [ -z "$REPO_URL" ] || { [ -z "$TOKEN" ] && [ -z "$PAT" ]; }; then
+    echo "Missing guestinfo.runner_repo, or neither runner_token nor runner_pat set — skipping auto-register"
     exit 0
 fi
 
@@ -99,25 +102,101 @@ if [ -n "$NAME" ]; then
     hostnamectl set-hostname "${NAME}" || true
 fi
 
-echo "Registering runner '${NAME}' for ${REPO_URL}"
-
 cd "${RUNNER_DIR}"
-sudo -u runner ./config.sh \
-    --url "${REPO_URL}" \
-    --token "${TOKEN}" \
-    --name "${NAME}" \
-    --labels "${LABELS}" \
-    --unattended \
-    --replace
 
-# Install and start the runner service
-./svc.sh install runner
-./svc.sh start
+if [ -n "${PAT}" ]; then
+    # Ephemeral mode: one job per registration, then re-register fresh -> every job
+    # runs on a pristine runner (no accumulated _work/_temp corruption, orphaned
+    # compiler processes, or thin-disk balloon between jobs). ephemeral-loop.sh and
+    # its service are baked into the template; here we just persist the per-clone
+    # config and start the loop.
+    echo "Ephemeral mode: starting the ephemeral runner loop for '${NAME}'"
+    cat > "${RUNNER_DIR}/.ephemeral-env" <<ENVV
+REPO_URL=${REPO_URL}
+OWNER_REPO=${REPO_URL#https://github.com/}
+RUNNER_NAME=${NAME}
+RUNNER_LABELS=${LABELS}
+RUNNER_PAT=${PAT}
+ENVV
+    chmod 600 "${RUNNER_DIR}/.ephemeral-env"
+    chown runner:runner "${RUNNER_DIR}/.ephemeral-env"
+    systemctl enable --now github-runner-ephemeral.service
+else
+    # Persistent mode (default): register once with the one-shot token, run as a service.
+    echo "Registering persistent runner '${NAME}' for ${REPO_URL}"
+    sudo -u runner ./config.sh \
+        --url "${REPO_URL}" \
+        --token "${TOKEN}" \
+        --name "${NAME}" \
+        --labels "${LABELS}" \
+        --unattended \
+        --replace
+    ./svc.sh install runner
+    ./svc.sh start
+fi
 
 touch "$MARKER"
-echo "$(date): Runner registered and started successfully"
+echo "$(date): Runner setup complete"
 AUTOREGISTER
 chmod +x "${RUNNER_DIR}/auto-register.sh"
+
+# Ephemeral runner loop (used ONLY when guestinfo.runner_pat is set; auto-register.sh
+# enables the service below in that case). One job per registration, then re-register
+# fresh, so every job runs on a pristine runner.
+cat > "${RUNNER_DIR}/ephemeral-loop.sh" <<'LOOP'
+#!/usr/bin/env bash
+set -uo pipefail
+RUNNER_DIR=/home/runner/actions-runner
+cd "$RUNNER_DIR"
+# shellcheck disable=SC1091
+[ -f "$RUNNER_DIR/.ephemeral-env" ] && source "$RUNNER_DIR/.ephemeral-env"
+if [ -z "${RUNNER_PAT:-}" ] || [ -z "${OWNER_REPO:-}" ]; then
+    echo "ephemeral-loop: missing .ephemeral-env config; idling"; sleep 300; exit 1
+fi
+while true; do
+    # Mint a fresh single-use registration token (the PAT needs Administration:write).
+    TOKEN=$(curl -fsSL -X POST \
+        -H "Authorization: Bearer ${RUNNER_PAT}" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/${OWNER_REPO}/actions/runners/registration-token" \
+        | grep -oP '"token"\s*:\s*"\K[^"]+' || true)
+    if [ -z "${TOKEN:-}" ]; then
+        echo "ephemeral-loop: could not mint a registration token; retrying in 30s"
+        sleep 30; continue
+    fi
+    ./config.sh --url "$REPO_URL" --token "$TOKEN" --ephemeral \
+        --name "$RUNNER_NAME" --labels "$RUNNER_LABELS" --unattended --replace \
+        || { echo "ephemeral-loop: config failed; retrying in 30s"; sleep 30; continue; }
+    # Runs exactly ONE job, then exits and de-registers (ephemeral).
+    ./run.sh || true
+    # Reset state before the next registration: stale workdirs + orphaned build procs.
+    rm -rf "$RUNNER_DIR"/_work/* 2>/dev/null || true
+    pkill -u runner -f 'cc1plus|cc1|lto1|ninja' 2>/dev/null || true
+done
+LOOP
+chmod +x "${RUNNER_DIR}/ephemeral-loop.sh"
+chown runner:runner "${RUNNER_DIR}/ephemeral-loop.sh"
+
+cat > /etc/systemd/system/github-runner-ephemeral.service <<'UNIT'
+[Unit]
+Description=GitHub Actions Ephemeral Runner Loop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=runner
+WorkingDirectory=/home/runner/actions-runner
+ExecStart=/home/runner/actions-runner/ephemeral-loop.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+# Intentionally NOT enabled here — auto-register.sh enables it only when
+# guestinfo.runner_pat is set (ephemeral mode).
 
 # Install systemd service for auto-registration on first boot
 cat > /etc/systemd/system/github-runner-register.service <<'UNIT'

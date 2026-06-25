@@ -40,7 +40,8 @@ jobs:
       github.head_ref != 'develop' ||
       github.base_ref != 'main'
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
-    timeout-minutes: 360
+    # Fail fast on a hung/dying runner instead of hanging for hours.
+    timeout-minutes: 180
     permissions:
       actions: read
       contents: read
@@ -134,11 +135,18 @@ jobs:
   ##
 
   CodeScanning_SonarCloud:
-    # Skip a develop->main promotion PR (already scanned on develop entry).
+    # Serialized AFTER CodeQL so only one heavy instrumented build runs at a time on
+    # the single-host self-hosted infra (the contention that was killing scan jobs).
+    # !cancelled() decouples pass/fail: this still runs after CodeQL finishes whatever
+    # CodeQL's result (just not on a cancel), so a CodeQL failure doesn't block it.
+    # Skipped on a develop->main promotion (guard below).
+    needs: [CodeScanning_CodeQL]
     if: >-
-      github.event_name != 'pull_request' ||
-      github.head_ref != 'develop' ||
-      github.base_ref != 'main'
+      !cancelled() &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
+    timeout-minutes: 120
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
@@ -208,11 +216,16 @@ jobs:
   ##
 
   CodeScanning_MSVCCodeAnalysis:
-    # Skip a develop->main promotion PR (already scanned on develop entry).
+    # Serialized AFTER SonarCloud so the heavy Windows analysis build never overlaps
+    # the Linux scans on the shared ESXi host. !cancelled() lets it run regardless of
+    # the upstream result (just not on a cancel). Skipped on a develop->main promotion.
+    needs: [CodeScanning_SonarCloud]
     if: >-
-      github.event_name != 'pull_request' ||
-      github.head_ref != 'develop' ||
-      github.base_ref != 'main'
+      !cancelled() &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
+    timeout-minutes: 120
     runs-on: ${{ fromJSON(vars.RUNNER_WINDOWS || '["windows-latest"]') }}
     permissions:
       actions: read

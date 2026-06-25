@@ -157,6 +157,47 @@ On first boot, the auto-registration service reads the guestinfo variables and r
 - **Linux**: systemd service (`github-runner-register.service`) runs at boot
 - **Windows**: Scheduled task (`GitHubRunnerAutoRegister`) runs at startup
 
+### 4b. (Optional) Ephemeral mode for heavy/contended jobs
+
+Persistent runners accumulate state between jobs — stale `_work` trees, orphaned
+compiler processes (`cc1plus`/`cl.exe`/`mspdbsrv`), and thin-disk balloon. On a
+single oversubscribed ESXi host this is the main cause of the flaky deaths in the
+heavy code-scanning jobs (CodeQL / SonarCloud / MSVC analysis), where a job is
+reported "cancelled" mid-build with orphaned processes left behind.
+
+**Ephemeral mode** makes each runner take exactly one job, then re-register fresh,
+so every job starts on a pristine runner. It is **opt-in**: set one extra guestinfo
+variable and the auto-register script switches modes (no template change needed —
+the loop is already baked in).
+
+| Variable | Value |
+|----------|-------|
+| `guestinfo.runner_pat` | A fine-grained PAT with **Administration: read & write** on this repo (used to mint a fresh single-use registration token per job) |
+
+```bash
+govc vm.change -vm github-runner-windows \
+  -e guestinfo.runner_pat="github_pat_XXXXXXXX" \
+  -e guestinfo.runner_repo="https://github.com/{owner}/aqualink-automate" \
+  -e guestinfo.runner_name="windows-runner" \
+  -e guestinfo.runner_labels="self-hosted,windows,x64"
+```
+
+When `guestinfo.runner_pat` is set, `guestinfo.runner_token` is **not** required
+(the loop mints its own tokens). Without the PAT, the runner stays in the default
+persistent (`--runasservice`) mode using `runner_token` as before.
+
+> **Security tradeoff:** the PAT is stored on the runner VM (`.ephemeral-env`,
+> chmod 600, on Linux). Scope it to *only* this repo with the minimum
+> `Administration: write` permission, and rotate it if a VM is decommissioned. If
+> that tradeoff is unacceptable, keep persistent mode and instead rely on the
+> serialized scan ordering (CodeQL → SonarCloud → MSVC) in
+> `.github/workflows/automated-codescanning.yml`, which already ensures only one
+> instrumented build runs at a time on the single host.
+
+**Roll out on ONE runner first** and watch a full scan cycle before converting the
+fleet — the ephemeral scripts have not been exercised end-to-end against live
+vSphere from this change.
+
 ### 5. Enable in workflows
 
 Set these **repository variables** in GitHub (Settings > Variables > Actions):

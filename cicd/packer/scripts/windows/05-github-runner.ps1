@@ -56,13 +56,6 @@ $Log = "C:\runner-auto-register.log"
 Start-Transcript -Path $Log -Append
 Write-Host "$(Get-Date): Auto-register started"
 
-# Skip if already registered
-if (Test-Path $Marker) {
-    Write-Host "Runner already registered, skipping"
-    Stop-Transcript
-    exit 0
-}
-
 # Read guestinfo variables (set on the VM in vSphere)
 # Note: Must use Start-Process or cmd /c to preserve the single-argument
 # semantics of --cmd "info-get guestinfo.xxx".  PowerShell's & operator
@@ -89,31 +82,63 @@ $RepoUrl = Get-GuestInfo "runner_repo"
 $Token   = Get-GuestInfo "runner_token"
 $Name    = Get-GuestInfo "runner_name"
 $Labels  = Get-GuestInfo "runner_labels"
+$Pat     = Get-GuestInfo "runner_pat"
 
 # Fall back to defaults
 if (-not $Name)   { $Name = $env:COMPUTERNAME }
 if (-not $Labels) { $Labels = "self-hosted,windows,x64" }
 
-if (-not $RepoUrl -or -not $Token) {
-    Write-Host "Missing guestinfo.runner_repo or guestinfo.runner_token, skipping auto-register"
+# Need the repo, plus EITHER a one-shot registration token (persistent) OR a PAT
+# (ephemeral mode, which mints its own tokens each loop).
+if (-not $RepoUrl -or (-not $Token -and -not $Pat)) {
+    Write-Host "Missing guestinfo.runner_repo, or neither runner_token nor runner_pat set; skipping auto-register"
     Stop-Transcript
     exit 0
 }
 
-Write-Host "Registering runner '$Name' for $RepoUrl"
-
-$ErrorActionPreference = "Stop"
-& "$RunnerDir\config.cmd" `
-    --url $RepoUrl `
-    --token $Token `
-    --name $Name `
-    --labels $Labels `
-    --unattended `
-    --replace `
-    --runasservice
-
-New-Item -ItemType File -Path $Marker -Force | Out-Null
-Write-Host "$(Get-Date): Runner registered and started successfully"
+if ($Pat) {
+    # Ephemeral mode: one job per registration, then re-register fresh -> every job
+    # runs on a pristine runner (no accumulated _work corruption or orphaned cl.exe /
+    # mspdbsrv between jobs). Needs a PAT (Administration:write) to mint a fresh
+    # registration token per loop. This boot-time task runs the loop forever (no
+    # marker), so a reboot re-enters the loop.
+    Write-Host "Ephemeral mode: starting the ephemeral runner loop for '$Name'"
+    $ownerRepo = $RepoUrl -replace '^https://github.com/', ''
+    while ($true) {
+        try {
+            $resp = Invoke-RestMethod -Method Post `
+                -Uri "https://api.github.com/repos/$ownerRepo/actions/runners/registration-token" `
+                -Headers @{ Authorization = "Bearer $Pat"; Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" }
+            $tok = $resp.token
+        } catch { Write-Host "ephemeral-loop: token mint failed: $_"; Start-Sleep -Seconds 30; continue }
+        if (-not $tok) { Write-Host "ephemeral-loop: empty token; retrying in 30s"; Start-Sleep -Seconds 30; continue }
+        & "$RunnerDir\config.cmd" --url $RepoUrl --token $tok --ephemeral --name $Name --labels $Labels --unattended --replace
+        # Runs exactly ONE job, then exits and de-registers (ephemeral).
+        & "$RunnerDir\run.cmd"
+        # Reset state before the next registration.
+        Remove-Item "$RunnerDir\_work\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Get-Process cl, mspdbsrv, vctip, ninja -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+} else {
+    # Persistent mode (default): register once and run as a service.
+    if (Test-Path $Marker) {
+        Write-Host "Runner already registered (persistent), skipping"
+        Stop-Transcript
+        exit 0
+    }
+    Write-Host "Registering persistent runner '$Name' for $RepoUrl"
+    $ErrorActionPreference = "Stop"
+    & "$RunnerDir\config.cmd" `
+        --url $RepoUrl `
+        --token $Token `
+        --name $Name `
+        --labels $Labels `
+        --unattended `
+        --replace `
+        --runasservice
+    New-Item -ItemType File -Path $Marker -Force | Out-Null
+    Write-Host "$(Get-Date): Runner registered and started successfully"
+}
 Stop-Transcript
 '@
 $autoRegisterScript | Set-Content -Path "$RunnerDir\auto-register.ps1" -Encoding UTF8
