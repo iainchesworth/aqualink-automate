@@ -34,6 +34,35 @@ symbols — the right shape for a profiler) and force sanitizers off
 configure-time `FATAL_ERROR`). To flip profiling on for an existing build tree
 instead, reconfigure any preset with `-DENABLE_PROFILING=ON`.
 
+### Network-hardened "diagnostic" preset
+
+A profiling build links the Tracy client, whose server thread **listens on a TCP
+data port and answers UDP discovery broadcasts** — i.e. it opens a profiler
+endpoint reachable from the LAN, independent of `--profiler`. For a shipped
+beta / field-diagnostic build that should be permanently attachable but **not**
+LAN-exposed, use the `*-diagnostic` presets instead
+(`config-windows-msvc-diagnostic`, `-linux-gcc-`, …):
+
+```sh
+cmake --preset config-windows-msvc-diagnostic
+cmake --build  build/config-windows-msvc-diagnostic --target aqualink-automate
+```
+
+These are identical to the `*-profiling` presets except they build via a
+`*-diagnostic` vcpkg triplet (`cmake/vcpkg/triplets/*-diagnostic.cmake`) that
+compiles the Tracy client with **`TRACY_ONLY_LOCALHOST`** (the TCP data port
+binds to loopback only — `TracySocket.cpp` skips `AI_PASSIVE`) and
+**`TRACY_NO_BROADCAST`** (no UDP discovery beacon at all). These are compile-time
+Tracy macros, **not** runtime env vars, so they must be baked into the prebuilt
+TracyClient via the triplet — they cannot be enabled by the application or a
+`-D` on our own target. A profiler then connects only over loopback (e.g. an
+SSH tunnel: `ssh -L 8086:127.0.0.1:8086 host`).
+
+Trade-off: the distinct triplet changes the vcpkg ABI, so the first configure
+with a `*-diagnostic` preset rebuilds the dependency set into its own installed
+tree. The always-on memory-hook cost (below) still applies — this is a
+deliberate diagnostic build, not a default release.
+
 **Tracy** needs nothing extra. **VTune** and **uProf** are compiled in only when
 their SDKs are found:
 
