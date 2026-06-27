@@ -1,9 +1,16 @@
 # Publish GPG-signed APT + DNF package repositories to GitHub Pages.
 #
-# Fires when a GitHub Release is published (by release.yml). It pulls the release's
-# .deb/.rpm assets, (re)builds a reprepro apt repo + a createrepo_c dnf repo, signs
-# them with the project GPG key, and publishes everything to the `gh-pages` branch
-# so users can `apt install` / `dnf install` and get `apt upgrade` updates.
+# Called by release.yml (workflow_call) right after the GitHub Release is created,
+# and also runnable on demand (workflow_dispatch) to (re)publish a given tag. It
+# pulls the release's .deb/.rpm assets, (re)builds a reprepro apt repo + a
+# createrepo_c dnf repo, signs them with the project GPG key, and publishes
+# everything to the `gh-pages` branch so users can `apt install` / `dnf install`
+# and get `apt upgrade` updates.
+#
+# NOTE: this is invoked via workflow_call from release.yml rather than a
+# `release: published` trigger, because GitHub does NOT fire the release event for
+# a release created with the default GITHUB_TOKEN (anti-recursion), so that trigger
+# never ran.
 #
 # REQUIRED ONE-TIME SETUP (see docs/releasing.md > Package repositories):
 #   1. Generate a signing key and add the ASCII-armored PRIVATE key as the repo
@@ -14,8 +21,12 @@
 name: Publish package repos
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to publish into the repos"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -38,7 +49,7 @@ jobs:
     # docker-publish's Docker Hub login).
     env:
       HAVE_GPG_KEY: ${{ secrets.REPO_GPG_PRIVATE_KEY != '' && 'true' || 'false' }}
-      TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+      TAG: ${{ inputs.tag }}
     steps:
       - name: Skip if no signing key configured
         if: env.HAVE_GPG_KEY != 'true'

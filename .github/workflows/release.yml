@@ -329,6 +329,21 @@ jobs:
             $PRERELEASE_FLAG \
             release-artifacts/*
 
+  # Sign + publish the APT/DNF repos to gh-pages from the just-created release.
+  # Called here (workflow_call) rather than via a `release: published` trigger,
+  # which GitHub does NOT fire for a GITHUB_TOKEN-created release (anti-recursion).
+  # No-ops if REPO_GPG_PRIVATE_KEY is unset. A failure here leaves the published
+  # release intact (it can be re-published with: gh workflow run publish-repos.yml
+  # -f tag=<tag>); the cleanup job below won't touch the tag once the release exists.
+  publish-repos:
+    name: Publish package repos
+    needs: [resolve-version, github-release]
+    if: needs.resolve-version.outputs.is_dry_run != 'true'
+    uses: ./.github/workflows/publish-repos.yml
+    with:
+      tag: ${{ needs.resolve-version.outputs.version_tag }}
+    secrets: inherit
+
   # If a real PRERELEASE run did not complete, delete its orphaned tag so a re-tag
   # can retry cleanly (automates the by-hand beta.2/beta.3 cleanup). Never touches a
   # stable tag, a dry-run, or a tag that already has a published release.
