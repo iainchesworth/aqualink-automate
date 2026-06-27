@@ -1,0 +1,5 @@
+Component: main
+Origin: Aqualink Automate
+Label: Aqualink Automate
+Architecture: amd64
+Description: Aqualink Automate APT repository

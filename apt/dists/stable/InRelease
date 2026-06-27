@@ -1,0 +1,47 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: Aqualink Automate
+Label: Aqualink Automate
+Codename: stable
+Date: Sat, 27 Jun 2026 05:47:01 UTC
+Architectures: amd64 arm64
+Components: main
+Description: Aqualink Automate APT repository
+MD5Sum:
+ eb9bb788342b5576b8ad16bfae332e3c 6107 main/binary-amd64/Packages
+ b0daf1468050eb72d15e85ccbcc446f5 2655 main/binary-amd64/Packages.gz
+ d971d3bbe41152811ef0fd506cc8c6c1 133 main/binary-amd64/Release
+ 28d369cd2be8f12ce2c5dc3526995176 6107 main/binary-arm64/Packages
+ 64daafc5f5a9ab48d1471015768d51c3 2657 main/binary-arm64/Packages.gz
+ 17df63a7897ce330d6be74a7840c3061 133 main/binary-arm64/Release
+SHA1:
+ 929bf7bba9febf2a3e442281808ab14440534508 6107 main/binary-amd64/Packages
+ 66152db4041be7bdbed9795ee9103950423cb30b 2655 main/binary-amd64/Packages.gz
+ 49b9046ea11419384cb6b70972826d28bcf18e79 133 main/binary-amd64/Release
+ c433697940ad0946a9baf0a5277fdc22777ae283 6107 main/binary-arm64/Packages
+ 9a8e24ec942cc6330484492a49d5f2967394c3ad 2657 main/binary-arm64/Packages.gz
+ f734ef360d77d822fbd223b5183408a8900757dd 133 main/binary-arm64/Release
+SHA256:
+ f96890e818a6d3912f82d7aa65e35c323013559dfdfdd48af2cd8f7cc90a6bfe 6107 main/binary-amd64/Packages
+ f6e6dea5623f0a61b9b88c26965bc5ffa2d8759c49144c793d6f230dc7d1e070 2655 main/binary-amd64/Packages.gz
+ b930f48053dc93e634356edbe7f7e233fcaeb2689c3d5d59e92bdd64cfc8c76c 133 main/binary-amd64/Release
+ 4833f14476e89dcee7cc608df6ffede0392e4b7f1e4e237dc2d5ab4b88ebf60a 6107 main/binary-arm64/Packages
+ 9a7b5637035132e6054657314d862e47ab549ca47cebef75a8cee240d993393b 2657 main/binary-arm64/Packages.gz
+ 7e3e72911a1127ccccfdd8769b410fe8d8e6a5f4af24a19080e79afdc9234f48 133 main/binary-arm64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEExKp+OO+ZF5ZXHZEfgeRxctW1XrAFAmo/Y9YACgkQgeRxctW1
+XrA0vQ//byBRrlt7iEpIKGRfXCCmr7K+a6sp71qoJhlrAVv8Jm9YA/HhuXzMNPdI
++hvGW300BC4C0m9uYaIEvXGVqAVJLtYzTuP4e3/g5obvtpwa2VubFR5B9+BA2nij
+xZgYabzNj/vt2LNJ5FC2ztto3QVKeWP8K6g0goigE9dClpKuDq8FbeL7sOpv43+8
+IVzAFOnXy8xmtY/Uo+M0mN3Bq412g9ziVYxtLTZV+FnXN7A4FUbFWxeKXhH15Cfu
+7pzIVMEm7joIXFoBCdmNQAiAIz5K+2mu4syNasm2Z2DRkFPfRxxWcgEb/ou3i4Oi
+0wa8Bgfk+g+K4Tz6q1RzEcPNaQmRvufeYzysm4sCCafyFJMbAitq7AwSRsBC+1LX
+RCmfmMkCcqgAc0QspXpiaQE7HUJRMUJG/Cx7he+9bfxVAh+xwr9uL8hW9rApog4Y
+i4LeZdC1qSbfwn4leuKJV/+nxpABW9TfdTW+eOrWDaP53dde2XR+solvOuNOuXTM
+s4MPk0HI2YJw4941ll4eq2QWxsctiVtbwT/jPsFOdkVg+Ifs4TNHo27OYStmze0g
+zEyFoGNU69SUeftnLa6Zt9JcOsSRPy1kHSoO1z42Cyvq9NI7Nh2hBhLWhRXqg9BY
+IFB6PV0qMtdEphbNBGHBjl8G2VdXRpVP7fZF0tRSFq//ZLgBSsc=
+=UeLQ
+-----END PGP SIGNATURE-----

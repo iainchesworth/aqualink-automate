@@ -1,0 +1,7 @@
+Origin: Aqualink Automate
+Label: Aqualink Automate
+Codename: stable
+Architectures: amd64 arm64
+Components: main
+Description: Aqualink Automate APT repository
+SignWith: 81E47172D5B55EB0

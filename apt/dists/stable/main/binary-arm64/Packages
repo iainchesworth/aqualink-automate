@@ -1,0 +1,106 @@
+Package: aqualink-automate
+Architecture: arm64
+Depends: libc6 (>= 2.36), systemd
+Priority: optional
+Section: net
+Filename: pool/main/a/aqualink-automate/aqualink-automate_0.7.0~beta.1_arm64.deb
+Size: 12280340
+SHA256: 5eefd70ed7663bdae2e72e87e950bbdbe4daedc3641c806ad1abc7018709da9b
+SHA1: 00a94c5886c18ef084122e9a7de34b6100d8c6eb
+MD5sum: 20061c284010bde8c3f4b9523ab030c7
+Description: Control Jandy Aqualink RS pool equipment via common IoT integrations
+ # Aqualink Automate
+ .
+ Local control of Jandy/Zodiac (Fluidra) Aqualink RS pool controllers over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge, with no cloud service required.
+ .
+ Aqualink Automate is a C++ service that talks to your pool equipment over an RS-485 serial link and exposes it on your own network. It reads status from the panel and lets you control it through a built-in Web UI, an HTTP and WebSocket API, MQTT (with Home Assistant discovery), and a Matter bridge for Apple Home, Google Home, Alexa, and SmartThings. Everything runs on hardware you own; nothing is sent to a vendor cloud.
+ .
+ ## Table of contents
+ .
+ - [Features](#features)
+ - [Quick start](#quick-start)
+ - [Documentation](#documentation)
+ - [Supported equipment and protocols](#supported-equipment-and-protocols)
+ - [Contributing](#contributing)
+ - [Changelog](#changelog)
+ - [License](#license)
+ - [Credits and references](#credits-and-references)
+ .
+ ## Features
+ .
+ - Local control of your pool system over RS-485, with no cloud service required.
+ - Two RS-485 protocols supported: Jandy/Zodiac (Fluidra) Aqualink RS and Pentair. The active protocol is auto-detected from the wire traffic.
+ - A built-in web user interface for control and monitoring.
+ - HTTP and WebSocket API for custom integrations.
+ - MQTT publishing with Home Assistant auto-discovery.
+ - A Matter bridge so the pool can be paired into Apple Home, Google Home, Alexa, or SmartThings by scanning a QR code. On by default — see [docs/MATTER.md](docs/MATTER.md).
+ - Connectivity over a physical USB-to-RS485 adapter or a remote serial port (serial-over-ethernet) using RFC2217 or raw TCP.
+ - Detailed status reporting for your Aqualink RS system.
+ .
+ **Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
+ .
+ ## Quick start
+ .
+ Clone the repository (with submodules) and run the build script for your platform. The scripts validate dependencies, bootstrap vcpkg, and run configure, build, and test.
+ .
+ ```bash
+ git clone --recurse-submodules https://github.com/iainchesworth/aqualink-automate.git
+ cd aqualink-automate
+ .
+ # Linux / macOS
+ ./cicd/build.sh
+ ```
+ .
+ ```powershell
+ # Windows (PowerShell)
+ .\cicd\build.ps1
+ ```
+ .
+ For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](INSTALL.md).
+ .
+ ## Documentation
+ .
+ | Guide | What it covers |
+ |-------|----------------|
+ | [INSTALL.md](INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
+ | [docs/configuration.md](docs/configuration.md) | CLI options and config-file reference. |
+ | [docs/usage-and-api.md](docs/usage-and-api.md) | Running the service and the HTTP and WebSocket API. |
+ | [docs/mqtt-home-assistant.md](docs/mqtt-home-assistant.md) | MQTT topics and Home Assistant discovery. |
+ | [docs/MATTER.md](docs/MATTER.md) | Pairing the Matter bridge into a smart-home platform. |
+ | [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md) | RS-485 wiring and serial connectivity. |
+ | [docs/hardware-server-automation.md](docs/hardware-server-automation.md) | Host and server hosting requirements. |
+ | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute code and report issues. |
+ | [SECURITY.md](SECURITY.md) | Security policy and reporting. |
+ | [docs/releasing.md](docs/releasing.md) | Cutting and publishing a release. |
+ | [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows and self-hosted runner configuration. |
+ | [CHANGELOG.md](CHANGELOG.md) | Notable changes per release. |
+ .
+ ## Supported equipment and protocols
+ .
+ Aqualink Automate decodes two RS-485 wire protocols and selects the right one automatically from the traffic on the bus:
+ .
+ - **Jandy/Zodiac (Fluidra) Aqualink RS** — the primary target: control panels, OneTouch interfaces, equipment, and the AquaPure/AquaRite salt-water chlorinator.
+ - **Pentair** — a full implemented stack covering the VSP/IntelliFlo pump, IntelliChlor salt-water generator, and the IntelliCenter/EasyTouch controller. Pentair frames are recognized by their `0xFF 0x00 0xFF 0xA5` preamble, and the Pentair message generator is registered ahead of the Jandy one so it can lift a Pentair frame out of the buffer before Jandy processing runs.
+ .
+ Connect the panel to the host through a physical USB-to-RS485 adapter or a remote serial port. Remote ports default to RFC2217 and can also use raw TCP. For wiring details and adapter options, see [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md).
+ .
+ ## Contributing
+ .
+ Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what the project is working toward.
+ .
+ ## Changelog
+ .
+ Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md), which follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+ .
+ ## License
+ .
+ This project is licensed under the GNU General Public License v3.0. The full text is in [LICENSE.txt](LICENSE.txt).
+ .
+ ## Credits and references
+ .
+ This project was influenced by sfeakes&apos; [AqualinkD](https://github.com/sfeakes/AqualinkD). The original goal was a variant that also runs on Windows and macOS.
+Homepage: https://github.com/iainchesworth/aqualink-automate
+Maintainer: Iain Chesworth
+Version: 0.7.0~beta.1
+Installed-Size: 59083
+
