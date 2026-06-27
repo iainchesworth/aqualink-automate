@@ -154,7 +154,8 @@ Each release includes:
 
 | Platform | Packages                     |
 |----------|------------------------------|
-| Linux    | `.tgz`, `.deb`, `.rpm`       |
+| Linux (amd64) | `.tgz`, `.deb`, `.rpm`  |
+| Linux (arm64) | `.tgz`, `.deb`, `.rpm`  |
 | Windows  | `.zip`, `.exe` (NSIS)        |
 | macOS    | `.tgz`, `.dmg`               |
 
@@ -175,6 +176,32 @@ Additionally:
   So `:latest` tracks the newest **stable** release and `:edge` tracks the newest **prerelease** — pin whichever channel you want in your compose file (`image: ghcr.io/<owner>/aqualink-automate:edge`) and it floats to new releases without edits (run `docker compose pull` to fetch the moving tag; Docker caches by tag). Before `edge` existed, prereleases had **no** floating tag at all, so `:latest` did not resolve until the first stable release.
 
 These packages are produced by CPack via the matching `pack-*` presets. `pack-*` presets exist only for the **Release** configure presets (those with no `-debug`/`-coverage` suffix), so swap the `config-` prefix for `pack-` only on a Release preset — for example `config-linux-gcc` → `pack-linux-gcc`. See [INSTALL.md](../INSTALL.md) for the local pack-* preset workflow.
+
+The Docker image is **multi-arch** (`linux/amd64` + `linux/arm64`) — a single tag serves both, so a Raspberry Pi pulls the arm64 variant automatically.
+
+## Package repositories (APT + DNF)
+
+`.github/workflows/publish-repos.yml` publishes GPG-signed **APT** (reprepro) and
+**DNF** (createrepo_c) repositories to the `gh-pages` branch when a release is
+published, so users can `apt install` / `dnf install` and get `apt upgrade` updates
+(see [INSTALL.md](../INSTALL.md)). It **no-ops until configured**, so it is safe to
+merge first. One-time setup:
+
+1. **Generate a signing key** (no passphrase keeps CI simplest):
+   ```bash
+   gpg --batch --quick-generate-key "Aqualink Automate <you@example.com>" rsa4096 sign never
+   gpg --armor --export-secret-keys "Aqualink Automate" > aqualink-repo-private.asc
+   ```
+2. **Add the secret** `REPO_GPG_PRIVATE_KEY` (Settings → Secrets → Actions) with the
+   contents of `aqualink-repo-private.asc`. If the key has a passphrase, also add
+   `REPO_GPG_PASSPHRASE`. Then delete the local private-key file.
+3. **Enable GitHub Pages** (Settings → Pages) serving from the `gh-pages` branch
+   (the first publish creates it). The repo base URL is
+   `https://<owner>.github.io/aqualink-automate/`.
+
+To (re)publish an existing release into the repos, run the workflow manually with its
+tag (`workflow_dispatch`). The publish job preserves previously-published packages
+(`keep_files: true`), so the repo accumulates the full version history.
 
 ## Troubleshooting
 

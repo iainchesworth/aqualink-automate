@@ -1,0 +1,55 @@
+[Unit]
+Description=Aqualink Automate - Jandy/Zodiac AquaLink RS pool controller bridge
+Documentation=https://github.com/iainchesworth/aqualink-automate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated unprivileged service account (created by the package). It is a member
+# of 'dialout' so it can open the RS-485 serial device.
+User=aqualink
+Group=aqualink
+SupplementaryGroups=dialout
+
+ExecStart=/usr/bin/aqualink-automate --config /etc/aqualink-automate/aqualink-automate.conf
+
+# The app handles SIGTERM/SIGINT with a clean, ordered shutdown.
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+
+# Logs are written to stderr -> the journal (journalctl -u aqualink-automate).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aqualink-automate
+
+# Persistent state (history DB, equipment-cache snapshots) lives under
+# /var/lib/aqualink-automate, created and owned by the service account.
+StateDirectory=aqualink-automate
+WorkingDirectory=/var/lib/aqualink-automate
+
+# Let the unprivileged account bind a privileged port if the user sets
+# http-port/https-port < 1024 (the packaged default is the unprivileged 9000).
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# --- Hardening -------------------------------------------------------------
+# The app only needs to read /etc + /usr, write its StateDirectory, talk to the
+# network, and open the serial device (granted via the 'dialout' group; /dev is
+# left intact, so PrivateDevices is NOT enabled).
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+
+[Install]
+WantedBy=multi-user.target

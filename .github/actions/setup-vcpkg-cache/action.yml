@@ -37,19 +37,21 @@ runs:
           vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-
           vcpkg-downloads-
 
-    # Keyed by runner OS (which maps 1:1 to the vcpkg triplet in use here), NOT by
-    # the per-job prefix. This collapses the previously disjoint "Linux GCC" /
-    # "CodeQL" / "SonarCloud" / "MSVCAnalysis" caches (all x64-linux-gcc) into one
-    # shared cache. vcpkg names archives by ABI hash, so multiple triplets would
-    # coexist safely in a single cache dir even if a job introduced one.
+    # Keyed by runner OS + arch (which maps 1:1 to the vcpkg triplet in use here),
+    # NOT by the per-job prefix. This collapses the previously disjoint "Linux GCC"
+    # / "CodeQL" / "SonarCloud" / "MSVCAnalysis" caches (all x64-linux-gcc) into one
+    # shared cache. The arch component keeps the x64 and arm64 Linux jobs (both
+    # runner.os == Linux) from racing on a single shared cache entry — they build
+    # disjoint archives and each gets its own cache. vcpkg names archives by ABI
+    # hash, so multiple triplets would coexist safely in a single cache dir anyway.
     - name: Cache vcpkg binaries
       uses: actions/cache@v5
       with:
         path: ~/.cache/vcpkg/archives
-        key: vcpkg-${{ runner.os }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
+        key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
         restore-keys: |
-          vcpkg-${{ runner.os }}-${{ steps.vcpkg-version.outputs.hash }}-
-          vcpkg-${{ runner.os }}-
+          vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ steps.vcpkg-version.outputs.hash }}-
+          vcpkg-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Run vcpkg
       uses: lukka/run-vcpkg@v11

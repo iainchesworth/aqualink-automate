@@ -89,11 +89,22 @@ if [[ "${PLATFORM_NAME}" == "macos" && "${COMPILER_NAME}" != "llvm" ]]; then
     exit 1
 fi
 
+# Detect the target architecture. Linux GCC is the only family with a non-x64
+# triplet (arm64), so a native build on an aarch64 host (e.g. a Raspberry Pi)
+# must select the -arm64 presets rather than the x64 default. Overridden by an
+# explicit --preset.
+ARCH_SUFFIX=""
+if [[ "${PLATFORM_NAME}" == "linux" && "${COMPILER_NAME}" == "gcc" ]]; then
+    case "$(uname -m)" in
+        aarch64|arm64) ARCH_SUFFIX="-arm64" ;;
+    esac
+fi
+
 # Build preset name if not explicitly provided
 if [[ -z "${PRESET}" ]]; then
     case "${BUILD_TYPE}" in
-        debug)   PRESET="config-${PLATFORM_NAME}-${COMPILER_NAME}-debug" ;;
-        release) PRESET="config-${PLATFORM_NAME}-${COMPILER_NAME}" ;;
+        debug)   PRESET="config-${PLATFORM_NAME}-${COMPILER_NAME}${ARCH_SUFFIX}-debug" ;;
+        release) PRESET="config-${PLATFORM_NAME}-${COMPILER_NAME}${ARCH_SUFFIX}" ;;
         *)
             echo "Error: Unknown build type '${BUILD_TYPE}'. Use debug or release."
             exit 1

@@ -157,6 +157,10 @@ jobs:
         with:
           submodules: recursive
 
+      # QEMU lets buildx assemble the linux/arm64 image on the x64 runner. The
+      # runtime-assembled stage only unpacks a prebuilt tarball (no compilation), so
+      # the emulated work is trivial.
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v4
 
       # The Dockerfile's base images (ubuntu:25.04, node:22-bookworm-slim) are
@@ -198,25 +202,28 @@ jobs:
             # so before this `edge` existed a prerelease had no floating tag at all.
             type=raw,value=edge,enable=${{ needs.resolve-version.outputs.is_prerelease == 'true' }}
 
-      # Stage the prebuilt Linux install tree (built + version-stamped by
-      # build-packages on the Ubuntu-25.04 runner) into the build context so the
-      # runtime-assembled stage copies it straight in — NO vcpkg/source recompile.
-      - name: Download Linux install tree
+      # Stage the prebuilt per-arch install trees (built + version-stamped by
+      # build-packages in the glibc-2.36 container) into the build context so the
+      # runtime-assembled stage copies each straight in — NO vcpkg/source recompile.
+      - name: Download Linux install trees (amd64 + arm64)
         uses: actions/download-artifact@v4
         with:
-          name: installtree-linux-gcc
-          path: docker/context
+          pattern: installtree-linux-gcc*
+          path: docker/context-dl
+          merge-multiple: true
 
-      - name: Verify staged install tree
+      - name: Stage + verify per-arch install trees
         run: |
-          TARBALL=docker/context/installtree-linux-gcc.tar.gz
-          if [ ! -f "$TARBALL" ]; then
-            echo "::error::Staged install-tree tarball missing ($TARBALL) — cannot assemble the image."
-            exit 1
-          fi
-          tar tzf "$TARBALL" ./bin/aqualink-automate >/dev/null \
-            || { echo "::error::install-tree tarball does not contain ./bin/aqualink-automate"; exit 1; }
-          echo "Staged install tree OK ($(du -h "$TARBALL" | cut -f1))."
+          mkdir -p docker/context
+          mv docker/context-dl/installtree-linux-gcc.tar.gz       docker/context/installtree-linux-gcc-amd64.tar.gz
+          mv docker/context-dl/installtree-linux-gcc-arm64.tar.gz docker/context/installtree-linux-gcc-arm64.tar.gz
+          for a in amd64 arm64; do
+            T="docker/context/installtree-linux-gcc-$a.tar.gz"
+            [ -f "$T" ] || { echo "::error::Staged install-tree tarball missing ($T)."; exit 1; }
+            tar tzf "$T" ./bin/aqualink-automate >/dev/null \
+              || { echo "::error::$T does not contain ./bin/aqualink-automate"; exit 1; }
+            echo "Staged $a install tree OK ($(du -h "$T" | cut -f1))."
+          done
 
       # Assemble + push via buildx, wrapped in a bounded retry so a transient Docker
       # Hub CDN blob timeout pulling a base image doesn't fail the release. The image
@@ -237,7 +244,7 @@ jobs:
           retry_wait_seconds: 30
           retry_on: error
           command: |
-            cmd=(docker buildx build --target runtime-assembled --push)
+            cmd=(docker buildx build --target runtime-assembled --platform linux/amd64,linux/arm64 --push)
             while IFS= read -r tag;   do [ -n "$tag" ]   && cmd+=(--tag   "$tag");   done <<< "${IMAGE_TAGS}"
             while IFS= read -r label; do [ -n "$label" ] && cmd+=(--label "$label"); done <<< "${IMAGE_LABELS}"
             cmd+=(.)
@@ -252,16 +259,34 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE="ghcr.io/${{ github.repository }}:${{ needs.resolve-version.outputs.version }}"
-          echo "Pulling published image: $IMAGE"
+          echo "Manifest platforms:"
+          PLATFORMS="$(docker buildx imagetools inspect "$IMAGE" --format '{{range .Manifest.Manifests}}{{.Platform.OS}}/{{.Platform.Architecture}} {{end}}')"
+          echo "  $PLATFORMS"
+          for want in linux/amd64 linux/arm64; do
+            echo "$PLATFORMS" | grep -qw "$want" \
+              || { echo "::error::Published image is missing the $want platform"; exit 1; }
+          done
+          echo "Pulling + running (native amd64):"
           docker pull "$IMAGE"
-          echo "Running --version on the pulled image:"
           OUTPUT="$(docker run --rm "$IMAGE" --version)"
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -qF "${{ needs.resolve-version.outputs.version }}"; then
             echo "::error::Published image did not report version ${{ needs.resolve-version.outputs.version }}"
             exit 1
           fi
-          echo "Published Docker image verified: pullable, runs, and reports ${{ needs.resolve-version.outputs.version }}."
+          echo "Running --version on the arm64 variant (QEMU):"
+          # Capture into a var rather than piping `docker run` straight into grep:
+          # under `set -o pipefail`, `grep -q` closes the pipe on first match, the
+          # app gets SIGPIPE on its next write ("broken pipe") and exits non-zero,
+          # which would fail the pipeline even though the image ran fine.
+          ARM_OUTPUT="$(docker run --rm --platform linux/arm64 "$IMAGE" --version)"
+          echo "$ARM_OUTPUT"
+          if ! echo "$ARM_OUTPUT" | grep -qF "${{ needs.resolve-version.outputs.version }}"; then
+            echo "::error::arm64 image did not run/report version"
+            exit 1
+          fi
+          echo "arm64 variant OK"
+          echo "Published multi-arch Docker image verified (amd64 + arm64)."
 
   github-release:
     name: GitHub Release
@@ -303,6 +328,21 @@ jobs:
             --generate-notes \
             $PRERELEASE_FLAG \
             release-artifacts/*
+
+  # Sign + publish the APT/DNF repos to gh-pages from the just-created release.
+  # Called here (workflow_call) rather than via a `release: published` trigger,
+  # which GitHub does NOT fire for a GITHUB_TOKEN-created release (anti-recursion).
+  # No-ops if REPO_GPG_PRIVATE_KEY is unset. A failure here leaves the published
+  # release intact (it can be re-published with: gh workflow run publish-repos.yml
+  # -f tag=<tag>); the cleanup job below won't touch the tag once the release exists.
+  publish-repos:
+    name: Publish package repos
+    needs: [resolve-version, github-release]
+    if: needs.resolve-version.outputs.is_dry_run != 'true'
+    uses: ./.github/workflows/publish-repos.yml
+    with:
+      tag: ${{ needs.resolve-version.outputs.version_tag }}
+    secrets: inherit
 
   # If a real PRERELEASE run did not complete, delete its orphaned tag so a re-tag
   # can retry cleanly (automates the by-hand beta.2/beta.3 cleanup). Never touches a

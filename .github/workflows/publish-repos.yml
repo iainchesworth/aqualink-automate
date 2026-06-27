@@ -1,0 +1,137 @@
+# Publish GPG-signed APT + DNF package repositories to GitHub Pages.
+#
+# Called by release.yml (workflow_call) right after the GitHub Release is created,
+# and also runnable on demand (workflow_dispatch) to (re)publish a given tag. It
+# pulls the release's .deb/.rpm assets, (re)builds a reprepro apt repo + a
+# createrepo_c dnf repo, signs them with the project GPG key, and publishes
+# everything to the `gh-pages` branch so users can `apt install` / `dnf install`
+# and get `apt upgrade` updates.
+#
+# NOTE: this is invoked via workflow_call from release.yml rather than a
+# `release: published` trigger, because GitHub does NOT fire the release event for
+# a release created with the default GITHUB_TOKEN (anti-recursion), so that trigger
+# never ran.
+#
+# REQUIRED ONE-TIME SETUP (see docs/releasing.md > Package repositories):
+#   1. Generate a signing key and add the ASCII-armored PRIVATE key as the repo
+#      secret REPO_GPG_PRIVATE_KEY (and, if it has one, REPO_GPG_PASSPHRASE).
+#   2. Enable GitHub Pages for the repository, serving from the `gh-pages` branch.
+# Until the secret is present this workflow no-ops (the build job is skipped), so it
+# is safe to merge before the key exists.
+name: Publish package repos
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to publish into the repos"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to (re)publish into the repos (e.g. v0.7.0-beta.1)"
+        required: true
+        type: string
+
+concurrency:
+  group: publish-repos
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # push to gh-pages
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # The secrets context is not usable in a job-level if, so surface the key's
+    # presence as an env value and gate the steps' work on it (same pattern as
+    # docker-publish's Docker Hub login).
+    env:
+      HAVE_GPG_KEY: ${{ secrets.REPO_GPG_PRIVATE_KEY != '' && 'true' || 'false' }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Skip if no signing key configured
+        if: env.HAVE_GPG_KEY != 'true'
+        run: echo "::warning::REPO_GPG_PRIVATE_KEY is not set — skipping repo publish. See docs/releasing.md."
+
+      - name: Checkout (work tree)
+        if: env.HAVE_GPG_KEY == 'true'
+        uses: actions/checkout@v5
+
+      - name: Checkout gh-pages (existing repo state)
+        if: env.HAVE_GPG_KEY == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          path: pages
+        continue-on-error: true   # first run: branch doesn't exist yet
+
+      - name: Install repo tooling
+        if: env.HAVE_GPG_KEY == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq reprepro createrepo-c gnupg
+
+      - name: Import signing key
+        if: env.HAVE_GPG_KEY == 'true'
+        id: gpg
+        env:
+          GPG_KEY: ${{ secrets.REPO_GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_KEY" | gpg --batch --import
+          KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')
+          echo "keyid=$KEYID" >> "$GITHUB_OUTPUT"
+          gpg --armor --export "$KEYID" > public-key.asc
+          echo "Imported signing key $KEYID"
+
+      - name: Download release assets (.deb / .rpm)
+        if: env.HAVE_GPG_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p assets
+          gh release download "$TAG" -R "${{ github.repository }}" -p '*.deb' -p '*.rpm' -D assets
+          echo "Downloaded:"; ls -1 assets
+
+      - name: Build APT + DNF repositories
+        if: env.HAVE_GPG_KEY == 'true'
+        env:
+          KEYID: ${{ steps.gpg.outputs.keyid }}
+        run: |
+          set -euo pipefail
+          OUT=pages
+          mkdir -p "$OUT/apt/conf" "$OUT/rpm"
+
+          # ---- APT (reprepro) -------------------------------------------------
+          cat > "$OUT/apt/conf/distributions" <<EOF
+          Origin: Aqualink Automate
+          Label: Aqualink Automate
+          Codename: stable
+          Architectures: amd64 arm64
+          Components: main
+          Description: Aqualink Automate APT repository
+          SignWith: $KEYID
+          EOF
+          for deb in assets/*.deb; do
+            reprepro -b "$OUT/apt" --keepunreferencedfiles includedeb stable "$deb"
+          done
+
+          # ---- DNF/YUM (createrepo_c, signed repomd) --------------------------
+          cp assets/*.rpm "$OUT/rpm"/
+          createrepo_c --update "$OUT/rpm"
+          gpg --batch --yes --detach-sign --armor "$OUT/rpm/repodata/repomd.xml"
+
+          # ---- Shared: public key, install scripts, landing page --------------
+          cp public-key.asc "$OUT/key.gpg"
+          cp cicd/repo/install-apt.sh "$OUT/install-apt.sh"
+          cp cicd/repo/install-dnf.sh "$OUT/install-dnf.sh"
+          cp cicd/repo/index.html "$OUT/index.html"
+          echo "Repos built into $OUT:"; find "$OUT" -maxdepth 2 -type d
+
+      - name: Publish to GitHub Pages
+        if: env.HAVE_GPG_KEY == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: pages
+          keep_files: true   # preserve prior packages already in the repo
+          commit_message: "repo: publish ${{ env.TAG }}"

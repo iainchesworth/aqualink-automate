@@ -17,14 +17,34 @@ This is the single authoritative guide for getting Aqualink Automate onto a mach
 - [Development container](#development-container)
 - [Docker](#docker)
 
+## Linux: APT / DNF repository (recommended)
+
+On Debian / Ubuntu / **Raspberry Pi OS** (`amd64` or `arm64`), add the signed APT
+repository — you then get `apt upgrade` updates and a managed `systemd` service:
+
+```bash
+curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-apt.sh | sh
+```
+
+On Fedora / RHEL / openSUSE:
+
+```bash
+curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-dnf.sh | sh
+```
+
+After installing, set your serial port in `/etc/aqualink-automate/aqualink-automate.conf`
+and `sudo systemctl start aqualink-automate`. See the [Raspberry Pi guide](docs/raspberry-pi.md).
+There is also a [Docker image](#docker) (multi-arch: `linux/amd64` + `linux/arm64`).
+
 ## Pre-built binaries
 
-Download the package for your platform from the [GitHub Releases](https://github.com/iainchesworth/aqualink-automate/releases) page.
+Prefer the repository above on Linux; otherwise download the package for your platform
+from the [GitHub Releases](https://github.com/iainchesworth/aqualink-automate/releases) page.
 
 | Platform | Package types | Notes |
 |----------|---------------|-------|
 | Windows  | `.exe` (NSIS installer), `.zip` | Run the installer, or unzip the portable build anywhere. |
-| Linux    | `.deb`, `.rpm`, `.tgz` | Install the `.deb`/`.rpm` with your package manager, or unpack the `.tgz`. |
+| Linux    | `.deb`, `.rpm`, `.tgz` | Built for **`amd64`** and **`arm64`** (Raspberry Pi 3/4/5 and other aarch64 hosts on a 64-bit OS). Pick the package matching your architecture (`dpkg --print-architecture` / `uname -m`), then install the `.deb`/`.rpm` with your package manager or unpack the `.tgz`. |
 | macOS    | `.dmg`, `.tgz` | Open the disk image and drag the app across, or unpack the `.tgz`. |
 
 Every release artifact ships with a matching `.sha512` checksum file. Verify the download before installing.
