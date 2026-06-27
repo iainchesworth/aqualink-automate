@@ -347,6 +347,13 @@ jobs:
     name: Publish package repos
     needs: [resolve-version, github-release]
     if: needs.resolve-version.outputs.is_dry_run != 'true'
+    # The called workflow pushes the signed repos to gh-pages (contents: write). A
+    # reusable-workflow call may not request more than the calling job is granted,
+    # and the top-level default here is contents: read — so grant the write scope at
+    # this job (same per-job least-privilege pattern as docker-publish/github-release).
+    # Without this the whole Release graph fails to start (permissions escalation).
+    permissions:
+      contents: write
     uses: ./.github/workflows/publish-repos.yml
     with:
       tag: ${{ needs.resolve-version.outputs.version_tag }}
