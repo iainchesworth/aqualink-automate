@@ -50,10 +50,22 @@
     {
       "name": "release",
       "hidden": true,
-      "description": "Shared Release configuration. Profiling (Tracy instrumentation) is OFF here so the shipped release binary carries no profiler hooks; use a dedicated profiling build (e.g. a debug preset, or override ENABLE_PROFILING:ON) when capturing traces.",
+      "description": "Shared Release configuration. Profiling (Tracy/VTune/uProf instrumentation) is OFF here so the shipped release binary carries no profiler hooks. To capture traces use a dedicated profiling preset (e.g. config-windows-msvc-profiling) — NOT a debug preset (those also build with profiling OFF).",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_PROFILING": "OFF"
+      }
+    },
+    {
+      "name": "profiling",
+      "hidden": true,
+      "description": "Shared profiling configuration: ENABLE_PROFILING ON, built RelWithDebInfo (optimised + debug symbols, the right shape for a profiler) with sanitizers OFF (mutually exclusive with profiling). Combine with a concrete platform preset, e.g. config-windows-msvc-profiling. Tracy is always available (vcpkg); the Intel VTune and AMD uProf backends compile in only when their SDKs are found (set VTUNE_PROFILER_DIR / AMD_UPROF_SDK_PATH, or install to a default location).",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_PROFILING": "ON",
+        "ENABLE_SANITIZERS": "OFF",
+        "SANITIZE_ADDRESS": "OFF",
+        "SANITIZE_UNDEFINED": "OFF"
       }
     },
 
@@ -273,6 +285,73 @@
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
       }
+    },
+
+    {
+      "name": "config-windows-msvc-profiling",
+      "inherits": [ "profiling", "config-windows-msvc" ],
+      "displayName": "Windows MSVC Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Windows MSVC build. Tracy is always compiled in; VTune/uProf compile in when their SDKs are found. Select the backend at runtime with --profiler tracy|vtune|uprof."
+    },
+    {
+      "name": "config-windows-llvm-profiling",
+      "inherits": [ "profiling", "config-windows-llvm" ],
+      "displayName": "Windows LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Windows LLVM build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-linux-gcc-profiling",
+      "inherits": [ "profiling", "config-linux-gcc" ],
+      "displayName": "Linux GCC Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Linux GCC build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-linux-llvm-profiling",
+      "inherits": [ "profiling", "config-linux-llvm" ],
+      "displayName": "Linux LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Linux LLVM build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-macos-llvm-profiling",
+      "inherits": [ "profiling", "config-macos-llvm" ],
+      "displayName": "macOS LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled macOS LLVM build (see config-windows-msvc-profiling)."
+    },
+
+    {
+      "name": "config-windows-msvc-diagnostic",
+      "inherits": [ "profiling", "config-windows-msvc" ],
+      "displayName": "Windows MSVC Diagnostic (network-hardened profiling)",
+      "description": "Hardened profiling build: same as config-windows-msvc-profiling but the Tracy client is built (via the -diagnostic triplet) with TRACY_ONLY_LOCALHOST + TRACY_NO_BROADCAST, so the profiler data port binds to loopback only and emits no UDP discovery beacon. Suitable for an always-attachable beta/field-diagnostic build. NOTE: the distinct triplet triggers a one-time vcpkg rebuild into its own installed tree.",
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows-msvc-diagnostic" }
+    },
+    {
+      "name": "config-windows-llvm-diagnostic",
+      "inherits": [ "profiling", "config-windows-llvm" ],
+      "displayName": "Windows LLVM Diagnostic (network-hardened profiling)",
+      "description": "Hardened profiling build (see config-windows-msvc-diagnostic).",
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows-llvm-diagnostic" }
+    },
+    {
+      "name": "config-linux-gcc-diagnostic",
+      "inherits": [ "profiling", "config-linux-gcc" ],
+      "displayName": "Linux GCC Diagnostic (network-hardened profiling)",
+      "description": "Hardened profiling build (see config-windows-msvc-diagnostic).",
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-linux-gcc-diagnostic" }
+    },
+    {
+      "name": "config-linux-llvm-diagnostic",
+      "inherits": [ "profiling", "config-linux-llvm" ],
+      "displayName": "Linux LLVM Diagnostic (network-hardened profiling)",
+      "description": "Hardened profiling build (see config-windows-msvc-diagnostic).",
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-linux-llvm-diagnostic" }
+    },
+    {
+      "name": "config-macos-llvm-diagnostic",
+      "inherits": [ "profiling", "config-macos-llvm" ],
+      "displayName": "macOS LLVM Diagnostic (network-hardened profiling)",
+      "description": "Hardened profiling build (see config-windows-msvc-diagnostic).",
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "arm64-macos-llvm-diagnostic" }
     }
   ],
 
@@ -362,6 +441,66 @@
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug",
       "configuration": "Debug"
+    },
+    {
+      "name": "build-windows-msvc-profiling",
+      "configurePreset": "config-windows-msvc-profiling",
+      "displayName": "Windows MSVC Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-windows-llvm-profiling",
+      "configurePreset": "config-windows-llvm-profiling",
+      "displayName": "Windows LLVM Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-gcc-profiling",
+      "configurePreset": "config-linux-gcc-profiling",
+      "displayName": "Linux GCC Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-llvm-profiling",
+      "configurePreset": "config-linux-llvm-profiling",
+      "displayName": "Linux LLVM Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-macos-llvm-profiling",
+      "configurePreset": "config-macos-llvm-profiling",
+      "displayName": "macOS LLVM Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-windows-msvc-diagnostic",
+      "configurePreset": "config-windows-msvc-diagnostic",
+      "displayName": "Windows MSVC Diagnostic",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-windows-llvm-diagnostic",
+      "configurePreset": "config-windows-llvm-diagnostic",
+      "displayName": "Windows LLVM Diagnostic",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-gcc-diagnostic",
+      "configurePreset": "config-linux-gcc-diagnostic",
+      "displayName": "Linux GCC Diagnostic",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-llvm-diagnostic",
+      "configurePreset": "config-linux-llvm-diagnostic",
+      "displayName": "Linux LLVM Diagnostic",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-macos-llvm-diagnostic",
+      "configurePreset": "config-macos-llvm-diagnostic",
+      "displayName": "macOS LLVM Diagnostic",
+      "configuration": "RelWithDebInfo"
     }
   ],
 
@@ -461,6 +600,76 @@
       "name": "test-macos-llvm-debug",
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-msvc-profiling",
+      "configurePreset": "config-windows-msvc-profiling",
+      "displayName": "Windows MSVC Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-llvm-profiling",
+      "configurePreset": "config-windows-llvm-profiling",
+      "displayName": "Windows LLVM Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-gcc-profiling",
+      "configurePreset": "config-linux-gcc-profiling",
+      "displayName": "Linux GCC Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-llvm-profiling",
+      "configurePreset": "config-linux-llvm-profiling",
+      "displayName": "Linux LLVM Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-macos-llvm-profiling",
+      "configurePreset": "config-macos-llvm-profiling",
+      "displayName": "macOS LLVM Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-msvc-diagnostic",
+      "configurePreset": "config-windows-msvc-diagnostic",
+      "displayName": "Windows MSVC Diagnostic Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-llvm-diagnostic",
+      "configurePreset": "config-windows-llvm-diagnostic",
+      "displayName": "Windows LLVM Diagnostic Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-gcc-diagnostic",
+      "configurePreset": "config-linux-gcc-diagnostic",
+      "displayName": "Linux GCC Diagnostic Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-llvm-diagnostic",
+      "configurePreset": "config-linux-llvm-diagnostic",
+      "displayName": "Linux LLVM Diagnostic Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-macos-llvm-diagnostic",
+      "configurePreset": "config-macos-llvm-diagnostic",
+      "displayName": "macOS LLVM Diagnostic Tests",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     }

@@ -7,6 +7,7 @@
 
 #include "http/json/json_data_hub.h"
 #include "logging/logging.h"
+#include "logging/log_sanitize.h"
 #include "mqtt/mqtt_hub.h"
 #include "mqtt/mqtt_topic_scheme.h"
 #include "profiling/factories/profiler_factory.h"
@@ -494,7 +495,7 @@ namespace AqualinkAutomate::Mqtt
 
 		if (!IsCommandTopic(topic))
 		{
-			LogTrace(Channel::Mqtt, std::format("Received non-command message on '{}'", topic));
+			LogTrace(Channel::Mqtt, std::format("Received non-command message on '{}'", Logging::SanitizeForLog(topic)));
 			return;
 		}
 

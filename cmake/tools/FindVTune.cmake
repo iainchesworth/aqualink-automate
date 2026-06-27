@@ -35,8 +35,6 @@ find_library(VTune_LIBRARIES libittnotify
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(VTune DEFAULT_MSG VTune_LIBRARIES VTune_INCLUDE_DIRS)
 
-if (VTune_FOUND)
-  set(DEFAULT_COMPILE_DEFINITIONS ${DEFAULT_COMPILE_DEFINITIONS}
-    VTUNE_SUPPORT_ENABLED
-  )
-endif(VTune_FOUND)
+# NOTE: the VTUNE_SUPPORT_ENABLED compile definition is applied (gated on
+# VTune_FOUND) by src/core/CMakeLists.txt via a generator expression — this
+# module only sets VTune_FOUND / VTune_INCLUDE_DIRS / VTune_LIBRARIES.

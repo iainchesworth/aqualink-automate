@@ -183,6 +183,8 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolTask::Poll()
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolTask::Poll", std::source_location::current());
+
 		// Tight loop: read → process → write, so responses are sent in
 		// the same frame as the message that triggered them.  Pacing (if any) is
 		// owned by the caller's frame loop — never inside read_some, which would
@@ -260,8 +262,26 @@ namespace AqualinkAutomate::Protocol
 			{
 				++messages_parsed;
 
-				// Successfully parsed a message — fire the signal
-				ProtocolHandler_ReadOp_MessageHandler(*message, m_StatisticsHub);
+				// Successfully parsed a message — fire the signal.
+				//
+				// Exception barrier: the handler fans the message out to every registered
+				// device/status-processor slot via boost::signals2, and the default combiner
+				// does NOT swallow exceptions.  A single throwing slot (out_of_range,
+				// bad_variant_access, length_error, bad_alloc from an attacker-influenced
+				// reserve, …) would otherwise propagate out of the poll loop and terminate
+				// the whole daemon — a remote DoS over the RS-485 / remote-serial transport.
+				// Mirror the protection the HTTP router already has (routing.cpp): log,
+				// count, and keep polling.  A bus frame must never be able to kill the process.
+				try
+				{
+					ProtocolHandler_ReadOp_MessageHandler(*message, m_StatisticsHub);
+				}
+				catch (const std::exception& ex)
+				{
+					if (m_StatisticsHub) { ++m_StatisticsHub->MessageErrors.HandlerExceptions; }
+					LogWarning(Channel::Protocol, [&] { return std::format(
+						"Exception while dispatching a decoded message to its handlers; dropping the message and continuing: {}", ex.what()); });
+				}
 
 				const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
 					std::chrono::steady_clock::now() - msg_processing_start).count();

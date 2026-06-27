@@ -25,6 +25,13 @@ concurrency:
   group: release-${{ github.event.inputs.version || github.ref_name }}
   cancel-in-progress: false
 
+# Least-privilege default: jobs inherit read-only access to the repo contents and
+# must opt in to anything more. Each job below grants only the extra scope it needs
+# (docker-publish: packages:write for GHCR; github-release / cleanup: contents:write
+# to push tags + create releases). The reusable publish-repos.yml declares its own.
+permissions:
+  contents: read
+
 jobs:
   resolve-version:
     name: Resolve Version
@@ -37,7 +44,7 @@ jobs:
 
     steps:
       # Needed for the "cut from main" guard below (merge-base ancestry check).
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
 
@@ -144,7 +151,8 @@ jobs:
     if: needs.resolve-version.outputs.is_dry_run != 'true'
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     permissions:
-      packages: write
+      contents: read    # checkout the source
+      packages: write   # push the runtime image to GHCR
     # Surfaced so the "Login to Docker Hub" step's `if:` can gate on the optional
     # secret being present (the `secrets` context is not usable in step-level
     # `if`). Only the username is exposed; the token is referenced directly in the
@@ -153,15 +161,15 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           submodules: recursive
 
       # QEMU lets buildx assemble the linux/arm64 image on the x64 runner. The
       # runtime-assembled stage only unpacks a prebuilt tarball (no compilation), so
       # the emulated work is trivial.
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       # The Dockerfile's base images (ubuntu:25.04, node:22-bookworm-slim) are
       # pulled from Docker Hub. Anonymous pulls share the runner's egress IP and
@@ -171,14 +179,14 @@ jobs:
       # credential-less runs still build anonymously. See docs/releasing.md.
       - name: Login to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -186,7 +194,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -206,7 +214,7 @@ jobs:
       # build-packages in the glibc-2.36 container) into the build context so the
       # runtime-assembled stage copies each straight in — NO vcpkg/source recompile.
       - name: Download Linux install trees (amd64 + arm64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: installtree-linux-gcc*
           path: docker/context-dl
@@ -233,7 +241,7 @@ jobs:
       # smoke test below is the ABI guard (a glibc/libstdc++ mismatch would fail
       # --version); CI's from-source docker-verify is the cold-build gate.
       - name: Build and push runtime image (assembled)
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         env:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
           IMAGE_LABELS: ${{ steps.meta.outputs.labels }}
@@ -297,7 +305,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Push tag for dispatch builds
         if: github.event_name == 'workflow_dispatch'
@@ -308,7 +316,7 @@ jobs:
       # actions/download-artifact has no Node 24 release yet, so it stays on v4
       # (bumping would not clear the Node 20 warning and risks breaking changes).
       - name: Download all package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: release-artifacts
           pattern: packages-*
@@ -328,6 +336,21 @@ jobs:
             --generate-notes \
             $PRERELEASE_FLAG \
             release-artifacts/*
+
+  # Sign + publish the APT/DNF repos to gh-pages from the just-created release.
+  # Called here (workflow_call) rather than via a `release: published` trigger,
+  # which GitHub does NOT fire for a GITHUB_TOKEN-created release (anti-recursion).
+  # No-ops if REPO_GPG_PRIVATE_KEY is unset. A failure here leaves the published
+  # release intact (it can be re-published with: gh workflow run publish-repos.yml
+  # -f tag=<tag>); the cleanup job below won't touch the tag once the release exists.
+  publish-repos:
+    name: Publish package repos
+    needs: [resolve-version, github-release]
+    if: needs.resolve-version.outputs.is_dry_run != 'true'
+    uses: ./.github/workflows/publish-repos.yml
+    with:
+      tag: ${{ needs.resolve-version.outputs.version_tag }}
+    secrets: inherit
 
   # If a real PRERELEASE run did not complete, delete its orphaned tag so a re-tag
   # can retry cleanly (automates the by-hand beta.2/beta.3 cleanup). Never touches a

@@ -27,10 +27,12 @@ The pipeline is five workflow files plus two composite actions, all under `.gith
 ```yaml
 on:
   push:
-    branches: ["main", "develop", "feature/**", "bug/**"]
+    branches: ["main", "develop", "feat/**", "fix/**", "docs/**", "ci/**", "test/**", "refactor/**", "chore/**", "build/**", "perf/**"]
   pull_request:
     branches: ["develop", "main"]
 ```
+
+The `push` namespaces are the [allowed branch types](../CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
 
 Concurrency is keyed on the PR number (or the ref for branch pushes) with `cancel-in-progress: true`, so a new push supersedes an in-flight run for the same PR or branch.
 
@@ -38,6 +40,7 @@ Concurrency is keyed on the PR number (or the ref for branch pushes) with `cance
 
 | Job | Runs on | What it does |
 |-----|---------|--------------|
+| `branch-name` | `ubuntu-latest` | PR only. Validates the PR head branch matches `<type>/<name>` with an allowed commit type, failing a non-conforming name. `develop`/`main` heads are accepted so the `develop` -> `main` release-promotion PR passes. A **required** status check on `develop`/`main`, so a misnamed branch cannot merge. |
 | `build-and-test` | Per-OS matrix (see [_build.yml](#_buildyml)) | Calls `_build.yml` with no packaging. Configures, builds, and runs the full test suite on Linux, Windows, and macOS. |
 | `e2e-ui` | Linux | Builds only the app binary, then runs the Playwright UI suite four times — once per mode. |
 | `matter-bridge` | Linux | Node job in `matter-bridge/`: `npm ci`, typecheck (including the matter.js bridge), build, and unit tests. |

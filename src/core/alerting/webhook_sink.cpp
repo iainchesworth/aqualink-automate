@@ -8,6 +8,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/redirect_error.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -18,6 +19,7 @@
 #include <nlohmann/json.hpp>
 
 #include "alerting/webhook_sink.h"
+#include "alerting/webhook_tls.h"
 #include "logging/logging.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -75,9 +77,18 @@ namespace AqualinkAutomate::Alerting
 			tcp::resolver resolver(executor);
 
 			ssl::context ctx(ssl::context::tls_client);
-			ctx.set_default_verify_paths();
+
+			// Authenticate the server certificate.  Without this a freshly constructed
+			// Boost.Asio ssl::context defaults to verify_none, so the handshake would
+			// succeed against ANY certificate (self-signed, expired, wrong-host) and an
+			// on-path attacker could transparently MITM the webhook -- "https://" would
+			// give encryption but no authentication.  ApplyClientTlsVerification loads
+			// the trust store and sets verify_peer; the per-stream hostname check below
+			// mirrors the MQTT client (mqtt_client.cpp).
+			ApplyClientTlsVerification(ctx);
 
 			beast::ssl_stream<beast::tcp_stream> stream(executor, ctx);
+			stream.set_verify_callback(ssl::host_name_verification(host));
 
 			// SNI is mandatory for most modern TLS servers.
 			if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str()))

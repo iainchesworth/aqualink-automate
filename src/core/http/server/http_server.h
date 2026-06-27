@@ -33,13 +33,18 @@ namespace AqualinkAutomate::HTTP
 	class HttpSessionState : public std::enable_shared_from_this<HttpSessionState>
 	{
 	public:
-		explicit HttpSessionState(TcpSocket socket);
-		explicit HttpSessionState(TcpSocket socket, boost::asio::ssl::context& ssl_ctx);
+		explicit HttpSessionState(TcpSocket socket, std::string peer_ip = {});
+		explicit HttpSessionState(TcpSocket socket, boost::asio::ssl::context& ssl_ctx, std::string peer_ip = {});
 
 		void Start();
 		void Poll();   // Kick WebSocket outbound writes
 		bool IsDone() const;
 		void Close();  // Force-close for shutdown
+
+		// The connecting client's IP (empty when it could not be resolved). Used by
+		// the server to enforce the per-IP connection cap and threaded into the
+		// routing layer's per-source failed-auth rate limiter.
+		const std::string& PeerIp() const { return m_PeerIp; }
 
 	private:
 		void DoSslHandshake();
@@ -97,6 +102,8 @@ namespace AqualinkAutomate::HTTP
 
 		bool m_HasSslContext{ false };
 		boost::asio::ssl::context* m_SslContext{ nullptr };
+
+		std::string m_PeerIp;
 
 		std::optional<TcpStream> m_TcpStream;
 		std::optional<SslStream> m_SslStream;
@@ -161,6 +168,11 @@ namespace AqualinkAutomate::HTTP
 
 		// Security: Maximum concurrent connections to prevent resource exhaustion
 		static constexpr std::size_t MAX_CONCURRENT_CONNECTIONS = 1000;
+
+		// Per-source-IP connection cap so a single client cannot consume the whole
+		// global budget (DoS). Generous for a browser (HTTP + WebSocket + a few
+		// parallel fetches) while bounding any one peer.
+		static constexpr std::size_t MAX_CONNECTIONS_PER_IP = 50;
 	};
 
 }

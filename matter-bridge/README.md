@@ -50,12 +50,36 @@ keeps the MSVC/C++ build untouched and the runtime image small.
 | ---------------------------- | ------------------------ | ---------------------------------------- |
 | `AQUALINK_API_URL`           | `http://127.0.0.1:80`    | C++ API base URL                         |
 | `AQUALINK_API_TOKEN`         | _(unset)_                | bearer token if `--api-auth-token` is set|
-| `MATTER_PASSCODE`            | `20202021`               | commissioning passcode (C++ persists one)|
-| `MATTER_DISCRIMINATOR`       | `3840`                   | commissioning discriminator              |
+| `MATTER_PASSCODE`            | _auto-generated_         | commissioning passcode (see below)       |
+| `MATTER_DISCRIMINATOR`       | _auto-generated_         | commissioning discriminator (see below)  |
+| `MATTER_UNIQUE_ID`           | _auto-generated_         | stable Matter node id (see below)        |
 | `MATTER_PORT`                | `5540`                   | Matter UDP port                          |
 | `MATTER_STORAGE_PATH`        | `/data/matter`           | fabric/commissioning persistence (volume)|
 | `MATTER_BRIDGE_STATUS_PORT`  | `8099`                   | status/QR HTTP port (for the C++ UI)     |
 | `MATTER_ENABLED`             | `true`                   | read by the Docker entrypoint (opt-out)  |
+
+### Commissioning credentials (passcode / discriminator / unique id)
+
+The commissioning **passcode**, **discriminator** and node **unique id** are *not*
+hardcoded. On first boot the sidecar generates cryptographically-random,
+per-install values (Node's `crypto`, not `Math.random`) and **persists** them to
+`bridge-credentials.json` under `MATTER_STORAGE_PATH` (the mounted volume), then reuses
+them on every subsequent boot so pairing — and the node identity — survive restarts.
+
+This matters for security: Matter commissioning happens over the LAN (UDP 5540 + mDNS)
+and the container runs with host networking, so any device on the network that knows the
+passcode can pair and control pool equipment. A fixed, publicly-known default (such as the
+matter.js example `20202021`) would let anyone on the LAN commission the bridge — so there
+is deliberately no default.
+
+- The generated passcode is uniformly random in the Matter-valid range (`1..99999998`),
+  excluding the spec-invalid trivial values and the `20202021` example.
+- The discriminator is a random 12-bit value (`0..4095`); the unique id is a random UUID.
+- You may pin any of these via the `MATTER_*` env vars (e.g. to migrate an existing
+  pairing); an explicit value is persisted too, and the sidecar **refuses to start** if
+  the resolved passcode is the well-known `20202021` example.
+- The credentials file holds the pairing secret, so the bridged `MATTER_STORAGE_PATH`
+  volume should be protected like any other secret material.
 
 ## Networking requirement (important)
 

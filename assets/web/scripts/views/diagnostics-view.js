@@ -14,6 +14,7 @@ const _diag = {
     emuDeviceTimer: null,
     actualDeviceTimer: null,
     recordingTimer: null,
+    profilingTimer: null,
     // One-shot guards so a persistently-degraded backend warns once per
     // poller instead of flooding the console on every 2s tick.
     warnedOnce: {}
@@ -69,6 +70,7 @@ function diagnosticsView() {
         showEmulatedDevices: true,
         showActualDevices: true,
         showRecording: false,
+        showProfiling: false,
         showMqtt: false,
         showMatter: false,
 
@@ -82,6 +84,10 @@ function diagnosticsView() {
         recording: { recording: false, file: '', bytes: 0 },
         recordingFilename: 'capture.cap',
         recordingBusy: false,
+
+        // Profiler control state (Tracy / Intel VTune / AMD uProf)
+        profiling: { enabled: false, running: false, backend: '', available: [] },
+        profilingBusy: false,
 
         // Spa-side remotes (Dual Spa Switch / Spa Link). Each remote carries a per-key `buttons`
         // array (wire press index + controller switch:button coordinate + live/requested function);
@@ -120,6 +126,7 @@ function diagnosticsView() {
             this.fetchEmulatedDevices();
             this.fetchActualDevices();
             this.fetchRecordingStatus();
+            this.fetchProfilingStatus();
             this.fetchMqtt();
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
@@ -130,6 +137,9 @@ function diagnosticsView() {
             }
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
+            }
+            if (!_diag.profilingTimer) {
+                _diag.profilingTimer = setInterval(() => this.fetchProfilingStatus(), 2000);
             }
             this.fetchSpasideRemotes();
             if (!_diag.spasideTimer) {
@@ -247,6 +257,11 @@ function diagnosticsView() {
                 _diag.recordingTimer = null;
             }
 
+            if (_diag.profilingTimer) {
+                clearInterval(_diag.profilingTimer);
+                _diag.profilingTimer = null;
+            }
+
             if (_diag.spasideTimer) {
                 clearInterval(_diag.spasideTimer);
                 _diag.spasideTimer = null;
@@ -303,6 +318,17 @@ function diagnosticsView() {
                 _diag.warnedOnce['recording'] = false;
             } catch (e) {
                 _handlePollFailure('recording', null, e);
+            }
+        },
+
+        async fetchProfilingStatus() {
+            try {
+                const resp = await fetch('/api/diagnostics/profiling');
+                if (!resp.ok) { _handlePollFailure('profiling', resp, null); return; }
+                this.profiling = await resp.json();
+                _diag.warnedOnce['profiling'] = false;
+            } catch (e) {
+                _handlePollFailure('profiling', null, e);
             }
         },
 
@@ -522,6 +548,42 @@ function diagnosticsView() {
             } finally {
                 this.recordingBusy = false;
             }
+        },
+
+        async _postProfiling(payload, okMessage, failMessage) {
+            if (this.profilingBusy) return;
+            this.profilingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/profiling', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    this.profiling = data;
+                    Alpine.store('toast').show(okMessage, 'info');
+                } else {
+                    Alpine.store('toast').show(data.error || failMessage, 'error');
+                }
+            } catch (e) {
+                Alpine.store('toast').show(failMessage, 'error');
+            } finally {
+                this.profilingBusy = false;
+            }
+        },
+
+        async startProfiling() {
+            await this._postProfiling({ action: 'start' }, 'Profiling resumed', 'Failed to resume profiling');
+        },
+
+        async stopProfiling() {
+            await this._postProfiling({ action: 'stop' }, 'Profiling paused', 'Failed to pause profiling');
+        },
+
+        async selectProfilingBackend(backend) {
+            if (!backend) return;
+            await this._postProfiling({ action: 'select', backend }, `Profiling backend set to ${backend}`, 'Failed to select backend');
         },
 
         formatBytes(bytes) {

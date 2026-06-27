@@ -1,3 +1,4 @@
+#include <optional>
 #include <source_location>
 
 #include <boost/test/unit_test.hpp>
@@ -84,6 +85,56 @@ BOOST_AUTO_TEST_CASE(ProfilingUnitFactory_CreateZone_DistinctCallsAreIndependent
 	BOOST_REQUIRE(nullptr != first);
 	BOOST_REQUIRE(nullptr != second);
 	BOOST_CHECK_NE(first.get(), second.get());
+}
+
+// =============================================================================
+// Introspection accessors used by the runtime control surface / startup warning.
+//
+// RegisteredTypes()/IsRegistered() must agree, and selecting a type that was NOT
+// registered must leave Get() returning a usable (NoOp) profiler rather than null
+// or throwing — the safety net behind the "requested profiler not available in
+// this build" warning.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(ProfilerFactory_RegisteredTypes_AgreeWithIsRegistered)
+{
+	auto& factory = Factory::ProfilerFactory::Instance();
+
+	for (const auto type : factory.RegisteredTypes())
+	{
+		BOOST_CHECK(factory.IsRegistered(type));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ProfilerFactory_SelectingUnregisteredType_FallsBackToUsableProfiler)
+{
+	auto& factory = Factory::ProfilerFactory::Instance();
+
+	// Pick a type that is NOT registered in this (no-RegisterAvailableProfilers)
+	// test process; if somehow all are registered, this test is a no-op pass.
+	std::optional<Types::ProfilerTypes> unregistered;
+	for (const auto candidate : { Types::ProfilerTypes::Tracy, Types::ProfilerTypes::UProf, Types::ProfilerTypes::VTune })
+	{
+		if (!factory.IsRegistered(candidate))
+		{
+			unregistered = candidate;
+			break;
+		}
+	}
+
+	if (unregistered.has_value())
+	{
+		factory.SetDesired(*unregistered);
+		BOOST_CHECK(factory.Selected().has_value());
+
+		// Desired-but-unregistered must still yield a usable profiler (NoOp), never null.
+		auto profiler = factory.Get();
+		BOOST_REQUIRE(nullptr != profiler);
+		BOOST_CHECK_NO_THROW(profiler->StartProfiling());
+		BOOST_CHECK_NO_THROW(profiler->Resume());
+		BOOST_CHECK_NO_THROW(profiler->Pause());
+		BOOST_CHECK_NO_THROW(profiler->EmitFrameMark("test"));
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

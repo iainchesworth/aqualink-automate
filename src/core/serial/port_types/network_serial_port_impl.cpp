@@ -18,24 +18,25 @@ using namespace AqualinkAutomate::Profiling;
 namespace AqualinkAutomate::Serial::PortTypes
 {
 
-	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor) :
+	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor, bool use_rfc2217) :
 		m_Executor(std::move(executor)),
 		m_Socket(m_Executor),
+		m_UseRfc2217(use_rfc2217),
 		m_ProtocolHandler(CreateProtocolHandler()),
 		m_ProfilingDomain(std::move(Factory::ProfilerFactory::Instance().Get()->CreateDomain("NetworkSerialPortImpl")))
 	{
-		LogTrace(Channel::Serial, "NetworkSerialPortImpl created");
+		LogTrace(Channel::Serial, std::format("NetworkSerialPortImpl created (transport: {})", m_UseRfc2217 ? "RFC2217" : "raw TCP"));
 	}
 
-	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name) :
-		NetworkSerialPortImpl(std::move(executor))
+	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, bool use_rfc2217) :
+		NetworkSerialPortImpl(std::move(executor), use_rfc2217)
 	{
 		LogDebug(Channel::Serial, std::format("NetworkSerialPortImpl created with endpoint: {}", endpoint_name));
 		open(endpoint_name);
 	}
 
-	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, boost::system::error_code& ec) :
-		NetworkSerialPortImpl(std::move(executor))
+	NetworkSerialPortImpl::NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, boost::system::error_code& ec, bool use_rfc2217) :
+		NetworkSerialPortImpl(std::move(executor), use_rfc2217)
 	{
 		LogDebug(Channel::Serial, std::format("NetworkSerialPortImpl created with endpoint: {}", endpoint_name));
 		open(endpoint_name, ec);
@@ -51,6 +52,15 @@ namespace AqualinkAutomate::Serial::PortTypes
 	std::unique_ptr<Interfaces::ISerialPortProtocol> NetworkSerialPortImpl::CreateProtocolHandler()
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("NetworkSerialPortImpl::CreateProtocolHandler", std::source_location::current());
+
+		if (!m_UseRfc2217)
+		{
+			// Raw TCP (--rawtcp / --no-rfc2217): no telnet/RFC2217 handler. With no
+			// handler the read path applies no IAC filtering and open() sends no
+			// option negotiation -- the socket is a transparent byte pipe.
+			LogInfo(Channel::Serial, "Raw TCP transport selected; not installing an RFC2217 protocol handler");
+			return nullptr;
+		}
 
 		LogTrace(Channel::Serial, "Creating RFC2217 protocol handler");
 		return std::make_unique<Serial::RFC2217::ProtocolHandler>(m_Socket);
@@ -136,8 +146,15 @@ namespace AqualinkAutomate::Serial::PortTypes
 
 					LogInfo(Channel::Serial, std::format("Successfully connected to network serial port: {}", endpoint_name));
 
-					LogDebug(Channel::Serial, "Initializing RFC2217 protocol handler");
-					m_ProtocolHandler->Initialize();
+					if (m_ProtocolHandler)
+					{
+						LogDebug(Channel::Serial, "Initializing RFC2217 protocol handler");
+						m_ProtocolHandler->Initialize();
+					}
+					else
+					{
+						LogDebug(Channel::Serial, "Raw TCP transport; no protocol handler to initialise");
+					}
 				}
 			}
 		}

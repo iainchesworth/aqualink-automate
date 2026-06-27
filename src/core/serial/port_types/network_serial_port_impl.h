@@ -22,9 +22,14 @@ namespace AqualinkAutomate::Serial::PortTypes
 	class NetworkSerialPortImpl : public Interfaces::ISerialPortImpl
 	{
 	public:
-		explicit NetworkSerialPortImpl(boost::asio::any_io_executor executor);
-		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name);
-		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, boost::system::error_code& ec);
+		// use_rfc2217: when true (the default) the remote stream is treated as an
+		// RFC2217 telnet transport — the handler negotiates com-port options and
+		// strips inbound IAC sequences. When false (raw TCP: --rawtcp / --no-rfc2217)
+		// no telnet handler is installed, so no negotiation is sent and inbound bytes
+		// (including 0xFF, a legal serial value) pass through unfiltered.
+		explicit NetworkSerialPortImpl(boost::asio::any_io_executor executor, bool use_rfc2217 = true);
+		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, bool use_rfc2217 = true);
+		NetworkSerialPortImpl(boost::asio::any_io_executor executor, const std::string& endpoint_name, boost::system::error_code& ec, bool use_rfc2217 = true);
 		~NetworkSerialPortImpl() override;
 
 		NetworkSerialPortImpl(const NetworkSerialPortImpl&) = delete;
@@ -63,6 +68,7 @@ namespace AqualinkAutomate::Serial::PortTypes
 		bool m_IsOpen{ false };
 
 	private:
+		bool m_UseRfc2217{ true };
 		std::unique_ptr<Interfaces::ISerialPortProtocol> CreateProtocolHandler();
 		std::unique_ptr<Interfaces::ISerialPortProtocol> m_ProtocolHandler;
 

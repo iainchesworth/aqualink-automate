@@ -5,7 +5,10 @@ GCC_VERSION=15
 
 echo "==> Installing GCC ${GCC_VERSION} toolchain"
 
-# Add toolchain PPA if gcc-$GCC_VERSION is not in the default repos
+# Ubuntu 26.04 LTS (Resolute Raccoon) ships gcc-15/g++-15 in main, so this
+# install needs no extra source there. The PPA is only a fallback for an older
+# base (e.g. a 24.04 noble rebuild) whose main repos cap out below GCC 15 —
+# probe the actual package and add ubuntu-toolchain-r/test only if it's missing.
 if ! apt-cache show "gcc-${GCC_VERSION}" >/dev/null 2>&1; then
     echo "==> gcc-${GCC_VERSION} not in default repos, adding ubuntu-toolchain-r PPA"
     add-apt-repository -y ppa:ubuntu-toolchain-r/test

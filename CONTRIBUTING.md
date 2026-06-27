@@ -28,15 +28,22 @@ The repository has two core branches:
 
 The normal flow is `develop` -> `main`: features land on `develop`, and when a release is cut, `develop` is merged into `main` and a tag is created on `main` (see [Release tagging](#release-tagging)).
 
-### Feature and bug branches
+### Branch naming
 
-Create one branch per change, named `<type>/<branch-name>`, where `<type>` is one of the [allowed commit types](#allowed-types-and-scopes). Continuous integration triggers on the `feature/**` and `bug/**` namespaces, as well as on `main` and `develop` (see `.github/workflows/ci.yml`).
+Create one branch per change, named `<type>/<name>`, where `<type>` is one of the [allowed commit types](#allowed-types-and-scopes) — `feat`, `fix`, `docs`, `ci`, `test`, `refactor`, `chore`, `build`, or `perf` — and `<name>` is a short lowercase, hyphen-separated description.
 
 ```bash
 git switch develop
-git switch -c feature/spaside-led-map      # a new feature
-git switch -c bug/heater-setpoint-decode   # a bug fix
+git switch -c feat/spaside-led-map        # a new feature
+git switch -c fix/heater-setpoint-decode  # a bug fix
 ```
+
+This convention is checked automatically:
+
+- A **Branch Name** check runs on every pull request and fails a non-conforming head branch (`.github/workflows/ci.yml`). `develop` and `main` are accepted as heads so the `develop` -> `main` release-promotion PR is never blocked. It is a [required status check](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging) on `develop` and `main`, so a non-conforming branch cannot merge.
+- Push/creation-time enforcement (a server-side branch-name **ruleset**) is a GitHub organization feature and is not available on this user-owned repository, so a misnamed branch can exist locally — it just fails CI and, once the check is required, cannot merge.
+
+Continuous integration also runs on a `push` to any of these type namespaces and to `main`/`develop` (see `.github/workflows/ci.yml`).
 
 ### Hotfix branches
 
@@ -48,6 +55,10 @@ git switch -c fix/crash-on-empty-config
 ```
 
 A hotfix merges into `main` (which is then tagged) and is also merged into `develop` so the fix is not lost on the next release.
+
+### Worktrees for parallel work
+
+To work on more than one branch at a time on a single machine — or to fan work out across parallel agents — use git worktrees rather than juggling one checkout. The worktree layout, naming, and a recipe for building a worktree cheaply (reusing the main checkout's vcpkg instead of duplicating it) are in [docs/worktrees.md](docs/worktrees.md).
 
 ## Submitting a pull request
 

@@ -62,6 +62,7 @@ target_sources(
 	http/webroute_diagnostics_matter.cpp
 	http/webroute_diagnostics_mqtt.cpp
 	http/webroute_diagnostics_options.cpp
+	http/webroute_diagnostics_profiling.cpp
 	http/webroute_diagnostics_recording.cpp
 	http/webroute_equipment.cpp
 	http/webroute_equipment_spaside_remotes.cpp
@@ -111,6 +112,7 @@ target_sources(
 	interfaces/imessagesignal_recv.cpp
 	interfaces/imessagesignal_send.cpp
 	interfaces/iprofiler.cpp
+	interfaces/iprofilingcontroller.cpp
 	interfaces/iprofilingunit.cpp
 	interfaces/irecordingcontroller.cpp
 	interfaces/iserializable.cpp
@@ -200,6 +202,7 @@ target_sources(
 	preferences/preferences_service.cpp
 	profiling/noop_profiler.cpp
 	profiling/profiling.cpp
+	profiling/profiling_controller.cpp
 	$<$<BOOL:${ENABLE_PROFILING}>:profiling/tracy_profiler.cpp>	
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${UProf_FOUND}>>:profiling/uprof_profiler.cpp>
 	$<$<AND:$<BOOL:${ENABLE_PROFILING}>,$<BOOL:${VTune_FOUND}>>:profiling/vtune_profiler.cpp>

@@ -7,10 +7,15 @@
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 
+#include <stdexcept>
+
+#include <boost/signals2.hpp>
+
 #include "jandy/devices/aquarite_device.h"
 #include "jandy/devices/jandy_device_id.h"
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ids.h"
+#include "jandy/messages/aquarite/aquarite_message_percent.h"
 
 #include "support/unit_test_mockreplayharness.h"
 #include "support/unit_test_protocolmessagebuilder.h"
@@ -203,6 +208,45 @@ BOOST_AUTO_TEST_CASE(Replay_AquaRite_Regression_UnfilteredPpmAndAquaPureLabel)
 	// ChlorinatorStatuses has no ostream operator<<, so compare with == rather
 	// than BOOST_CHECK_EQUAL (which streams both operands on failure).
 	BOOST_CHECK(status.value() == Kernel::ChlorinatorStatuses::On);
+}
+
+//-----------------------------------------------------------------------------
+// Exception barrier: a throwing message-handler slot must NOT escape the serial
+// poll loop and terminate the daemon.
+//
+// Regression for the remote-DoS gap where ProcessMessages() fanned a decoded
+// frame out to its signal slots with no try/catch: any slot that threw
+// (out_of_range, bad_variant_access, bad_alloc, …) propagated out of the poll
+// loop and killed the whole process — reachable from the RS-485 / remote-serial
+// transport.  The barrier in ProtocolTask::ProcessMessages must now catch the
+// exception, count it (StatisticsHub.MessageErrors.HandlerExceptions), and keep
+// polling.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(Replay_ThrowingHandlerSlot_IsContainedAndCounted)
+{
+	Test::MockReplayHarness harness;
+
+	// Connect a slot that throws when the decoded Percent frame is dispatched.
+	// scoped_connection auto-disconnects at end of scope so the throwing slot does
+	// not leak into other cases that share this process-global static signal.
+	boost::signals2::scoped_connection throwing_slot =
+		Messages::AquariteMessage_Percent::GetSignal()->connect(
+			[](const Messages::AquariteMessage_Percent&)
+			{
+				throw std::runtime_error("simulated handler fault");
+			});
+
+	auto percent_frame = Test::MessageBuilder::CreateValidChecksummedMessage(
+		SWG_DEVICE_ID, CMD_AQUARITE_PERCENT, { static_cast<uint8_t>(40) });
+
+	// The replay drives ProtocolTask::Poll(); the throw from the slot must be
+	// contained — Replay (and thus the daemon's poll loop) must not propagate it.
+	BOOST_CHECK_NO_THROW(harness.Replay(percent_frame));
+
+	// The frame itself was valid (no checksum rejection) and the handler fault was
+	// caught and tallied exactly once.
+	BOOST_TEST(harness.StatisticsHub()->MessageErrors.ChecksumFailures == 0u);
+	BOOST_TEST(harness.StatisticsHub()->MessageErrors.HandlerExceptions == 1u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -7,7 +7,7 @@ echo "==> Installing CMake ${CMAKE_VERSION} and Ninja"
 
 # Install CMake from Kitware binary release
 CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
-curl -fsSL "${CMAKE_URL}" | tar xz -C /opt
+curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --max-time 180 "${CMAKE_URL}" | tar xz -C /opt
 ln -sf "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/cmake" /usr/local/bin/cmake
 ln -sf "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/ctest" /usr/local/bin/ctest
 ln -sf "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/cpack" /usr/local/bin/cpack

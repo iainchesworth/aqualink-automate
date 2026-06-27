@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <queue>
+#include <source_location>
 
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -81,6 +83,8 @@ namespace AqualinkAutomate::Navigation
 
 	PageId MenuModel::DetectPage(const Utility::ScreenDataPage& content) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MenuModel::DetectPage", std::source_location::current());
+
 		// Try to match each registered page's detection patterns
 		// All detectors for a page must match for it to be identified
 		PageId best_match = PageId::Unknown;
@@ -187,6 +191,8 @@ namespace AqualinkAutomate::Navigation
 
 	std::vector<const MenuEdge*> MenuModel::FindPath(PageId from, PageId to) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MenuModel::FindPath", std::source_location::current());
+
 		if (from == to)
 		{
 			return {}; // Already at destination

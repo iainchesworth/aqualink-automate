@@ -54,7 +54,13 @@ namespace AqualinkAutomate::HTTP
         {
             result = m_DocRoot;
 
-            auto segs = target.segments();
+            // Build the path from the SAME (normalized) segment sequence that
+            // match_prefix counted prefix_len against. Using the raw target.segments()
+            // here while prefix_len was computed from the normalized path skews the
+            // advance when the raw path carries segments that normalize away ("//",
+            // "/./", "/../"), which could append a prefix segment or resolve the wrong
+            // file within the doc-root. (parsed_target was normalize_path()'d above.)
+            auto segs = parsed_target.value().segments();
             auto it = segs.begin();
             auto end = segs.end();
 

@@ -29,7 +29,7 @@ runs:
         echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
 
     - name: Cache vcpkg downloads
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/vcpkg/downloads
         key: vcpkg-downloads-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json') }}
@@ -45,7 +45,7 @@ runs:
     # disjoint archives and each gets its own cache. vcpkg names archives by ABI
     # hash, so multiple triplets would coexist safely in a single cache dir anyway.
     - name: Cache vcpkg binaries
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/vcpkg/archives
         key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ steps.vcpkg-version.outputs.hash }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/vcpkg/triplets/**', 'cmake/vcpkg/overlays/**') }}
@@ -54,7 +54,7 @@ runs:
           vcpkg-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Run vcpkg
-      uses: lukka/run-vcpkg@v11
+      uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11.6
       with:
         vcpkgDirectory: ${{ github.workspace }}/deps/vcpkg
         doNotCache: true

@@ -140,11 +140,14 @@ The built-in HTTP/HTTPS server that hosts the web UI and the REST/WebSocket API.
 | `--disable-content` | | flag | off | Disable serving rendered content; expose APIs only. |
 | `--disable-http` | | flag | off | Disable the HTTP server. |
 | `--disable-https` | | flag | off | Disable the HTTPS server. |
-| `--cert` | | string | exe-relative `ssl/cert.pem` | TLS certificate (PEM). |
-| `--cert-key` | | string | exe-relative `ssl/key.pem` | TLS certificate private key (PEM). |
+| `--cert` | | string | exe-relative `ssl/cert.pem` | TLS certificate (PEM). If absent at the default path, a unique self-signed cert is generated on first boot. |
+| `--cert-key` | | string | exe-relative `ssl/key.pem` | TLS certificate private key (PEM). Auto-generated (key written `0600`) when absent at the default path; no key is shipped in the package. |
 | `--cachain-cert` | | string | none | CA chain certificate (PEM). |
 | `--doc-root` | | string | exe-relative `web` asset dir | Directory from which the web UI is served. |
-| `--api-auth-token` | | string | none (no auth) | Require a bearer token on every API request and the WebSocket upgrade. |
+| `--api-auth-token` | | string | none (no auth) | Require a bearer token on every API request and the WebSocket upgrade. Use a long random value (32+ chars); a token under 16 chars triggers a startup warning. |
+| `--api-allowed-origin` | | string (repeatable) | none (check off) | Allowed `Origin` for the API/WebSocket. When set, a request/upgrade with a non-listed `Origin` is rejected with HTTP 403. |
+| `--api-require-csrf-header` | | flag | off | Require the `X-Requested-With` header on state-changing API requests (CSRF mitigation). |
+| `--insecure-no-auth` | | flag | off | Acknowledge an intentionally unauthenticated API on a non-loopback bind; downgrades the open-control-plane startup warning to an informational note. |
 
 **Security:** `--address` defaults to `127.0.0.1` (loopback only) so a fresh install is not exposed to the network. Set `--address 0.0.0.0` deliberately when you want LAN access.
 

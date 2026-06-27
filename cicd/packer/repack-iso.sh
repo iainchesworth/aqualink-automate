@@ -17,12 +17,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ISO_DIR="$SCRIPT_DIR/ISOs"
 
-# Default upstream source. Ubuntu 25.04 is EOL, so the image is served from
-# old-releases (releases.ubuntu.com 301-redirects there). Keep the checksum in
-# step with the URL — a mismatch aborts the repack.
-DEFAULT_ISO_URL="https://old-releases.ubuntu.com/releases/25.04/ubuntu-25.04-live-server-amd64.iso"
-DEFAULT_ISO_SHA256="8b44046211118639c673335a80359f4b3f0d9e52c33fe61c59072b1b61bdecc5"
-DEFAULT_OUTPUT_ISO="$ISO_DIR/ubuntu-25.04-autoinstall.iso"
+# Default upstream source — Ubuntu 26.04 LTS (Resolute Raccoon), a current LTS
+# served straight from releases.ubuntu.com. Keep the checksum in step with the
+# URL — a mismatch aborts the repack. When a point release lands (26.04.1, …) the
+# upstream GA filename is replaced; update both the URL and SHA256 to match (grab
+# them from https://releases.ubuntu.com/26.04/SHA256SUMS).
+DEFAULT_ISO_URL="https://releases.ubuntu.com/26.04/ubuntu-26.04-live-server-amd64.iso"
+DEFAULT_ISO_SHA256="dec49008a71f6098d0bcfc822021f4d042d5f2db279e4d75bdd981304f1ca5d9"
+DEFAULT_OUTPUT_ISO="$ISO_DIR/ubuntu-26.04-autoinstall.iso"
 
 SOURCE_ARG="${1:-$DEFAULT_ISO_URL}"
 

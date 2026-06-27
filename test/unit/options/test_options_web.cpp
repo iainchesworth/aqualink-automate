@@ -259,6 +259,61 @@ BOOST_AUTO_TEST_CASE(Test_WebOptions_ApiAuthToken_SetWhenProvided)
 }
 
 //-----------------------------------------------------------------------------
+// ORIGIN ALLOW-LIST + CSRF HEADER + INSECURE ACK (previously-unreachable knobs)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_CrossSiteKnobs_DefaultOff)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK(result.value().ApiAllowedOrigins.empty());
+	BOOST_CHECK(!result.value().ApiRequireCsrfHeader);
+	BOOST_CHECK(!result.value().InsecureNoAuthAck);
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_AllowedOrigin_Repeatable)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program",
+		"--api-allowed-origin=https://pool.example",
+		"--api-allowed-origin=https://app.example" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	const auto& origins = result.value().ApiAllowedOrigins;
+	BOOST_REQUIRE_EQUAL(origins.size(), 2u);
+	BOOST_CHECK_EQUAL(origins[0], "https://pool.example");
+	BOOST_CHECK_EQUAL(origins[1], "https://app.example");
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_RequireCsrfHeader_SetWhenProvided)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program", "--api-require-csrf-header" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK(result.value().ApiRequireCsrfHeader);
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebOptions_InsecureNoAuthAck_SetWhenProvided)
+{
+	Options::Web::OptionsProcessor processor;
+	auto vm = ParseWebOptions(processor, { "program", "--insecure-no-auth" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+
+	BOOST_CHECK(result.value().InsecureNoAuthAck);
+}
+
+//-----------------------------------------------------------------------------
 // CONTENT DISABLE
 //-----------------------------------------------------------------------------
 

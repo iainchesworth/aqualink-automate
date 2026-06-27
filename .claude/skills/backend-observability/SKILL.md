@@ -1,16 +1,18 @@
 ---
 name: backend-observability
-description: Backend observability for the Aqualink-Automate project — Tracy profiling (ProfilingUnitFactory zones/frames/domains, the no-op fallback, frame marks) and channel-based logging (the Channel enum, runtime severity filter, global loggers, lazy log evaluation, std::formatter integration). Use when instrumenting a handler or hot path, adding or changing log statements, adding a log Channel, or reasoning about ENABLE_PROFILING / log filtering. Relevant to src/core/profiling, src/core/logging, and src/core/interfaces/iprofiler*.
+description: Backend observability for the Aqualink-Automate project — profiling (Tracy / Intel VTune / AMD uProf behind one facade; ProfilingUnitFactory zones/frames/domains, the no-op fallback, frame marks, --profiler selection, the IProfilingController runtime control surface) and channel-based logging (the Channel enum, runtime severity filter, global loggers, lazy log evaluation, std::formatter integration). Use when instrumenting a handler or hot path, adding or changing log statements, adding a log Channel, or reasoning about ENABLE_PROFILING / profiler backends / log filtering. Relevant to src/core/profiling, src/core/logging, and src/core/interfaces/iprofiler*.
 ---
 
 # Backend Observability — Profiling & Logging
 
-Two facades over heavy third-party machinery (Tracy / Boost.Log), both compile-time-gated so production can strip them. This is about the *conventions*: instrument hot paths with a zone, log on the right channel. The web-layer observability (Sentry, metrics endpoints) is a separate concern in `webui-best-practices`.
+Two facades over heavy third-party machinery (profilers / Boost.Log), both compile-time-gated so production can strip them. This is about the *conventions*: instrument hot paths with a zone, log on the right channel. The web-layer observability (Sentry, metrics endpoints) is a separate concern in `webui-best-practices`.
 
-## A. Profiling (Tracy)
+## A. Profiling (Tracy / Intel VTune / AMD uProf)
+
+**Three interchangeable backends** behind one facade. Tracy (vcpkg, always there in a profiling build), Intel VTune (ITT, impls `vtune_profiler.*` + `vtune_zone/frame`, found via `find_package(VTune)`), AMD uProf (impls `uprof_profiler.*` + optional ActivityLogger `uprof_zone/frame`, found via `find_package(UProf)`). The backend is chosen at runtime with `--profiler tracy|uprof|vtune`; without it (or in a non-profiling build) everything is NoOp. Full doc: `docs/profiling.md`.
 
 **Two layers named alike — don't confuse them:**
-- `Interfaces::IProfiler` (`src/core/interfaces/iprofiler.*`, impls `tracy_profiler.*` / `noop_profiler.*`, via `Factory::ProfilerFactory`) — the *process* API: `StartProfiling`, `Message`, `PlotValue`, `EmitFrameMark`, `AppInfo`.
+- `Interfaces::IProfiler` (`src/core/interfaces/iprofiler.*`, impls `tracy_profiler.*` / `vtune_profiler.*` / `uprof_profiler.*` / `noop_profiler.*`, via `Factory::ProfilerFactory`) — the *process* API: `StartProfiling`/`StopProfiling` (lifecycle), `Resume`/`Pause` (runtime capture gating), `Message`, `PlotValue`, `EmitFrameMark`, `AppInfo`, `SetThreadName`.
 - **`Factory::ProfilingUnitFactory`** (`src/core/profiling/factories/profiling_unit_factory.*`) — the **call-site** API every handler/hot path uses. Returns `Types::ProfilingUnitTypePtr` (a `unique_ptr<IProfilingUnit>`).
 
 Both are singletons (`::Instance()`), both in namespace `AqualinkAutomate::Factory`.
@@ -27,7 +29,9 @@ zone->Value(resp.body().size());   // attach a scalar metric (size/count — nev
 - `zone->Value(uint64_t)` / `zone->Text(string_view)` annotate the open zone. **No-ops outside Tracy** (base `IProfilingUnit` does nothing; only `TracyZone` forwards) — safe but don't assume the metric was recorded in a non-Tracy build.
 - Per-iteration loop boundaries use the *process* API instead: `profiler.Get()->EmitFrameMark("MainLoop")` (once per main-loop iteration in `aqualink-automate.cpp`).
 
-**Gating / no-op:** `ENABLE_PROFILING` (build option) defines `TRACY_ENABLE` and links `Tracy::TracyClient` (see `cmake-build-system`). When off, the factories return no-op generators and every `CreateZone` compiles to a do-nothing — call sites are unchanged. **`ENABLE_PROFILING` and `ENABLE_SANITIZERS` are mutually exclusive** (configure-time `FATAL_ERROR`); to run sanitizers, reconfigure with profiling off.
+**Gating / no-op:** `ENABLE_PROFILING` (build option) defines `TRACY_ENABLE` and links `Tracy::TracyClient`; `VTUNE_SUPPORT_ENABLED` / `UProf_SUPPORT_ENABLED` (+ `UProf_ACTIVITY_LOGGER_ENABLED`) are added when those SDKs are found (see `cmake-build-system`). When off, the factories return no-op generators and every `CreateZone` compiles to a do-nothing — call sites are unchanged. **No default preset enables profiling** — use a `config-<platform>-profiling` preset (or `-DENABLE_PROFILING=ON`). **`ENABLE_PROFILING` and `ENABLE_SANITIZERS` are mutually exclusive** (configure-time `FATAL_ERROR`); to run sanitizers, reconfigure with profiling off.
+
+**Runtime control:** `--profiler <backend>` selects the backend (a `Profiling` warning is logged if that backend wasn't compiled in). `GET/POST /api/diagnostics/profiling` + the Diagnostics-page Profiling card report status and pause/resume/select at runtime, via `Interfaces::IProfilingController` (impl `Profiling::ProfilingController`, registered in the HubLocator).
 
 ## B. Logging
 
@@ -68,7 +72,7 @@ zone->Value(resp.body().size());   // attach a scalar metric (size/count — nev
 ## Gotchas
 
 - **Profiling vs sanitizers**: mutually exclusive (configure-time FATAL). Reconfigure `-DENABLE_PROFILING=OFF` to use ASan/UBSan.
-- **The process API (`ProfilerFactory::Get()`) returns NoOp unless `SetDesired()` was called** — which `main` doesn't do today, so `PlotValue`/`Message`/frame marks are effectively inert at runtime. Call-site zones still compile and are safe regardless.
+- **The process API (`ProfilerFactory::Get()`) returns NoOp unless `SetDesired()` was called** — `main` does this via the `--profiler` option during options processing, then runs `StartProfiling()`/`AppInfo()`/`SetThreadName()` *after* options (the activation block) so the selected backend is live. Without `--profiler` (or in a non-profiling build) the process API stays NoOp and call-site zones are safe no-ops. (Order matters: doing `StartProfiling()` before options would resume a NoOp and never resume VTune/uProf — that was the historical bug.)
 - `zone->Value()`/`Text()` are no-ops outside a Tracy build.
 - `CreateZone` has no `src_loc` default — always pass `std::source_location::current()`.
 - Zone lifetime = the variable's scope; bind it (don't discard the temporary); use inner `{ }` for sub-spans.
@@ -78,4 +82,4 @@ zone->Value(resp.body().size());   // attach a scalar metric (size/count — nev
 
 ## Key files
 
-`src/core/interfaces/{iprofiler,iprofilingunit}.{h,cpp}`, `src/core/profiling/factories/{profiling_unit_factory,profiler_factory}.{h,cpp}`, `src/core/profiling/{profiling.{h,cpp},tracy_profiler.*,noop_profiler.*,profiling_units/*,types/profiling_types.h}`, models `src/core/http/webroute_equipment_devices.cpp` + `src/jandy/devices/capabilities/screen.cpp` + `src/aqualink-automate.cpp` (registration/frame marks); `src/core/logging/{logging.h,logging_channels.h,logging_severity_levels.h,logging_severity_filter.*,global_logger.h,logging_initialise.cpp,logging_formatter.cpp}`, `std::formatter` examples `src/jandy/formatters/*.h`.
+`src/core/interfaces/{iprofiler,iprofilingunit,iprofilingcontroller}.{h,cpp}`, `src/core/profiling/factories/{profiling_unit_factory,profiler_factory}.{h,cpp}`, `src/core/profiling/{profiling.{h,cpp},tracy_profiler.*,vtune_profiler.*,uprof_profiler.*,noop_profiler.*,profiling_controller.*,profiling_units/*,types/profiling_types.h}`, runtime control `src/core/http/webroute_diagnostics_profiling.*`, finders `cmake/tools/{FindVTune,FindUProf}.cmake`, full doc `docs/profiling.md`; models `src/core/http/webroute_equipment_devices.cpp` + `src/jandy/devices/capabilities/screen.cpp` + `src/aqualink-automate.cpp` (registration / activation / frame marks); `src/core/logging/{logging.h,logging_channels.h,logging_severity_levels.h,logging_severity_filter.*,global_logger.h,logging_initialise.cpp,logging_formatter.cpp}`, `std::formatter` examples `src/jandy/formatters/*.h`.

@@ -31,6 +31,11 @@ permissions:
 jobs:
   build:
     name: ${{ matrix.name }}
+    # Fork PRs must not run on the persistent self-hosted runners selected via
+    # vars.RUNNER_* (untrusted code on a long-lived host). This reusable workflow is
+    # also called from release.yml on push/dispatch (never pull_request), so that
+    # path is unaffected; same-repo PRs from ci.yml continue to run normally.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       fail-fast: false
@@ -78,7 +83,7 @@ jobs:
             package_preset: pack-macos-llvm
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           submodules: recursive
           fetch-depth: ${{ inputs.fetch_depth }}
@@ -175,16 +180,21 @@ jobs:
       # the value that fallback would produce — just without the warning.
       - name: Configure
         if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
-        uses: lukka/run-cmake@v10
+        uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           configurePreset: ${{ matrix.configure_preset }}
-          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}']"
+          # --clean-{buildtrees,packages}-after-build stops vcpkg's transient
+          # build dirs from piling up on the self-hosted runners' bounded ~20 GB
+          # work disk during a from-scratch dependency build (cache miss).
+          # Harmless on GitHub-hosted runners (buildtrees are never cached) and it
+          # leaves the persistent downloads + binary-archive caches intact.
+          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}', '-DVCPKG_INSTALL_OPTIONS=--clean-buildtrees-after-build;--clean-packages-after-build']"
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
       - name: Build
         if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
-        uses: lukka/run-cmake@v10
+        uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           buildPreset: ${{ matrix.build_preset }}
         env:
@@ -200,7 +210,7 @@ jobs:
 
       - name: Test
         if: ${{ !(inputs.do_package && runner.os == 'Linux') }}
-        uses: lukka/run-cmake@v10
+        uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           testPreset: ${{ matrix.test_preset }}
         env:
@@ -212,7 +222,7 @@ jobs:
       # cache so the two glibc baselines never share archives.
       - name: Cache vcpkg (glibc-2.36 container)
         if: ${{ inputs.do_package && runner.os == 'Linux' && !contains(matrix.runner, 'self-hosted') }}
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.cache/vcpkg-bookworm
           key: vcpkg-bookworm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg/triplets/**') }}
@@ -300,7 +310,7 @@ jobs:
       # trees (x64 + arm64) for the multi-arch Docker image. Per-arch artifact name.
       - name: Upload Linux install tree
         if: inputs.upload_installtree && runner.os == 'Linux' && (inputs.do_package || matrix.configure_preset == 'config-linux-gcc')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ matrix.installtree_name }}
           if-no-files-found: error
@@ -359,7 +369,7 @@ jobs:
 
       - name: Upload packages
         if: inputs.do_package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: packages-${{ matrix.configure_preset }}
           if-no-files-found: error

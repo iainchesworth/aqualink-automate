@@ -3,6 +3,13 @@ set -euo pipefail
 
 echo "==> Installing base packages"
 
+# Make every apt operation (here and in all later provisioning scripts) ride out
+# transient mirror/CDN errors instead of aborting the whole build on a single
+# flaky fetch — apt.llvm.org and the Ubuntu mirrors are intermittently unreliable.
+cat > /etc/apt/apt.conf.d/80-retries <<'EOF'
+Acquire::Retries "5";
+EOF
+
 apt-get update
 apt-get install -y --no-install-recommends \
     build-essential \
@@ -14,6 +21,7 @@ apt-get install -y --no-install-recommends \
     libssl-dev \
     linux-libc-dev \
     lsb-release \
+    openssl \
     pkg-config \
     software-properties-common \
     tar \

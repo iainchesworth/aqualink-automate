@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <format>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include <boost/beast/core/string.hpp>
 #include <boost/beast/http/field.hpp>
@@ -49,6 +51,68 @@ namespace AqualinkAutomate::HTTP::Routing
 		std::optional<StaticFileHandler> sf_route;
 
 		SecurityConfig security_config{};
+
+		// Per-source-IP throttle for FAILED bearer-token attempts. The token compare
+		// is already constant-time, but nothing slowed online guessing of a weak
+		// token. After MAX_FAILURES failures from one IP, further attempts from it are
+		// answered 429 for BAN_WINDOW; a successful auth (or a fresh policy) clears the
+		// IP. The io_context runs on a single thread, so no locking is required.
+		class AuthRateLimiter
+		{
+		public:
+			[[nodiscard]] bool IsBanned(std::string_view ip) const
+			{
+				if (ip.empty()) { return false; }
+				const auto it = m_Entries.find(std::string(ip));
+				return (it != m_Entries.end()) && (std::chrono::steady_clock::now() < it->second.banned_until);
+			}
+
+			void RecordFailure(std::string_view ip)
+			{
+				if (ip.empty()) { return; }
+				PruneIfLarge();
+				auto& entry = m_Entries[std::string(ip)];
+				if (++entry.failures >= MAX_FAILURES)
+				{
+					entry.banned_until = std::chrono::steady_clock::now() + BAN_WINDOW;
+					entry.failures = 0;
+					LogWarning(Channel::Web, [ip] { return std::format("Rate-limiting source '{}' for {}s after {} failed API authentication attempts",
+						ip, std::chrono::duration_cast<std::chrono::seconds>(BAN_WINDOW).count(), MAX_FAILURES); });
+				}
+			}
+
+			void RecordSuccess(std::string_view ip)
+			{
+				if (ip.empty()) { return; }
+				m_Entries.erase(std::string(ip));
+			}
+
+			void Reset() { m_Entries.clear(); }
+
+		private:
+			struct Entry
+			{
+				unsigned int failures{ 0 };
+				std::chrono::steady_clock::time_point banned_until{};
+			};
+
+			// Bound memory against many distinct source IPs: when the table grows
+			// large, drop entries that are neither banned nor accumulating failures.
+			void PruneIfLarge()
+			{
+				if (m_Entries.size() < MAX_TRACKED_IPS) { return; }
+				const auto now = std::chrono::steady_clock::now();
+				std::erase_if(m_Entries, [now](const auto& kv) { return kv.second.failures == 0 && kv.second.banned_until <= now; });
+			}
+
+			static constexpr unsigned int MAX_FAILURES = 10;
+			static constexpr auto BAN_WINDOW = std::chrono::seconds(60);
+			static constexpr std::size_t MAX_TRACKED_IPS = 8192;
+
+			std::unordered_map<std::string, Entry> m_Entries;
+		};
+
+		AuthRateLimiter auth_rate_limiter{};
 
 		// Attaching descriptive text to a profiling zone is a no-op in every
 		// non-Tracy build (the base IProfilingUnit::Text() does nothing), so building
@@ -181,7 +245,7 @@ namespace AqualinkAutomate::HTTP::Routing
 		// rejection response to send when the request is denied, or std::nullopt when
 		// it is permitted. Shared by the HTTP and WebSocket-upgrade paths so both
 		// enforce identical rules. NEVER logs the configured or supplied token.
-		[[nodiscard]] std::optional<HTTP::Response> EvaluateSecurity(const HTTP::Request& req, bool is_websocket_upgrade)
+		[[nodiscard]] std::optional<HTTP::Response> EvaluateSecurity(const HTTP::Request& req, bool is_websocket_upgrade, std::string_view peer_ip)
 		{
 			const SecurityConfig& cfg = security_config;
 			if (!cfg.IsEnabled())
@@ -209,6 +273,16 @@ namespace AqualinkAutomate::HTTP::Routing
 			// --- Bearer token authentication ---
 			if (cfg.AuthToken.has_value())
 			{
+				// Brute-force throttle: a source that has failed auth too many times
+				// recently is refused with 429 before the token is even examined.
+				if (auth_rate_limiter.IsBanned(peer_ip))
+				{
+					LogWarning(Channel::Web, [&] { return std::format("Rejected {} request from rate-limited source '{}'", is_websocket_upgrade ? "WebSocket upgrade" : "HTTP", peer_ip); });
+					auto throttled = MakeSecurityResponse(req, HTTP::Status::too_many_requests, "Too many failed authentication attempts; try again later.");
+					throttled.set(boost::beast::http::field::retry_after, "60");
+					return throttled;
+				}
+
 				static constexpr std::string_view BEARER_PREFIX{ "Bearer " };
 
 				const std::string_view header = HeaderValue(req, boost::beast::http::field::authorization);
@@ -230,9 +304,13 @@ namespace AqualinkAutomate::HTTP::Routing
 
 				if (!authorised)
 				{
+					auth_rate_limiter.RecordFailure(peer_ip);
 					LogWarning(Channel::Web, [&] { return std::format("Rejected unauthenticated {} request (missing/invalid bearer token)", is_websocket_upgrade ? "WebSocket upgrade" : "HTTP"); });
 					return MakeSecurityResponse(req, HTTP::Status::unauthorized, "Unauthorized.");
 				}
+
+				// A genuine success clears any accumulated failures for this source.
+				auth_rate_limiter.RecordSuccess(peer_ip);
 			}
 
 			// --- CSRF mitigation for state-changing requests ---
@@ -261,11 +339,13 @@ namespace AqualinkAutomate::HTTP::Routing
 		ws_routes = HTTP::Routing::impl<Interfaces::IWebSocketBase>{};
 		sf_route.reset();
 		security_config = SecurityConfig{};
+		auth_rate_limiter.Reset();
 	}
 
 	void SetSecurityConfig(SecurityConfig config)
 	{
 		security_config = std::move(config);
+		auth_rate_limiter.Reset();
 
 		if (security_config.IsEnabled())
 		{
@@ -308,7 +388,7 @@ namespace AqualinkAutomate::HTTP::Routing
 		sf_route = std::move(sf);
 	}
 
-	HTTP::Message HTTP_OnRequest(const HTTP::Request& req)
+	HTTP::Message HTTP_OnRequest(const HTTP::Request& req, std::string_view peer_ip)
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Routing::RouteRequest", std::source_location::current());
 		DeferredZoneText(zone, [&] { return std::format("{} {}", magic_enum::enum_name(req.method()), std::string_view(req.target())); });
@@ -344,7 +424,7 @@ namespace AqualinkAutomate::HTTP::Routing
 				// which an orchestrator must reach without the operator's bearer token).
 				if (p->RequiresAuthentication())
 				{
-					if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+					if (auto rejection = EvaluateSecurity(req, false, peer_ip); rejection.has_value())
 					{
 						return std::move(*rejection);
 					}
@@ -373,7 +453,7 @@ namespace AqualinkAutomate::HTTP::Routing
 			{
 				// Unmatched path -> still enforce security so an unknown /api/* path
 				// answers 401 (not 404) when a token is required.
-				if (auto rejection = EvaluateSecurity(req, false); rejection.has_value())
+				if (auto rejection = EvaluateSecurity(req, false, peer_ip); rejection.has_value())
 				{
 					return std::move(*rejection);
 				}
@@ -431,9 +511,9 @@ namespace AqualinkAutomate::HTTP::Routing
 		return nullptr;
 	}
 
-	std::optional<HTTP::Response> AuthorizeWebSocketUpgrade(const HTTP::Request& req)
+	std::optional<HTTP::Response> AuthorizeWebSocketUpgrade(const HTTP::Request& req, std::string_view peer_ip)
 	{
-		return EvaluateSecurity(req, true);
+		return EvaluateSecurity(req, true, peer_ip);
 	}
 
 }

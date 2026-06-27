@@ -24,6 +24,7 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options.h"
 #include "profiling/profiling.h"
+#include "profiling/profiling_controller.h"
 #include "version/version.h"
 
 // Core — kernel
@@ -49,6 +50,7 @@
 #include "http/webroute_diagnostics_mqtt.h"
 #include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_diagnostics_options.h"
+#include "http/webroute_diagnostics_profiling.h"
 #include "http/webroute_diagnostics_recording.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_spaside_remotes.h"
@@ -142,9 +144,13 @@ int main(int argc, char* argv[])
 		auto& profiler = Factory::ProfilerFactory::Instance();
 		auto& profiler_units = Factory::ProfilingUnitFactory::Instance();
 
+		// Register the compiled-in backends now, but DEFER StartProfiling()/AppInfo()
+		// until AFTER options are processed: the requested backend is selected by
+		// SetDesired() inside the Developer options Process() step below, so calling
+		// Get() here would return the NoOp profiler and StartProfiling() would be a
+		// no-op (VTune/uProf would never resume capture). See the PROFILING
+		// ACTIVATION block after the options block.
 		Profiling::RegisterAvailableProfilers(profiler, profiler_units);
-		profiler.Get()->StartProfiling();
-		profiler.Get()->AppInfo(Version::VersionDetails());
 
 		//---------------------------------------------------------------------
 		// OPTIONS
@@ -207,6 +213,34 @@ int main(int argc, char* argv[])
 		}
 
 		//---------------------------------------------------------------------
+		// PROFILING ACTIVATION
+		//---------------------------------------------------------------------
+		//
+		// Options have now been processed, so --profiler (if supplied) has called
+		// SetDesired(). Warn if the requested backend was not compiled into this
+		// build (Get() would otherwise silently fall back to NoOp), then resume
+		// capture and stamp the trace with build/thread metadata.
+
+		if (const auto desired = profiler.Selected(); desired.has_value() && !profiler.IsRegistered(*desired))
+		{
+			std::string available;
+			for (const auto type : profiler.RegisteredTypes())
+			{
+				available += (available.empty() ? "" : ", ");
+				available += magic_enum::enum_name(type);
+			}
+
+			LogWarning(Channel::Profiling, std::format(
+				"Requested profiler '{}' is not available in this build; profiling is disabled. Compiled-in backends: [{}]",
+				magic_enum::enum_name(*desired),
+				available.empty() ? std::string{ "none (ENABLE_PROFILING=OFF)" } : available));
+		}
+
+		profiler.Get()->StartProfiling();
+		profiler.Get()->AppInfo(Version::VersionDetails());
+		profiler.Get()->SetThreadName("MainLoop");
+
+		//---------------------------------------------------------------------
 		// IO CONTEXT
 		//---------------------------------------------------------------------
 
@@ -234,6 +268,13 @@ int main(int argc, char* argv[])
 			// presses on emulated remotes). Resolved by the /api/equipment/spaside-remotes route.
 			auto spaside_controller = std::make_shared<Devices::SpasideRemoteController>(equipment_hub);
 			hub_locator.Register<Interfaces::ISpasideRemoteController>(spaside_controller);
+
+			// Runtime profiler control surface (report compiled-in/selected backends,
+			// pause/resume capture). Owning handle, always registered — reports
+			// enabled=false when ENABLE_PROFILING is OFF. Resolved by the
+			// /api/diagnostics/profiling route.
+			auto profiling_controller = std::make_shared<Profiling::ProfilingController>();
+			hub_locator.Register<Interfaces::IProfilingController>(profiling_controller);
 		}
 
 		//---------------------------------------------------------------------
@@ -360,7 +401,12 @@ int main(int argc, char* argv[])
 				{
 					LogDebug(Channel::Main, std::format("Using a remote serial port ({})", serial_settings.remote_serial_port));
 
-					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
+					// Raw TCP when either --rawtcp or --no-rfc2217 is set; otherwise the
+					// RFC2217 telnet transport (the default). --rawtcp leaves use_rfc2217
+					// at its true default, so both flags must be considered here.
+					const bool use_rfc2217 = serial_settings.use_rfc2217 && !serial_settings.use_rawtcp;
+
+					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor, use_rfc2217);
 
 					serial_port_impl = install_recording_decorator(std::move(serial_port_impl));
 
@@ -563,10 +609,55 @@ int main(int argc, char* argv[])
 			const auto& web_settings = web_settings_result.value().get();
 
 			// Wire the opt-in control-plane security policy from the Web settings.
-			// AuthToken unset (the default) leaves every knob disabled, so the
+			// AuthToken unset (the default) leaves authentication disabled, so the
 			// historical no-auth behaviour is preserved exactly unless the operator
-			// passes --api-auth-token.
-			HTTP::Routing::SecurityConfig security_config{ .AuthToken = web_settings.ApiAuthToken };
+			// passes --api-auth-token. The Origin allow-list (--api-allowed-origin) and
+			// CSRF-header requirement (--api-require-csrf-header) are likewise off until
+			// explicitly enabled.
+			HTTP::Routing::SecurityConfig security_config{
+				.AuthToken = web_settings.ApiAuthToken,
+				.AllowedOrigins = web_settings.ApiAllowedOrigins,
+				.RequireCsrfHeader = web_settings.ApiRequireCsrfHeader
+			};
+
+			// Open-control-plane guard: the equipment-control API actuates pumps,
+			// heaters and chlorinators. Binding a non-loopback interface with NO auth
+			// token exposes that to anyone on the network. We do not change behaviour
+			// (non-breaking), but we MUST make the operator aware: emit a prominent
+			// warning unless they bound loopback, enabled some security, or explicitly
+			// acknowledged the open posture with --insecure-no-auth.
+			{
+				boost::system::error_code addr_ec;
+				const auto bound = boost::asio::ip::make_address(web_settings.bind_address, addr_ec);
+				const bool non_loopback = addr_ec ? (web_settings.bind_address != "127.0.0.1" && web_settings.bind_address != "::1")
+												  : !bound.is_loopback();
+
+				if (non_loopback && !security_config.IsEnabled())
+				{
+					if (web_settings.InsecureNoAuthAck)
+					{
+						LogInfo(Channel::Web, [&] { return std::format(
+							"API bound to non-loopback address '{}' without authentication (acknowledged via --insecure-no-auth)", web_settings.bind_address); });
+					}
+					else
+					{
+						LogWarning(Channel::Web, [&] { return std::format(
+							"SECURITY: the equipment-control API is bound to non-loopback address '{}' with NO authentication - "
+							"anyone who can reach this host can actuate pool equipment. Set --api-auth-token (and serve over HTTPS), "
+							"or pass --insecure-no-auth to acknowledge this is intentional (e.g. behind a trusted reverse proxy).",
+							web_settings.bind_address); });
+					}
+				}
+
+				// Weak-token guard: the auth comparison is constant-time, but a short or
+				// low-entropy token is still feasible to brute-force online (there is no
+				// per-IP lockout). Nudge the operator toward a long random secret. The
+				// token value itself is never logged.
+				if (web_settings.ApiAuthToken.has_value() && web_settings.ApiAuthToken->size() < 16)
+				{
+					LogWarning(Channel::Web, "SECURITY: --api-auth-token is shorter than 16 characters; use a long, random token (e.g. 32+ chars) to resist online brute-force guessing");
+				}
+			}
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
@@ -586,6 +677,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_ActualDevices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Profiling>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Recording>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
@@ -608,7 +700,20 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator));
 
-			HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", web_settings.doc_root));
+			// Honour --disable-content: when set, serve ONLY the APIs and register no
+			// static-file handler.  Static assets are served UNauthenticated by design
+			// (so a login page can load before a token is supplied), so an operator who
+			// hardens an API-only deployment with --disable-content must actually get an
+			// empty doc-root surface -- previously this flag was parsed but never read,
+			// silently leaving the whole doc-root world-readable.
+			if (!web_settings.http_content_is_disabled)
+			{
+				HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", web_settings.doc_root));
+			}
+			else
+			{
+				LogInfo(Channel::Web, "Static content serving disabled (--disable-content); only API routes are registered");
+			}
 
 			if (web_settings.https_server_is_enabled)
 			{
@@ -755,16 +860,31 @@ int main(int argc, char* argv[])
 		{
 			auto frame_start = clock::now();
 
+			// Each per-iteration subsystem step below is wrapped in its own named
+			// profiling zone so a "MainLoop" frame can be decomposed by subsystem
+			// (io / protocol / watchdogs / http / https / mqtt) in the profiler.
+
 			// Process any Asio handlers already pending at frame start (signal_set,
 			// inbound HTTP/WS reads, MQTT socket completions, etc.).  io_context::poll
 			// returns the number of handlers it ran this call.
-			std::size_t handlers_run = io_context.poll();
+			std::size_t handlers_run = 0;
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> io_poll", std::source_location::current());
+				handlers_run = io_context.poll();
+			}
 
 			// Advance subsystems
-			bool had_work = protocol_task->Poll();
+			bool had_work = false;
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> protocol_poll", std::source_location::current());
+				had_work = protocol_task->Poll();
+			}
 
 			// Drive per-device watchdog deadline checks.
-			Devices::Capabilities::Restartable::PollAll();
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> watchdogs", std::source_location::current());
+				Devices::Capabilities::Restartable::PollAll();
+			}
 
 			// The HTTP/WS/MQTT Poll() calls queue fresh async work (notably
 			// WebSocket outbound writes).  Drain it now so egress is not capped at
@@ -772,20 +892,26 @@ int main(int argc, char* argv[])
 			// idle decision below.
 			if (http_server)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> http_poll", std::source_location::current());
 				http_server->Poll();
 			}
 
 			if (https_server)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> https_poll", std::source_location::current());
 				https_server->Poll();
 			}
 
 			if (mqtt_integration)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> mqtt_poll", std::source_location::current());
 				mqtt_integration->Poll();
 			}
 
-			handlers_run += io_context.poll();
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> io_poll_drain", std::source_location::current());
+				handlers_run += io_context.poll();
+			}
 
 			// Any Asio handler that ran (HTTP/WebSocket/MQTT activity) counts as
 			// work for pacing, so network activity keeps the loop hot rather than
@@ -802,6 +928,9 @@ int main(int argc, char* argv[])
 				std::this_thread::sleep_until(frame_start + frame_period);
 			}
 
+			// Plot the per-frame Asio handler count so idle vs busy frames are
+			// visible alongside the MainLoop frame marker on the profiler timeline.
+			profiler.Get()->PlotValue("Main Loop Handlers", static_cast<int64_t>(handlers_run));
 			profiler.Get()->EmitFrameMark("MainLoop");
 		}
 
@@ -886,6 +1015,7 @@ int main(int argc, char* argv[])
 		//    (and the object it aliases) is destroyed — otherwise the HubLocator
 		//    would briefly hold a dangling alias during scope-exit destruction.
 		hub_locator.Unregister<Interfaces::IRecordingController>();
+		hub_locator.Unregister<Interfaces::IProfilingController>();
 		serial_port.reset();
 
 		// 7. Clear message generator registry

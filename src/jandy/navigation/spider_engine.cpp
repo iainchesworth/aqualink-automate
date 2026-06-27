@@ -1,8 +1,11 @@
 #include "navigation/spider_engine.h"
 
+#include <source_location>
+
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -45,6 +48,8 @@ namespace AqualinkAutomate::Navigation
 		const Utility::ScreenDataPage& content,
 		uint8_t highlighted_line)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SpiderEngine::ProcessStep", std::source_location::current());
+
 		switch (m_State)
 		{
 		case State::Idle:

@@ -64,7 +64,7 @@ namespace AqualinkAutomate::Options::Developer
 		AppOptionPtr OPTION_DECODE_TO_MASTER{ make_appoption("decode-to-master", "DEV: decode and log RS-485 frames addressed TO the master (0x00); observe-only, no emulation/replay", boost::program_options::bool_switch()->default_value(false)) };
 		AppOptionPtr OPTION_REPLAY_FRAME_PERIOD{ make_appoption("replay-frame-period", "DEV: capture-replay inter-frame period in milliseconds (paces --replay-filename to the bus's natural rate; 0 = unpaced / as fast as possible)", boost::program_options::value<std::uint32_t>()->default_value(15)) };
 		AppOptionPtr OPTION_REPLAY_SPEED{ make_appoption("replay-speed", "DEV: capture-replay speed factor scaling --replay-frame-period (>1 faster, <1 slower)", boost::program_options::value<double>()->default_value(1.0)) };
-		AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "Enabling profiling using specified profiling tool", boost::program_options::value<AqualinkAutomate::Types::ProfilerTypes>()->multitoken()) };
+		AppOptionPtr OPTION_PROFILER{ make_appoption("profiler", "DEV: select the profiling backend to activate at startup: tracy, uprof, or vtune (case-insensitive). Requires a profiling-enabled build (ENABLE_PROFILING=ON) with that backend compiled in; otherwise it is reported as unavailable and profiling stays disabled", boost::program_options::value<AqualinkAutomate::Types::ProfilerTypes>()->multitoken()) };
 
 		// One `--loglevel-<channel>` option per Logging::Channel value, built in
 		// the constructor by enumerating the Channel enum (no manual per-channel

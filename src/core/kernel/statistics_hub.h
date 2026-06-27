@@ -54,6 +54,7 @@ namespace AqualinkAutomate::Kernel
 			uint64_t GeneratorFailures{ 0 };
 			uint64_t OverlappingPackets{ 0 };
 			uint64_t BufferOverflows{ 0 };
+			uint64_t HandlerExceptions{ 0 };
 		};
 
 		MessageErrorMetrics MessageErrors;

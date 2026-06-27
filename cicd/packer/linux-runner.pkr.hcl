@@ -53,7 +53,7 @@ variable "iso_url" {
     which downloads the upstream Ubuntu source on demand (and caches it under ISOs/)
     rather than keeping it in the repo. Run ./repack-iso.sh before building.
   EOT
-  default     = "ISOs/ubuntu-25.04-autoinstall.iso"
+  default     = "ISOs/ubuntu-26.04-autoinstall.iso"
 }
 
 variable "iso_checksum" {
@@ -103,8 +103,26 @@ source "vsphere-iso" "ubuntu" {
   RAM_hot_plug         = true
   disk_controller_type = ["pvscsi"]
 
+  # Two thin disks so build junk can never fill the OS disk (the historic
+  # datastore-exhaustion cause). disk0 = OS + toolchains only; disk1 = the data
+  # volume that holds the runner work dir (wiped every job) AND the persistent
+  # vcpkg/ccache caches. 00-data-volume.sh formats + mounts disk1 at /data, and
+  # the autoinstall (http/linux/user-data) pins the OS install to the *smallest*
+  # disk so it never lands on the data disk.
+  #
+  # disk0 — OS + toolchains (GCC/Clang/Docker/CMake ~10 GB used; 12 GB leaves headroom).
   storage {
-    disk_size             = 153600
+    disk_size             = 12288
+    disk_thin_provisioned = true
+  }
+  # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped) +
+  # Docker's data-root (release builds pull gcc:15-bookworm/debian:bookworm here,
+  # off the OS disk; see 05-docker.sh). 18 GB keeps the VM at a ~30 GB total: the
+  # supervisor caps each cache at 3 GB and prunes downloads, leaving ~8-9 GB for the
+  # work tree + transient Docker images. Tight for release builds — bump this one
+  # line if a from-scratch all-deps build ever runs out of room.
+  storage {
+    disk_size             = 18432
     disk_thin_provisioned = true
   }
 
@@ -133,7 +151,7 @@ source "vsphere-iso" "ubuntu" {
   # VM tools
   tools_upgrade_policy = true
 
-  notes = "GitHub Actions self-hosted runner - Ubuntu 25.04. Built by Packer."
+  notes = "GitHub Actions self-hosted runner - Ubuntu 26.04 LTS. Built by Packer."
 }
 
 build {
@@ -141,6 +159,7 @@ build {
 
   provisioner "shell" {
     scripts = [
+      "${path.root}/scripts/linux/00-data-volume.sh",
       "${path.root}/scripts/linux/01-base-packages.sh",
       "${path.root}/scripts/linux/02-gcc-toolchain.sh",
       "${path.root}/scripts/linux/03-llvm-toolchain.sh",

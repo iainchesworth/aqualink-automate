@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 #include "profiling/types/profiling_types.h"
 
@@ -29,6 +30,15 @@ namespace AqualinkAutomate::Factory
         bool Register(Types::ProfilerTypes type, Types::ProfilerTypePtr&& instance_ptr);
         void SetDesired(Types::ProfilerTypes type);
         Types::ProfilerTypePtr Get();
+
+    public:
+        // Introspection for the runtime control surface / startup diagnostics:
+        // which backends were compiled in & registered, and which (if any) was
+        // requested via --profiler. A requested-but-not-registered backend means
+        // Get() falls back to NoOp (see the startup warning in main).
+        std::vector<Types::ProfilerTypes> RegisteredTypes() const;
+        bool IsRegistered(Types::ProfilerTypes type) const;
+        std::optional<Types::ProfilerTypes> Selected() const;
 
     private:
         std::unordered_map<Types::ProfilerTypes, Types::ProfilerTypePtr> m_Profilers;

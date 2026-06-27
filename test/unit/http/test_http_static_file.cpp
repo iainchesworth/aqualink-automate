@@ -203,6 +203,29 @@ BOOST_FIXTURE_TEST_CASE(Test_StaticFile_Jail_RejectsSiblingPrefixEscape, StaticF
 	BOOST_CHECK(!RunMatch(handler, "/../docrootsecret/secret.txt", result));
 }
 
+BOOST_FIXTURE_TEST_CASE(Test_StaticFile_NonRootPrefix_NormalizesDotSegmentsConsistently, StaticFileFixture)
+{
+	// REGRESSION (segment skew): prefix_len was counted against the NORMALIZED path
+	// but the resolved path was built from the RAW target segments. With a non-root
+	// prefix and dot-segments that normalize away, the raw ".." leaked into the
+	// resolved path and tripped the jail, 404-ing a request that normalizes to a
+	// legitimate in-root asset. Both forms must now resolve to the same file, while a
+	// genuine escape (one that does NOT normalize back under the prefix) stays rejected.
+	StaticFileHandler handler("/static", doc_root);
+
+	std::filesystem::path direct;
+	BOOST_REQUIRE(RunMatch(handler, "/static/sub/page.html", direct));
+	BOOST_CHECK_EQUAL(direct.filename().string(), "page.html");
+
+	std::filesystem::path normalized;
+	BOOST_CHECK(RunMatch(handler, "/static/../static/sub/page.html", normalized));
+	BOOST_CHECK_EQUAL(normalized.filename().string(), "page.html");
+
+	// A genuine escape that does not normalize back under the prefix is still rejected.
+	std::filesystem::path escape;
+	BOOST_CHECK(!RunMatch(handler, "/static/../docrootsecret/secret.txt", escape));
+}
+
 //----------------------------------------------------------------------------
 //  Static-file ETag / conditional GET (Response_StaticFile)
 //----------------------------------------------------------------------------

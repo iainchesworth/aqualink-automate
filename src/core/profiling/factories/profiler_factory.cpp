@@ -30,6 +30,27 @@ namespace AqualinkAutomate::Factory
 		ProfilingUnitFactory::Instance().SetDesired(type);
 	}
 
+	std::vector<Types::ProfilerTypes> ProfilerFactory::RegisteredTypes() const
+	{
+		std::vector<Types::ProfilerTypes> types;
+		types.reserve(m_Profilers.size());
+		for (const auto& [type, instance] : m_Profilers)
+		{
+			types.push_back(type);
+		}
+		return types;
+	}
+
+	bool ProfilerFactory::IsRegistered(Types::ProfilerTypes type) const
+	{
+		return m_Profilers.contains(type);
+	}
+
+	std::optional<Types::ProfilerTypes> ProfilerFactory::Selected() const
+	{
+		return m_DesiredProfiler;
+	}
+
 	Types::ProfilerTypePtr ProfilerFactory::Get()
 	{
 		if (m_DesiredProfiler.has_value())
