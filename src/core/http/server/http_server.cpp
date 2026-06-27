@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <format>
 #include <string>
 #include <string_view>
@@ -25,15 +26,17 @@ namespace AqualinkAutomate::HTTP
 	// HttpSessionState
 	//=========================================================================
 
-	HttpSessionState::HttpSessionState(TcpSocket socket)
+	HttpSessionState::HttpSessionState(TcpSocket socket, std::string peer_ip)
+		: m_PeerIp(std::move(peer_ip))
 	{
 		m_TcpStream.emplace(std::move(socket));
 		m_TcpStream->expires_after(SESSION_TIMEOUT);
 	}
 
-	HttpSessionState::HttpSessionState(TcpSocket socket, boost::asio::ssl::context& ssl_ctx)
+	HttpSessionState::HttpSessionState(TcpSocket socket, boost::asio::ssl::context& ssl_ctx, std::string peer_ip)
 		: m_HasSslContext(true)
 		, m_SslContext(&ssl_ctx)
+		, m_PeerIp(std::move(peer_ip))
 	{
 		m_TcpStream.emplace(std::move(socket));
 		m_TcpStream->expires_after(SESSION_TIMEOUT);
@@ -219,7 +222,7 @@ namespace AqualinkAutomate::HTTP
 
 			// Gate the upgrade through the same security policy as HTTP requests
 			// (bearer token + Origin allow-list). Disabled by default => no change.
-			if (auto rejection = Routing::AuthorizeWebSocketUpgrade(req); rejection.has_value())
+			if (auto rejection = Routing::AuthorizeWebSocketUpgrade(req, m_PeerIp); rejection.has_value())
 			{
 				DoWrite(std::move(*rejection));
 				return;
@@ -241,7 +244,7 @@ namespace AqualinkAutomate::HTTP
 		zone->Text(std::string(req.target().data(), req.target().size()));
 #endif
 
-		auto msg = Routing::HTTP_OnRequest(req);
+		auto msg = Routing::HTTP_OnRequest(req, m_PeerIp);
 
 		DoWrite(std::move(msg));
 	}
@@ -655,6 +658,33 @@ namespace AqualinkAutomate::HTTP
 			return;
 		}
 
+		// Resolve the peer IP (empty if unavailable) for the per-IP connection cap
+		// and the routing layer's per-source failed-auth rate limiter.
+		std::string peer_ip;
+		{
+			boost::system::error_code rep_ec;
+			const auto remote = socket.remote_endpoint(rep_ec);
+			if (!rep_ec) { peer_ip = remote.address().to_string(); }
+		}
+
+		// Per-IP cap: a single client must not be able to consume the whole global
+		// connection budget. Count live sessions already sharing this peer's IP.
+		if (!peer_ip.empty())
+		{
+			const std::size_t from_this_ip = static_cast<std::size_t>(std::count_if(
+				m_Sessions.begin(), m_Sessions.end(),
+				[&peer_ip](const auto& s) { return s && s->PeerIp() == peer_ip; }));
+
+			if (from_this_ip >= MAX_CONNECTIONS_PER_IP)
+			{
+				LogWarning(Channel::Web, [&] { return std::format("Per-IP connection limit ({}) reached for '{}', rejecting new connection", MAX_CONNECTIONS_PER_IP, peer_ip); });
+				boost::system::error_code close_ec;
+				socket.close(close_ec);
+				DoAccept();
+				return;
+			}
+		}
+
 		LogInfo(Channel::Web, "Accepted new HTTP connection");
 #if defined(TRACY_ENABLE) || defined(VTUNE_SUPPORT_ENABLED) || defined(UProf_SUPPORT_ENABLED)
 		Factory::ProfilerFactory::Instance().Get()->Message("New HTTP connection accepted");
@@ -664,11 +694,11 @@ namespace AqualinkAutomate::HTTP
 
 		if (m_SslContext)
 		{
-			session = std::make_shared<HttpSessionState>(std::move(socket), m_SslContext->get());
+			session = std::make_shared<HttpSessionState>(std::move(socket), m_SslContext->get(), std::move(peer_ip));
 		}
 		else
 		{
-			session = std::make_shared<HttpSessionState>(std::move(socket));
+			session = std::make_shared<HttpSessionState>(std::move(socket), std::move(peer_ip));
 		}
 
 		m_Sessions.push_back(session);

@@ -464,6 +464,89 @@ BOOST_AUTO_TEST_CASE(Test_Security_Http_SubprotocolTokenIgnored_Returns401)
 }
 
 // =============================================================================
+// Per-source failed-auth rate limiting: after repeated bad-token attempts from
+// one IP, further attempts from that IP are answered 429 (online brute-force
+// throttle). The constant-time compare prevents a timing leak; this slows
+// guessing.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Security_RateLimit_BansSourceAfterRepeatedFailures)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	const std::string attacker = "203.0.113.7";
+
+	// The first 10 wrong-token attempts are answered 401...
+	for (int i = 0; i < 10; ++i)
+	{
+		auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+		req.set(boost::beast::http::field::authorization, "Bearer wrong");
+		auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req, attacker);
+		BOOST_REQUIRE(rejection.has_value());
+		BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, rejection->result());
+	}
+
+	// ...after which the source is rate-limited: a further attempt gets 429 even
+	// when it presents the CORRECT token (the ban precedes the token check).
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::authorization, "Bearer the-token");
+	auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req, attacker);
+	BOOST_REQUIRE(rejection.has_value());
+	BOOST_CHECK_EQUAL(boost::beast::http::status::too_many_requests, rejection->result());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Security_RateLimit_IsPerSourceIp)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	// Exhaust one source's allowance.
+	for (int i = 0; i < 10; ++i)
+	{
+		auto bad = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+		bad.set(boost::beast::http::field::authorization, "Bearer wrong");
+		HTTP::Routing::AuthorizeWebSocketUpgrade(bad, "203.0.113.7");
+	}
+
+	// A DIFFERENT source is unaffected: it still gets a normal 401, not 429.
+	auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+	req.set(boost::beast::http::field::authorization, "Bearer wrong");
+	auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req, "198.51.100.4");
+	BOOST_REQUIRE(rejection.has_value());
+	BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, rejection->result());
+
+	HTTP::Routing::Clear();
+}
+
+BOOST_AUTO_TEST_CASE(Test_Security_RateLimit_NoPeerIp_NeverThrottles)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::SecurityConfig cfg;
+	cfg.AuthToken = "the-token";
+	HTTP::Routing::SetSecurityConfig(cfg);
+
+	// With no peer IP (the default-arg path), the limiter is a no-op: every
+	// failure is a plain 401, never 429.
+	for (int i = 0; i < 25; ++i)
+	{
+		auto req = MakeRequest(boost::beast::http::verb::get, "/ws/equipment");
+		req.set(boost::beast::http::field::authorization, "Bearer wrong");
+		auto rejection = HTTP::Routing::AuthorizeWebSocketUpgrade(req);
+		BOOST_REQUIRE(rejection.has_value());
+		BOOST_CHECK_EQUAL(boost::beast::http::status::unauthorized, rejection->result());
+	}
+
+	HTTP::Routing::Clear();
+}
+
+// =============================================================================
 // Static assets are served WITHOUT authentication (so the login screen loads).
 // =============================================================================
 

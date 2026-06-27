@@ -57,13 +57,15 @@ namespace AqualinkAutomate::HTTP::Routing
 	void SetSecurityConfig(SecurityConfig config);
 	const SecurityConfig& GetSecurityConfig();
 
-	HTTP::Message HTTP_OnRequest(const HTTP::Request& req);
+	/// peer_ip (the connecting client's address, empty when unknown) feeds the
+	/// per-source failed-auth rate limiter; pass it from the HTTP session.
+	HTTP::Message HTTP_OnRequest(const HTTP::Request& req, std::string_view peer_ip = {});
 	Interfaces::IWebSocketBase* WS_OnAccept(const std::string_view target);
 
 	/// Evaluate the security policy against a WebSocket upgrade request.
 	/// Returns std::nullopt when the upgrade is permitted; otherwise returns the
-	/// HTTP error response (401/403) that should be written instead of accepting.
-	std::optional<HTTP::Response> AuthorizeWebSocketUpgrade(const HTTP::Request& req);
+	/// HTTP error response (401/403/429) that should be written instead of accepting.
+	std::optional<HTTP::Response> AuthorizeWebSocketUpgrade(const HTTP::Request& req, std::string_view peer_ip = {});
 
 }
 // namespace AqualinkAutomate::HTTP::Routing
