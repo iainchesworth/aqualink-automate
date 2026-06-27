@@ -35,10 +35,14 @@ jobs:
   CodeScanning_CodeQL:
     # Skip a develop->main promotion PR (already scanned on develop entry); run for
     # everything else (PR into develop, non-develop PR into main, schedule, dispatch).
+    # AND: fork PRs must not run on the persistent self-hosted runners (untrusted
+    # code on a long-lived host) — gate them out, leaving schedule/dispatch/same-repo.
     if: >-
-      github.event_name != 'pull_request' ||
-      github.head_ref != 'develop' ||
-      github.base_ref != 'main'
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     timeout-minutes: 360
     permissions:
@@ -51,7 +55,7 @@ jobs:
         language: [ 'c-cpp' ]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       with:
         submodules: recursive
 
@@ -65,7 +69,7 @@ jobs:
         compiler: gcc-15
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
+      uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
       with:
         languages: ${{ matrix.language }}
 
@@ -89,14 +93,14 @@ jobs:
         VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
-      uses: lukka/run-cmake@v10
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
       with:
         configurePreset: config-linux-gcc
       env:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
-      uses: lukka/run-cmake@v10
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
       with:
         buildPreset: build-linux-gcc
         buildPresetAdditionalArgs: "['--parallel', '8']"
@@ -104,12 +108,12 @@ jobs:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
       with:
         upload: false
 
     - name: filter-sarif
-      uses: advanced-security/filter-sarif@v1
+      uses: advanced-security/filter-sarif@f3b8118a9349d88f7b1c0c488476411145b6270d # v1
       with:
         patterns: |
           -**/*
@@ -118,12 +122,12 @@ jobs:
         output: '../results/cpp.sarif'
 
     - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
       with:
         category: "/language:${{ matrix.language }}"
 
     - name: Upload Analysis as a Build Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       with:
         name: sarif-results
         path: sarif-results
@@ -135,16 +139,20 @@ jobs:
 
   CodeScanning_SonarCloud:
     # Skip a develop->main promotion PR (already scanned on develop entry).
+    # AND gate out fork PRs from the persistent self-hosted runners (untrusted code
+    # on a long-lived host; SonarCloud also needs SONAR_TOKEN, withheld from forks).
     if: >-
-      github.event_name != 'pull_request' ||
-      github.head_ref != 'develop' ||
-      github.base_ref != 'main'
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       with:
         fetch-depth: 0
         submodules: recursive
@@ -159,7 +167,7 @@ jobs:
         compiler: gcc-15
 
     - name: Install build-wrapper
-      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v8
+      uses: SonarSource/sonarqube-scan-action/install-build-wrapper@713881670b6b3676cda39549040e2d88c70d582e # v8
 
     - name: Setup vcpkg cache (self-hosted)
       if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
@@ -181,7 +189,7 @@ jobs:
         VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
-      uses: lukka/run-cmake@v10
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
       with:
         configurePreset: config-linux-gcc-coverage
         configurePresetAdditionalArgs: "['-DUSE_SONARQUBE=ON']"
@@ -193,7 +201,7 @@ jobs:
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build --preset=build-linux-gcc-coverage
 
     - name: Run SonarCloud scan
-      uses: SonarSource/sonarqube-scan-action@v8
+      uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -209,17 +217,21 @@ jobs:
 
   CodeScanning_MSVCCodeAnalysis:
     # Skip a develop->main promotion PR (already scanned on develop entry).
+    # AND gate out fork PRs from the persistent self-hosted Windows runners
+    # (untrusted code on a long-lived host).
     if: >-
-      github.event_name != 'pull_request' ||
-      github.head_ref != 'develop' ||
-      github.base_ref != 'main'
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
     runs-on: ${{ fromJSON(vars.RUNNER_WINDOWS || '["windows-latest"]') }}
     permissions:
       actions: read
       contents: read
       security-events: write
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       with:
         submodules: recursive
 
@@ -271,20 +283,20 @@ jobs:
         VCPKG_BINARY_SOURCES: "clear;default,readwrite"
 
     - name: Configure
-      uses: lukka/run-cmake@v10
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
       with:
         configurePreset: config-windows-msvc
       env:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
     - name: Build
-      uses: lukka/run-cmake@v10
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
       with:
         buildPreset: build-windows-msvc
       env:
         VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
-    - uses: microsoft/msvc-code-analysis-action@v0.1.1
+    - uses: microsoft/msvc-code-analysis-action@24c285ab36952c9e9182f4b78dfafbac38a7e5ee # v0.1.1
       id: run-analysis
       with:
         cmakeBuildDirectory: ${{ github.workspace }}/build/config-windows-msvc
@@ -293,12 +305,12 @@ jobs:
         ignoredPaths: ${{ github.workspace }}/deps;${{ github.workspace }}/src/version;${{ github.workspace }}/test
 
     - name: Upload SARIF to GitHub
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
       with:
         sarif_file: ${{ steps.run-analysis.outputs.sarif }}
 
     - name: Upload SARIF as an Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       with:
         name: sarif-file
         path: ${{ steps.run-analysis.outputs.sarif }}

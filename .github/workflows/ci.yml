@@ -61,15 +61,18 @@ jobs:
   e2e-ui:
     name: E2E UI (Playwright)
     needs: build-and-test
+    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
+    # on a long-lived host). Same-repo PRs and push/release events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           submodules: recursive
 
       - name: Download Linux install tree
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: installtree-linux-gcc
           path: installtree-art
@@ -81,7 +84,7 @@ jobs:
           tar xzf installtree-art/installtree-linux-gcc.tar.gz -C installtree
           chmod +x installtree/bin/aqualink-automate
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22"
           cache: npm
@@ -128,7 +131,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: playwright-report
           path: playwright-report/
@@ -136,15 +139,18 @@ jobs:
 
   matter-bridge:
     name: Matter Bridge (Node)
+    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
+    # on a long-lived host). Same-repo PRs and push events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     defaults:
       run:
         working-directory: matter-bridge
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22"
           cache: npm
@@ -168,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
 
@@ -200,6 +206,9 @@ jobs:
   # net). Catches a vcpkg/Dockerfile/ABI regression that the assembly path can't.
   docker-verify:
     name: Docker Verification
+    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
+    # on a long-lived host). Same-repo PRs and push events are unaffected.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     # Surfaced so the "Login to Docker Hub" step's `if:` can gate on the optional
     # secret being present. See release.yml / docs/releasing.md.
@@ -207,11 +216,11 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           submodules: recursive
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       # Authenticate to Docker Hub when credentials are configured so base-image
       # pulls (ubuntu:25.04, node:22-bookworm-slim) use the higher authenticated
@@ -219,7 +228,7 @@ jobs:
       # receive no secrets) still build anonymously.
       - name: Login to Docker Hub
         if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -232,7 +241,7 @@ jobs:
       # its builder the default, so `docker buildx build` here is equivalent to the
       # docker/build-push-action invocations it replaces.
       - name: Build CI target
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           shell: bash
           timeout_minutes: 90
@@ -242,7 +251,7 @@ jobs:
           command: docker buildx build --target ci .
 
       - name: Build runtime target
-        uses: nick-fields/retry@v4
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
         with:
           shell: bash
           timeout_minutes: 90

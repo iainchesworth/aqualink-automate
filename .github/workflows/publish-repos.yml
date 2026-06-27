@@ -57,11 +57,11 @@ jobs:
 
       - name: Checkout (work tree)
         if: env.HAVE_GPG_KEY == 'true'
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Checkout gh-pages (existing repo state)
         if: env.HAVE_GPG_KEY == 'true'
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           ref: gh-pages
           path: pages
@@ -69,7 +69,9 @@ jobs:
 
       - name: Install repo tooling
         if: env.HAVE_GPG_KEY == 'true'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq reprepro createrepo-c gnupg
+        # `rpm` provides `rpm --addsign` to sign the individual .rpm packages (the
+        # DNF repo advertises gpgcheck=1, a per-package signature check).
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq reprepro createrepo-c gnupg rpm
 
       - name: Import signing key
         if: env.HAVE_GPG_KEY == 'true'
@@ -91,6 +93,48 @@ jobs:
           mkdir -p assets
           gh release download "$TAG" -R "${{ github.repository }}" -p '*.deb' -p '*.rpm' -D assets
           echo "Downloaded:"; ls -1 assets
+
+      # Sign each individual .rpm in place. The DNF repo (cicd/repo/install-dnf.sh)
+      # advertises gpgcheck=1 — a PER-PACKAGE signature check — so an unsigned .rpm
+      # makes `dnf install` fail and forces users onto --nogpgcheck. CPack does not
+      # configure RPM signing (no %_gpg_name in cmake/CPackConfig.cmake), so the
+      # packages arrive unsigned; sign them here with the same key that signs the
+      # repo metadata. gpg loopback pinentry + the REPO_GPG_PASSPHRASE secret make it
+      # non-interactive and support a passphrase-protected key (empty if unset).
+      - name: Sign RPM packages
+        if: env.HAVE_GPG_KEY == 'true'
+        env:
+          KEYID: ${{ steps.gpg.outputs.keyid }}
+          REPO_GPG_PASSPHRASE: ${{ secrets.REPO_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          # Allow loopback pinentry so gpg can take the passphrase non-interactively.
+          mkdir -p "$HOME/.gnupg"
+          chmod 700 "$HOME/.gnupg"
+          grep -qxF 'allow-loopback-pinentry' "$HOME/.gnupg/gpg-agent.conf" 2>/dev/null \
+            || echo 'allow-loopback-pinentry' >> "$HOME/.gnupg/gpg-agent.conf"
+          gpgconf --kill gpg-agent || true
+          # %_gpg_name selects the signing key; %__gpg_sign_cmd is overridden to run
+          # gpg in batch + loopback mode, reading the passphrase from fd 3 (wired to
+          # the secret by the `3<<<` redirection on the rpm call below), so a
+          # passphrase-protected key signs without a TTY prompt.
+          GPG_BIN="$(command -v gpg)"
+          cat > "$HOME/.rpmmacros" <<EOF
+          %_gpg_name $KEYID
+          %__gpg $GPG_BIN
+          %__gpg_sign_cmd %{__gpg} gpg --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase-fd 3 --no-secmem-warning -u "%{_gpg_name}" --digest-algo sha256 -sbo %{__signature_filename} %{__plaintext_filename}
+          EOF
+          for rpm in assets/*.rpm; do
+            echo "Signing $rpm"
+            rpm --addsign "$rpm" 3<<<"$REPO_GPG_PASSPHRASE"
+          done
+          # Verify every package now carries a good signature (fails the publish if not).
+          rpm --import public-key.asc
+          for rpm in assets/*.rpm; do
+            rpm --checksig "$rpm" | grep -qiE 'signatures OK|pgp.*OK|digests signatures OK' \
+              || { echo "::error::$rpm is not signed after rpm --addsign"; rpm --checksig "$rpm"; exit 1; }
+          done
+          echo "All RPMs signed."
 
       - name: Build APT + DNF repositories
         if: env.HAVE_GPG_KEY == 'true'
@@ -116,6 +160,9 @@ jobs:
           done
 
           # ---- DNF/YUM (createrepo_c, signed repomd) --------------------------
+          # The .rpm files were signed in place by the "Sign RPM packages" step, so
+          # the gpgcheck=1 per-package check in install-dnf.sh now passes; repo_gpgcheck=1
+          # is satisfied by the detached repomd.xml signature below.
           cp assets/*.rpm "$OUT/rpm"/
           createrepo_c --update "$OUT/rpm"
           gpg --batch --yes --detach-sign --armor "$OUT/rpm/repodata/repomd.xml"
@@ -129,7 +176,7 @@ jobs:
 
       - name: Publish to GitHub Pages
         if: env.HAVE_GPG_KEY == 'true'
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: pages
