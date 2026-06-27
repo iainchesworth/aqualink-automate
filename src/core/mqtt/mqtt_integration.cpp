@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <format>
 #include <string_view>
+#include <unordered_map>
 
 #include <boost/uuid/string_generator.hpp>
 
@@ -538,6 +539,11 @@ namespace AqualinkAutomate::Mqtt
 		std::weak_ptr<Interfaces::ICommandDispatcher> weak_dispatcher = m_CommandDispatcher;
 		auto hub = m_Hub;
 
+		// Track which device label claimed each command slug this pass so a collision
+		// (two distinct labels that Slugify to the same key) is detected rather than
+		// silently shadowing the second device.
+		std::unordered_map<std::string, std::string> claimed_slugs;
+
 		auto register_device = [&](const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
 		{
 			if (!dev)
@@ -554,6 +560,23 @@ namespace AqualinkAutomate::Mqtt
 			auto label = label_opt.value();
 			auto slug = Utility::Slugify(label);
 			auto command_key = std::format("device/{}", slug);
+
+			// Slug-collision guard: two distinct device labels that Slugify to the same
+			// key share one MQTT/HA command topic. The first device to claim it wins;
+			// a later colliding device would otherwise be SILENTLY uncontrollable. Warn
+			// (naming both) so the operator can rename one, instead of a confusing
+			// silent misroute where the topic only ever drives the first device.
+			if (auto it = claimed_slugs.find(command_key); it != claimed_slugs.end())
+			{
+				if (it->second != label)
+				{
+					LogWarning(Channel::Mqtt, std::format(
+						"MQTT device-command slug collision: labels '{}' and '{}' both map to topic 'command/{}'; only '{}' is controllable via that topic. Rename one device.",
+						it->second, label, command_key, it->second));
+				}
+				return;
+			}
+			claimed_slugs[command_key] = label;
 
 			// Skip if already registered
 			if (m_Hub->HasCommand(command_key))
