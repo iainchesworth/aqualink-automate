@@ -1,32 +1,50 @@
 # Dependabot keeps third-party dependencies current and, crucially, advances the
 # SHA-pinned GitHub Actions (see the `uses: <owner>/<repo>@<40-char-sha> # vX.Y.Z`
-# pins across .github/workflows/**) so the pins do not silently rot — each bump
-# arrives as a reviewable PR that updates both the SHA and the version comment.
+# pins across .github/workflows/**) so the pins do not silently rot.
+#
+# PRs target the `develop` integration branch (not the default `main`) so updates
+# flow through the normal develop -> main release path, and each ecosystem's bumps
+# are collapsed into a single grouped weekly PR rather than one PR per dependency.
 version: 2
 updates:
   # GitHub Actions used by the workflows + composite actions under .github/.
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
     commit-message:
       prefix: "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   # npm — repo root (Playwright e2e harness: package.json / package-lock.json).
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
     commit-message:
       prefix: "build"
+    groups:
+      npm-root:
+        patterns:
+          - "*"
 
   # npm — the Matter bridge sidecar (matter-bridge/package.json).
   - package-ecosystem: "npm"
     directory: "/matter-bridge"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
     commit-message:
       prefix: "build"
+    groups:
+      matter-bridge:
+        patterns:
+          - "*"
