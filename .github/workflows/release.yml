@@ -275,8 +275,17 @@ jobs:
             exit 1
           fi
           echo "Running --version on the arm64 variant (QEMU):"
-          docker run --rm --platform linux/arm64 "$IMAGE" --version | grep -qF "${{ needs.resolve-version.outputs.version }}" \
-            && echo "arm64 variant OK" || { echo "::error::arm64 image did not run/report version"; exit 1; }
+          # Capture into a var rather than piping `docker run` straight into grep:
+          # under `set -o pipefail`, `grep -q` closes the pipe on first match, the
+          # app gets SIGPIPE on its next write ("broken pipe") and exits non-zero,
+          # which would fail the pipeline even though the image ran fine.
+          ARM_OUTPUT="$(docker run --rm --platform linux/arm64 "$IMAGE" --version)"
+          echo "$ARM_OUTPUT"
+          if ! echo "$ARM_OUTPUT" | grep -qF "${{ needs.resolve-version.outputs.version }}"; then
+            echo "::error::arm64 image did not run/report version"
+            exit 1
+          fi
+          echo "arm64 variant OK"
           echo "Published multi-arch Docker image verified (amd64 + arm64)."
 
   github-release:
