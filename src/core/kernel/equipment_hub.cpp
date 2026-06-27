@@ -1,10 +1,13 @@
 #include <format>
 #include <memory>
+#include <source_location>
 #include <typeindex>
 #include <typeinfo>
 #include <utility>
 
 #include "kernel/equipment_hub.h"
+#include "profiling/factories/profiler_factory.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -29,6 +32,8 @@ namespace AqualinkAutomate::Kernel
 
 	bool EquipmentHub::AddEquipment(std::unique_ptr<Interfaces::IEquipment> equipment_to_add)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("EquipmentHub::AddEquipment", std::source_location::current());
+
 		if (!equipment_to_add)
 		{
 			LogWarning(Channel::Devices, "Cannot register equipment with equipment hub; equipment object was invalid");
@@ -91,6 +96,8 @@ namespace AqualinkAutomate::Kernel
 
 	bool EquipmentHub::AddDevice(std::unique_ptr<Interfaces::IDevice> device_to_add)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("EquipmentHub::AddDevice", std::source_location::current());
+
 		bool added_device_successfully = false;
 
 		if (!device_to_add)
@@ -113,6 +120,10 @@ namespace AqualinkAutomate::Kernel
 
 			added_device_successfully = true;
 		}
+
+		// Gauge the live device count on the profiler timeline (cheap; updated only
+		// on registration, so it tracks discovery progress without per-frame cost).
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Active Devices", static_cast<int64_t>(m_ActiveDevices.size()));
 
 		return added_device_successfully;
 	}

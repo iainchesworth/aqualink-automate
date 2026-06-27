@@ -25,6 +25,8 @@ namespace AqualinkAutomate::Profiling
 	public:
 		void StartProfiling() override;
 		void StopProfiling() override;
+		void Resume() override;
+		void Pause() override;
 
 	public:
 		ZonePtr CreateZone(FramePtr frame, const std::string& name) const override;

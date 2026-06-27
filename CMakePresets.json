@@ -50,10 +50,22 @@
     {
       "name": "release",
       "hidden": true,
-      "description": "Shared Release configuration. Profiling (Tracy instrumentation) is OFF here so the shipped release binary carries no profiler hooks; use a dedicated profiling build (e.g. a debug preset, or override ENABLE_PROFILING:ON) when capturing traces.",
+      "description": "Shared Release configuration. Profiling (Tracy/VTune/uProf instrumentation) is OFF here so the shipped release binary carries no profiler hooks. To capture traces use a dedicated profiling preset (e.g. config-windows-msvc-profiling) — NOT a debug preset (those also build with profiling OFF).",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ENABLE_PROFILING": "OFF"
+      }
+    },
+    {
+      "name": "profiling",
+      "hidden": true,
+      "description": "Shared profiling configuration: ENABLE_PROFILING ON, built RelWithDebInfo (optimised + debug symbols, the right shape for a profiler) with sanitizers OFF (mutually exclusive with profiling). Combine with a concrete platform preset, e.g. config-windows-msvc-profiling. Tracy is always available (vcpkg); the Intel VTune and AMD uProf backends compile in only when their SDKs are found (set VTUNE_PROFILER_DIR / AMD_UPROF_SDK_PATH, or install to a default location).",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_PROFILING": "ON",
+        "ENABLE_SANITIZERS": "OFF",
+        "SANITIZE_ADDRESS": "OFF",
+        "SANITIZE_UNDEFINED": "OFF"
       }
     },
 
@@ -273,6 +285,37 @@
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
       }
+    },
+
+    {
+      "name": "config-windows-msvc-profiling",
+      "inherits": [ "profiling", "config-windows-msvc" ],
+      "displayName": "Windows MSVC Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Windows MSVC build. Tracy is always compiled in; VTune/uProf compile in when their SDKs are found. Select the backend at runtime with --profiler tracy|vtune|uprof."
+    },
+    {
+      "name": "config-windows-llvm-profiling",
+      "inherits": [ "profiling", "config-windows-llvm" ],
+      "displayName": "Windows LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Windows LLVM build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-linux-gcc-profiling",
+      "inherits": [ "profiling", "config-linux-gcc" ],
+      "displayName": "Linux GCC Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Linux GCC build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-linux-llvm-profiling",
+      "inherits": [ "profiling", "config-linux-llvm" ],
+      "displayName": "Linux LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled Linux LLVM build (see config-windows-msvc-profiling)."
+    },
+    {
+      "name": "config-macos-llvm-profiling",
+      "inherits": [ "profiling", "config-macos-llvm" ],
+      "displayName": "macOS LLVM Profiling (RelWithDebInfo)",
+      "description": "Profiling-enabled macOS LLVM build (see config-windows-msvc-profiling)."
     }
   ],
 
@@ -362,6 +405,36 @@
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug",
       "configuration": "Debug"
+    },
+    {
+      "name": "build-windows-msvc-profiling",
+      "configurePreset": "config-windows-msvc-profiling",
+      "displayName": "Windows MSVC Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-windows-llvm-profiling",
+      "configurePreset": "config-windows-llvm-profiling",
+      "displayName": "Windows LLVM Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-gcc-profiling",
+      "configurePreset": "config-linux-gcc-profiling",
+      "displayName": "Linux GCC Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-linux-llvm-profiling",
+      "configurePreset": "config-linux-llvm-profiling",
+      "displayName": "Linux LLVM Profiling",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "build-macos-llvm-profiling",
+      "configurePreset": "config-macos-llvm-profiling",
+      "displayName": "macOS LLVM Profiling",
+      "configuration": "RelWithDebInfo"
     }
   ],
 
@@ -461,6 +534,41 @@
       "name": "test-macos-llvm-debug",
       "configurePreset": "config-macos-llvm-debug",
       "displayName": "macOS LLVM Debug Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-msvc-profiling",
+      "configurePreset": "config-windows-msvc-profiling",
+      "displayName": "Windows MSVC Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-windows-llvm-profiling",
+      "configurePreset": "config-windows-llvm-profiling",
+      "displayName": "Windows LLVM Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-gcc-profiling",
+      "configurePreset": "config-linux-gcc-profiling",
+      "displayName": "Linux GCC Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-linux-llvm-profiling",
+      "configurePreset": "config-linux-llvm-profiling",
+      "displayName": "Linux LLVM Profiling Tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "test-macos-llvm-profiling",
+      "configurePreset": "config-macos-llvm-profiling",
+      "displayName": "macOS LLVM Profiling Tests",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     }

@@ -1321,6 +1321,140 @@ paths:
                     type: string
                     example: "Method not allowed. Use GET."
 
+  /api/diagnostics/profiling:
+    get:
+      tags:
+        - Diagnostics
+      summary: Get profiler status
+      description: |
+        Returns the state of the performance profiler: whether any backend was
+        compiled into this build (`enabled`), whether capture is currently running
+        (resumed) versus paused (`running`), the active backend, and the list of
+        compiled-in backends. Profiling backends (Tracy / Intel VTune / AMD uProf)
+        are present only in a profiling-enabled build (`ENABLE_PROFILING=ON`);
+        otherwise `enabled` is false and `available` is empty.
+      operationId: getProfiling
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilingStatus'
+              example:
+                enabled: true
+                running: true
+                backend: "tracy"
+                available: ["tracy", "vtune"]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Diagnostics
+      summary: Control the profiler at runtime
+      description: |
+        Pause or resume capture, or select the active backend, at runtime. Provide
+        `{"action":"start"}` to resume capture, `{"action":"stop"}` to pause it, or
+        `{"action":"select","backend":"tracy|vtune|uprof"}` to switch the active
+        backend (only backends compiled into this build can be selected). Returns
+        the resulting profiler status.
+
+        Pause/resume map to the backend's native gating (Intel VTune
+        `__itt_pause`/`__itt_resume`, AMD uProf `amdProfilePause`/`Resume`); Tracy
+        is client-driven so they are no-ops for it.
+      operationId: setProfiling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilingControl'
+            examples:
+              start:
+                summary: Resume capture
+                value:
+                  action: "start"
+              stop:
+                summary: Pause capture
+                value:
+                  action: "stop"
+              select:
+                summary: Select a backend
+                value:
+                  action: "select"
+                  backend: "vtune"
+      responses:
+        '200':
+          description: Action applied; returns the new profiler status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilingStatus'
+              example:
+                enabled: true
+                running: false
+                backend: "tracy"
+                available: ["tracy"]
+        '400':
+          description: Invalid request (bad JSON; missing/invalid action; 'select' without a backend)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                invalid_json:
+                  value:
+                    error: "Invalid JSON in request body"
+                missing_action:
+                  value:
+                    error: "Request must contain a string 'action' of 'start', 'stop' or 'select'"
+                missing_backend:
+                  value:
+                    error: "'select' action requires a string 'backend' (tracy, uprof or vtune)"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: |
+            No profiling backend is available in this build (start/stop), or the
+            requested backend is unknown / was not compiled in (select).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                no_backend:
+                  value:
+                    error: "No profiling backend is available in this build (ENABLE_PROFILING=OFF or backend not selected)"
+                backend_unavailable:
+                  value:
+                    error: "Requested backend is unknown or was not compiled into this build"
+        '503':
+          description: Profiling control is not available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Profiling control is not available"
+        '405':
+          description: HTTP method not allowed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use GET or POST."
+
   /api/diagnostics/recording:
     get:
       tags:
@@ -2183,6 +2317,52 @@ components:
           type: string
           description: Severity level to set for the channel
           example: "Trace"
+
+    ProfilingStatus:
+      type: object
+      required:
+        - enabled
+        - running
+        - backend
+        - available
+      properties:
+        enabled:
+          type: boolean
+          description: True if any profiling backend was compiled into this build (ENABLE_PROFILING=ON).
+          example: true
+        running:
+          type: boolean
+          description: True while capture is resumed; false while paused or when no backend is active.
+          example: true
+        backend:
+          type: string
+          description: The active backend name, or empty when none is selected / compiled in.
+          enum: ["", tracy, uprof, vtune]
+          example: "tracy"
+        available:
+          type: array
+          description: Names of the profiling backends compiled into this build.
+          items:
+            type: string
+            enum: [tracy, uprof, vtune]
+          example: ["tracy", "vtune"]
+
+    ProfilingControl:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [start, stop, select]
+          description: |
+            `start` resumes capture, `stop` pauses it, `select` switches the active
+            backend (requires `backend`).
+        backend:
+          type: string
+          enum: [tracy, uprof, vtune]
+          description: Backend to activate; required when `action` is `select`, ignored otherwise.
+          example: "vtune"
 
     RecordingStatus:
       type: object

@@ -21,6 +21,14 @@ namespace AqualinkAutomate::Interfaces
 		return zone;
 	}
 
+	void IProfiler::Resume()
+	{
+	}
+
+	void IProfiler::Pause()
+	{
+	}
+
 	void IProfiler::Message(std::string_view) const
 	{
 	}

@@ -1010,6 +1010,56 @@
             </div>
             </div>
 
+            <!-- Profiling -->
+            <button class="section-toggle mb-1" @click="showProfiling = !showProfiling"
+                    :aria-expanded="showProfiling" aria-controls="diag-profiling">
+                <span class="section-toggle-chevron" :class="{ open: showProfiling }" aria-hidden="true">&#x25B8;</span>
+                <span class="section-title">Profiling</span>
+            </button>
+            <div id="diag-profiling" x-show="showProfiling" x-transition.opacity x-cloak>
+            <div class="card mb-2">
+                <div class="card-header card-header-split">
+                    <span>Performance Profiler</span>
+                    <span class="badge"
+                          :class="profiling.running ? 'badge-freq' : 'badge-status-off'"
+                          x-text="!profiling.enabled ? 'Disabled' : (profiling.running ? 'Running' : 'Paused')"></span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-xs mt-0 mb-1">
+                        Pause/resume capture and select the active profiling backend
+                        (Tracy / Intel VTune / AMD uProf). Backends are available only in a
+                        profiling-enabled build (<code>ENABLE_PROFILING=ON</code>).
+                    </p>
+                    <p class="text-muted text-xs mt-0 mb-1" x-show="!profiling.enabled">
+                        Profiling is not compiled into this build.
+                    </p>
+                    <div class="flex items-center gap-1 mb-1" x-show="profiling.enabled">
+                        <label class="inline-label" for="profiling-backend">Backend:</label>
+                        <select id="profiling-backend" class="settings-input"
+                                :disabled="profilingBusy"
+                                @change="selectProfilingBackend($event.target.value)"
+                                aria-label="Profiling backend">
+                            <template x-for="b in profiling.available" :key="b">
+                                <option :value="b" :selected="b === profiling.backend" x-text="b"></option>
+                            </template>
+                        </select>
+                        <button class="btn btn-sm"
+                                :disabled="profilingBusy || profiling.running"
+                                @click="startProfiling()">Resume</button>
+                        <button class="btn btn-sm"
+                                :disabled="profilingBusy || !profiling.running"
+                                @click="stopProfiling()">Pause</button>
+                    </div>
+                    <div class="emu-kv-grid" x-show="profiling.enabled">
+                        <span class="emu-kv-key">Active backend</span>
+                        <span class="emu-kv-val"><code x-text="profiling.backend || '--'"></code></span>
+                        <span class="emu-kv-key">Available</span>
+                        <span class="emu-kv-val" x-text="(profiling.available && profiling.available.length) ? profiling.available.join(', ') : '--'"></span>
+                    </div>
+                </div>
+            </div>
+            </div>
+
             <!-- MQTT Status -->
             <button class="section-toggle mb-1" @click="showMqtt = !showMqtt"
                     :aria-expanded="showMqtt" aria-controls="diag-mqtt">

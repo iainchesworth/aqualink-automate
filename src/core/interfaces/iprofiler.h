@@ -17,8 +17,18 @@ namespace AqualinkAutomate::Interfaces
 		virtual ~IProfiler() = default;
 
 	public:
+		// Process lifecycle: called once at startup / shutdown.
 		virtual void StartProfiling() = 0;
 		virtual void StopProfiling() = 0;
+
+	public:
+		// Runtime capture gating, distinct from the process lifecycle above.
+		// Lets the runtime control surface (e.g. the diagnostics endpoint) pause
+		// and resume sample/trace collection without tearing the profiler down.
+		// Default no-op; backends that support it (VTune __itt_pause/resume, uProf
+		// amdProfilePause/Resume) override. Tracy is client-driven so stays no-op.
+		virtual void Resume();
+		virtual void Pause();
 
 	public:
 		virtual Profiling::DomainPtr CreateDomain(const std::string& name) const;

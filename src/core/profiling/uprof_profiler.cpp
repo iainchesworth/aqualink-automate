@@ -17,6 +17,16 @@ namespace AqualinkAutomate::Profiling
 		amdProfilePause();
 	}
 
+	void UProf_Profiler::Resume()
+	{
+		amdProfileResume();
+	}
+
+	void UProf_Profiler::Pause()
+	{
+		amdProfilePause();
+	}
+
 	ZonePtr UProf_Profiler::CreateZone(FramePtr frame, const std::string& name) const
 	{
 #if defined(UProf_ACTIVITY_LOGGER_ENABLED)
@@ -26,6 +36,11 @@ namespace AqualinkAutomate::Profiling
 #endif
 	}
 
+	// NOTE: AMD uProf's ActivityLogger has no counter/plot or instantaneous-event
+	// API, so Message and PlotValue below are emitted as zero-duration begin/end
+	// marker pairs (the closest available primitive). They appear as point markers
+	// on the uProf timeline rather than as true messages or plotted series; the
+	// rich counter rendering of Tracy/VTune is not available on this backend.
 	void UProf_Profiler::Message(std::string_view text) const
 	{
 #if defined(UProf_ACTIVITY_LOGGER_ENABLED)

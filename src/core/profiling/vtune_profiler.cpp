@@ -24,6 +24,22 @@ namespace AqualinkAutomate::Profiling
 
 	void VTune_Profiler::StopProfiling()
 	{
+		// Close any frame opened by EmitFrameMark so the trace is well-formed.
+		if (m_FrameOpen)
+		{
+			__itt_frame_end_v3(m_Domain, nullptr);
+			m_FrameOpen = false;
+		}
+		__itt_pause();
+	}
+
+	void VTune_Profiler::Resume()
+	{
+		__itt_resume();
+	}
+
+	void VTune_Profiler::Pause()
+	{
 		__itt_pause();
 	}
 
@@ -49,13 +65,13 @@ namespace AqualinkAutomate::Profiling
 
 	void VTune_Profiler::PlotValue(const std::string& name, int64_t value)
 	{
-		auto counter = GetOrCreateCounter(name);
+		auto counter = GetOrCreateCounter(name, __itt_metadata_s64);
 		__itt_counter_set_value(counter, &value);
 	}
 
 	void VTune_Profiler::PlotValue(const std::string& name, double value)
 	{
-		auto counter = GetOrCreateCounter(name);
+		auto counter = GetOrCreateCounter(name, __itt_metadata_double);
 		__itt_counter_set_value(counter, &value);
 	}
 
@@ -72,18 +88,28 @@ namespace AqualinkAutomate::Profiling
 
 	void VTune_Profiler::EmitFrameMark(const char* name) const
 	{
+		// A frame mark is a BOUNDARY: end the previous frame (if any) and begin
+		// the next, so the interval between consecutive marks is recorded as one
+		// frame. (The earlier begin+end pair recorded zero-width frames.)
+		if (m_FrameOpen)
+		{
+			__itt_frame_end_v3(m_Domain, nullptr);
+		}
 		__itt_frame_begin_v3(m_Domain, nullptr);
-		__itt_frame_end_v3(m_Domain, nullptr);
+		m_FrameOpen = true;
 	}
 
-	__itt_counter VTune_Profiler::GetOrCreateCounter(const std::string& name)
+	__itt_counter VTune_Profiler::GetOrCreateCounter(const std::string& name, __itt_metadata_type type)
 	{
 		if (auto it = m_CounterCache.find(name); it != m_CounterCache.end())
 		{
 			return it->second;
 		}
 
-		auto counter = __itt_counter_create(name.c_str(), "AqualinkAutomate");
+		// Create a typed counter so float/integer values render correctly; an
+		// untyped counter defaults to u64 and would misinterpret doubles and
+		// negative values. A given plot name is always one value type in practice.
+		auto counter = __itt_counter_create_typed(name.c_str(), "AqualinkAutomate", type);
 		m_CounterCache.emplace(name, counter);
 		return counter;
 	}

@@ -1,11 +1,13 @@
 #include "navigation/navigator.h"
 
 #include <cctype>
+#include <source_location>
 #include <string_view>
 
 #include <magic_enum/magic_enum.hpp>
 
 #include "logging/logging.h"
+#include "profiling/factories/profiling_unit_factory.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -95,6 +97,8 @@ namespace AqualinkAutomate::Navigation
 		const Utility::ScreenDataPage& content,
 		uint8_t highlighted_line)
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Navigator::OnPageUpdate", std::source_location::current());
+
 		// Store screen content pointer for content-based line resolution
 		m_pCurrentContent = &content;
 
@@ -327,6 +331,8 @@ namespace AqualinkAutomate::Navigation
 
 	void Navigator::ComputePath()
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("Navigator::ComputePath", std::source_location::current());
+
 		if (m_CurrentPage == PageId::Unknown)
 		{
 			LogWarning(Channel::Navigation, "Navigator: Cannot compute path - current page unknown");

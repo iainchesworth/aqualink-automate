@@ -55,8 +55,7 @@ else()
   set(UProf_ACTIVITY_LOGGER_FOUND FALSE CACHE BOOL "uProf ActivityLogger component found")
 endif()
 
-if (UProf_FOUND)
-  set(DEFAULT_COMPILE_DEFINITIONS ${DEFAULT_COMPILE_DEFINITIONS}
-    UProf_SUPPORT_ENABLED
-  )
-endif(UProf_FOUND)
+# NOTE: the UProf_SUPPORT_ENABLED / UProf_ACTIVITY_LOGGER_ENABLED compile
+# definitions are applied (gated on UProf_FOUND / UProf_ACTIVITY_LOGGER_FOUND)
+# by src/core/CMakeLists.txt via generator expressions — this module only sets
+# the UProf_* result variables.

@@ -24,6 +24,8 @@ namespace AqualinkAutomate::Profiling
 	public:
 		void StartProfiling() override;
 		void StopProfiling() override;
+		void Resume() override;
+		void Pause() override;
 
 	public:
 		ZonePtr CreateZone(FramePtr frame, const std::string& name) const override;
@@ -38,11 +40,16 @@ namespace AqualinkAutomate::Profiling
 		void EmitFrameMark(const char* name) const override;
 
 	private:
-		__itt_counter GetOrCreateCounter(const std::string& name);
+		__itt_counter GetOrCreateCounter(const std::string& name, __itt_metadata_type type);
 		__itt_string_handle* GetOrCreateStringHandle(const std::string& name) const;
 
 	private:
 		__itt_domain* m_Domain;
+		// EmitFrameMark denotes a frame BOUNDARY (Tracy semantics): the work
+		// between two marks is one frame. Track whether a frame region is open so
+		// each mark ends the previous frame and begins the next, rather than
+		// emitting a zero-width begin/end pair.
+		mutable bool m_FrameOpen{ false };
 		std::unordered_map<std::string, __itt_counter> m_CounterCache;
 		mutable std::unordered_map<std::string, __itt_string_handle*> m_StringHandleCache;
 	};

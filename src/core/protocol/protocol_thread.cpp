@@ -183,6 +183,8 @@ namespace AqualinkAutomate::Protocol
 
 	bool ProtocolTask::Poll()
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("ProtocolTask::Poll", std::source_location::current());
+
 		// Tight loop: read → process → write, so responses are sent in
 		// the same frame as the message that triggered them.  Pacing (if any) is
 		// owned by the caller's frame loop — never inside read_some, which would

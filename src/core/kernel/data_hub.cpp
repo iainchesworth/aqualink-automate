@@ -4,7 +4,10 @@
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/hub_events/equipment_hub_system_event_status_change.h"
 #include "profiling/factories/profiler_factory.h"
+#include "profiling/factories/profiling_unit_factory.h"
 #include "utility/case_insensitive_comparision.h"
+
+#include <source_location>
 
 namespace AqualinkAutomate::Kernel
 {
@@ -13,6 +16,11 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const
 	{
+		// Zone the synchronous signals2 fan-out: this measures the cost of every
+		// registered listener (WebSocket push, MQTT publish, etc.) reacting to a
+		// temperature update.
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DataHub::EmitTemperatureEvent", std::source_location::current());
+
 		// Signal that a temperature update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Temperature>();
 		populate(*update_event);
@@ -21,6 +29,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const
 	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DataHub::EmitChemistryEvent", std::source_location::current());
+
 		// Signal that a chemistry update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
 		populate(*update_event);

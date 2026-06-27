@@ -24,6 +24,9 @@ namespace AqualinkAutomate::Profiling
 
 	private:
 		__itt_domain* m_Domain;
+		// Mark() denotes a frame boundary; track the open region so each Mark ends
+		// the previous frame and begins the next (rather than a zero-width pair).
+		mutable bool m_FrameOpen{ false };
 	};
 
 }

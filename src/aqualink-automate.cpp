@@ -24,6 +24,7 @@
 #include "logging/logging_severity_filter.h"
 #include "options/options.h"
 #include "profiling/profiling.h"
+#include "profiling/profiling_controller.h"
 #include "version/version.h"
 
 // Core — kernel
@@ -49,6 +50,7 @@
 #include "http/webroute_diagnostics_mqtt.h"
 #include "http/webroute_diagnostics_logging.h"
 #include "http/webroute_diagnostics_options.h"
+#include "http/webroute_diagnostics_profiling.h"
 #include "http/webroute_diagnostics_recording.h"
 #include "http/webroute_equipment.h"
 #include "http/webroute_equipment_spaside_remotes.h"
@@ -142,9 +144,13 @@ int main(int argc, char* argv[])
 		auto& profiler = Factory::ProfilerFactory::Instance();
 		auto& profiler_units = Factory::ProfilingUnitFactory::Instance();
 
+		// Register the compiled-in backends now, but DEFER StartProfiling()/AppInfo()
+		// until AFTER options are processed: the requested backend is selected by
+		// SetDesired() inside the Developer options Process() step below, so calling
+		// Get() here would return the NoOp profiler and StartProfiling() would be a
+		// no-op (VTune/uProf would never resume capture). See the PROFILING
+		// ACTIVATION block after the options block.
 		Profiling::RegisterAvailableProfilers(profiler, profiler_units);
-		profiler.Get()->StartProfiling();
-		profiler.Get()->AppInfo(Version::VersionDetails());
 
 		//---------------------------------------------------------------------
 		// OPTIONS
@@ -207,6 +213,34 @@ int main(int argc, char* argv[])
 		}
 
 		//---------------------------------------------------------------------
+		// PROFILING ACTIVATION
+		//---------------------------------------------------------------------
+		//
+		// Options have now been processed, so --profiler (if supplied) has called
+		// SetDesired(). Warn if the requested backend was not compiled into this
+		// build (Get() would otherwise silently fall back to NoOp), then resume
+		// capture and stamp the trace with build/thread metadata.
+
+		if (const auto desired = profiler.Selected(); desired.has_value() && !profiler.IsRegistered(*desired))
+		{
+			std::string available;
+			for (const auto type : profiler.RegisteredTypes())
+			{
+				available += (available.empty() ? "" : ", ");
+				available += magic_enum::enum_name(type);
+			}
+
+			LogWarning(Channel::Profiling, std::format(
+				"Requested profiler '{}' is not available in this build; profiling is disabled. Compiled-in backends: [{}]",
+				magic_enum::enum_name(*desired),
+				available.empty() ? std::string{ "none (ENABLE_PROFILING=OFF)" } : available));
+		}
+
+		profiler.Get()->StartProfiling();
+		profiler.Get()->AppInfo(Version::VersionDetails());
+		profiler.Get()->SetThreadName("MainLoop");
+
+		//---------------------------------------------------------------------
 		// IO CONTEXT
 		//---------------------------------------------------------------------
 
@@ -234,6 +268,13 @@ int main(int argc, char* argv[])
 			// presses on emulated remotes). Resolved by the /api/equipment/spaside-remotes route.
 			auto spaside_controller = std::make_shared<Devices::SpasideRemoteController>(equipment_hub);
 			hub_locator.Register<Interfaces::ISpasideRemoteController>(spaside_controller);
+
+			// Runtime profiler control surface (report compiled-in/selected backends,
+			// pause/resume capture). Owning handle, always registered — reports
+			// enabled=false when ENABLE_PROFILING is OFF. Resolved by the
+			// /api/diagnostics/profiling route.
+			auto profiling_controller = std::make_shared<Profiling::ProfilingController>();
+			hub_locator.Register<Interfaces::IProfilingController>(profiling_controller);
 		}
 
 		//---------------------------------------------------------------------
@@ -636,6 +677,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_ActualDevices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Logging>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Options>());
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Profiling>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Recording>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Button>(hub_locator));
@@ -818,16 +860,31 @@ int main(int argc, char* argv[])
 		{
 			auto frame_start = clock::now();
 
+			// Each per-iteration subsystem step below is wrapped in its own named
+			// profiling zone so a "MainLoop" frame can be decomposed by subsystem
+			// (io / protocol / watchdogs / http / https / mqtt) in the profiler.
+
 			// Process any Asio handlers already pending at frame start (signal_set,
 			// inbound HTTP/WS reads, MQTT socket completions, etc.).  io_context::poll
 			// returns the number of handlers it ran this call.
-			std::size_t handlers_run = io_context.poll();
+			std::size_t handlers_run = 0;
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> io_poll", std::source_location::current());
+				handlers_run = io_context.poll();
+			}
 
 			// Advance subsystems
-			bool had_work = protocol_task->Poll();
+			bool had_work = false;
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> protocol_poll", std::source_location::current());
+				had_work = protocol_task->Poll();
+			}
 
 			// Drive per-device watchdog deadline checks.
-			Devices::Capabilities::Restartable::PollAll();
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> watchdogs", std::source_location::current());
+				Devices::Capabilities::Restartable::PollAll();
+			}
 
 			// The HTTP/WS/MQTT Poll() calls queue fresh async work (notably
 			// WebSocket outbound writes).  Drain it now so egress is not capped at
@@ -835,20 +892,26 @@ int main(int argc, char* argv[])
 			// idle decision below.
 			if (http_server)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> http_poll", std::source_location::current());
 				http_server->Poll();
 			}
 
 			if (https_server)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> https_poll", std::source_location::current());
 				https_server->Poll();
 			}
 
 			if (mqtt_integration)
 			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> mqtt_poll", std::source_location::current());
 				mqtt_integration->Poll();
 			}
 
-			handlers_run += io_context.poll();
+			{
+				auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("main -> io_poll_drain", std::source_location::current());
+				handlers_run += io_context.poll();
+			}
 
 			// Any Asio handler that ran (HTTP/WebSocket/MQTT activity) counts as
 			// work for pacing, so network activity keeps the loop hot rather than
@@ -865,6 +928,9 @@ int main(int argc, char* argv[])
 				std::this_thread::sleep_until(frame_start + frame_period);
 			}
 
+			// Plot the per-frame Asio handler count so idle vs busy frames are
+			// visible alongside the MainLoop frame marker on the profiler timeline.
+			profiler.Get()->PlotValue("Main Loop Handlers", static_cast<int64_t>(handlers_run));
 			profiler.Get()->EmitFrameMark("MainLoop");
 		}
 
@@ -949,6 +1015,7 @@ int main(int argc, char* argv[])
 		//    (and the object it aliases) is destroyed — otherwise the HubLocator
 		//    would briefly hold a dangling alias during scope-exit destruction.
 		hub_locator.Unregister<Interfaces::IRecordingController>();
+		hub_locator.Unregister<Interfaces::IProfilingController>();
 		serial_port.reset();
 
 		// 7. Clear message generator registry
