@@ -183,7 +183,12 @@ jobs:
         uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           configurePreset: ${{ matrix.configure_preset }}
-          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}']"
+          # --clean-{buildtrees,packages}-after-build stops vcpkg's transient
+          # build dirs from piling up on the self-hosted runners' bounded ~20 GB
+          # work disk during a from-scratch dependency build (cache miss).
+          # Harmless on GitHub-hosted runners (buildtrees are never cached) and it
+          # leaves the persistent downloads + binary-archive caches intact.
+          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}', '-DVCPKG_INSTALL_OPTIONS=--clean-buildtrees-after-build;--clean-packages-after-build']"
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 

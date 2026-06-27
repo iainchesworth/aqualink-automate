@@ -1,15 +1,45 @@
 # Self-Hosted GitHub Actions Runners
 
-Packer templates for building self-hosted GitHub Actions runner VMs on VMware vSphere (ESXi). These runners provide persistent build caches, faster CI times, and full control over the build environment.
+Packer templates for building self-hosted GitHub Actions runner VMs on VMware vSphere (ESXi). These runners give fast CI (persistent vcpkg/ccache caches) and full control over the build environment, while staying **disk-bounded** and **pristine before every build**.
 
 ## Architecture
 
-| Runner | Base OS | CPUs | RAM | Disk | Pre-installed toolchain |
-|--------|---------|------|-----|------|------------------------|
-| Linux | Ubuntu 25.04 | 32 | 48 GB | 150 GB | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
-| Windows | Windows Server 2022 | 32 | 48 GB | 150 GB | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
+| Runner | Base OS | CPUs | RAM | OS disk | Data disk | Pre-installed toolchain |
+|--------|---------|------|-----|---------|-----------|------------------------|
+| Linux | Ubuntu 25.04 | 32 | 48 GB | 12 GB | 24 GB | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
+| Windows | Windows Server 2022 | 32 | 48 GB | 30 GB | 20 GB | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
+
+Disk sizes are deliberately small and **tunable** — they are single `disk_size` lines in
+the `.pkr.hcl` templates. The Linux data disk is a little larger because release builds
+also stage Docker base images and a second (glibc-2.36) vcpkg cache there.
 
 macOS CI stays on GitHub-hosted `macos-latest` runners.
+
+## Disk layout & the pristine ephemeral model
+
+The runners were previously single 150 GB disks that ran out of space and accumulated
+cruft between jobs. Two design changes fix that:
+
+- **Two thin disks per VM — OS is protected from build junk.** `disk0` holds only the OS
+  + toolchains; `disk1` is a data volume (Linux `/data`, Windows `D:`) split into:
+  - `work/` — the runner work dir (checkout + build tree), **wiped every job**;
+  - `cache/` — the persistent **vcpkg binary cache + ccache**, kept across jobs but
+    **size-capped** (ccache 4 GB; each vcpkg cache pruned to 4 GB) so it can't grow without
+    bound. `~/.cache` is redirected onto `cache/` (Linux symlink / Windows junction) so
+    vcpkg and ccache land there with no workflow change.
+  - `docker/` (Linux only) — Docker's `data-root`, so multi-GB base images pulled by
+    release builds never touch the OS disk; the supervisor prunes them each job.
+
+  Build artifacts can therefore never fill the OS disk, and the thin vmdks stay near
+  actual usage (`discard`/`fstrim` on Linux, `Optimize-Volume -ReTrim` on Windows).
+
+- **Ephemeral runners that recycle themselves.** A supervisor (Linux `github-runner.service`,
+  Windows `GitHubRunnerEphemeral` scheduled task) runs a loop: reset the workspace + Docker
+  + temp, cap the caches, `fstrim`, mint a fresh registration token from an on-box
+  credential, then register a one-shot `--ephemeral` runner and run **exactly one job**.
+  After the job the runner deregisters and the loop recycles. Every build starts from a
+  clean slate, and GitHub can never hand a runner a second job in a dirty state. Throughput
+  is one job per VM at a time — clone more runners from the template to parallelise.
 
 ## Prerequisites
 
@@ -116,12 +146,19 @@ This creates two VM templates in vCenter:
 
 In vCenter, clone each template to a new VM. Name them as you like (e.g. `github-runner-linux`, `github-runner-windows`).
 
-### 2. Generate a registration token
+### 2. Create the on-box credential (once)
 
-```bash
-gh api repos/{owner}/aqualink-automate/actions/runners/registration-token \
-  --method POST -q '.token'
-```
+Ephemeral runners re-register on **every** job, so each VM mints its own registration
+tokens from a credential stored on the box — instead of a one-shot registration token that
+expires in an hour. Create a **fine-grained PAT** scoped to just this repository with the
+**Administration: Read and write** permission (the permission the registration-token
+endpoint requires), and pass it as `guestinfo.runner_pat` below.
+
+> Security: this PAT lives on each runner and can register/remove runners on the repo.
+> Scope it to the single repo, least privilege, and rotate it periodically. For a hardened
+> setup, swap the PAT for a GitHub App (private key + app/installation IDs) and have the
+> supervisor exchange App→JWT→installation token→registration token — same loop, short-lived
+> scoped credentials.
 
 ### 3. Set guestinfo variables
 
@@ -129,22 +166,23 @@ Before booting, set these guestinfo properties on each VM (via vCenter > VM > Co
 
 | Variable | Value |
 |----------|-------|
-| `guestinfo.runner_token` | Registration token from step 2 |
+| `guestinfo.runner_pat` | Fine-grained PAT from step 2 (repo Administration: read+write) |
 | `guestinfo.runner_repo` | `https://github.com/{owner}/aqualink-automate` |
 | `guestinfo.runner_name` | e.g. `linux-runner` or `windows-runner` |
 | `guestinfo.runner_labels` | e.g. `self-hosted,linux,x64` or `self-hosted,windows,x64` |
 
-> These key names must match exactly what the auto-registration scripts read
+> These key names must match exactly what the supervisor scripts read
 > (`scripts/linux/08-github-runner.sh`, `scripts/windows/05-github-runner.ps1`):
-> `guestinfo.runner_token`, `guestinfo.runner_repo`, `guestinfo.runner_name`,
-> `guestinfo.runner_labels`. A mismatch makes auto-register read empty values and
-> silently skip (the most common "runner never registered" cause).
+> `guestinfo.runner_pat`, `guestinfo.runner_repo`, `guestinfo.runner_name`,
+> `guestinfo.runner_labels`. If `runner_pat` or `runner_repo` is missing the supervisor
+> logs a FATAL line and sleeps (it does **not** silently skip) — check
+> `journalctl -u github-runner` (Linux) or the `GitHubRunnerEphemeral` task history (Windows).
 
 Using `govc`:
 
 ```bash
 govc vm.change -vm github-runner-linux \
-  -e guestinfo.runner_token="AXXXXXXXXXXXX" \
+  -e guestinfo.runner_pat="github_pat_XXXXXXXXXXXX" \
   -e guestinfo.runner_repo="https://github.com/{owner}/aqualink-automate" \
   -e guestinfo.runner_name="linux-runner" \
   -e guestinfo.runner_labels="self-hosted,linux,x64"
@@ -152,10 +190,13 @@ govc vm.change -vm github-runner-linux \
 
 ### 4. Boot the VMs
 
-On first boot, the auto-registration service reads the guestinfo variables and registers the runner with GitHub. A `.registered` marker file prevents re-registration on subsequent reboots.
+On boot, the ephemeral supervisor reads the guestinfo variables, mints a registration
+token, and brings up a one-shot `--ephemeral` runner. After each job it recycles (resets
+the workspace, re-mints a token, re-registers) automatically — there is no `.registered`
+marker and no manual re-registration.
 
-- **Linux**: systemd service (`github-runner-register.service`) runs at boot
-- **Windows**: Scheduled task (`GitHubRunnerAutoRegister`) runs at startup
+- **Linux**: systemd service (`github-runner.service`) runs the supervisor loop
+- **Windows**: scheduled task (`GitHubRunnerEphemeral`) runs the supervisor loop at startup
 
 ### 5. Enable in workflows
 
@@ -174,14 +215,15 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 
 | Script | Packages |
 |--------|----------|
+| `00-data-volume.sh` | Partitions/formats the data disk, mounts it at `/data` (`discard`), creates `work/` + `cache/`, symlinks `~/.cache` → `/data/cache` |
 | `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip; enables `discard` (continuous TRIM) on the root fs **and** sets `fstrim.timer` to hourly so the thin vmdk stays lean under churny CI |
 | `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15, update-alternatives symlinks |
 | `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev from apt.llvm.org |
 | `04-cmake-ninja.sh` | CMake 3.31.6 (Kitware binary), ninja-build |
-| `05-docker.sh` | Docker Engine CE + buildx plugin |
+| `05-docker.sh` | Docker Engine CE + buildx plugin; `data-root` → `/data/docker` (off the OS disk) |
 | `06-dev-tools.sh` | python3, gcovr, autoconf, automake, libtool |
-| `07-ccache.sh` | ccache (5 GB max, compression enabled) |
-| `08-github-runner.sh` | GitHub Actions runner agent + auto-registration service |
+| `07-ccache.sh` | ccache (4 GB max on `/data/cache/ccache`, compression enabled) |
+| `08-github-runner.sh` | GitHub Actions runner agent + **ephemeral supervisor** (`github-runner.service`) |
 | `09-sonarcloud-tools.sh` | SonarCloud build-wrapper for Linux |
 | `10-cleanup.sh` | apt clean, log truncation, `fstrim` (UNMAP) free-space reclaim to keep the thin vmdk small |
 
@@ -189,11 +231,12 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 
 | Script | Packages |
 |--------|----------|
+| `00-data-volume.ps1` | Initializes/formats the data disk as `D:`, creates `D:\work` + `D:\cache`, junctions `C:\Users\runner\.cache` → `D:\cache` |
 | `01-base-config.ps1` | TLS 1.2, Chocolatey, Git |
 | `02-vs-buildtools.ps1` | VS 2022 Build Tools (MSVC v143, Windows SDK 22621, MSBuild, ASan) |
 | `03-cmake-ninja.ps1` | CMake + Ninja via Chocolatey |
-| `04-choco-packages.ps1` | NSIS, 7zip, ccache (5 GB, compression enabled) |
-| `05-github-runner.ps1` | GitHub Actions runner agent + auto-registration scheduled task |
+| `04-choco-packages.ps1` | NSIS, 7zip, ccache (4 GB max on `D:\cache\ccache`, compression enabled) |
+| `05-github-runner.ps1` | GitHub Actions runner agent + **ephemeral supervisor** (`GitHubRunnerEphemeral` task) |
 | `06-cleanup.ps1` | DISM cleanup, temp removal |
 
 ## Maintenance
@@ -251,8 +294,8 @@ cicd/packer/
       autounattend.xml              # Windows unattended install
       install-vmtools.ps1           # VMware Tools silent installer
   scripts/
-    linux/                          # Linux provisioning scripts (01-10)
-    windows/                        # Windows provisioning scripts (01-06)
+    linux/                          # Linux provisioning scripts (00-10; 00 sets up the data volume)
+    windows/                        # Windows provisioning scripts (00-06; 00 sets up the data volume)
   ISOs/                             # Downloaded/repacked ISOs (gitignored; cleared by clean-isos.ps1)
   packer_cache/                     # Packer download cache (gitignored; cleared by clean-isos.ps1)
 ```

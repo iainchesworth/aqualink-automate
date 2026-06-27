@@ -14,6 +14,12 @@ autoinstall:
   storage:
     layout:
       name: lvm
+      # The VM has two disks: a smaller OS disk (disk0) and a larger data disk
+      # (disk1, formatted later by 00-data-volume.sh). Pin the install to the
+      # SMALLEST disk so the root LVM never lands on — or consumes — the data
+      # disk. sizing-policy: all then fills the OS disk with the root LV.
+      match:
+        size: smallest
       sizing-policy: all
   packages:
     - open-vm-tools

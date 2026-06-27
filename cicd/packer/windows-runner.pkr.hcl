@@ -106,8 +106,21 @@ source "vsphere-iso" "windows" {
   RAM_hot_plug         = true
   disk_controller_type = ["lsilogic-sas"]
 
+  # Two thin disks so build junk can never fill the OS disk (the historic
+  # datastore-exhaustion cause). disk0 = OS + toolchains only; disk1 = the data
+  # volume (drive D:) that holds the runner work dir (wiped every job) AND the
+  # persistent vcpkg/ccache caches. 00-data-volume.ps1 formats + mounts disk1 as
+  # D:. autounattend.xml installs Windows to disk0 only.
+  #
+  # disk0 — OS + toolchains. 30 GB: Windows Server + VS 2022 Build Tools alone is
+  # ~20 GB, so the OS disk can't be as small as Linux's.
   storage {
-    disk_size             = 153600
+    disk_size             = 30720
+    disk_thin_provisioned = true
+  }
+  # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped).
+  storage {
+    disk_size             = 20480
     disk_thin_provisioned = true
   }
 
@@ -152,6 +165,7 @@ build {
 
   provisioner "powershell" {
     scripts = [
+      "${path.root}/scripts/windows/00-data-volume.ps1",
       "${path.root}/scripts/windows/01-base-config.ps1",
       "${path.root}/scripts/windows/02-vs-buildtools.ps1",
       "${path.root}/scripts/windows/03-cmake-ninja.ps1",
@@ -161,6 +175,10 @@ build {
     ]
     environment_vars = [
       "GITHUB_RUNNER_VERSION=${var.github_runner_version}",
+      # The ephemeral supervisor runs as the `runner` account via a scheduled
+      # task set to run "whether logged on or not", which needs the account
+      # password. Reuse the same secret the autounattend already sets.
+      "RUNNER_PASSWORD=${var.winrm_password}",
     ]
   }
 }

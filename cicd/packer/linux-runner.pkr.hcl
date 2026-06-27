@@ -103,8 +103,25 @@ source "vsphere-iso" "ubuntu" {
   RAM_hot_plug         = true
   disk_controller_type = ["pvscsi"]
 
+  # Two thin disks so build junk can never fill the OS disk (the historic
+  # datastore-exhaustion cause). disk0 = OS + toolchains only; disk1 = the data
+  # volume that holds the runner work dir (wiped every job) AND the persistent
+  # vcpkg/ccache caches. 00-data-volume.sh formats + mounts disk1 at /data, and
+  # the autoinstall (http/linux/user-data) pins the OS install to the *smallest*
+  # disk so it never lands on the data disk.
+  #
+  # disk0 — OS + toolchains (GCC/Clang/Docker/CMake ~10 GB used; 12 GB leaves headroom).
   storage {
-    disk_size             = 153600
+    disk_size             = 12288
+    disk_thin_provisioned = true
+  }
+  # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped) +
+  # Docker's data-root (release builds pull gcc:15-bookworm/debian:bookworm here,
+  # off the OS disk; see 05-docker.sh). 24 GB gives headroom for the work tree, the
+  # transient Docker images, and the dual-glibc vcpkg caches without ever pressuring
+  # the OS disk.
+  storage {
+    disk_size             = 24576
     disk_thin_provisioned = true
   }
 
@@ -141,6 +158,7 @@ build {
 
   provisioner "shell" {
     scripts = [
+      "${path.root}/scripts/linux/00-data-volume.sh",
       "${path.root}/scripts/linux/01-base-packages.sh",
       "${path.root}/scripts/linux/02-gcc-toolchain.sh",
       "${path.root}/scripts/linux/03-llvm-toolchain.sh",

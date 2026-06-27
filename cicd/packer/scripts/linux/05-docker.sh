@@ -31,7 +31,30 @@ apt-get install -y --no-install-recommends \
 # Add runner user to docker group
 usermod -aG docker runner
 
-# Enable and start Docker
+# Keep Docker's images/layers off the small OS disk: point the data-root at the
+# data volume (/data/docker, created by 00-data-volume.sh). Release builds pull
+# multi-GB base images (gcc:15-bookworm, debian:bookworm); on the OS disk those
+# could exhaust it. The supervisor's `docker system prune` clears them each job.
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'JSON'
+{
+  "data-root": "/data/docker"
+}
+JSON
+
+# Docker must not start until /data is mounted, otherwise it would initialise its
+# data-root under the (pre-mount) /data directory on the OS disk and then be
+# shadowed by the mount. Order it after the generated data.mount unit.
+mkdir -p /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/data-root.conf <<'DROPIN'
+[Unit]
+After=data.mount
+Requires=data.mount
+DROPIN
+
+systemctl daemon-reload
+
+# Enable and start Docker (data-root takes effect on the next start).
 systemctl enable docker
 
-echo "==> Docker $(docker --version) installed"
+echo "==> Docker $(docker --version) installed (data-root on /data/docker)"
