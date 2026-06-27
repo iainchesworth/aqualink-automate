@@ -53,7 +53,7 @@ variable "iso_url" {
     which downloads the upstream Ubuntu source on demand (and caches it under ISOs/)
     rather than keeping it in the repo. Run ./repack-iso.sh before building.
   EOT
-  default     = "ISOs/ubuntu-25.04-autoinstall.iso"
+  default     = "ISOs/ubuntu-26.04-autoinstall.iso"
 }
 
 variable "iso_checksum" {
@@ -151,7 +151,7 @@ source "vsphere-iso" "ubuntu" {
   # VM tools
   tools_upgrade_policy = true
 
-  notes = "GitHub Actions self-hosted runner - Ubuntu 25.04. Built by Packer."
+  notes = "GitHub Actions self-hosted runner - Ubuntu 26.04 LTS. Built by Packer."
 }
 
 build {

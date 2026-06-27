@@ -94,7 +94,7 @@ prune_dir_to_cap() {
 }
 
 prune_vcpkg_cache() {
-    # Host (Ubuntu-25.04) binary cache, the release glibc-2.36 (bookworm) cache, and
+    # Host (Ubuntu-26.04) binary cache, the release glibc-2.36 (bookworm) cache, and
     # the downloaded source tarballs — all persist on the data volume and would
     # otherwise grow unbounded.
     prune_dir_to_cap "${CACHE}/vcpkg/archives" "$VCPKG_ARCHIVES_CAP_GB"

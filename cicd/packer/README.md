@@ -6,7 +6,7 @@ Packer templates for building self-hosted GitHub Actions runner VMs on VMware vS
 
 | Runner | Base OS | CPUs | RAM | OS disk | Data disk | Total | Pre-installed toolchain |
 |--------|---------|------|-----|---------|-----------|-------|------------------------|
-| Linux | Ubuntu 25.04 | 32 | 48 GB | 12 GB | 18 GB | **30 GB** | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
+| Linux | Ubuntu 26.04 LTS | 32 | 48 GB | 12 GB | 18 GB | **30 GB** | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
 | Windows | Windows Server 2022 | 32 | 48 GB | 30 GB | 16 GB | **46 GB** | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
 
 Disk sizes are deliberately small and **tunable** — they are single `disk_size` lines in
@@ -51,7 +51,7 @@ cruft between jobs. Two design changes fix that:
 - `xorriso`, `curl`, and `sha256sum` (available in WSL/Linux) for the Ubuntu repack step
 - Internet access — the OS ISOs are **downloaded on demand** at build time rather than
   stored in the repo:
-  - Ubuntu 25.04 Server source → fetched + repacked with autoinstall by `repack-iso.sh`
+  - Ubuntu 26.04 LTS Server source → fetched + repacked with autoinstall by `repack-iso.sh`
   - Windows Server 2022 evaluation → fetched directly by Packer from its default `iso_url`
 
 ## Configuration
@@ -107,8 +107,8 @@ packer init windows-runner.pkr.hcl
 
 Download the upstream Ubuntu source and repack it with autoinstall (run in WSL/Linux —
 needs `xorriso`/`curl`/`sha256sum`). With no arguments it fetches the default Ubuntu
-25.04 source from old-releases, verifies its SHA256, caches it under `ISOs/`, and writes
-`ISOs/ubuntu-25.04-autoinstall.iso`:
+26.04 LTS source from releases.ubuntu.com, verifies its SHA256, caches it under `ISOs/`,
+and writes `ISOs/ubuntu-26.04-autoinstall.iso`:
 
 ```bash
 ./repack-iso.sh
@@ -243,8 +243,8 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 |--------|----------|
 | `00-data-volume.sh` | Partitions/formats the data disk, mounts it at `/data` (`discard`), creates `work/` + `cache/`, symlinks `~/.cache` → `/data/cache` |
 | `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip; enables `discard` (continuous TRIM) on the root fs **and** sets `fstrim.timer` to hourly so the thin vmdk stays lean under churny CI |
-| `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15, update-alternatives symlinks |
-| `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev from apt.llvm.org |
+| `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15 (from 26.04 LTS main repos; PPA fallback only on older bases), update-alternatives symlinks |
+| `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev, libc++abi-21-dev (from 26.04 LTS `universe`; apt.llvm.org fallback only on older bases), update-alternatives symlinks |
 | `04-cmake-ninja.sh` | CMake 3.31.6 (Kitware binary), ninja-build |
 | `05-docker.sh` | Docker Engine CE + buildx plugin; `data-root` → `/data/docker` (off the OS disk) |
 | `06-dev-tools.sh` | python3, gcovr, autoconf, automake, libtool |
@@ -306,7 +306,7 @@ Remove the `RUNNER_LINUX` and `RUNNER_WINDOWS` repository variables. Workflows a
 
 ```
 cicd/packer/
-  linux-runner.pkr.hcl              # Packer template — Ubuntu 25.04
+  linux-runner.pkr.hcl              # Packer template — Ubuntu 26.04 LTS
   windows-runner.pkr.hcl            # Packer template — Windows Server 2022
   variables.pkrvars.hcl.example     # vSphere variables (copy and fill in)
   secrets.auto.pkrvars.hcl.example  # Passwords (copy and fill in)
