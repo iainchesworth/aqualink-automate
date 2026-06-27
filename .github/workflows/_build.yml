@@ -183,12 +183,15 @@ jobs:
         uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           configurePreset: ${{ matrix.configure_preset }}
-          # --clean-{buildtrees,packages}-after-build stops vcpkg's transient
-          # build dirs from piling up on the self-hosted runners' bounded ~20 GB
-          # work disk during a from-scratch dependency build (cache miss).
-          # Harmless on GitHub-hosted runners (buildtrees are never cached) and it
-          # leaves the persistent downloads + binary-archive caches intact.
-          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}', '-DVCPKG_INSTALL_OPTIONS=--clean-buildtrees-after-build;--clean-packages-after-build']"
+          # NOTE: a previous -DVCPKG_INSTALL_OPTIONS=--clean-buildtrees-after-build;--clean-packages-after-build
+          # was removed here. The embedded ';' is split by the shell run-cmake uses to
+          # invoke cmake, so the macOS/Windows Configure failed at exit 127
+          # (/bin/sh: --clean-packages-after-build: command not found). This step only
+          # runs on macOS/Windows + the non-package Linux CI build anyway — the Linux
+          # RELEASE build uses the glibc container path below, not this step. If the
+          # self-hosted-Linux disk-saving is wanted, re-add it via a shell-safe channel
+          # (e.g. a preset cacheVariable), with a test.
+          configurePresetAdditionalArgs: "['-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}']"
         env:
           VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
 
