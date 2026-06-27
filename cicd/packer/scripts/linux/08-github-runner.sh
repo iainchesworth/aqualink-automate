@@ -104,9 +104,19 @@ prune_vcpkg_cache() {
 
 reset_workspace() {
     log "resetting workspace + transient cruft"
-    # Wipe the entire work dir; config.sh recreates it clean.
+    # Recreate the work dir clean AND runner-owned. The wipe must run as root
+    # because a job can leave root-owned files inside (the release-packaging
+    # Docker container writes into the checkout as root). But /data is root:root
+    # — 00-data-volume.sh only chowns work/ and cache/, not the mount point
+    # itself — so a plain non-sudo `mkdir` cannot recreate the `work` entry under
+    # it: it fails with EACCES, and because this heredoc runs `set -uo pipefail`
+    # (no -e) the failure is silent. The work dir is then missing/unwritable and
+    # the next job dies at worker init with "Access to the path '/data/work' is
+    # denied". So recreate it with sudo and hand ownership back to the runner
+    # user that runs config.sh and the job worker. `install -d` is idempotent: it
+    # also re-applies owner/group/mode if a failed wipe left the dir behind.
     sudo rm -rf "${WORK:?}" 2>/dev/null || true
-    mkdir -p "$WORK"
+    sudo install -d -o runner -g runner -m 755 "$WORK"
     # Drop the last job's Docker images/containers/volumes/build cache.
     docker system prune -af --volumes >/dev/null 2>&1 \
         || sudo docker system prune -af --volumes >/dev/null 2>&1 || true
