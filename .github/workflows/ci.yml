@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "develop", "feature/**", "bug/**"]
+    branches: ["main", "develop", "feat/**", "fix/**", "docs/**", "ci/**", "test/**", "refactor/**", "chore/**", "build/**", "perf/**"]
   pull_request:
     branches: ["develop", "main"]
 
@@ -14,6 +14,35 @@ permissions:
   contents: read
 
 jobs:
+  # Enforce the branch naming convention on every PR. Branches must be
+  # <type>/<name> with an allowed Conventional Commit type (see CONTRIBUTING.md).
+  # develop/main are accepted as PR heads so the develop->main release-promotion
+  # PR (head_ref == develop) is never blocked. This "Branch Name" check is a
+  # required status check on develop/main, so a misnamed branch cannot merge. (A
+  # server-side branch-name ruleset would also block at push/creation time, but
+  # that rule type needs a GitHub organization plan — unavailable on a user repo.)
+  branch-name:
+    name: Branch Name
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate head branch name
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" == "develop" || "$HEAD_REF" == "main" ]]; then
+            echo "Core branch '$HEAD_REF' — allowed (release promotion)."
+            exit 0
+          fi
+          pattern='^(feat|fix|docs|ci|test|refactor|chore|build|perf)/[a-z0-9._-]+$'
+          if [[ "$HEAD_REF" =~ $pattern ]]; then
+            echo "Branch '$HEAD_REF' conforms to <type>/<name>."
+          else
+            echo "::error title=Invalid branch name::'$HEAD_REF' must be <type>/<name> where <type> is one of: feat, fix, docs, ci, test, refactor, chore, build, perf (for example feat/spaside-led-map). See CONTRIBUTING.md."
+            exit 1
+          fi
+
   # The configure/build/test matrix lives in the reusable _build.yml so CI and the
   # release pipeline share one definition and can never drift. Runner selection
   # (vars.RUNNER_LINUX / RUNNER_WINDOWS) is handled inside that workflow.
