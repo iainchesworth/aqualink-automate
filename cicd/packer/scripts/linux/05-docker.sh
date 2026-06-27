@@ -5,14 +5,14 @@ echo "==> Installing Docker Engine CE"
 
 # Add Docker GPG key and repository
 install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --max-time 60 https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 CODENAME=$(lsb_release -cs)
 DOCKER_REPO="https://download.docker.com/linux/ubuntu/dists/${CODENAME}"
 
 # Verify Docker repo exists for this codename; fall back to nearest LTS if not
-if ! curl -fsSL --head "${DOCKER_REPO}/Release" >/dev/null 2>&1; then
+if ! curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --max-time 30 --head "${DOCKER_REPO}/Release" >/dev/null 2>&1; then
     echo "WARNING: Docker repo not available for '${CODENAME}', falling back to 'noble'"
     CODENAME="noble"
 fi

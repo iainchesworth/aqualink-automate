@@ -6,7 +6,7 @@ echo "==> Installing SonarCloud build-wrapper"
 WRAPPER_DIR="/opt/sonarcloud"
 mkdir -p "${WRAPPER_DIR}"
 
-curl -fsSL "https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip" -o /tmp/build-wrapper.zip
+curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --max-time 120 "https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip" -o /tmp/build-wrapper.zip
 unzip -q /tmp/build-wrapper.zip -d "${WRAPPER_DIR}"
 rm /tmp/build-wrapper.zip
 
