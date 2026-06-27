@@ -4,6 +4,7 @@
 
 #include "formatters/beast_stringview_formatter.h"
 #include "http/server/server_fields.h"
+#include "http/server/responses/html_escape.h"
 #include "http/server/responses/response_405.h"
 #include "logging/logging.h"
 
@@ -26,7 +27,10 @@ namespace AqualinkAutomate::HTTP::Responses
         res.set(boost::beast::http::field::server, ServerFields::Server());
         res.set(boost::beast::http::field::content_type, ContentTypes::TEXT_HTML);
         res.keep_alive(req.keep_alive());
-        res.body() = "Method '" + std::string(magic_enum::enum_name(req.method())) + "' not permitted for '" + std::string(req.target()) + "'.";
+        // The request target is client-controlled and reflected into an HTML body;
+        // escape it to prevent reflected XSS (mirrors Response_400 / Response_404).
+        // The method name comes from a fixed magic_enum table, so it needs no escaping.
+        res.body() = "Method '" + std::string(magic_enum::enum_name(req.method())) + "' not permitted for '" + HtmlEscape(std::string_view{ req.target().data(), req.target().size() }) + "'.";
         res.prepare_payload();
 
         return res;

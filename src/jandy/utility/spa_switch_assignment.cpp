@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "utility/to_number.h"
+
 namespace AqualinkAutomate::Utility
 {
 
@@ -67,16 +69,21 @@ namespace AqualinkAutomate::Utility
 		}
 
 		// Small 1-based indices only (the controllers number switches/buttons from 1).
-		const int sw = std::stoi(sw_str);
-		const int btn = std::stoi(btn_str);
-		if (sw < 1 || sw > 255 || btn < 1 || btn > 255)
+		// Parse with the non-throwing converter: the digit runs above are unbounded, so
+		// an attacker-supplied run such as "99999999999" would overflow std::stoi and
+		// throw std::out_of_range -- which, on the serial dispatch path, is a remote
+		// crash.  ToNumber returns std::nullopt on overflow/invalid input instead, so a
+		// malformed line is simply "not an assignment line".
+		const auto sw = Utility::ToNumber<int>(sw_str);
+		const auto btn = Utility::ToNumber<int>(btn_str);
+		if (!sw || !btn || *sw < 1 || *sw > 255 || *btn < 1 || *btn > 255)
 		{
 			return std::nullopt;
 		}
 
 		SpaSwitchAssignment out;
-		out.switch_number = static_cast<uint8_t>(sw);
-		out.button_number = static_cast<uint8_t>(btn);
+		out.switch_number = static_cast<uint8_t>(*sw);
+		out.button_number = static_cast<uint8_t>(*btn);
 		out.function = function;
 		return out;
 	}

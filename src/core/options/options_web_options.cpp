@@ -83,6 +83,21 @@ namespace AqualinkAutomate::Options::Web
 			settings.ApiAuthToken = OPTION_APIAUTHTOKEN->As<std::string>(vm);
 		}
 
+		if (OPTION_APIALLOWEDORIGIN->IsPresent(vm))
+		{
+			settings.ApiAllowedOrigins = OPTION_APIALLOWEDORIGIN->As<std::vector<std::string>>(vm);
+		}
+
+		if (OPTION_APIREQUIRECSRF->IsPresent(vm))
+		{
+			settings.ApiRequireCsrfHeader = OPTION_APIREQUIRECSRF->As<bool>(vm);
+		}
+
+		if (OPTION_INSECURENOAUTH->IsPresent(vm))
+		{
+			settings.InsecureNoAuthAck = OPTION_INSECURENOAUTH->As<bool>(vm);
+		}
+
 		//
 		// The last parameter to set is the web server ports (as the defaults are set above then overridden here).
 		//

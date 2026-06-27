@@ -15,6 +15,7 @@
 #include "logging/logging.h"
 #include "preferences/preferences_service.h"
 #include "profiling/factories/profiling_unit_factory.h"
+#include "utility/to_number.h"
 
 using namespace AqualinkAutomate::Logging;
 
@@ -84,13 +85,15 @@ namespace AqualinkAutomate::HTTP
 		// --- User-requested (desired-state) assignments persisted in PreferencesHub, keyed
 		// "<switch>:<button>". Surfaced so the UI shows intent even before the controller re-reports
 		// it (or, on a read-only/iAQ-only system, as a pending annotation).
+		// Non-throwing parse: std::stoul throws std::out_of_range for an all-digit
+		// string wider than unsigned long (the digit check above does NOT bound the
+		// magnitude), and these keys are attacker-influenced (persisted via PUT
+		// /api/preferences / the config file).  An uncaught throw here unwinds into
+		// the router's exception barrier and degrades to a blanket HTTP 500; ToNumber
+		// returns std::nullopt instead, so a malformed key is simply skipped below.
 		auto parse_uint = [](const std::string& s) -> std::optional<unsigned long>
 		{
-			if (s.empty() || !std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); }))
-			{
-				return std::nullopt;
-			}
-			return std::stoul(s);
+			return Utility::ToNumber<unsigned long>(s);
 		};
 
 		std::map<std::pair<uint8_t, uint8_t>, std::string> requested_map;

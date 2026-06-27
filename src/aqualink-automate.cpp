@@ -563,10 +563,55 @@ int main(int argc, char* argv[])
 			const auto& web_settings = web_settings_result.value().get();
 
 			// Wire the opt-in control-plane security policy from the Web settings.
-			// AuthToken unset (the default) leaves every knob disabled, so the
+			// AuthToken unset (the default) leaves authentication disabled, so the
 			// historical no-auth behaviour is preserved exactly unless the operator
-			// passes --api-auth-token.
-			HTTP::Routing::SecurityConfig security_config{ .AuthToken = web_settings.ApiAuthToken };
+			// passes --api-auth-token. The Origin allow-list (--api-allowed-origin) and
+			// CSRF-header requirement (--api-require-csrf-header) are likewise off until
+			// explicitly enabled.
+			HTTP::Routing::SecurityConfig security_config{
+				.AuthToken = web_settings.ApiAuthToken,
+				.AllowedOrigins = web_settings.ApiAllowedOrigins,
+				.RequireCsrfHeader = web_settings.ApiRequireCsrfHeader
+			};
+
+			// Open-control-plane guard: the equipment-control API actuates pumps,
+			// heaters and chlorinators. Binding a non-loopback interface with NO auth
+			// token exposes that to anyone on the network. We do not change behaviour
+			// (non-breaking), but we MUST make the operator aware: emit a prominent
+			// warning unless they bound loopback, enabled some security, or explicitly
+			// acknowledged the open posture with --insecure-no-auth.
+			{
+				boost::system::error_code addr_ec;
+				const auto bound = boost::asio::ip::make_address(web_settings.bind_address, addr_ec);
+				const bool non_loopback = addr_ec ? (web_settings.bind_address != "127.0.0.1" && web_settings.bind_address != "::1")
+												  : !bound.is_loopback();
+
+				if (non_loopback && !security_config.IsEnabled())
+				{
+					if (web_settings.InsecureNoAuthAck)
+					{
+						LogInfo(Channel::Web, [&] { return std::format(
+							"API bound to non-loopback address '{}' without authentication (acknowledged via --insecure-no-auth)", web_settings.bind_address); });
+					}
+					else
+					{
+						LogWarning(Channel::Web, [&] { return std::format(
+							"SECURITY: the equipment-control API is bound to non-loopback address '{}' with NO authentication - "
+							"anyone who can reach this host can actuate pool equipment. Set --api-auth-token (and serve over HTTPS), "
+							"or pass --insecure-no-auth to acknowledge this is intentional (e.g. behind a trusted reverse proxy).",
+							web_settings.bind_address); });
+					}
+				}
+
+				// Weak-token guard: the auth comparison is constant-time, but a short or
+				// low-entropy token is still feasible to brute-force online (there is no
+				// per-IP lockout). Nudge the operator toward a long random secret. The
+				// token value itself is never logged.
+				if (web_settings.ApiAuthToken.has_value() && web_settings.ApiAuthToken->size() < 16)
+				{
+					LogWarning(Channel::Web, "SECURITY: --api-auth-token is shorter than 16 characters; use a long, random token (e.g. 32+ chars) to resist online brute-force guessing");
+				}
+			}
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_AuthCheck>());
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Diagnostics_Devices>(hub_locator));
@@ -608,7 +653,20 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment_Stats>(hub_locator));
 
-			HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", web_settings.doc_root));
+			// Honour --disable-content: when set, serve ONLY the APIs and register no
+			// static-file handler.  Static assets are served UNauthenticated by design
+			// (so a login page can load before a token is supplied), so an operator who
+			// hardens an API-only deployment with --disable-content must actually get an
+			// empty doc-root surface -- previously this flag was parsed but never read,
+			// silently leaving the whole doc-root world-readable.
+			if (!web_settings.http_content_is_disabled)
+			{
+				HTTP::Routing::StaticHandler(HTTP::StaticFileHandler("/", web_settings.doc_root));
+			}
+			else
+			{
+				LogInfo(Channel::Web, "Static content serving disabled (--disable-content); only API routes are registered");
+			}
 
 			if (web_settings.https_server_is_enabled)
 			{

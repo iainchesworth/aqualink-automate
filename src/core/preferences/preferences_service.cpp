@@ -96,6 +96,11 @@ namespace AqualinkAutomate::Preferences
 
 		if (json.contains("temperature_units"))
 		{
+			if (!json["temperature_units"].is_string())
+			{
+				error = "temperature_units must be 'Celsius' or 'Fahrenheit'";
+				return false;
+			}
 			auto parsed = magic_enum::enum_cast<Kernel::TemperatureUnits>(json["temperature_units"].get<std::string>());
 			if (!parsed.has_value())
 			{
@@ -128,6 +133,11 @@ namespace AqualinkAutomate::Preferences
 			}
 			if (a.contains("webhook_url"))
 			{
+				if (!a["webhook_url"].is_string())
+				{
+					error = "alert.webhook_url must be empty or an absolute http/https URL";
+					return false;
+				}
 				const auto url = a["webhook_url"].get<std::string>();
 				if (!url.empty() && !IsValidWebhookUrl(url))
 				{

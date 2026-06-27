@@ -67,6 +67,25 @@ BOOST_AUTO_TEST_CASE(ApplyJson_RejectsBadValues)
 	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "history", { { "retention_days", 0 } } } }, error));
 }
 
+BOOST_AUTO_TEST_CASE(ApplyJson_RejectsWrongTypedFields_WithoutThrowing)
+{
+	// Regression: wrong-typed fields used to reach an unguarded nlohmann get<>()
+	// (e.g. temperature_units / webhook_url as a non-string), throwing
+	// nlohmann::json::type_error.  On the PUT /api/preferences path that throw
+	// escaped into the router's exception barrier and surfaced as a blanket HTTP
+	// 500.  ApplyJson must instead reject the payload (-> false -> HTTP 400) and
+	// never throw.
+	Options::Preferences::PreferencesSettings settings;
+	Preferences::PreferencesService service(*this, settings);
+	std::string error;
+
+	BOOST_CHECK_NO_THROW((void)service.ApplyJson(nlohmann::json{ { "temperature_units", 42 } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "temperature_units", 42 } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "temperature_units", true } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "alert", { { "webhook_url", 5 } } } }, error));
+	BOOST_CHECK(!service.ApplyJson(nlohmann::json{ { "alert", { { "webhook_url", nlohmann::json::array() } } } }, error));
+}
+
 BOOST_AUTO_TEST_CASE(ApplyJson_RejectionLeavesHubUnchanged)
 {
 	Options::Preferences::PreferencesSettings settings;

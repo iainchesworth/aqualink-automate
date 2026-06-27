@@ -37,7 +37,9 @@ namespace AqualinkAutomate::Options::Web
 			https_port{ 443 },
 			http_content_is_disabled{ false },
 			http_server_is_enabled{ true },
-			https_server_is_enabled{ true }
+			https_server_is_enabled{ true },
+			ApiRequireCsrfHeader{ false },
+			InsecureNoAuthAck{ false }
 		{
 		}
 
@@ -61,6 +63,21 @@ namespace AqualinkAutomate::Options::Web
 		// http-server-routing layer (constant-time compare; the token is never
 		// logged).
 		std::optional<std::string> ApiAuthToken;
+
+		// Optional cross-site protections, off by default (backward-compatible).
+		// AllowedOrigins, when non-empty, makes the routing layer reject any API
+		// request / WebSocket upgrade whose Origin header is not on the list (403).
+		// ApiRequireCsrfHeader, when true, makes state-changing methods require the
+		// X-Requested-With header. Both were implemented in the routing layer but had
+		// no option to enable them until now.
+		std::vector<std::string> ApiAllowedOrigins;
+		bool ApiRequireCsrfHeader;
+
+		// Operator acknowledgement that the API is intentionally exposed on a
+		// non-loopback address without authentication (e.g. behind a trusted reverse
+		// proxy). Does NOT change behaviour; it only downgrades the prominent
+		// open-control-plane startup warning to an informational note.
+		bool InsecureNoAuthAck;
 	}
 	WebSettings;
 
@@ -81,6 +98,10 @@ namespace AqualinkAutomate::Options::Web
 		// Opt-in API auth token; UNSET by default (no auth, backward-compatible). No default_value
 		// so an absent flag leaves the option unset rather than producing an empty-string token.
 		AppOptionPtr OPTION_APIAUTHTOKEN{ make_appoption("api-auth-token", "Require 'Authorization: Bearer <token>' on API requests and the WebSocket upgrade (default: no auth)", boost::program_options::value<std::string>()) };
+		// Repeatable (composing) Origin allow-list. No default_value, so an absent flag leaves the list empty (check disabled).
+		AppOptionPtr OPTION_APIALLOWEDORIGIN{ make_appoption("api-allowed-origin", "Allowed Origin for the API/WebSocket (repeatable); when set, a request/upgrade whose Origin is not listed is rejected with HTTP 403", boost::program_options::value<std::vector<std::string>>()->composing()) };
+		AppOptionPtr OPTION_APIREQUIRECSRF{ make_appoption("api-require-csrf-header", "Require the 'X-Requested-With' header on state-changing API requests (CSRF mitigation)", boost::program_options::bool_switch()->default_value(false)) };
+		AppOptionPtr OPTION_INSECURENOAUTH{ make_appoption("insecure-no-auth", "Acknowledge an intentionally unauthenticated API on a non-loopback bind (silences the open-control-plane startup warning)", boost::program_options::bool_switch()->default_value(false)) };
 
 		const std::vector<AppOptionPtr> WebOptionsCollection
 		{
@@ -94,7 +115,10 @@ namespace AqualinkAutomate::Options::Web
 			OPTION_TLSCERTKEY,
 			OPTION_TLSCACERT,
 			OPTION_DOCROOT,
-			OPTION_APIAUTHTOKEN
+			OPTION_APIAUTHTOKEN,
+			OPTION_APIALLOWEDORIGIN,
+			OPTION_APIREQUIRECSRF,
+			OPTION_INSECURENOAUTH
 		};
 
 	public:

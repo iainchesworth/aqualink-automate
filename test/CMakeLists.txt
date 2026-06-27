@@ -14,6 +14,7 @@ target_sources(
 	unit/application/test_application_defaults.cpp
 	unit/auxillaries/test_jandy_auxillary_id.cpp
 	unit/concepts/test_concept_is_c_array.cpp
+	unit/certificates/test_certificate_generation.cpp
 	unit/equipment_cache/test_equipment_cache_service.cpp
 	unit/errors/test_error_categories.cpp
 	unit/devices/test_devices_id.cpp
@@ -54,6 +55,7 @@ target_sources(
 	unit/logging/test_logging_severity_filter_defaults.cpp
 	unit/logging/test_logging_filter_and_helpers.cpp
 	unit/alerting/test_alert_monitor.cpp
+	unit/alerting/test_webhook_tls.cpp
 	unit/history/test_history_service.cpp
 	unit/options/test_option_metadata.cpp
 	unit/options/test_options_alerting.cpp

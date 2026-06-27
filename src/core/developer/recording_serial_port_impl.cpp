@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <format>
 #include <iomanip>
+#include <system_error>
 
 #include "platform/safe_ctime.h"
 
@@ -107,6 +108,21 @@ namespace AqualinkAutomate::Developer
 			LogError(Channel::Serial, std::format("Failed to open serial recording file: {}", recording_file_path));
 			m_RecordingFilePath.clear();
 			return false;
+		}
+
+		// Restrict the capture to the owner (0600).  It contains raw RS-485 bus
+		// traffic that can reveal live system state, and ofstream creates the file
+		// with the process umask (commonly world-readable 0644).  Best-effort: on
+		// Windows std::filesystem maps this to the closest ACL/no-op.
+		{
+			std::error_code perm_ec;
+			std::filesystem::permissions(recording_file_path,
+				std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+				std::filesystem::perm_options::replace, perm_ec);
+			if (perm_ec)
+			{
+				LogDebug(Channel::Serial, std::format("Could not restrict permissions on recording file {}: {}", recording_file_path, perm_ec.message()));
+			}
 		}
 
 		m_RecordingFilePath = recording_file_path;
@@ -337,12 +353,27 @@ namespace AqualinkAutomate::Developer
 
 	void RecordingSerialPortImpl::RecordDataLine(char direction, const uint8_t* data, std::size_t length)
 	{
+		// Disk-fill DoS guard: a recording can be started remotely (the diagnostics
+		// route) and otherwise grows without bound, so a single request could exhaust
+		// the disk and degrade or crash the daemon. Cap the capture and auto-stop once
+		// it is reached. 256 MiB is far larger than any legitimate diagnostic capture.
+		constexpr std::size_t MAX_RECORDING_BYTES = static_cast<std::size_t>(256) * 1024 * 1024;
+
 		std::lock_guard<std::mutex> lock(m_FileMutex);
 
 		// Recording may have been stopped between the fast-path gate check and
 		// acquiring the lock; re-check the open file before writing.
 		if (!m_RecordingFile.is_open())
 		{
+			return;
+		}
+
+		if (m_BytesWritten >= MAX_RECORDING_BYTES)
+		{
+			LogWarning(Channel::Serial, std::format(
+				"Serial recording reached the {}-byte cap ({} bytes written to '{}'); auto-stopping",
+				MAX_RECORDING_BYTES, m_BytesWritten, m_RecordingFilePath));
+			CloseRecordingFile();   // safe: we hold m_FileMutex (as StopRecording does)
 			return;
 		}
 

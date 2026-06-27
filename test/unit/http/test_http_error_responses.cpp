@@ -28,6 +28,34 @@ BOOST_AUTO_TEST_CASE(Test_HttpResponses_4xx)
 	BOOST_CHECK_EQUAL(boost::beast::http::status::method_not_allowed, res405.result());
 }
 
+BOOST_AUTO_TEST_CASE(Test_HttpResponses_4xx_ReflectedTargetIsHtmlEscaped)
+{
+	// Regression (reflected XSS): the request target is client-controlled and is
+	// reflected into the text/html error body. Response_400/404 escaped it but
+	// Response_405 did not, so a path-parameter route hit with a non-GET method
+	// reflected raw markup. All three must HTML-escape the target now: the raw
+	// "<svg onload=..." must not appear; the escaped "&lt;svg" must.
+	Request req;
+	req.version(11);
+	req.method(boost::beast::http::verb::put);
+	// Slash-free payload so it stays a single path segment (matches a {param} route).
+	req.target("/api/schedules/<svg onload=alert(1)>");
+
+	const std::string raw{ "<svg onload=alert(1)>" };
+
+	auto res400 = Responses::Response_400(req);
+	BOOST_CHECK(res400.body().find(raw) == std::string::npos);
+	BOOST_CHECK(res400.body().find("&lt;svg") != std::string::npos);
+
+	auto res404 = Responses::Response_404(req);
+	BOOST_CHECK(res404.body().find(raw) == std::string::npos);
+	BOOST_CHECK(res404.body().find("&lt;svg") != std::string::npos);
+
+	auto res405 = Responses::Response_405(req);
+	BOOST_CHECK(res405.body().find(raw) == std::string::npos);
+	BOOST_CHECK(res405.body().find("&lt;svg") != std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(Test_HttpResponses_5xx)
 {
 	Request req;

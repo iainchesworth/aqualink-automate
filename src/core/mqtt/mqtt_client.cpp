@@ -20,6 +20,7 @@
 #include <async_mqtt/asio_bind/predefined_layer/mqtts.hpp>
 
 #include "logging/logging.h"
+#include "logging/log_sanitize.h"
 #include "mqtt/mqtt_client.h"
 #include "profiling/factories/profiler_factory.h"
 #include "profiling/factories/profiling_unit_factory.h"
@@ -299,7 +300,7 @@ namespace AqualinkAutomate::Mqtt
 
 		void DeliverPublish(const std::string& topic, const std::string& payload)
 		{
-			LogDebug(Channel::Mqtt, [&] { return std::format("Received PUBLISH: topic='{}', payload_size={}", topic, payload.size()); });
+			LogDebug(Channel::Mqtt, [&] { return std::format("Received PUBLISH: topic='{}', payload_size={}", Logging::SanitizeForLog(topic), payload.size()); });
 			m_Owner.OnMessageReceived(topic, payload);
 		}
 
