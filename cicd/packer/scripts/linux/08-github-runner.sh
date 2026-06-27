@@ -41,7 +41,11 @@ cat > "${RUNNER_DIR}/run-ephemeral.sh" <<'SUPERVISOR'
 # privileged reset steps use passwordless sudo. Configuration is read from
 # vSphere guestinfo, set per-VM at deploy time (see cicd/packer/README.md):
 #   guestinfo.runner_repo    https://github.com/<owner>/<repo>
-#   guestinfo.runner_pat     fine-grained PAT, repo "Administration: read+write"
+#   GitHub App (preferred) — all three required:
+#     guestinfo.runner_app_id               the App's ID
+#     guestinfo.runner_app_installation_id  the App's installation ID on the repo
+#     guestinfo.runner_app_private_key      the App PEM, base64-encoded (base64 -w0)
+#   guestinfo.runner_pat     PAT fallback (repo "Administration: read+write")
 #   guestinfo.runner_name    (optional; defaults to the hostname)
 #   guestinfo.runner_labels  (optional; defaults to self-hosted,linux,x64)
 set -uo pipefail
@@ -51,9 +55,11 @@ DATA="/data"
 WORK="${DATA}/work"
 CACHE="${DATA}/cache"
 
-# Cache size caps (the data disk is ~20 GB shared between work/ and cache/).
-CCACHE_MAX="${CCACHE_MAX:-4G}"
-VCPKG_ARCHIVES_CAP_GB="${VCPKG_ARCHIVES_CAP_GB:-4}"
+# Cache size caps (the data disk is only ~18 GB, shared between work/ and cache/
+# and Docker). Tunable via the systemd unit's Environment= if you grow the disk.
+CCACHE_MAX="${CCACHE_MAX:-3G}"
+VCPKG_ARCHIVES_CAP_GB="${VCPKG_ARCHIVES_CAP_GB:-3}"
+VCPKG_DOWNLOADS_CAP_GB="${VCPKG_DOWNLOADS_CAP_GB:-2}"
 
 # Deterministic PATH for jobs: ccache shims first, then CMake (/usr/local/bin)
 # and the apt toolchain (/usr/bin). Mirrors what `svc.sh install` used to capture.
@@ -88,10 +94,12 @@ prune_dir_to_cap() {
 }
 
 prune_vcpkg_cache() {
-    # Host (Ubuntu-25.04) binary cache and the release glibc-2.36 (bookworm) cache
-    # — both persist on the data volume and would otherwise grow unbounded.
+    # Host (Ubuntu-25.04) binary cache, the release glibc-2.36 (bookworm) cache, and
+    # the downloaded source tarballs — all persist on the data volume and would
+    # otherwise grow unbounded.
     prune_dir_to_cap "${CACHE}/vcpkg/archives" "$VCPKG_ARCHIVES_CAP_GB"
     prune_dir_to_cap "${CACHE}/vcpkg-bookworm" "$VCPKG_ARCHIVES_CAP_GB"
+    prune_dir_to_cap "${CACHE}/vcpkg/downloads" "$VCPKG_DOWNLOADS_CAP_GB"
 }
 
 reset_workspace() {
@@ -104,6 +112,9 @@ reset_workspace() {
         || sudo docker system prune -af --volumes >/dev/null 2>&1 || true
     # Transient temp dirs.
     sudo rm -rf /tmp/* /var/tmp/* >/dev/null 2>&1 || true
+    # The runner's _diag logs live on the OS disk and accumulate per job; the
+    # previous job's are already uploaded, so clear them to bound OS-disk growth.
+    rm -rf "${RUNNER_DIR}/_diag"/* >/dev/null 2>&1 || true
     # Preserve caches but bound their size.
     command -v ccache >/dev/null 2>&1 && ccache --max-size="$CCACHE_MAX" >/dev/null 2>&1 || true
     prune_vcpkg_cache
@@ -111,13 +122,65 @@ reset_workspace() {
     sudo fstrim -av >/dev/null 2>&1 || true
 }
 
+# --- token minting ---------------------------------------------------------
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+# Build a short-lived (<=10 min) RS256 App JWT signed with the App private key.
+app_jwt() {
+    local key_file="$1" now header payload unsigned sig
+    now="$(date +%s)"
+    header='{"alg":"RS256","typ":"JWT"}'
+    payload="{\"iat\":$((now - 60)),\"exp\":$((now + 540)),\"iss\":\"${APP_ID}\"}"
+    unsigned="$(printf '%s' "$header" | b64url).$(printf '%s' "$payload" | b64url)"
+    sig="$(printf '%s' "$unsigned" | openssl dgst -sha256 -sign "$key_file" 2>/dev/null | b64url)"
+    printf '%s.%s' "$unsigned" "$sig"
+}
+
+# Obtain a runner registration token. Prefers the GitHub App (JWT -> installation
+# token -> registration token); falls back to the PAT.
+get_reg_token() {
+    local auth jwt key_file
+    if [ "$have_app" -eq 1 ]; then
+        key_file="$(mktemp)"; chmod 600 "$key_file"
+        printf '%s' "$APP_KEY_B64" | base64 -d > "$key_file" 2>/dev/null
+        jwt="$(app_jwt "$key_file")"
+        auth="$(curl -fsSL -X POST \
+            -H "Authorization: Bearer ${jwt}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/app/installations/${APP_INSTALL_ID}/access_tokens" \
+            | jq -r '.token // empty')"
+        rm -f "$key_file"
+        [ -z "${auth:-}" ] && { log "App installation-token request failed"; return 0; }
+    else
+        auth="$RUNNER_PAT"
+    fi
+    curl -fsSL -X POST \
+        -H "Authorization: Bearer ${auth}" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/${OWNER_REPO}/actions/runners/registration-token" \
+        | jq -r '.token // empty'
+}
+
 REPO_URL="$(gi runner_repo)"
-RUNNER_PAT="$(gi runner_pat)"
 NAME="$(gi runner_name)";     NAME="${NAME:-$(hostname)}"
 LABELS="$(gi runner_labels)"; LABELS="${LABELS:-self-hosted,linux,x64}"
 
-if [ -z "${REPO_URL:-}" ] || [ -z "${RUNNER_PAT:-}" ]; then
-    log "FATAL: missing guestinfo.runner_repo or guestinfo.runner_pat; sleeping 5m"
+# Credentials for minting registration tokens. Preferred: a GitHub App (short-
+# lived, scoped, revocable) — set runner_app_id + runner_app_installation_id +
+# runner_app_private_key (the App's PEM, base64-encoded so it survives guestinfo).
+# Fallback: a fine-grained PAT in runner_pat.
+APP_ID="$(gi runner_app_id)"
+APP_INSTALL_ID="$(gi runner_app_installation_id)"
+APP_KEY_B64="$(gi runner_app_private_key)"
+RUNNER_PAT="$(gi runner_pat)"
+
+have_app=0
+[ -n "${APP_ID:-}" ] && [ -n "${APP_INSTALL_ID:-}" ] && [ -n "${APP_KEY_B64:-}" ] && have_app=1
+
+if [ -z "${REPO_URL:-}" ] || { [ "$have_app" -ne 1 ] && [ -z "${RUNNER_PAT:-}" ]; }; then
+    log "FATAL: need guestinfo.runner_repo and either the runner_app_* trio or runner_pat; sleeping 5m"
     sleep 300
     exit 1
 fi
@@ -143,12 +206,7 @@ while true; do
     reset_workspace
 
     log "minting registration token"
-    TOKEN="$(curl -fsSL -X POST \
-        -H "Authorization: Bearer ${RUNNER_PAT}" \
-        -H "Accept: application/vnd.github+json" \
-        -H "X-GitHub-Api-Version: 2022-11-28" \
-        "https://api.github.com/repos/${OWNER_REPO}/actions/runners/registration-token" \
-        | jq -r '.token // empty')"
+    TOKEN="$(get_reg_token)"
 
     if [ -z "${TOKEN:-}" ]; then
         log "could not obtain a registration token; retrying in 30s"

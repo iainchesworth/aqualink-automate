@@ -16,7 +16,7 @@ RUNNER_HOME="/home/runner"
 mkdir -p "${RUNNER_HOME}/.config/ccache"
 cat > "${RUNNER_HOME}/.config/ccache/ccache.conf" <<'EOF'
 cache_dir = /data/cache/ccache
-max_size = 4G
+max_size = 3G
 compression = true
 compression_level = 6
 EOF
@@ -26,4 +26,4 @@ install -d -o runner -g runner /data/cache/ccache
 # Add ccache to PATH for all users
 echo 'export PATH="/usr/lib/ccache:$PATH"' > /etc/profile.d/ccache.sh
 
-echo "==> ccache $(ccache --version | head -1) installed (4GB max on /data/cache, compression on)"
+echo "==> ccache $(ccache --version | head -1) installed (3GB max on /data/cache, compression on)"

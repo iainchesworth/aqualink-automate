@@ -4,14 +4,17 @@ Packer templates for building self-hosted GitHub Actions runner VMs on VMware vS
 
 ## Architecture
 
-| Runner | Base OS | CPUs | RAM | OS disk | Data disk | Pre-installed toolchain |
-|--------|---------|------|-----|---------|-----------|------------------------|
-| Linux | Ubuntu 25.04 | 32 | 48 GB | 12 GB | 24 GB | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
-| Windows | Windows Server 2022 | 32 | 48 GB | 30 GB | 20 GB | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
+| Runner | Base OS | CPUs | RAM | OS disk | Data disk | Total | Pre-installed toolchain |
+|--------|---------|------|-----|---------|-----------|-------|------------------------|
+| Linux | Ubuntu 25.04 | 32 | 48 GB | 12 GB | 18 GB | **30 GB** | GCC 15, Clang/LLVM 21, CMake, Ninja, Docker, ccache, SonarCloud build-wrapper |
+| Windows | Windows Server 2022 | 32 | 48 GB | 30 GB | 16 GB | **46 GB** | VS 2022 Build Tools (MSVC v143), CMake, Ninja, NSIS, ccache |
 
 Disk sizes are deliberately small and **tunable** — they are single `disk_size` lines in
-the `.pkr.hcl` templates. The Linux data disk is a little larger because release builds
-also stage Docker base images and a second (glibc-2.36) vcpkg cache there.
+the `.pkr.hcl` templates, and the cache caps are `Environment=` overridable on the
+supervisor. Linux lands at a tight 30 GB (the cache caps are set low to fit the work tree +
+Docker images on the 18 GB data disk). Windows can't reach 30 GB: Windows Server + VS 2022
+Build Tools alone is ~30 GB, so its OS disk floors there — bump the data disk if a build
+runs short of space.
 
 macOS CI stays on GitHub-hosted `macos-latest` runners.
 
@@ -24,9 +27,9 @@ cruft between jobs. Two design changes fix that:
   + toolchains; `disk1` is a data volume (Linux `/data`, Windows `D:`) split into:
   - `work/` — the runner work dir (checkout + build tree), **wiped every job**;
   - `cache/` — the persistent **vcpkg binary cache + ccache**, kept across jobs but
-    **size-capped** (ccache 4 GB; each vcpkg cache pruned to 4 GB) so it can't grow without
-    bound. `~/.cache` is redirected onto `cache/` (Linux symlink / Windows junction) so
-    vcpkg and ccache land there with no workflow change.
+    **size-capped** (ccache 3 GB; each vcpkg archive/download cache pruned to 3 GB / 2 GB)
+    so it can't grow without bound. `~/.cache` is redirected onto `cache/` (Linux symlink /
+    Windows junction) so vcpkg and ccache land there with no workflow change.
   - `docker/` (Linux only) — Docker's `data-root`, so multi-GB base images pulled by
     release builds never touch the OS disk; the supervisor prunes them each job.
 
@@ -150,15 +153,28 @@ In vCenter, clone each template to a new VM. Name them as you like (e.g. `github
 
 Ephemeral runners re-register on **every** job, so each VM mints its own registration
 tokens from a credential stored on the box — instead of a one-shot registration token that
-expires in an hour. Create a **fine-grained PAT** scoped to just this repository with the
-**Administration: Read and write** permission (the permission the registration-token
-endpoint requires), and pass it as `guestinfo.runner_pat` below.
+expires in an hour. The supervisor accepts **either** of two credentials (it prefers the
+App if both are present):
 
-> Security: this PAT lives on each runner and can register/remove runners on the repo.
-> Scope it to the single repo, least privilege, and rotate it periodically. For a hardened
-> setup, swap the PAT for a GitHub App (private key + app/installation IDs) and have the
-> supervisor exchange App→JWT→installation token→registration token — same loop, short-lived
-> scoped credentials.
+**Recommended — a GitHub App** (short-lived, scoped, revocable tokens; no long-lived secret
+on the box):
+
+1. Create a GitHub App (Settings → Developer settings → GitHub Apps → New). Give it the
+   repository permission **Administration: Read and write** (what the registration-token
+   endpoint requires); no webhook needed.
+2. **Install** it on the `aqualink-automate` repo and note the **Installation ID** (in the
+   install URL: `…/installations/<id>`).
+3. Generate a **private key** (downloads a `.pem`). The supervisor signs an App JWT with it
+   (via `openssl`), exchanges that for a short-lived installation token, and uses that to
+   mint each registration token.
+4. Note the **App ID** (on the App's settings page).
+
+Base64-encode the key for guestinfo (single line, survives the RPC):
+`base64 -w0 your-app.private-key.pem`.
+
+**Fallback — a fine-grained PAT** scoped to just this repository with **Administration:
+Read and write**, passed as `guestinfo.runner_pat`. Simpler, but a long-lived secret lives
+on each runner — scope it to the single repo, least privilege, and rotate it.
 
 ### 3. Set guestinfo variables
 
@@ -166,27 +182,37 @@ Before booting, set these guestinfo properties on each VM (via vCenter > VM > Co
 
 | Variable | Value |
 |----------|-------|
-| `guestinfo.runner_pat` | Fine-grained PAT from step 2 (repo Administration: read+write) |
 | `guestinfo.runner_repo` | `https://github.com/{owner}/aqualink-automate` |
+| `guestinfo.runner_app_id` | **(App)** the App's ID |
+| `guestinfo.runner_app_installation_id` | **(App)** the App's installation ID on the repo |
+| `guestinfo.runner_app_private_key` | **(App)** the App `.pem`, base64-encoded (`base64 -w0`) |
+| `guestinfo.runner_pat` | **(PAT fallback)** fine-grained PAT, repo Administration: read+write |
 | `guestinfo.runner_name` | e.g. `linux-runner` or `windows-runner` |
 | `guestinfo.runner_labels` | e.g. `self-hosted,linux,x64` or `self-hosted,windows,x64` |
 
+Provide the App trio **or** the PAT (the App wins if both are set). The other keys are
+required (name/labels default if unset).
+
 > These key names must match exactly what the supervisor scripts read
-> (`scripts/linux/08-github-runner.sh`, `scripts/windows/05-github-runner.ps1`):
-> `guestinfo.runner_pat`, `guestinfo.runner_repo`, `guestinfo.runner_name`,
-> `guestinfo.runner_labels`. If `runner_pat` or `runner_repo` is missing the supervisor
+> (`scripts/linux/08-github-runner.sh`, `scripts/windows/05-github-runner.ps1`).
+> If `runner_repo` plus a credential is missing the supervisor
 > logs a FATAL line and sleeps (it does **not** silently skip) — check
 > `journalctl -u github-runner` (Linux) or the `GitHubRunnerEphemeral` task history (Windows).
 
-Using `govc`:
+Using `govc` (GitHub App credential):
 
 ```bash
 govc vm.change -vm github-runner-linux \
-  -e guestinfo.runner_pat="github_pat_XXXXXXXXXXXX" \
   -e guestinfo.runner_repo="https://github.com/{owner}/aqualink-automate" \
+  -e guestinfo.runner_app_id="123456" \
+  -e guestinfo.runner_app_installation_id="78901234" \
+  -e guestinfo.runner_app_private_key="$(base64 -w0 your-app.private-key.pem)" \
   -e guestinfo.runner_name="linux-runner" \
   -e guestinfo.runner_labels="self-hosted,linux,x64"
 ```
+
+Or with the PAT fallback, replace the three `runner_app_*` lines with a single
+`-e guestinfo.runner_pat="github_pat_XXXXXXXXXXXX"`.
 
 ### 4. Boot the VMs
 

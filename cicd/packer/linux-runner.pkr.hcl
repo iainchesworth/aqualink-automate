@@ -117,11 +117,12 @@ source "vsphere-iso" "ubuntu" {
   }
   # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped) +
   # Docker's data-root (release builds pull gcc:15-bookworm/debian:bookworm here,
-  # off the OS disk; see 05-docker.sh). 24 GB gives headroom for the work tree, the
-  # transient Docker images, and the dual-glibc vcpkg caches without ever pressuring
-  # the OS disk.
+  # off the OS disk; see 05-docker.sh). 18 GB keeps the VM at a ~30 GB total: the
+  # supervisor caps each cache at 3 GB and prunes downloads, leaving ~8-9 GB for the
+  # work tree + transient Docker images. Tight for release builds — bump this one
+  # line if a from-scratch all-deps build ever runs out of room.
   storage {
-    disk_size             = 24576
+    disk_size             = 18432
     disk_thin_provisioned = true
   }
 

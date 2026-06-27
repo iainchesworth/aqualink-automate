@@ -118,9 +118,13 @@ source "vsphere-iso" "windows" {
     disk_size             = 30720
     disk_thin_provisioned = true
   }
-  # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped).
+  # disk1 — data: runner work (ephemeral) + vcpkg/ccache (persistent, capped). 16 GB
+  # (no Docker / no second glibc cache on Windows, unlike Linux). The OS disk can't
+  # shrink below ~30 GB because VS 2022 Build Tools alone is ~20 GB, so the Windows
+  # VM floors at ~46 GB total — it can't hit the 30 GB Linux target without slimming
+  # the toolchain.
   storage {
-    disk_size             = 20480
+    disk_size             = 16384
     disk_thin_provisioned = true
   }
 

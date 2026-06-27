@@ -14,6 +14,7 @@ apt-get install -y --no-install-recommends \
     libssl-dev \
     linux-libc-dev \
     lsb-release \
+    openssl \
     pkg-config \
     software-properties-common \
     tar \

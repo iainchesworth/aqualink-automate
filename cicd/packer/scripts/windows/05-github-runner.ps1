@@ -36,7 +36,11 @@ $supervisor = @'
 # scheduled task. Configuration is read from vSphere guestinfo, set per-VM at
 # deploy time (see cicd/packer/README.md):
 #   guestinfo.runner_repo    https://github.com/<owner>/<repo>
-#   guestinfo.runner_pat     fine-grained PAT, repo "Administration: read+write"
+#   GitHub App (preferred) — all three required:
+#     guestinfo.runner_app_id               the App's ID
+#     guestinfo.runner_app_installation_id  the App's installation ID on the repo
+#     guestinfo.runner_app_private_key      the App PEM, base64-encoded (base64 -w0)
+#   guestinfo.runner_pat     PAT fallback (repo "Administration: read+write")
 #   guestinfo.runner_name    (optional; defaults to the computer name)
 #   guestinfo.runner_labels  (optional; defaults to self-hosted,windows,x64)
 $ErrorActionPreference = "Continue"
@@ -45,8 +49,9 @@ $ErrorActionPreference = "Continue"
 $RunnerDir = "C:\actions-runner"
 $Work  = "D:\work"
 $Cache = "D:\cache"
-$CcacheMax = "4G"
-$VcpkgArchivesCapGB = 4
+$CcacheMax = "3G"
+$VcpkgArchivesCapGB = 3
+$VcpkgDownloadsCapGB = 2
 
 function Log($m) { Write-Host ("{0} {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $m) }
 
@@ -69,19 +74,23 @@ function Get-GuestInfo($key) {
     return ""
 }
 
-function Prune-VcpkgCache {
-    $dir = "$Cache\vcpkg\archives"
+function Prune-DirToCap($dir, $capGB) {
     if (-not (Test-Path $dir)) { return }
-    $cap = $VcpkgArchivesCapGB * 1GB
+    $cap = $capGB * 1GB
     $files = Get-ChildItem -Path $dir -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastAccessTime
     $total = ($files | Measure-Object Length -Sum).Sum
     if (-not $total -or $total -le $cap) { return }
-    Log ("pruning vcpkg archives ({0:N1} GB > {1} GB)" -f ($total / 1GB), $VcpkgArchivesCapGB)
+    Log ("pruning $dir ({0:N1} GB > {1} GB cap), least-recently-used first" -f ($total / 1GB), $capGB)
     foreach ($f in $files) {
         if ($total -le $cap) { break }
         $total -= $f.Length
         Remove-Item $f.FullName -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Prune-VcpkgCache {
+    Prune-DirToCap "$Cache\vcpkg\archives"  $VcpkgArchivesCapGB
+    Prune-DirToCap "$Cache\vcpkg\downloads" $VcpkgDownloadsCapGB
 }
 
 function Reset-Workspace {
@@ -91,11 +100,72 @@ function Reset-Workspace {
     New-Item -ItemType Directory -Path $Work -Force | Out-Null
     # Transient temp dirs.
     Remove-Item "$env:TEMP\*", "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+    # The runner's _diag logs live on the OS disk and accumulate per job; the
+    # previous job's are already uploaded, so clear them to bound OS-disk growth.
+    Remove-Item "$RunnerDir\_diag\*" -Recurse -Force -ErrorAction SilentlyContinue
     # Preserve caches but bound their size.
     & ccache --max-size $CcacheMax 2>$null | Out-Null
     Prune-VcpkgCache
     # Reclaim freed blocks (TRIM/UNMAP) so the thin vmdk stays near actual usage.
     Optimize-Volume -DriveLetter D -ReTrim -ErrorAction SilentlyContinue
+}
+
+# --- token minting ---------------------------------------------------------
+function Get-OpenSsl {
+    foreach ($p in @("C:\Program Files\Git\usr\bin\openssl.exe",
+                     "C:\Program Files\Git\mingw64\bin\openssl.exe")) {
+        if (Test-Path $p) { return $p }
+    }
+    return "openssl"   # fall back to PATH
+}
+
+function ConvertTo-B64Url([byte[]]$bytes) {
+    [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+# Build a short-lived (<=10 min) RS256 App JWT. .NET Framework 4.8 can't import a
+# PEM key, so sign via Git's openssl over temp files (binary-safe, no pipeline).
+function New-AppJwt($appId, $keyPath) {
+    $openssl = Get-OpenSsl
+    $utf8 = New-Object Text.UTF8Encoding($false)
+    $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $header  = '{"alg":"RS256","typ":"JWT"}'
+    $payload = '{"iat":' + ($now - 60) + ',"exp":' + ($now + 540) + ',"iss":"' + $appId + '"}'
+    $unsigned = (ConvertTo-B64Url $utf8.GetBytes($header)) + "." + (ConvertTo-B64Url $utf8.GetBytes($payload))
+    $uPath = Join-Path $env:TEMP "jwt_unsigned.txt"
+    $sPath = Join-Path $env:TEMP "jwt_sig.bin"
+    [IO.File]::WriteAllText($uPath, $unsigned, $utf8)
+    & $openssl dgst -sha256 -sign $keyPath -out $sPath $uPath 2>$null
+    $sig = ConvertTo-B64Url ([IO.File]::ReadAllBytes($sPath))
+    Remove-Item $uPath, $sPath -Force -ErrorAction SilentlyContinue
+    return "$unsigned.$sig"
+}
+
+# Obtain a runner registration token. Prefers the GitHub App (JWT -> installation
+# token -> registration token); falls back to the PAT.
+function Get-RegistrationToken {
+    $auth = $null
+    if ($script:HaveApp) {
+        $keyPath = Join-Path $env:TEMP "ghapp.pem"
+        try { [IO.File]::WriteAllBytes($keyPath, [Convert]::FromBase64String($AppKeyB64)) }
+        catch { Log "could not decode runner_app_private_key: $($_.Exception.Message)"; return $null }
+        $jwt = New-AppJwt $AppId $keyPath
+        Remove-Item $keyPath -Force -ErrorAction SilentlyContinue
+        try {
+            $r = Invoke-RestMethod -Method Post `
+                -Uri "https://api.github.com/app/installations/$AppInstallId/access_tokens" `
+                -Headers @{ Authorization = "Bearer $jwt"; Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28"; "User-Agent" = "aqualink-runner" }
+            $auth = $r.token
+        } catch { Log "App installation-token request failed: $($_.Exception.Message)"; return $null }
+    } else {
+        $auth = $Pat
+    }
+    try {
+        $r2 = Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/$OwnerRepo/actions/runners/registration-token" `
+            -Headers @{ Authorization = "Bearer $auth"; Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28"; "User-Agent" = "aqualink-runner" }
+        return $r2.token
+    } catch { Log "registration-token request failed: $($_.Exception.Message)"; return $null }
 }
 
 # Refuse to run if the data volume is missing, else work/cache would land on C:.
@@ -106,14 +176,21 @@ if (-not (Test-Path "D:\")) {
 }
 
 $RepoUrl = Get-GuestInfo "runner_repo"
-$Pat     = Get-GuestInfo "runner_pat"
 $Name    = Get-GuestInfo "runner_name"
 $Labels  = Get-GuestInfo "runner_labels"
 if (-not $Name)   { $Name = $env:COMPUTERNAME }
 if (-not $Labels) { $Labels = "self-hosted,windows,x64" }
 
-if (-not $RepoUrl -or -not $Pat) {
-    Log "FATAL: missing guestinfo.runner_repo or guestinfo.runner_pat; sleeping 5m"
+# Credentials for minting registration tokens. Preferred: a GitHub App (short-
+# lived, scoped, revocable); fallback: a fine-grained PAT.
+$AppId        = Get-GuestInfo "runner_app_id"
+$AppInstallId = Get-GuestInfo "runner_app_installation_id"
+$AppKeyB64    = Get-GuestInfo "runner_app_private_key"
+$Pat          = Get-GuestInfo "runner_pat"
+$HaveApp = [bool]($AppId -and $AppInstallId -and $AppKeyB64)
+
+if (-not $RepoUrl -or (-not $HaveApp -and -not $Pat)) {
+    Log "FATAL: need guestinfo.runner_repo and either the runner_app_* trio or runner_pat; sleeping 5m"
     Start-Sleep -Seconds 300
     exit 1
 }
@@ -127,20 +204,7 @@ while ($true) {
     Reset-Workspace
 
     Log "minting registration token"
-    $Token = $null
-    try {
-        $resp = Invoke-RestMethod -Method Post `
-            -Uri "https://api.github.com/repos/$OwnerRepo/actions/runners/registration-token" `
-            -Headers @{
-                Authorization          = "Bearer $Pat"
-                Accept                 = "application/vnd.github+json"
-                "X-GitHub-Api-Version" = "2022-11-28"
-                "User-Agent"           = "aqualink-runner"
-            }
-        $Token = $resp.token
-    } catch {
-        Log "token request failed: $($_.Exception.Message)"
-    }
+    $Token = Get-RegistrationToken
     if (-not $Token) { Log "no token; retrying in 30s"; Start-Sleep -Seconds 30; continue }
 
     # Clear any stale local config from a previous unclean exit so config.cmd
