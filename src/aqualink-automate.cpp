@@ -360,7 +360,12 @@ int main(int argc, char* argv[])
 				{
 					LogDebug(Channel::Main, std::format("Using a remote serial port ({})", serial_settings.remote_serial_port));
 
-					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor);
+					// Raw TCP when either --rawtcp or --no-rfc2217 is set; otherwise the
+					// RFC2217 telnet transport (the default). --rawtcp leaves use_rfc2217
+					// at its true default, so both flags must be considered here.
+					const bool use_rfc2217 = serial_settings.use_rfc2217 && !serial_settings.use_rawtcp;
+
+					std::unique_ptr<Interfaces::ISerialPortImpl> serial_port_impl = std::make_unique<AqualinkAutomate::Serial::PortTypes::NetworkSerialPortImpl>(executor, use_rfc2217);
 
 					serial_port_impl = install_recording_decorator(std::move(serial_port_impl));
 
