@@ -8,6 +8,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.8.0-beta.2] - 2026-06-28
+
+Build, CI, and packaging reliability fixes only — no application behaviour changes from 0.8.0-beta.1.
+
+### Fixed
+
+- **Relocatable Linux install tree no longer needs root.** The default config installs to an absolute `/etc/aqualink-automate/aqualink-automate.conf` (correct for the `.deb`/`.rpm`), but the relocatable `cmake --install` tree staged it with `--prefix`, which does not relocate absolute destinations — so producing the tree aborted on a non-root host (`cannot create directory /etc/aqualink-automate`). It is now staged via `DESTDIR`. The `.deb`/`.rpm` packaging was unaffected.
+- **Docker image builds reliably from a cold cache.** The from-source Docker build now installs `autoconf-archive` (required to build the `libbacktrace` dependency from source) and uses a persistent vcpkg **asset cache**, so a binary-cache miss no longer re-fetches sources from GitHub — which intermittently returns a non-retryable HTTP 400 on the busy build host. The same asset cache was added to the host build.
+- **End-to-end UI tests run on the current CI runner.** Bumped Playwright to 1.61.1 for Ubuntu 26.04 support.
+
+## [0.8.0-beta.1] - 2026-06-27
+
+### Added
+
+- **Built-in performance profiling.** A profiling build can now be captured with Tracy, Intel VTune, or AMD uProf — selected at runtime with `--profiler` — and the app is instrumented end-to-end: the main loop is broken into per-phase zones (io / protocol / watchdogs / http / https / mqtt), with navigation, the DataHub event fan-out, and equipment updates all marked on the profiler timeline. A new **Profiling** card on the Diagnostics page (and `GET`/`POST /api/diagnostics/profiling`) shows the active backend and lets you pause and resume capture and switch backends without restarting. Previously the VTune and uProf backends never actually resumed capture; both are now fixed and verified.
+- **Network-hardened "diagnostic" profiling builds.** New `*-diagnostic` build presets produce an always-attachable field/beta build whose Tracy client is compiled to listen on loopback only and to not answer UDP discovery broadcasts (`TRACY_ONLY_LOCALHOST` + `TRACY_NO_BROADCAST`), so it is never exposed on the LAN. A profiler connects over loopback or an SSH tunnel (e.g. `ssh -L 8086:127.0.0.1:8086`). See [docs/profiling.md](docs/profiling.md).
+- **Origin allow-list and CSRF-header enforcement.** The previously-dormant Origin allow-list and CSRF-header checks are now wired to options — `--api-allowed-origin` (repeatable) and `--api-require-csrf-header`. Both are off by default. See [SECURITY.md](SECURITY.md) and [docs/configuration.md](docs/configuration.md).
+
+### Fixed
+
+- **Raw-TCP remote serial no longer corrupts data.** `--rawtcp` / `--no-rfc2217` were parsed but never reached the network transport, so a "raw TCP" remote serial port always ran the RFC2217 telnet handler — mangling legal `0xFF` data bytes through IAC escaping and sending telnet negotiation the peer never asked for. Raw mode is now a transparent byte pipe with no protocol handler.
+- **Colliding device names are flagged instead of silently dropped.** When two equipment labels reduce to the same MQTT/Home Assistant command-topic slug, the second device was silently left uncontrollable. The collision is now logged with a warning naming both devices and which one owns the topic, so it can be resolved by renaming one.
+- **Static asset paths with redundant segments resolve correctly.** A web-UI request whose URL contained `//`, `/./`, or `/../` segments that normalize away to a legitimate in-root asset could spuriously 404. Paths are now resolved from the same normalized segments used to match them. (The path jail always held — this was a latent 404, not a traversal.)
+
+### Security
+
+This release folds in an end-to-end security review. All hardened behaviour preserves the historical defaults unless a network address is exposed.
+
+- **Unique TLS certificate per install.** A shared self-signed certificate and its **private key** were previously committed to the repository and shipped in every package. That key is removed; each install now generates its own 2048-bit key and self-signed certificate on first boot (key stored `0600`, fingerprint logged).
+- **Per-install Matter commissioning credentials.** The Matter bridge shipped the publicly-known matter.js example passcode (`20202021`) and discriminator, so any device on the LAN could commission the bridge and actuate equipment. Each install now generates a cryptographically-random passcode, discriminator, and unique id on first boot, persists them `0600`, and reuses them across restarts; the bridge refuses to start with the example passcode.
+- **Brute-force and connection-exhaustion limits.** Failed bearer-token attempts are now rate-limited per source IP (answered `429` with `Retry-After` after repeated failures, cleared on success), and a per-IP cap limits how many simultaneous connections a single peer can hold, so one client can no longer consume the whole connection budget.
+- **Serial-bus denial-of-service fixes.** A malformed spa-side-remote assignment line could throw on the serial dispatch path and kill the daemon; numeric parsing on the wire path is now non-throwing, and a process-wide exception barrier around per-message handler dispatch prevents any single throwing handler from terminating the app (surfaced as a new error counter).
+- **Outbound alert webhook now verifies TLS.** The alert webhook client accepted any certificate (`verify_none`); it now performs peer and hostname verification, matching the MQTT client.
+- **Smaller hardening fixes.** Reflected request targets in `405` error pages are HTML-escaped (reflected-XSS fix); malformed preferences input returns `400` instead of `500`; serial capture files are created `0600` and auto-stop at a 256 MiB cap (disk-fill DoS); broker-controlled MQTT topic strings are sanitized before logging (log-forging); and `--disable-content` is now honoured (it was parsed but never enforced, leaving the doc-root served).
+- **Open-bind and weak-token warnings.** Binding a non-loopback address with no auth token now logs a loud startup warning and requires an `--insecure-no-auth` acknowledgement; weak (`<16` character) tokens are also warned. Supply tokens via a file or environment rather than the command line.
+
 ## [0.7.0-beta.1] - 2026-06-20
 
 ### Added

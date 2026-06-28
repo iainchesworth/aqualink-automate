@@ -17,6 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         autoconf \
+        autoconf-archive \
         automake \
         ca-certificates \
         ccache \
@@ -111,12 +112,29 @@ COPY . .
 # Bootstrap vcpkg
 RUN ./deps/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
-# Configure (with ccache and vcpkg binary caching)
+# Configure (with ccache and vcpkg binary + asset caching)
+#
+# Three persistent caches, each invalidated by something different:
+#   - /vcpkg-cache     : prebuilt binary packages, keyed by full ABI hash (churns
+#                        on any toolchain / triplet / baseline bump).
+#   - /vcpkg-assets    : source tarballs + vcpkg's own tool fetches (cmake, ninja),
+#                        keyed by SHA512 -- only invalidated when the UPSTREAM
+#                        source changes. This is the resilience layer: when the
+#                        binary cache misses and vcpkg must rebuild from source, it
+#                        serves the sources from here instead of re-fetching from
+#                        GitHub, so a transient GitHub HTTP 400 / rate-limit (which
+#                        vcpkg treats as non-retryable) no longer fails the build.
+#   - /vcpkg-downloads : vcpkg's own download dir (the cold-start landing spot).
+#
+# X_VCPKG_ASSET_SOURCES drives the asset cache: `clear` drops any inherited
+# default, then a read-write file-backed store under the cache mount.
 RUN --mount=type=cache,target=/ccache \
     --mount=type=cache,target=/vcpkg-cache \
     --mount=type=cache,target=/vcpkg-downloads \
+    --mount=type=cache,target=/vcpkg-assets \
     VCPKG_DEFAULT_BINARY_CACHE=/vcpkg-cache \
     VCPKG_DOWNLOADS=/vcpkg-downloads \
+    X_VCPKG_ASSET_SOURCES="clear;x-azurl,file:///vcpkg-assets,,readwrite" \
     cmake --preset config-linux-gcc \
         -DDERIVED_VERSION_OVERRIDE="${VERSION}" \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -129,8 +147,12 @@ RUN --mount=type=cache,target=/ccache \
 # Test
 RUN ctest --preset test-linux-gcc
 
-# Install (creates install tree for runtime stage)
-RUN cmake --install build/config-linux-gcc
+# Install (creates the install tree the runtime stage copies from). Stage through
+# DESTDIR (not the configured prefix) so the absolute /etc/aqualink-automate config
+# (see cmake/CPackConfig.cmake) lands inside the tree instead of leaking to this
+# build stage's /etc -- keeping it identical to the assembled runtime image's tree.
+# --prefix / keeps the layout flat (bin/lib/share at the root).
+RUN DESTDIR=/src/install/config-linux-gcc cmake --install build/config-linux-gcc --prefix /
 
 # ==============================================================================
 # Stage: matter-builder (build the matter.js sidecar)

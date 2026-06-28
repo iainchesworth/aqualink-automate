@@ -118,7 +118,16 @@ jobs:
         run: |
           BINARY_DIR="$HOME/.cache/vcpkg/archives"
           DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          ASSETS_DIR="$HOME/.cache/vcpkg/assets"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR" "$ASSETS_DIR"
+          # The asset cache needs a file:// URL (forward slashes); cygpath -m gives
+          # a Windows path WITH forward slashes (C:/...), so file:/// + that is a
+          # valid URL on both OSes. Build it before -w mangles ASSETS_DIR below.
+          if command -v cygpath >/dev/null 2>&1; then
+            ASSET_URL="file:///$(cygpath -m "$ASSETS_DIR")"
+          else
+            ASSET_URL="file://$ASSETS_DIR"
+          fi
           # Convert Git bash paths to native Windows paths for CMake/vcpkg
           # (vcpkg rejects an MSYS-style VCPKG_DEFAULT_BINARY_CACHE like /c/...).
           if command -v cygpath >/dev/null 2>&1; then
@@ -127,6 +136,12 @@ jobs:
           fi
           echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
           echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+          # Persistent vcpkg asset cache (source tarballs + tool fetches, keyed by
+          # SHA512). On a binary-cache miss vcpkg rebuilds from source; serving the
+          # sources from here avoids re-fetching from GitHub, which intermittently
+          # throttles this busy box with HTTP 400 (boostorg archives) that vcpkg
+          # treats as non-retryable. Mirrors the Docker build's asset cache.
+          echo "X_VCPKG_ASSET_SOURCES=clear;x-azurl,$ASSET_URL,,readwrite" >> "$GITHUB_ENV"
 
       - uses: ./.github/actions/setup-vcpkg-cache
         if: ${{ !contains(matrix.runner, 'self-hosted') }}
@@ -280,7 +295,15 @@ jobs:
               cmake --build --preset "$BUILD_PRESET"
               ctest --preset "$TEST_PRESET"
               if [ "$PACK_INSTALLTREE" = "true" ]; then
-                cmake --install "build/$CONFIGURE_PRESET" --prefix "install/$CONFIGURE_PRESET"
+                # Stage through DESTDIR (not --prefix): the default config is
+                # installed to an ABSOLUTE /etc/aqualink-automate (see
+                # cmake/CPackConfig.cmake), which --prefix does NOT relocate -- it
+                # would leak into the container /etc instead of the tree. DESTDIR
+                # prepends the staging root to absolute paths too; --prefix / keeps
+                # the tree flat (bin/lib/share at the root) for the Docker image
+                # and e2e-ui consumers. (No apostrophes in this block: it is inside
+                # a single-quoted docker `bash -c` script.)
+                DESTDIR="$PWD/install/$CONFIGURE_PRESET" cmake --install "build/$CONFIGURE_PRESET" --prefix /
                 tar czf "${INSTALLTREE_NAME}.tar.gz" -C "install/$CONFIGURE_PRESET" .
               fi
               cpack --preset "$PACKAGE_PRESET"
@@ -302,7 +325,14 @@ jobs:
         if: inputs.upload_installtree && matrix.configure_preset == 'config-linux-gcc' && !inputs.do_package
         shell: bash
         run: |
-          cmake --install build/config-linux-gcc --prefix "${{ github.workspace }}/install/config-linux-gcc"
+          # Stage through DESTDIR (not --prefix): the default config installs to an
+          # ABSOLUTE /etc/aqualink-automate (see cmake/CPackConfig.cmake), which
+          # --prefix does NOT relocate -- on the non-root CI runner that aborts with
+          # "cannot create directory /etc/aqualink-automate". DESTDIR prepends the
+          # staging root to absolute paths too; --prefix / keeps the tree flat
+          # (bin/lib/share at the root) for the Docker image and e2e-ui consumers.
+          DESTDIR="${{ github.workspace }}/install/config-linux-gcc" \
+            cmake --install build/config-linux-gcc --prefix /
           # Pack as a tarball so the versioned .so SYMLINKS and exec bits survive the
           # CI artifact round-trip losslessly (a raw upload-artifact mangles symlinks,
           # and the runtime binary loads libs by their versioned SONAME).
