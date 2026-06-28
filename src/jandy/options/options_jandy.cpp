@@ -1,6 +1,11 @@
 #include <algorithm>
+#include <cstdint>
 #include <format>
+#include <map>
+#include <optional>
 #include <ranges>
+#include <set>
+#include <string>
 #include <vector>
 
 #include <boost/program_options.hpp>
@@ -35,6 +40,89 @@ namespace AqualinkAutomate::Jandy::Options
 			case JandyEmulatedDeviceTypes::SerialAdapter:	return JandyDeviceId{ 0x48 };
 			default:										return JandyDeviceId{ 0xFF };
 			}
+		}
+
+		// Table 1 ("Diagnostics Table", AquaLink RS Service guide) addressing: an emulated type may
+		// only occupy the RS-485 instance addresses of its device class(es). IAQ can stand up as an
+		// AqualinkTouch page device (0x30-0x33) or a legacy iAQ (0xA0-0xA3).
+		std::vector<DeviceClasses> AllowedClassesForEmulatedType(JandyEmulatedDeviceTypes type)
+		{
+			switch (type)
+			{
+			case JandyEmulatedDeviceTypes::RS_Keypad:		return { DeviceClasses::RS_Keypad };
+			case JandyEmulatedDeviceTypes::OneTouch:		return { DeviceClasses::OneTouch };
+			case JandyEmulatedDeviceTypes::IAQ:				return { DeviceClasses::AqualinkTouch, DeviceClasses::IAQ };
+			case JandyEmulatedDeviceTypes::PDA:				return { DeviceClasses::PDA };
+			case JandyEmulatedDeviceTypes::SerialAdapter:	return { DeviceClasses::SerialAdapter };
+			case JandyEmulatedDeviceTypes::SpasideRemote:	return { DeviceClasses::SpaRemote };
+			default:										return {};
+			}
+		}
+
+		// The union of valid bus addresses (instances) an emulated type may use. Its size is the
+		// per-type instance limit (Table 1 "Possible Unit Numbers": e.g. 2 Serial Adapters, 4
+		// OneTouch, 1 of a single-instance type).
+		std::set<std::uint8_t> ValidIdsForEmulatedType(JandyEmulatedDeviceTypes type)
+		{
+			std::set<std::uint8_t> ids;
+			for (const auto device_class : AllowedClassesForEmulatedType(type))
+			{
+				const auto addresses = JandyDeviceType::InstanceAddressesForClass(device_class);
+				ids.insert(addresses.cbegin(), addresses.cend());
+			}
+			return ids;
+		}
+
+		std::string FormatIdSet(const std::set<std::uint8_t>& ids)
+		{
+			std::string out;
+			for (const auto id : ids)
+			{
+				if (!out.empty()) { out += ", "; }
+				out += std::format("0x{:02x}", id);
+			}
+			return out;
+		}
+
+		// Enforces the Table 1 addressing rules on the resolved emulated-device set:
+		//   * each device id must be a valid instance address for its type,
+		//   * no two emulated devices may share a bus address,
+		//   * the count of a given type may not exceed the addresses available to it.
+		// Returns a human-readable message on the first violation, or nullopt when valid.
+		std::optional<std::string> ValidateEmulatedDevicePlacement(const JandyEmulatedDeviceCollection& devices)
+		{
+			// R2: a type may not be requested more times than it has instance addresses (Table 1
+			// "Possible Unit Numbers"). Checked first so this gives the clearest message.
+			std::map<JandyEmulatedDeviceTypes, std::size_t> type_counts;
+			for (const auto& [type, device] : devices)
+			{
+				if (const auto count = ++type_counts[type]; count > ValidIdsForEmulatedType(type).size())
+				{
+					return std::format("too many {} devices requested ({}): at most {} can exist on the bus",
+						magic_enum::enum_name(type), count, ValidIdsForEmulatedType(type).size());
+				}
+			}
+
+			// R1/R3: each id must be a valid instance address for its type, and ids must be unique.
+			std::set<std::uint8_t> assigned_ids;
+			for (const auto& [type, device] : devices)
+			{
+				const std::uint8_t id = device.Id()();
+				const auto valid_ids = ValidIdsForEmulatedType(type);
+
+				if (!valid_ids.contains(id))
+				{
+					return std::format("device id 0x{:02x} is not valid for emulated type {} (valid ids: {})",
+						id, magic_enum::enum_name(type), FormatIdSet(valid_ids));
+				}
+
+				if (!assigned_ids.insert(id).second)
+				{
+					return std::format("duplicate emulated device id 0x{:02x}: two emulated devices cannot share a bus address", id);
+				}
+			}
+
+			return std::nullopt;
 		}
 	}
 	// anonymous namespace
@@ -147,6 +235,14 @@ namespace AqualinkAutomate::Jandy::Options
 					return JandyEmulatedDevice(type, id);
 				}
 			);
+		}
+
+		// Enforce Table 1 addressing rules: each emulated device id must be a valid instance
+		// address for its type, ids must be unique, and a type may not exceed its instance count.
+		if (const auto error = ValidateEmulatedDevicePlacement(settings.emulated_devices); error.has_value())
+		{
+			LogError(Channel::Options, std::format("Invalid Jandy emulation configuration: {}", *error));
+			return std::unexpected(ErrorCodes::Options_ErrorCodes::OptionsValidationFailed);
 		}
 
 		return settings;

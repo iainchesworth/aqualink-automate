@@ -1,6 +1,7 @@
 #include "startup/jandy_startup_planner.h"
 
 #include <format>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,41 @@ namespace AqualinkAutomate::Jandy::Startup
 			}
 			return out;
 		}
+
+		// Earliest power-center software revision at which an emulated device type can be used,
+		// per Table 1 ("Diagnostics Table") of the AquaLink RS Service & Troubleshooting Guide:
+		//   Serial Adapter -> Rev I, OneTouch -> Rev I, AqualinkTouch page protocol -> Rev Q,
+		//   SpaLink RS (spa-side remote) -> Rev G. (The PDA predates the table and has no
+		//   published minimum, so it is not gated.) Returns nullopt when there is no minimum.
+		std::optional<char> MinRevisionForEmulatedType(Devices::JandyEmulatedDeviceTypes type)
+		{
+			using DT = Devices::JandyEmulatedDeviceTypes;
+			switch (type)
+			{
+			case DT::SerialAdapter: return 'I';
+			case DT::OneTouch:      return 'I';
+			case DT::IAQ:           return 'Q';
+			case DT::SpasideRemote: return 'G';
+			case DT::RS_Keypad:     return 'C';
+			case DT::PDA:           return std::nullopt;
+			default:                return std::nullopt;
+			}
+		}
+
+		// True when the panel's revision is KNOWN and predates the type's Table 1 minimum -- we
+		// then refuse to emulate it (warn + skip): a real device couldn't work on that panel
+		// either, so impersonating it is pointless and potentially disruptive. When the revision
+		// is unknown we do NOT gate (lean on the observed bus behaviour instead).
+		bool RevisionGatesOutEmulation(const RevisionCapabilities& caps, Devices::JandyEmulatedDeviceTypes type)
+		{
+			if (!caps.is_known)
+			{
+				return false;
+			}
+
+			const auto min = MinRevisionForEmulatedType(type);
+			return min.has_value() && (caps.revision_letter < *min);
+		}
 	}
 	// unnamed namespace
 
@@ -87,33 +123,60 @@ namespace AqualinkAutomate::Jandy::Startup
 
 		// The SerialAdapter is always useful and never collides with the controller emulation:
 		// it sources the panel model and is the command channel. If a real adapter answers it
-		// self-suppresses (Emulated::SuppressEmulation), so it is safe to stand up first.
-		plan.devices.push_back(PlannedDevice{ DeviceType::SerialAdapter, SERIALADAPTER_IDS, 0x00, false, "panel model + command channel" });
+		// self-suppresses (Emulated::SuppressEmulation), so it is safe to stand up first --
+		// UNLESS the known revision predates Serial Adapter support (Table 1: Rev I). On such a
+		// panel a real adapter could not exist, so neither can our emulation. (At bootstrap the
+		// revision is still unknown, so this never blocks the adapter that *sources* the
+		// revision in the first place; the gate only bites on a re-plan once Rev < I is known.)
+		if (!RevisionGatesOutEmulation(profile.revision_caps, DeviceType::SerialAdapter))
+		{
+			plan.devices.push_back(PlannedDevice{ DeviceType::SerialAdapter, SERIALADAPTER_IDS, 0x00, false, "panel model + command channel" });
+		}
+		else
+		{
+			plan.rationale += std::format("SerialAdapter emulation skipped (needs Rev I+, panel is Rev {}); ", profile.revision_caps.revision_letter);
+		}
 
 		if (profile.probes_aqualinktouch || (no_controller_probed && profile.revision_caps.aqualink_touch))
 		{
-			plan.method = DataGatheringMethod::PagePush;
-			plan.devices.push_back(PlannedDevice{ DeviceType::IAQ, AQUALINKTOUCH_IDS, 0x00, false, "live status via AqualinkTouch page-push (no menu crawl)" });
-			plan.rationale = profile.probes_aqualinktouch
-				? "master probes the AqualinkTouch range (0x30-0x33): source status from pushed pages, navigating to specific pages on demand"
-				: "no controller probed yet, but revision is Touch-capable (Rev Q+): provisionally use AqualinkTouch page-push, to be confirmed once the touch range is probed";
+			if (!RevisionGatesOutEmulation(profile.revision_caps, DeviceType::IAQ))
+			{
+				plan.method = DataGatheringMethod::PagePush;
+				plan.devices.push_back(PlannedDevice{ DeviceType::IAQ, AQUALINKTOUCH_IDS, 0x00, false, "live status via AqualinkTouch page-push (no menu crawl)" });
+				plan.rationale += profile.probes_aqualinktouch
+					? "master probes the AqualinkTouch range (0x30-0x33): source status from pushed pages, navigating to specific pages on demand"
+					: "no controller probed yet, but revision is Touch-capable (Rev Q+): provisionally use AqualinkTouch page-push, to be confirmed once the touch range is probed";
+			}
+			else
+			{
+				plan.method = DataGatheringMethod::ObserveOnly;
+				plan.rationale += std::format("AqualinkTouch emulation skipped (needs Rev Q+, panel is Rev {}): passive decode only", profile.revision_caps.revision_letter);
+			}
 		}
 		else if (profile.probes_onetouch)
 		{
-			plan.method = DataGatheringMethod::MenuSpider;
-			plan.devices.push_back(PlannedDevice{ DeviceType::OneTouch, ONETOUCH_IDS, 0x00, false, "live status via OneTouch menu scrape" });
-			plan.rationale = "master probes the OneTouch range (0x40-0x43) but not AqualinkTouch: fall back to autonomous menu spidering";
+			if (!RevisionGatesOutEmulation(profile.revision_caps, DeviceType::OneTouch))
+			{
+				plan.method = DataGatheringMethod::MenuSpider;
+				plan.devices.push_back(PlannedDevice{ DeviceType::OneTouch, ONETOUCH_IDS, 0x00, false, "live status via OneTouch menu scrape" });
+				plan.rationale += "master probes the OneTouch range (0x40-0x43) but not AqualinkTouch: fall back to autonomous menu spidering";
+			}
+			else
+			{
+				plan.method = DataGatheringMethod::ObserveOnly;
+				plan.rationale += std::format("OneTouch emulation skipped (needs Rev I+, panel is Rev {}): passive decode only", profile.revision_caps.revision_letter);
+			}
 		}
 		else if (profile.probes_pda)
 		{
 			plan.method = DataGatheringMethod::PdaGraph;
 			plan.devices.push_back(PlannedDevice{ DeviceType::PDA, PDA_IDS, 0x00, false, "live status via PDA page-graph scrape" });
-			plan.rationale = "master probes the PDA range (0x60-0x63): use the PDA page-graph scraper";
+			plan.rationale += "master probes the PDA range (0x60-0x63): use the PDA page-graph scraper";
 		}
 		else
 		{
 			plan.method = DataGatheringMethod::ObserveOnly;
-			plan.rationale = "no emulatable controller slot probed and revision not Touch-capable: passive decode only";
+			plan.rationale += "no emulatable controller slot probed and revision not Touch-capable: passive decode only";
 		}
 
 		// Append a revision summary so the choice (and the expected peripherals) is auditable.
