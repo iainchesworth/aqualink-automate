@@ -63,6 +63,9 @@ namespace AqualinkAutomate::HTTP
 		nlohmann::json body;
 
 		body["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
+		// Second pool setpoint (POOLSP2 / panel "TEMP2"), present only on single-body systems;
+		// null otherwise. Read-only -- the POOLSP2 write path is not yet validated on live hardware.
+		body["pool_setpoint_2"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint2());
 		body["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };

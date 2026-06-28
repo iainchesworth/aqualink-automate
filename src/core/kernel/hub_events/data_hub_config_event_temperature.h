@@ -21,6 +21,7 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> SpaTemp() const;
 		std::optional<Kernel::Temperature> AirTemp() const;
 		std::optional<Kernel::Temperature> PoolSetpoint() const;
+		std::optional<Kernel::Temperature> PoolSetpoint2() const;
 		std::optional<Kernel::Temperature> SpaSetpoint() const;
 
 	public:
@@ -28,6 +29,7 @@ namespace AqualinkAutomate::Kernel
 		void SpaTemp(const Kernel::Temperature& spa);
 		void AirTemp(const Kernel::Temperature& air);
 		void PoolSetpoint(const Kernel::Temperature& pool_setpoint);
+		void PoolSetpoint2(const Kernel::Temperature& pool_setpoint_2);
 		void SpaSetpoint(const Kernel::Temperature& spa_setpoint);
 
 	public:
@@ -38,6 +40,7 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> m_SpaTemp;
 		std::optional<Kernel::Temperature> m_AirTemp;
 		std::optional<Kernel::Temperature> m_PoolSetpoint;
+		std::optional<Kernel::Temperature> m_PoolSetpoint2;
 		std::optional<Kernel::Temperature> m_SpaSetpoint;
 	};
 

@@ -403,8 +403,9 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_TemperatureSensorsHaveCorrectC
 		}
 	}
 
-	// Should have 4 temperature sensors (pool, spa, air, freeze_protect) + 2 number entities (pool_setpoint, spa_setpoint)
-	BOOST_CHECK_EQUAL(temp_sensor_count, 4);
+	// Should have 5 temperature sensors (pool, spa, air, freeze_protect, pool_setpoint_2 [read-only
+	// TEMP2]) + 2 number entities (pool_setpoint, spa_setpoint)
+	BOOST_CHECK_EQUAL(temp_sensor_count, 5);
 	BOOST_CHECK_EQUAL(temp_number_count, 2);
 }
 

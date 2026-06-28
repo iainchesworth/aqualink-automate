@@ -152,6 +152,13 @@ namespace AqualinkAutomate::Devices
 			JandyController::m_DataHub->PoolTempSetpoint(convert_raw_temperature(msg.Pool_SetPoint_One().value()));
 		}
 
+		if (msg.Pool_SetPoint_Two().has_value())
+		{
+			// POOLSP2 == the panel's "TEMP2" maintenance (low) setpoint, reported only on single-body
+			// (Pool-Only/Spa-Only) systems alongside the priority TEMP1 (POOLSP).
+			JandyController::m_DataHub->PoolTempSetpoint2(convert_raw_temperature(msg.Pool_SetPoint_Two().value()));
+		}
+
 		if (msg.Spa_SetPoint().has_value())
 		{
 			JandyController::m_DataHub->SpaTempSetpoint(convert_raw_temperature(msg.Spa_SetPoint().value()));

@@ -15,6 +15,7 @@ namespace AqualinkAutomate::Kernel
 		m_SpaTemp(std::nullopt),
 		m_AirTemp(std::nullopt),
 		m_PoolSetpoint(std::nullopt),
+		m_PoolSetpoint2(std::nullopt),
 		m_SpaSetpoint(std::nullopt)
 	{
 	}
@@ -65,6 +66,16 @@ namespace AqualinkAutomate::Kernel
 		m_PoolSetpoint = pool_setpoint;
 	}
 
+	std::optional<Kernel::Temperature> DataHub_ConfigEvent_Temperature::PoolSetpoint2() const
+	{
+		return m_PoolSetpoint2;
+	}
+
+	void DataHub_ConfigEvent_Temperature::PoolSetpoint2(const Kernel::Temperature& pool_setpoint_2)
+	{
+		m_PoolSetpoint2 = pool_setpoint_2;
+	}
+
 	void DataHub_ConfigEvent_Temperature::SpaSetpoint(const Kernel::Temperature& spa_setpoint)
 	{
 		m_SpaSetpoint = spa_setpoint;
@@ -94,6 +105,14 @@ namespace AqualinkAutomate::Kernel
 			j["pool_setpoint"] = {
 				{"celsius", m_PoolSetpoint.value().InCelsius().value()},
 				{"fahrenheit", m_PoolSetpoint.value().InFahrenheit().value()}
+			};
+		}
+
+		if (m_PoolSetpoint2.has_value())
+		{
+			j["pool_setpoint_2"] = {
+				{"celsius", m_PoolSetpoint2.value().InCelsius().value()},
+				{"fahrenheit", m_PoolSetpoint2.value().InFahrenheit().value()}
 			};
 		}
 

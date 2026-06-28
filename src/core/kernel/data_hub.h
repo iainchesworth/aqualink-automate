@@ -164,6 +164,7 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> PoolTemp() const;
 		std::optional<Kernel::Temperature> SpaTemp() const;
 		std::optional<Kernel::Temperature> PoolTempSetpoint() const;
+		std::optional<Kernel::Temperature> PoolTempSetpoint2() const;
 		std::optional<Kernel::Temperature> SpaTempSetpoint() const;
 		std::optional<Kernel::Temperature> FreezeProtectPoint() const;
 		Kernel::TemperatureUnits SystemTemperatureUnits() const;
@@ -173,6 +174,7 @@ namespace AqualinkAutomate::Kernel
 		void PoolTemp(const Kernel::Temperature& pool_temp);
 		void SpaTemp(const Kernel::Temperature& spa_temp);
 		void PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint);
+		void PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2);
 		void SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint);
 		void FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point);
 		void SystemTemperatureUnits(Kernel::TemperatureUnits units);
@@ -182,6 +184,10 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> m_PoolTemp;
 		std::optional<Kernel::Temperature> m_SpaTemp;
 		std::optional<Kernel::Temperature> m_PoolTempSetpoint;
+		// Second pool setpoint -- POOLSP2, the panel's "TEMP2" maintenance (low) temperature. Only
+		// present on single-body (Pool-Only/Spa-Only) systems, where TEMP1 (m_PoolTempSetpoint) is
+		// the priority temperature and TEMP2 is a lower maintenance setpoint for the same body.
+		std::optional<Kernel::Temperature> m_PoolTempSetpoint2;
 		std::optional<Kernel::Temperature> m_SpaTempSetpoint;
 		std::optional<Kernel::Temperature> m_FreezeProtectPoint;
 		Kernel::TemperatureUnits m_SystemTemperatureUnits{ Kernel::TemperatureUnits::Fahrenheit };

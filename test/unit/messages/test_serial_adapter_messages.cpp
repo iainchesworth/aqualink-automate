@@ -239,6 +239,20 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_PoolSetPointOne)
 	BOOST_CHECK_EQUAL(msg.Pool_SetPoint_One().value(), 82);
 }
 
+// --- Deserialize: POOLSP2 (STC, StatusType=0x06) ---
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_PoolSetPointTwo)
+{
+	// POOLSP2 == the panel's "TEMP2" maintenance setpoint (single-body systems).
+	SerialAdapterMessage_DevStatus msg;
+	auto pkt = MakePacket(0x48, 0x41, { 0x06, 0x00, 78, 0x00 });
+	auto result = msg.DeserializeContents(std::span<const uint8_t>(pkt));
+
+	BOOST_CHECK(result);
+	BOOST_REQUIRE(msg.Pool_SetPoint_Two().has_value());
+	BOOST_CHECK_EQUAL(msg.Pool_SetPoint_Two().value(), 78);
+}
+
 // --- Deserialize: SPASP (STC, StatusType=0x07) ---
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_SpaSetPoint)
