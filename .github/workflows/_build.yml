@@ -298,10 +298,11 @@ jobs:
                 # Stage through DESTDIR (not --prefix): the default config is
                 # installed to an ABSOLUTE /etc/aqualink-automate (see
                 # cmake/CPackConfig.cmake), which --prefix does NOT relocate -- it
-                # would leak to the container's /etc instead of the tree. DESTDIR
+                # would leak into the container /etc instead of the tree. DESTDIR
                 # prepends the staging root to absolute paths too; --prefix / keeps
                 # the tree flat (bin/lib/share at the root) for the Docker image
-                # and e2e-ui consumers.
+                # and e2e-ui consumers. (No apostrophes in this block: it is inside
+                # a single-quoted docker `bash -c` script.)
                 DESTDIR="$PWD/install/$CONFIGURE_PRESET" cmake --install "build/$CONFIGURE_PRESET" --prefix /
                 tar czf "${INSTALLTREE_NAME}.tar.gz" -C "install/$CONFIGURE_PRESET" .
               fi
