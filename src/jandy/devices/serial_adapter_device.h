@@ -104,6 +104,13 @@ namespace AqualinkAutomate::Devices
 	private:
 		void ProcessControllerUpdates() override;
 
+		// Emit the next queued command in response to an RSSA_DEV_READY (0x07) poll.
+		// The controller solicits the second step (setSP) of a two-step setpoint write
+		// with a DEV_READY poll carrying the readied type, so that value MUST be sent
+		// in reply to THIS poll rather than the next CMD_STATUS (mirrors AqualinkD
+		// serialadapter.c). DEV_READY is sent only as part of that handshake.
+		void DrainPendingCommandForDevReady();
+
 	private:
 		void WatchdogTimeoutOccurred() override;
 

@@ -175,6 +175,42 @@ namespace AqualinkAutomate::Devices
 		Signal_AckMessage(ack_type, ack_data_value);
 	}
 
+	void SerialAdapterDevice::DrainPendingCommandForDevReady()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::DrainPendingCommandForDevReady", std::source_location::current());
+
+		uint8_t ack_type{ 0x00 };
+		uint8_t ack_data_value{ 0x00 };
+
+		// A two-step setpoint write emits the readySP {typeID, 0x35} in reply to a
+		// CMD_STATUS (0x02) poll; the controller then answers with an RSSA_DEV_READY
+		// (0x07) poll carrying that type and expects the setSP {0x00, value} in reply
+		// to THIS poll. ProcessControllerUpdates() (CMD_STATUS path) only drains the
+		// queue on a fresh status message, so the setSP would otherwise miss the
+		// DEV_READY window and be sent out of context on the next CMD_STATUS, where the
+		// controller ignores it. Draining the queue here is safe because the controller
+		// sends DEV_READY only as the second half of this handshake -- never as routine
+		// traffic -- so no single-step command can be drained prematurely.
+		if (!m_PendingCommands.empty())
+		{
+			const PendingCommand pending = m_PendingCommands.front();
+			m_PendingCommands.pop_front();
+
+			LogDebug(Channel::Devices, std::format("DrainPendingCommandForDevReady -> Sending pending command (ack_type=0x{:02x}, ack_data_value=0x{:02x}); {} remaining", pending.ack_type, pending.ack_data_value, m_PendingCommands.size()));
+
+			ack_type = pending.ack_type;
+			ack_data_value = pending.ack_data_value;
+		}
+
+		// Mark that we have actively claimed this bus address (see ProcessControllerUpdates).
+		if (IsEmulationActive())
+		{
+			m_HasClaimedAddress = true;
+		}
+
+		Signal_AckMessage(ack_type, ack_data_value);
+	}
+
 	void SerialAdapterDevice::QueueCommand(uint8_t ack_type, uint8_t ack_data_value)
 	{
 		if (IsEmulated() && IsEmulationSuppressed())
@@ -472,25 +508,25 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)
 	{
-		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, two-step setpoint).
-		// Byte ordering/codes are AqualinkD-derived and NOT yet validated on this
-		// project's live bus -- proven only by synthetic round-trip tests here.
-		// MUST be confirmed against a live Brainboxes capture before trusting it to
-		// drive real hardware.
+		// TWO-STEP SETPOINT WRITE (AqualinkD source/serialadapter.c). Live-validated on a
+		// dual-body iAQ/OneTouch + AquaRite controller, 2026-06-28 (pool 30->29C and spa
+		// 38->37C both actuated on the wire and the physical panel).
 		//
-		//   Step 1 (readySP): wire {0x00,0x01,typeID,0x35}
+		//   Step 1 (readySP): wire {0x00,0x01,typeID,0x35}, in reply to a CMD_STATUS poll
 		//                     -> ACK {ack_type = typeID(setpoint), data = 0x35}
 		//   Step 2 (setSP):   wire {0x00,0x01,0x00,val}
 		//                     -> ACK {ack_type = 0x00,            data = temperature}
 		//
-		// The two ACKs are queued FIFO so the readySP is emitted on the next master
-		// poll and the setSP on the poll immediately after, mirroring the adapter's
-		// expected request/confirm handshake order.
-		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing two-step setpoint write ({}, temperature={}) -- readySP then setSP", magic_enum::enum_name(setpoint), temperature));
+		// The two ACKs are queued FIFO. CRUCIAL TIMING: after the readySP the controller
+		// answers with an RSSA_DEV_READY (0x07) poll carrying the readied type, and the
+		// setSP value MUST be sent in reply to THAT poll -- Slot_SerialAdapter_DevReady ->
+		// DrainPendingCommandForDevReady() handles this. Sending the setSP on a later
+		// CMD_STATUS poll instead (the original behaviour) is ignored by the controller.
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: Queuing two-step setpoint write ({}, temperature={}) -- readySP then setSP", magic_enum::enum_name(setpoint), temperature));
 
-		// Supersede any earlier pending command, then append both steps in order so
-		// readySP and setSP go out on consecutive polls. The second QueueCommand
-		// must NOT be used (it would clear the first step) -- EnqueueCommand appends.
+		// Supersede any earlier pending command, then append both steps in order so the
+		// readySP drains on the CMD_STATUS poll and the setSP on the DEV_READY poll. The
+		// second QueueCommand must NOT be used (it would clear the first step) -- EnqueueCommand appends.
 		QueueCommand(magic_enum::enum_integer(setpoint), magic_enum::enum_integer(Messages::SerialAdapter_CommandTypes::ReadySetpoint));
 		EnqueueCommand(0x00, temperature);
 	}

@@ -169,6 +169,13 @@ namespace
 			Replay(MakeFramedPacket(SERIAL_ADAPTER_ID, static_cast<uint8_t>(Messages::JandyMessageIds::Status), { 0x00, 0x00, 0x00, 0x00, 0x00 }));
 		}
 
+		// The controller solicits the second step of a two-step setpoint write with an
+		// RSSA_DEV_READY (0x07) poll carrying the readied setpoint type.
+		void ReplaySerialAdapterDevReady(uint8_t readied_type)
+		{
+			Replay(MakeFramedPacket(SERIAL_ADAPTER_ID, static_cast<uint8_t>(Messages::JandyMessageIds::RSSA_DevReady), { readied_type }));
+		}
+
 		void ReplayIAQPoll()
 		{
 			Replay(MakeFramedPacket(IAQ_ID, static_cast<uint8_t>(Messages::JandyMessageIds::IAQ_Poll)));
@@ -248,6 +255,55 @@ BOOST_AUTO_TEST_CASE(SetSpaSetpoint_WritesTwoStepToWire)
 	// Step 2 setSP: {0x00, temperature (100)}.
 	ClearWire();
 	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 100));
+}
+
+//-----------------------------------------------------------------------------
+// REGRESSION (live-validated 2026-06-28, dual-body iAQ/OneTouch + AquaRite):
+// the controller answers the readySP step with an RSSA_DEV_READY (0x07) poll
+// carrying the readied setpoint type, and EXPECTS the setSP value in reply to
+// THAT poll -- not the next CMD_STATUS. Originally the setSP only drained on a
+// CMD_STATUS poll, so it missed the DEV_READY window and the controller ignored
+// the write (setpoint never changed on the wire/panel despite well-formed bytes).
+// These tests pin the fix: the setSP value MUST be emitted in reply to the
+// DEV_READY poll. See SerialAdapterDevice::DrainPendingCommandForDevReady.
+//-----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(SetPoolSetpoint_EmitsSetSPOnDevReadyPoll)
+{
+	auto result = dispatcher->SetPoolSetpoint(82);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	// Step 1 readySP on a CMD_STATUS poll: {POOLSP 0x05, 0x35}.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x05, 0x35));
+
+	// Step 2 setSP must be emitted in reply to the DEV_READY (0x07) poll carrying
+	// the readied type (0x05), NOT a subsequent CMD_STATUS poll: {0x00, 82}.
+	ClearWire();
+	ReplaySerialAdapterDevReady(0x05);
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 82));
+
+	// The queue is now drained: a following CMD_STATUS poll returns to status-query
+	// rotation rather than re-emitting the setpoint value.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() != ExpectedAckWireBytes(0x00, 82));
+}
+
+BOOST_AUTO_TEST_CASE(SetSpaSetpoint_EmitsSetSPOnDevReadyPoll)
+{
+	auto result = dispatcher->SetSpaSetpoint(100);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	// Step 1 readySP on a CMD_STATUS poll: {SPASP 0x07, 0x35}.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x07, 0x35));
+
+	// Step 2 setSP in reply to the DEV_READY poll carrying the readied type (0x07): {0x00, 100}.
+	ClearWire();
+	ReplaySerialAdapterDevReady(0x07);
 	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 100));
 }
 
@@ -506,24 +562,34 @@ BOOST_AUTO_TEST_CASE(SetChlorinatorPercentage_WritesNavSequenceThenControlDataTo
 }
 
 //-----------------------------------------------------------------------------
-// Pending commands are one-shot: after a command's ACK is written, the next
-// poll must NOT re-write the same command bytes.
+// Pending commands are one-shot: once the two-step setpoint write has emitted
+// both the readySP (CMD_STATUS poll) and the setSP (DEV_READY poll), a further
+// poll must NOT re-write either step.
 //-----------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE(SerialAdapterPendingCommand_IsConsumedAfterSingleWrite)
+BOOST_AUTO_TEST_CASE(SerialAdapterPendingCommand_IsConsumedAfterTwoStepWrite)
 {
 	auto result = dispatcher->SetPoolSetpoint(82);
 	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
 
+	// Step 1 readySP {POOLSP 0x05, 0x35} on a CMD_STATUS poll.
 	ClearWire();
 	ReplaySerialAdapterStatus();
-	auto setpoint_bytes = ExpectedAckWireBytes(0x05, 82);
-	BOOST_CHECK(Wire() == setpoint_bytes);
+	auto readysp_bytes = ExpectedAckWireBytes(0x05, 0x35);
+	BOOST_CHECK(Wire() == readysp_bytes);
 
-	// Second poll must produce a DIFFERENT (status-query) ACK, not the setpoint.
+	// Step 2 setSP {0x00, 82} on the DEV_READY poll.
+	ClearWire();
+	ReplaySerialAdapterDevReady(0x05);
+	auto setsp_bytes = ExpectedAckWireBytes(0x00, 82);
+	BOOST_CHECK(Wire() == setsp_bytes);
+
+	// Both steps are now consumed: a further CMD_STATUS poll produces a
+	// status-query ACK, neither the readySP nor the setSP bytes.
 	ClearWire();
 	ReplaySerialAdapterStatus();
 	BOOST_REQUIRE(!Wire().empty());
-	BOOST_CHECK(Wire() != setpoint_bytes);
+	BOOST_CHECK(Wire() != readysp_bytes);
+	BOOST_CHECK(Wire() != setsp_bytes);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
