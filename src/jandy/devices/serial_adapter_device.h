@@ -90,10 +90,13 @@ namespace AqualinkAutomate::Devices
 		void QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
 		void QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on);
 
-		// Heater enable/disable write (POOLHT/SPAHT/SOLHT). Emits the RSSA setDev body
-		// {0x00,0x01,state,devID}. Validated live on a real RS8-class system (spa-mode + spa-heater
-		// commands actuated the controller, 2026-06-28); pool/solar heater use the identical
-		// encoding/path (validated by analogy).
+		// Heater enable/disable write (POOLHT=0x11 / SPAHT=0x13 / SOLHT=0x14). Emits the RSSA
+		// setDev body {0x00,0x01,state,devID} (state = SetOn 0x81 / SetOff 0x80). Validated live
+		// on a real RS8-class system (2026-06-28): all three heaters confirmed actuating the
+		// controller -- spa heater first, then pool heater (00 01 81 11 -> MainStatus Heating +
+		// physical heater fired) and solar heater (00 01 81/80 14 -> MainStatus Enabled<->Off,
+		// panel/valve responded). On the wire the device transmits the {ack_type=state,
+		// data=devID} pair only; the master prepends {0x00,0x01}.
 		void QueueHeaterCommand(Messages::SerialAdapter_SystemTemperatureCommands heater, bool enable);
 
 	private:
