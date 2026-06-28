@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.8.0-beta.2] - 2026-06-28
+
+Build, CI, and packaging reliability fixes only — no application behaviour changes from 0.8.0-beta.1.
+
+### Fixed
+
+- **Relocatable Linux install tree no longer needs root.** The default config installs to an absolute `/etc/aqualink-automate/aqualink-automate.conf` (correct for the `.deb`/`.rpm`), but the relocatable `cmake --install` tree staged it with `--prefix`, which does not relocate absolute destinations — so producing the tree aborted on a non-root host (`cannot create directory /etc/aqualink-automate`). It is now staged via `DESTDIR`. The `.deb`/`.rpm` packaging was unaffected.
+- **Docker image builds reliably from a cold cache.** The from-source Docker build now installs `autoconf-archive` (required to build the `libbacktrace` dependency from source) and uses a persistent vcpkg **asset cache**, so a binary-cache miss no longer re-fetches sources from GitHub — which intermittently returns a non-retryable HTTP 400 on the busy build host. The same asset cache was added to the host build.
+- **End-to-end UI tests run on the current CI runner.** Bumped Playwright to 1.61.1 for Ubuntu 26.04 support.
+
 ## [0.8.0-beta.1] - 2026-06-27
 
 ### Added
