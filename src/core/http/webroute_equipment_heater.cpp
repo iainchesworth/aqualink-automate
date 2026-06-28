@@ -9,6 +9,7 @@
 #include "http/server/responses/response_405.h"
 #include "http/server/server_fields.h"
 #include "http/server/server_types.h"
+#include "http/webroute_command_helpers.h"
 #include "http/webroute_equipment_heater.h"
 #include "kernel/body_of_water_ids.h"
 #include "logging/logging.h"
@@ -21,19 +22,6 @@ namespace AqualinkAutomate::HTTP
 	namespace
 	{
 		using CommandResult = Interfaces::ICommandDispatcher::CommandResult;
-
-		HTTP::Status StatusFor(CommandResult result)
-		{
-			switch (result)
-			{
-			case CommandResult::Success:              return HTTP::Status::ok;
-			case CommandResult::InvalidValue:         return HTTP::Status::bad_request;
-			case CommandResult::DeviceNotFound:
-			case CommandResult::NoSerialAdapter:      return HTTP::Status::service_unavailable;
-			case CommandResult::UnknownEquipmentType: return HTTP::Status::unprocessable_entity;
-			default:                                  return HTTP::Status::internal_server_error;
-			}
-		}
 
 		// Map the "body" field to a heater's body of water. Solar has no body of its own and is
 		// modelled as the Shared heater.
@@ -65,15 +53,15 @@ namespace AqualinkAutomate::HTTP
 
 	HTTP::Response WebRoute_Equipment_Heater::HandlePost(const HTTP::Request& req)
 	{
-		if (!m_CommandDispatcher)
+		if (auto err = RequireCommandDispatcher(req, m_CommandDispatcher); err.has_value())
 		{
-			return MakeResponse(req, HTTP::Status::service_unavailable, ContentTypes::TEXT_PLAIN, "Command dispatcher not available");
+			return std::move(*err);
 		}
 
-		auto payload = nlohmann::json::parse(req.body(), nullptr, /*allow_exceptions=*/false);
-		if (payload.is_discarded() || !payload.is_object())
+		nlohmann::json payload;
+		if (auto err = ParseJsonObjectBody(req, payload); err.has_value())
 		{
-			return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "request body must be a JSON object");
+			return std::move(*err);
 		}
 
 		try
@@ -104,7 +92,7 @@ namespace AqualinkAutomate::HTTP
 				{ "status", r == CommandResult::Success ? "success" : "error" }
 			};
 
-			return MakeJsonResponse(req, StatusFor(r), result.dump());
+			return MakeJsonResponse(req, StatusForCommandResult(r), result.dump());
 		}
 		catch (const nlohmann::json::exception& ex)
 		{
