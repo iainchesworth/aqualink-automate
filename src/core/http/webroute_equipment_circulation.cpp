@@ -42,54 +42,37 @@ namespace AqualinkAutomate::HTTP
 	{
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("WebRoute_Equipment_Circulation::OnRequest", std::source_location::current());
 
-		if (req.method() == HTTP::Verbs::post)
+		return HandleJsonCommandRoute(req, m_CommandDispatcher, [&](const nlohmann::json& payload) -> HTTP::Response
 		{
-			return HandlePost(req);
-		}
-		return HTTP::Responses::Response_405(req);
-	}
-
-	HTTP::Response WebRoute_Equipment_Circulation::HandlePost(const HTTP::Request& req)
-	{
-		if (auto err = RequireCommandDispatcher(req, m_CommandDispatcher); err.has_value())
-		{
-			return std::move(*err);
-		}
-
-		nlohmann::json payload;
-		if (auto err = ParseJsonObjectBody(req, payload); err.has_value())
-		{
-			return std::move(*err);
-		}
-
-		try
-		{
-			if (!payload.contains("mode") || !payload["mode"].is_string())
+			try
 			{
-				return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "missing string field 'mode' (pool|spa|spillover)");
-			}
+				if (!payload.contains("mode") || !payload["mode"].is_string())
+				{
+					return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "missing string field 'mode' (pool|spa|spillover)");
+				}
 
-			const auto mode_str = payload["mode"].get<std::string>();
-			const auto mode = ParseMode(mode_str);
-			if (!mode.has_value())
+				const auto mode_str = payload["mode"].get<std::string>();
+				const auto mode = ParseMode(mode_str);
+				if (!mode.has_value())
+				{
+					return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "'mode' must be one of pool, spa, spillover");
+				}
+
+				const auto r = m_CommandDispatcher->SetCirculationMode(mode.value());
+
+				nlohmann::json result = {
+					{ "mode", mode_str },
+					{ "status", r == CommandResult::Success ? "success" : "error" }
+				};
+
+				return MakeJsonResponse(req, StatusForCommandResult(r), result.dump());
+			}
+			catch (const nlohmann::json::exception& ex)
 			{
-				return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "'mode' must be one of pool, spa, spillover");
+				LogWarning(Channel::Web, std::format("Circulation POST: JSON access error: {}", ex.what()));
+				return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "invalid circulation payload");
 			}
-
-			const auto r = m_CommandDispatcher->SetCirculationMode(mode.value());
-
-			nlohmann::json result = {
-				{ "mode", mode_str },
-				{ "status", r == CommandResult::Success ? "success" : "error" }
-			};
-
-			return MakeJsonResponse(req, StatusForCommandResult(r), result.dump());
-		}
-		catch (const nlohmann::json::exception& ex)
-		{
-			LogWarning(Channel::Web, std::format("Circulation POST: JSON access error: {}", ex.what()));
-			return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "invalid circulation payload");
-		}
+		});
 	}
 
 }

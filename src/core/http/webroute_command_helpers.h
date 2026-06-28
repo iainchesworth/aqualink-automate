@@ -2,10 +2,12 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
 #include "http/server/make_response.h"
+#include "http/server/responses/response_405.h"
 #include "http/server/server_fields.h"
 #include "http/server/server_types.h"
 #include "interfaces/icommanddispatcher.h"
@@ -50,6 +52,32 @@ namespace AqualinkAutomate::HTTP
 			return MakeResponse(req, HTTP::Status::bad_request, ContentTypes::TEXT_PLAIN, "request body must be a JSON object");
 		}
 		return std::nullopt;
+	}
+
+	// Drive a POST-only JSON-command route end-to-end: 405 for non-POST, 503 when no command
+	// dispatcher is wired, 400 for a non-object body; otherwise invoke `handle(payload)` with the
+	// parsed JSON object and return its response. Each route supplies only its own field handling.
+	template<typename Handler>
+	HTTP::Response HandleJsonCommandRoute(const HTTP::Request& req,
+		const std::shared_ptr<Interfaces::ICommandDispatcher>& dispatcher, Handler&& handle)
+	{
+		if (req.method() != HTTP::Verbs::post)
+		{
+			return HTTP::Responses::Response_405(req);
+		}
+
+		if (auto err = RequireCommandDispatcher(req, dispatcher); err.has_value())
+		{
+			return std::move(*err);
+		}
+
+		nlohmann::json payload;
+		if (auto err = ParseJsonObjectBody(req, payload); err.has_value())
+		{
+			return std::move(*err);
+		}
+
+		return handle(payload);
 	}
 }
 // namespace AqualinkAutomate::HTTP
