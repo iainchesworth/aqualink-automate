@@ -26,7 +26,7 @@ Aqualink Automate is a C++ service that talks to your pool equipment over an RS-
 - Connectivity over a physical USB-to-RS485 adapter or a remote serial port (serial-over-ethernet) using RFC2217 or raw TCP.
 - Detailed status reporting for your Aqualink RS system.
 
-**Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
+**Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](docs/SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
 
 ## Quick start
 
@@ -45,21 +45,23 @@ cd aqualink-automate
 .\cicd\build.ps1
 ```
 
-For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](INSTALL.md).
+For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](docs/INSTALL.md).
 
 ## Documentation
 
+📖 **[Read the documentation online](https://iainchesworth.github.io/aqualink-automate/docs/)** — the same guides below, rendered and searchable.
+
 | Guide | What it covers |
 |-------|----------------|
-| [INSTALL.md](INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
+| [INSTALL.md](docs/INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
 | [docs/configuration.md](docs/configuration.md) | CLI options and config-file reference. |
 | [docs/usage-and-api.md](docs/usage-and-api.md) | Running the service and the HTTP and WebSocket API. |
 | [docs/mqtt-home-assistant.md](docs/mqtt-home-assistant.md) | MQTT topics and Home Assistant discovery. |
 | [docs/MATTER.md](docs/MATTER.md) | Pairing the Matter bridge into a smart-home platform. |
 | [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md) | RS-485 wiring and serial connectivity. |
 | [docs/hardware-server-automation.md](docs/hardware-server-automation.md) | Host and server hosting requirements. |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute code and report issues. |
-| [SECURITY.md](SECURITY.md) | Security policy and reporting. |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute code and report issues. |
+| [SECURITY.md](docs/SECURITY.md) | Security policy and reporting. |
 | [docs/releasing.md](docs/releasing.md) | Cutting and publishing a release. |
 | [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows and self-hosted runner configuration. |
 | [CHANGELOG.md](CHANGELOG.md) | Notable changes per release. |
@@ -75,7 +77,7 @@ Connect the panel to the host through a physical USB-to-RS485 adapter or a remot
 
 ## Contributing
 
-Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what the project is working toward.
+Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for how to get set up and what the project is working toward.
 
 ## Changelog
 

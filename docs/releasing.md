@@ -1,6 +1,6 @@
 # Releasing Aqualink Automate
 
-*For maintainers cutting a tagged release. Building from source lives in [INSTALL.md](../INSTALL.md); the workflow internals live in [docs/ci-cd.md](ci-cd.md) (the original redesign plan is in [docs/cicd-redesign.md](cicd-redesign.md)).*
+*For maintainers cutting a tagged release. Building from source lives in [INSTALL.md](INSTALL.md); the workflow internals live in [docs/ci-cd.md](ci-cd.md) (the original redesign plan is in [docs/cicd-redesign.md](https://github.com/iainchesworth/aqualink-automate/blob/main/docs/cicd-redesign.md)).*
 
 ## Version scheme
 
@@ -24,7 +24,7 @@ Prerelease versions use the format `<label>.<N>`:
 | `beta`   | Feature-complete, testing in progress| `1.0.0-beta.2` |
 | `rc`     | Release candidate, final validation  | `1.0.0-rc.1`   |
 
-The release workflow validates every tag against `v<M>.<M>.<P>[-(alpha|beta|rc).<N>]`. Keep tag naming aligned with the conventions in [CONTRIBUTING.md](../CONTRIBUTING.md).
+The release workflow validates every tag against `v<M>.<M>.<P>[-(alpha|beta|rc).<N>]`. Keep tag naming aligned with the conventions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Version source of truth
 
@@ -58,7 +58,7 @@ Before creating a release:
 1. CI is green on `main` (all platforms pass).
 2. All intended changes are merged to `main`. Real releases must be **cut from main**: the release commit has to be an ancestor of `origin/main`. The `resolve-version` job enforces this with `git merge-base --is-ancestor` and hard-fails any non-dry-run release whose commit is not contained in `main` (merge `develop` → `main` first, then tag `main`). Dry runs are exempt, so you can validate the pipeline from `develop`.
 3. Example configs in `examples/` are current.
-4. Release notes are reviewed. The `github-release` job seeds the release body with `gh release create --generate-notes` (a flat list of merged PRs / commits since the previous tag) — treat that as a **first draft only**. Make sure [CHANGELOG.md](../CHANGELOG.md) and the PR titles read well (they feed the draft), then **curate the published body to the project's established pattern** — this is a required step, described under [Post-release](#post-release).
+4. Release notes are reviewed. The `github-release` job seeds the release body with `gh release create --generate-notes` (a flat list of merged PRs / commits since the previous tag) — treat that as a **first draft only**. Make sure [CHANGELOG.md](https://github.com/iainchesworth/aqualink-automate/blob/main/CHANGELOG.md) and the PR titles read well (they feed the draft), then **curate the published body to the project's established pattern** — this is a required step, described under [Post-release](#post-release).
 5. Run a local build to verify version output: `./aqualink-automate --version`.
 6. Decide the version tag. You don't have to compute the SemVer bump by hand: the `develop` → `main` release PR gets an automatic **suggested next tag** comment (the `Suggest Version` workflow runs `scripts/next-version.sh`, which classifies the Conventional Commits being published and applies the 0.x policy below). Run the same script locally any time with `scripts/next-version.sh` (or `--markdown` / `--tag`). The suggestion is **advisory** — you still choose the tag and push it; nothing is auto-tagged.
 
@@ -80,7 +80,7 @@ ctest --preset test-windows-msvc-debug -L integration   # slower fixture-replay 
 ctest --preset test-windows-msvc-debug -L perf          # Google Benchmark performance tests
 ```
 
-CTest `--preset` only accepts a **test** preset, so use the `test-*` preset that matches the configure preset you built with — swap the `config-` prefix for `test-` (see [INSTALL.md](../INSTALL.md)). Omit `-L` to run every registered suite.
+CTest `--preset` only accepts a **test** preset, so use the `test-*` preset that matches the configure preset you built with — swap the `config-` prefix for `test-` (see [INSTALL.md](INSTALL.md)). Omit `-L` to run every registered suite.
 
 ## Option A: tag-based release
 
@@ -130,11 +130,11 @@ A dry run builds packages on all platforms without creating a GitHub Release or 
 
 After a release is published:
 
-1. **Curate the release notes to the established pattern (required).** The auto-generated body (`--generate-notes`) is only a starting point; rewrite it so the notes read as a coherent, user-facing changelog consistent with the previous releases. Use a prior release as the template (`gh release view v0.2.0-beta.1 --json body --jq .body`) and mirror the matching `## [x.y.z]` section of [CHANGELOG.md](../CHANGELOG.md). The structure, **in this order**:
+1. **Curate the release notes to the established pattern (required).** The auto-generated body (`--generate-notes`) is only a starting point; rewrite it so the notes read as a coherent, user-facing changelog consistent with the previous releases. Use a prior release as the template (`gh release view v0.2.0-beta.1 --json body --jq .body`) and mirror the matching `## [x.y.z]` section of [CHANGELOG.md](https://github.com/iainchesworth/aqualink-automate/blob/main/CHANGELOG.md). The structure, **in this order**:
    1. `## What's Changed since v<prev>` heading (for the very first release: `## What's Changed`).
    2. A one-line **summary** of the release.
    3. The changes as `###` subsections — grouped by subsystem (e.g. *Trends*, *Web UI*) or as *Added* / *Changed* / *Fixed* — with **bold lead-in** bullets in user-facing terms (not raw commit subjects). A short release may use a flat **bold-lead-in** bullet list instead of subsections.
-   4. An `## Artifacts` section: the "Self-contained, SHA-512-summed" table (Linux / Windows / macOS / Docker, including the `ghcr.io/<owner>/aqualink-automate:<version>` image tag), then the `aqualink-automate --help` / [INSTALL.md](../INSTALL.md) pointer line.
+   4. An `## Artifacts` section: the "Self-contained, SHA-512-summed" table (Linux / Windows / macOS / Docker, including the `ghcr.io/<owner>/aqualink-automate:<version>` image tag), then the `aqualink-automate --help` / [INSTALL.md](INSTALL.md) pointer line.
    5. The `**Full Changelog**: …/compare/v<prev>...v<this>` link (keep the one from the generated notes; omit for the first release).
    6. For prereleases, a trailing `> **Pre-release.**` caveat blockquote (e.g. the unverified-Pentair-decoding caveat).
 
@@ -175,7 +175,7 @@ Additionally:
 
   So `:latest` tracks the newest **stable** release and `:edge` tracks the newest **prerelease** — pin whichever channel you want in your compose file (`image: ghcr.io/<owner>/aqualink-automate:edge`) and it floats to new releases without edits (run `docker compose pull` to fetch the moving tag; Docker caches by tag). Before `edge` existed, prereleases had **no** floating tag at all, so `:latest` did not resolve until the first stable release.
 
-These packages are produced by CPack via the matching `pack-*` presets. `pack-*` presets exist only for the **Release** configure presets (those with no `-debug`/`-coverage` suffix), so swap the `config-` prefix for `pack-` only on a Release preset — for example `config-linux-gcc` → `pack-linux-gcc`. See [INSTALL.md](../INSTALL.md) for the local pack-* preset workflow.
+These packages are produced by CPack via the matching `pack-*` presets. `pack-*` presets exist only for the **Release** configure presets (those with no `-debug`/`-coverage` suffix), so swap the `config-` prefix for `pack-` only on a Release preset — for example `config-linux-gcc` → `pack-linux-gcc`. See [INSTALL.md](INSTALL.md) for the local pack-* preset workflow.
 
 The Docker image is **multi-arch** (`linux/amd64` + `linux/arm64`) — a single tag serves both, so a Raspberry Pi pulls the arm64 variant automatically.
 
@@ -184,7 +184,7 @@ The Docker image is **multi-arch** (`linux/amd64` + `linux/arm64`) — a single 
 `.github/workflows/publish-repos.yml` publishes GPG-signed **APT** (reprepro) and
 **DNF** (createrepo_c) repositories to the `gh-pages` branch when a release is
 published, so users can `apt install` / `dnf install` and get `apt upgrade` updates
-(see [INSTALL.md](../INSTALL.md)). It **no-ops until configured**, so it is safe to
+(see [INSTALL.md](INSTALL.md)). It **no-ops until configured**, so it is safe to
 merge first. One-time setup:
 
 1. **Generate a signing key** (no passphrase keeps CI simplest):

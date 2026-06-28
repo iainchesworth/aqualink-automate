@@ -1,6 +1,6 @@
 # CI/CD pipelines and self-hosted runners
 
-*For maintainers operating the GitHub Actions pipelines. This is the source of truth for the workflow set, their triggers and jobs, the reusable build workflow, and self-hosted runner configuration. The release process these pipelines run is described in [docs/releasing.md](releasing.md); the branch and PR rules that drive CI triggers are in [CONTRIBUTING.md](../CONTRIBUTING.md).*
+*For maintainers operating the GitHub Actions pipelines. This is the source of truth for the workflow set, their triggers and jobs, the reusable build workflow, and self-hosted runner configuration. The release process these pipelines run is described in [docs/releasing.md](releasing.md); the branch and PR rules that drive CI triggers are in [CONTRIBUTING.md](CONTRIBUTING.md).*
 
 ## Workflow set
 
@@ -32,7 +32,7 @@ on:
     branches: ["develop", "main"]
 ```
 
-The `push` namespaces are the [allowed branch types](../CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
+The `push` namespaces are the [allowed branch types](CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
 
 Concurrency is keyed on the PR number (or the ref for branch pushes) with `cancel-in-progress: true`, so a new push supersedes an in-flight run for the same PR or branch.
 
@@ -81,7 +81,7 @@ The job runs a four-row matrix with `fail-fast: false`, so one platform failing 
 | Windows MSVC | `msvc` | `config-windows-msvc` | `build-windows-msvc` | `test-windows-msvc` | `pack-windows-msvc` |
 | macOS Clang | `llvm` | `config-macos-llvm` | `build-macos-llvm` | `test-macos-llvm` | `pack-macos-llvm` |
 
-These are the same presets you use locally — see [INSTALL.md](../INSTALL.md).
+These are the same presets you use locally — see [INSTALL.md](INSTALL.md).
 
 The arm64 row builds **natively** on an aarch64 runner (no cross-compile / QEMU) so the `.deb`/`.rpm`/`.tgz` install on a Raspberry Pi and other arm64 hosts; CPack derives the package architecture from the target, so the packages are correctly labelled `arm64`/`aarch64`. The install-tree upload (consumed by `e2e-ui` and the Docker image) stays on the x64 `config-linux-gcc` row only.
 
@@ -226,7 +226,7 @@ Self-hosted jobs also run extra steps the hosted jobs skip — they clean the wo
 
 ### Provisioning
 
-Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](../cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
+Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](https://github.com/iainchesworth/aqualink-automate/blob/main/cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
 
 **Important:** The Architecture table in `cicd/packer/README.md` currently lists the Linux base OS as Ubuntu 24.04 / GCC 14, but the Packer template provisions **Ubuntu 25.04 with GCC 15** (`cicd/packer/linux-runner.pkr.hcl`, `cicd/packer/scripts/linux/02-gcc-toolchain.sh`). The Windows runner base is Windows Server 2022. Trust the Packer template over the table where they disagree.
 

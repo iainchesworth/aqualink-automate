@@ -14,6 +14,15 @@ on:
   # post-merge main commit and every WIP feature push, all already covered above.
   pull_request:
     branches: [ "develop", "main" ]
+    # Docs-only changes touch no compiled code, so there is nothing new to scan.
+    # These jobs are NOT required status checks, so a path-filtered (non-running)
+    # workflow does not block the PR — unlike ci.yml, which must use a gate job.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+      - 'LICENSE'
   schedule:
     - cron: '42 21 * * 2'
   workflow_dispatch:

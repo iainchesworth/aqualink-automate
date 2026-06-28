@@ -376,6 +376,9 @@ playwright/.cache/
 blob-report/
 /build
 
+# MkDocs build output (docs site is published to gh-pages by docs.yml)
+/site
+
 # Local serial capture / replay scratch (recordings + decode logs; large, never source)
 captures/
 
