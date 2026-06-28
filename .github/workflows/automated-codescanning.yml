@@ -134,14 +134,202 @@ jobs:
         retention-days: 1
 
   ##
+  ## E2E COVERAGE JOB
+  ##
+  ## SonarCloud's new-code coverage previously read only the unit/integration
+  ## binary's coverage, so every line exercised ONLY by the Playwright e2e suite
+  ## (HTTP routes, WebSocket, MQTT, app bootstrap) counted as uncovered. This job
+  ## closes that gap: it builds a gcov-instrumented `aqualink-automate`, drives the
+  ## SAME Playwright suite ci.yml runs against it, and emits a SECOND SonarQube
+  ## coverage report. The SonarCloud job below merges both (Sonar dedupes by line:
+  ## a line covered by EITHER report counts as covered).
+  ##
+  ## It lives in THIS workflow — not ci.yml alongside the functional e2e — so the
+  ## report is a same-run artifact the scan can download directly, and so the gcov
+  ## toolchain is byte-identical to the unit-coverage build (no cross-runner gcov
+  ## version skew, no fragile cross-workflow artifact bridge).
+  ##
+
+  CodeScanning_E2ECoverage:
+    # Same gating as the other jobs: skip a develop->main promotion PR (already
+    # scanned on develop entry) and keep fork PRs off the self-hosted runners.
+    if: >-
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request' ||
+       github.head_ref != 'develop' ||
+       github.base_ref != 'main')
+    runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        submodules: recursive
+
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: rm -rf build/
+
+    - uses: ./.github/actions/setup-cpp-toolchain
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
+      with:
+        compiler: gcc-15
+
+    - name: Setup vcpkg cache (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      run: |
+        BINARY_DIR="$HOME/.cache/vcpkg/archives"
+        DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
+        mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
+        echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+
+    - uses: ./.github/actions/setup-vcpkg-cache
+      if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
+      with:
+        cache-key-prefix: E2ECoverage
+
+    - name: Bootstrap vcpkg
+      run: bash "${{ github.workspace }}/deps/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+      env:
+        VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+
+    # The coverage preset turns ENABLE_COVERAGE on, which appends `--coverage
+    # -fprofile-abs-path` to EVERY target (root CMakeLists). So the app target is
+    # instrumented exactly like the unit build; -fprofile-abs-path bakes ABSOLUTE
+    # .gcda paths into the .gcno, so the counters land back in this build tree no
+    # matter what working directory Playwright launches the app from.
+    - name: Configure (coverage)
+      uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
+      with:
+        configurePreset: config-linux-gcc-coverage
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+    # Build ONLY the app, not the build-linux-gcc-coverage preset's default
+    # coverage-testaqualink-automate target (which would instead run the unit
+    # suite). Invoke cmake on the configured build dir directly with an explicit
+    # --target so there is no preset-vs-CLI target ambiguity. This compiles the app
+    # and its instrumented dependency libraries, nothing more. No reconfigure
+    # happens (Configure just ran), so vcpkg is not re-invoked here.
+    - name: Build instrumented app
+      shell: bash
+      run: |
+        cmake --build "${{ github.workspace }}/build/config-linux-gcc-coverage" \
+          --target aqualink-automate --parallel 8
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/deps/vcpkg
+
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: package-lock.json
+
+    - name: Install Playwright + Chromium
+      shell: bash
+      run: |
+        npm ci
+        # See ci.yml e2e-ui for the --with-deps fallback rationale.
+        npx playwright install --with-deps chromium || npx playwright install chromium
+
+    # Drive the four spec variants (mirrors ci.yml e2e-ui) against the INSTRUMENTED
+    # binary in its build tree. gcov accumulates counters across the runs (each run
+    # merges into the existing .gcda), and Playwright stops the app with SIGTERM
+    # (gracefulShutdown in playwright.config.ts) so each run flushes cleanly.
+    # continue-on-error: this job exists to harvest coverage, NOT to gate function
+    # (ci.yml e2e-ui is the functional gate) — a spec flake must not discard the
+    # coverage already written, so keep going to gcovr regardless.
+    - name: E2E — default (unauthenticated)
+      continue-on-error: true
+      shell: bash
+      run: npx playwright test
+      env:
+        AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc-coverage/src/aqualink-automate
+
+    - name: E2E — auth enabled
+      continue-on-error: true
+      shell: bash
+      run: npx playwright test
+      env:
+        AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc-coverage/src/aqualink-automate
+        AQUALINK_AUTH_TOKEN: e2e-secret-token
+
+    - name: E2E — history enabled
+      continue-on-error: true
+      shell: bash
+      run: npx playwright test
+      env:
+        AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc-coverage/src/aqualink-automate
+        AQUALINK_HISTORY_DB: ${{ runner.temp }}/e2e-history.db
+
+    - name: E2E — scheduler enabled
+      continue-on-error: true
+      shell: bash
+      run: npx playwright test
+      env:
+        AQUALINK_EXE: ${{ github.workspace }}/build/config-linux-gcc-coverage/src/aqualink-automate
+        AQUALINK_SCHEDULES_FILE: ${{ runner.temp }}/e2e-schedules.json
+
+    # gcovr may already be baked into the self-hosted image (the unit-coverage
+    # CMake target needs it); install it as a fallback for a stock runner.
+    - name: Ensure gcovr is available
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if ! command -v gcovr >/dev/null 2>&1; then
+          python3 -m pip install --user --break-system-packages gcovr \
+            || python3 -m pip install --user gcovr
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+        fi
+        gcovr --version
+
+    # Reduce the .gcda counters to a SonarQube generic coverage report, mirroring
+    # the unit target's gcovr invocation (test/CMakeLists.txt) so file paths
+    # resolve to `src/...` against the same root and Sonar can merge the two. Run
+    # even if a spec failed above, so partial e2e coverage is still captured.
+    - name: Generate e2e coverage report (gcovr)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        gcovr --sonarqube "${{ github.workspace }}/coverage-e2e.xml" \
+          -r "${{ github.workspace }}" \
+          --gcov-ignore-parse-errors=negative_hits.warn \
+          -e "${{ github.workspace }}/deps" \
+          -e "${{ github.workspace }}/build/config-linux-gcc-coverage/vcpkg_installed" \
+          -e "${{ github.workspace }}/test" \
+          -e "/usr/include" \
+          --object-directory="${{ github.workspace }}/build/config-linux-gcc-coverage"
+        echo "Generated coverage-e2e.xml ($(wc -c < "${{ github.workspace }}/coverage-e2e.xml") bytes)."
+
+    - name: Upload e2e coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: e2e-coverage-xml
+        path: coverage-e2e.xml
+        if-no-files-found: warn
+        retention-days: 1
+
+  ##
   ## SONARCLOUD JOB
   ##
 
   CodeScanning_SonarCloud:
+    # Depend on the e2e-coverage job so its report is available as a same-run
+    # artifact. !cancelled() (rather than the implicit success()) keeps the scan
+    # running even if the e2e job FAILED — the assemble step below then falls back
+    # to unit-only coverage, so a flaky e2e never drops the whole quality gate.
+    needs: CodeScanning_E2ECoverage
     # Skip a develop->main promotion PR (already scanned on develop entry).
     # AND gate out fork PRs from the persistent self-hosted runners (untrusted code
     # on a long-lived host; SonarCloud also needs SONAR_TOKEN, withheld from forks).
     if: >-
+      !cancelled() &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request' ||
@@ -200,6 +388,33 @@ jobs:
       run: |
         build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build --preset=build-linux-gcc-coverage
 
+    # Pull the e2e coverage report produced by CodeScanning_E2ECoverage (same
+    # workflow run). Gated on that job succeeding; continue-on-error so a missing
+    # artifact (e2e job failed) degrades to unit-only coverage rather than failing.
+    - name: Download e2e coverage report
+      if: needs.CodeScanning_E2ECoverage.result == 'success'
+      continue-on-error: true
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: e2e-coverage-xml
+        path: e2e-coverage
+
+    # sonar.coverageReportPaths is comma-separated; Sonar merges line coverage so a
+    # line covered by EITHER the unit or the e2e report counts. Fall back to the
+    # unit report alone if the e2e XML is absent.
+    - name: Assemble coverage report paths
+      shell: bash
+      run: |
+        UNIT="${{ github.workspace }}/build/config-linux-gcc-coverage/coverage-testaqualink-automate.xml"
+        E2E="${{ github.workspace }}/e2e-coverage/coverage-e2e.xml"
+        if [ -f "$E2E" ]; then
+          echo "COVERAGE_REPORTS=${UNIT},${E2E}" >> "$GITHUB_ENV"
+          echo "Merging unit + e2e coverage reports into the scan."
+        else
+          echo "COVERAGE_REPORTS=${UNIT}" >> "$GITHUB_ENV"
+          echo "::warning::e2e coverage report not found; scanning with unit coverage only."
+        fi
+
     - name: Run SonarCloud scan
       uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8
       env:
@@ -209,7 +424,7 @@ jobs:
         args: >
           -Dproject.settings=${{ github.workspace }}/sonar-project.properties
           -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-          -Dsonar.coverageReportPaths=${{ github.workspace }}/build/config-linux-gcc-coverage/coverage-testaqualink-automate.xml
+          -Dsonar.coverageReportPaths=${{ env.COVERAGE_REPORTS }}
 
   ##
   ## MSVC CODE ANALYSIS JOB
