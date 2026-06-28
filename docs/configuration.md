@@ -1,6 +1,6 @@
 # Configuration and CLI reference
 
-*For pool owners and operators running a release build of Aqualink Automate. This is the authoritative reference for every command-line flag and config-file key. Building from source lives in [INSTALL.md](../INSTALL.md).*
+*For pool owners and operators running a release build of Aqualink Automate. This is the authoritative reference for every command-line flag and config-file key. Building from source lives in [INSTALL.md](INSTALL.md).*
 
 Aqualink Automate is configured entirely at startup, through command-line flags and an optional configuration file. There is no runtime settings file that the app writes back to; what you pass at launch is what it runs with.
 
@@ -67,10 +67,10 @@ Four ready-to-copy example files ship in the repo. Start from the one that match
 
 | File | Use case |
 | --- | --- |
-| [examples/config-full.conf](../examples/config-full.conf) | **Complete reference** — every option, grouped and commented with its default. Copy it and uncomment what you need. |
-| [examples/config-serial.conf](../examples/config-serial.conf) | A physical RS-485 serial port on the host. |
-| [examples/config-network.conf](../examples/config-network.conf) | A remote serial port over a serial-to-Ethernet adapter (RFC2217). |
-| [examples/config-docker.conf](../examples/config-docker.conf) | Running inside a Docker container (includes Matter and host-networking notes). |
+| [examples/config-full.conf](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-full.conf) | **Complete reference** — every option, grouped and commented with its default. Copy it and uncomment what you need. |
+| [examples/config-serial.conf](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-serial.conf) | A physical RS-485 serial port on the host. |
+| [examples/config-network.conf](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-network.conf) | A remote serial port over a serial-to-Ethernet adapter (RFC2217). |
+| [examples/config-docker.conf](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-docker.conf) | Running inside a Docker container (includes Matter and host-networking notes). |
 
 A minimal physical-serial config looks like this:
 
