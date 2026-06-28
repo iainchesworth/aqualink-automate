@@ -218,28 +218,37 @@ BOOST_AUTO_TEST_CASE(SerialAdapter_NoCommand_StillWritesQueryAck)
 // single ACK on the next Status poll.
 //=============================================================================
 
-BOOST_AUTO_TEST_CASE(SetPoolSetpoint_WritesPoolSetpointAckToWire)
+BOOST_AUTO_TEST_CASE(SetPoolSetpoint_WritesTwoStepToWire)
 {
 	auto result = dispatcher->SetPoolSetpoint(82);
 	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
 
+	// Two-step readySP/setSP (AqualinkD queue_aqualink_rssadapter_setpoint), one frame per poll.
+	// Step 1 readySP: {POOLSP 0x05, 0x35}.
 	ClearWire();
 	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x05, 0x35));
 
-	// POOLSP ack_type = 0x05, command = temperature (82 = 0x52).
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x05, 82));
+	// Step 2 setSP: {0x00, temperature (82)}.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 82));
 }
 
-BOOST_AUTO_TEST_CASE(SetSpaSetpoint_WritesSpaSetpointAckToWire)
+BOOST_AUTO_TEST_CASE(SetSpaSetpoint_WritesTwoStepToWire)
 {
 	auto result = dispatcher->SetSpaSetpoint(100);
 	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
 
+	// Step 1 readySP: {SPASP 0x07, 0x35}.
 	ClearWire();
 	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x07, 0x35));
 
-	// SPASP ack_type = 0x07, command = temperature (100 = 0x64).
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x07, 100));
+	// Step 2 setSP: {0x00, temperature (100)}.
+	ClearWire();
+	ReplaySerialAdapterStatus();
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x00, 100));
 }
 
 BOOST_AUTO_TEST_CASE(SetCirculationMode_Spa_WritesSpaOnAckToWire)

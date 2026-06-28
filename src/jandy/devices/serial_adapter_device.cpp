@@ -371,7 +371,10 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting pool setpoint to {}", temperature));
-		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
+		// AqualinkD drives setpoints as a two-step readySP/setSP sequence (serialadapter.c
+		// queue_aqualink_rssadapter_setpoint), not a single frame. The single-frame form was not
+		// recognised by the controller (same class as the command byte-order bug).
+		QueueSetpointWrite_TwoStep(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
 		return Capabilities::ActuationResult::Accepted;
 	}
 
@@ -386,7 +389,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting spa setpoint to {}", temperature));
-		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		// Two-step readySP/setSP sequence (see SetPoolSetpoint).
+		QueueSetpointWrite_TwoStep(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
 		return Capabilities::ActuationResult::Accepted;
 	}
 
