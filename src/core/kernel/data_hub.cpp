@@ -1,6 +1,7 @@
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/hub_events/data_hub_config_event_circulation.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/hub_events/equipment_hub_system_event_status_change.h"
 #include "profiling/factories/profiler_factory.h"
@@ -35,6 +36,60 @@ namespace AqualinkAutomate::Kernel
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Chemistry>();
 		populate(*update_event);
 		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::EmitCirculationEvent(const std::function<void(DataHub_ConfigEvent_Circulation&)>& populate) const
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DataHub::EmitCirculationEvent", std::source_location::current());
+
+		// Signal that a circulation (mode / active-body) update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Circulation>();
+		populate(*update_event);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::SetCirculationMode(CirculationModes mode)
+	{
+		const bool spa_active = (CirculationModes::Spa == mode
+			|| CirculationModes::SpaFill == mode
+			|| CirculationModes::SpaDrain == mode);
+
+		auto pool = GetBody(BodyOfWaterIds::Pool);
+		auto spa = GetBody(BodyOfWaterIds::Spa);
+
+		// Capture the pre-update resolved state so the event is only fanned out on a real
+		// change (callers may invoke this every status poll).
+		const auto prev_mode = CirculationMode;
+		const bool prev_pool_active = pool ? pool->get().IsActive() : false;
+		const bool prev_spa_active = spa ? spa->get().IsActive() : false;
+
+		CirculationMode = mode;
+
+		// In a dual-body system the active body follows the circulation mode. Single-body
+		// installs have a fixed active body (set at configuration) and are left untouched.
+		if (pool && spa)
+		{
+			pool->get().IsActive(!spa_active);
+			spa->get().IsActive(spa_active);
+		}
+
+		const bool changed = (prev_mode != CirculationMode)
+			|| (pool && prev_pool_active != pool->get().IsActive())
+			|| (spa && prev_spa_active != spa->get().IsActive());
+
+		if (!changed)
+		{
+			return;
+		}
+
+		EmitCirculationEvent([this](DataHub_ConfigEvent_Circulation& update_event)
+			{
+				update_event.Mode(CirculationMode);
+				for (const auto& body : m_Bodies)
+				{
+					update_event.AddBody(body.Id(), body.IsActive());
+				}
+			});
 	}
 
 	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source, BodyOfWaterIds single_body_kind)

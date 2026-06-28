@@ -38,10 +38,11 @@ namespace AqualinkAutomate::Kernel
 {
 
 	// Forward declarations for the concrete config-update event types populated
-	// by the temperature/chemistry emit helpers. The full definitions are only
-	// required in data_hub.cpp where the helpers are defined.
+	// by the temperature/chemistry/circulation emit helpers. The full definitions
+	// are only required in data_hub.cpp where the helpers are defined.
 	class DataHub_ConfigEvent_Temperature;
 	class DataHub_ConfigEvent_Chemistry;
+	class DataHub_ConfigEvent_Circulation;
 
 	enum class EquipmentMode
 	{
@@ -130,6 +131,12 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		CirculationModes CirculationMode{ CirculationModes::Pool };
+
+		// Update the decoded circulation mode and, for a dual-body system, the active
+		// body that follows it. Fans out a Circulation config event to WS/MQTT consumers
+		// only when the resolved state actually changes (callers may invoke it every
+		// status poll). This is the single authority for live circulation-state changes.
+		void SetCirculationMode(CirculationModes mode);
 
 		bool SpaMode() const
 		{
@@ -284,6 +291,7 @@ namespace AqualinkAutomate::Kernel
 	private:
 		void EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const;
 		void EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const;
+		void EmitCirculationEvent(const std::function<void(DataHub_ConfigEvent_Circulation&)>& populate) const;
 
 	};
 

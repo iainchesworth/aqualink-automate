@@ -157,6 +157,7 @@ target_sources(
 	kernel/hub_events/data_hub_config_event.cpp
 	kernel/hub_events/data_hub_config_event_button_state_change.cpp
 	kernel/hub_events/data_hub_config_event_chemistry.cpp
+	kernel/hub_events/data_hub_config_event_circulation.cpp
 	kernel/hub_events/data_hub_config_event_temperature.cpp
 	kernel/hub_events/equipment_hub_system_event.cpp
 	kernel/hub_events/equipment_hub_system_event_status_change.cpp

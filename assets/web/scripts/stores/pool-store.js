@@ -318,6 +318,26 @@ document.addEventListener('alpine:init', () => {
                     break;
                 }
 
+                case 'CirculationUpdate':
+                    // Live circulation/active-body change. Merge the per-body active
+                    // state into bodies[] (the source of truth for spaModeActive) by id;
+                    // append any body we have not seen yet. Reassign the array so Alpine
+                    // re-evaluates hasDualBody / spaModeActive.
+                    if (Array.isArray(msg.payload?.bodies)) {
+                        const next = this.bodies.map(b => ({ ...b }));
+                        for (const upd of msg.payload.bodies) {
+                            const idLc = String(upd.id || '').toLowerCase();
+                            const existing = next.find(b => String(b.id || '').toLowerCase() === idLc);
+                            if (existing) {
+                                existing.is_active = !!upd.is_active;
+                            } else {
+                                next.push({ id: upd.id, is_active: !!upd.is_active });
+                            }
+                        }
+                        this.bodies = next;
+                    }
+                    break;
+
                 case 'ButtonStateChange':
                     if (msg.payload?.button_id != null) {
                         const idx = this.buttons.findIndex(b => b.id === msg.payload.button_id);

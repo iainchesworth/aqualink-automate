@@ -51,8 +51,13 @@ info:
 
     WebSocket frames are JSON objects `{ "type": <string>, "payload": <object> }`.
     Message types on `/ws/equipment` include `ChemistryUpdate`, `TemperatureUpdate`,
-    `ButtonStateChange`, `SystemStatusChange`, `SystemStateUpdate`, and
-    `AlertTransition`. The `AlertTransition` payload (fault-detection alerts) is
+    `CirculationUpdate`, `ButtonStateChange`, `SystemStatusChange`,
+    `SystemStateUpdate`, and `AlertTransition`. The `CirculationUpdate` payload
+    (circulation/active-body changes) is `{ "mode": <string>, "spa_mode": <bool>,
+    "active_body": <string|null>, "bodies": [ { "id": <string>, "is_active": <bool> } ] }`,
+    where `mode` is one of `Pool`, `Spa`, `SpaFill`, `SpaDrain`, `Spillover` and
+    `active_body`/`bodies[].id` are body-of-water ids (`Pool`, `Spa`, `Shared`).
+    The `AlertTransition` payload (fault-detection alerts) is
     `{ "condition": <string>, "state": "raised"|"cleared", "ts": <unix-seconds>,
     "detail": <string> }`, where `condition` is one of `chlorinator_fault`,
     `chlorinator_warning`, `salt_low`, `service_mode`, `serial_comms_loss`.

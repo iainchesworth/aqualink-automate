@@ -46,6 +46,10 @@ namespace AqualinkAutomate::HTTP
 				SetFromEvent(WebSocket_EventTypes::TemperatureUpdate, std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Temperature>(config_event));
 				break;
 
+			case Kernel::Hub_EventTypes::Circulation:
+				SetFromEvent(WebSocket_EventTypes::CirculationUpdate, std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent_Circulation>(config_event));
+				break;
+
 			default:
 				LogDebug(Channel::Web, "Unknown event type; cannot process DataHub_ConfigEvent type and payload.");
 			}
@@ -62,6 +66,12 @@ namespace AqualinkAutomate::HTTP
 		m_EventType(WebSocket_EventTypes::Unknown)
 	{
 		SetFromEvent(WebSocket_EventTypes::ChemistryUpdate, chem_config_event);
+	}
+
+	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Circulation>& circ_config_event) :
+		m_EventType(WebSocket_EventTypes::Unknown)
+	{
+		SetFromEvent(WebSocket_EventTypes::CirculationUpdate, circ_config_event);
 	}
 
 	WebSocket_Event::WebSocket_Event(const std::shared_ptr<Kernel::DataHub_ConfigEvent_Temperature>& temp_config_event) :

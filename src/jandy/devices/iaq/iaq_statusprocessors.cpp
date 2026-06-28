@@ -53,24 +53,10 @@ namespace AqualinkAutomate::Devices
 			magic_enum::enum_name(msg.SpaHeaterStatus()),
 			magic_enum::enum_name(msg.SolarHeaterStatus())); });
 
-		// Update circulation mode from MainStatus spa mode flag.
-		m_DataHub->CirculationMode = msg.SpaMode()
-			? Kernel::CirculationModes::Spa
-			: Kernel::CirculationModes::Pool;
-
-		// Update active body state based on circulation mode.
-		if (auto pool = m_DataHub->GetBody(Kernel::BodyOfWaterIds::Pool))
-		{
-			pool->get().IsActive(!msg.SpaMode());
-		}
-
-		if (auto spa = m_DataHub->GetBody(Kernel::BodyOfWaterIds::Spa))
-		{
-			spa->get().IsActive(msg.SpaMode());
-		}
-
 		// Heuristic: if we see spa mode and have no bodies yet (IAQ-only setup),
-		// infer DualBody_SharedEquipment and create both bodies.
+		// infer DualBody_SharedEquipment and create both bodies. This runs BEFORE the
+		// circulation update below so SetCirculationMode has both bodies to resolve the
+		// active body against.
 		if (msg.SpaMode() && m_DataHub->Bodies().empty()
 			&& m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::Unknown
 			&& m_DataHub->PoolConfigurationSource == Kernel::ConfigurationSource::Auto)
@@ -79,6 +65,13 @@ namespace AqualinkAutomate::Devices
 			m_DataHub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::Auto);
 			LogInfo(Channel::Devices, "IAQ: Auto-detected DualBody_SharedEquipment from MainStatus SpaMode");
 		}
+
+		// Update circulation mode + active body from the MainStatus spa-mode flag. This is
+		// the single authority for decoded circulation state and fans out a CirculationUpdate
+		// event to WS/MQTT consumers only when the resolved state actually changes.
+		m_DataHub->SetCirculationMode(msg.SpaMode()
+			? Kernel::CirculationModes::Spa
+			: Kernel::CirculationModes::Pool);
 
 		// Update temperatures in the DataHub.
 		m_DataHub->PoolTemp(msg.PoolTemperature());
