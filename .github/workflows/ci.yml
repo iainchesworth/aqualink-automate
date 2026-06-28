@@ -94,7 +94,13 @@ jobs:
         shell: bash
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          # `--with-deps` runs Playwright's apt helper, which errors on the
+          # self-hosted runner's Ubuntu 26.04 ("does not support chromium on
+          # ubuntu26.04-x64"). That runner already carries the browser system
+          # libs from prior runs, so fetching just the browser binary is enough;
+          # fall back to it when the deps path is unsupported (keeps a stock
+          # GitHub-hosted ubuntu-latest runner working too).
+          npx playwright install --with-deps chromium || npx playwright install chromium
 
       # The four runs mirror the modes encoded in playwright.config.ts. Each boots
       # the downloaded binary against the replay fixture; env selects the mode.
