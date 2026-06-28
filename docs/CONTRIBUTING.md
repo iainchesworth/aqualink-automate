@@ -58,7 +58,7 @@ A hotfix merges into `main` (which is then tagged) and is also merged into `deve
 
 ### Worktrees for parallel work
 
-To work on more than one branch at a time on a single machine — or to fan work out across parallel agents — use git worktrees rather than juggling one checkout. The worktree layout, naming, and a recipe for building a worktree cheaply (reusing the main checkout's vcpkg instead of duplicating it) are in [docs/worktrees.md](docs/worktrees.md).
+To work on more than one branch at a time on a single machine — or to fan work out across parallel agents — use git worktrees rather than juggling one checkout. The worktree layout, naming, and a recipe for building a worktree cheaply (reusing the main checkout's vcpkg instead of duplicating it) are in [docs/worktrees.md](worktrees.md).
 
 ## Submitting a pull request
 
@@ -76,7 +76,7 @@ For a **hotfix** change:
 2. Open a pull request targeting `main`.
 3. After it merges to `main`, also merge the fix into `develop`.
 
-Every pull request must include test coverage for the change and must pass the full suite. CI runs the C++ build and tests, the Playwright UI end-to-end specs, the Matter bridge checks, and a Docker image verification on each pull request. See [docs/ci-cd.md](docs/ci-cd.md) for the catalogue of what runs and where, and [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the authoritative list of PR checks.
+Every pull request must include test coverage for the change and must pass the full suite. CI runs the C++ build and tests, the Playwright UI end-to-end specs, the Matter bridge checks, and a Docker image verification on each pull request. See [docs/ci-cd.md](ci-cd.md) for the catalogue of what runs and where, and [`.github/workflows/ci.yml`](https://github.com/iainchesworth/aqualink-automate/blob/main/.github/workflows/ci.yml) for the authoritative list of PR checks.
 
 ## Merging
 
@@ -184,7 +184,7 @@ Releases are tagged on `main` using a plain semantic-version tag prefixed with `
 
 Do not use the old `release-YYYYMMDD-vX.Y.Z` naming — it is not what the pipeline matches.
 
-For the full version scheme, prerelease labels, and the step-by-step release procedure, see [docs/releasing.md](docs/releasing.md). Most contributors do not tag releases.
+For the full version scheme, prerelease labels, and the step-by-step release procedure, see [docs/releasing.md](releasing.md). Most contributors do not tag releases.
 
 ## Building and testing before you push
 

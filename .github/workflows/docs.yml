@@ -1,0 +1,62 @@
+# Build the documentation site (MkDocs Material) from the in-repo Markdown and
+# publish it to the `gh-pages` branch under the `/docs/` subdirectory.
+#
+# This coexists with publish-repos.yml: that workflow owns the root of gh-pages
+# (the signed APT/DNF package repositories — apt/, rpm/, key.gpg, install-*.sh,
+# index.html); this one owns gh-pages/docs/. Both publish with
+# `keep_files: true`, and they write disjoint subtrees, so neither deletes the
+# other's files. The package-install URLs are never touched.
+#
+# In-repo Markdown is the single source of truth; mkdocs.yml selects the curated
+# subset that is published (see its `nav` + `exclude_docs`).
+name: Publish docs site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Serialise docs publishes so two runs can't race the gh-pages push. A separate
+# group from publish-repos means a docs build and a package publish can still run
+# at the same time (they touch different subtrees); on the rare simultaneous push
+# the loser is retried by re-running the workflow.
+concurrency:
+  group: publish-docs
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push to gh-pages
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs Material
+        run: pip install --disable-pip-version-check mkdocs-material
+
+      # --strict turns broken internal links and other warnings into errors, so a
+      # bad cross-link fails the build instead of shipping a broken page.
+      - name: Build site
+        run: mkdocs build --strict
+
+      - name: Publish to GitHub Pages (gh-pages/docs)
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+          destination_dir: docs
+          keep_files: true # preserve the package repos at the gh-pages root
+          commit_message: "docs: publish site for ${{ github.sha }}"

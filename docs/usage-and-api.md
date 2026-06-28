@@ -1,6 +1,6 @@
 # Usage, HTTP API and WebSocket protocol
 
-*For pool owners running a release build who want to control or monitor the system over HTTP. The machine-readable companion is [swagger.yaml](../assets/web/api/swagger.yaml); CLI flags live in the [Configuration reference](configuration.md); building from source lives in [INSTALL.md](../INSTALL.md).*
+*For pool owners running a release build who want to control or monitor the system over HTTP. The machine-readable companion is [swagger.yaml](https://github.com/iainchesworth/aqualink-automate/blob/main/assets/web/api/swagger.yaml); CLI flags live in the [Configuration reference](configuration.md); building from source lives in [INSTALL.md](INSTALL.md).*
 
 This document covers how to run the application, the built-in web UI, the complete HTTP REST API, and the WebSocket protocol the UI uses for live updates. Routes are documented as the code registers them today — the same source of truth `swagger.yaml` is generated against.
 
@@ -507,7 +507,7 @@ scrape_configs:
 
 ## Viewing the API spec
 
-The machine-readable OpenAPI spec is [swagger.yaml](../assets/web/api/swagger.yaml). It is served as a **static asset**, not by a dedicated route handler, reachable at:
+The machine-readable OpenAPI spec is [swagger.yaml](https://github.com/iainchesworth/aqualink-automate/blob/main/assets/web/api/swagger.yaml). It is served as a **static asset**, not by a dedicated route handler, reachable at:
 
 ```http
 GET /api/swagger.yaml
@@ -522,11 +522,11 @@ docker compose --profile docs up
 # Swagger UI is then at http://localhost:8080
 ```
 
-See [INSTALL.md](../INSTALL.md) for the Swagger UI docs profile and other deployment details.
+See [INSTALL.md](INSTALL.md) for the Swagger UI docs profile and other deployment details.
 
 ## Related documentation
 
 - [Configuration reference](configuration.md) — `--api-auth-token`, `--address`, `--http-port`, and the TLS flags that control this server.
 - [MQTT and Home Assistant](mqtt-home-assistant.md) — the MQTT control surface, an alternative to this HTTP API.
-- [swagger.yaml](../assets/web/api/swagger.yaml) — the machine-readable companion to this reference.
-- [INSTALL.md](../INSTALL.md) — installation and the Swagger UI docs profile.
+- [swagger.yaml](https://github.com/iainchesworth/aqualink-automate/blob/main/assets/web/api/swagger.yaml) — the machine-readable companion to this reference.
+- [INSTALL.md](INSTALL.md) — installation and the Swagger UI docs profile.
