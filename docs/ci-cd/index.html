@@ -1938,9 +1938,14 @@
 <td>CodeQL (<code>c-cpp</code>). Runs its own full build, filters the SARIF to <code>src/**</code>, and uploads to the Security tab.</td>
 </tr>
 <tr>
+<td><code>CodeScanning_E2ECoverage</code></td>
+<td>Linux</td>
+<td>Builds a gcov-instrumented <code>aqualink-automate</code> (<code>config-linux-gcc-coverage</code>), runs the four Playwright modes against it, and <code>gcovr</code>s the <code>.gcda</code> into a SonarQube coverage report (<code>coverage-e2e.xml</code>) uploaded as the <code>e2e-coverage-xml</code> artifact.</td>
+</tr>
+<tr>
 <td><code>CodeScanning_SonarCloud</code></td>
 <td>Linux</td>
-<td>SonarCloud via build-wrapper over a coverage build (<code>config-linux-gcc-coverage</code>, <code>-DUSE_SONARQUBE=ON</code>). Runs its own full compile and uploads coverage.</td>
+<td>SonarCloud via build-wrapper over a coverage build (<code>config-linux-gcc-coverage</code>, <code>-DUSE_SONARQUBE=ON</code>). Runs its own full compile, produces the unit/integration coverage report, downloads the e2e report, and scans with <strong>both</strong> (<code>sonar.coverageReportPaths</code> comma-separated; Sonar merges line coverage).</td>
 </tr>
 <tr>
 <td><code>CodeScanning_MSVCCodeAnalysis</code></td>
@@ -1950,6 +1955,7 @@
 </tbody>
 </table>
 <p>Each job has the same skip condition: it does not run for a <code>develop</code> -&gt; <code>main</code> promotion PR, because that code was already scanned when it entered <code>develop</code>. Re-scanning the promotion is pure duplication.</p>
+<p><strong>Coverage = unit + e2e.</strong> The SonarCloud new-code coverage gate reflects what <em>both</em> test layers exercise. The unit/integration binary's coverage alone misses every line only the running app reaches (HTTP routes, WebSocket, MQTT, bootstrap), which read as uncovered and depressed the gate. <code>CodeScanning_E2ECoverage</code> instruments the app, drives the Playwright suite against it (the app exits cleanly on Playwright's <code>SIGTERM</code> — see <code>gracefulShutdown</code> in <code>playwright.config.ts</code> — so gcov flushes <code>.gcda</code>), and emits a second report. <code>CodeScanning_SonarCloud</code> <code>needs:</code> it and merges the two; if the e2e job fails, the scan still runs with unit-only coverage (it never drops the whole gate).</p>
 <h2 id="cleanup-branch-cachesyml">cleanup-branch-caches.yml<a class="headerlink" href="#cleanup-branch-cachesyml" title="Permanent link">&para;</a></h2>
 <p>This workflow keeps the Actions cache from filling up with stale per-PR entries.</p>
 <ul>
@@ -1974,7 +1980,7 @@
 <td><code>RUNNER_LINUX</code></td>
 <td>JSON label array</td>
 <td><code>["self-hosted","linux","x64"]</code></td>
-<td>x64 Linux rows of <code>_build.yml</code>, <code>e2e-ui</code>, <code>matter-bridge</code>, <code>docker-verify</code>, <code>docker-publish</code>, CodeQL, SonarCloud</td>
+<td>x64 Linux rows of <code>_build.yml</code>, <code>e2e-ui</code>, <code>matter-bridge</code>, <code>docker-verify</code>, <code>docker-publish</code>, CodeQL, E2ECoverage, SonarCloud</td>
 </tr>
 <tr>
 <td><code>RUNNER_LINUX_ARM</code></td>
