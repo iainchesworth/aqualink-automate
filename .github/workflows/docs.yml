@@ -45,10 +45,10 @@ jobs:
           python-version: "3.x"
 
       - name: Install MkDocs Material
-        # Pin to the 9.x line: MkDocs 2.0 (a future major) is a breaking change
-        # for Material with no migration path, so cap below v10 to keep CI builds
-        # reproducible while still receiving 9.x bug-fix and minor updates.
-        run: pip install --disable-pip-version-check "mkdocs-material>=9.7,<10"
+        # Floor only (>=9.7) so the GitHub-compatible slugify and theme features
+        # this site relies on are present; no upper cap, so future majors
+        # (incl. the MkDocs 2.0 line) are adopted as they ship.
+        run: pip install --disable-pip-version-check "mkdocs-material>=9.7"
 
       # --strict turns broken internal links and other warnings into errors, so a
       # bad cross-link fails the build instead of shipping a broken page.
