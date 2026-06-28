@@ -1,0 +1,95 @@
+site_name: Aqualink Automate
+site_description: >-
+  Local control of Jandy/Zodiac (Fluidra) Aqualink RS and Pentair pool
+  controllers over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge,
+  with no cloud service required.
+site_author: Iain Chesworth
+# Served from the /docs/ subpath of GitHub Pages; the repository root of the
+# Pages site (/) hosts the signed APT/DNF package repositories (publish-repos.yml).
+site_url: https://iainchesworth.github.io/aqualink-automate/docs/
+
+repo_url: https://github.com/iainchesworth/aqualink-automate
+repo_name: iainchesworth/aqualink-automate
+edit_uri: edit/main/docs/
+
+# In-repo Markdown is the single source of truth; this builds a curated subset.
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      # Match GitHub's heading-slug algorithm so in-page anchors resolve
+      # identically whether a doc is read on GitHub or on the rendered site.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+# Working notes, protocol reverse-engineering, and planning documents stay in the
+# repository as reference but are not part of the published site.
+exclude_docs: |
+  alwin32/
+  alwin32_simulator_protocol.md
+  aqualink_rs_revisions.md
+  iaqualink2_init_handshake.md
+  to_master_decoding.md
+  async_migration_analysis.md
+  async_migration_design.md
+  async_migration_survey.md
+  feature_implementation_plan.md
+  cicd-redesign.md
+
+nav:
+  - Home: index.md
+  - User guide:
+      - Install: INSTALL.md
+      - Configuration: configuration.md
+      - Usage, HTTP API & WebSocket: usage-and-api.md
+      - MQTT & Home Assistant: mqtt-home-assistant.md
+      - Matter (smart home): MATTER.md
+      - Raspberry Pi: raspberry-pi.md
+      - RS-485 wiring: hardware-rs485-connectivity.md
+      - Server & hosting: hardware-server-automation.md
+      - Security: SECURITY.md
+  - Development:
+      - Contributing: CONTRIBUTING.md
+      - Releasing: releasing.md
+      - CI/CD: ci-cd.md
+      - Git worktrees: worktrees.md
+      - Record / replay: RECORD_REPLAY.md
+      - Profiling: profiling.md

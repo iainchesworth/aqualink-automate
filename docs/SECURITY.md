@@ -40,7 +40,7 @@ Do not include live credentials or private certificate keys in the report. Redac
 
 ## Deployment security defaults
 
-Aqualink Automate ships with conservative defaults, but you should understand them before exposing the app beyond your own machine. Config-file keys are the option long name without the leading dashes (for example `--api-auth-token` becomes `api-auth-token`). The full option reference lives in [Configuration reference](docs/configuration.md); the request-auth model is described in detail in [Usage and API](docs/usage-and-api.md).
+Aqualink Automate ships with conservative defaults, but you should understand them before exposing the app beyond your own machine. Config-file keys are the option long name without the leading dashes (for example `--api-auth-token` becomes `api-auth-token`). The full option reference lives in [Configuration reference](configuration.md); the request-auth model is described in detail in [Usage and API](usage-and-api.md).
 
 | Default | Behavior | How to harden |
 | ------- | -------- | ------------- |
@@ -71,10 +71,10 @@ Key points:
   - `--api-require-csrf-header` — when set, state-changing requests (`POST`/`PUT`/`PATCH`/`DELETE`) must carry an `X-Requested-With` header, mitigating cross-site request forgery from a browser. Defaults to off so existing programmatic clients are unaffected.
 - **Token strength / brute force.** The token is compared in constant time, but there is no per-IP lockout, so a short or low-entropy token can be guessed online. Use a long random token (32+ characters); the app warns at startup if the configured token is shorter than 16 characters.
 
-To require TLS for the API itself and pick certificates, see the `--cert`, `--cert-key`, and related flags in the [Configuration reference](docs/configuration.md).
+To require TLS for the API itself and pick certificates, see the `--cert`, `--cert-key`, and related flags in the [Configuration reference](configuration.md).
 
 ## Policy adoption
 
-This security policy is adapted from common open-source practice. Aqualink Automate is licensed under the GNU General Public License v3 (see [LICENSE.txt](LICENSE.txt)).
+This security policy is adapted from common open-source practice. Aqualink Automate is licensed under the GNU General Public License v3 (see [LICENSE.txt](https://github.com/iainchesworth/aqualink-automate/blob/main/LICENSE.txt)).
 
 Suggestions to improve this policy are welcome — raise them as a **non-security** issue or pull request through [CONTRIBUTING.md](CONTRIBUTING.md). Keep actual vulnerability reports on the private channels described above.

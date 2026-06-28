@@ -1,6 +1,6 @@
 # CI/CD pipelines and self-hosted runners
 
-*For maintainers operating the GitHub Actions pipelines. This is the source of truth for the workflow set, their triggers and jobs, the reusable build workflow, and self-hosted runner configuration. The release process these pipelines run is described in [docs/releasing.md](releasing.md); the branch and PR rules that drive CI triggers are in [CONTRIBUTING.md](../CONTRIBUTING.md).*
+*For maintainers operating the GitHub Actions pipelines. This is the source of truth for the workflow set, their triggers and jobs, the reusable build workflow, and self-hosted runner configuration. The release process these pipelines run is described in [docs/releasing.md](releasing.md); the branch and PR rules that drive CI triggers are in [CONTRIBUTING.md](CONTRIBUTING.md).*
 
 ## Workflow set
 
@@ -32,7 +32,7 @@ on:
     branches: ["develop", "main"]
 ```
 
-The `push` namespaces are the [allowed branch types](../CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
+The `push` namespaces are the [allowed branch types](CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
 
 Concurrency is keyed on the PR number (or the ref for branch pushes) with `cancel-in-progress: true`, so a new push supersedes an in-flight run for the same PR or branch.
 
@@ -81,7 +81,7 @@ The job runs a four-row matrix with `fail-fast: false`, so one platform failing 
 | Windows MSVC | `msvc` | `config-windows-msvc` | `build-windows-msvc` | `test-windows-msvc` | `pack-windows-msvc` |
 | macOS Clang | `llvm` | `config-macos-llvm` | `build-macos-llvm` | `test-macos-llvm` | `pack-macos-llvm` |
 
-These are the same presets you use locally — see [INSTALL.md](../INSTALL.md).
+These are the same presets you use locally — see [INSTALL.md](INSTALL.md).
 
 The arm64 row builds **natively** on an aarch64 runner (no cross-compile / QEMU) so the `.deb`/`.rpm`/`.tgz` install on a Raspberry Pi and other arm64 hosts; CPack derives the package architecture from the target, so the packages are correctly labelled `arm64`/`aarch64`. The install-tree upload (consumed by `e2e-ui` and the Docker image) stays on the x64 `config-linux-gcc` row only.
 
@@ -192,10 +192,13 @@ There is **no `push` trigger.** Scanning happens on PRs into `develop` or `main`
 | Job | Runs on | Scanner |
 |-----|---------|---------|
 | `CodeScanning_CodeQL` | Linux | CodeQL (`c-cpp`). Runs its own full build, filters the SARIF to `src/**`, and uploads to the Security tab. |
-| `CodeScanning_SonarCloud` | Linux | SonarCloud via build-wrapper over a coverage build (`config-linux-gcc-coverage`, `-DUSE_SONARQUBE=ON`). Runs its own full compile and uploads coverage. |
+| `CodeScanning_E2ECoverage` | Linux | Builds a gcov-instrumented `aqualink-automate` (`config-linux-gcc-coverage`), runs the four Playwright modes against it, and `gcovr`s the `.gcda` into a SonarQube coverage report (`coverage-e2e.xml`) uploaded as the `e2e-coverage-xml` artifact. |
+| `CodeScanning_SonarCloud` | Linux | SonarCloud via build-wrapper over a coverage build (`config-linux-gcc-coverage`, `-DUSE_SONARQUBE=ON`). Runs its own full compile, produces the unit/integration coverage report, downloads the e2e report, and scans with **both** (`sonar.coverageReportPaths` comma-separated; Sonar merges line coverage). |
 | `CodeScanning_MSVCCodeAnalysis` | Windows | MSVC code analysis (`NativeRecommendedRules.ruleset`) over the `config-windows-msvc` build; uploads SARIF. |
 
 Each job has the same skip condition: it does not run for a `develop` -> `main` promotion PR, because that code was already scanned when it entered `develop`. Re-scanning the promotion is pure duplication.
+
+**Coverage = unit + e2e.** The SonarCloud new-code coverage gate reflects what *both* test layers exercise. The unit/integration binary's coverage alone misses every line only the running app reaches (HTTP routes, WebSocket, MQTT, bootstrap), which read as uncovered and depressed the gate. `CodeScanning_E2ECoverage` instruments the app, drives the Playwright suite against it (the app exits cleanly on Playwright's `SIGTERM` — see `gracefulShutdown` in `playwright.config.ts` — so gcov flushes `.gcda`), and emits a second report. `CodeScanning_SonarCloud` `needs:` it and merges the two; if the e2e job fails, the scan still runs with unit-only coverage (it never drops the whole gate).
 
 ## cleanup-branch-caches.yml
 
@@ -214,7 +217,7 @@ Set these under **Settings > Variables > Actions**. Each value is a JSON array o
 
 | Variable | Type | Example | Applies to |
 |----------|------|---------|------------|
-| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | x64 Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, SonarCloud |
+| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | x64 Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, E2ECoverage, SonarCloud |
 | `RUNNER_LINUX_ARM` | JSON label array | `["self-hosted","linux","arm64"]` | The arm64 Linux row of `_build.yml`. Falls back to the GitHub-hosted `ubuntu-24.04-arm` (free for public repos). |
 | `RUNNER_WINDOWS` | JSON label array | `["self-hosted","windows","x64"]` | Windows row of `_build.yml`, MSVC code analysis |
 
@@ -226,7 +229,7 @@ Self-hosted jobs also run extra steps the hosted jobs skip — they clean the wo
 
 ### Provisioning
 
-Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](../cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
+Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](https://github.com/iainchesworth/aqualink-automate/blob/main/cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
 
 **Important:** The Architecture table in `cicd/packer/README.md` currently lists the Linux base OS as Ubuntu 24.04 / GCC 14, but the Packer template provisions **Ubuntu 25.04 with GCC 15** (`cicd/packer/linux-runner.pkr.hcl`, `cicd/packer/scripts/linux/02-gcc-toolchain.sh`). The Windows runner base is Windows Server 2022. Trust the Packer template over the table where they disagree.
 

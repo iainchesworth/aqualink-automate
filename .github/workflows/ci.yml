@@ -14,6 +14,56 @@ permissions:
   contents: read
 
 jobs:
+  # Classify the change so docs-only work can skip the build/test matrix. The
+  # binary is unaffected by Markdown, the docs/ tree, the MkDocs config, or the
+  # docs publish workflow, so the heavy jobs below are gated on `code == 'true'`.
+  # The "CI Status" aggregator still runs and reports, so a required check is
+  # never left pending. Classification uses the GitHub API (no checkout / no
+  # fetch-depth juggling) and is conservative: anything not clearly docs is code.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+    steps:
+      - name: Classify changed files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Paths that NEVER affect the build/test matrix.
+          docs_re='^(docs/|mkdocs\.yml$|\.github/workflows/docs\.yml$|LICENSE|.*\.md$)'
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            files=$(gh api --paginate "repos/$REPO/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename')
+          else
+            before='${{ github.event.before }}'
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              files=$(gh api "repos/$REPO/commits/${{ github.sha }}" --jq '.files[].filename')
+            else
+              files=$(gh api "repos/$REPO/compare/$before...${{ github.sha }}" --jq '.files[].filename')
+            fi
+          fi
+
+          echo "Changed files:"; printf '%s\n' "$files" | sed 's/^/  /'
+
+          code=false
+          while IFS= read -r f; do
+            if [ -z "$f" ]; then continue; fi
+            if ! printf '%s\n' "$f" | grep -qE "$docs_re"; then code=true; break; fi
+          done <<< "$files"
+          # No detectable files (defensive) -> run the full matrix.
+          if [ -z "$files" ]; then code=true; fi
+
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Build/test matrix needed: $code"
+
   # Enforce the branch naming convention on every PR. Branches must be
   # <type>/<name> with an allowed Conventional Commit type (see CONTRIBUTING.md).
   # develop/main are accepted as PR heads so the develop->main release-promotion
@@ -50,6 +100,8 @@ jobs:
   # (so e2e no longer recompiles the app).
   build-and-test:
     name: Build & Test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/_build.yml
     with:
       upload_installtree: true
@@ -60,10 +112,13 @@ jobs:
   # starts later than when it built its own binary — but it never recompiles.
   e2e-ui:
     name: E2E UI (Playwright)
-    needs: build-and-test
-    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
-    # on a long-lived host). Same-repo PRs and push/release events are unaffected.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [changes, build-and-test]
+    # Skip for docs-only changes; otherwise keep the fork guard: fork PRs must not
+    # run on the persistent self-hosted runners (untrusted code on a long-lived
+    # host). Same-repo PRs and push/release events are unaffected.
+    if: >-
+      needs.changes.outputs.code == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
 
     steps:
@@ -145,9 +200,12 @@ jobs:
 
   matter-bridge:
     name: Matter Bridge (Node)
-    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
-    # on a long-lived host). Same-repo PRs and push events are unaffected.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    # Skip for docs-only changes; otherwise keep the fork guard (untrusted code
+    # must not run on the persistent self-hosted runners).
+    if: >-
+      needs.changes.outputs.code == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     defaults:
       run:
@@ -176,7 +234,8 @@ jobs:
 
   version-check:
     name: Version Check
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
 
     steps:
@@ -212,9 +271,12 @@ jobs:
   # net). Catches a vcpkg/Dockerfile/ABI regression that the assembly path can't.
   docker-verify:
     name: Docker Verification
-    # Fork PRs must not run on the persistent self-hosted runners (untrusted code
-    # on a long-lived host). Same-repo PRs and push events are unaffected.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    # Skip for docs-only changes; otherwise keep the fork guard (untrusted code
+    # must not run on the persistent self-hosted runners).
+    if: >-
+      needs.changes.outputs.code == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON(vars.RUNNER_LINUX || '["ubuntu-latest"]') }}
     # Surfaced so the "Login to Docker Hub" step's `if:` can gate on the optional
     # secret being present. See release.yml / docs/releasing.md.
@@ -276,3 +338,41 @@ jobs:
       # actually booting the bridge, which would block).
       - name: Verify Matter sidecar is bundled
         run: docker run --rm --entrypoint sh aqualink-automate:verify -c "node --version && test -f /opt/matter-bridge/dist/index.js && echo sidecar-present"
+
+  # Single aggregated gate. This is the required status check on develop/main
+  # (alongside "Branch Name") INSTEAD of the individual matrix leaves, because
+  # those leaves come from the reusable _build.yml and never report when the
+  # caller is skipped — which would leave a required check pending forever on a
+  # docs-only change. This job always runs and passes as long as no required job
+  # FAILED; jobs that were skipped (docs-only changes, fork-gated jobs) count as
+  # OK. version-check is intentionally excluded so it stays advisory, as today.
+  ci-status:
+    name: CI Status
+    if: always()
+    needs: [changes, build-and-test, e2e-ui, matter-bridge, docker-verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate on required job results
+        shell: bash
+        env:
+          R_CHANGES: ${{ needs.changes.result }}
+          R_BUILD: ${{ needs.build-and-test.result }}
+          R_E2E: ${{ needs.e2e-ui.result }}
+          R_MATTER: ${{ needs.matter-bridge.result }}
+          R_DOCKER: ${{ needs.docker-verify.result }}
+        run: |
+          set -euo pipefail
+          fail=0
+          for pair in "changes:$R_CHANGES" "build-and-test:$R_BUILD" "e2e-ui:$R_E2E" "matter-bridge:$R_MATTER" "docker-verify:$R_DOCKER"; do
+            job="${pair%%:*}"; result="${pair#*:}"
+            echo "  $job: $result"
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "::error::$job reported '$result'."
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "CI failed — see the failing job(s) above."
+            exit 1
+          fi
+          echo "All required CI jobs passed or were skipped."

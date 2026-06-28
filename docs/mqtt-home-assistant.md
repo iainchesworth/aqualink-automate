@@ -18,7 +18,7 @@ It also subscribes to a command topic tree so you can change setpoints, toggle d
 
 Home Assistant auto-discovery is a separate opt-in on top of MQTT (`--home-assistant`, which requires `--mqtt`). When enabled, the application publishes a single retained discovery payload that registers one Home Assistant device with all of its entities — temperature sensors, setpoints, chemistry sensors, mode sensors, alert binary sensors, and one entity per discovered pool device.
 
-**Note:** Every option below has a config-file equivalent. The config-file key is the option's long name **without** the leading dashes (for example `--mqtt-host` becomes `mqtt-host` in the file). The config file is a flat INI with no sections. See [INSTALL.md](../INSTALL.md) for running with a config file or under Docker.
+**Note:** Every option below has a config-file equivalent. The config-file key is the option's long name **without** the leading dashes (for example `--mqtt-host` becomes `mqtt-host` in the file). The config file is a flat INI with no sections. See [INSTALL.md](INSTALL.md) for running with a config file or under Docker.
 
 ## Connection and CLI options
 
@@ -311,7 +311,7 @@ ha-discovery-prefix = homeassistant
 aqualink-automate --config aqualink.conf
 ```
 
-The shipped [`examples/config-serial.conf`](../examples/config-serial.conf) and [`examples/config-network.conf`](../examples/config-network.conf) already contain a working MQTT + Home Assistant block to copy from.
+The shipped [`examples/config-serial.conf`](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-serial.conf) and [`examples/config-network.conf`](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-network.conf) already contain a working MQTT + Home Assistant block to copy from.
 
 ### 3. Enable the Home Assistant MQTT integration
 
@@ -358,4 +358,4 @@ Live MQTT diagnostics — queue depth, reconnect attempts, published and dropped
 
 - [Configuration reference](configuration.md) — the canonical option table for every flag and config key.
 - [Usage and API](usage-and-api.md) — `GET /api/diagnostics/mqtt` and the HTTP control surface.
-- [INSTALL.md](../INSTALL.md) — running with a config file or under Docker.
+- [INSTALL.md](INSTALL.md) — running with a config file or under Docker.
