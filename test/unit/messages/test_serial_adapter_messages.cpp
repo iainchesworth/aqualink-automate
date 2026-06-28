@@ -253,6 +253,32 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_PoolSetPointTwo)
 	BOOST_CHECK_EQUAL(msg.Pool_SetPoint_Two().value(), 78);
 }
 
+// --- Deserialize: POOLHT2 enable (STC, StatusType=0x12) ---
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_PoolHeaterTwo_Enabled)
+{
+	// POOLHT2 == TEMP2 maintenance heating enable. Value byte (index 6 / payload[2]) non-zero.
+	SerialAdapterMessage_DevStatus msg;
+	auto pkt = MakePacket(0x48, 0x41, { 0x12, 0x00, 0x01, 0x00 });
+	auto result = msg.DeserializeContents(std::span<const uint8_t>(pkt));
+
+	BOOST_CHECK(result);
+	BOOST_REQUIRE(msg.Pool_Heater_Two_Enabled().has_value());
+	BOOST_CHECK_EQUAL(msg.Pool_Heater_Two_Enabled().value(), true);
+}
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_PoolHeaterTwo_Disabled)
+{
+	// Value byte (index 6) of 0x00 -> heating disabled (proves we read the value, not the selector).
+	SerialAdapterMessage_DevStatus msg;
+	auto pkt = MakePacket(0x48, 0x41, { 0x12, 0x00, 0x00, 0x00 });
+	auto result = msg.DeserializeContents(std::span<const uint8_t>(pkt));
+
+	BOOST_CHECK(result);
+	BOOST_REQUIRE(msg.Pool_Heater_Two_Enabled().has_value());
+	BOOST_CHECK_EQUAL(msg.Pool_Heater_Two_Enabled().value(), false);
+}
+
 // --- Deserialize: SPASP (STC, StatusType=0x07) ---
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_SpaSetPoint)

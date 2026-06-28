@@ -223,6 +223,18 @@ namespace AqualinkAutomate::Mqtt
 			{"device_class", "temperature"},
 			{"state_class", "measurement"}
 		};
+
+		// POOLHT2 -- whether the TEMP2 maintenance heating is enabled. Read-only binary_sensor
+		// (capture-gated decode; no command surface). Present only when the panel reports it.
+		cmps["pool_heater_2_enabled"] = {
+			{"p", "binary_sensor"},
+			{"name", "Pool Heater 2 (TEMP2)"},
+			{"unique_id", UniqueId("pool_heater_2_enabled")},
+			{"state_topic", temperatures_topic},
+			{"value_template", "{{ value_json.pool_heater_2_enabled }}"},
+			{"payload_on", "true"},
+			{"payload_off", "false"}
+		};
 	}
 
 	void HomeAssistantDiscovery::AddChemistrySensorComponents(nlohmann::json& cmps)

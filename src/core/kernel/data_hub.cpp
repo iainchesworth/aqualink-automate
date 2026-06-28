@@ -228,6 +228,11 @@ namespace AqualinkAutomate::Kernel
 		return m_PoolTempSetpoint2;
 	}
 
+	std::optional<bool> DataHub::PoolHeater2Enabled() const
+	{
+		return m_PoolHeater2Enabled;
+	}
+
 	std::optional<Kernel::Temperature> DataHub::SpaTempSetpoint() const
 	{
 		if (auto body = GetBody(BodyOfWaterIds::Spa))
@@ -264,6 +269,16 @@ namespace AqualinkAutomate::Kernel
 		EmitTemperatureEvent([&pool_temp_setpoint_2](DataHub_ConfigEvent_Temperature& update_event)
 			{
 				update_event.PoolSetpoint2(pool_temp_setpoint_2);
+			});
+	}
+
+	void DataHub::PoolHeater2Enabled(bool pool_heater_2_enabled)
+	{
+		m_PoolHeater2Enabled = pool_heater_2_enabled;
+
+		EmitTemperatureEvent([pool_heater_2_enabled](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolHeater2Enabled(pool_heater_2_enabled);
 			});
 	}
 

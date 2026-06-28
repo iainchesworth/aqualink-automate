@@ -165,6 +165,7 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> SpaTemp() const;
 		std::optional<Kernel::Temperature> PoolTempSetpoint() const;
 		std::optional<Kernel::Temperature> PoolTempSetpoint2() const;
+		std::optional<bool> PoolHeater2Enabled() const;
 		std::optional<Kernel::Temperature> SpaTempSetpoint() const;
 		std::optional<Kernel::Temperature> FreezeProtectPoint() const;
 		Kernel::TemperatureUnits SystemTemperatureUnits() const;
@@ -175,6 +176,7 @@ namespace AqualinkAutomate::Kernel
 		void SpaTemp(const Kernel::Temperature& spa_temp);
 		void PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint);
 		void PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2);
+		void PoolHeater2Enabled(bool pool_heater_2_enabled);
 		void SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint);
 		void FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point);
 		void SystemTemperatureUnits(Kernel::TemperatureUnits units);
@@ -188,6 +190,9 @@ namespace AqualinkAutomate::Kernel
 		// present on single-body (Pool-Only/Spa-Only) systems, where TEMP1 (m_PoolTempSetpoint) is
 		// the priority temperature and TEMP2 is a lower maintenance setpoint for the same body.
 		std::optional<Kernel::Temperature> m_PoolTempSetpoint2;
+		// Whether the panel's "TEMP2" maintenance heating (POOLHT2) is enabled. CAPTURE-GATED: the
+		// underlying wire byte encoding is documented (boolean enable) but not yet live-validated.
+		std::optional<bool> m_PoolHeater2Enabled;
 		std::optional<Kernel::Temperature> m_SpaTempSetpoint;
 		std::optional<Kernel::Temperature> m_FreezeProtectPoint;
 		Kernel::TemperatureUnits m_SystemTemperatureUnits{ Kernel::TemperatureUnits::Fahrenheit };

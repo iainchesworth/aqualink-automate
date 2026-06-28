@@ -586,6 +586,8 @@ namespace AqualinkAutomate::Mqtt
 			temps["freeze_protect"] = SerializeTemperature(data_hub->FreezeProtectPoint());
 			temps["pool_setpoint"] = SerializeTemperature(data_hub->PoolTempSetpoint());
 			temps["pool_setpoint_2"] = SerializeTemperature(data_hub->PoolTempSetpoint2());
+			temps["pool_heater_2_enabled"] = data_hub->PoolHeater2Enabled().has_value()
+				? nlohmann::json(data_hub->PoolHeater2Enabled().value()) : nlohmann::json(nullptr);
 			temps["spa_setpoint"] = SerializeTemperature(data_hub->SpaTempSetpoint());
 		}
 

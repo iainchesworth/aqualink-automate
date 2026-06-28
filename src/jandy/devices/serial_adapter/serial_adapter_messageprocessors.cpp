@@ -159,6 +159,12 @@ namespace AqualinkAutomate::Devices
 			JandyController::m_DataHub->PoolTempSetpoint2(convert_raw_temperature(msg.Pool_SetPoint_Two().value()));
 		}
 
+		if (msg.Pool_Heater_Two_Enabled().has_value())
+		{
+			// POOLHT2 == whether the "TEMP2" maintenance heating is enabled (capture-gated decode).
+			JandyController::m_DataHub->PoolHeater2Enabled(msg.Pool_Heater_Two_Enabled().value());
+		}
+
 		if (msg.Spa_SetPoint().has_value())
 		{
 			JandyController::m_DataHub->SpaTempSetpoint(convert_raw_temperature(msg.Spa_SetPoint().value()));

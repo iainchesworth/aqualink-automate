@@ -76,6 +76,7 @@ namespace AqualinkAutomate::Test::Scenarios
 		hub.PoolTemp(Temperature::ConvertToTemperatureInFahrenheit(82.0));
 		hub.PoolTempSetpoint(Temperature::ConvertToTemperatureInFahrenheit(84.0));   // TEMP1 (priority)
 		hub.PoolTempSetpoint2(Temperature::ConvertToTemperatureInFahrenheit(70.0));  // TEMP2 (maintenance, < TEMP1)
+		hub.PoolHeater2Enabled(true);                                               // TEMP2 maintenance heating on
 		hub.FreezeProtectPoint(Temperature::ConvertToTemperatureInFahrenheit(36.0));
 
 		// Chemistry
