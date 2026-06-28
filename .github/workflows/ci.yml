@@ -1,13 +1,23 @@
 name: CI
 
 on:
+  # Only the long-lived branches build on push; feature branches build via their
+  # pull_request (a WIP push to a branch without a PR runs nothing, and a push to
+  # a branch WITH a PR is covered by the PR run). This removes the per-WIP-push
+  # full-matrix runs and the push+PR double-run on every feature branch.
   push:
-    branches: ["main", "develop", "feat/**", "fix/**", "docs/**", "ci/**", "test/**", "refactor/**", "chore/**", "build/**", "perf/**"]
+    branches: ["main", "develop"]
   pull_request:
     branches: ["develop", "main"]
 
+# Group by the source branch across BOTH event types (head_ref is set for PRs,
+# ref_name for pushes), so a branch can only have one CI run in flight. This
+# collapses the push run and the pull_request run of the same commit into one
+# lane — notably on a develop->main promotion, where the develop push and the
+# PR both target commit on `develop` and would otherwise run two Windows MSVC
+# builds at once on the single self-hosted runner and collide.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
