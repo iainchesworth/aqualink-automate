@@ -118,7 +118,16 @@ jobs:
         run: |
           BINARY_DIR="$HOME/.cache/vcpkg/archives"
           DOWNLOADS_DIR="$HOME/.cache/vcpkg/downloads"
-          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR"
+          ASSETS_DIR="$HOME/.cache/vcpkg/assets"
+          mkdir -p "$BINARY_DIR" "$DOWNLOADS_DIR" "$ASSETS_DIR"
+          # The asset cache needs a file:// URL (forward slashes); cygpath -m gives
+          # a Windows path WITH forward slashes (C:/...), so file:/// + that is a
+          # valid URL on both OSes. Build it before -w mangles ASSETS_DIR below.
+          if command -v cygpath >/dev/null 2>&1; then
+            ASSET_URL="file:///$(cygpath -m "$ASSETS_DIR")"
+          else
+            ASSET_URL="file://$ASSETS_DIR"
+          fi
           # Convert Git bash paths to native Windows paths for CMake/vcpkg
           # (vcpkg rejects an MSYS-style VCPKG_DEFAULT_BINARY_CACHE like /c/...).
           if command -v cygpath >/dev/null 2>&1; then
@@ -127,6 +136,12 @@ jobs:
           fi
           echo "VCPKG_DEFAULT_BINARY_CACHE=$BINARY_DIR" >> "$GITHUB_ENV"
           echo "VCPKG_DOWNLOADS=$DOWNLOADS_DIR" >> "$GITHUB_ENV"
+          # Persistent vcpkg asset cache (source tarballs + tool fetches, keyed by
+          # SHA512). On a binary-cache miss vcpkg rebuilds from source; serving the
+          # sources from here avoids re-fetching from GitHub, which intermittently
+          # throttles this busy box with HTTP 400 (boostorg archives) that vcpkg
+          # treats as non-retryable. Mirrors the Docker build's asset cache.
+          echo "X_VCPKG_ASSET_SOURCES=clear;x-azurl,$ASSET_URL,,readwrite" >> "$GITHUB_ENV"
 
       - uses: ./.github/actions/setup-vcpkg-cache
         if: ${{ !contains(matrix.runner, 'self-hosted') }}
