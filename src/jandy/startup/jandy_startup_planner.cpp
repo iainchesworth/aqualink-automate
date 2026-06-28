@@ -8,7 +8,13 @@
 namespace AqualinkAutomate::Jandy::Startup
 {
 	const std::vector<std::uint8_t> StartupPlanner::AQUALINKTOUCH_IDS{ 0x33, 0x32, 0x31, 0x30 };
-	const std::vector<std::uint8_t> StartupPlanner::ONETOUCH_IDS{ 0x41, 0x40, 0x42, 0x43 };
+	// OneTouch units 1-3 (0x41, 0x40, 0x42). Unit 4 (0x43) is deliberately omitted: per Table 1
+	// ("Diagnostics Table", AquaLink RS Service guide, note **) control-panel position 4 is the
+	// slot an AquaLink PC claims, and an AquaLink PC must not coexist with an All Button/OneTouch
+	// jumpered as #4. Since the app cannot positively detect an AquaLink PC on the bus, we never
+	// auto-emulate a OneTouch into that reserved slot (an explicit --jandy-device-id 0x43 still
+	// works for advanced manual use).
+	const std::vector<std::uint8_t> StartupPlanner::ONETOUCH_IDS{ 0x41, 0x40, 0x42 };
 	const std::vector<std::uint8_t> StartupPlanner::PDA_IDS{ 0x60, 0x61, 0x62, 0x63 };
 	const std::vector<std::uint8_t> StartupPlanner::SERIALADAPTER_IDS{ 0x48, 0x49 };
 

@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <ranges>
 #include <set>
 
 #include <boost/test/unit_test.hpp>
@@ -117,6 +119,25 @@ BOOST_AUTO_TEST_CASE(Plan_NoController_ObserveOnly_StillEmulatesSerialAdapter)
 // =============================================================================
 // Address selection -- presence-aware placement (never collide with real devices)
 // =============================================================================
+
+BOOST_AUTO_TEST_CASE(ResolveAddresses_OneTouch_NeverUsesReservedUnit4Slot)
+{
+	// Units 1-3 (0x41, 0x40, 0x42) are all occupied by real OneTouches. Unit 4 (0x43) is the
+	// AquaLink-PC-reserved control-panel-4 slot, so the emulated OneTouch must stay UNRESOLVED
+	// rather than land on 0x43 (Table 1 note **).
+	PanelProfile profile;
+	profile.probes_onetouch = true;
+	auto plan = StartupPlanner::Plan(profile);
+
+	StartupPlanner::ResolveAddresses(plan, { 0x41, 0x40, 0x42 });
+
+	const auto* onetouch = FindDevice(plan, DeviceType::OneTouch);
+	BOOST_REQUIRE(onetouch != nullptr);
+	BOOST_CHECK(!onetouch->resolved);
+	BOOST_CHECK_EQUAL(onetouch->selected_id, 0x00);
+	// 0x43 must not even be offered as a candidate.
+	BOOST_CHECK(std::ranges::find(onetouch->candidate_ids, 0x43) == onetouch->candidate_ids.cend());
+}
 
 BOOST_AUTO_TEST_CASE(SelectFreeAddress_PrefersFirstFree)
 {
