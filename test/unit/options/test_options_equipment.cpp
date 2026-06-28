@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "kernel/body_of_water_ids.h"
 #include "kernel/pool_configurations.h"
 #include "options/options_equipment_options.h"
 
@@ -37,6 +38,7 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_DefaultSettings)
 
 	BOOST_CHECK(settings.pool_configuration == Kernel::PoolConfigurations::Unknown);
 	BOOST_CHECK(!settings.pool_configuration_is_user_specified);
+	BOOST_CHECK(settings.single_body_kind == Kernel::BodyOfWaterIds::Pool);
 }
 
 BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_ProcessDefaults)
@@ -68,6 +70,8 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_PoolOnly)
 
 	BOOST_CHECK(result.value().pool_configuration == Kernel::PoolConfigurations::SingleBody);
 	BOOST_CHECK(result.value().pool_configuration_is_user_specified);
+	// pool-only -> the single body is a Pool body.
+	BOOST_CHECK(result.value().single_body_kind == Kernel::BodyOfWaterIds::Pool);
 }
 
 BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_SpaOnly)
@@ -80,6 +84,8 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_SpaOnly)
 
 	BOOST_CHECK(result.value().pool_configuration == Kernel::PoolConfigurations::SingleBody);
 	BOOST_CHECK(result.value().pool_configuration_is_user_specified);
+	// spa-only -> same SingleBody config, but the single body is a Spa body.
+	BOOST_CHECK(result.value().single_body_kind == Kernel::BodyOfWaterIds::Spa);
 }
 
 BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_Combo)
@@ -157,6 +163,30 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_CacheFileCustom)
 	auto result = processor.Process(vm);
 	BOOST_REQUIRE(result.has_value());
 	BOOST_CHECK_EQUAL(result.value().equipment_cache_file, "/var/lib/aqualink/equip.json");
+}
+
+//-----------------------------------------------------------------------------
+// TEMPERATURE STALENESS THRESHOLD
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_StalenessThresholdDefault)
+{
+	Options::Equipment::OptionsProcessor processor;
+	auto vm = ParseEquipmentOptions(processor, { "program" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_EQUAL(result.value().temperature_staleness_threshold_seconds, 600u);
+}
+
+BOOST_AUTO_TEST_CASE(Test_EquipmentOptions_StalenessThresholdCustom)
+{
+	Options::Equipment::OptionsProcessor processor;
+	auto vm = ParseEquipmentOptions(processor, { "program", "--temperature-staleness-threshold", "1800" });
+
+	auto result = processor.Process(vm);
+	BOOST_REQUIRE(result.has_value());
+	BOOST_CHECK_EQUAL(result.value().temperature_staleness_threshold_seconds, 1800u);
 }
 
 //-----------------------------------------------------------------------------

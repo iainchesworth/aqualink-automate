@@ -210,8 +210,12 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action)
 	{
+		// RSSA setDev frame body is {0x00, 0x01, state, devID} (AqualinkD serialadapter.c
+		// rssadapter_device_state) -- the STATE (0x81 on / 0x80 off) goes in the first data byte
+		// and the device code in the second. This matches the validated QueueAuxToggleWrite order;
+		// the reverse {devID, state} order is NOT recognised by the master as a set command.
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing pump command ({}, action=0x{:02x})", magic_enum::enum_name(pump), magic_enum::enum_integer(action)));
-		QueueCommand(magic_enum::enum_integer(pump), magic_enum::enum_integer(action));
+		QueueCommand(magic_enum::enum_integer(action), magic_enum::enum_integer(pump));
 	}
 
 	void SerialAdapterDevice::QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action)
@@ -429,6 +433,39 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	Capabilities::ActuationResult SerialAdapterDevice::SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable)
+	{
+		// Only an actively-emulating adapter can transmit; otherwise the queued command is silently
+		// dropped. Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot set heater mode");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// Map the heater's body of water to its RSSA heater command. Shared == the solar heater.
+		SerialAdapter_SystemTemperatureCommands heater_cmd;
+		switch (heater_body)
+		{
+		case Kernel::BodyOfWaterIds::Pool:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::POOLHT;
+			break;
+		case Kernel::BodyOfWaterIds::Spa:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::SPAHT;
+			break;
+		case Kernel::BodyOfWaterIds::Shared:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::SOLHT;
+			break;
+		default:
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: No heater command for body {}", magic_enum::enum_name(heater_body)));
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting {} heater {}", magic_enum::enum_name(heater_body), enable ? "ON" : "OFF"));
+		QueueHeaterCommand(heater_cmd, enable);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
 	void SerialAdapterDevice::QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)
 	{
 		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, two-step setpoint).
@@ -473,6 +510,20 @@ namespace AqualinkAutomate::Devices
 		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing aux toggle write ({}, {}) -> setDev state=0x{:02x} devID=0x{:02x}", magic_enum::enum_name(aux_id), turn_on ? "ON" : "OFF", state, dev_id));
 
 		QueueCommand(state, dev_id);
+	}
+
+	void SerialAdapterDevice::QueueHeaterCommand(Messages::SerialAdapter_SystemTemperatureCommands heater, bool enable)
+	{
+		// HEATER ON/OFF WRITE (POOLHT=0x11 / SPAHT=0x13 / SOLHT=0x14). The heater is a device in
+		// the RSSA setDev family, so the frame body is {0x00, 0x01, state, devID} -- STATE
+		// (SetOn 0x81 / SetOff 0x80) first, heater device code second -- exactly like the validated
+		// aux/pump toggle order (AqualinkD serialadapter.c rssadapter_device_state). The earlier
+		// {devID, state} order was not recognised by the master.
+		const uint8_t state{ static_cast<uint8_t>(enable ? Messages::SerialAdapter_CommandTypes::SetOn : Messages::SerialAdapter_CommandTypes::SetOff) };
+
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: Queuing heater write ({}, {}) -> state=0x{:02x} devID=0x{:02x}", magic_enum::enum_name(heater), enable ? "ON" : "OFF", state, magic_enum::enum_integer(heater)));
+
+		QueueCommand(state, magic_enum::enum_integer(heater));
 	}
 
 	void SerialAdapterDevice::WatchdogTimeoutOccurred()

@@ -15,6 +15,7 @@
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
+#include "devices/capabilities/heater_controller.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/setpoint_controller.h"
 #include "messages/jandy_message_ack.h"
@@ -30,7 +31,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::CirculationController, public Capabilities::CommandHistory
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::CirculationController, public Capabilities::HeaterController, public Capabilities::CommandHistory
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0 };
@@ -67,6 +68,7 @@ namespace AqualinkAutomate::Devices
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetCirculationMode(Kernel::CirculationModes mode) override;
+		Capabilities::ActuationResult SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable) override;
 		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::High; }
 
 	public:
@@ -87,6 +89,12 @@ namespace AqualinkAutomate::Devices
 		// tests and must still be confirmed against a live Brainboxes capture.
 		void QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
 		void QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on);
+
+		// Heater enable/disable write (POOLHT/SPAHT/SOLHT). Emits the RSSA setDev body
+		// {0x00,0x01,state,devID}. Validated live on a real RS8-class system (spa-mode + spa-heater
+		// commands actuated the controller, 2026-06-28); pool/solar heater use the identical
+		// encoding/path (validated by analogy).
+		void QueueHeaterCommand(Messages::SerialAdapter_SystemTemperatureCommands heater, bool enable);
 
 	private:
 		// Append a single ACK to the pending FIFO without clearing earlier entries

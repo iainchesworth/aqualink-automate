@@ -5,6 +5,7 @@
 
 #include <boost/uuid/uuid.hpp>
 
+#include "kernel/body_of_water_ids.h"
 #include "kernel/circulation.h"
 
 namespace AqualinkAutomate::Interfaces
@@ -40,6 +41,9 @@ namespace AqualinkAutomate::Interfaces
 		virtual CommandResult SetChlorinatorPercentage(uint8_t percentage) = 0;
 		virtual CommandResult SetChlorinatorBoost(bool enable) = 0;
 		virtual CommandResult SetCirculationMode(Kernel::CirculationModes mode) = 0;
+		// Enable/disable a heater identified by its body of water (Pool/Spa heater, or Shared for
+		// the solar heater).
+		virtual CommandResult SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable) = 0;
 		virtual CommandResult SelectIAQPageButton(uint8_t button_index) = 0;
 	};
 

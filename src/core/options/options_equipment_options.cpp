@@ -41,6 +41,10 @@ namespace AqualinkAutomate::Options::Equipment
 			{
 				settings.pool_configuration = Kernel::PoolConfigurations::SingleBody;
 				settings.pool_configuration_is_user_specified = true;
+				// Pool-only and spa-only are both single-body; the only difference is which body.
+				settings.single_body_kind = (value == "spa-only")
+					? Kernel::BodyOfWaterIds::Spa
+					: Kernel::BodyOfWaterIds::Pool;
 			}
 			else if (value == "combo")
 			{
@@ -63,6 +67,11 @@ namespace AqualinkAutomate::Options::Equipment
 		if (OPTION_EQUIPMENT_CACHE_FILE->IsPresent(vm))
 		{
 			settings.equipment_cache_file = OPTION_EQUIPMENT_CACHE_FILE->As<std::string>(vm);
+		}
+
+		if (OPTION_TEMPERATURE_STALENESS_THRESHOLD->IsPresent(vm))
+		{
+			settings.temperature_staleness_threshold_seconds = OPTION_TEMPERATURE_STALENESS_THRESHOLD->As<unsigned int>(vm);
 		}
 
 		return settings;

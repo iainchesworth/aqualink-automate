@@ -70,6 +70,8 @@ target_sources(
 	http/webroute_equipment_buttons.cpp
 	http/webroute_equipment_chlorinator.cpp
 	http/webroute_equipment_iaq.cpp
+	http/webroute_equipment_heater.cpp
+	http/webroute_equipment_circulation.cpp
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp

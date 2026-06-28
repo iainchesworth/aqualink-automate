@@ -62,8 +62,8 @@ namespace AqualinkAutomate::HTTP
 	{
 		nlohmann::json body;
 
-		body["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
-		body["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
+		body["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint(), m_DataHub->PoolTempSetpointUpdatedAt(), false);
+		body["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint(), m_DataHub->SpaTempSetpointUpdatedAt(), false);
 
 		HTTP::Response resp{ HTTP::Status::ok, req.version() };
 		resp.set(boost::beast::http::field::server, ServerFields::Server());

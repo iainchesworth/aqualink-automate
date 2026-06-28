@@ -50,6 +50,7 @@ namespace AqualinkAutomate::Devices
 		CommandResult SetChlorinatorPercentage(uint8_t percentage) override;
 		CommandResult SetChlorinatorBoost(bool enable) override;
 		CommandResult SetCirculationMode(Kernel::CirculationModes mode) override;
+		CommandResult SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable) override;
 		CommandResult SelectIAQPageButton(uint8_t button_index) override;
 
 	private:

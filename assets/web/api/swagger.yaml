@@ -774,6 +774,85 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/equipment/heater:
+    post:
+      tags:
+        - Equipment
+      summary: Enable or disable a heater
+      description: >
+        Enables or disables a heater, identified by its body of water, via
+        ICommandDispatcher::SetHeaterMode. `body` is one of "pool", "spa" (the pool/spa
+        heater) or "solar" (the solar heater, modelled on the Shared body); `enable` turns
+        the heater's thermostat on or off (the controller decides when to actually fire based
+        on body temperature vs setpoint). 400 on a bad value; 503 when no commandable
+        controller is present.
+      operationId: setHeaterMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body, enable]
+              properties:
+                body:
+                  type: string
+                  enum: [pool, spa, solar]
+                enable:
+                  type: boolean
+            example:
+              body: spa
+              enable: true
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              example:
+                body: spa
+                enable: true
+                status: "success"
+        '400': { description: Invalid value (bad/missing body or enable) }
+        '503': { description: No commandable controller / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/equipment/circulation:
+    post:
+      tags:
+        - Equipment
+      summary: Set the circulation mode
+      description: >
+        Sets the circulation mode via ICommandDispatcher::SetCirculationMode. `mode` is one of
+        "pool", "spa" or "spillover" (only available on combo/dual-body systems with the right
+        equipment). 400 on a bad value; 503 when no commandable controller is present.
+      operationId: setCirculationMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [pool, spa, spillover]
+            example:
+              mode: spa
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              example:
+                mode: spa
+                status: "success"
+        '400': { description: Invalid value (bad/missing mode) }
+        '503': { description: No commandable controller / dispatcher available }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/equipment/spaside-remotes:
     get:
       tags:
@@ -1767,7 +1846,11 @@ components:
     Temperature:
       type: object
       nullable: true
-      description: Temperature value in both Celsius and Fahrenheit. Null when sensor is unavailable.
+      description: >-
+        Temperature value in both Celsius and Fahrenheit. Null when sensor is unavailable.
+        The controller only reports a temperature while the filter pump runs (and, for a combo
+        system, only for the active body), so a value can outlive its freshness; `last_updated`
+        and `stale` let consumers detect that without losing the last-known reading.
       properties:
         celsius:
           type: number
@@ -1779,6 +1862,21 @@ components:
           format: double
           description: Temperature in Fahrenheit
           example: 79.7
+        last_updated:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Unix epoch (seconds) when this value was last refreshed from the controller. Null if
+            it has never been reported.
+          example: 1782600000
+        stale:
+          type: boolean
+          description: >-
+            True when the value is older than the configured staleness threshold
+            (--temperature-staleness-threshold). Always false for an inactive combo body (its
+            dormancy is expected) and for configured values (setpoints, freeze-protect).
+          example: false
 
     Button:
       type: object

@@ -75,9 +75,8 @@ namespace AqualinkAutomate::Devices
 			&& m_DataHub->PoolConfiguration == Kernel::PoolConfigurations::Unknown
 			&& m_DataHub->PoolConfigurationSource == Kernel::ConfigurationSource::Auto)
 		{
-			m_DataHub->PoolConfiguration = Kernel::PoolConfigurations::DualBody_SharedEquipment;
-			m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
-			m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Spa, "Spa" });
+			// Body-building lives in ApplyPoolConfiguration so all three call sites stay consistent.
+			m_DataHub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::Auto);
 			LogInfo(Channel::Devices, "IAQ: Auto-detected DualBody_SharedEquipment from MainStatus SpaMode");
 		}
 

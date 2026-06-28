@@ -1604,23 +1604,13 @@ namespace AqualinkAutomate::Devices
 		JandyController::m_DataHub->EquipmentVersions.Set("Revision", fw_revision);
 
 		// Populate bodies if not already present (user config may have done this at startup).
+		// Reaching here with no bodies means the user did NOT specify a configuration (otherwise
+		// startup would have built them), so this is the auto-detected path: source is Auto and a
+		// SingleBody is treated as pool-only (spa-only is user-signalled only). Body-building lives
+		// in ApplyPoolConfiguration so all three call sites stay consistent.
 		if (JandyController::m_DataHub->Bodies().empty())
 		{
-			switch (JandyController::m_DataHub->PoolConfiguration)
-			{
-			case Kernel::PoolConfigurations::DualBody_SharedEquipment:
-			case Kernel::PoolConfigurations::DualBody_DualEquipment:
-				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
-				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Spa, "Spa" });
-				break;
-
-			case Kernel::PoolConfigurations::SingleBody:
-				JandyController::m_DataHub->AddBody(Kernel::BodyOfWater{ Kernel::BodyOfWaterIds::Pool, "Pool" });
-				break;
-
-			default:
-				break;
-			}
+			JandyController::m_DataHub->ApplyPoolConfiguration(JandyController::m_DataHub->PoolConfiguration, Kernel::ConfigurationSource::Auto);
 		}
 
 		LogInfo(Channel::Devices, std::format("Aqualink Power Center - Model: {}, Type: {}, Rev: {}", model_number, panel_type, fw_revision));

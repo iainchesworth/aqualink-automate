@@ -94,7 +94,9 @@ namespace AqualinkAutomate::Test::Scenarios
 
 	void PopulateSpaOnly(DataHub& hub)
 	{
-		hub.ApplyPoolConfiguration(PoolConfigurations::SingleBody);
+		// Spa-only is a SingleBody install whose one body is the Spa (user-signalled, since it is
+		// indistinguishable from pool-only on the wire).
+		hub.ApplyPoolConfiguration(PoolConfigurations::SingleBody, ConfigurationSource::UserSpecified, BodyOfWaterIds::Spa);
 		hub.CirculationMode = CirculationModes::Spa;
 		hub.SystemTemperatureUnits(TemperatureUnits::Fahrenheit);
 

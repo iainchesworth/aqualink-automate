@@ -250,8 +250,8 @@ BOOST_AUTO_TEST_CASE(SetCirculationMode_Spa_WritesSpaOnAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// SPA pump command ack_type = 0x0E, SetOn = 0x81.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0E, 0x81));
+	// RSSA setDev body {state, devID}: SetOn = 0x81, SPA device = 0x0E.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x0E));
 }
 
 BOOST_AUTO_TEST_CASE(SetCirculationMode_Pool_WritesSpaOffAckToWire)
@@ -262,8 +262,8 @@ BOOST_AUTO_TEST_CASE(SetCirculationMode_Pool_WritesSpaOffAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// Pool circulation = SPA pump OFF: ack_type = 0x0E, SetOff = 0x80.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0E, 0x80));
+	// Pool circulation = SPA pump OFF: {state, devID} = SetOff 0x80, SPA 0x0E.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x80, 0x0E));
 }
 
 BOOST_AUTO_TEST_CASE(SetCirculationMode_Spillover_WritesSpilloverOnAckToWire)
@@ -274,8 +274,63 @@ BOOST_AUTO_TEST_CASE(SetCirculationMode_Spillover_WritesSpilloverOnAckToWire)
 	ClearWire();
 	ReplaySerialAdapterStatus();
 
-	// SPILLOVER pump command ack_type = 0x0F, SetOn = 0x81.
-	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x0F, 0x81));
+	// SPILLOVER: {state, devID} = SetOn 0x81, SPILLOVER 0x0F.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x0F));
+}
+
+//=============================================================================
+// SetHeaterMode: Pool/Spa/Solar heater enable/disable. RSSA setDev body
+// {state, devID} (AqualinkD serialadapter.c rssadapter_device_state): SetOn 0x81 /
+// SetOff 0x80 first, heater device code second.
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(SetHeaterMode_PoolOn_WritesPoolHeatOnAckToWire)
+{
+	auto result = dispatcher->SetHeaterMode(BodyOfWaterIds::Pool, true);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// {state, devID} = SetOn 0x81, POOLHT 0x11.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x11));
+}
+
+BOOST_AUTO_TEST_CASE(SetHeaterMode_PoolOff_WritesPoolHeatOffAckToWire)
+{
+	auto result = dispatcher->SetHeaterMode(BodyOfWaterIds::Pool, false);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// {state, devID} = SetOff 0x80, POOLHT 0x11.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x80, 0x11));
+}
+
+BOOST_AUTO_TEST_CASE(SetHeaterMode_SpaOn_WritesSpaHeatOnAckToWire)
+{
+	auto result = dispatcher->SetHeaterMode(BodyOfWaterIds::Spa, true);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// {state, devID} = SetOn 0x81, SPAHT 0x13.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x13));
+}
+
+BOOST_AUTO_TEST_CASE(SetHeaterMode_Solar_WritesSolarHeatAckToWire)
+{
+	// Shared body == the solar heater -> SOLHT (0x14).
+	auto result = dispatcher->SetHeaterMode(BodyOfWaterIds::Shared, true);
+	BOOST_REQUIRE_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::Success));
+
+	ClearWire();
+	ReplaySerialAdapterStatus();
+
+	// {state, devID} = SetOn 0x81, SOLHT 0x14.
+	BOOST_CHECK(Wire() == ExpectedAckWireBytes(0x81, 0x14));
 }
 
 //=============================================================================

@@ -54,5 +54,37 @@ namespace AqualinkAutomate::Utility
 		return SerializeTemperature(*temp);
 	}
 
+	/// Serialize an optional Temperature with freshness metadata. Returns null JSON when not
+	/// measured; otherwise emits celsius/fahrenheit plus `last_updated` (epoch seconds, the
+	/// codebase's time convention - null if never stamped) and a `stale` flag. The controller only
+	/// reports temperatures while the pump runs (and only for the active body on a combo system),
+	/// so a value can outlive its freshness; `stale` lets consumers reflect that without dropping
+	/// the last-known reading.
+	inline nlohmann::json SerializeTemperature(
+		const std::optional<Kernel::Temperature>& temp,
+		const std::optional<std::chrono::system_clock::time_point>& last_updated,
+		bool stale)
+	{
+		if (!temp.has_value())
+		{
+			return nullptr;
+		}
+
+		nlohmann::json j = SerializeTemperature(*temp);
+
+		if (last_updated.has_value())
+		{
+			j["last_updated"] = std::chrono::duration_cast<std::chrono::seconds>(last_updated->time_since_epoch()).count();
+		}
+		else
+		{
+			j["last_updated"] = nullptr;
+		}
+
+		j["stale"] = stale;
+
+		return j;
+	}
+
 }
 // namespace AqualinkAutomate::Utility

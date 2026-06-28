@@ -642,6 +642,82 @@ namespace AqualinkAutomate::Mqtt
 			register_device(dev);
 		}
 
+		// Heater enable/disable handlers. Heaters are not actuated through the generic
+		// device/{slug} -> CommandByLabel/DeviceActuator path (that drives aux relays / pumps);
+		// they get a dedicated heater/{slug} -> SetHeaterMode(body, on/off) route. The heater's
+		// body of water (Pool/Spa, or Shared for solar) is captured at registration from its
+		// BodyOfWaterTrait so the handler maps straight to the right RSSA heater command.
+		auto register_heater = [&](const std::shared_ptr<Kernel::AuxillaryDevice>& dev)
+		{
+			if (!dev)
+			{
+				return;
+			}
+
+			auto label_opt = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			auto body_opt = dev->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{});
+			if (!label_opt.has_value() || !body_opt.has_value())
+			{
+				LogDebug(Channel::Mqtt, "Skipping heater command registration for heater with no label/body trait");
+				return;
+			}
+
+			auto label = label_opt.value();
+			auto body_id = body_opt.value();
+			auto command_key = std::format("heater/{}", Utility::Slugify(label));
+
+			if (m_Hub->HasCommand(command_key))
+			{
+				return;
+			}
+
+			m_Hub->RegisterCommand(command_key,
+				[weak_dispatcher, label, body_id](const std::string& topic, const nlohmann::json& payload)
+				{
+					LogDebug(Channel::Mqtt, std::format("Received heater command for '{}'", label));
+					try
+					{
+						auto dispatcher = weak_dispatcher.lock();
+						if (!dispatcher)
+						{
+							LogWarning(Channel::Mqtt, "Command dispatcher not available for heater command");
+							return;
+						}
+
+						auto action_str = ParsePayloadString(payload);
+
+						bool enable;
+						if (action_str == "ON")
+						{
+							enable = true;
+						}
+						else if (action_str == "OFF")
+						{
+							enable = false;
+						}
+						else
+						{
+							LogWarning(Channel::Mqtt, std::format("Unknown heater action payload: '{}'", SanitiseForLog(action_str)));
+							return;
+						}
+
+						auto result = dispatcher->SetHeaterMode(body_id, enable);
+
+						LogDebug(Channel::Mqtt, std::format("Heater command for '{}': action={}, result={}",
+							label, action_str, static_cast<int>(result)));
+					}
+					catch (const std::exception& ex)
+					{
+						LogError(Channel::Mqtt, std::format("Error handling heater command for '{}': {}", label, ex.what()));
+					}
+				});
+		};
+
+		for (const auto& dev : data_hub->Heaters())
+		{
+			register_heater(dev);
+		}
+
 		// Chlorinator-specific command handlers
 		if (!m_Hub->HasCommand("chlorinator/percentage"))
 		{
