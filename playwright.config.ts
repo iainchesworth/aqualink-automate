@@ -137,5 +137,14 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'pipe',
     stderr: 'pipe',
+    // Stop the app with a *catchable* signal instead of Playwright's default
+    // SIGKILL. The binary installs a boost::asio signal_set on SIGINT/SIGTERM
+    // (see aqualink-automate.cpp) and returns from main on receipt, so a clean
+    // exit runs its shutdown sequence. This also matters for the coverage e2e
+    // job (automated-codescanning.yml): gcov flushes the per-TU .gcda counters
+    // from an atexit handler that ONLY runs on a clean exit — a SIGKILL would
+    // discard all e2e coverage. The timeout bounds the wait before Playwright
+    // escalates to SIGKILL if the app fails to stop.
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 15_000 },
   },
 });

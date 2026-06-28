@@ -192,10 +192,13 @@ There is **no `push` trigger.** Scanning happens on PRs into `develop` or `main`
 | Job | Runs on | Scanner |
 |-----|---------|---------|
 | `CodeScanning_CodeQL` | Linux | CodeQL (`c-cpp`). Runs its own full build, filters the SARIF to `src/**`, and uploads to the Security tab. |
-| `CodeScanning_SonarCloud` | Linux | SonarCloud via build-wrapper over a coverage build (`config-linux-gcc-coverage`, `-DUSE_SONARQUBE=ON`). Runs its own full compile and uploads coverage. |
+| `CodeScanning_E2ECoverage` | Linux | Builds a gcov-instrumented `aqualink-automate` (`config-linux-gcc-coverage`), runs the four Playwright modes against it, and `gcovr`s the `.gcda` into a SonarQube coverage report (`coverage-e2e.xml`) uploaded as the `e2e-coverage-xml` artifact. |
+| `CodeScanning_SonarCloud` | Linux | SonarCloud via build-wrapper over a coverage build (`config-linux-gcc-coverage`, `-DUSE_SONARQUBE=ON`). Runs its own full compile, produces the unit/integration coverage report, downloads the e2e report, and scans with **both** (`sonar.coverageReportPaths` comma-separated; Sonar merges line coverage). |
 | `CodeScanning_MSVCCodeAnalysis` | Windows | MSVC code analysis (`NativeRecommendedRules.ruleset`) over the `config-windows-msvc` build; uploads SARIF. |
 
 Each job has the same skip condition: it does not run for a `develop` -> `main` promotion PR, because that code was already scanned when it entered `develop`. Re-scanning the promotion is pure duplication.
+
+**Coverage = unit + e2e.** The SonarCloud new-code coverage gate reflects what *both* test layers exercise. The unit/integration binary's coverage alone misses every line only the running app reaches (HTTP routes, WebSocket, MQTT, bootstrap), which read as uncovered and depressed the gate. `CodeScanning_E2ECoverage` instruments the app, drives the Playwright suite against it (the app exits cleanly on Playwright's `SIGTERM` — see `gracefulShutdown` in `playwright.config.ts` — so gcov flushes `.gcda`), and emits a second report. `CodeScanning_SonarCloud` `needs:` it and merges the two; if the e2e job fails, the scan still runs with unit-only coverage (it never drops the whole gate).
 
 ## cleanup-branch-caches.yml
 
@@ -214,7 +217,7 @@ Set these under **Settings > Variables > Actions**. Each value is a JSON array o
 
 | Variable | Type | Example | Applies to |
 |----------|------|---------|------------|
-| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | x64 Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, SonarCloud |
+| `RUNNER_LINUX` | JSON label array | `["self-hosted","linux","x64"]` | x64 Linux rows of `_build.yml`, `e2e-ui`, `matter-bridge`, `docker-verify`, `docker-publish`, CodeQL, E2ECoverage, SonarCloud |
 | `RUNNER_LINUX_ARM` | JSON label array | `["self-hosted","linux","arm64"]` | The arm64 Linux row of `_build.yml`. Falls back to the GitHub-hosted `ubuntu-24.04-arm` (free for public repos). |
 | `RUNNER_WINDOWS` | JSON label array | `["self-hosted","windows","x64"]` | Windows row of `_build.yml`, MSVC code analysis |
 
