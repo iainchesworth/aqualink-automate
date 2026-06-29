@@ -256,7 +256,10 @@ setup_target_for_coverage_opencppcoverage(
 
 elseif(USE_SONARQUBE)
 
-set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn")
+# NOTE: this is consumed as a CMake list (each element becomes one VERBATIM
+# argument to gcovr). Keep each flag a SEPARATE list element — collapsing them
+# into one space-joined string makes gcovr see a single malformed argument.
+set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn" "--exclude-throw-branches" "--exclude-unreachable-branches")
 
 setup_target_for_coverage_gcovr_xml(
 	NAME coverage-testaqualink-automate
