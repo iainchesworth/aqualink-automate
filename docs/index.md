@@ -57,3 +57,8 @@ Two RS-485 protocols are supported and auto-detected from the wire traffic:
 **Jandy/Zodiac (Fluidra) Aqualink RS** and **Pentair**. The
 [GitHub repository](https://github.com/iainchesworth/aqualink-automate) has the
 full source, issue tracker, and changelog.
+
+## Questions and support
+
+- **Bugs and feature requests** — open an [issue](https://github.com/iainchesworth/aqualink-automate/issues).
+- **Questions, ideas, and help** — start a [GitHub Discussion](https://github.com/iainchesworth/aqualink-automate/discussions).
