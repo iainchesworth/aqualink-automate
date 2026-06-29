@@ -73,6 +73,8 @@ document.addEventListener('alpine:init', () => {
         spaTemp: '--',
         airTemp: '--',
         poolSetpoint: '--',
+        poolSetpoint2: '--',   // POOLSP2 / panel "TEMP2" maintenance setpoint (single-body systems)
+        poolHeater2Enabled: null,   // POOLHT2 / panel "TEMP2" maintenance heating enabled (read-only)
         spaSetpoint: '--',
         ph: '--',
         orp: '--',
@@ -173,6 +175,8 @@ document.addEventListener('alpine:init', () => {
                     this.spaTemp = this._formatTemp(data.temperatures.spa);
                     this.airTemp = this._formatTemp(data.temperatures.air);
                     if (data.temperatures.pool_setpoint) this.poolSetpoint = data.temperatures.pool_setpoint;
+                    if (data.temperatures.pool_setpoint_2) this.poolSetpoint2 = data.temperatures.pool_setpoint_2;
+                    if (data.temperatures.pool_heater_2_enabled != null) this.poolHeater2Enabled = data.temperatures.pool_heater_2_enabled;
                     if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
 
@@ -297,6 +301,8 @@ document.addEventListener('alpine:init', () => {
                         if (msg.payload.spa_temp != null) { this.spaTemp = this._formatTemp(msg.payload.spa_temp); this._touch('spaTemp'); }
                         if (msg.payload.air_temp != null) { this.airTemp = this._formatTemp(msg.payload.air_temp); this._touch('airTemp'); }
                         if (msg.payload.pool_setpoint != null) this.poolSetpoint = msg.payload.pool_setpoint;
+                        if (msg.payload.pool_setpoint_2 != null) this.poolSetpoint2 = msg.payload.pool_setpoint_2;
+                        if (msg.payload.pool_heater_2_enabled != null) this.poolHeater2Enabled = msg.payload.pool_heater_2_enabled;
                         if (msg.payload.spa_setpoint != null) this.spaSetpoint = msg.payload.spa_setpoint;
                     }
                     break;

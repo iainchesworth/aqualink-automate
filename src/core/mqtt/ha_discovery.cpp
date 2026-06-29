@@ -293,6 +293,33 @@ namespace AqualinkAutomate::Mqtt
 				{"mode", "slider"}
 			};
 		}
+
+		// POOLSP2 / panel "TEMP2" maintenance setpoint -- reported only on single-body systems.
+		// Exposed read-only (a sensor, not a writable number) because the POOLSP2 write path is not
+		// yet validated on live hardware. The template yields '' when absent, so HA shows it only
+		// when the panel reports it.
+		cmps["pool_setpoint_2"] = {
+			{"p", "sensor"},
+			{"name", "Pool Setpoint 2"},
+			{"unique_id", UniqueId("pool_setpoint_2")},
+			{"state_topic", temperatures_topic},
+			{"value_template", "{{ value_json.pool_setpoint_2.celsius if value_json.pool_setpoint_2 else '' }}"},
+			{"unit_of_measurement", "\u00B0C"},
+			{"device_class", "temperature"},
+			{"state_class", "measurement"}
+		};
+
+		// POOLHT2 -- whether the TEMP2 maintenance heating is enabled. Read-only binary_sensor
+		// (capture-gated decode; no command surface). Present only when the panel reports it.
+		cmps["pool_heater_2_enabled"] = {
+			{"p", "binary_sensor"},
+			{"name", "Pool Heater 2 (TEMP2)"},
+			{"unique_id", UniqueId("pool_heater_2_enabled")},
+			{"state_topic", temperatures_topic},
+			{"value_template", "{{ value_json.pool_heater_2_enabled }}"},
+			{"payload_on", "true"},
+			{"payload_off", "false"}
+		};
 	}
 
 	void HomeAssistantDiscovery::AddChemistrySensorComponents(nlohmann::json& cmps)

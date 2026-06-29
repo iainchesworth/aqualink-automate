@@ -2073,6 +2073,17 @@ components:
               $ref: '#/components/schemas/Temperature'
             pool_setpoint:
               $ref: '#/components/schemas/Temperature'
+            pool_setpoint_2:
+              description: >-
+                Second pool setpoint (POOLSP2 / panel "TEMP2" maintenance temperature),
+                present only on single-body (Pool-Only/Spa-Only) systems; null otherwise.
+              $ref: '#/components/schemas/Temperature'
+            pool_heater_2_enabled:
+              type: boolean
+              nullable: true
+              description: >-
+                Whether the "TEMP2" maintenance heating (POOLHT2) is enabled; null when
+                not reported. Read-only (decode documented but not yet live-validated).
             spa_setpoint:
               $ref: '#/components/schemas/Temperature'
         chemistry:
@@ -2334,6 +2345,19 @@ components:
       properties:
         pool_setpoint:
           $ref: '#/components/schemas/Temperature'
+        pool_setpoint_2:
+          description: |
+            Second pool setpoint (POOLSP2 / panel "TEMP2", the maintenance/low
+            temperature). Present only on single-body (Pool-Only/Spa-Only) systems;
+            null otherwise. Read-only -- it cannot be set via the POST request.
+          $ref: '#/components/schemas/Temperature'
+        pool_heater_2_enabled:
+          type: boolean
+          nullable: true
+          description: |
+            Whether the "TEMP2" maintenance heating (POOLHT2) is enabled. Read-only;
+            null when not reported. Note: the decode is documented but not yet
+            validated against live hardware.
         spa_setpoint:
           $ref: '#/components/schemas/Temperature'
 

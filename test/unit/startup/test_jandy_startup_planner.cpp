@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <ranges>
 #include <set>
 
 #include <boost/test/unit_test.hpp>
@@ -118,6 +120,25 @@ BOOST_AUTO_TEST_CASE(Plan_NoController_ObserveOnly_StillEmulatesSerialAdapter)
 // Address selection -- presence-aware placement (never collide with real devices)
 // =============================================================================
 
+BOOST_AUTO_TEST_CASE(ResolveAddresses_OneTouch_NeverUsesReservedUnit4Slot)
+{
+	// Units 1-3 (0x41, 0x40, 0x42) are all occupied by real OneTouches. Unit 4 (0x43) is the
+	// AquaLink-PC-reserved control-panel-4 slot, so the emulated OneTouch must stay UNRESOLVED
+	// rather than land on 0x43 (Table 1 note **).
+	PanelProfile profile;
+	profile.probes_onetouch = true;
+	auto plan = StartupPlanner::Plan(profile);
+
+	StartupPlanner::ResolveAddresses(plan, { 0x41, 0x40, 0x42 });
+
+	const auto* onetouch = FindDevice(plan, DeviceType::OneTouch);
+	BOOST_REQUIRE(onetouch != nullptr);
+	BOOST_CHECK(!onetouch->resolved);
+	BOOST_CHECK_EQUAL(onetouch->selected_id, 0x00);
+	// 0x43 must not even be offered as a candidate.
+	BOOST_CHECK(std::ranges::find(onetouch->candidate_ids, 0x43) == onetouch->candidate_ids.cend());
+}
+
 BOOST_AUTO_TEST_CASE(SelectFreeAddress_PrefersFirstFree)
 {
 	BOOST_CHECK(StartupPlanner::SelectFreeAddress({ 0x33, 0x32, 0x31, 0x30 }, {}) == std::optional<std::uint8_t>(0x33));
@@ -192,32 +213,80 @@ BOOST_AUTO_TEST_CASE(Plan_NoProbesButTouchCapableRevision_ProvisionalPagePush)
 	BOOST_CHECK(FindDevice(plan, DeviceType::IAQ) != nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(Plan_TouchProbedButPpdRevision_FlagsInconsistent)
+BOOST_AUTO_TEST_CASE(Plan_TouchProbedButPpdRevision_SkipsAndFlagsInconsistent)
 {
-	// The master probes the touch range, but the revision (Rev M) predates Touch support: the
-	// live probe still wins, but the contradiction is flagged for logging.
+	// The master probes the touch range, but the revision (Rev M) predates AqualinkTouch (Rev Q):
+	// warn + skip -- we do NOT stand up the page-push emulation, falling back to passive decode.
+	// The SerialAdapter survives (Rev M >= Rev I). The contradiction is still flagged.
 	PanelProfile profile;
 	profile.probes_aqualinktouch = true;
 	profile.revision_caps = DeriveRevisionCapabilities("M");
 
 	auto plan = StartupPlanner::Plan(profile);
 
-	BOOST_CHECK(plan.method == DataGatheringMethod::PagePush);
+	BOOST_CHECK(plan.method == DataGatheringMethod::ObserveOnly);
+	BOOST_CHECK(FindDevice(plan, DeviceType::IAQ) == nullptr);
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) != nullptr);
 	BOOST_CHECK(!plan.revision_consistent);
 }
 
-BOOST_AUTO_TEST_CASE(Plan_OneTouchProbedButPreRevI_FlagsInconsistent)
+BOOST_AUTO_TEST_CASE(Plan_OneTouchProbedButPreRevI_SkipsAndFlagsInconsistent)
 {
-	// OneTouch first appears at Rev I (2000); a Rev H panel probing the OneTouch range is a
-	// contradiction. Live probe still wins the method, but the conflict is flagged.
+	// OneTouch AND the Serial Adapter both first appear at Rev I (2000); a Rev H panel probing the
+	// OneTouch range is a contradiction. Warn + skip: neither is emulated, leaving passive decode.
 	PanelProfile profile;
 	profile.probes_onetouch = true;
 	profile.revision_caps = DeriveRevisionCapabilities("H");
 
 	auto plan = StartupPlanner::Plan(profile);
 
-	BOOST_CHECK(plan.method == DataGatheringMethod::MenuSpider);
+	BOOST_CHECK(plan.method == DataGatheringMethod::ObserveOnly);
+	BOOST_CHECK(FindDevice(plan, DeviceType::OneTouch) == nullptr);
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) == nullptr);
+	BOOST_CHECK(plan.devices.empty());
 	BOOST_CHECK(!plan.revision_consistent);
+}
+
+// =============================================================================
+// Revision gate -- refuse to emulate a device below its Table 1 minimum revision
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(Plan_SerialAdapterGatedBelowRevI)
+{
+	// Rev H predates Serial Adapter support (Rev I); with nothing else probed the plan is empty.
+	PanelProfile profile;
+	profile.revision_caps = DeriveRevisionCapabilities("H");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) == nullptr);
+	BOOST_CHECK(plan.method == DataGatheringMethod::ObserveOnly);
+	BOOST_CHECK(plan.devices.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Plan_SerialAdapterPresentAtRevI)
+{
+	// Rev I is exactly the minimum -- the Serial Adapter stands up.
+	PanelProfile profile;
+	profile.revision_caps = DeriveRevisionCapabilities("I");
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) != nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(Plan_UnknownRevisionDoesNotGate)
+{
+	// No revision sourced yet: the gate must not fire (we lean on the observed probe set), so the
+	// OneTouch emulation still stands up.
+	PanelProfile profile;
+	profile.probes_onetouch = true;   // revision_caps left default -> is_known == false
+
+	auto plan = StartupPlanner::Plan(profile);
+
+	BOOST_CHECK(plan.method == DataGatheringMethod::MenuSpider);
+	BOOST_CHECK(FindDevice(plan, DeviceType::OneTouch) != nullptr);
+	BOOST_CHECK(FindDevice(plan, DeviceType::SerialAdapter) != nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(Plan_TouchProbedAndTouchCapableRevision_Consistent)

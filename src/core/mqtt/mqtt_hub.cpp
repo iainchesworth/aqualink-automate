@@ -610,6 +610,9 @@ namespace AqualinkAutomate::Mqtt
 			// carry their timestamp but are never flagged stale.
 			temps["freeze_protect"] = SerializeTemperature(data_hub->FreezeProtectPoint(), data_hub->FreezeProtectPointUpdatedAt(), false);
 			temps["pool_setpoint"] = SerializeTemperature(data_hub->PoolTempSetpoint(), data_hub->PoolTempSetpointUpdatedAt(), false);
+			temps["pool_setpoint_2"] = SerializeTemperature(data_hub->PoolTempSetpoint2());
+			temps["pool_heater_2_enabled"] = data_hub->PoolHeater2Enabled().has_value()
+				? nlohmann::json(data_hub->PoolHeater2Enabled().value()) : nlohmann::json(nullptr);
 			temps["spa_setpoint"] = SerializeTemperature(data_hub->SpaTempSetpoint(), data_hub->SpaTempSetpointUpdatedAt(), false);
 		}
 

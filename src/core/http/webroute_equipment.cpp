@@ -106,6 +106,9 @@ namespace AqualinkAutomate::HTTP
 		jandy_equipment_json["temperatures"]["spa"] = Utility::SerializeTemperature(m_DataHub->CurrentTempForReporting(Kernel::BodyOfWaterIds::Spa), m_DataHub->SpaTempUpdatedAt(), m_DataHub->SpaTempIsStale());
 		jandy_equipment_json["temperatures"]["air"] = Utility::SerializeTemperature(m_DataHub->AirTemp(), m_DataHub->AirTempUpdatedAt(), m_DataHub->AirTempIsStale());
 		jandy_equipment_json["temperatures"]["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint(), m_DataHub->PoolTempSetpointUpdatedAt(), false);
+		jandy_equipment_json["temperatures"]["pool_setpoint_2"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint2());
+		jandy_equipment_json["temperatures"]["pool_heater_2_enabled"] = m_DataHub->PoolHeater2Enabled().has_value()
+			? nlohmann::json(m_DataHub->PoolHeater2Enabled().value()) : nlohmann::json(nullptr);
 		jandy_equipment_json["temperatures"]["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint(), m_DataHub->SpaTempSetpointUpdatedAt(), false);
 
 		// Nested chemistry payload.  Salt / SWG values come from the DataHub

@@ -10,6 +10,7 @@
 #include "devices/serial_adapter_device.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/pool_configurations.h"
 #include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -440,9 +441,23 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
+		// SPA and SPILLOVER move water between two bodies, so they only exist on a system that HAS
+		// two bodies (pool + spa). On a known single-body system the RS Serial Adapter's SPA/
+		// SPILLOVER commands are meaningless (AquaLink RS Serial Adapter host protocol, note 4:
+		// SPA applies to combo / dual-equipment models only -- not pool-only or spa-only). Reject
+		// them when the configuration is KNOWN to be single-body; stay permissive while it is still
+		// Unknown (we then lean on the equipment actually discovered, as elsewhere).
+		const bool known_single_body = (nullptr != m_DataHub) &&
+			(Kernel::PoolConfigurations::SingleBody == m_DataHub->PoolConfiguration);
+
 		switch (mode)
 		{
 		case Kernel::CirculationModes::Spa:
+			if (known_single_body)
+			{
+				LogWarning(Channel::Devices, "SerialAdapterDevice: Spa circulation is not available on a single-body (pool-only/spa-only) system");
+				return Capabilities::ActuationResult::NotSupported;
+			}
 			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spa");
 			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
 			return Capabilities::ActuationResult::Accepted;
@@ -453,6 +468,11 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::Accepted;
 
 		case Kernel::CirculationModes::Spillover:
+			if (known_single_body)
+			{
+				LogWarning(Channel::Devices, "SerialAdapterDevice: Spillover is not available on a single-body (pool-only/spa-only) system");
+				return Capabilities::ActuationResult::NotSupported;
+			}
 			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spillover");
 			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
 			return Capabilities::ActuationResult::Accepted;

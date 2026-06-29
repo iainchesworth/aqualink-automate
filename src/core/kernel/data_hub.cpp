@@ -298,6 +298,18 @@ namespace AqualinkAutomate::Kernel
 		return m_PoolTempSetpoint;
 	}
 
+	std::optional<Kernel::Temperature> DataHub::PoolTempSetpoint2() const
+	{
+		// TEMP2 is a second setpoint for the SAME pool body (not a separate body of water), so it
+		// is held directly rather than via GetBody(Pool) (which already holds TEMP1).
+		return m_PoolTempSetpoint2;
+	}
+
+	std::optional<bool> DataHub::PoolHeater2Enabled() const
+	{
+		return m_PoolHeater2Enabled;
+	}
+
 	std::optional<Kernel::Temperature> DataHub::SpaTempSetpoint() const
 	{
 		if (auto body = GetBody(BodyOfWaterIds::Spa))
@@ -323,6 +335,28 @@ namespace AqualinkAutomate::Kernel
 		EmitTemperatureEvent([&pool_temp_setpoint](DataHub_ConfigEvent_Temperature& update_event)
 			{
 				update_event.PoolSetpoint(pool_temp_setpoint);
+			});
+	}
+
+	void DataHub::PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2)
+	{
+		m_PoolTempSetpoint2 = pool_temp_setpoint_2;
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint 2", pool_temp_setpoint_2.InCelsius().value());
+
+		EmitTemperatureEvent([&pool_temp_setpoint_2](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolSetpoint2(pool_temp_setpoint_2);
+			});
+	}
+
+	void DataHub::PoolHeater2Enabled(bool pool_heater_2_enabled)
+	{
+		m_PoolHeater2Enabled = pool_heater_2_enabled;
+
+		EmitTemperatureEvent([pool_heater_2_enabled](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolHeater2Enabled(pool_heater_2_enabled);
 			});
 	}
 
