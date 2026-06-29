@@ -80,6 +80,7 @@ target_sources(
 	unit/startup/test_jandy_startup_coordinator.cpp
 	unit/startup/test_jandy_startup_environment.cpp
 	unit/options/test_options_web.cpp
+	unit/options/test_options_matter.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp
 	unit/messages/test_aquarite_message_setpercent.cpp
