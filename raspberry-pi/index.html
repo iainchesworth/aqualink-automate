@@ -12,29 +12,31 @@
         <meta name="author" content="Iain Chesworth">
       
       
-        <link rel="canonical" href="https://iainchesworth.github.io/aqualink-automate/">
+        <link rel="canonical" href="https://iainchesworth.github.io/aqualink-automate/raspberry-pi/">
       
       
+        <link rel="prev" href="../MATTER/">
       
-        <link rel="next" href="INSTALL/">
+      
+        <link rel="next" href="../hardware-rs485-connectivity/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Aqualink Automate</title>
+        <title>Raspberry Pi - Aqualink Automate</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#aqualink-automate" class="md-skip">
+        <a href="#running-on-a-raspberry-pi" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Aqualink Automate" class="md-header__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
+    <a href=".." title="Aqualink Automate" class="md-header__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Raspberry Pi
             
           </span>
         </div>
@@ -232,7 +234,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Aqualink Automate" class="md-nav__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
+    <a href=".." title="Aqualink Automate" class="md-nav__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -259,37 +261,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -305,70 +280,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where to next
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-equipment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported equipment
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#questions-and-support" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Questions and support
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -377,8 +288,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -389,11 +302,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -414,7 +327,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -432,7 +345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="INSTALL/" class="md-nav__link">
+      <a href="../INSTALL/" class="md-nav__link">
         
   
   
@@ -460,7 +373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -488,7 +401,7 @@
   
   
     <li class="md-nav__item">
-      <a href="usage-and-api/" class="md-nav__link">
+      <a href="../usage-and-api/" class="md-nav__link">
         
   
   
@@ -516,7 +429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="mqtt-home-assistant/" class="md-nav__link">
+      <a href="../mqtt-home-assistant/" class="md-nav__link">
         
   
   
@@ -544,7 +457,7 @@
   
   
     <li class="md-nav__item">
-      <a href="MATTER/" class="md-nav__link">
+      <a href="../MATTER/" class="md-nav__link">
         
   
   
@@ -569,10 +482,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="raspberry-pi/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Raspberry Pi
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -588,6 +528,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#which-pi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Pi
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect-the-rs-485-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect the RS-485 bus
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connect the RS-485 bus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-usb-rs485-adapter-easiest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. USB-RS485 adapter (easiest)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-gpio-uart--rs-485-hat-no-usb-port-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. GPIO UART + RS-485 HAT (no USB port used)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-and-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure and start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updating--uninstalling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating / uninstalling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -600,7 +654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="hardware-rs485-connectivity/" class="md-nav__link">
+      <a href="../hardware-rs485-connectivity/" class="md-nav__link">
         
   
   
@@ -628,7 +682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="hardware-server-automation/" class="md-nav__link">
+      <a href="../hardware-server-automation/" class="md-nav__link">
         
   
   
@@ -656,7 +710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="SECURITY/" class="md-nav__link">
+      <a href="../SECURITY/" class="md-nav__link">
         
   
   
@@ -743,7 +797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="CONTRIBUTING/" class="md-nav__link">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
         
   
   
@@ -771,7 +825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="releasing/" class="md-nav__link">
+      <a href="../releasing/" class="md-nav__link">
         
   
   
@@ -799,7 +853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ci-cd/" class="md-nav__link">
+      <a href="../ci-cd/" class="md-nav__link">
         
   
   
@@ -827,7 +881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="worktrees/" class="md-nav__link">
+      <a href="../worktrees/" class="md-nav__link">
         
   
   
@@ -855,7 +909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="RECORD_REPLAY/" class="md-nav__link">
+      <a href="../RECORD_REPLAY/" class="md-nav__link">
         
   
   
@@ -883,7 +937,7 @@
   
   
     <li class="md-nav__item">
-      <a href="profiling/" class="md-nav__link">
+      <a href="../profiling/" class="md-nav__link">
         
   
   
@@ -938,6 +992,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#which-pi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Pi
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -949,10 +1014,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-next" class="md-nav__link">
+  <a href="#connect-the-rs-485-bus" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to next
+        Connect the RS-485 bus
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connect the RS-485 bus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-usb-rs485-adapter-easiest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. USB-RS485 adapter (easiest)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-gpio-uart--rs-485-hat-no-usb-port-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. GPIO UART + RS-485 HAT (no USB port used)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-and-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure and start
       
     </span>
   </a>
@@ -960,10 +1064,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-equipment" class="md-nav__link">
+  <a href="#updating--uninstalling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported equipment
+        Updating / uninstalling
       
     </span>
   </a>
@@ -971,10 +1075,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#questions-and-support" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Questions and support
+        Troubleshooting
       
     </span>
   </a>
@@ -998,7 +1102,7 @@
 
 
   
-    <a href="https://github.com/iainchesworth/aqualink-automate/edit/main/docs/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/iainchesworth/aqualink-automate/edit/main/docs/raspberry-pi.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1006,64 +1110,97 @@
   
 
 
-<h1 id="aqualink-automate">Aqualink Automate<a class="headerlink" href="#aqualink-automate" title="Permanent link">&para;</a></h1>
-<p>Local control of Jandy/Zodiac (Fluidra) Aqualink RS and Pentair pool controllers
-over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge, with <strong>no cloud
-service required</strong>.</p>
-<p>Aqualink Automate is a C++ service that talks to your pool equipment over an
-RS-485 serial link and exposes it on your own network. It reads status from the
-panel and lets you control it through a built-in Web UI, an HTTP and WebSocket
-API, MQTT (with Home Assistant discovery), and a Matter bridge for Apple Home,
-Google Home, Alexa, and SmartThings. Everything runs on hardware you own;
-nothing is sent to a vendor cloud.</p>
+<h1 id="running-on-a-raspberry-pi">Running on a Raspberry Pi<a class="headerlink" href="#running-on-a-raspberry-pi" title="Permanent link">&para;</a></h1>
+<p>Aqualink Automate runs well on a Raspberry Pi sitting next to your pool equipment,
+wired to the AquaLink RS-485 bus. This page is the Pi-specific quick start; for the
+full option reference see <a href="../configuration/">configuration.md</a>, and for non-Pi hosts
+see <a href="../hardware-server-automation/">hardware-server-automation.md</a>.</p>
+<h2 id="which-pi">Which Pi<a class="headerlink" href="#which-pi" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pi 5 / Pi 4</strong></td>
+<td>Plenty of headroom; also fine for the Docker image with the Matter bridge.</td>
+</tr>
+<tr>
+<td><strong>Pi 3 / Zero 2 W</strong></td>
+<td>Ample for the app + web UI. The Zero 2 W (512 MB RAM) is the lowest-cost always-on option.</td>
+</tr>
+</tbody>
+</table>
+<p>Use the <strong>64-bit (arm64) Raspberry Pi OS</strong> (Bookworm or newer). The <code>.deb</code>/<code>.rpm</code>/<code>.tgz</code>
+are built for <code>arm64</code> (and <code>amd64</code>); 32-bit Raspberry Pi OS is not currently supported.</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<p>The quickest path is the signed package repositories — install and stay current
-with your system package manager:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Debian / Ubuntu / Raspberry Pi OS</label><label for="__tabbed_1_2">Fedora / RHEL / openSUSE</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://iainchesworth.github.io/aqualink-automate/install-apt.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>aqualink-automate
+<p>Download the <code>arm64</code> <code>.deb</code> from the <a href="https://github.com/iainchesworth/aqualink-automate/releases">latest release</a>
+and install it — the package brings its own runtime libraries, so it works on a stock
+Raspberry Pi OS with no extra dependencies:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./aqualink-automate_*_arm64.deb
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://iainchesworth.github.io/aqualink-automate/install-dnf.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>aqualink-automate
+<p>This installs the binary, a <code>systemd</code> service, the <code>aqualink</code> service account (added to
+the <code>dialout</code> group for serial access), and a default config at
+<code>/etc/aqualink-automate/aqualink-automate.conf</code>. The service is <strong>enabled on boot but not
+started yet</strong> — it needs your serial port first (below).</p>
+<h2 id="connect-the-rs-485-bus">Connect the RS-485 bus<a class="headerlink" href="#connect-the-rs-485-bus" title="Permanent link">&para;</a></h2>
+<p>You need an RS-485 transceiver between the Pi and the AquaLink bus. Two common ways:</p>
+<h3 id="a-usb-rs485-adapter-easiest">A. USB-RS485 adapter (easiest)<a class="headerlink" href="#a-usb-rs485-adapter-easiest" title="Permanent link">&para;</a></h3>
+<p>Plug in a USB-RS485 adapter (FTDI, CH340, or CP2102 based). It appears as <code>/dev/ttyUSB0</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>-l<span class="w"> </span>/dev/serial/by-id/<span class="w">      </span><span class="c1"># confirm it&#39;s detected</span>
 </code></pre></div>
-</div>
-</div>
-</div>
-<p>Then <code>sudo apt upgrade</code> / <code>sudo dnf upgrade</code> keeps it current. Builds are provided
-for <code>amd64</code> and <code>arm64</code> (Raspberry Pi). The repositories are GPG-signed with
-<a href="https://iainchesworth.github.io/aqualink-automate/key.gpg">this key</a>.</p>
-<p>For pre-built binaries, dev containers, Docker, and building from source, see the
-<a href="INSTALL/">Install guide</a>.</p>
-<div class="admonition warning">
-<p class="admonition-title">Before exposing it on your network</p>
-<p>By default the web server binds to <code>127.0.0.1</code> (localhost only) and HTTP
-authentication is off. Review the <a href="SECURITY/">Security guide</a> and the
-<a href="configuration/">Configuration reference</a> first.</p>
-</div>
-<h2 id="where-to-next">Where to next<a class="headerlink" href="#where-to-next" title="Permanent link">&para;</a></h2>
+<p>Because <code>/dev/ttyUSB0</code> can renumber across reboots/replugs, pin a stable name. Copy the
+shipped udev template and uncomment the line for your adapter:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>cp<span class="w"> </span>/usr/share/doc/aqualink-automate/examples/60-aqualink-automate.rules.example<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">        </span>/etc/udev/rules.d/60-aqualink-automate.rules
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>sudoedit<span class="w"> </span>/etc/udev/rules.d/60-aqualink-automate.rules<span class="w">     </span><span class="c1"># uncomment your adapter</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>sudo<span class="w"> </span>udevadm<span class="w"> </span>control<span class="w"> </span>--reload-rules<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>udevadm<span class="w"> </span>trigger
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>ls<span class="w"> </span>-l<span class="w"> </span>/dev/aqualink-rs485<span class="w">                                 </span><span class="c1"># -&gt; your adapter</span>
+</code></pre></div>
+<h3 id="b-gpio-uart--rs-485-hat-no-usb-port-used">B. GPIO UART + RS-485 HAT (no USB port used)<a class="headerlink" href="#b-gpio-uart--rs-485-hat-no-usb-port-used" title="Permanent link">&para;</a></h3>
+<p>If you use a MAX485/transceiver HAT on the 40-pin header, enable the <strong>PL011</strong> UART and
+free it from the serial login console:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>sudo<span class="w"> </span>raspi-config<span class="w">        </span><span class="c1"># Interface Options -&gt; Serial Port:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">                         </span><span class="c1">#   login shell over serial?  NO</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">                         </span><span class="c1">#   serial hardware enabled?  YES</span>
+</code></pre></div>
+<p>For full-rate PL011 on <code>/dev/ttyAMA0</code> (rather than the lower-quality mini-UART), add to
+<code>/boot/firmware/config.txt</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>enable_uart=1
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dtoverlay=disable-bt        # frees PL011 (/dev/ttyAMA0) on Pi 3/4/Zero 2 W
+</code></pre></div>
+<p>Reboot, then use <code>serial-port = /dev/ttyAMA0</code>.</p>
+<h2 id="configure-and-start">Configure and start<a class="headerlink" href="#configure-and-start" title="Permanent link">&para;</a></h2>
+<p>Set your serial device in the config, then start the service:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudoedit<span class="w"> </span>/etc/aqualink-automate/aqualink-automate.conf
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">#   serial-port = /dev/aqualink-rs485      (or /dev/ttyUSB0, or /dev/ttyAMA0)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>aqualink-automate
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>aqualink-automate
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>journalctl<span class="w"> </span>-u<span class="w"> </span>aqualink-automate<span class="w"> </span>-f<span class="w">         </span><span class="c1"># live logs</span>
+</code></pre></div>
+<p>The web UI is at <code>http://&lt;pi-address&gt;:9000</code>. To use port 80 instead, set
+<code>http-port = 80</code> in the config (the service is granted <code>CAP_NET_BIND_SERVICE</code>, so it
+does not need to run as root). If you expose the UI to your LAN, consider setting
+<code>api-auth-token</code>.</p>
+<h2 id="updating--uninstalling">Updating / uninstalling<a class="headerlink" href="#updating--uninstalling" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./aqualink-automate_&lt;newer&gt;_arm64.deb<span class="w">   </span><span class="c1"># upgrade (config is preserved)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>aqualink-automate<span class="w">                   </span><span class="c1"># restarts automatically on upgrade</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>sudo<span class="w"> </span>apt<span class="w"> </span>remove<span class="w"> </span>aqualink-automate<span class="w">                         </span><span class="c1"># remove (keeps /etc config)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>sudo<span class="w"> </span>apt<span class="w"> </span>purge<span class="w">  </span>aqualink-automate<span class="w">                         </span><span class="c1"># remove config + state too</span>
+</code></pre></div>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="INSTALL/">Install</a></strong> — releases, Docker, dev container, build from source.</li>
-<li><strong><a href="configuration/">Configuration</a></strong> — every CLI flag and config-file key.</li>
-<li><strong><a href="usage-and-api/">Usage, HTTP API &amp; WebSocket</a></strong> — drive it programmatically.</li>
-<li><strong><a href="mqtt-home-assistant/">MQTT &amp; Home Assistant</a></strong> — auto-discovery and topics.</li>
-<li><strong><a href="MATTER/">Matter</a></strong> — pair the pool into Apple Home, Google Home, Alexa, SmartThings.</li>
-<li><strong><a href="raspberry-pi/">Raspberry Pi</a></strong> — run it on a Pi.</li>
-<li><strong><a href="hardware-rs485-connectivity/">RS-485 wiring</a></strong> — adapters and physical connection.</li>
-</ul>
-<p>Contributors should start with the <a href="CONTRIBUTING/">Development</a> section.</p>
-<h2 id="supported-equipment">Supported equipment<a class="headerlink" href="#supported-equipment" title="Permanent link">&para;</a></h2>
-<p>Two RS-485 protocols are supported and auto-detected from the wire traffic:
-<strong>Jandy/Zodiac (Fluidra) Aqualink RS</strong> and <strong>Pentair</strong>. The
-<a href="https://github.com/iainchesworth/aqualink-automate">GitHub repository</a> has the
-full source, issue tracker, and changelog.</p>
-<h2 id="questions-and-support">Questions and support<a class="headerlink" href="#questions-and-support" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Bugs and feature requests</strong> — open an <a href="https://github.com/iainchesworth/aqualink-automate/issues">issue</a>.</li>
-<li><strong>Questions, ideas, and help</strong> — start a <a href="https://github.com/iainchesworth/aqualink-automate/discussions">GitHub Discussion</a>.</li>
+<li><strong><code>status</code> shows the serial port can't be opened</strong> — check the device path, that the
+  adapter is plugged in, and that the <code>aqualink</code> user is in <code>dialout</code>
+  (<code>id aqualink</code>). After adding a udev rule, re-run <code>udevadm trigger</code>.</li>
+<li><strong>UI not reachable from another machine</strong> — the default binds <code>0.0.0.0</code>; check the
+  Pi's firewall and that you used the Pi's LAN address and port (<code>9000</code> by default).</li>
+<li><strong>Logs</strong> — everything goes to the journal: <code>journalctl -u aqualink-automate -e</code>.</li>
 </ul>
 
 
@@ -1120,10 +1257,10 @@ full source, issue tracker, and changelog.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.top", "navigation.tracking", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.tracking", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

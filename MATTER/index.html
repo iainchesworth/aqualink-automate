@@ -12,29 +12,31 @@
         <meta name="author" content="Iain Chesworth">
       
       
-        <link rel="canonical" href="https://iainchesworth.github.io/aqualink-automate/">
+        <link rel="canonical" href="https://iainchesworth.github.io/aqualink-automate/MATTER/">
       
       
+        <link rel="prev" href="../mqtt-home-assistant/">
       
-        <link rel="next" href="INSTALL/">
+      
+        <link rel="next" href="../raspberry-pi/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Aqualink Automate</title>
+        <title>Matter (smart home) - Aqualink Automate</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#aqualink-automate" class="md-skip">
+        <a href="#matter-smart-home-support" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Aqualink Automate" class="md-header__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
+    <a href=".." title="Aqualink Automate" class="md-header__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Matter (smart home)
             
           </span>
         </div>
@@ -232,7 +234,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Aqualink Automate" class="md-nav__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
+    <a href=".." title="Aqualink Automate" class="md-nav__button md-logo" aria-label="Aqualink Automate" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -259,37 +261,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -305,70 +280,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where to next
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-equipment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported equipment
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#questions-and-support" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Questions and support
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -377,8 +288,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -389,11 +302,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -414,7 +327,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -432,7 +345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="INSTALL/" class="md-nav__link">
+      <a href="../INSTALL/" class="md-nav__link">
         
   
   
@@ -460,7 +373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -488,7 +401,7 @@
   
   
     <li class="md-nav__item">
-      <a href="usage-and-api/" class="md-nav__link">
+      <a href="../usage-and-api/" class="md-nav__link">
         
   
   
@@ -516,7 +429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="mqtt-home-assistant/" class="md-nav__link">
+      <a href="../mqtt-home-assistant/" class="md-nav__link">
         
   
   
@@ -541,10 +454,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="MATTER/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matter (smart home)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -560,6 +500,92 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cross-controller-actuation-why-this-works-on-any-rig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-controller actuation (why this works on any rig)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#device-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enabling--disabling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling / disabling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networking-requirement-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networking requirement (Docker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pairing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pairing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification status
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -572,7 +598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="raspberry-pi/" class="md-nav__link">
+      <a href="../raspberry-pi/" class="md-nav__link">
         
   
   
@@ -600,7 +626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="hardware-rs485-connectivity/" class="md-nav__link">
+      <a href="../hardware-rs485-connectivity/" class="md-nav__link">
         
   
   
@@ -628,7 +654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="hardware-server-automation/" class="md-nav__link">
+      <a href="../hardware-server-automation/" class="md-nav__link">
         
   
   
@@ -656,7 +682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="SECURITY/" class="md-nav__link">
+      <a href="../SECURITY/" class="md-nav__link">
         
   
   
@@ -743,7 +769,7 @@
   
   
     <li class="md-nav__item">
-      <a href="CONTRIBUTING/" class="md-nav__link">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
         
   
   
@@ -771,7 +797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="releasing/" class="md-nav__link">
+      <a href="../releasing/" class="md-nav__link">
         
   
   
@@ -799,7 +825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ci-cd/" class="md-nav__link">
+      <a href="../ci-cd/" class="md-nav__link">
         
   
   
@@ -827,7 +853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="worktrees/" class="md-nav__link">
+      <a href="../worktrees/" class="md-nav__link">
         
   
   
@@ -855,7 +881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="RECORD_REPLAY/" class="md-nav__link">
+      <a href="../RECORD_REPLAY/" class="md-nav__link">
         
   
   
@@ -883,7 +909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="profiling/" class="md-nav__link">
+      <a href="../profiling/" class="md-nav__link">
         
   
   
@@ -938,10 +964,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#cross-controller-actuation-why-this-works-on-any-rig" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install
+        Cross-controller actuation (why this works on any rig)
       
     </span>
   </a>
@@ -949,10 +975,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-next" class="md-nav__link">
+  <a href="#device-mapping" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to next
+        Device mapping
       
     </span>
   </a>
@@ -960,10 +986,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-equipment" class="md-nav__link">
+  <a href="#enabling--disabling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported equipment
+        Enabling / disabling
       
     </span>
   </a>
@@ -971,10 +997,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#questions-and-support" class="md-nav__link">
+  <a href="#networking-requirement-docker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Questions and support
+        Networking requirement (Docker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pairing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pairing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification status
       
     </span>
   </a>
@@ -998,7 +1046,7 @@
 
 
   
-    <a href="https://github.com/iainchesworth/aqualink-automate/edit/main/docs/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/iainchesworth/aqualink-automate/edit/main/docs/MATTER.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1006,65 +1054,208 @@
   
 
 
-<h1 id="aqualink-automate">Aqualink Automate<a class="headerlink" href="#aqualink-automate" title="Permanent link">&para;</a></h1>
-<p>Local control of Jandy/Zodiac (Fluidra) Aqualink RS and Pentair pool controllers
-over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge, with <strong>no cloud
-service required</strong>.</p>
-<p>Aqualink Automate is a C++ service that talks to your pool equipment over an
-RS-485 serial link and exposes it on your own network. It reads status from the
-panel and lets you control it through a built-in Web UI, an HTTP and WebSocket
-API, MQTT (with Home Assistant discovery), and a Matter bridge for Apple Home,
-Google Home, Alexa, and SmartThings. Everything runs on hardware you own;
-nothing is sent to a vendor cloud.</p>
-<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<p>The quickest path is the signed package repositories — install and stay current
-with your system package manager:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Debian / Ubuntu / Raspberry Pi OS</label><label for="__tabbed_1_2">Fedora / RHEL / openSUSE</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://iainchesworth.github.io/aqualink-automate/install-apt.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>aqualink-automate
+<h1 id="matter-smart-home-support">Matter (smart-home) support<a class="headerlink" href="#matter-smart-home-support" title="Permanent link">&para;</a></h1>
+<p><em>For pool owners pairing the equipment with Apple Home, Google Home, Alexa or
+SmartThings over Matter. CLI/config option semantics live in
+<a href="../configuration/">Configuration reference</a>; the Docker host-networking requirement
+lives in <a href="../INSTALL/#matter-bridge-and-host-networking">INSTALL.md</a>.</em></p>
+<p>aqualink-automate exposes the pool equipment to <strong>Apple Home, Google Home, Amazon
+Alexa and Samsung SmartThings</strong> over <a href="https://csa-iot.org/all-solutions/matter/">Matter</a>,
+so a single QR-code pairing covers every major ecosystem.</p>
+<p>Matter is implemented as a <strong>sidecar bridge</strong> (<a href="https://github.com/iainchesworth/aqualink-automate/blob/main/matter-bridge/README.md"><code>matter-bridge/</code></a>):
+a separate Node.js process that consumes the existing HTTP/WebSocket equipment API and
+presents the equipment as a Matter <em>Aggregator</em>. It does <strong>not</strong> link into the C++
+build — keeping the C++/MSVC build untouched and the image small. The sidecar depends
+on <a href="https://www.npmjs.com/package/@matter/main"><code>@matter/main</code></a> <code>^0.12.0</code> and <code>ws</code>, and
+requires <strong>Node.js ≥ 20</strong> (the published Docker image ships Node 22, which satisfies
+that floor).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> Apple Home / Google / Alexa / SmartThings
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        │  Matter over IPv6 mDNS (UDP 5540 / 5353)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        ▼
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a> ┌───────────────────────┐   HTTP + WS    ┌──────────────────────────┐
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a> │  matter-bridge (node)  │ ─────────────▶ │  aqualink-automate (C++)  │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a> │  @matter/main Aggregator│  /api/equipment │  RS-485 ⇄ pool hardware   │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a> └───────────────────────┘  /ws/equipment   └──────────────────────────┘
 </code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://iainchesworth.github.io/aqualink-automate/install-dnf.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>aqualink-automate
+<h2 id="cross-controller-actuation-why-this-works-on-any-rig">Cross-controller actuation (why this works on any rig)<a class="headerlink" href="#cross-controller-actuation-why-this-works-on-any-rig" title="Permanent link">&para;</a></h2>
+<p>Commands reach the RS-485 bus through a <strong>capability-routed command dispatcher</strong>:
+whichever controller is running advertises what it can do (<code>DeviceActuator</code>,
+<code>SetpointController</code>, <code>ChlorinatorController</code>, …) and the dispatcher routes to the
+highest-priority one present. Three controllers can actuate equipment and heater
+setpoints, in precedence order:</p>
+<ol>
+<li><strong>Serial Adapter (RSSA, <code>0x48</code>)</strong> — <em>High</em>. A direct, stateless command channel.</li>
+<li><strong>AqualinkTouch / iAqualink2 (<code>0x33</code>)</strong> — <em>Medium</em>. Presses the on-screen
+   <code>PageButton</code> matching the device by name (<code>0x11 + index</code>) for toggles, and uses the
+   value-submit protocol (select field → <code>0x80</code> → control-data value) for setpoints +
+   the chlorinator. These commands take effect immediately.</li>
+<li><strong>OneTouch (<code>0x40–43</code>)</strong> — <em>Low</em>. Drives the menu via the Navigator (equipment
+   toggle = in-place <em>Select</em> on the Equipment ON/OFF row; setpoint = arrow-stepping
+   the value on the Set Temperature page). Slower, since it must crawl menus.</li>
+<li><strong>PDA (<code>0x60–63</code>)</strong> — <em>Lowest</em>. (Currently advertises nothing → honest <code>NotSupported</code>;
+   actuation parity is planned.)</li>
+</ol>
+<p>The AqualinkTouch outranks the OneTouch because its direct page-button / value-submit
+commands take effect immediately, whereas the OneTouch must navigate menus. So a rig
+with <em>any</em> controller can be controlled, and the most direct channel present wins.</p>
+<h2 id="device-mapping">Device mapping<a class="headerlink" href="#device-mapping" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Aqualink device</th>
+<th>Matter device type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pump (single/two-speed)</td>
+<td>On/Off Plug-in Unit</td>
+<td>on/off (VSP speed not a command yet)</td>
+</tr>
+<tr>
+<td>Aux / Cleaner / Spillover / Sprinkler</td>
+<td>On/Off Plug-in Unit</td>
+<td>toggle</td>
+</tr>
+<tr>
+<td>Light</td>
+<td>On/Off Plug-in Unit (v1)</td>
+<td>on/off only; dimmable/colour is <strong>planned</strong>, not yet shipped</td>
+</tr>
+<tr>
+<td>Heater</td>
+<td>Thermostat (heat)</td>
+<td>setpoint per body (pool/spa)</td>
+</tr>
+<tr>
+<td>Chlorinator (SWG)</td>
+<td>On/Off + Level Control</td>
+<td>level = generating %; boost = 101</td>
+</tr>
+<tr>
+<td>Pool / Spa / Air temperature</td>
+<td>Temperature Sensor</td>
+<td>read-only</td>
+</tr>
+<tr>
+<td>pH / ORP / salt ppm</td>
+<td>(omitted in v1)</td>
+<td>no faithful Matter type</td>
+</tr>
+</tbody>
+</table>
+<h2 id="enabling--disabling">Enabling / disabling<a class="headerlink" href="#enabling--disabling" title="Permanent link">&para;</a></h2>
+<p>Matter is <strong>on by default (opt-out)</strong>. <code>--matter</code> is a <code>value&lt;bool&gt;</code> with an implicit
+<code>true</code>, so omitting it or passing a bare <code>--matter</code> leaves the bridge on; only an
+explicit false turns it off. Config-file keys are the option long name without the
+leading dashes (so <code>matter = false</code>). See the
+<a href="../configuration/">Configuration reference</a> for the full option semantics.</p>
+<ul>
+<li>App flag: <code>--matter false</code> (or <code>matter = false</code> in the config file).</li>
+<li>Docker: <code>-e MATTER_ENABLED=false</code> (read by the container entrypoint).</li>
+<li>Tunables: <code>--matter-storage-path</code> (default <code>/data/matter</code>), <code>--matter-status-port</code>
+  (default <code>8099</code>, localhost only), <code>--matter-passcode</code>, <code>--matter-discriminator</code>
+  (passcode/discriminator <code>0</code> ⇒ the sidecar generates and persists random values).</li>
+</ul>
+<h2 id="networking-requirement-docker">Networking requirement (Docker)<a class="headerlink" href="#networking-requirement-docker" title="Permanent link">&para;</a></h2>
+<p>Matter commissioning uses <strong>IPv6 mDNS (UDP 5540 + 5353)</strong>, which Docker's bridge
+driver does not forward. The container therefore <strong>must run with host networking</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>run<span class="w"> </span>--network<span class="w"> </span>host<span class="w"> </span>-v<span class="w"> </span>aqualink-matter:/data/matter<span class="w"> </span>aqualink-automate
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># or simply:</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w">      </span><span class="c1"># compose sets network_mode: host + a matter-data volume</span>
 </code></pre></div>
-</div>
-</div>
-</div>
-<p>Then <code>sudo apt upgrade</code> / <code>sudo dnf upgrade</code> keeps it current. Builds are provided
-for <code>amd64</code> and <code>arm64</code> (Raspberry Pi). The repositories are GPG-signed with
-<a href="https://iainchesworth.github.io/aqualink-automate/key.gpg">this key</a>.</p>
-<p>For pre-built binaries, dev containers, Docker, and building from source, see the
-<a href="INSTALL/">Install guide</a>.</p>
-<div class="admonition warning">
-<p class="admonition-title">Before exposing it on your network</p>
-<p>By default the web server binds to <code>127.0.0.1</code> (localhost only) and HTTP
-authentication is off. Review the <a href="SECURITY/">Security guide</a> and the
-<a href="configuration/">Configuration reference</a> first.</p>
-</div>
-<h2 id="where-to-next">Where to next<a class="headerlink" href="#where-to-next" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><a href="INSTALL/">Install</a></strong> — releases, Docker, dev container, build from source.</li>
-<li><strong><a href="configuration/">Configuration</a></strong> — every CLI flag and config-file key.</li>
-<li><strong><a href="usage-and-api/">Usage, HTTP API &amp; WebSocket</a></strong> — drive it programmatically.</li>
-<li><strong><a href="mqtt-home-assistant/">MQTT &amp; Home Assistant</a></strong> — auto-discovery and topics.</li>
-<li><strong><a href="MATTER/">Matter</a></strong> — pair the pool into Apple Home, Google Home, Alexa, SmartThings.</li>
-<li><strong><a href="raspberry-pi/">Raspberry Pi</a></strong> — run it on a Pi.</li>
-<li><strong><a href="hardware-rs485-connectivity/">RS-485 wiring</a></strong> — adapters and physical connection.</li>
-</ul>
-<p>Contributors should start with the <a href="CONTRIBUTING/">Development</a> section.</p>
-<h2 id="supported-equipment">Supported equipment<a class="headerlink" href="#supported-equipment" title="Permanent link">&para;</a></h2>
-<p>Two RS-485 protocols are supported and auto-detected from the wire traffic:
-<strong>Jandy/Zodiac (Fluidra) Aqualink RS</strong> and <strong>Pentair</strong>. The
-<a href="https://github.com/iainchesworth/aqualink-automate">GitHub repository</a> has the
-full source, issue tracker, and changelog.</p>
-<h2 id="questions-and-support">Questions and support<a class="headerlink" href="#questions-and-support" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Bugs and feature requests</strong> — open an <a href="https://github.com/iainchesworth/aqualink-automate/issues">issue</a>.</li>
-<li><strong>Questions, ideas, and help</strong> — start a <a href="https://github.com/iainchesworth/aqualink-automate/discussions">GitHub Discussion</a>.</li>
-</ul>
+<p>The fabric-state volume (<code>/data/matter</code>) makes pairing survive restarts. Host
+networking is Linux-only; on Docker Desktop (macOS/Windows) disable Matter with
+<code>MATTER_ENABLED=false</code>. The Docker setup is covered in full in
+<a href="../INSTALL/#matter-bridge-and-host-networking">INSTALL.md</a>.</p>
+<h2 id="pairing">Pairing<a class="headerlink" href="#pairing" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open the web UI → <strong>Diagnostics → Matter</strong>. When the badge reads <strong>"Ready to
+   pair"</strong> the QR code and an 11-digit manual pairing code are shown. (The code is
+   also printed in the container logs on first boot.) The badge is backed by the
+   <code>GET /api/diagnostics/matter</code> status route — see
+   <a href="../usage-and-api/#diagnostics">Usage and API</a>.</li>
+<li><strong>Apple Home:</strong> Home app → <strong>+</strong> → <em>Add Accessory</em> → scan the QR (or <em>More
+   options…</em> → enter the manual code). Approve the "uncertified accessory" prompt
+   (the bridge uses a test vendor ID).</li>
+<li><strong>One other ecosystem</strong> (pick one):</li>
+<li><strong>Alexa:</strong> Alexa app → <em>Devices</em> → <strong>+</strong> → <em>Add Device</em> → <em>Other</em> → <em>Matter</em> →
+     scan the QR / enter the code.</li>
+<li><strong>Google Home:</strong> Home app → <strong>+</strong> → <em>Set up device</em> → <em>Matter-enabled device</em>.</li>
+<li><strong>SmartThings:</strong> app → <strong>+</strong> → <em>Add device</em> → <em>Partner devices / Matter</em> →
+     scan the QR.</li>
+<li>Each ecosystem joins its own fabric; the <strong>Matter</strong> panel's "Paired fabrics"
+   count increments per ecosystem. Toggle a pool device from the controller app and
+   confirm it actuates on the bus, and that controller-side changes reflect back.</li>
+</ol>
+<h2 id="verification-status">Verification status<a class="headerlink" href="#verification-status" title="Permanent link">&para;</a></h2>
+<p><strong>Note:</strong> The table below records the outcome of a specific test run (case counts,
+<code>tsc</code>-clean, Docker build stages) at the time it was captured, not a continuously
+verified guarantee. Treat it as a time-stamped snapshot; re-run the suites for the
+current state.</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C++ unit + integration suites (incl. OneTouch setpoint, dispatcher, fixture replay)</td>
+<td>✅ green (1726 + 101 cases)</td>
+</tr>
+<tr>
+<td>OneTouch toggle replay driven from <code>onetouch_equipment_toggle.cap</code></td>
+<td>✅ Navigator emits in-place Select</td>
+</tr>
+<tr>
+<td>OneTouch setpoint edit model vs <code>onetouch_setpoint_edit.cap</code> hardware</td>
+<td>✅ Select-enter → arrow-step ±1 → Select-commit; Pool=line2/Spa=line3; on-screen units</td>
+</tr>
+<tr>
+<td>AqualinkTouch (IAQ) aux + setpoint vs <code>iaq_aux_setpoint.cap</code> hardware</td>
+<td>✅ toggle = 0x11+index by name (Pool Light 0x1a, Spillway 0x1c); setpoint = value-submit '1'+value</td>
+</tr>
+<tr>
+<td>OneTouch chlorinator (% + boost) vs <code>onetouch_chlorinator.cap</code> hardware</td>
+<td>✅ % = Set AquaPure 5% value-steps (Pool=line3); boost start/stop via Boost Pool page</td>
+</tr>
+<tr>
+<td>Sidecar unit tests (device-map, API client)</td>
+<td>✅ green (11 cases)</td>
+</tr>
+<tr>
+<td>Sidecar typecheck + build (matter.js bridge)</td>
+<td>✅ <code>tsc</code> clean</td>
+</tr>
+<tr>
+<td>Sidecar boots → emits a valid commissioning QR + manual code</td>
+<td>✅ verified</td>
+</tr>
+<tr>
+<td><code>/api/diagnostics/matter</code> (enabled / opt-out / unreachable-sidecar)</td>
+<td>✅ verified live on a replay fixture</td>
+</tr>
+<tr>
+<td>Docker <code>matter-builder</code> stage builds + prod-pruned sidecar boots</td>
+<td>✅ verified (node:22-bookworm-slim)</td>
+</tr>
+<tr>
+<td>Docker runtime stage (NodeSource + tini on ubuntu) + entrypoint</td>
+<td>✅ verified: both processes supervised, opt-out, SIGTERM, <code>--version</code></td>
+</tr>
+<tr>
+<td>Full <code>docker compose up</code> of the runtime image</td>
+<td>⚙️ runs in CI (<code>docker-verify</code>) — the in-container C++ build needs a populated <code>deps/vcpkg</code>, which the local reuse-vcpkg worktree intentionally omits</td>
+</tr>
+<tr>
+<td>Physical pairing from Apple Home + a second ecosystem</td>
+<td>🔌 manual — requires hardware on the LAN (steps above)</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -1120,10 +1311,10 @@ full source, issue tracker, and changelog.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.top", "navigation.tracking", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.tracking", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
