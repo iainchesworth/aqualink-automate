@@ -1,17 +1,32 @@
 name: Automated Code Scanning
 
 on:
-  # Code scanning is SLOW (full per-platform builds), so only scan code where it
-  # is genuinely NEW:
+  # Code scanning is SLOW (full per-platform builds), so only scan code where it is
+  # genuinely NEW or where the result must be RECORDED against a branch:
   #   * pull_request into develop -> feature work entering the integration branch
   #   * pull_request into main    -> code arriving on the release branch, EXCEPT a
   #       develop->main promotion (skipped per-job below: that code was already
   #       scanned when it entered develop, so re-scanning the promotion is pure
   #       duplication and was the long redundant run we removed)
-  #   * schedule -> weekly baseline of the default branch (Security tab)
+  #   * push to main -> REQUIRED to keep the default-branch security baseline (the
+  #       Security tab / CodeQL "tool status") current. A pull_request run uploads
+  #       SARIF against the throwaway refs/pull/N/merge ref, which NEVER updates
+  #       main's baseline -- only an analysis whose ref is refs/heads/main does. So
+  #       no amount of per-PR scanning refreshes the Security tab; without this push
+  #       trigger the baseline depended solely on the weekly schedule below, and a
+  #       single failed/skipped cron silently froze it for weeks. Fires only on
+  #       merges to main (one scan per promotion), not the old per-feature-push
+  #       re-scanning we removed.
+  #   * schedule -> weekly safety-net baseline of the default branch
   #   * workflow_dispatch -> on demand
-  # The former `push: [main, feature/**, bug/**]` triggers re-scanned the
-  # post-merge main commit and every WIP feature push, all already covered above.
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+      - 'LICENSE'
   pull_request:
     branches: [ "develop", "main" ]
     # Docs-only changes touch no compiled code, so there is nothing new to scan.
@@ -64,13 +79,22 @@ jobs:
         language: [ 'c-cpp' ]
 
     steps:
+    # BEFORE checkout so a dirty tree cannot fail actions/checkout's git-clean. A
+    # prior RELEASE built inside a root gcc container (_build.yml) can leave
+    # root-owned files the unprivileged runner cannot delete; reset ownership via a
+    # throwaway ROOT container -- NOT host sudo -- then drop the stale build trees.
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ] && [ -n "$(find . ! -uid "$(id -u)" -print -quit 2>/dev/null)" ]; then
+          docker run --rm -v "${{ github.workspace }}":/w -w /w alpine:3 chown -R "$(id -u):$(id -g)" /w
+        fi
+        rm -rf build install
+
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         submodules: recursive
-
-    - name: Clean workspace (self-hosted)
-      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
-      run: rm -rf build/
 
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
@@ -174,13 +198,22 @@ jobs:
       contents: read
 
     steps:
+    # BEFORE checkout so a dirty tree cannot fail actions/checkout's git-clean. A
+    # prior RELEASE built inside a root gcc container (_build.yml) can leave
+    # root-owned files the unprivileged runner cannot delete; reset ownership via a
+    # throwaway ROOT container -- NOT host sudo -- then drop the stale build trees.
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ] && [ -n "$(find . ! -uid "$(id -u)" -print -quit 2>/dev/null)" ]; then
+          docker run --rm -v "${{ github.workspace }}":/w -w /w alpine:3 chown -R "$(id -u):$(id -g)" /w
+        fi
+        rm -rf build install
+
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         submodules: recursive
-
-    - name: Clean workspace (self-hosted)
-      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
-      run: rm -rf build/
 
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
@@ -349,14 +382,23 @@ jobs:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
     steps:
+    # BEFORE checkout so a dirty tree cannot fail actions/checkout's git-clean. A
+    # prior RELEASE built inside a root gcc container (_build.yml) can leave
+    # root-owned files the unprivileged runner cannot delete; reset ownership via a
+    # throwaway ROOT container -- NOT host sudo -- then drop the stale build trees.
+    - name: Clean workspace (self-hosted)
+      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ] && [ -n "$(find . ! -uid "$(id -u)" -print -quit 2>/dev/null)" ]; then
+          docker run --rm -v "${{ github.workspace }}":/w -w /w alpine:3 chown -R "$(id -u):$(id -g)" /w
+        fi
+        rm -rf build install
+
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
         submodules: recursive
-
-    - name: Clean workspace (self-hosted)
-      if: contains(vars.RUNNER_LINUX || '', 'self-hosted')
-      run: rm -rf build/
 
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_LINUX || '', 'self-hosted') }}
@@ -455,14 +497,21 @@ jobs:
       contents: read
       security-events: write
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      with:
-        submodules: recursive
-
+    # BEFORE checkout so a dirty tree cannot fail actions/checkout. (The
+    # root-owned-file recovery only applies to Linux self-hosted runners; on Windows
+    # the plain rm suffices, so the guarded branch is a no-op here.)
     - name: Clean workspace (self-hosted)
       if: contains(vars.RUNNER_WINDOWS || '', 'self-hosted')
       shell: bash
-      run: rm -rf build/
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ] && [ -n "$(find . ! -uid "$(id -u)" -print -quit 2>/dev/null)" ]; then
+          docker run --rm -v "${{ github.workspace }}":/w -w /w alpine:3 chown -R "$(id -u):$(id -g)" /w
+        fi
+        rm -rf build install
+
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        submodules: recursive
 
     - uses: ./.github/actions/setup-cpp-toolchain
       if: ${{ !contains(vars.RUNNER_WINDOWS || '', 'self-hosted') }}
