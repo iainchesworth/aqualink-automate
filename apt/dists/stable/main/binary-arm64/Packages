@@ -3,11 +3,11 @@ Architecture: arm64
 Depends: libc6 (>= 2.36), systemd
 Priority: optional
 Section: net
-Filename: pool/main/a/aqualink-automate/aqualink-automate_0.8.0~beta.2_arm64.deb
-Size: 12304862
-SHA256: 2d397320fa946ad7a7de4cd2ac78891f7be0ab5a82c58a7e741151dd685121c6
-SHA1: 4d8d3f5cca076344f8d3b67ff561e948ef8447f4
-MD5sum: 246e8579f37be058f445fef3541634bf
+Filename: pool/main/a/aqualink-automate/aqualink-automate_0.9.0~beta.1_arm64.deb
+Size: 12345610
+SHA256: 41905dc4cc80afafaec902c5313bc15eb96367c74dd7428d35404f9a86e68d73
+SHA1: d9b7c02352556c872a6f1ef1ec90dbc45bdae042
+MD5sum: 31ecdff82c4d53933117bf9fba0464ec
 Description: Control Jandy Aqualink RS pool equipment via common IoT integrations
  # Aqualink Automate
  .
@@ -37,7 +37,7 @@ Description: Control Jandy Aqualink RS pool equipment via common IoT integration
  - Connectivity over a physical USB-to-RS485 adapter or a remote serial port (serial-over-ethernet) using RFC2217 or raw TCP.
  - Detailed status reporting for your Aqualink RS system.
  .
- **Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
+ **Security:** By default the web server binds to `127.0.0.1` (localhost only) and HTTP authentication is off. Review [SECURITY.md](docs/SECURITY.md) and the [configuration reference](docs/configuration.md) before exposing the service on your network.
  .
  ## Quick start
  .
@@ -56,21 +56,23 @@ Description: Control Jandy Aqualink RS pool equipment via common IoT integration
  .\cicd\build.ps1
  ```
  .
- For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](INSTALL.md).
+ For pre-built binaries, dev containers, Docker deployment, and the full build-from-source walkthrough, see [INSTALL.md](docs/INSTALL.md).
  .
  ## Documentation
  .
+ 📖 **[Read the documentation online](https://iainchesworth.github.io/aqualink-automate/)** — the same guides below, rendered and searchable.
+ .
  | Guide | What it covers |
  |-------|----------------|
- | [INSTALL.md](INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
+ | [INSTALL.md](docs/INSTALL.md) | Install a release, build from source, dev container, and Docker. Start here. |
  | [docs/configuration.md](docs/configuration.md) | CLI options and config-file reference. |
  | [docs/usage-and-api.md](docs/usage-and-api.md) | Running the service and the HTTP and WebSocket API. |
  | [docs/mqtt-home-assistant.md](docs/mqtt-home-assistant.md) | MQTT topics and Home Assistant discovery. |
  | [docs/MATTER.md](docs/MATTER.md) | Pairing the Matter bridge into a smart-home platform. |
  | [docs/hardware-rs485-connectivity.md](docs/hardware-rs485-connectivity.md) | RS-485 wiring and serial connectivity. |
  | [docs/hardware-server-automation.md](docs/hardware-server-automation.md) | Host and server hosting requirements. |
- | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute code and report issues. |
- | [SECURITY.md](SECURITY.md) | Security policy and reporting. |
+ | [CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute code and report issues. |
+ | [SECURITY.md](docs/SECURITY.md) | Security policy and reporting. |
  | [docs/releasing.md](docs/releasing.md) | Cutting and publishing a release. |
  | [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows and self-hosted runner configuration. |
  | [CHANGELOG.md](CHANGELOG.md) | Notable changes per release. |
@@ -86,7 +88,7 @@ Description: Control Jandy Aqualink RS pool equipment via common IoT integration
  .
  ## Contributing
  .
- Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what the project is working toward.
+ Contributions are welcome — new features and bug fixes alike. Open an issue in the tracker or send a pull request. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for how to get set up and what the project is working toward.
  .
  ## Changelog
  .
@@ -101,6 +103,6 @@ Description: Control Jandy Aqualink RS pool equipment via common IoT integration
  This project was influenced by sfeakes&apos; [AqualinkD](https://github.com/sfeakes/AqualinkD). The original goal was a variant that also runs on Windows and macOS.
 Homepage: https://github.com/iainchesworth/aqualink-automate
 Maintainer: Iain Chesworth
-Version: 0.8.0~beta.2
-Installed-Size: 59161
+Version: 0.9.0~beta.1
+Installed-Size: 59243
 

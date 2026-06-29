@@ -4,44 +4,44 @@ Hash: SHA512
 Origin: Aqualink Automate
 Label: Aqualink Automate
 Codename: stable
-Date: Sun, 28 Jun 2026 05:12:15 UTC
+Date: Mon, 29 Jun 2026 12:06:06 UTC
 Architectures: amd64 arm64
 Components: main
 Description: Aqualink Automate APT repository
 MD5Sum:
- bbd75d7858e6c15f929d6d07bbc133b0 6107 main/binary-amd64/Packages
- abf211e9766b83cb855bb94689102249 2660 main/binary-amd64/Packages.gz
+ 35ef704a94f20b442a50e3abb7f46c03 6286 main/binary-amd64/Packages
+ cdca4e5744dadf2455972e06a61be0c4 2731 main/binary-amd64/Packages.gz
  d971d3bbe41152811ef0fd506cc8c6c1 133 main/binary-amd64/Release
- 626360777ddc292b12dbc225df3bad25 6107 main/binary-arm64/Packages
- 630282dba5b3cf8db4bbb0d125ff9fc7 2658 main/binary-arm64/Packages.gz
+ 6090e3eeee362a167253ed08b2fa2ca1 6286 main/binary-arm64/Packages
+ fcb194e7bf31274fecf7168dbf7645f3 2731 main/binary-arm64/Packages.gz
  17df63a7897ce330d6be74a7840c3061 133 main/binary-arm64/Release
 SHA1:
- bf6b77924f9033d9e32d91a5579dbbd3fc4ddc4d 6107 main/binary-amd64/Packages
- 5795b15d178176b22e027015859bc36d4143b5cc 2660 main/binary-amd64/Packages.gz
+ 7cfe65786f860020bb012fcac5a5cd55b2111b38 6286 main/binary-amd64/Packages
+ 376ab2f136de4a7d60d8ee1675df339b5ec9acfa 2731 main/binary-amd64/Packages.gz
  49b9046ea11419384cb6b70972826d28bcf18e79 133 main/binary-amd64/Release
- d90a413c251c8b804a2d5381efcf38411ac1f53f 6107 main/binary-arm64/Packages
- 5f3c60cd26b6449b8d4f61d0b323f8757d316378 2658 main/binary-arm64/Packages.gz
+ 4a0cb569fe4877b7e00ca9cea09392f19e06a8ac 6286 main/binary-arm64/Packages
+ 505d2af51f6bf82bd7e8a7556af49fe2f85ff061 2731 main/binary-arm64/Packages.gz
  f734ef360d77d822fbd223b5183408a8900757dd 133 main/binary-arm64/Release
 SHA256:
- b5e4a35dd360dd21f2798517aa3d022c644da5ae34c19808e11ddf82eb7e8644 6107 main/binary-amd64/Packages
- 610baa90984390466533c5d274446a5cf826f3636fd259e90d254e4fa52ecc47 2660 main/binary-amd64/Packages.gz
+ 039969c713a045040e0bbdd8ab7ee2637a5c2153ffe6e3eb4adc159c65cdfa94 6286 main/binary-amd64/Packages
+ 31b13fc21ceec8c8a4643dfb1654e86b19f3951be8fb50cbdd1adc177d87c702 2731 main/binary-amd64/Packages.gz
  b930f48053dc93e634356edbe7f7e233fcaeb2689c3d5d59e92bdd64cfc8c76c 133 main/binary-amd64/Release
- ee951c34054c6f097de3245273a90516e33e0fb5b8ef145a24056d156fb55915 6107 main/binary-arm64/Packages
- 1f7769fd99d79635914310e4d03bbc00333c6cc8b253355ff567d9d0a64db1ab 2658 main/binary-arm64/Packages.gz
+ 66f984f67c71816fcbe858a9a6ac897861f84b665c06d5a5c4a56ac25de6fea3 6286 main/binary-arm64/Packages
+ fc50748e21926d8cdedaa6d2d3fbae418a3aceff66f4cf61a111716534c14de4 2731 main/binary-arm64/Packages.gz
  7e3e72911a1127ccccfdd8769b410fe8d8e6a5f4af24a19080e79afdc9234f48 133 main/binary-arm64/Release
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEExKp+OO+ZF5ZXHZEfgeRxctW1XrAFAmpArS8ACgkQgeRxctW1
-XrBFNw/8DEpNHzfVjQ6v7RR1LvkPel6dUOG5mbkdBaWah+TJDZkxryfB9OVOclMH
-J3pEKNLau8HXlJLhIY7ltSl/8kZsO9ZbdBCzeBllpRDJasp30w48umZmhC2uhYJl
-YfaLsg4SIV+F2YaB51toj2sgIGKDFq+b3isj7dUe+cJGPN4S+2NnB5PXQWeBLTpx
-rEWqoF1yT2SeArQarj6SD1pZ2Cz1ApR5v0M/236g6SkqZePQ+FLoL0XWiXQDtTd4
-X3ccCTPsqhoDeNCXRaVAlExyaA0NDLlS4B+xTUQeor5na6tVOLihEhlmkTYVCE43
-7tQyvYd4T7/el4QFAoMEICSdozwhxoA9A6mn0qORF49P3FtEZ0jcP0JshAbg1QAi
-LVB2AtuyJXeKzcjeNTKheFhJJGVzko9RXAF0DobQAK7cj4t8uXHTjpgjfQtAVYIP
-dPnMdvRdnCoEdOsOSuqAR0Jms2G4aoCtQSOMhZ03EmZZLSzOlg0HWysBty7ZQTaH
-Eb4+SI9TPTbuk8LzC9I1qaJm9OwW+6C0YyvUZOhLPjlRwUa8NoyKcKnoymc2xI5W
-zi1zmdcuMJF2ryJSbiuWBBL7CA5iw7L/Aras9dHTM/Gri5UX4c8fGREH6dOwUyX1
-OKngKO2FtZBm6UM6UiMNK1KCMwSdtO11ghD2NAwelkAAFgZVPY4=
-=KOqO
+iQIzBAEBCgAdFiEExKp+OO+ZF5ZXHZEfgeRxctW1XrAFAmpCX68ACgkQgeRxctW1
+XrAk5w//QfMZzu5FxquuBN/7LasCRlEgMkhKvICRpBMFUXI0927oxc9F8+BFBWgS
+fPEwc5Nvb99DiZOCO5gnVSsptD5AIpu5owQR6nHQGTYeBs7roGjKgks9tYqAzJff
+/JQ+DDbh5nWHPAJM5QGTGWkQTaT+xyYJNPryJsqgsRUc9vl1q3nIkjTzuYLwP5nF
+LjDqj6fNJWs+4YqsaJD77aSpuqMhNScWHsi9RcXz92H5Eohf4uRboociF4t2YP86
+EuwfPdV5WeB2EmmjsCsjUpgyI8iM7P+lc7X89YDbUuEh4h8wU6E6AgF8BjZWq16d
+2bDqyEag6RMNyS+7TmSEyoCqwvzbxocOioOh5HiweLcYW1xqtdTHsh7emkHnjUl3
+A0yr8vVrSzQlMazns/eMdMByPGopvF1lo3LM94rOO/IFLIRgPRWfVUnctulFucXE
+tUIS4kNkYY8zzi3wL059bm3+EgDJAfh4vnVxoRgNBb5cjiQDXGKsPduRFpC9s9eC
+eIaa7HX0SVOR+N360pCa9Fa7GE+FntdB6gr8VIjOqLPTXIr5hxHk5K9auOANA6su
+Ukvj2aTTfWAFFtISjyM3hhB40c2mQ68WJ+9XXv14EdtQYvAXWb5K8luSRnQE8Ezm
+FLKfr53bFO8si3kV7PDxC1SVaIUjh7l7nOm7tFWu5uFAiiaEAVA=
+=JP4o
 -----END PGP SIGNATURE-----
