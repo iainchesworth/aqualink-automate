@@ -80,6 +80,7 @@ target_sources(
 	unit/startup/test_jandy_startup_coordinator.cpp
 	unit/startup/test_jandy_startup_environment.cpp
 	unit/options/test_options_web.cpp
+	unit/options/test_options_matter.cpp
 	unit/messages/test_aquarite_message_getid.cpp
 	unit/messages/test_aquarite_message_percent.cpp
 	unit/messages/test_aquarite_message_setpercent.cpp
@@ -256,7 +257,10 @@ setup_target_for_coverage_opencppcoverage(
 
 elseif(USE_SONARQUBE)
 
-set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn")
+# NOTE: this is consumed as a CMake list (each element becomes one VERBATIM
+# argument to gcovr). Keep each flag a SEPARATE list element — collapsing them
+# into one space-joined string makes gcovr see a single malformed argument.
+set(GCOVR_ADDITIONAL_ARGS "--gcov-ignore-parse-errors=negative_hits.warn" "--exclude-throw-branches" "--exclude-unreachable-branches")
 
 setup_target_for_coverage_gcovr_xml(
 	NAME coverage-testaqualink-automate

@@ -341,6 +341,7 @@ jobs:
         gcovr --sonarqube "${{ github.workspace }}/coverage-e2e.xml" \
           -r "${{ github.workspace }}" \
           --gcov-ignore-parse-errors=negative_hits.warn \
+          --exclude-throw-branches --exclude-unreachable-branches \
           -e "${{ github.workspace }}/deps" \
           -e "${{ github.workspace }}/build/config-linux-gcc-coverage/vcpkg_installed" \
           -e "${{ github.workspace }}/test" \
