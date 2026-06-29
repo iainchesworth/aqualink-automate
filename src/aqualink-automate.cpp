@@ -59,6 +59,8 @@
 #include "http/webroute_equipment_chlorinator.h"
 #include "http/webroute_equipment_devices.h"
 #include "http/webroute_equipment_iaq.h"
+#include "http/webroute_equipment_heater.h"
+#include "http/webroute_equipment_circulation.h"
 #include "http/webroute_equipment_setpoints.h"
 #include "http/webroute_equipment_version.h"
 #include "http/webroute_health.h"
@@ -289,10 +291,14 @@ int main(int argc, char* argv[])
 
 				if (equipment_settings.pool_configuration_is_user_specified)
 				{
-					data_hub->ApplyPoolConfiguration(equipment_settings.pool_configuration, Kernel::ConfigurationSource::UserSpecified);
+					data_hub->ApplyPoolConfiguration(equipment_settings.pool_configuration, Kernel::ConfigurationSource::UserSpecified, equipment_settings.single_body_kind);
 
-					LogInfo(Channel::Equipment, std::format("Pool configuration set from CLI: {}", magic_enum::enum_name(equipment_settings.pool_configuration)));
+					LogInfo(Channel::Equipment, std::format("Pool configuration set from CLI: {} (single-body kind: {})",
+						magic_enum::enum_name(equipment_settings.pool_configuration),
+						magic_enum::enum_name(equipment_settings.single_body_kind)));
 				}
+
+				data_hub->TemperatureStalenessThreshold = std::chrono::seconds(equipment_settings.temperature_staleness_threshold_seconds);
 			}
 		}
 
@@ -684,6 +690,8 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Buttons>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Chlorinator>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_IAQ>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Heater>(hub_locator));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Circulation>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Devices>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_Setpoints>(hub_locator));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Equipment_SpasideRemotes>(hub_locator, preferences_service));

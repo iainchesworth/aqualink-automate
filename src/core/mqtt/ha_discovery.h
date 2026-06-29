@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/signals2.hpp>
@@ -110,6 +111,13 @@ namespace AqualinkAutomate::Mqtt
 		std::string DeviceStateTopic(const std::string& slug) const;
 		std::string ChlorinatorCommandTopic(const std::string& command) const;
 		std::string CirculationCommandTopic() const;
+		std::string HeaterCommandTopic(const std::string& slug) const;
+
+		/// Resolve which bodies are installed, for config-respecting entity gating. Returns
+		/// {has_pool, has_spa}. Until bodies are known (config not yet detected) BOTH are true so
+		/// no entity is missing during discovery; once bodies exist they are respected exactly
+		/// (pool-only -> {true,false}, spa-only -> {false,true}, combo/dual -> {true,true}).
+		std::pair<bool, bool> ResolveBodyPresence() const;
 
 	private:
 		std::shared_ptr<MqttClient> m_Client;

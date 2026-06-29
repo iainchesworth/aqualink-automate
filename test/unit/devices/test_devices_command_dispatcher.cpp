@@ -98,6 +98,12 @@ BOOST_AUTO_TEST_CASE(TestSetCirculationMode_NoSerialAdapter)
 	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
 }
 
+BOOST_AUTO_TEST_CASE(TestSetHeaterMode_NoSerialAdapter)
+{
+	auto result = dispatcher.SetHeaterMode(Kernel::BodyOfWaterIds::Spa, true);
+	BOOST_CHECK_EQUAL(static_cast<int>(result), static_cast<int>(ICommandDispatcher::CommandResult::NoSerialAdapter));
+}
+
 // =============================================================================
 // Pool/Spa Setpoint Range Validation (regression for WU-JANDY-COMMAND-DISPATCH)
 //

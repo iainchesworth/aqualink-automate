@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdint>
 #include <optional>
 
@@ -101,11 +102,11 @@ namespace AqualinkAutomate::HTTP
 
 		nlohmann::json jandy_equipment_json;
 
-		jandy_equipment_json["temperatures"]["pool"] = Utility::SerializeTemperature(m_DataHub->PoolTemp());
-		jandy_equipment_json["temperatures"]["spa"] = Utility::SerializeTemperature(m_DataHub->SpaTemp());
-		jandy_equipment_json["temperatures"]["air"] = Utility::SerializeTemperature(m_DataHub->AirTemp());
-		jandy_equipment_json["temperatures"]["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint());
-		jandy_equipment_json["temperatures"]["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint());
+		jandy_equipment_json["temperatures"]["pool"] = Utility::SerializeTemperature(m_DataHub->CurrentTempForReporting(Kernel::BodyOfWaterIds::Pool), m_DataHub->PoolTempUpdatedAt(), m_DataHub->PoolTempIsStale());
+		jandy_equipment_json["temperatures"]["spa"] = Utility::SerializeTemperature(m_DataHub->CurrentTempForReporting(Kernel::BodyOfWaterIds::Spa), m_DataHub->SpaTempUpdatedAt(), m_DataHub->SpaTempIsStale());
+		jandy_equipment_json["temperatures"]["air"] = Utility::SerializeTemperature(m_DataHub->AirTemp(), m_DataHub->AirTempUpdatedAt(), m_DataHub->AirTempIsStale());
+		jandy_equipment_json["temperatures"]["pool_setpoint"] = Utility::SerializeTemperature(m_DataHub->PoolTempSetpoint(), m_DataHub->PoolTempSetpointUpdatedAt(), false);
+		jandy_equipment_json["temperatures"]["spa_setpoint"] = Utility::SerializeTemperature(m_DataHub->SpaTempSetpoint(), m_DataHub->SpaTempSetpointUpdatedAt(), false);
 
 		// Nested chemistry payload.  Salt / SWG values come from the DataHub
 		// chlorinator AuxillaryDevice traits (+ SaltLevel); ORP / pH read the
@@ -158,12 +159,32 @@ namespace AqualinkAutomate::HTTP
 			nlohmann::json bodies_array = nlohmann::json::array();
 			for (const auto& body : m_DataHub->Bodies())
 			{
+				// Resolve this body's freshness from the matching temperature channel.
+				std::optional<std::chrono::system_clock::time_point> current_updated;
+				std::optional<std::chrono::system_clock::time_point> setpoint_updated;
+				bool current_stale = false;
+				switch (body.Id())
+				{
+				case Kernel::BodyOfWaterIds::Pool:
+					current_updated = m_DataHub->PoolTempUpdatedAt();
+					setpoint_updated = m_DataHub->PoolTempSetpointUpdatedAt();
+					current_stale = m_DataHub->PoolTempIsStale();
+					break;
+				case Kernel::BodyOfWaterIds::Spa:
+					current_updated = m_DataHub->SpaTempUpdatedAt();
+					setpoint_updated = m_DataHub->SpaTempSetpointUpdatedAt();
+					current_stale = m_DataHub->SpaTempIsStale();
+					break;
+				default:
+					break;
+				}
+
 				nlohmann::json body_json;
 				body_json["id"] = std::string{ magic_enum::enum_name(body.Id()) };
 				body_json["label"] = body.Label();
 				body_json["is_active"] = body.IsActive();
-				body_json["temperature"] = Utility::SerializeTemperature(body.CurrentTemp());
-				body_json["setpoint"] = Utility::SerializeTemperature(body.TempSetpoint());
+				body_json["temperature"] = Utility::SerializeTemperature(m_DataHub->CurrentTempForReporting(body.Id()), current_updated, current_stale);
+				body_json["setpoint"] = Utility::SerializeTemperature(body.TempSetpoint(), setpoint_updated, false);
 				bodies_array.push_back(std::move(body_json));
 			}
 			config["bodies"] = std::move(bodies_array);
