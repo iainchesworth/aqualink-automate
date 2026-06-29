@@ -532,6 +532,128 @@ BOOST_AUTO_TEST_CASE(Test_PublishDeviceStates_EmptyDataHub_NoCrash)
 BOOST_AUTO_TEST_SUITE_END()
 
 //=============================================================================
+// Config-respecting entity gating + temperature freshness companions
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_HaDiscovery_ConfigGating)
+
+namespace
+{
+	nlohmann::json PublishAndGetComponents(Mqtt::HomeAssistantDiscovery& ha, Mqtt::MqttClient& client)
+	{
+		ha.PublishDiscoveryConfigs();
+		auto& queue = Test::MqttClientPacketTest::GetPublishQueue(client);
+		BOOST_REQUIRE_EQUAL(queue.size(), 1);
+		return nlohmann::json::parse(queue[0].payload)["cmps"];
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_Gating_PoolOnly_HidesSpaEntities)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::SingleBody, Kernel::ConfigurationSource::UserSpecified, Kernel::BodyOfWaterIds::Pool);
+	ha.ConnectDataHub(data_hub);
+
+	auto cmps = PublishAndGetComponents(ha, *client);
+
+	BOOST_CHECK(cmps.contains("pool_temp"));
+	BOOST_CHECK(cmps.contains("pool_setpoint"));
+	BOOST_CHECK(!cmps.contains("spa_temp"));
+	BOOST_CHECK(!cmps.contains("spa_setpoint"));
+	// Air + freeze are system-wide and always present.
+	BOOST_CHECK(cmps.contains("air_temp"));
+	BOOST_CHECK(cmps.contains("freeze_protect_temp"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Gating_SpaOnly_HidesPoolEntities)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::SingleBody, Kernel::ConfigurationSource::UserSpecified, Kernel::BodyOfWaterIds::Spa);
+	ha.ConnectDataHub(data_hub);
+
+	auto cmps = PublishAndGetComponents(ha, *client);
+
+	BOOST_CHECK(cmps.contains("spa_temp"));
+	BOOST_CHECK(cmps.contains("spa_setpoint"));
+	BOOST_CHECK(!cmps.contains("pool_temp"));
+	BOOST_CHECK(!cmps.contains("pool_setpoint"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Gating_Combo_ShowsBothBodies)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::UserSpecified);
+	ha.ConnectDataHub(data_hub);
+
+	auto cmps = PublishAndGetComponents(ha, *client);
+
+	BOOST_CHECK(cmps.contains("pool_temp"));
+	BOOST_CHECK(cmps.contains("spa_temp"));
+	BOOST_CHECK(cmps.contains("pool_setpoint"));
+	BOOST_CHECK(cmps.contains("spa_setpoint"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Gating_NoDataHub_EmitsBoth)
+{
+	// Defensive fallback: with no DataHub (config unknown) both bodies' entities are emitted so
+	// nothing is missing during discovery.
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto cmps = PublishAndGetComponents(ha, *client);
+
+	BOOST_CHECK(cmps.contains("pool_temp"));
+	BOOST_CHECK(cmps.contains("spa_temp"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_Freshness_CompanionsPresent)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::UserSpecified);
+	ha.ConnectDataHub(data_hub);
+
+	auto cmps = PublishAndGetComponents(ha, *client);
+
+	// Each live temperature gets a "last updated" timestamp sensor and a "stale" problem sensor.
+	for (const auto* base : { "pool_temp", "spa_temp", "air_temp" })
+	{
+		auto updated_key = std::string(base) + "_updated";
+		auto stale_key = std::string(base) + "_stale";
+		BOOST_CHECK_MESSAGE(cmps.contains(updated_key), "missing " + updated_key);
+		BOOST_CHECK_MESSAGE(cmps.contains(stale_key), "missing " + stale_key);
+		BOOST_CHECK_EQUAL(cmps[updated_key]["device_class"], "timestamp");
+		BOOST_CHECK_EQUAL(cmps[stale_key]["device_class"], "problem");
+	}
+
+	// Freeze-protect and setpoints are configured values - no stale companion.
+	BOOST_CHECK(!cmps.contains("freeze_protect_temp_stale"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
 // HA Device Discovery payload format tests
 //=============================================================================
 

@@ -356,9 +356,30 @@ namespace AqualinkAutomate::Mqtt
 					std::transform(body_name.begin(), body_name.end(), body_name.begin(),
 						[](unsigned char c) { return std::tolower(c); });
 
+					// Resolve freshness for this body's current temperature from the matching channel
+					// (PoolTempIsStale already suppresses staleness for a dormant inactive body).
+					std::optional<std::chrono::system_clock::time_point> current_updated;
+					std::optional<std::chrono::system_clock::time_point> setpoint_updated;
+					bool current_stale = false;
+					switch (body.Id())
+					{
+					case Kernel::BodyOfWaterIds::Pool:
+						current_updated = data_hub->PoolTempUpdatedAt();
+						setpoint_updated = data_hub->PoolTempSetpointUpdatedAt();
+						current_stale = data_hub->PoolTempIsStale();
+						break;
+					case Kernel::BodyOfWaterIds::Spa:
+						current_updated = data_hub->SpaTempUpdatedAt();
+						setpoint_updated = data_hub->SpaTempSetpointUpdatedAt();
+						current_stale = data_hub->SpaTempIsStale();
+						break;
+					default:
+						break;
+					}
+
 					nlohmann::json body_temp = {
-						{"current", SerializeTemperature(body.CurrentTemp())},
-						{"setpoint", SerializeTemperature(body.TempSetpoint())},
+						{"current", SerializeTemperature(data_hub->CurrentTempForReporting(body.Id()), current_updated, current_stale)},
+						{"setpoint", SerializeTemperature(body.TempSetpoint(), setpoint_updated, false)},
 						{"is_active", body.IsActive()}
 					};
 
@@ -580,15 +601,19 @@ namespace AqualinkAutomate::Mqtt
 
 		if (auto data_hub = m_DataHub.lock())
 		{
-			temps["air"] = SerializeTemperature(data_hub->AirTemp());
-			temps["pool"] = SerializeTemperature(data_hub->PoolTemp());
-			temps["spa"] = SerializeTemperature(data_hub->SpaTemp());
-			temps["freeze_protect"] = SerializeTemperature(data_hub->FreezeProtectPoint());
-			temps["pool_setpoint"] = SerializeTemperature(data_hub->PoolTempSetpoint());
+			temps["air"] = SerializeTemperature(data_hub->AirTemp(), data_hub->AirTempUpdatedAt(), data_hub->AirTempIsStale());
+			// Pool/spa current temps report unavailable (null) for an inactive combo body - see
+			// DataHub::CurrentTempForReporting.
+			temps["pool"] = SerializeTemperature(data_hub->CurrentTempForReporting(Kernel::BodyOfWaterIds::Pool), data_hub->PoolTempUpdatedAt(), data_hub->PoolTempIsStale());
+			temps["spa"] = SerializeTemperature(data_hub->CurrentTempForReporting(Kernel::BodyOfWaterIds::Spa), data_hub->SpaTempUpdatedAt(), data_hub->SpaTempIsStale());
+			// Freeze-protect and setpoints are configured values that persist legitimately, so they
+			// carry their timestamp but are never flagged stale.
+			temps["freeze_protect"] = SerializeTemperature(data_hub->FreezeProtectPoint(), data_hub->FreezeProtectPointUpdatedAt(), false);
+			temps["pool_setpoint"] = SerializeTemperature(data_hub->PoolTempSetpoint(), data_hub->PoolTempSetpointUpdatedAt(), false);
 			temps["pool_setpoint_2"] = SerializeTemperature(data_hub->PoolTempSetpoint2());
 			temps["pool_heater_2_enabled"] = data_hub->PoolHeater2Enabled().has_value()
 				? nlohmann::json(data_hub->PoolHeater2Enabled().value()) : nlohmann::json(nullptr);
-			temps["spa_setpoint"] = SerializeTemperature(data_hub->SpaTempSetpoint());
+			temps["spa_setpoint"] = SerializeTemperature(data_hub->SpaTempSetpoint(), data_hub->SpaTempSetpointUpdatedAt(), false);
 		}
 
 		return temps;

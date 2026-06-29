@@ -62,6 +62,16 @@ jobs:
             exit 0
           fi
 
+          # Docs-only delta since the last tag has nothing to ship in a binary
+          # release — the docs site is published separately by docs.yml. Skip the
+          # tag so a docs merge to main doesn't trigger a redundant release.yml run.
+          # Conservative: any non-docs file makes it a real release.
+          docs_re='^(docs/|mkdocs\.yml$|\.github/workflows/docs\.yml$|LICENSE|.*\.md$)'
+          if ! git diff --name-only "${LAST}..HEAD" | grep -qvE "$docs_re"; then
+            echo "Only docs changed since $LAST — no binary release (docs.yml handles the site)."
+            exit 0
+          fi
+
           NEXT="v${MAJOR}.${MINOR}.${PATCH}-${CHANNEL}.$((N + 1))"
           echo "Computed next tag: $NEXT ($COUNT new commits since $LAST)"
 

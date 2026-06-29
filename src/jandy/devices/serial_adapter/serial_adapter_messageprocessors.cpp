@@ -32,7 +32,11 @@ namespace AqualinkAutomate::Devices
 		// real Serial Adapter is present; go passive so we never double-transmit.
 		DetectRealAdapterAndSuppressEmulation("DevReady");
 
-		ProcessControllerUpdates();
+		// A DEV_READY poll is the controller soliciting the second step (setSP) of a
+		// two-step setpoint write, so drain a queued command here rather than via the
+		// CMD_STATUS-gated ProcessControllerUpdates() (which would defer the value to the
+		// next CMD_STATUS poll, out of the handshake context, and the controller ignores it).
+		DrainPendingCommandForDevReady();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();

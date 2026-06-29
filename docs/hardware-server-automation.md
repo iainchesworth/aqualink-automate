@@ -1,6 +1,6 @@
 # Server and hosting requirements
 
-*For pool owners choosing where to run Aqualink Automate. This covers the host machine and operating system; the physical RS-485 wiring to the panel lives in [Hardware requirements for connectivity](hardware-rs485-connectivity.md), and step-by-step install lives in [INSTALL.md](../INSTALL.md).*
+*For pool owners choosing where to run Aqualink Automate. This covers the host machine and operating system; the physical RS-485 wiring to the panel lives in [Hardware requirements for connectivity](hardware-rs485-connectivity.md), and step-by-step install lives in [INSTALL.md](INSTALL.md).*
 
 Aqualink Automate runs continuously, polling the RS-485 bus and serving the web UI. This page helps you pick a machine to host it on, from a cheap single-board computer to an existing always-on server, and explains the operating-system and deployment trade-offs.
 
@@ -45,7 +45,7 @@ Aqualink Automate is cross-platform. Native binaries are published for **Windows
 | Windows | `.exe` (NSIS installer), `.zip` | Desktop use and Windows-only households |
 | macOS | `.dmg`, `.tgz` | Desktop use on a Mac |
 
-Download links and per-platform install steps are in [INSTALL.md](../INSTALL.md#pre-built-binaries).
+Download links and per-platform install steps are in [INSTALL.md](INSTALL.md#pre-built-binaries).
 
 - **Linux is the primary hosting target.** It runs as a lightweight background service, supports the Docker image, and is the only platform where the Matter bridge can be commissioned. Choose Linux for any headless, always-on deployment.
 - **Windows and macOS are for desktop use.** The native binaries are real and supported, which makes a desktop a fine place to run or evaluate the application. They are not ideal as a 24/7 unattended host, and they cannot commission Matter over Docker (the host-networking requirement is Linux-only).
@@ -54,7 +54,7 @@ Download links and per-platform install steps are in [INSTALL.md](../INSTALL.md#
 
 ## Deployment paths
 
-There are two ways to run Aqualink Automate. Full instructions for both are in [INSTALL.md](../INSTALL.md); this section covers how the choice affects your host.
+There are two ways to run Aqualink Automate. Full instructions for both are in [INSTALL.md](INSTALL.md); this section covers how the choice affects your host.
 
 ### Native binary
 
@@ -69,7 +69,7 @@ aqualink-automate --address 0.0.0.0 --disable-https
 
 **Security:** binding to `0.0.0.0` makes the web UI reachable by anything on your network. API authentication is off by default. Run the server on a trusted network, and consider enabling the bearer-token auth (`--api-auth-token`) if you expose it more widely.
 
-CLI options can also be supplied from a config file. Config-file keys are the option long names **without the leading dashes** — so `--address 0.0.0.0` on the command line is `address = 0.0.0.0` in the file. See the worked examples in [`examples/config-network.conf`](../examples/config-network.conf) and [`examples/config-docker.conf`](../examples/config-docker.conf), and run `aqualink-automate --help` for the full option list.
+CLI options can also be supplied from a config file. Config-file keys are the option long names **without the leading dashes** — so `--address 0.0.0.0` on the command line is `address = 0.0.0.0` in the file. See the worked examples in [`examples/config-network.conf`](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-network.conf) and [`examples/config-docker.conf`](https://github.com/iainchesworth/aqualink-automate/blob/main/examples/config-docker.conf), and run `aqualink-automate --help` for the full option list.
 
 ### Docker
 
@@ -109,7 +109,7 @@ docker compose up
 docker run --network host -v aqualink-matter:/data/matter aqualink-automate
 ```
 
-The bundled [`docker-compose.yml`](../docker-compose.yml) already sets `network_mode: host` and a `matter-data` volume mounted at `/data/matter`, so commissioned fabrics survive container restarts. Open the web UI's **Diagnostics → Matter** panel to scan the pairing QR.
+The bundled [`docker-compose.yml`](https://github.com/iainchesworth/aqualink-automate/blob/main/docker-compose.yml) already sets `network_mode: host` and a `matter-data` volume mounted at `/data/matter`, so commissioned fabrics survive container restarts. Open the web UI's **Diagnostics → Matter** panel to scan the pairing QR.
 
 **Important — this constrains your host choice:** host networking is **Linux-only**. On Docker Desktop (macOS/Windows), host networking is limited and Matter **cannot be commissioned from the LAN**. If you want Matter, host on Linux (an SBC, mini-PC, NAS, or server). On macOS/Windows, disable the bridge with `MATTER_ENABLED=false` (equivalently `--matter false`) and keep the normal `-p 80:80` port mapping; the application still runs, just without Matter.
 
@@ -118,5 +118,5 @@ For the full Matter pairing walkthrough and networking detail, see [Matter integ
 ## See also
 
 - [Hardware requirements for connectivity](hardware-rs485-connectivity.md) — wiring the host to the pool panel over RS-485.
-- [INSTALL.md](../INSTALL.md) — installing pre-built binaries, building from source, and Docker.
+- [INSTALL.md](INSTALL.md) — installing pre-built binaries, building from source, and Docker.
 - [Matter integration](MATTER.md) — the bundled smart-home bridge and its host-networking requirement.

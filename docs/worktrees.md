@@ -1,6 +1,6 @@
 # Git worktrees and parallel development
 
-*For contributors and maintainers who run more than one branch at a time on a single machine. This is the source of truth for **where worktrees live, how they are named, and how to build one cheaply** without duplicating the ~8 GB vcpkg tree. The branch model and PR rules these worktrees feed into are in [CONTRIBUTING.md](../CONTRIBUTING.md); building from source is in [INSTALL.md](../INSTALL.md).*
+*For contributors and maintainers who run more than one branch at a time on a single machine. This is the source of truth for **where worktrees live, how they are named, and how to build one cheaply** without duplicating the ~8 GB vcpkg tree. The branch model and PR rules these worktrees feed into are in [CONTRIBUTING.md](CONTRIBUTING.md); building from source is in [INSTALL.md](INSTALL.md).*
 
 You do not need worktrees to contribute. A single checkout with `git switch` is enough for one change at a time. Reach for a worktree when you want **several branches checked out at once** — reviewing one branch while building another, keeping a long-running build untouched while you start the next task, or fanning work out across parallel agents.
 
@@ -44,7 +44,7 @@ So a worktree for a feature called `labels-cache` is the directory `<worktrees-r
 
 ## Branch namespaces
 
-Worktree branches follow the same naming as any other branch — see [CONTRIBUTING.md](../CONTRIBUTING.md#branch-naming) for the authoritative rules. In short, `<type>/<name>` where `<type>` is an allowed commit type (`feat/`, `fix/`, `docs/`, `ci/`, `test/`, `refactor/`, `chore/`, `build/`, `perf/`). That naming is checked by a **Branch Name** CI job on every pull request, so name the branch correctly when you create the worktree — a misnamed branch fails CI.
+Worktree branches follow the same naming as any other branch — see [CONTRIBUTING.md](CONTRIBUTING.md#branch-naming) for the authoritative rules. In short, `<type>/<name>` where `<type>` is an allowed commit type (`feat/`, `fix/`, `docs/`, `ci/`, `test/`, `refactor/`, `chore/`, `build/`, `perf/`). That naming is checked by a **Branch Name** CI job on every pull request, so name the branch correctly when you create the worktree — a misnamed branch fails CI.
 
 One namespace is worktree-specific:
 
@@ -112,7 +112,7 @@ ctest --preset wt
 
 ## Building and testing in a worktree
 
-Everything in [INSTALL.md](../INSTALL.md) applies unchanged inside a worktree; the only differences are the preset name (`wt` from your local `CMakeUserPresets.json`) and the build directory. A first configure that reuses the binary cache takes seconds rather than the multi-minute cold build.
+Everything in [INSTALL.md](INSTALL.md) applies unchanged inside a worktree; the only differences are the preset name (`wt` from your local `CMakeUserPresets.json`) and the build directory. A first configure that reuses the binary cache takes seconds rather than the multi-minute cold build.
 
 On a disk-constrained machine, drop the build parallelism (`cmake --build --preset wt --parallel 2`) — a full-`-j` debug build of a second tree can exhaust a small volume, and out-of-disk link failures do not always print a clear compiler error.
 

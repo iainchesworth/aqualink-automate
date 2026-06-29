@@ -150,6 +150,25 @@ BOOST_AUTO_TEST_CASE(TestSetCirculationMode_DualBody_AllowsSpaAndSpillover)
 }
 
 // =============================================================================
+// SetHeaterMode (capture-gated heater enable/disable)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSetHeaterMode_PoolSpaSolar_Accepted)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Pool, true) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Spa, false) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Shared, true) == Capabilities::ActuationResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(TestSetHeaterMode_UnknownBody_MappingFailed)
+{
+	// A body with no heater command (e.g. Unknown) is a well-formed request this adapter cannot map.
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Unknown, true) == Capabilities::ActuationResult::MappingFailed);
+}
+
+// =============================================================================
 // QueueAuxCommand
 // =============================================================================
 

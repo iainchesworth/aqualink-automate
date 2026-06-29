@@ -28,6 +28,39 @@ BOOST_AUTO_TEST_CASE(Test_SpaOnly_PoolConfigurationApplied)
 	BOOST_CHECK_EQUAL(static_cast<int>(DataHub()->PoolConfiguration), static_cast<int>(PoolConfigurations::SingleBody));
 }
 
+BOOST_AUTO_TEST_CASE(Test_SpaOnly_SpaBodyExistsAndIsActive)
+{
+	Scenarios::PopulateSpaOnly(*DataHub());
+
+	// A spa-only install must materialise a Spa body (not a Pool body) and mark it active -
+	// it is the system's single, always-active body.
+	BOOST_REQUIRE_EQUAL(DataHub()->Bodies().size(), 1);
+
+	auto spa_body = DataHub()->GetBody(BodyOfWaterIds::Spa);
+	BOOST_REQUIRE(spa_body.has_value());
+	BOOST_CHECK(spa_body->get().IsActive());
+
+	auto pool_body = DataHub()->GetBody(BodyOfWaterIds::Pool);
+	BOOST_CHECK(!pool_body.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_SpaOnly_SpaTempResolvesViaBody)
+{
+	Scenarios::PopulateSpaOnly(*DataHub());
+
+	// With a Spa body present, SpaTemp()/SpaTempSetpoint() must resolve through the body.
+	auto spa_body = DataHub()->GetBody(BodyOfWaterIds::Spa);
+	BOOST_REQUIRE(spa_body.has_value());
+
+	auto body_temp = spa_body->get().CurrentTemp();
+	BOOST_REQUIRE(body_temp.has_value());
+	BOOST_CHECK_CLOSE(body_temp->InFahrenheit().value(), 101.0, 1.0);
+
+	auto spa_temp = DataHub()->SpaTemp();
+	BOOST_REQUIRE(spa_temp.has_value());
+	BOOST_CHECK_CLOSE(spa_temp->InFahrenheit().value(), 101.0, 1.0);
+}
+
 BOOST_AUTO_TEST_CASE(Test_SpaOnly_CirculationModeIsSpa)
 {
 	Scenarios::PopulateSpaOnly(*DataHub());

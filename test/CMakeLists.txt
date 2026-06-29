@@ -34,6 +34,8 @@ target_sources(
 	unit/http/test_api_metrics.cpp
 	unit/http/test_display_label.cpp
 	unit/http/test_http_chlorinator.cpp
+	unit/http/test_http_circulation.cpp
+	unit/http/test_http_heater.cpp
 	unit/http/test_http_diagnostics_devices.cpp
 	unit/http/test_http_diagnostics_profiling.cpp
 	unit/http/test_http_diagnostics_recording.cpp
@@ -188,6 +190,7 @@ target_sources(
 	unit/kernel/test_kernel_equipment_hub.cpp
 	unit/kernel/test_kernel_equipment_versions.cpp
 	unit/kernel/test_kernel_body_of_water.cpp
+	unit/kernel/test_kernel_data_hub_circulation.cpp
 	unit/kernel/test_kernel_status_conversions.cpp
 	unit/utility/test_utility_string_manipulation.cpp
 	unit/utility/test_utility_pool_configuration_decoder.cpp

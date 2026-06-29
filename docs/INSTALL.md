@@ -1,6 +1,6 @@
 # Installing and building Aqualink Automate
 
-*For anyone installing a release build or building Aqualink Automate from source. After installing, see [Configuration reference](docs/configuration.md) and [Usage and API](docs/usage-and-api.md) for how to run and use it.*
+*For anyone installing a release build or building Aqualink Automate from source. After installing, see [Configuration reference](configuration.md) and [Usage and API](usage-and-api.md) for how to run and use it.*
 
 This is the single authoritative guide for getting Aqualink Automate onto a machine: install a pre-built package, build from source with the helper scripts, or run it in Docker.
 
@@ -33,7 +33,7 @@ curl -fsSL https://iainchesworth.github.io/aqualink-automate/install-dnf.sh | sh
 ```
 
 After installing, set your serial port in `/etc/aqualink-automate/aqualink-automate.conf`
-and `sudo systemctl start aqualink-automate`. See the [Raspberry Pi guide](docs/raspberry-pi.md).
+and `sudo systemctl start aqualink-automate`. See the [Raspberry Pi guide](raspberry-pi.md).
 There is also a [Docker image](#docker) (multi-arch: `linux/amd64` + `linux/arm64`).
 
 ## Pre-built binaries
@@ -49,7 +49,7 @@ from the [GitHub Releases](https://github.com/iainchesworth/aqualink-automate/re
 
 Every release artifact ships with a matching `.sha512` checksum file. Verify the download before installing.
 
-After installing, head to [Configuration reference](docs/configuration.md) for every CLI flag and config-file key, and [Usage and API](docs/usage-and-api.md) for what to do next.
+After installing, head to [Configuration reference](configuration.md) for every CLI flag and config-file key, and [Usage and API](usage-and-api.md) for what to do next.
 
 ## Building from source — prerequisites
 
@@ -180,7 +180,7 @@ Package presets emit these generators, all writing to `${sourceDir}/packages` wi
 
 The `--package`/`-Package` helper-script flags drive the `pack-aqualink-automate` CMake target; you can equivalently run a `pack-*` package preset directly (`cmake --build --preset build-<p>` then `cpack --preset pack-<p>`). Both routes emit to `${sourceDir}/packages` with SHA512 checksums.
 
-Maintainers cutting a release should follow [Releasing](docs/releasing.md) rather than running `pack-*` by hand.
+Maintainers cutting a release should follow [Releasing](releasing.md) rather than running `pack-*` by hand.
 
 ## Manual CMake workflow
 
@@ -269,7 +269,7 @@ Both the GCC and Clang/LLVM toolchains are available in the container, and the C
 
 The Dockerfile is multi-stage (`base`, `dev`, `ci`, `matter-builder`, `runtime`); the default build target is `runtime`. The runtime image is built on `ubuntu:25.04` with `tini` as PID 1, Node.js 22 for the Matter bridge sidecar, and `curl` for the container health check. It runs as an unprivileged `aqualink` user (uid/gid 10000), exposes port 80, declares a `HEALTHCHECK` against `/api/health`, and its default command is `--address 0.0.0.0 --disable-https`.
 
-**Security:** the default command binds to `0.0.0.0` (all interfaces) and disables HTTPS, which is appropriate for a container behind your own network boundary but exposes an **unauthenticated** HTTP API that can actuate pool equipment. Authentication is off by default, so the app logs a prominent startup warning whenever it binds a non-loopback address with no `--api-auth-token`. Before exposing the container beyond a trusted segment you should: set a strong `--api-auth-token` (32+ random chars), terminate TLS in front of it (reverse proxy) or enable HTTPS, and optionally set `--api-allowed-origin` / `--api-require-csrf-header`. If the open posture is deliberate (e.g. behind a trusted reverse proxy), pass `--insecure-no-auth` to acknowledge it and quiet the warning. Restrict access at the network layer regardless. See [Configuration reference](docs/configuration.md) for the authentication and TLS options.
+**Security:** the default command binds to `0.0.0.0` (all interfaces) and disables HTTPS, which is appropriate for a container behind your own network boundary but exposes an **unauthenticated** HTTP API that can actuate pool equipment. Authentication is off by default, so the app logs a prominent startup warning whenever it binds a non-loopback address with no `--api-auth-token`. Before exposing the container beyond a trusted segment you should: set a strong `--api-auth-token` (32+ random chars), terminate TLS in front of it (reverse proxy) or enable HTTPS, and optionally set `--api-allowed-origin` / `--api-require-csrf-header`. If the open posture is deliberate (e.g. behind a trusted reverse proxy), pass `--insecure-no-auth` to acknowledge it and quiet the warning. Restrict access at the network layer regardless. See [Configuration reference](configuration.md) for the authentication and TLS options.
 
 ### Build and run the runtime image
 
@@ -284,7 +284,7 @@ To talk to a physical RS-485 adapter, pass the device through and point the app 
 docker run -p 80:80 --device /dev/ttyUSB0 aqualink-automate --serial-port /dev/ttyUSB0
 ```
 
-The `--serial-port`/`-s` default is platform-resolved, so set it explicitly inside a container. Every flag is documented in the [Configuration reference](docs/configuration.md); config-file keys are the same names without the leading dashes (for example, the flag `--serial-port` is the key `serial-port`).
+The `--serial-port`/`-s` default is platform-resolved, so set it explicitly inside a container. Every flag is documented in the [Configuration reference](configuration.md); config-file keys are the same names without the leading dashes (for example, the flag `--serial-port` is the key `serial-port`).
 
 ### Health check
 
@@ -294,7 +294,7 @@ The runtime image ships a Docker `HEALTHCHECK` that polls the unauthenticated li
 docker inspect --format '{{.State.Health.Status}}' <container>
 ```
 
-Combined with `restart: unless-stopped` (set in Compose), an `unhealthy` container is restarted. `docker-compose.yml` also declares the check explicitly so it is easy to tune. If you change the web port (or serve HTTPS only), update the probe URL to match — via the `healthcheck:` block in Compose, or `--health-cmd 'curl -f http://127.0.0.1:<port>/api/health'` for `docker run`. A richer, authenticated readiness view is available at `GET /api/health/detailed` (`200` when ready, `503` while starting) — see the [API guide](docs/usage-and-api.md).
+Combined with `restart: unless-stopped` (set in Compose), an `unhealthy` container is restarted. `docker-compose.yml` also declares the check explicitly so it is easy to tune. If you change the web port (or serve HTTPS only), update the probe URL to match — via the `healthcheck:` block in Compose, or `--health-cmd 'curl -f http://127.0.0.1:<port>/api/health'` for `docker run`. A richer, authenticated readiness view is available at `GET /api/health/detailed` (`200` when ready, `503` while starting) — see the [API guide](usage-and-api.md).
 
 ### Docker Compose
 
@@ -321,7 +321,7 @@ Matter commissioning uses IPv6 mDNS (UDP 5540 + 5353), which Docker's bridge net
   ```
   Setting `MATTER_ENABLED=false` mirrors the app flag `--matter false`. The app runs normally; only the Matter sidecar is skipped.
 
-For a deeper look at the bridge — pairing, the sidecar architecture, and the storage layout — see [Matter bridge](docs/MATTER.md) and the [`matter-bridge/`](matter-bridge/README.md) README.
+For a deeper look at the bridge — pairing, the sidecar architecture, and the storage layout — see [Matter bridge](MATTER.md) and the [`matter-bridge/`](https://github.com/iainchesworth/aqualink-automate/blob/main/matter-bridge/README.md) README.
 
 ### API documentation (Swagger UI)
 
@@ -335,4 +335,4 @@ Open `http://localhost:8080` to browse the API. The service mounts `assets/web/a
 
 ---
 
-Next steps: [Configuration reference](docs/configuration.md) for every flag and config key, [Usage and API](docs/usage-and-api.md) for operating the app, and [CONTRIBUTING.md](CONTRIBUTING.md) if you are building against the `develop` branch to send a patch.
+Next steps: [Configuration reference](configuration.md) for every flag and config key, [Usage and API](usage-and-api.md) for operating the app, and [CONTRIBUTING.md](CONTRIBUTING.md) if you are building against the `develop` branch to send a patch.

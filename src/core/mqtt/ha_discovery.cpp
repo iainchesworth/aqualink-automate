@@ -145,22 +145,35 @@ namespace AqualinkAutomate::Mqtt
 	{
 		auto temperatures_topic = TemperaturesTopic();
 
+		// Respect the installed configuration: only emit the Pool temperature when a Pool body
+		// exists and the Spa temperature when a Spa body exists, so a pool-only install gets no
+		// dead "Spa" entity (and vice-versa for spa-only). Until bodies are known (config not yet
+		// detected) fall back to emitting both so nothing is missing during discovery. Air and
+		// freeze-protect are system-wide and always emitted.
+		auto [has_pool, has_spa] = ResolveBodyPresence();
+
 		struct TempSensor
 		{
 			const char* name;
 			const char* key;
 			const char* value_template;
+			bool emit;
 		};
 
 		const TempSensor sensors[] = {
-			{ "Pool Temperature",           "pool_temp",           "{{ value_json.pool.celsius if value_json.pool else '' }}" },
-			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius if value_json.spa else '' }}" },
-			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius if value_json.air else '' }}" },
-			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius if value_json.freeze_protect else '' }}" },
+			{ "Pool Temperature",           "pool_temp",           "{{ value_json.pool.celsius if value_json.pool else '' }}",                     has_pool },
+			{ "Spa Temperature",            "spa_temp",            "{{ value_json.spa.celsius if value_json.spa else '' }}",                       has_spa },
+			{ "Air Temperature",            "air_temp",            "{{ value_json.air.celsius if value_json.air else '' }}",                       true },
+			{ "Freeze Protect Temperature", "freeze_protect_temp", "{{ value_json.freeze_protect.celsius if value_json.freeze_protect else '' }}", true },
 		};
 
 		for (const auto& sensor : sensors)
 		{
+			if (!sensor.emit)
+			{
+				continue;
+			}
+
 			cmps[sensor.key] = {
 				{"p", "sensor"},
 				{"name", sensor.name},
@@ -172,11 +185,77 @@ namespace AqualinkAutomate::Mqtt
 				{"state_class", "measurement"}
 			};
 		}
+
+		// Freshness companions for the three live temperatures: a timestamp sensor ("last updated")
+		// and a problem binary_sensor ("stale"). The controller only reports temperatures while the
+		// filter pump runs (and only for the active body on a combo system), so these let a HA user
+		// see when a reading has gone old without the value disappearing.
+		struct FreshnessSensor
+		{
+			const char* name;
+			const char* key;      // value_json sub-object
+			const char* id_base;  // unique-id / component-key base
+			bool emit;
+		};
+
+		const FreshnessSensor freshness[] = {
+			{ "Pool Temperature", "pool", "pool_temp", has_pool },
+			{ "Spa Temperature",  "spa",  "spa_temp",  has_spa },
+			{ "Air Temperature",  "air",  "air_temp",  true },
+		};
+
+		for (const auto& f : freshness)
+		{
+			if (!f.emit)
+			{
+				continue;
+			}
+
+			cmps[std::format("{}_updated", f.id_base)] = {
+				{"p", "sensor"},
+				{"name", std::format("{} Last Updated", f.name)},
+				{"unique_id", UniqueId(std::format("{}_updated", f.id_base))},
+				{"state_topic", temperatures_topic},
+				{"value_template", std::format("{{{{ as_datetime(value_json.{0}.last_updated) if (value_json.{0} and value_json.{0}.last_updated) else none }}}}", f.key)},
+				{"device_class", "timestamp"},
+				{"entity_category", "diagnostic"}
+			};
+
+			cmps[std::format("{}_stale", f.id_base)] = {
+				{"p", "binary_sensor"},
+				{"name", std::format("{} Stale", f.name)},
+				{"unique_id", UniqueId(std::format("{}_stale", f.id_base))},
+				{"state_topic", temperatures_topic},
+				{"value_template", std::format("{{{{ 'true' if (value_json.{0} and value_json.{0}.stale) else 'false' }}}}", f.key)},
+				{"payload_on", "true"},
+				{"payload_off", "false"},
+				{"device_class", "problem"},
+				{"entity_category", "diagnostic"}
+			};
+		}
+	}
+
+	std::pair<bool, bool> HomeAssistantDiscovery::ResolveBodyPresence() const
+	{
+		auto data_hub = m_DataHub.lock();
+		if (!data_hub || data_hub->Bodies().empty())
+		{
+			// Config not yet detected - emit both so nothing is missing during discovery.
+			return { true, true };
+		}
+
+		return {
+			data_hub->GetBody(Kernel::BodyOfWaterIds::Pool).has_value(),
+			data_hub->GetBody(Kernel::BodyOfWaterIds::Spa).has_value()
+		};
 	}
 
 	void HomeAssistantDiscovery::AddSetpointComponents(nlohmann::json& cmps)
 	{
 		auto temperatures_topic = TemperaturesTopic();
+
+		// Respect the installed configuration (see AddTemperatureSensorComponents).
+		auto [has_pool, has_spa] = ResolveBodyPresence();
 
 		struct SetpointEntity
 		{
@@ -184,15 +263,21 @@ namespace AqualinkAutomate::Mqtt
 			const char* key;
 			const char* value_template;
 			const char* target;
+			bool emit;
 		};
 
 		const SetpointEntity entities[] = {
-			{ "Pool Setpoint", "pool_setpoint", "{{ value_json.pool_setpoint.celsius if value_json.pool_setpoint else '' }}", "pool" },
-			{ "Spa Setpoint",  "spa_setpoint",  "{{ value_json.spa_setpoint.celsius if value_json.spa_setpoint else '' }}",  "spa" },
+			{ "Pool Setpoint", "pool_setpoint", "{{ value_json.pool_setpoint.celsius if value_json.pool_setpoint else '' }}", "pool", has_pool },
+			{ "Spa Setpoint",  "spa_setpoint",  "{{ value_json.spa_setpoint.celsius if value_json.spa_setpoint else '' }}",  "spa",  has_spa },
 		};
 
 		for (const auto& entity : entities)
 		{
+			if (!entity.emit)
+			{
+				continue;
+			}
+
 			cmps[entity.key] = {
 				{"p", "number"},
 				{"name", entity.name},
@@ -315,12 +400,31 @@ namespace AqualinkAutomate::Mqtt
 			{"payload_off", "false"}
 		};
 
-		// Circulation mode select — only for combo/dual systems.
+		// Writable Spa Mode switch + circulation-mode select — only for combo/dual systems where a
+		// Pool AND a Spa body exist (you can switch between them). On a single-body install there is
+		// nothing to toggle. The switch is the convenient pool<->spa toggle (on -> spa, off -> pool);
+		// the select keeps full Pool/Spa/Spillover control. Both drive the existing
+		// command/circulation/mode handler.
 		auto data_hub = m_DataHub.lock();
-		if (data_hub
+		const bool is_dual_body = data_hub
 			&& (data_hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_SharedEquipment
-				|| data_hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_DualEquipment))
+				|| data_hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_DualEquipment);
+
+		if (is_dual_body)
 		{
+			cmps["spa_mode_switch"] = {
+				{"p", "switch"},
+				{"name", "Spa Mode"},
+				{"unique_id", UniqueId("spa_mode_switch")},
+				{"state_topic", circulation_topic},
+				{"value_template", "{{ 'ON' if value_json.spa_mode else 'OFF' }}"},
+				{"command_topic", CirculationCommandTopic()},
+				{"payload_on", "spa"},
+				{"payload_off", "pool"},
+				{"state_on", "ON"},
+				{"state_off", "OFF"}
+			};
+
 			cmps["circulation_mode_select"] = {
 				{"p", "select"},
 				{"name", "Circulation Mode"},
@@ -444,10 +548,38 @@ namespace AqualinkAutomate::Mqtt
 			add_switch(TopicScheme::DeviceCategory::Auxillary, dev, "On", "Off");
 		}
 
-		// Heaters -> sensor (multi-state: Off/Heating/Enabled)
+		// Heaters -> a read-only sensor (multi-state: Off/Heating/Enabled) for the detailed status,
+		// PLUS a writable enable/disable switch. The switch is "on" whenever the heater is Heating
+		// or Enabled (its thermostat is active); the controller decides when to actually fire (and
+		// enforces its own preconditions, e.g. spa heat requires spa mode + pump - see the panel's
+		// §14.3 restrictions). The underlying wire command is validated live
+		// (SerialAdapterDevice::QueueHeaterCommand).
 		for (const auto& dev : data_hub->Heaters())
 		{
 			add_sensor(TopicScheme::DeviceCategory::Heater, dev);
+
+			auto label = DeviceLabel(dev);
+			if (!label.has_value())
+			{
+				continue;
+			}
+
+			auto slug = Slugify(label.value());
+			auto key = std::format("heater_{}_switch", slug);
+			auto state_topic = m_Client->BuildTopic(TopicScheme::DeviceStateSubtopic(TopicScheme::DeviceCategory::Heater, slug));
+
+			cmps[key] = {
+				{"p", "switch"},
+				{"name", std::format("{} Enable", label.value())},
+				{"unique_id", UniqueId(key)},
+				{"state_topic", state_topic},
+				{"value_template", "{{ 'ON' if value in ['Heating', 'Enabled'] else 'OFF' }}"},
+				{"command_topic", HeaterCommandTopic(slug)},
+				{"payload_on", "ON"},
+				{"payload_off", "OFF"},
+				{"state_on", "ON"},
+				{"state_off", "OFF"}
+			};
 		}
 	}
 
@@ -680,6 +812,11 @@ namespace AqualinkAutomate::Mqtt
 	std::string HomeAssistantDiscovery::CirculationCommandTopic() const
 	{
 		return m_Client->BuildTopic("command/circulation/mode");
+	}
+
+	std::string HomeAssistantDiscovery::HeaterCommandTopic(const std::string& slug) const
+	{
+		return m_Client->BuildTopic(std::format("command/heater/{}", slug));
 	}
 
 }

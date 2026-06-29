@@ -15,6 +15,7 @@
 #include "devices/capabilities/describable.h"
 #include "devices/capabilities/device_actuator.h"
 #include "devices/capabilities/emulated.h"
+#include "devices/capabilities/heater_controller.h"
 #include "devices/capabilities/restartable.h"
 #include "devices/capabilities/setpoint_controller.h"
 #include "messages/jandy_message_ack.h"
@@ -30,7 +31,7 @@
 namespace AqualinkAutomate::Devices
 {
 
-	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::CirculationController, public Capabilities::CommandHistory
+	class SerialAdapterDevice : public JandyController, public Capabilities::Restartable, public Capabilities::Emulated, public Capabilities::Describable, public Capabilities::DeviceActuator, public Capabilities::SetpointController, public Capabilities::CirculationController, public Capabilities::HeaterController, public Capabilities::CommandHistory
 	{
 		inline static const std::chrono::seconds SERIALADAPTER_TIMEOUT_DURATION{ std::chrono::seconds(30) };
 		inline static const double SERIALADAPTER_INVALID_TEMPERATURE_CUTOFF{ -17.0 };
@@ -67,6 +68,7 @@ namespace AqualinkAutomate::Devices
 		Capabilities::ActuationResult SetPoolSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetSpaSetpoint(uint8_t temperature) override;
 		Capabilities::ActuationResult SetCirculationMode(Kernel::CirculationModes mode) override;
+		Capabilities::ActuationResult SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable) override;
 		Capabilities::ActuationPriority ControllerPriority() const override { return Capabilities::ActuationPriority::High; }
 
 	public:
@@ -88,6 +90,15 @@ namespace AqualinkAutomate::Devices
 		void QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature);
 		void QueueAuxToggleWrite(Auxillaries::JandyAuxillaryIds aux_id, bool turn_on);
 
+		// Heater enable/disable write (POOLHT=0x11 / SPAHT=0x13 / SOLHT=0x14). Emits the RSSA
+		// setDev body {0x00,0x01,state,devID} (state = SetOn 0x81 / SetOff 0x80). Validated live
+		// on a real RS8-class system (2026-06-28): all three heaters confirmed actuating the
+		// controller -- spa heater first, then pool heater (00 01 81 11 -> MainStatus Heating +
+		// physical heater fired) and solar heater (00 01 81/80 14 -> MainStatus Enabled<->Off,
+		// panel/valve responded). On the wire the device transmits the {ack_type=state,
+		// data=devID} pair only; the master prepends {0x00,0x01}.
+		void QueueHeaterCommand(Messages::SerialAdapter_SystemTemperatureCommands heater, bool enable);
+
 	private:
 		// Append a single ACK to the pending FIFO without clearing earlier entries
 		// (QueueCommand clears first; this is used by multi-step writes).
@@ -95,6 +106,13 @@ namespace AqualinkAutomate::Devices
 
 	private:
 		void ProcessControllerUpdates() override;
+
+		// Emit the next queued command in response to an RSSA_DEV_READY (0x07) poll.
+		// The controller solicits the second step (setSP) of a two-step setpoint write
+		// with a DEV_READY poll carrying the readied type, so that value MUST be sent
+		// in reply to THIS poll rather than the next CMD_STATUS (mirrors AqualinkD
+		// serialadapter.c). DEV_READY is sent only as part of that handshake.
+		void DrainPendingCommandForDevReady();
 
 	private:
 		void WatchdogTimeoutOccurred() override;

@@ -1,7 +1,10 @@
 #include <boost/test/unit_test.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/asio.hpp>
 #include <nlohmann/json.hpp>
@@ -9,10 +12,14 @@
 #include "mqtt/mqtt_integration.h"
 #include "mqtt/mqtt_hub.h"
 #include "mqtt/mqtt_client.h"
+#include "interfaces/icommanddispatcher.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/hub_locator.h"
 #include "kernel/statistics_hub.h"
+#include "kernel/body_of_water_ids.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "options/options_mqtt_options.h"
 #include "support/unit_test_mqtt_support.h"
 
@@ -462,6 +469,151 @@ BOOST_AUTO_TEST_CASE(Test_FullLifecycle_WithHomeAssistant)
 	BOOST_CHECK_NO_THROW(integration.Start());
 	BOOST_CHECK_NO_THROW(integration.Poll());
 	BOOST_CHECK_NO_THROW(integration.Stop());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration dynamic heater-command tests
+//
+// Heaters are actuated through a dedicated heater/{slug} -> SetHeaterMode(body,
+// on/off) route registered by RegisterDynamicDeviceCommands() (fired from the
+// hub's OnDevicesPublished signal). These tests drive that path end to end:
+// build a DataHub heater, connect a recording dispatcher via the locator, fire
+// the signal, then push a command through the public HandleMessage() seam.
+//=============================================================================
+
+namespace
+{
+	namespace Traits = Kernel::AuxillaryTraitsTypes;
+
+	// Recording dispatcher: captures heater commands so a test can prove the
+	// heater/{slug} route maps the ON/OFF payload to the right body + enable flag.
+	class RecordingHeaterDispatcher : public Interfaces::ICommandDispatcher
+	{
+	public:
+		std::vector<std::pair<Kernel::BodyOfWaterIds, bool>> heater_calls;
+
+		CommandResult ToggleByUuid(const boost::uuids::uuid&) override { return CommandResult::Success; }
+		CommandResult ToggleByLabel(const std::string&) override { return CommandResult::Success; }
+		CommandResult CommandByUuid(const boost::uuids::uuid&, DeviceAction) override { return CommandResult::Success; }
+		CommandResult CommandByLabel(const std::string&, DeviceAction) override { return CommandResult::Success; }
+		CommandResult SetPoolSetpoint(std::uint8_t) override { return CommandResult::Success; }
+		CommandResult SetSpaSetpoint(std::uint8_t) override { return CommandResult::Success; }
+		CommandResult SetChlorinatorPercentage(std::uint8_t) override { return CommandResult::Success; }
+		CommandResult SetChlorinatorBoost(bool) override { return CommandResult::Success; }
+		CommandResult SetCirculationMode(Kernel::CirculationModes) override { return CommandResult::Success; }
+		CommandResult SetHeaterMode(Kernel::BodyOfWaterIds body, bool enable) override { heater_calls.emplace_back(body, enable); return CommandResult::Success; }
+		CommandResult SelectIAQPageButton(std::uint8_t) override { return CommandResult::Success; }
+	};
+
+	struct HeaterCommandFixture
+	{
+		boost::asio::io_context ioc;
+		std::shared_ptr<RecordingHeaterDispatcher> dispatcher{ std::make_shared<RecordingHeaterDispatcher>() };
+		std::shared_ptr<Kernel::DataHub> data_hub{ std::make_shared<Kernel::DataHub>() };
+		std::shared_ptr<Kernel::EquipmentHub> equip_hub{ std::make_shared<Kernel::EquipmentHub>() };
+		std::shared_ptr<Kernel::StatisticsHub> stats_hub{ std::make_shared<Kernel::StatisticsHub>() };
+		Mqtt::MqttIntegration integration;
+
+		HeaterCommandFixture()
+			: integration(ioc, MakeHaEnabledSettings())
+		{
+		}
+
+		~HeaterCommandFixture()
+		{
+			integration.Stop();
+		}
+
+		// Add a heater AuxillaryDevice to the DataHub so DataHub::Heaters() returns it.
+		// with_body=false omits the BodyOfWaterTrait to exercise the skip path.
+		void AddHeater(const std::string& label, Kernel::BodyOfWaterIds body, bool with_body = true)
+		{
+			auto heater = std::make_shared<Kernel::AuxillaryDevice>();
+			heater->AuxillaryTraits.Set(Traits::AuxillaryTypeTrait{}, Traits::AuxillaryTypes::Heater);
+			heater->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
+			if (with_body)
+			{
+				heater->AuxillaryTraits.Set(Traits::BodyOfWaterTrait{}, body);
+			}
+			data_hub->Devices.Add(heater);
+		}
+
+		// Connect hubs + dispatcher via the locator (the only overload that wires the
+		// command dispatcher), start (connects OnDevicesPublished -> dynamic command
+		// registration, HA enabled), then fire the signal to run the registration.
+		Mqtt::MqttHub& ConnectAndPublish()
+		{
+			Kernel::HubLocator locator;
+			locator.Register(data_hub).Register(equip_hub).Register(stats_hub)
+				.Register(std::static_pointer_cast<Interfaces::ICommandDispatcher>(dispatcher));
+			integration.ConnectHubs(locator);
+			integration.Start();
+
+			auto hub = integration.GetMqttHub();
+			BOOST_REQUIRE(hub != nullptr);
+			hub->OnDevicesPublished();
+			return *hub;
+		}
+	};
+}
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_MqttIntegration_HeaterCommands, HeaterCommandFixture)
+
+BOOST_AUTO_TEST_CASE(Test_HeaterCommand_RegisteredForLabelledHeaterWithBody)
+{
+	AddHeater("Pool Heater", Kernel::BodyOfWaterIds::Pool);
+	auto& hub = ConnectAndPublish();
+
+	BOOST_CHECK(hub.HasCommand("heater/pool_heater"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_HeaterCommand_On_DispatchesEnable)
+{
+	AddHeater("Pool Heater", Kernel::BodyOfWaterIds::Pool);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("heater/pool_heater"));
+
+	// Inject the inbound command via the client's public OnMessageReceived signal,
+	// which the hub subscribes to and routes through to the registered handler.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("heater/pool_heater"), "ON");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->heater_calls.size(), 1u);
+	BOOST_CHECK(dispatcher->heater_calls[0].first == Kernel::BodyOfWaterIds::Pool);
+	BOOST_CHECK_EQUAL(dispatcher->heater_calls[0].second, true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_HeaterCommand_Off_DispatchesDisable)
+{
+	AddHeater("Spa Heater", Kernel::BodyOfWaterIds::Spa);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("heater/spa_heater"));
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("heater/spa_heater"), "OFF");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->heater_calls.size(), 1u);
+	BOOST_CHECK(dispatcher->heater_calls[0].first == Kernel::BodyOfWaterIds::Spa);
+	BOOST_CHECK_EQUAL(dispatcher->heater_calls[0].second, false);
+}
+
+BOOST_AUTO_TEST_CASE(Test_HeaterCommand_UnknownPayload_NotDispatched)
+{
+	AddHeater("Pool Heater", Kernel::BodyOfWaterIds::Pool);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("heater/pool_heater"));
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("heater/pool_heater"), "MAYBE");
+
+	BOOST_CHECK(dispatcher->heater_calls.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_HeaterCommand_NotRegistered_WhenBodyTraitMissing)
+{
+	AddHeater("Orphan Heater", Kernel::BodyOfWaterIds::Pool, /*with_body=*/false);
+	auto& hub = ConnectAndPublish();
+
+	BOOST_CHECK(!hub.HasCommand("heater/orphan_heater"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

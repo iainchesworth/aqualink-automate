@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,8 +15,9 @@
 #include <boost/beast/version.hpp>
 
 #include "http/server/server_types.h"
-#include "http/webroute_equipment_chlorinator.h"
+#include "http/webroute_equipment_circulation.h"
 #include "interfaces/icommanddispatcher.h"
+#include "kernel/circulation.h"
 
 #include "mocks/mock_beast_basicstream_with_timeout.h"
 #include "support/unit_test_hublocatorinjector.h"
@@ -26,14 +26,12 @@ using namespace AqualinkAutomate;
 
 namespace
 {
-	// Recording dispatcher: captures chlorinator commands and returns a configurable
-	// result so the test can prove invalid payloads are rejected BEFORE dispatch.
+	// Recording dispatcher: captures circulation-mode commands and returns a configurable result.
 	class StubCommandDispatcher : public Interfaces::ICommandDispatcher
 	{
 	public:
 		CommandResult result_to_return{ CommandResult::Success };
-		std::vector<std::uint8_t> percentages;
-		std::vector<bool> boosts;
+		std::vector<Kernel::CirculationModes> modes;
 
 		CommandResult ToggleByUuid(const boost::uuids::uuid&) override { return CommandResult::Success; }
 		CommandResult ToggleByLabel(const std::string&) override { return CommandResult::Success; }
@@ -41,29 +39,29 @@ namespace
 		CommandResult CommandByLabel(const std::string&, DeviceAction) override { return CommandResult::Success; }
 		CommandResult SetPoolSetpoint(std::uint8_t) override { return CommandResult::Success; }
 		CommandResult SetSpaSetpoint(std::uint8_t) override { return CommandResult::Success; }
-		CommandResult SetChlorinatorPercentage(std::uint8_t percentage) override { percentages.push_back(percentage); return result_to_return; }
-		CommandResult SetChlorinatorBoost(bool enable) override { boosts.push_back(enable); return result_to_return; }
-		CommandResult SetCirculationMode(Kernel::CirculationModes) override { return CommandResult::Success; }
+		CommandResult SetChlorinatorPercentage(std::uint8_t) override { return CommandResult::Success; }
+		CommandResult SetChlorinatorBoost(bool) override { return CommandResult::Success; }
+		CommandResult SetCirculationMode(Kernel::CirculationModes mode) override { modes.push_back(mode); return result_to_return; }
 		CommandResult SetHeaterMode(Kernel::BodyOfWaterIds, bool) override { return CommandResult::Success; }
 		CommandResult SelectIAQPageButton(std::uint8_t) override { return CommandResult::Success; }
 	};
 
-	struct ChlorinatorFixture : public AqualinkAutomate::Test::HubLocatorInjector
+	struct CirculationFixture : public AqualinkAutomate::Test::HubLocatorInjector
 	{
-		ChlorinatorFixture()
+		CirculationFixture()
 			: dispatcher(std::make_shared<StubCommandDispatcher>())
 		{
 			Register(std::static_pointer_cast<Interfaces::ICommandDispatcher>(dispatcher));
 		}
 
-		HTTP::Response Post(const std::string& body)
+		HTTP::Response Send(boost::beast::http::verb verb, const std::string& body)
 		{
-			HTTP::WebRoute_Equipment_Chlorinator route(*this);
+			HTTP::WebRoute_Equipment_Circulation route(*this);
 
 			HTTP::Request req;
 			req.version(11);
-			req.method(boost::beast::http::verb::post);
-			req.target(HTTP::EQUIPMENT_CHLORINATOR_ROUTE_URL);
+			req.method(verb);
+			req.target(HTTP::EQUIPMENT_CIRCULATION_ROUTE_URL);
 			req.set(boost::beast::http::field::host, "localhost.localdomain");
 			req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 			req.set(boost::beast::http::field::content_type, "application/json");
@@ -91,67 +89,72 @@ namespace
 			return resp;
 		}
 
+		HTTP::Response Post(const std::string& body) { return Send(boost::beast::http::verb::post, body); }
+
 		std::shared_ptr<StubCommandDispatcher> dispatcher;
 	};
 }
 
-BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_Chlorinator, ChlorinatorFixture)
+BOOST_FIXTURE_TEST_SUITE(TestSuite_HttpRoutes_Circulation, CirculationFixture)
 
-BOOST_AUTO_TEST_CASE(Post_ValidPercentage_DispatchesAndReturnsOk)
+BOOST_AUTO_TEST_CASE(Post_Spa_DispatchesAndReturnsOk)
 {
-	auto resp = Post(R"({"percentage": 60})");
+	auto resp = Post(R"({"mode": "spa"})");
 	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
-	BOOST_REQUIRE_EQUAL(1u, dispatcher->percentages.size());
-	BOOST_CHECK_EQUAL(60, static_cast<int>(dispatcher->percentages.front()));
+	BOOST_REQUIRE_EQUAL(1u, dispatcher->modes.size());
+	BOOST_CHECK(dispatcher->modes.front() == Kernel::CirculationModes::Spa);
 }
 
-BOOST_AUTO_TEST_CASE(Post_BoostBoolean_Dispatches)
+BOOST_AUTO_TEST_CASE(Post_Pool_Dispatches)
 {
-	auto resp = Post(R"({"boost": true})");
+	auto resp = Post(R"({"mode": "pool"})");
 	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
-	BOOST_REQUIRE_EQUAL(1u, dispatcher->boosts.size());
-	BOOST_CHECK(dispatcher->boosts.front());
+	BOOST_REQUIRE_EQUAL(1u, dispatcher->modes.size());
+	BOOST_CHECK(dispatcher->modes.front() == Kernel::CirculationModes::Pool);
 }
 
-BOOST_AUTO_TEST_CASE(Post_PercentageOutOfRange_Returns400_NoDispatch)
+BOOST_AUTO_TEST_CASE(Post_Spillover_Dispatches)
 {
-	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"percentage": 101})").result());
-	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"percentage": -1})").result());
-	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"percentage": 1e9})").result());
-	BOOST_CHECK(dispatcher->percentages.empty());
-}
-
-BOOST_AUTO_TEST_CASE(Post_PercentageNotNumber_Returns400)
-{
-	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"percentage": "high"})").result());
-	BOOST_CHECK(dispatcher->percentages.empty());
-}
-
-BOOST_AUTO_TEST_CASE(Post_BoostNotBoolean_Returns400)
-{
-	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"boost": 1})").result());
-	BOOST_CHECK(dispatcher->boosts.empty());
-}
-
-BOOST_AUTO_TEST_CASE(Post_DispatchDeviceNotFound_Returns503)
-{
-	dispatcher->result_to_return = Interfaces::ICommandDispatcher::CommandResult::DeviceNotFound;
-	auto resp = Post(R"({"percentage": 50})");
-	BOOST_CHECK_EQUAL(boost::beast::http::status::service_unavailable, resp.result());
-	BOOST_REQUIRE_EQUAL(1u, dispatcher->percentages.size()); // value still reached the dispatcher
-}
-
-BOOST_AUTO_TEST_CASE(Post_MissingFields_NoOpOk)
-{
-	auto resp = Post(R"({"other": 1})");
+	auto resp = Post(R"({"mode": "spillover"})");
 	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
-	BOOST_CHECK(dispatcher->percentages.empty());
-	BOOST_CHECK(dispatcher->boosts.empty());
+	BOOST_REQUIRE_EQUAL(1u, dispatcher->modes.size());
+	BOOST_CHECK(dispatcher->modes.front() == Kernel::CirculationModes::Spillover);
+}
+
+BOOST_AUTO_TEST_CASE(Post_UnknownMode_Returns400_NoDispatch)
+{
+	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"mode": "drain"})").result());
+	BOOST_CHECK(dispatcher->modes.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Post_MissingMode_Returns400)
+{
+	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"other": 1})").result());
+	BOOST_CHECK(dispatcher->modes.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Post_ModeNotString_Returns400)
+{
+	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post(R"({"mode": 2})").result());
+	BOOST_CHECK(dispatcher->modes.empty());
 }
 
 BOOST_AUTO_TEST_CASE(Post_InvalidJson_Returns400)
 {
 	BOOST_CHECK_EQUAL(boost::beast::http::status::bad_request, Post("{ not json").result());
+}
+
+BOOST_AUTO_TEST_CASE(Post_DispatchNoSerialAdapter_Returns503)
+{
+	dispatcher->result_to_return = Interfaces::ICommandDispatcher::CommandResult::NoSerialAdapter;
+	auto resp = Post(R"({"mode": "spa"})");
+	BOOST_CHECK_EQUAL(boost::beast::http::status::service_unavailable, resp.result());
+	BOOST_REQUIRE_EQUAL(1u, dispatcher->modes.size());
+}
+
+BOOST_AUTO_TEST_CASE(Get_Returns405)
+{
+	BOOST_CHECK_EQUAL(boost::beast::http::status::method_not_allowed, Send(boost::beast::http::verb::get, "").result());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
