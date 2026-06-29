@@ -1,0 +1,59 @@
+# Publish the gh-pages ROOT landing page + install scripts on push to main.
+#
+# These static "shell" files (the package-repo landing page and the curl|sh
+# bootstrap scripts) are also written by publish-repos.yml, but that only runs on
+# a release/dispatch — so an edit to them otherwise sat undeployed until the next
+# release. This deploys them as soon as they change on main, the same way docs.yml
+# keeps the /docs/ site current.
+#
+# Ownership / coexistence:
+#   * This workflow writes ONLY index.html + install-apt.sh + install-dnf.sh at the
+#     gh-pages root, with keep_files: true, so the signed apt/ + rpm/ repos,
+#     key.gpg, .nojekyll and the /docs/ site are all preserved.
+#   * publish-repos.yml still owns apt/, rpm/ and key.gpg (and re-copies the same
+#     landing files on a release). Both copy from cicd/repo/, so they never drift.
+name: Publish landing page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cicd/repo/index.html"
+      - "cicd/repo/install-apt.sh"
+      - "cicd/repo/install-dnf.sh"
+      - ".github/workflows/publish-landing.yml"
+  workflow_dispatch:
+
+# Separate group from publish-docs so docs + landing can publish in parallel (they
+# touch different paths). They rarely overlap with publish-repos; on the rare
+# simultaneous gh-pages push the loser is retried by re-running the workflow.
+concurrency:
+  group: publish-landing
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push to gh-pages
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Stage landing files
+        run: |
+          set -euo pipefail
+          mkdir -p site-root
+          cp cicd/repo/index.html      site-root/index.html
+          cp cicd/repo/install-apt.sh  site-root/install-apt.sh
+          cp cicd/repo/install-dnf.sh  site-root/install-dnf.sh
+          echo "Staged:"; ls -1 site-root
+
+      - name: Publish to GitHub Pages (root)
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site-root
+          keep_files: true # preserve apt/, rpm/, key.gpg, .nojekyll and docs/
+          commit_message: "landing: publish root page for ${{ github.sha }}"
