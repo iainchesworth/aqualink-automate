@@ -35,6 +35,27 @@ public:
 		client.m_State = Mqtt::MqttClient::State::Connected;
 		client.m_Running = true;
 	}
+
+	/// Invoke the private client-id generator directly so its format contract
+	/// ("aqualink-" + 8 hex chars) can be asserted without going through the ctor.
+	static std::string CallGenerateClientId(const Mqtt::MqttClient& client)
+	{
+		return client.GenerateClientId();
+	}
+
+	/// Invoke the private exponential-backoff calculator directly. Combine with
+	/// SetReconnectAttempts() to exercise the growth / cap / saturation branches.
+	static std::chrono::seconds CallCalculateReconnectDelay(const Mqtt::MqttClient& client)
+	{
+		return client.CalculateReconnectDelay();
+	}
+
+	/// Seed the reconnect-attempt counter so CalculateReconnectDelay()'s backoff
+	/// can be driven deterministically across attempt counts.
+	static void SetReconnectAttempts(Mqtt::MqttClient& client, std::uint16_t attempts)
+	{
+		client.m_ReconnectAttempts = attempts;
+	}
 };
 
 //=============================================================================
