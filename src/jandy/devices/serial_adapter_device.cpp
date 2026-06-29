@@ -504,7 +504,7 @@ namespace AqualinkAutomate::Devices
 		}
 
 		// Map the heater's body of water to its RSSA heater command. Shared == the solar heater.
-		SerialAdapter_SystemTemperatureCommands heater_cmd;
+		SerialAdapter_SystemTemperatureCommands heater_cmd{};
 		switch (heater_body)
 		{
 		case Kernel::BodyOfWaterIds::Pool:
