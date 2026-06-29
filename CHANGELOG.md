@@ -8,6 +8,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.9.0-beta.1] - 2026-06-29
+
+A spa-control and dual-body feature release.
+
+### Added
+
+- **Spa control from the web UI, MQTT, and Home Assistant.** Spa controls are now **writable** — a web-UI spa-mode toggle, and MQTT/Home Assistant entities that actuate heater modes via `SetHeaterMode`. MQTT entities now respect the installed pool configuration (so they match the equipment you actually have) and surface temperature freshness/staleness. This closes the gaps for migrating Home Assistant dashboards off the Ondilo ICO / iAqualink integrations onto aqualink-automate.
+- **Second pool setpoint and maintenance heating.** The panel's second pool setpoint (`POOLSP2`, shown as "TEMP2") and its maintenance-heating mode (`POOLHT2`) are now surfaced (read-only).
+- **Live circulation state.** A new `CirculationUpdate` WebSocket event publishes circulation state in real time.
+- **Online documentation site.** The full documentation is now rendered to GitHub Pages — served at the site root (<https://iainchesworth.github.io/aqualink-automate/>) and single-sourced from the in-repo Markdown.
+
+### Changed
+
+- **Emulated devices are gated by firmware revision** and validated by device-id placement before being allowed "online", and spa modes are gated to dual-body systems (reserving the AquaLink-PC control-panel-4 slot).
+
+### Fixed
+
+- **Pool/spa setpoint writes over RSSA** now use the correct two-step ready/set (`readySP`/`setSP`) sequence, emitted in reply to the device-ready poll.
+
 ## [0.8.0-beta.2] - 2026-06-28
 
 Build, CI, and packaging reliability fixes only — no application behaviour changes from 0.8.0-beta.1.
