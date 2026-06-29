@@ -167,11 +167,13 @@ jobs:
           createrepo_c --update "$OUT/rpm"
           gpg --batch --yes --detach-sign --armor "$OUT/rpm/repodata/repomd.xml"
 
-          # ---- Shared: public key, install scripts, landing page --------------
+          # ---- Shared: public key + install scripts ---------------------------
+          # The Pages landing page (index.html) is the MkDocs docs home, published
+          # to the root by docs.yml — do NOT write index.html here or a release
+          # would clobber the docs home with the old package landing.
           cp public-key.asc "$OUT/key.gpg"
           cp cicd/repo/install-apt.sh "$OUT/install-apt.sh"
           cp cicd/repo/install-dnf.sh "$OUT/install-dnf.sh"
-          cp cicd/repo/index.html "$OUT/index.html"
           echo "Repos built into $OUT:"; find "$OUT" -maxdepth 2 -type d
 
       - name: Publish to GitHub Pages

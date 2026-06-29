@@ -30,6 +30,10 @@ with your system package manager:
     sudo dnf install aqualink-automate
     ```
 
+Then `sudo apt upgrade` / `sudo dnf upgrade` keeps it current. Builds are provided
+for `amd64` and `arm64` (Raspberry Pi). The repositories are GPG-signed with
+[this key](https://iainchesworth.github.io/aqualink-automate/key.gpg).
+
 For pre-built binaries, dev containers, Docker, and building from source, see the
 [Install guide](INSTALL.md).
 

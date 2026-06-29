@@ -1,11 +1,13 @@
 # Build the documentation site (MkDocs Material) from the in-repo Markdown and
-# publish it to the `gh-pages` branch under the `/docs/` subdirectory.
+# publish it to the ROOT of the `gh-pages` branch — the docs home IS the Pages
+# landing page (no /docs/ segment).
 #
-# This coexists with publish-repos.yml: that workflow owns the root of gh-pages
-# (the signed APT/DNF package repositories — apt/, rpm/, key.gpg, install-*.sh,
-# index.html); this one owns gh-pages/docs/. Both publish with
-# `keep_files: true`, and they write disjoint subtrees, so neither deletes the
-# other's files. The package-install URLs are never touched.
+# This coexists with publish-repos.yml via `keep_files: true`: that workflow owns
+# the signed APT/DNF package machinery (apt/, rpm/, key.gpg, install-apt.sh,
+# install-dnf.sh); this one owns the rendered site (index.html, 404.html,
+# assets/, search/, and a directory per page). The filenames are disjoint, so
+# neither deletes the other's, and the package-install URLs are never touched.
+# (publish-repos no longer writes index.html — the docs home owns it now.)
 #
 # In-repo Markdown is the single source of truth; mkdocs.yml selects the curated
 # subset that is published (see its `nav` + `exclude_docs`).
@@ -55,11 +57,10 @@ jobs:
       - name: Build site
         run: mkdocs build --strict
 
-      - name: Publish to GitHub Pages (gh-pages/docs)
+      - name: Publish to GitHub Pages (root)
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: site
-          destination_dir: docs
-          keep_files: true # preserve the package repos at the gh-pages root
+          keep_files: true # preserve apt/, rpm/, key.gpg, install-*.sh
           commit_message: "docs: publish site for ${{ github.sha }}"
