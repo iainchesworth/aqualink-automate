@@ -70,6 +70,8 @@ target_sources(
 	http/webroute_equipment_buttons.cpp
 	http/webroute_equipment_chlorinator.cpp
 	http/webroute_equipment_iaq.cpp
+	http/webroute_equipment_heater.cpp
+	http/webroute_equipment_circulation.cpp
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
@@ -155,6 +157,7 @@ target_sources(
 	kernel/hub_events/data_hub_config_event.cpp
 	kernel/hub_events/data_hub_config_event_button_state_change.cpp
 	kernel/hub_events/data_hub_config_event_chemistry.cpp
+	kernel/hub_events/data_hub_config_event_circulation.cpp
 	kernel/hub_events/data_hub_config_event_temperature.cpp
 	kernel/hub_events/equipment_hub_system_event.cpp
 	kernel/hub_events/equipment_hub_system_event_status_change.cpp

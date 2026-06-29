@@ -41,6 +41,7 @@ namespace
 		CommandResult SetChlorinatorPercentage(uint8_t p) override { ++calls; last_kind = "chlor"; last_value = p; return CommandResult::Success; }
 		CommandResult SetChlorinatorBoost(bool) override { return CommandResult::Success; }
 		CommandResult SetCirculationMode(Kernel::CirculationModes) override { ++calls; last_kind = "circ"; return CommandResult::Success; }
+		CommandResult SetHeaterMode(Kernel::BodyOfWaterIds, bool) override { ++calls; last_kind = "heater"; return CommandResult::Success; }
 		CommandResult SelectIAQPageButton(uint8_t) override { return CommandResult::Success; }
 	};
 

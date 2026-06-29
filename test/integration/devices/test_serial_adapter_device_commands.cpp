@@ -130,9 +130,11 @@ BOOST_AUTO_TEST_CASE(TestQueuePumpCommand_ThenStatus_DispatchesPumpCommand)
 	FireStatus();
 
 	BOOST_REQUIRE(!captured_ack_types.empty());
-	// SPA = 0x0E, SetOn = 0x81
-	BOOST_CHECK_EQUAL(captured_ack_types.back(), 0x0E);
-	BOOST_CHECK_EQUAL(captured_ack_data.back(), 0x81);
+	// RSSA setDev byte order is {state, devID} (AqualinkD serialadapter.c,
+	// live-validated 2026-06-28): state SetOn=0x81 in the ack_type slot, SPA
+	// devID=0x0E in the ack_data slot.
+	BOOST_CHECK_EQUAL(captured_ack_types.back(), 0x81);
+	BOOST_CHECK_EQUAL(captured_ack_data.back(), 0x0E);
 }
 
 // =============================================================================

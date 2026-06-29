@@ -175,6 +175,7 @@ namespace AqualinkAutomate::Mqtt
 		nlohmann::json SerializeStatisticsSerial() const;
 		nlohmann::json SerializeTemperature(const Kernel::Temperature& temp) const { return Utility::SerializeTemperature(temp); }
 		nlohmann::json SerializeTemperature(const std::optional<Kernel::Temperature>& temp) const { return Utility::SerializeTemperature(temp); }
+		nlohmann::json SerializeTemperature(const std::optional<Kernel::Temperature>& temp, const std::optional<std::chrono::system_clock::time_point>& last_updated, bool stale) const { return Utility::SerializeTemperature(temp, last_updated, stale); }
 
 	private:
 		const Options::Mqtt::MqttSettings m_Settings;

@@ -176,6 +176,54 @@ BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceIds_MissingPrefix_ReturnsError)
 }
 
 //=============================================================================
+// PLACEMENT VALIDATION: Table 1 addressing rules (id-in-range, unique, per-type count)
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceId_OutOfRangeForType_ReturnsError)
+{
+	// 0x48 is a Serial Adapter slot; a OneTouch may only occupy 0x40-0x43.
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "onetouch", "--jandy-device-id", "0x48" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_DeviceId_InRangeForType_Succeeds)
+{
+	// 0x42 is a valid OneTouch instance address.
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "onetouch", "--jandy-device-id", "0x42" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK_EQUAL(jandy.value().get().emulated_devices[0].second.Id()(), 0x42);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_IAQ_AcceptsAqualinkTouchRange)
+{
+	// The IAQ emulation may stand up either as a legacy iAQ (0xA0-0xA3) or an AqualinkTouch
+	// page device (0x30-0x33); 0x33 must be accepted.
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "iaq", "--jandy-device-id", "0x33" });
+	BOOST_REQUIRE(result.has_value());
+
+	auto jandy = result.value().Get<Jandy::Options::JandySettings>();
+	BOOST_REQUIRE(jandy.has_value());
+	BOOST_CHECK_EQUAL(jandy.value().get().emulated_devices[0].second.Id()(), 0x33);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_DuplicateDeviceIds_ReturnsError)
+{
+	// Two emulated devices cannot share a bus address.
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "onetouch", "onetouch", "--jandy-device-id", "0x41", "0x41" });
+	BOOST_CHECK(!result.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Jandy_TooManyOfAType_ReturnsError)
+{
+	// Only two Serial Adapter instances exist on the bus (0x48, 0x49); a third is rejected.
+	auto result = RunFullPipeline({ "program", "--jandy-device-type", "serialadapter", "serialadapter", "serialadapter" });
+	BOOST_CHECK(!result.has_value());
+}
+
+//=============================================================================
 // DEFAULT IDS: types without explicit IDs get defaults
 //=============================================================================
 

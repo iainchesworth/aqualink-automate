@@ -11,6 +11,8 @@
 #include "jandy/auxillaries/jandy_auxillary_traits_types.h"
 #include "jandy/devices/capabilities/actuation_types.h"
 #include "kernel/circulation.h"
+#include "kernel/data_hub.h"
+#include "kernel/pool_configurations.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 
@@ -118,6 +120,52 @@ BOOST_AUTO_TEST_CASE(TestSetCirculationMode_SpaFillDrain_NotSupported)
 	SerialAdapterDevice device(device_type, *this, true);
 	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::SpaFill) == Capabilities::ActuationResult::NotSupported);
 	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::SpaDrain) == Capabilities::ActuationResult::NotSupported);
+}
+
+BOOST_AUTO_TEST_CASE(TestSetCirculationMode_SingleBody_RejectsSpaAndSpillover)
+{
+	// On a KNOWN single-body (pool-only/spa-only) system there is no second body to move water
+	// to/from, so SPA and SPILLOVER are not available (serial-adapter host protocol, note 4).
+	// Pool (spa-off) stays available.
+	auto data_hub = this->Find<AqualinkAutomate::Kernel::DataHub>();
+	BOOST_REQUIRE(data_hub != nullptr);
+	data_hub->PoolConfiguration = AqualinkAutomate::Kernel::PoolConfigurations::SingleBody;
+
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spa) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spillover) == Capabilities::ActuationResult::NotSupported);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Pool) == Capabilities::ActuationResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(TestSetCirculationMode_DualBody_AllowsSpaAndSpillover)
+{
+	// A combo / dual-equipment system has both bodies, so SPA and SPILLOVER are available.
+	auto data_hub = this->Find<AqualinkAutomate::Kernel::DataHub>();
+	BOOST_REQUIRE(data_hub != nullptr);
+	data_hub->PoolConfiguration = AqualinkAutomate::Kernel::PoolConfigurations::DualBody_SharedEquipment;
+
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spa) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetCirculationMode(AqualinkAutomate::Kernel::CirculationModes::Spillover) == Capabilities::ActuationResult::Accepted);
+}
+
+// =============================================================================
+// SetHeaterMode (capture-gated heater enable/disable)
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSetHeaterMode_PoolSpaSolar_Accepted)
+{
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Pool, true) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Spa, false) == Capabilities::ActuationResult::Accepted);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Shared, true) == Capabilities::ActuationResult::Accepted);
+}
+
+BOOST_AUTO_TEST_CASE(TestSetHeaterMode_UnknownBody_MappingFailed)
+{
+	// A body with no heater command (e.g. Unknown) is a well-formed request this adapter cannot map.
+	SerialAdapterDevice device(device_type, *this, true);
+	BOOST_CHECK(device.SetHeaterMode(AqualinkAutomate::Kernel::BodyOfWaterIds::Unknown, true) == Capabilities::ActuationResult::MappingFailed);
 }
 
 // =============================================================================

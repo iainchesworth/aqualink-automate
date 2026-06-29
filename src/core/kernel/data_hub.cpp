@@ -1,6 +1,7 @@
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/hub_events/data_hub_config_event_circulation.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/hub_events/equipment_hub_system_event_status_change.h"
 #include "profiling/factories/profiler_factory.h"
@@ -37,7 +38,61 @@ namespace AqualinkAutomate::Kernel
 		ConfigUpdateSignal(update_event);
 	}
 
-	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source)
+	void DataHub::EmitCirculationEvent(const std::function<void(DataHub_ConfigEvent_Circulation&)>& populate) const
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("DataHub::EmitCirculationEvent", std::source_location::current());
+
+		// Signal that a circulation (mode / active-body) update has occurred.
+		auto update_event = std::make_shared<DataHub_ConfigEvent_Circulation>();
+		populate(*update_event);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::SetCirculationMode(CirculationModes mode)
+	{
+		const bool spa_active = (CirculationModes::Spa == mode
+			|| CirculationModes::SpaFill == mode
+			|| CirculationModes::SpaDrain == mode);
+
+		auto pool = GetBody(BodyOfWaterIds::Pool);
+		auto spa = GetBody(BodyOfWaterIds::Spa);
+
+		// Capture the pre-update resolved state so the event is only fanned out on a real
+		// change (callers may invoke this every status poll).
+		const auto prev_mode = CirculationMode;
+		const bool prev_pool_active = pool ? pool->get().IsActive() : false;
+		const bool prev_spa_active = spa ? spa->get().IsActive() : false;
+
+		CirculationMode = mode;
+
+		// In a dual-body system the active body follows the circulation mode. Single-body
+		// installs have a fixed active body (set at configuration) and are left untouched.
+		if (pool && spa)
+		{
+			pool->get().IsActive(!spa_active);
+			spa->get().IsActive(spa_active);
+		}
+
+		const bool changed = (prev_mode != CirculationMode)
+			|| (pool && prev_pool_active != pool->get().IsActive())
+			|| (spa && prev_spa_active != spa->get().IsActive());
+
+		if (!changed)
+		{
+			return;
+		}
+
+		EmitCirculationEvent([this](DataHub_ConfigEvent_Circulation& update_event)
+			{
+				update_event.Mode(CirculationMode);
+				for (const auto& body : m_Bodies)
+				{
+					update_event.AddBody(body.Id(), body.IsActive());
+				}
+			});
+	}
+
+	void DataHub::ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source, BodyOfWaterIds single_body_kind)
 	{
 		PoolConfiguration = config;
 		PoolConfigurationSource = source;
@@ -55,26 +110,45 @@ namespace AqualinkAutomate::Kernel
 			AddBody(BodyOfWater{ BodyOfWaterIds::Spa, "Spa" });
 			break;
 		case PoolConfigurations::SingleBody:
-			AddBody(BodyOfWater{ BodyOfWaterIds::Pool, "Pool" });
+			// Pool-only (default) or spa-only - the single body is whichever the user configured.
+			if (single_body_kind == BodyOfWaterIds::Spa)
+			{
+				AddBody(BodyOfWater{ BodyOfWaterIds::Spa, "Spa" });
+			}
+			else
+			{
+				AddBody(BodyOfWater{ BodyOfWaterIds::Pool, "Pool" });
+			}
 			break;
 		default:
 			break;
 		}
 
-		// Set active body based on current circulation mode.
-		// The Jandy controller always has one body active (Pool by default).
-		bool spa_active = (CirculationMode == CirculationModes::Spa
-			|| CirculationMode == CirculationModes::SpaFill
-			|| CirculationMode == CirculationModes::SpaDrain);
-
-		if (auto pool = GetBody(BodyOfWaterIds::Pool))
+		// The Jandy controller always has exactly one active body. For a single-body system that
+		// is necessarily its only body (pool-only -> pool, spa-only -> spa); for a dual-body system
+		// the active body follows the current circulation mode (Pool by default).
+		if (config == PoolConfigurations::SingleBody)
 		{
-			pool->get().IsActive(!spa_active);
+			if (!m_Bodies.empty())
+			{
+				m_Bodies.front().IsActive(true);
+			}
 		}
-
-		if (auto spa = GetBody(BodyOfWaterIds::Spa))
+		else
 		{
-			spa->get().IsActive(spa_active);
+			bool spa_active = (CirculationMode == CirculationModes::Spa
+				|| CirculationMode == CirculationModes::SpaFill
+				|| CirculationMode == CirculationModes::SpaDrain);
+
+			if (auto pool = GetBody(BodyOfWaterIds::Pool))
+			{
+				pool->get().IsActive(!spa_active);
+			}
+
+			if (auto spa = GetBody(BodyOfWaterIds::Spa))
+			{
+				spa->get().IsActive(spa_active);
+			}
 		}
 	}
 
@@ -169,6 +243,7 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::AirTemp(const Kernel::Temperature& air_temp)
 	{
 		m_AirTemp = air_temp;
+		m_AirTempUpdatedAt = std::chrono::system_clock::now();
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Air Temp", air_temp.InCelsius().value());
 
 		EmitTemperatureEvent([&air_temp](DataHub_ConfigEvent_Temperature& update_event)
@@ -180,6 +255,7 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::PoolTemp(const Kernel::Temperature& pool_temp)
 	{
 		m_PoolTemp = pool_temp;
+		m_PoolTempUpdatedAt = std::chrono::system_clock::now();
 
 		if (auto body = GetBody(BodyOfWaterIds::Pool))
 		{
@@ -197,6 +273,7 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::SpaTemp(const Kernel::Temperature& spa_temp)
 	{
 		m_SpaTemp = spa_temp;
+		m_SpaTempUpdatedAt = std::chrono::system_clock::now();
 
 		if (auto body = GetBody(BodyOfWaterIds::Spa))
 		{
@@ -221,6 +298,18 @@ namespace AqualinkAutomate::Kernel
 		return m_PoolTempSetpoint;
 	}
 
+	std::optional<Kernel::Temperature> DataHub::PoolTempSetpoint2() const
+	{
+		// TEMP2 is a second setpoint for the SAME pool body (not a separate body of water), so it
+		// is held directly rather than via GetBody(Pool) (which already holds TEMP1).
+		return m_PoolTempSetpoint2;
+	}
+
+	std::optional<bool> DataHub::PoolHeater2Enabled() const
+	{
+		return m_PoolHeater2Enabled;
+	}
+
 	std::optional<Kernel::Temperature> DataHub::SpaTempSetpoint() const
 	{
 		if (auto body = GetBody(BodyOfWaterIds::Spa))
@@ -234,6 +323,7 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint)
 	{
 		m_PoolTempSetpoint = pool_temp_setpoint;
+		m_PoolTempSetpointUpdatedAt = std::chrono::system_clock::now();
 
 		if (auto body = GetBody(BodyOfWaterIds::Pool))
 		{
@@ -248,9 +338,32 @@ namespace AqualinkAutomate::Kernel
 			});
 	}
 
+	void DataHub::PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2)
+	{
+		m_PoolTempSetpoint2 = pool_temp_setpoint_2;
+
+		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint 2", pool_temp_setpoint_2.InCelsius().value());
+
+		EmitTemperatureEvent([&pool_temp_setpoint_2](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolSetpoint2(pool_temp_setpoint_2);
+			});
+	}
+
+	void DataHub::PoolHeater2Enabled(bool pool_heater_2_enabled)
+	{
+		m_PoolHeater2Enabled = pool_heater_2_enabled;
+
+		EmitTemperatureEvent([pool_heater_2_enabled](DataHub_ConfigEvent_Temperature& update_event)
+			{
+				update_event.PoolHeater2Enabled(pool_heater_2_enabled);
+			});
+	}
+
 	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
 	{
 		m_SpaTempSetpoint = spa_temp_setpoint;
+		m_SpaTempSetpointUpdatedAt = std::chrono::system_clock::now();
 
 		if (auto body = GetBody(BodyOfWaterIds::Spa))
 		{
@@ -284,12 +397,86 @@ namespace AqualinkAutomate::Kernel
 	void DataHub::FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point)
 	{
 		m_FreezeProtectPoint = freeze_protect_point;
+		m_FreezeProtectPointUpdatedAt = std::chrono::system_clock::now();
 
 		// Deliberately does NOT emit a ConfigUpdateSignal: DataHub_ConfigEvent_Temperature
 		// carries no freeze-protect field, so an emitted event would be an empty ({})
 		// no-op for WebSocket/MQTT consumers. If the freeze-protect setpoint ever needs
 		// to be surfaced, add a field to the temperature event (owned by the hub-events
 		// unit) and emit it here via EmitTemperatureEvent.
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::AirTempUpdatedAt() const
+	{
+		return m_AirTempUpdatedAt;
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::PoolTempUpdatedAt() const
+	{
+		return m_PoolTempUpdatedAt;
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::SpaTempUpdatedAt() const
+	{
+		return m_SpaTempUpdatedAt;
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::PoolTempSetpointUpdatedAt() const
+	{
+		return m_PoolTempSetpointUpdatedAt;
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::SpaTempSetpointUpdatedAt() const
+	{
+		return m_SpaTempSetpointUpdatedAt;
+	}
+
+	std::optional<std::chrono::system_clock::time_point> DataHub::FreezeProtectPointUpdatedAt() const
+	{
+		return m_FreezeProtectPointUpdatedAt;
+	}
+
+	bool DataHub::IsStale(const std::optional<std::chrono::system_clock::time_point>& updated_at) const
+	{
+		// A never-set temperature is null, not stale.
+		if (!updated_at.has_value())
+		{
+			return false;
+		}
+
+		return (std::chrono::system_clock::now() - updated_at.value()) > TemperatureStalenessThreshold;
+	}
+
+	bool DataHub::AirTempIsStale() const
+	{
+		return IsStale(m_AirTempUpdatedAt);
+	}
+
+	bool DataHub::PoolTempIsStale() const
+	{
+		return IsStale(m_PoolTempUpdatedAt);
+	}
+
+	bool DataHub::SpaTempIsStale() const
+	{
+		return IsStale(m_SpaTempUpdatedAt);
+	}
+
+	std::optional<Kernel::Temperature> DataHub::CurrentTempForReporting(BodyOfWaterIds body_id) const
+	{
+		// An inactive body on a dual-body system keeps broadcasting a junk current temperature
+		// (~1C) - surface it as unavailable rather than a misleading value.
+		if (auto body = GetBody(body_id); body && !body->get().IsActive())
+		{
+			return std::nullopt;
+		}
+
+		switch (body_id)
+		{
+		case BodyOfWaterIds::Pool: return PoolTemp();
+		case BodyOfWaterIds::Spa:  return SpaTemp();
+		default:                   return std::nullopt;
+		}
 	}
 
 	Kernel::ORP DataHub::ORP() const

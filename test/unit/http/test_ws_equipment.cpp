@@ -8,6 +8,7 @@
 #include "kernel/data_hub.h"
 #include "kernel/hub_events/data_hub_config_event.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "kernel/hub_events/data_hub_config_event_circulation.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "kernel/orp.h"
 
@@ -117,6 +118,47 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEvent
 		BOOST_CHECK(wse3_json["payload"].contains("air_temp"));
 		BOOST_CHECK(wse3_json["payload"]["air_temp"].is_string());
 		BOOST_CHECK("16\u00B0C" == wse3_json["payload"]["air_temp"]); // Make sure to use the right separator character --> \u00B0
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_CirculationEventConversion)
+{
+	{
+		// Empty event still routes as a CirculationUpdate; defaults to Pool mode, no bodies.
+		auto config_event_null = std::make_shared<Kernel::DataHub_ConfigEvent_Circulation>();
+		auto config_event_base = std::dynamic_pointer_cast<Kernel::DataHub_ConfigEvent>(config_event_null);
+		BOOST_REQUIRE(nullptr != config_event_base);
+		HTTP::WebSocket_Event wse1(config_event_base);
+
+		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::CirculationUpdate, wse1.Type());
+		auto wse1_json = nlohmann::json::parse(wse1.Payload());
+		BOOST_CHECK_EQUAL("CirculationUpdate", wse1_json["type"]);
+		BOOST_CHECK_EQUAL("Pool", wse1_json["payload"]["mode"]);
+		BOOST_CHECK_EQUAL(false, wse1_json["payload"]["spa_mode"]);
+		BOOST_CHECK(wse1_json["payload"]["active_body"].is_null());
+		BOOST_CHECK(wse1_json["payload"]["bodies"].is_array());
+		BOOST_CHECK_EQUAL(0U, wse1_json["payload"]["bodies"].size());
+	}
+
+	{
+		// Spa mode with both bodies: spa active, pool inactive.
+		auto config_event_circ = std::make_shared<Kernel::DataHub_ConfigEvent_Circulation>();
+		config_event_circ->Mode(Kernel::CirculationModes::Spa);
+		config_event_circ->AddBody(Kernel::BodyOfWaterIds::Pool, false);
+		config_event_circ->AddBody(Kernel::BodyOfWaterIds::Spa, true);
+		HTTP::WebSocket_Event wse2(config_event_circ);
+
+		BOOST_CHECK_EQUAL(HTTP::WebSocket_EventTypes::CirculationUpdate, wse2.Type());
+		auto wse2_json = nlohmann::json::parse(wse2.Payload());
+		BOOST_CHECK_EQUAL("CirculationUpdate", wse2_json["type"]);
+		BOOST_CHECK_EQUAL("Spa", wse2_json["payload"]["mode"]);
+		BOOST_CHECK_EQUAL(true, wse2_json["payload"]["spa_mode"]);
+		BOOST_CHECK_EQUAL("Spa", wse2_json["payload"]["active_body"]);
+		BOOST_REQUIRE_EQUAL(2U, wse2_json["payload"]["bodies"].size());
+		BOOST_CHECK_EQUAL("Pool", wse2_json["payload"]["bodies"][0]["id"]);
+		BOOST_CHECK_EQUAL(false, wse2_json["payload"]["bodies"][0]["is_active"]);
+		BOOST_CHECK_EQUAL("Spa", wse2_json["payload"]["bodies"][1]["id"]);
+		BOOST_CHECK_EQUAL(true, wse2_json["payload"]["bodies"][1]["is_active"]);
 	}
 }
 

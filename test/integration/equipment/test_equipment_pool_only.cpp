@@ -55,6 +55,17 @@ BOOST_AUTO_TEST_CASE(Test_PoolOnly_TemperaturesSet)
 	BOOST_REQUIRE(pool_setpoint.has_value());
 	BOOST_CHECK_CLOSE(pool_setpoint->InFahrenheit().value(), 84.0, 1.0);
 
+	// Single-body systems carry a second "TEMP2" maintenance setpoint (POOLSP2), below TEMP1.
+	auto pool_setpoint_2 = DataHub()->PoolTempSetpoint2();
+	BOOST_REQUIRE(pool_setpoint_2.has_value());
+	BOOST_CHECK_CLOSE(pool_setpoint_2->InFahrenheit().value(), 70.0, 1.0);
+	BOOST_CHECK(pool_setpoint_2->InFahrenheit().value() < pool_setpoint->InFahrenheit().value());
+
+	// TEMP2 maintenance heating enable (POOLHT2) is tracked alongside the TEMP2 setpoint.
+	auto pool_heater_2 = DataHub()->PoolHeater2Enabled();
+	BOOST_REQUIRE(pool_heater_2.has_value());
+	BOOST_CHECK_EQUAL(pool_heater_2.value(), true);
+
 	auto freeze = DataHub()->FreezeProtectPoint();
 	BOOST_REQUIRE(freeze.has_value());
 	BOOST_CHECK_CLOSE(freeze->InFahrenheit().value(), 36.0, 1.0);

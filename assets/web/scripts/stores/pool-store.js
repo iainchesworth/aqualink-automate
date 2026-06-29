@@ -36,6 +36,15 @@ const COMMAND_CONFIRM_TIMEOUT_MS = 20000;
 // Re-fetch interval when the buttons endpoint reports it is not yet ready.
 const BUTTONS_RETRY_MS = 5000;
 
+// Circulation (spa-mode) confirmation. Unlike buttons/heaters there is no
+// WebSocket event for a body becoming active, so the only authoritative signal
+// is configuration.bodies[].is_active from /api/equipment. After a circulation
+// command we re-poll that endpoint until the requested mode is reflected (or the
+// command's COMMAND_CONFIRM_TIMEOUT_MS elapses and it honestly resolves to
+// 'timedout'). The poll cadence × attempts is sized to span the confirm window.
+const CIRCULATION_CONFIRM_POLL_MS = 2500;
+const CIRCULATION_CONFIRM_MAX_ATTEMPTS = 7;
+
 // Normalise the several system-status vocabularies (REST 'operational',
 // WS SystemStatusChange status_type like 'Normal'/'Initializing', and the
 // initial 'unknown') down to one human-readable label for display.
@@ -64,6 +73,8 @@ document.addEventListener('alpine:init', () => {
         spaTemp: '--',
         airTemp: '--',
         poolSetpoint: '--',
+        poolSetpoint2: '--',   // POOLSP2 / panel "TEMP2" maintenance setpoint (single-body systems)
+        poolHeater2Enabled: null,   // POOLHT2 / panel "TEMP2" maintenance heating enabled (read-only)
         spaSetpoint: '--',
         ph: '--',
         orp: '--',
@@ -88,7 +99,11 @@ document.addEventListener('alpine:init', () => {
         _stalenessThreshold: 60,  // seconds
 
         buttons: [],
-        commandStates: {},   // { [buttonId|'setpoint:pool'|'setpoint:spa']: { state, timer } }
+        // Bodies of water from /api/equipment configuration.bodies[]
+        // ({ id: 'Pool'|'Spa'|..., label, is_active, ... }). The authoritative
+        // source for circulation/spa-mode state — Spa body active == spa mode.
+        bodies: [],
+        commandStates: {},   // { [buttonId|'setpoint:pool'|'setpoint:spa'|'circulation']: { state, timer } }
         systemStatus: 'Unknown',
         equipmentVersion: [],
         softwareVersion: '--',
@@ -100,6 +115,24 @@ document.addEventListener('alpine:init', () => {
         projectHomepage: '',
         lastUpdate: null,
         buttonsLoading: true,
+
+        // ---- Body-of-water / circulation state -------------------------
+        _bodyIds() {
+            return this.bodies.map(b => String(b.id || '').toLowerCase());
+        },
+
+        // A dual-body system has both a Pool and a Spa body. Only then is a
+        // circulation (pool<->spa) mode toggle meaningful.
+        get hasDualBody() {
+            const ids = this._bodyIds();
+            return ids.includes('pool') && ids.includes('spa');
+        },
+
+        // Spa mode is active when the Spa body is the active body of water.
+        get spaModeActive() {
+            const spa = this.bodies.find(b => String(b.id || '').toLowerCase() === 'spa');
+            return !!(spa && spa.is_active);
+        },
 
         async fetchInitial() {
             await Promise.all([
@@ -142,6 +175,8 @@ document.addEventListener('alpine:init', () => {
                     this.spaTemp = this._formatTemp(data.temperatures.spa);
                     this.airTemp = this._formatTemp(data.temperatures.air);
                     if (data.temperatures.pool_setpoint) this.poolSetpoint = data.temperatures.pool_setpoint;
+                    if (data.temperatures.pool_setpoint_2) this.poolSetpoint2 = data.temperatures.pool_setpoint_2;
+                    if (data.temperatures.pool_heater_2_enabled != null) this.poolHeater2Enabled = data.temperatures.pool_heater_2_enabled;
                     if (data.temperatures.spa_setpoint) this.spaSetpoint = data.temperatures.spa_setpoint;
                 }
 
@@ -193,6 +228,11 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 this.systemStatus = _normaliseSystemStatus('operational');
+
+                // Bodies of water — authoritative circulation/spa-mode state.
+                if (data.configuration && Array.isArray(data.configuration.bodies)) {
+                    this.bodies = data.configuration.bodies;
+                }
 
                 // Update system store if pool configuration is known
                 if (data.configuration && data.configuration.pool_configuration &&
@@ -261,6 +301,8 @@ document.addEventListener('alpine:init', () => {
                         if (msg.payload.spa_temp != null) { this.spaTemp = this._formatTemp(msg.payload.spa_temp); this._touch('spaTemp'); }
                         if (msg.payload.air_temp != null) { this.airTemp = this._formatTemp(msg.payload.air_temp); this._touch('airTemp'); }
                         if (msg.payload.pool_setpoint != null) this.poolSetpoint = msg.payload.pool_setpoint;
+                        if (msg.payload.pool_setpoint_2 != null) this.poolSetpoint2 = msg.payload.pool_setpoint_2;
+                        if (msg.payload.pool_heater_2_enabled != null) this.poolHeater2Enabled = msg.payload.pool_heater_2_enabled;
                         if (msg.payload.spa_setpoint != null) this.spaSetpoint = msg.payload.spa_setpoint;
                     }
                     break;
@@ -281,6 +323,26 @@ document.addEventListener('alpine:init', () => {
                     }
                     break;
                 }
+
+                case 'CirculationUpdate':
+                    // Live circulation/active-body change. Merge the per-body active
+                    // state into bodies[] (the source of truth for spaModeActive) by id;
+                    // append any body we have not seen yet. Reassign the array so Alpine
+                    // re-evaluates hasDualBody / spaModeActive.
+                    if (Array.isArray(msg.payload?.bodies)) {
+                        const next = this.bodies.map(b => ({ ...b }));
+                        for (const upd of msg.payload.bodies) {
+                            const idLc = String(upd.id || '').toLowerCase();
+                            const existing = next.find(b => String(b.id || '').toLowerCase() === idLc);
+                            if (existing) {
+                                existing.is_active = !!upd.is_active;
+                            } else {
+                                next.push({ id: upd.id, is_active: !!upd.is_active });
+                            }
+                        }
+                        this.bodies = next;
+                    }
+                    break;
 
                 case 'ButtonStateChange':
                     if (msg.payload?.button_id != null) {
@@ -460,6 +522,126 @@ document.addEventListener('alpine:init', () => {
                 console.error('Failed to toggle button:', e);
                 this._setCommandState(id, 'rejected');
                 Alpine.store('toast').show('Command failed — check connection', 'error');
+            }
+        },
+
+        // Toggle the circulation mode between pool (enable=false) and spa
+        // (enable=true) via SetCirculationMode. Mirrors toggleButton: the POST
+        // 200 only means the command was accepted for transmission, so we hold
+        // the command 'sending' and wait for the authoritative bodies[].is_active
+        // state (re-polled from /api/equipment, since there is no WS event for it)
+        // to confirm the change — no optimistic apply.
+        async toggleSpaMode(enable) {
+            const key = 'circulation';
+            if (!Alpine.store('system').commandsEnabled) {
+                this._setCommandState(key, 'blocked');
+                return;
+            }
+
+            try {
+                this._setCommandState(key, 'sending', COMMAND_CONFIRM_TIMEOUT_MS);
+
+                const resp = await fetch('/api/equipment/circulation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: enable ? 'spa' : 'pool' })
+                });
+
+                if (!resp.ok) {
+                    const reason = await this._readErrorReason(resp);
+                    console.warn(`Spa mode change rejected (HTTP ${resp.status}):`, reason);
+                    this._setCommandState(key, 'rejected');
+                    Alpine.store('toast').show(`Spa mode change failed — ${reason}`, 'error');
+                    return;
+                }
+
+                try { await resp.json(); } catch (_) { /* body intentionally ignored */ }
+                // Authoritative confirmation: poll /api/equipment until the Spa
+                // body's active state matches the request (or the command times out).
+                this._confirmCirculation(enable);
+            } catch (e) {
+                console.error('Failed to toggle spa mode:', e);
+                this._setCommandState(key, 'rejected');
+                Alpine.store('toast').show('Spa mode change failed — check connection', 'error');
+            }
+        },
+
+        // Re-poll /api/equipment until bodies[].is_active reflects the requested
+        // circulation mode, then confirm the command 'applied'. Stops early if the
+        // command is no longer in flight (timed out / superseded). If the mode is
+        // never observed, the command is left 'sending' to resolve via its
+        // COMMAND_CONFIRM_TIMEOUT_MS -> 'timedout' path.
+        async _confirmCirculation(enable, attempt = 0) {
+            const key = 'circulation';
+            if (this.commandStates[key]?.state !== 'sending') return;
+
+            await this._fetchEquipment();
+            if (this.commandStates[key]?.state !== 'sending') return;
+
+            if (this.spaModeActive === enable) {
+                this._setCommandState(key, 'applied');
+                return;
+            }
+
+            if (attempt < CIRCULATION_CONFIRM_MAX_ATTEMPTS) {
+                setTimeout(() => this._confirmCirculation(enable, attempt + 1), CIRCULATION_CONFIRM_POLL_MS);
+            }
+        },
+
+        // Map a heater button to its body-of-water keyword for /api/equipment/heater.
+        // Checked solar-first so "Solar Heat" is not mis-classified by a 'pool'/'spa'
+        // substring. Returns null for an unrecognised heater label.
+        _heaterBodyFor(button) {
+            const label = String(button.label || '').toLowerCase();
+            if (label.includes('solar')) return 'solar';
+            if (label.includes('spa')) return 'spa';
+            if (label.includes('pool')) return 'pool';
+            return null;
+        },
+
+        // Enable/disable a heater via SetHeaterMode (the validated heater path),
+        // instead of the generic DeviceActuator button toggle. Keyed on the heater
+        // button's id so the existing ButtonStateChange -> 'applied' confirmation
+        // applies — mirrors toggleButton (no optimistic apply). Falls back to the
+        // generic button toggle for an unrecognised heater body.
+        async setHeaterMode(button, enable) {
+            const id = button.id;
+            if (!Alpine.store('system').commandsEnabled) {
+                this._setCommandState(id, 'blocked');
+                return;
+            }
+
+            const body = this._heaterBodyFor(button);
+            if (!body) {
+                console.warn(`Unrecognised heater body for '${button.label}'; using generic button toggle`);
+                return this.toggleButton(id);
+            }
+
+            try {
+                this._setCommandState(id, 'sending');
+
+                const resp = await fetch('/api/equipment/heater', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body, enable })
+                });
+
+                if (!resp.ok) {
+                    const reason = await this._readErrorReason(resp);
+                    console.warn(`Heater command for '${button.label}' rejected (HTTP ${resp.status}):`, reason);
+                    this._setCommandState(id, 'rejected');
+                    Alpine.store('toast').show(`Heater command failed — ${reason}`, 'error');
+                    return;
+                }
+
+                try { await resp.json(); } catch (_) { /* body intentionally ignored */ }
+                // 200 = accepted for transmission. Wait for the authoritative
+                // ButtonStateChange WS event to confirm the heater actually changed.
+                this._setCommandState(id, 'sending', COMMAND_CONFIRM_TIMEOUT_MS);
+            } catch (e) {
+                console.error('Failed to set heater mode:', e);
+                this._setCommandState(id, 'rejected');
+                Alpine.store('toast').show('Heater command failed — check connection', 'error');
             }
         }
     });

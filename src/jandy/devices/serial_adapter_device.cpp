@@ -10,6 +10,7 @@
 #include "devices/serial_adapter_device.h"
 #include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/pool_configurations.h"
 #include "utility/overloaded_variant_visitor.h"
 
 using namespace AqualinkAutomate::Logging;
@@ -175,6 +176,42 @@ namespace AqualinkAutomate::Devices
 		Signal_AckMessage(ack_type, ack_data_value);
 	}
 
+	void SerialAdapterDevice::DrainPendingCommandForDevReady()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("SerialAdapterDevice::DrainPendingCommandForDevReady", std::source_location::current());
+
+		uint8_t ack_type{ 0x00 };
+		uint8_t ack_data_value{ 0x00 };
+
+		// A two-step setpoint write emits the readySP {typeID, 0x35} in reply to a
+		// CMD_STATUS (0x02) poll; the controller then answers with an RSSA_DEV_READY
+		// (0x07) poll carrying that type and expects the setSP {0x00, value} in reply
+		// to THIS poll. ProcessControllerUpdates() (CMD_STATUS path) only drains the
+		// queue on a fresh status message, so the setSP would otherwise miss the
+		// DEV_READY window and be sent out of context on the next CMD_STATUS, where the
+		// controller ignores it. Draining the queue here is safe because the controller
+		// sends DEV_READY only as the second half of this handshake -- never as routine
+		// traffic -- so no single-step command can be drained prematurely.
+		if (!m_PendingCommands.empty())
+		{
+			const PendingCommand pending = m_PendingCommands.front();
+			m_PendingCommands.pop_front();
+
+			LogDebug(Channel::Devices, std::format("DrainPendingCommandForDevReady -> Sending pending command (ack_type=0x{:02x}, ack_data_value=0x{:02x}); {} remaining", pending.ack_type, pending.ack_data_value, m_PendingCommands.size()));
+
+			ack_type = pending.ack_type;
+			ack_data_value = pending.ack_data_value;
+		}
+
+		// Mark that we have actively claimed this bus address (see ProcessControllerUpdates).
+		if (IsEmulationActive())
+		{
+			m_HasClaimedAddress = true;
+		}
+
+		Signal_AckMessage(ack_type, ack_data_value);
+	}
+
 	void SerialAdapterDevice::QueueCommand(uint8_t ack_type, uint8_t ack_data_value)
 	{
 		if (IsEmulated() && IsEmulationSuppressed())
@@ -210,8 +247,12 @@ namespace AqualinkAutomate::Devices
 
 	void SerialAdapterDevice::QueuePumpCommand(Messages::SerialAdapter_SystemPumpCommands pump, Messages::SerialAdapter_CommandTypes action)
 	{
+		// RSSA setDev frame body is {0x00, 0x01, state, devID} (AqualinkD serialadapter.c
+		// rssadapter_device_state) -- the STATE (0x81 on / 0x80 off) goes in the first data byte
+		// and the device code in the second. This matches the validated QueueAuxToggleWrite order;
+		// the reverse {devID, state} order is NOT recognised by the master as a set command.
 		LogDebug(Channel::Devices, std::format("SerialAdapterDevice: Queuing pump command ({}, action=0x{:02x})", magic_enum::enum_name(pump), magic_enum::enum_integer(action)));
-		QueueCommand(magic_enum::enum_integer(pump), magic_enum::enum_integer(action));
+		QueueCommand(magic_enum::enum_integer(action), magic_enum::enum_integer(pump));
 	}
 
 	void SerialAdapterDevice::QueueAuxCommand(Auxillaries::JandyAuxillaryIds aux_id, Messages::SerialAdapter_CommandTypes action)
@@ -367,7 +408,10 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting pool setpoint to {}", temperature));
-		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
+		// AqualinkD drives setpoints as a two-step readySP/setSP sequence (serialadapter.c
+		// queue_aqualink_rssadapter_setpoint), not a single frame. The single-frame form was not
+		// recognised by the controller (same class as the command byte-order bug).
+		QueueSetpointWrite_TwoStep(SerialAdapter_SystemTemperatureCommands::POOLSP, temperature);
 		return Capabilities::ActuationResult::Accepted;
 	}
 
@@ -382,7 +426,8 @@ namespace AqualinkAutomate::Devices
 		}
 
 		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting spa setpoint to {}", temperature));
-		QueueSetpointCommand(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
+		// Two-step readySP/setSP sequence (see SetPoolSetpoint).
+		QueueSetpointWrite_TwoStep(SerialAdapter_SystemTemperatureCommands::SPASP, temperature);
 		return Capabilities::ActuationResult::Accepted;
 	}
 
@@ -396,9 +441,23 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::NotSupported;
 		}
 
+		// SPA and SPILLOVER move water between two bodies, so they only exist on a system that HAS
+		// two bodies (pool + spa). On a known single-body system the RS Serial Adapter's SPA/
+		// SPILLOVER commands are meaningless (AquaLink RS Serial Adapter host protocol, note 4:
+		// SPA applies to combo / dual-equipment models only -- not pool-only or spa-only). Reject
+		// them when the configuration is KNOWN to be single-body; stay permissive while it is still
+		// Unknown (we then lean on the equipment actually discovered, as elsewhere).
+		const bool known_single_body = (nullptr != m_DataHub) &&
+			(Kernel::PoolConfigurations::SingleBody == m_DataHub->PoolConfiguration);
+
 		switch (mode)
 		{
 		case Kernel::CirculationModes::Spa:
+			if (known_single_body)
+			{
+				LogWarning(Channel::Devices, "SerialAdapterDevice: Spa circulation is not available on a single-body (pool-only/spa-only) system");
+				return Capabilities::ActuationResult::NotSupported;
+			}
 			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spa");
 			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPA, SerialAdapter_CommandTypes::SetOn);
 			return Capabilities::ActuationResult::Accepted;
@@ -409,6 +468,11 @@ namespace AqualinkAutomate::Devices
 			return Capabilities::ActuationResult::Accepted;
 
 		case Kernel::CirculationModes::Spillover:
+			if (known_single_body)
+			{
+				LogWarning(Channel::Devices, "SerialAdapterDevice: Spillover is not available on a single-body (pool-only/spa-only) system");
+				return Capabilities::ActuationResult::NotSupported;
+			}
 			LogInfo(Channel::Devices, "SerialAdapterDevice: Setting circulation mode to Spillover");
 			QueuePumpCommand(SerialAdapter_SystemPumpCommands::SPILLOVER, SerialAdapter_CommandTypes::SetOn);
 			return Capabilities::ActuationResult::Accepted;
@@ -429,27 +493,60 @@ namespace AqualinkAutomate::Devices
 		}
 	}
 
+	Capabilities::ActuationResult SerialAdapterDevice::SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable)
+	{
+		// Only an actively-emulating adapter can transmit; otherwise the queued command is silently
+		// dropped. Report NotSupported so the dispatcher can fall back.
+		if (!IsEmulationActive())
+		{
+			LogWarning(Channel::Devices, "SerialAdapterDevice: Not actively emulating - cannot set heater mode");
+			return Capabilities::ActuationResult::NotSupported;
+		}
+
+		// Map the heater's body of water to its RSSA heater command. Shared == the solar heater.
+		SerialAdapter_SystemTemperatureCommands heater_cmd;
+		switch (heater_body)
+		{
+		case Kernel::BodyOfWaterIds::Pool:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::POOLHT;
+			break;
+		case Kernel::BodyOfWaterIds::Spa:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::SPAHT;
+			break;
+		case Kernel::BodyOfWaterIds::Shared:
+			heater_cmd = SerialAdapter_SystemTemperatureCommands::SOLHT;
+			break;
+		default:
+			LogWarning(Channel::Devices, std::format("SerialAdapterDevice: No heater command for body {}", magic_enum::enum_name(heater_body)));
+			return Capabilities::ActuationResult::MappingFailed;
+		}
+
+		LogInfo(Channel::Devices, std::format("SerialAdapterDevice: Setting {} heater {}", magic_enum::enum_name(heater_body), enable ? "ON" : "OFF"));
+		QueueHeaterCommand(heater_cmd, enable);
+		return Capabilities::ActuationResult::Accepted;
+	}
+
 	void SerialAdapterDevice::QueueSetpointWrite_TwoStep(Messages::SerialAdapter_SystemTemperatureCommands setpoint, uint8_t temperature)
 	{
-		// CAPTURE-GATED WRITE (AqualinkD source/serialadapter.c, two-step setpoint).
-		// Byte ordering/codes are AqualinkD-derived and NOT yet validated on this
-		// project's live bus -- proven only by synthetic round-trip tests here.
-		// MUST be confirmed against a live Brainboxes capture before trusting it to
-		// drive real hardware.
+		// TWO-STEP SETPOINT WRITE (AqualinkD source/serialadapter.c). Live-validated on a
+		// dual-body iAQ/OneTouch + AquaRite controller, 2026-06-28 (pool 30->29C and spa
+		// 38->37C both actuated on the wire and the physical panel).
 		//
-		//   Step 1 (readySP): wire {0x00,0x01,typeID,0x35}
+		//   Step 1 (readySP): wire {0x00,0x01,typeID,0x35}, in reply to a CMD_STATUS poll
 		//                     -> ACK {ack_type = typeID(setpoint), data = 0x35}
 		//   Step 2 (setSP):   wire {0x00,0x01,0x00,val}
 		//                     -> ACK {ack_type = 0x00,            data = temperature}
 		//
-		// The two ACKs are queued FIFO so the readySP is emitted on the next master
-		// poll and the setSP on the poll immediately after, mirroring the adapter's
-		// expected request/confirm handshake order.
-		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing two-step setpoint write ({}, temperature={}) -- readySP then setSP", magic_enum::enum_name(setpoint), temperature));
+		// The two ACKs are queued FIFO. CRUCIAL TIMING: after the readySP the controller
+		// answers with an RSSA_DEV_READY (0x07) poll carrying the readied type, and the
+		// setSP value MUST be sent in reply to THAT poll -- Slot_SerialAdapter_DevReady ->
+		// DrainPendingCommandForDevReady() handles this. Sending the setSP on a later
+		// CMD_STATUS poll instead (the original behaviour) is ignored by the controller.
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: Queuing two-step setpoint write ({}, temperature={}) -- readySP then setSP", magic_enum::enum_name(setpoint), temperature));
 
-		// Supersede any earlier pending command, then append both steps in order so
-		// readySP and setSP go out on consecutive polls. The second QueueCommand
-		// must NOT be used (it would clear the first step) -- EnqueueCommand appends.
+		// Supersede any earlier pending command, then append both steps in order so the
+		// readySP drains on the CMD_STATUS poll and the setSP on the DEV_READY poll. The
+		// second QueueCommand must NOT be used (it would clear the first step) -- EnqueueCommand appends.
 		QueueCommand(magic_enum::enum_integer(setpoint), magic_enum::enum_integer(Messages::SerialAdapter_CommandTypes::ReadySetpoint));
 		EnqueueCommand(0x00, temperature);
 	}
@@ -473,6 +570,20 @@ namespace AqualinkAutomate::Devices
 		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: [CAPTURE-GATED] Queuing aux toggle write ({}, {}) -> setDev state=0x{:02x} devID=0x{:02x}", magic_enum::enum_name(aux_id), turn_on ? "ON" : "OFF", state, dev_id));
 
 		QueueCommand(state, dev_id);
+	}
+
+	void SerialAdapterDevice::QueueHeaterCommand(Messages::SerialAdapter_SystemTemperatureCommands heater, bool enable)
+	{
+		// HEATER ON/OFF WRITE (POOLHT=0x11 / SPAHT=0x13 / SOLHT=0x14). The heater is a device in
+		// the RSSA setDev family, so the frame body is {0x00, 0x01, state, devID} -- STATE
+		// (SetOn 0x81 / SetOff 0x80) first, heater device code second -- exactly like the validated
+		// aux/pump toggle order (AqualinkD serialadapter.c rssadapter_device_state). The earlier
+		// {devID, state} order was not recognised by the master.
+		const uint8_t state{ static_cast<uint8_t>(enable ? Messages::SerialAdapter_CommandTypes::SetOn : Messages::SerialAdapter_CommandTypes::SetOff) };
+
+		LogNotify(Channel::Devices, std::format("SerialAdapterDevice: Queuing heater write ({}, {}) -> state=0x{:02x} devID=0x{:02x}", magic_enum::enum_name(heater), enable ? "ON" : "OFF", state, magic_enum::enum_integer(heater)));
+
+		QueueCommand(state, magic_enum::enum_integer(heater));
 	}
 
 	void SerialAdapterDevice::WatchdogTimeoutOccurred()

@@ -30,6 +30,10 @@ with your system package manager:
     sudo dnf install aqualink-automate
     ```
 
+Then `sudo apt upgrade` / `sudo dnf upgrade` keeps it current. Builds are provided
+for `amd64` and `arm64` (Raspberry Pi). The repositories are GPG-signed with
+[this key](https://iainchesworth.github.io/aqualink-automate/key.gpg).
+
 For pre-built binaries, dev containers, Docker, and building from source, see the
 [Install guide](INSTALL.md).
 
@@ -57,3 +61,8 @@ Two RS-485 protocols are supported and auto-detected from the wire traffic:
 **Jandy/Zodiac (Fluidra) Aqualink RS** and **Pentair**. The
 [GitHub repository](https://github.com/iainchesworth/aqualink-automate) has the
 full source, issue tracker, and changelog.
+
+## Questions and support
+
+- **Bugs and feature requests** — open an [issue](https://github.com/iainchesworth/aqualink-automate/issues).
+- **Questions, ideas, and help** — start a [GitHub Discussion](https://github.com/iainchesworth/aqualink-automate/discussions).

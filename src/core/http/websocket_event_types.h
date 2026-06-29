@@ -8,6 +8,7 @@ namespace AqualinkAutomate::HTTP
 		ChemistryUpdate,
 		StatisticsUpdate,
 		TemperatureUpdate,
+		CirculationUpdate,
 
 		SystemStatusChange,
 		SystemStateUpdate,

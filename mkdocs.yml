@@ -4,9 +4,10 @@ site_description: >-
   controllers over RS-485 — Web UI, HTTP API, MQTT, and a Matter bridge,
   with no cloud service required.
 site_author: Iain Chesworth
-# Served from the /docs/ subpath of GitHub Pages; the repository root of the
-# Pages site (/) hosts the signed APT/DNF package repositories (publish-repos.yml).
-site_url: https://iainchesworth.github.io/aqualink-automate/docs/
+# The docs site IS the GitHub Pages root (the docs home is the landing page).
+# The signed APT/DNF package machinery (apt/, rpm/, key.gpg, install-*.sh) lives
+# alongside it at the root, published by publish-repos.yml.
+site_url: https://iainchesworth.github.io/aqualink-automate/
 
 repo_url: https://github.com/iainchesworth/aqualink-automate
 repo_name: iainchesworth/aqualink-automate

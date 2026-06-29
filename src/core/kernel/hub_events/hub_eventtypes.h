@@ -8,7 +8,8 @@ namespace AqualinkAutomate::Kernel
 		Chemistry,
 		Temperature,
 		ServiceStatus,
-		ButtonStateChange
+		ButtonStateChange,
+		Circulation
 	};
 
 }

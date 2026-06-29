@@ -32,7 +32,11 @@ namespace AqualinkAutomate::Devices
 		// real Serial Adapter is present; go passive so we never double-transmit.
 		DetectRealAdapterAndSuppressEmulation("DevReady");
 
-		ProcessControllerUpdates();
+		// A DEV_READY poll is the controller soliciting the second step (setSP) of a
+		// two-step setpoint write, so drain a queued command here rather than via the
+		// CMD_STATUS-gated ProcessControllerUpdates() (which would defer the value to the
+		// next CMD_STATUS poll, out of the handshake context, and the controller ignores it).
+		DrainPendingCommandForDevReady();
 
 		// Kick the watchdog to indicate that this device is alive.
 		Restartable::Kick();
@@ -150,6 +154,19 @@ namespace AqualinkAutomate::Devices
 		if (msg.Pool_SetPoint_One().has_value())
 		{
 			JandyController::m_DataHub->PoolTempSetpoint(convert_raw_temperature(msg.Pool_SetPoint_One().value()));
+		}
+
+		if (msg.Pool_SetPoint_Two().has_value())
+		{
+			// POOLSP2 == the panel's "TEMP2" maintenance (low) setpoint, reported only on single-body
+			// (Pool-Only/Spa-Only) systems alongside the priority TEMP1 (POOLSP).
+			JandyController::m_DataHub->PoolTempSetpoint2(convert_raw_temperature(msg.Pool_SetPoint_Two().value()));
+		}
+
+		if (msg.Pool_Heater_Two_Enabled().has_value())
+		{
+			// POOLHT2 == whether the "TEMP2" maintenance heating is enabled (capture-gated decode).
+			JandyController::m_DataHub->PoolHeater2Enabled(msg.Pool_Heater_Two_Enabled().value());
 		}
 
 		if (msg.Spa_SetPoint().has_value())

@@ -1,15 +1,19 @@
 #include <boost/test/unit_test.hpp>
 
+#include <deque>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <boost/asio.hpp>
 #include <nlohmann/json.hpp>
 
 #include "mqtt/mqtt_hub.h"
+#include "mqtt/mqtt_client.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/statistics_hub.h"
+#include "kernel/temperature.h"
 #include "options/options_mqtt_options.h"
 #include "support/unit_test_mqtt_support.h"
 
@@ -20,6 +24,38 @@ namespace
 	Options::Mqtt::MqttSettings MakeHubTestSettings()
 	{
 		return Test::MakeMqttSettings();
+	}
+
+	Kernel::Temperature Celsius(double c)
+	{
+		return Kernel::Temperature::ConvertToTemperatureInCelsius(c);
+	}
+
+	// PublishAllStatus() only emits when IsRunning() (hub started AND client connected).
+	// Start the hub then force the client's connected state so the publish paths run and
+	// enqueue against the offline client, then hand back the queue for inspection. Returns
+	// by reference via auto& so the private PendingPublish element type is never named.
+	auto& PublishAllAndGetQueue(Mqtt::MqttHub& hub)
+	{
+		hub.Start();
+		Test::MqttClientPacketTest::ForceConnectedState(*hub.GetMqttClient());
+		hub.PublishAllStatus();
+		return Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+	}
+
+	// First published payload whose topic contains `needle` (parsed as JSON), or nullopt.
+	// Templated on the queue so the private PendingPublish element type is never named.
+	template <typename QueueT>
+	std::optional<nlohmann::json> FindPayloadContaining(const QueueT& queue, const std::string& needle)
+	{
+		for (const auto& pending : queue)
+		{
+			if (pending.topic.find(needle) != std::string::npos)
+			{
+				return nlohmann::json::parse(pending.payload);
+			}
+		}
+		return std::nullopt;
 	}
 }
 
@@ -358,6 +394,87 @@ BOOST_AUTO_TEST_CASE(Test_Poll_WhenNotRunning_NoCrash)
 	Mqtt::MqttHub hub(ioc, settings);
 
 	BOOST_CHECK_NO_THROW(hub.Poll());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttHub temperature freshness tests
+//
+// Each published temperature now carries freshness metadata (last_updated +
+// stale) so a Home Assistant consumer can tell a reading has gone old without
+// the value disappearing. These tests drive PublishAllStatus() and assert the
+// serialized shape on the pool/temperatures and per-body topics.
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttHub_TemperatureFreshness)
+
+BOOST_AUTO_TEST_CASE(Test_PoolTemperatures_CarryFreshnessMetadata)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	// Setting a temperature stamps its UpdatedAt; a value just set is fresh (not stale).
+	data_hub->AirTemp(Celsius(24.0));
+	data_hub->PoolTemp(Celsius(26.0));
+	data_hub->SpaTemp(Celsius(38.0));
+	data_hub->PoolTempSetpoint(Celsius(28.0));
+	data_hub->SpaTempSetpoint(Celsius(39.0));
+	data_hub->FreezeProtectPoint(Celsius(2.0));
+	hub.ConnectDataHub(data_hub);
+
+	auto& queue = PublishAllAndGetQueue(hub);
+	auto temps = FindPayloadContaining(queue, "/pool/temperatures");
+	BOOST_REQUIRE_MESSAGE(temps.has_value(), "pool/temperatures was not published");
+
+	// Each live temperature carries {celsius, last_updated, stale}; a freshly set value
+	// has a populated (non-null) last_updated and is not stale.
+	for (const char* key : { "air", "pool", "spa" })
+	{
+		BOOST_REQUIRE_MESSAGE(temps->contains(key), std::string("missing temperature key: ") + key);
+		const auto& measurement = (*temps)[key];
+		BOOST_CHECK_MESSAGE(measurement.contains("celsius"), std::string(key) + " missing celsius");
+		BOOST_REQUIRE_MESSAGE(measurement.contains("last_updated"), std::string(key) + " missing last_updated");
+		BOOST_REQUIRE_MESSAGE(measurement.contains("stale"), std::string(key) + " missing stale");
+		BOOST_CHECK_MESSAGE(!measurement["last_updated"].is_null(), std::string(key) + " last_updated should be populated");
+		BOOST_CHECK_EQUAL(measurement["stale"].get<bool>(), false);
+	}
+
+	// Setpoints are configured values: they carry a timestamp but are never flagged stale.
+	BOOST_REQUIRE(temps->contains("pool_setpoint"));
+	BOOST_CHECK_EQUAL((*temps)["pool_setpoint"]["stale"].get<bool>(), false);
+
+	hub.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_PerBodyTemperatures_PublishedWithFreshnessShape)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	// A dual-body (combo) system gives Pool + Spa bodies, so per-body temperature topics
+	// are published (and the body-id freshness switch is exercised for both cases).
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::UserSpecified);
+	data_hub->PoolTemp(Celsius(26.0));
+	data_hub->SpaTemp(Celsius(38.0));
+	hub.ConnectDataHub(data_hub);
+
+	auto& queue = PublishAllAndGetQueue(hub);
+	auto body = FindPayloadContaining(queue, "/body/");
+	BOOST_REQUIRE_MESSAGE(body.has_value(), "no per-body temperature topic was published");
+
+	// Each body topic reports current + setpoint + is_active; current/setpoint go through
+	// the freshness-aware serializer (current may be null for an inactive combo body, but
+	// the keys are always present).
+	BOOST_CHECK(body->contains("current"));
+	BOOST_CHECK(body->contains("setpoint"));
+	BOOST_CHECK(body->contains("is_active"));
+
+	hub.Stop();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

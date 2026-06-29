@@ -49,7 +49,7 @@ For pre-built binaries, dev containers, Docker deployment, and the full build-fr
 
 ## Documentation
 
-📖 **[Read the documentation online](https://iainchesworth.github.io/aqualink-automate/docs/)** — the same guides below, rendered and searchable.
+📖 **[Read the documentation online](https://iainchesworth.github.io/aqualink-automate/)** — the same guides below, rendered and searchable.
 
 | Guide | What it covers |
 |-------|----------------|

@@ -38,10 +38,11 @@ namespace AqualinkAutomate::Kernel
 {
 
 	// Forward declarations for the concrete config-update event types populated
-	// by the temperature/chemistry emit helpers. The full definitions are only
-	// required in data_hub.cpp where the helpers are defined.
+	// by the temperature/chemistry/circulation emit helpers. The full definitions
+	// are only required in data_hub.cpp where the helpers are defined.
 	class DataHub_ConfigEvent_Temperature;
 	class DataHub_ConfigEvent_Chemistry;
+	class DataHub_ConfigEvent_Circulation;
 
 	enum class EquipmentMode
 	{
@@ -131,6 +132,12 @@ namespace AqualinkAutomate::Kernel
 	public:
 		CirculationModes CirculationMode{ CirculationModes::Pool };
 
+		// Update the decoded circulation mode and, for a dual-body system, the active
+		// body that follows it. Fans out a Circulation config event to WS/MQTT consumers
+		// only when the resolved state actually changes (callers may invoke it every
+		// status poll). This is the single authority for live circulation-state changes.
+		void SetCirculationMode(CirculationModes mode);
+
 		bool SpaMode() const
 		{
 			return CirculationModes::Spa == CirculationMode
@@ -145,7 +152,12 @@ namespace AqualinkAutomate::Kernel
 	//---------------------------------------------------------------------
 
 	public:
-		void ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source = ConfigurationSource::UserSpecified);
+		// single_body_kind selects which body a SingleBody configuration creates: Pool (default)
+		// or Spa. Pool-only and spa-only installs are indistinguishable on the wire (single body,
+		// single equipment - set by the Power Center DIP switches), so a spa-only install can only
+		// be signalled by the user via --pool-configuration spa-only. Auto-detect and cache-restore
+		// cannot tell them apart and therefore always default to Pool. Ignored for DualBody configs.
+		void ApplyPoolConfiguration(PoolConfigurations config, ConfigurationSource source = ConfigurationSource::UserSpecified, BodyOfWaterIds single_body_kind = BodyOfWaterIds::Pool);
 		void AddBody(BodyOfWater body);
 		std::optional<std::reference_wrapper<BodyOfWater>> GetBody(BodyOfWaterIds id);
 		std::optional<std::reference_wrapper<const BodyOfWater>> GetBody(BodyOfWaterIds id) const;
@@ -164,15 +176,48 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> PoolTemp() const;
 		std::optional<Kernel::Temperature> SpaTemp() const;
 		std::optional<Kernel::Temperature> PoolTempSetpoint() const;
+		std::optional<Kernel::Temperature> PoolTempSetpoint2() const;
+		std::optional<bool> PoolHeater2Enabled() const;
 		std::optional<Kernel::Temperature> SpaTempSetpoint() const;
 		std::optional<Kernel::Temperature> FreezeProtectPoint() const;
 		Kernel::TemperatureUnits SystemTemperatureUnits() const;
+
+	public:
+		// Wall-clock time each temperature channel was last written from the wire (nullopt until
+		// first set). The controller only reports temperatures while the filter pump runs, and for
+		// a combo system only for the active body, so a cached value can persist long after it
+		// stopped being refreshed - the timestamp lets consumers detect that.
+		std::optional<std::chrono::system_clock::time_point> AirTempUpdatedAt() const;
+		std::optional<std::chrono::system_clock::time_point> PoolTempUpdatedAt() const;
+		std::optional<std::chrono::system_clock::time_point> SpaTempUpdatedAt() const;
+		std::optional<std::chrono::system_clock::time_point> PoolTempSetpointUpdatedAt() const;
+		std::optional<std::chrono::system_clock::time_point> SpaTempSetpointUpdatedAt() const;
+		std::optional<std::chrono::system_clock::time_point> FreezeProtectPointUpdatedAt() const;
+
+		// True when a live temperature is older than TemperatureStalenessThreshold (pure age; a
+		// never-set/null temperature is not "stale").
+		bool AirTempIsStale() const;
+		bool PoolTempIsStale() const;
+		bool SpaTempIsStale() const;
+
+		// The current temperature to REPORT for a body, accounting for the combo-system reality
+		// that the controller only meaningfully reports the ACTIVE body's temperature: a dual-body
+		// system keeps broadcasting a junk value (e.g. ~1C) for the inactive body, so we surface an
+		// inactive body's current temp as unavailable (nullopt) rather than a misleading number.
+		// For a body that doesn't exist, or the (always-active) single body, returns its temp as-is.
+		std::optional<Kernel::Temperature> CurrentTempForReporting(Kernel::BodyOfWaterIds body_id) const;
+
+		// Age beyond which a temperature is considered stale (see *IsStale()). Set at startup from
+		// --temperature-staleness-threshold; default 10 minutes.
+		std::chrono::seconds TemperatureStalenessThreshold{ std::chrono::seconds(600) };
 
 	public:
 		void AirTemp(const Kernel::Temperature& air_temp);
 		void PoolTemp(const Kernel::Temperature& pool_temp);
 		void SpaTemp(const Kernel::Temperature& spa_temp);
 		void PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint);
+		void PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2);
+		void PoolHeater2Enabled(bool pool_heater_2_enabled);
 		void SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint);
 		void FreezeProtectPoint(const Kernel::Temperature& freeze_protect_point);
 		void SystemTemperatureUnits(Kernel::TemperatureUnits units);
@@ -182,9 +227,26 @@ namespace AqualinkAutomate::Kernel
 		std::optional<Kernel::Temperature> m_PoolTemp;
 		std::optional<Kernel::Temperature> m_SpaTemp;
 		std::optional<Kernel::Temperature> m_PoolTempSetpoint;
+		// Second pool setpoint -- POOLSP2, the panel's "TEMP2" maintenance (low) temperature. Only
+		// present on single-body (Pool-Only/Spa-Only) systems, where TEMP1 (m_PoolTempSetpoint) is
+		// the priority temperature and TEMP2 is a lower maintenance setpoint for the same body.
+		std::optional<Kernel::Temperature> m_PoolTempSetpoint2;
+		// Whether the panel's "TEMP2" maintenance heating (POOLHT2) is enabled. CAPTURE-GATED: the
+		// underlying wire byte encoding is documented (boolean enable) but not yet live-validated.
+		std::optional<bool> m_PoolHeater2Enabled;
 		std::optional<Kernel::Temperature> m_SpaTempSetpoint;
 		std::optional<Kernel::Temperature> m_FreezeProtectPoint;
 		Kernel::TemperatureUnits m_SystemTemperatureUnits{ Kernel::TemperatureUnits::Fahrenheit };
+
+		std::optional<std::chrono::system_clock::time_point> m_AirTempUpdatedAt;
+		std::optional<std::chrono::system_clock::time_point> m_PoolTempUpdatedAt;
+		std::optional<std::chrono::system_clock::time_point> m_SpaTempUpdatedAt;
+		std::optional<std::chrono::system_clock::time_point> m_PoolTempSetpointUpdatedAt;
+		std::optional<std::chrono::system_clock::time_point> m_SpaTempSetpointUpdatedAt;
+		std::optional<std::chrono::system_clock::time_point> m_FreezeProtectPointUpdatedAt;
+
+		// Shared staleness test: a value is stale only if it has been set and exceeds the threshold.
+		bool IsStale(const std::optional<std::chrono::system_clock::time_point>& updated_at) const;
 
 	//---------------------------------------------------------------------
 	// CHEMISTRY
@@ -240,6 +302,7 @@ namespace AqualinkAutomate::Kernel
 	private:
 		void EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const;
 		void EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const;
+		void EmitCirculationEvent(const std::function<void(DataHub_ConfigEvent_Circulation&)>& populate) const;
 
 	};
 

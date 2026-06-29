@@ -185,6 +185,7 @@ namespace AqualinkAutomate::Messages
 		std::optional<Kernel::TemperatureUnits> TemperatureUnits() const;
 		std::optional<uint8_t> Pool_SetPoint_One() const;
 		std::optional<uint8_t> Pool_SetPoint_Two() const;
+		std::optional<bool> Pool_Heater_Two_Enabled() const;
 		std::optional<uint8_t> Spa_SetPoint() const;
 		std::optional<uint8_t> AirTemperature() const;
 		std::optional<uint8_t> PoolTemperature() const;
@@ -216,6 +217,13 @@ namespace AqualinkAutomate::Messages
 		std::optional<Kernel::TemperatureUnits> m_TemperatureUnits{ std::nullopt };
 		std::optional<uint8_t> m_PoolTemperature_SetPoint_One{ std::nullopt };
 		std::optional<uint8_t> m_PoolTemperature_SetPoint_Two{ std::nullopt };
+		// POOLHT2 -- whether the panel's "TEMP2" maintenance heating is enabled. CAPTURE-GATED: the
+		// serial-adapter host protocol documents POOLHT2 as a boolean enable (st: 1=enabled,
+		// 0=disabled), and we decode byte[4] != 0 accordingly. This is robust even if the wire
+		// actually carries the richer 3-state (any non-zero == "heating enabled"), but the exact
+		// DevStatus byte layout is not yet validated against a live capture -- proven only by the
+		// synthetic round-trip test here.
+		std::optional<bool> m_PoolHeater_Two_Enabled{ std::nullopt };
 		std::optional<uint8_t> m_SpaTemperature_SetPoint{ std::nullopt };
 		std::optional<uint8_t> m_AirTemperature{ std::nullopt };
 		std::optional<uint8_t> m_PoolTemperature{ std::nullopt };

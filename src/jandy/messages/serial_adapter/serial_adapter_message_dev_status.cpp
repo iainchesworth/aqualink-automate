@@ -84,6 +84,11 @@ namespace AqualinkAutomate::Messages
 		return m_PoolTemperature_SetPoint_Two;
 	}
 
+	std::optional<bool> SerialAdapterMessage_DevStatus::Pool_Heater_Two_Enabled() const
+	{
+		return m_PoolHeater_Two_Enabled;
+	}
+
 	std::optional<uint8_t> SerialAdapterMessage_DevStatus::Spa_SetPoint() const
 	{
 		return m_SpaTemperature_SetPoint;
@@ -356,7 +361,13 @@ namespace AqualinkAutomate::Messages
 							break; 
 
 						case SerialAdapter_SystemTemperatureCommands::POOLHT2:
-							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PoolHeat2 -> {:02x} {:02x} {:02x} {:02x}", message_bytes[4], message_bytes[5], message_bytes[6], message_bytes[7]));
+							// CAPTURE-GATED: documented as a boolean enable (st); decode the STC value
+							// byte (Index_PoolTemperature_SetPoint == 6, the shared value slot for every
+							// STC command -- byte[4] is the command selector) as "TEMP2 maintenance
+							// heating enabled". Robust to a 3-state wire encoding (any non-zero ==
+							// enabled). Not yet validated on a live capture.
+							m_PoolHeater_Two_Enabled = (0x00 != message_bytes[Index_PoolTemperature_SetPoint]);
+							LogDebug(Channel::Messages, std::format("SerialAdapterMessage_DevStatus: PoolHeat2 -> {:02x} {:02x} {:02x} {:02x} (TEMP2 enabled={})", message_bytes[4], message_bytes[5], message_bytes[6], message_bytes[7], m_PoolHeater_Two_Enabled.value()));
 							break;
 
 						case SerialAdapter_SystemTemperatureCommands::SPAHT:

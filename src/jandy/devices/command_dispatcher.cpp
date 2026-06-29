@@ -8,6 +8,7 @@
 #include "devices/capabilities/chlorinator_controller.h"
 #include "devices/capabilities/circulation_controller.h"
 #include "devices/capabilities/device_actuator.h"
+#include "devices/capabilities/heater_controller.h"
 #include "devices/capabilities/page_navigator.h"
 #include "devices/capabilities/setpoint_controller.h"
 #include "auxillaries/jandy_auxillary_id.h"
@@ -216,6 +217,14 @@ namespace AqualinkAutomate::Devices
 		return DispatchToCapable<Capabilities::CirculationController>(
 			std::format("set circulation mode to {}", magic_enum::enum_name(mode)),
 			[&](Capabilities::CirculationController& controller) { return controller.SetCirculationMode(mode); },
+			CommandResult::NoSerialAdapter);
+	}
+
+	CommandDispatcher::CommandResult CommandDispatcher::SetHeaterMode(Kernel::BodyOfWaterIds heater_body, bool enable)
+	{
+		return DispatchToCapable<Capabilities::HeaterController>(
+			std::format("{} {} heater", enable ? "enable" : "disable", magic_enum::enum_name(heater_body)),
+			[&](Capabilities::HeaterController& controller) { return controller.SetHeaterMode(heater_body, enable); },
 			CommandResult::NoSerialAdapter);
 	}
 

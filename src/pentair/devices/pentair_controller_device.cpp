@@ -98,8 +98,8 @@ namespace AqualinkAutomate::Pentair::Devices
 			}
 		}
 
-		// Reflect the active circulation mode.
-		m_DataHub->CirculationMode = msg.SpaCircuitOn() ? Kernel::CirculationModes::Spa : Kernel::CirculationModes::Pool;
+		// Reflect the active circulation mode (fans out a CirculationUpdate event on change).
+		m_DataHub->SetCirculationMode(msg.SpaCircuitOn() ? Kernel::CirculationModes::Spa : Kernel::CirculationModes::Pool);
 	}
 
 }
