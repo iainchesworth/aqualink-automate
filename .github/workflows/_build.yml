@@ -83,15 +83,27 @@ jobs:
             package_preset: pack-macos-llvm
 
     steps:
+      # BEFORE checkout: a prior RELEASE built inside a root gcc container (the
+      # glibc-2.36 packaging step below) can leave root-owned files in this shared
+      # self-hosted workspace that actions/checkout's git-clean cannot delete
+      # ("permission denied, rmdir build/..."), failing the job before it starts.
+      # Reset ownership to the runner user via a throwaway ROOT container -- NOT host
+      # sudo -- then drop the stale build trees. The chown-on-exit trap in that
+      # packaging step is what stops new root-owned files appearing; this is the
+      # belt-and-braces recovery for any that predate it.
+      - name: Clean workspace (self-hosted)
+        if: contains(matrix.runner, 'self-hosted')
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ] && [ -n "$(find . ! -uid "$(id -u)" -print -quit 2>/dev/null)" ]; then
+            docker run --rm -v "${{ github.workspace }}":/w -w /w alpine:3 chown -R "$(id -u):$(id -g)" /w
+          fi
+          rm -rf build install
+
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: recursive
           fetch-depth: ${{ inputs.fetch_depth }}
-
-      - name: Clean workspace (self-hosted)
-        if: contains(matrix.runner, 'self-hosted')
-        shell: bash
-        run: rm -rf build/
 
       - uses: ./.github/actions/setup-cpp-toolchain
         if: ${{ !contains(matrix.runner, 'self-hosted') }}
@@ -275,7 +287,15 @@ jobs:
             -v "$HOME/.cache/vcpkg-bookworm":/vcpkgcache \
             -e VERSION_OVERRIDE -e CONFIGURE_PRESET -e BUILD_PRESET -e TEST_PRESET \
             -e PACKAGE_PRESET -e PACK_INSTALLTREE -e INSTALLTREE_NAME \
+            -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
             gcc:15-bookworm bash -eu -c '
+              # This container runs as root (needed for apt-get and writing /opt), so
+              # every file it creates under the bind-mounted /work is root-owned on the
+              # host. On a persistent self-hosted runner that poisons the shared
+              # workspace -- the next jobs (CodeQL, CI) cannot delete build/ and their
+              # checkout fails. Chown the tree back to the invoking host user on exit,
+              # via a trap so it runs even if configure/build/test/package fails.
+              trap "chown -R $HOST_UID:$HOST_GID /work 2>/dev/null || true" EXIT
               export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq
               apt-get install -y -qq --no-install-recommends \
