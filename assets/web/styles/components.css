@@ -1355,6 +1355,12 @@ html.dark .gauge-card {
     color: var(--accent);
 }
 
+/* Preserve the panel's leading/interior spaces so centred and right-aligned LCD
+   rows render faithfully instead of collapsing to the left margin. */
+.emu-screen-text {
+    white-space: pre;
+}
+
 .emu-line-num {
     color: var(--text-muted);
     min-width: 1.5em;

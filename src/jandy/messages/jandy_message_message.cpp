@@ -63,8 +63,10 @@ namespace AqualinkAutomate::Messages
 			return false;
 		}
 
-		// Extract + sanitise, then clamp to the visible display-line length.
-		m_Line = Text::ExtractTrailingAsciiPayload(message_bytes, Index_LineText);
+		// Extract as a display line (NUL pad -> space, trailing pad stripped, leading
+		// spaces preserved so the panel's centring survives), then clamp to the visible
+		// display-line length.
+		m_Line = Text::ExtractTrailingDisplayLine(message_bytes, Index_LineText);
 		if (m_Line.size() > static_cast<std::size_t>(DISPLAY_LINE_LENGTH))
 		{
 			m_Line.resize(DISPLAY_LINE_LENGTH);

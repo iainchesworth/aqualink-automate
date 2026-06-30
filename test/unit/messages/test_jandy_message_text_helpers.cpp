@@ -11,6 +11,7 @@
 #include "jandy/messages/iaq/iaq_message_page_message.h"
 #include "jandy/messages/iaq/iaq_message_title_message.h"
 #include "jandy/messages/jandy_message_message.h"
+#include "jandy/messages/jandy_message_message_long.h"
 
 using namespace AqualinkAutomate::Messages;
 
@@ -66,6 +67,53 @@ BOOST_AUTO_TEST_CASE(TestExtractTrailingAsciiPayload_TooShortReturnsEmpty)
 	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x2D, 0x00, 0x10, 0x03 }; // size 7
 	const auto result = Text::ExtractTrailingAsciiPayload(std::span<const uint8_t>(bytes), 4);
 	BOOST_CHECK(result.empty());
+}
+
+// -----------------------------------------------------------------------------
+// ExtractTrailingDisplayLine: panel NUL padding must NOT surface as '?', leading
+// spaces (the panel's centring) must be preserved, and a legitimate trailing
+// space must round-trip unchanged.
+// -----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(TestExtractTrailingDisplayLine_StripsTrailingNulPad)
+{
+	// frame: 10 02 | dst type | "AB" 00 00 | footer(00 10 03); start_index past header.
+	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x04, 'A', 'B', 0x00, 0x00, 0x00, 0x10, 0x03 };
+	const auto result = Text::ExtractTrailingDisplayLine(std::span<const uint8_t>(bytes), 4);
+	BOOST_CHECK_EQUAL(result, std::string("AB")); // trailing NUL pad stripped, not "AB??".
+}
+
+BOOST_AUTO_TEST_CASE(TestExtractTrailingDisplayLine_PreservesLeadingSpacesTrimsTrailing)
+{
+	// "   Hi" centred with leading spaces, trailing NUL pad.
+	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x04, ' ', ' ', ' ', 'H', 'i', 0x00, 0x00, 0x00, 0x10, 0x03 };
+	const auto result = Text::ExtractTrailingDisplayLine(std::span<const uint8_t>(bytes), 4);
+	BOOST_CHECK_EQUAL(result, std::string("   Hi")); // leading spaces kept, trailing pad gone.
+}
+
+BOOST_AUTO_TEST_CASE(TestExtractTrailingDisplayLine_InteriorNulBecomesSpace)
+{
+	// Two fields separated by NUL column separators: "Menu" 00 00 "Help".
+	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x04, 'M', 'e', 'n', 'u', 0x00, 0x00, 'H', 'e', 'l', 'p', 0x00, 0x10, 0x03 };
+	const auto result = Text::ExtractTrailingDisplayLine(std::span<const uint8_t>(bytes), 4);
+	BOOST_CHECK_EQUAL(result, std::string("Menu  Help")); // interior NUL -> space, not '?'.
+}
+
+BOOST_AUTO_TEST_CASE(TestExtractTrailingDisplayLine_KeepsTrailingSpaceAndLiteralQuestionMark)
+{
+	// A real trailing space (0x20) is printable and must survive; a literal '?' (0x3F)
+	// on the wire is also printable and must NOT be mistaken for sanitised pad.
+	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x04, 'O', 'k', '?', ' ', 0x00, 0x10, 0x03 };
+	const auto result = Text::ExtractTrailingDisplayLine(std::span<const uint8_t>(bytes), 4);
+	BOOST_CHECK_EQUAL(result, std::string("Ok? ")); // trailing NUL stripped; space + '?' kept.
+}
+
+BOOST_AUTO_TEST_CASE(TestExtractTrailingDisplayLine_HostileControlStillSanitised)
+{
+	// An interior ESC must still be neutralised to '?' (security: not whitespace pad).
+	const std::vector<uint8_t> bytes = { 0x10, 0x02, 0x33, 0x04, 'H', 'o', 0x1B, 'm', 'e', 0x00, 0x10, 0x03 };
+	const auto result = Text::ExtractTrailingDisplayLine(std::span<const uint8_t>(bytes), 4);
+	BOOST_CHECK_EQUAL(result, std::string("Ho?me"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -128,6 +176,42 @@ BOOST_AUTO_TEST_CASE(TestAuxStatus_SanitisesDeviceName)
 	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
 	BOOST_REQUIRE_EQUAL(msg.Devices().size(), static_cast<size_t>(1));
 	BOOST_CHECK_EQUAL(msg.Devices()[0].name, std::string("P?mp"));
+}
+
+BOOST_AUTO_TEST_CASE(TestMessageLong_OneTouchTitle_NulPadNotRendered)
+{
+	// Reconstructs the real "More OneTouch" row (onetouch_setpoint_edit.cap): line id
+	// 0x0A, the centred cell " More OneTouch", then two NUL pad bytes.  The pad must
+	// disappear, not render as "More OneTouch??".
+	std::vector<uint8_t> payload = {
+		0x0A, // line id
+		' ', 'M', 'o', 'r', 'e', ' ', 'O', 'n', 'e', 'T', 'o', 'u', 'c', 'h',
+		0x00, 0x00 // panel NUL pad
+	};
+	auto pkt = MakePacket(0x41, 0x04, payload);
+
+	JandyMessage_MessageLong msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.LineId(), static_cast<uint8_t>(0x0A));
+	BOOST_CHECK_EQUAL(msg.Line(), std::string(" More OneTouch"));
+}
+
+BOOST_AUTO_TEST_CASE(TestMessageLong_SystemTitle_CentredWithNulPad)
+{
+	// Reconstructs the real "System" title row: line id 0x0B, five leading spaces that
+	// centre the word, then a NUL/LF/NUL pad run.  Centring (leading spaces) survives;
+	// the trailing pad does not become "?????".
+	std::vector<uint8_t> payload = {
+		0x0B, // line id
+		' ', ' ', ' ', ' ', ' ', 'S', 'y', 's', 't', 'e', 'm',
+		0x00, 0x0A, 0x00, 0x00, 0x00 // panel pad run
+	};
+	auto pkt = MakePacket(0x41, 0x04, payload);
+
+	JandyMessage_MessageLong msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.LineId(), static_cast<uint8_t>(0x0B));
+	BOOST_CHECK_EQUAL(msg.Line(), std::string("     System"));
 }
 
 BOOST_AUTO_TEST_CASE(TestDeviceId_SanitisesNonPrintableBeforeNul)

@@ -94,6 +94,64 @@ namespace AqualinkAutomate::Messages::Text
 	}
 
 	//
+	// Extract the trailing payload of a framed packet as a fixed-width DISPLAY LINE
+	// (a OneTouch / iAQ LCD row).  Unlike ExtractTrailingAsciiPayload, this knows that
+	// the panel pads and structures each 16-character row with NUL (0x00) bytes rather
+	// than spaces:
+	//
+	//   * the trailing run of non-printable pad bytes (NUL, and the occasional control
+	//     byte the panel emits as filler) is stripped so it never surfaces as visible
+	//     '?' junk.  A trailing space (0x20) is printable and is intentionally kept, so
+	//     a line that legitimately ends in spaces round-trips unchanged.
+	//   * an interior NUL — used by the panel as a column separator between fields on a
+	//     single row (e.g. "Menu" .. "Help") — becomes a space, preserving the column
+	//     layout instead of punching a '?' through the gap.
+	//
+	// Leading and interior spacing is otherwise preserved verbatim, so the panel's
+	// centring / right-alignment (which it expresses entirely with leading spaces)
+	// survives the decode.  Genuinely unexpected interior control / high bytes are still
+	// mapped to '?' (log-injection / terminal-escape defence; see SanitisePrintableAsciiByte).
+	//
+	[[nodiscard]] inline std::string ExtractTrailingDisplayLine(std::span<const uint8_t> message_bytes, std::size_t start_index)
+	{
+		constexpr uint8_t FIRST_PRINTABLE_ASCII{ 0x20 }; // space
+		constexpr uint8_t LAST_PRINTABLE_ASCII{ 0x7E };  // tilde
+		constexpr uint8_t NUL_PAD_BYTE{ 0x00 };
+
+		const std::size_t footer = JandyMessage::PACKET_FOOTER_LENGTH;
+
+		if (message_bytes.size() <= start_index + footer)
+		{
+			return std::string{};
+		}
+
+		const std::size_t length_to_copy = message_bytes.size() - start_index - footer;
+		const std::span<const uint8_t> payload = message_bytes.subspan(start_index, length_to_copy);
+
+		// Drop the trailing run of non-printable pad bytes (NUL / control filler).  A
+		// trailing space is printable, so it is kept here and survives verbatim.
+		std::size_t visible_end = payload.size();
+		while ((visible_end > 0U) &&
+		       ((payload[visible_end - 1U] < FIRST_PRINTABLE_ASCII) || (payload[visible_end - 1U] > LAST_PRINTABLE_ASCII)))
+		{
+			--visible_end;
+		}
+
+		std::string result;
+		result.reserve(visible_end);
+
+		for (std::size_t i = 0U; i < visible_end; ++i)
+		{
+			const uint8_t byte = payload[i];
+			// An interior NUL is a column separator -> render as a space; everything else
+			// goes through the shared printable-ASCII sanitiser.
+			result.push_back((NUL_PAD_BYTE == byte) ? ' ' : SanitisePrintableAsciiByte(byte));
+		}
+
+		return result;
+	}
+
+	//
 	// Bounds guard shared by the "too short to deserialise field X" idiom.  Returns
 	// true when message_bytes is long enough to index 'required_index' (i.e. when
 	// size > required_index), otherwise emits the standard LogDebug line and returns

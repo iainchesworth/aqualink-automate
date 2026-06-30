@@ -803,7 +803,7 @@
                                                         <div class="emu-screen-line"
                                                              :class="{ 'emu-screen-line-highlighted': dev.highlighted_line === idx && dev.device_type === 'OneTouch' }">
                                                             <span class="emu-line-num" x-text="idx"></span>
-                                                            <span x-text="line || ' '"></span>
+                                                            <span class="emu-screen-text" x-text="line || ' '"></span>
                                                         </div>
                                                     </template>
                                                 </div>
