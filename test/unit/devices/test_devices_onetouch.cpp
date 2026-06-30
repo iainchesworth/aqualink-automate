@@ -739,4 +739,89 @@ BOOST_AUTO_TEST_CASE(TestPageProcessor_TimeOut_SetsTimeOutMode)
 	BOOST_CHECK(data_hub->Mode == Kernel::EquipmentMode::TimeOut);
 }
 
+// =============================================================================
+// Configuration / setpoint page processors (decode a scraped menu page into the
+// DataHub model). Same CompleteScreen() mechanism as the Equipment Status tests.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestPageProcessor_SetTemperature_ParsesHeatSetpoints)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(0, "    Set Temp");          // detector
+	device.RenderScreenLineForTest(2, "Pool Heat   90`F");
+	device.RenderScreenLineForTest(3, "Spa Heat   102`F");
+	CompleteScreen(device);
+
+	auto pool = data_hub->PoolTempSetpoint();
+	auto spa = data_hub->SpaTempSetpoint();
+	BOOST_REQUIRE(pool.has_value());
+	BOOST_REQUIRE(spa.has_value());
+	BOOST_CHECK_CLOSE(pool.value().InFahrenheit().value(), 90.0, 0.5);
+	BOOST_CHECK_CLOSE(spa.value().InFahrenheit().value(), 102.0, 0.5);
+}
+
+BOOST_AUTO_TEST_CASE(TestPageProcessor_SetAquapure_ScrapesChlorinatorSetpoints)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(0, "  Set AQUAPURE");        // detector
+	device.RenderScreenLineForTest(3, "Set Pool to:  45%");
+	device.RenderScreenLineForTest(4, "Set Spa to:   50%");
+	CompleteScreen(device);
+
+	auto chlorinators = data_hub->Chlorinators();
+	BOOST_REQUIRE_EQUAL(chlorinators.size(), 1u);
+	auto pool_sp = chlorinators.front()->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::ChlorinatorPoolSetpointTrait{});
+	auto spa_sp = chlorinators.front()->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::ChlorinatorSpaSetpointTrait{});
+	BOOST_REQUIRE(pool_sp.has_value());
+	BOOST_REQUIRE(spa_sp.has_value());
+	BOOST_CHECK_EQUAL(static_cast<int>(pool_sp.value()), 45);
+	BOOST_CHECK_EQUAL(static_cast<int>(spa_sp.value()), 50);
+}
+
+BOOST_AUTO_TEST_CASE(TestPageProcessor_Version_PopulatesVersionsAndBodies)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(4, "B0029221");
+	device.RenderScreenLineForTest(5, "RS-8 Combo");
+	device.RenderScreenLineForTest(7, "REV T.0.1");           // detector "REV "
+	CompleteScreen(device);
+
+	BOOST_CHECK_EQUAL(data_hub->EquipmentVersions.Get("Model"), "B0029221");
+	BOOST_CHECK_EQUAL(data_hub->EquipmentVersions.Get("Type"), "RS-8 Combo");
+	BOOST_CHECK_EQUAL(data_hub->EquipmentVersions.Get("Revision"), "REV T.0.1");
+	// A decoded panel type resolves a pool configuration, which seeds the bodies.
+	BOOST_CHECK(data_hub->PoolConfiguration != Kernel::PoolConfigurations::Unknown);
+	BOOST_CHECK(!data_hub->Bodies().empty());
+}
+
+BOOST_AUTO_TEST_CASE(TestPageProcessor_FreezeProtect_ParsesThreshold)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(0, " Freeze Protect");      // detector
+	device.RenderScreenLineForTest(3, "Temp        38`F");
+	CompleteScreen(device);
+
+	auto threshold = data_hub->FreezeProtectPoint();
+	BOOST_REQUIRE(threshold.has_value());
+	BOOST_CHECK_CLOSE(threshold.value().InFahrenheit().value(), 38.0, 0.5);
+}
+
+BOOST_AUTO_TEST_CASE(TestPageProcessor_EquipmentOnOff_CreatesAuxDevices)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(0, "Filter Pump  ***");     // detector "Filter Pump"
+	device.RenderScreenLineForTest(5, "Aux1         OFF");
+	device.RenderScreenLineForTest(6, "Aux2         OFF");
+	device.RenderScreenLineForTest(7, "Aux3          ON");
+	CompleteScreen(device);
+
+	// Each aux row is decoded into an auxillary device on the DataHub.
+	BOOST_CHECK_GE(data_hub->Auxillaries().size(), 3u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
