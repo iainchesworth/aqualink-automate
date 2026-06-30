@@ -278,4 +278,84 @@ BOOST_AUTO_TEST_CASE(RecordDeviceState_FoldsLegacyLabelKeyedSeries)
 	BOOST_CHECK_EQUAL(series.front().count, 3);   // 2 legacy + 1 new, merged
 }
 
+//=============================================================================
+// Lifecycle / maintenance guards (Flush, PurgeOld, Stop, Heartbeat, disabled).
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Flush_EmptyBuffer_IsNoOp)
+{
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	service.Start();
+
+	// Nothing buffered: Flush takes the empty-buffer early return and leaves the DB empty.
+	BOOST_CHECK_NO_THROW(service.Flush());
+	BOOST_CHECK(service.ListSeries().empty());
+}
+
+BOOST_AUTO_TEST_CASE(PurgeOld_RetentionZero_KeepsAllSamples)
+{
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 1'000'000;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	// Retention 0 disables purging entirely (keep-forever), so PurgeOld is a no-op.
+	Find<Kernel::PreferencesHub>()->HistoryRetentionDays = 0;
+
+	service.RecordNumeric("temp/pool", "C", 20.0, /*is_heartbeat=*/true);
+	now += 5;
+	service.RecordNumeric("temp/pool", "C", 21.0, /*is_heartbeat=*/true);
+	service.Flush();
+
+	service.PurgeOld();
+
+	auto series = service.ListSeries();
+	BOOST_REQUIRE_EQUAL(series.size(), 1u);
+	BOOST_CHECK_EQUAL(series.front().count, 2);   // nothing purged
+}
+
+BOOST_AUTO_TEST_CASE(Stop_AfterStart_FlushesCleanly)
+{
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 10;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	service.RecordNumeric("temp/pool", "C", 20.0, /*is_heartbeat=*/true);
+
+	// Stop flushes the outstanding buffer and tears down timers without throwing.
+	BOOST_CHECK_NO_THROW(service.Stop());
+}
+
+BOOST_AUTO_TEST_CASE(Heartbeat_OnEmptyDataHub_RecordsNothing)
+{
+	boost::asio::io_context io;
+	History::HistoryService service(io, *this, MemorySettings());
+	std::int64_t now = 1'000;
+	service.SetClock([&now] { return now; });
+	service.Start();
+
+	// With no temps/chemistry/chlorinator on the DataHub, SampleCurrentState takes every
+	// "absent value" branch and records nothing.
+	BOOST_CHECK_NO_THROW(service.Heartbeat());
+	BOOST_CHECK(service.ListSeries().empty());
+}
+
+BOOST_AUTO_TEST_CASE(Start_EmptyDbPath_StaysDisabled)
+{
+	boost::asio::io_context io;
+	auto settings = MemorySettings();
+	settings.db_path = "";   // disabled: no database is opened
+	History::HistoryService service(io, *this, settings);
+
+	BOOST_CHECK_NO_THROW(service.Start());
+
+	// A disabled service silently drops samples and reports no series.
+	BOOST_CHECK_NO_THROW(service.RecordNumeric("temp/pool", "C", 20.0, /*is_heartbeat=*/true));
+	BOOST_CHECK(service.ListSeries().empty());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
