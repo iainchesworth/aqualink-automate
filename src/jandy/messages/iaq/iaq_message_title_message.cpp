@@ -38,16 +38,16 @@ namespace AqualinkAutomate::Messages
 	{
 		LogTrace(Channel::Messages, [&]() { return std::format("Deserialising {} bytes from span into IAQMessage_TitleMessage type", message_bytes.size()); });
 
-		// The trailing ASCII payload runs from Index_TitleText up to (but not
-		// including) the 3-byte footer; ExtractTrailingAsciiPayload centralises
-		// the underflow guard and sanitises wire-sourced text to printable ASCII.
+		// The title is a centred LCD display line: ExtractTrailingDisplayLine keeps the
+		// leading spaces that centre it, strips the panel's trailing NUL pad (instead of
+		// surfacing it as '?'), and still neutralises genuinely hostile control bytes.
 		if (message_bytes.size() <= Index_TitleText + JandyMessage::PACKET_FOOTER_LENGTH)
 		{
 			LogDebug(Channel::Messages, "IAQMessage_TitleMessage is too short for content extraction");
 			return false;
 		}
 
-		m_Title = Text::ExtractTrailingAsciiPayload(message_bytes, Index_TitleText);
+		m_Title = Text::ExtractTrailingDisplayLine(message_bytes, Index_TitleText);
 
 		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_TitleMessage: Title -> '{}' ({} chars)", m_Title, m_Title.length()); });
 
