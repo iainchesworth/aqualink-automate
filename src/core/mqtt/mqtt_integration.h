@@ -1,6 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <string>
 
 #include <boost/asio/io_context.hpp>
 #include <nlohmann/json.hpp>
@@ -92,6 +94,16 @@ namespace AqualinkAutomate::Mqtt
 		std::shared_ptr<HomeAssistantDiscovery> m_HaDiscovery;
 		boost::signals2::scoped_connection m_HaConnectedConnection;
 		boost::signals2::scoped_connection m_HaDevicesConnection;
+
+		// HA discovery-config seed: on connect we read back the broker's existing retained
+		// discovery config BEFORE publishing a new one, so entities for devices that no longer
+		// exist can be tombstoned (removed from HA). The first discovery publish is deferred until
+		// that config arrives or the grace window elapses (a fresh broker has none).
+		boost::signals2::scoped_connection m_HaConfigSeedConnection;
+		bool m_HaSeedPending{ false };
+		std::chrono::steady_clock::time_point m_HaSeedDeadline;
+		std::string m_HaConfigTopic;
+		static constexpr std::chrono::seconds HA_SEED_GRACE{ 3 };
 
 		// Weak references to connected hubs
 		std::weak_ptr<Kernel::DataHub> m_DataHub;

@@ -1,8 +1,11 @@
 #pragma once
 
 #include <deque>
+#include <string>
+#include <unordered_set>
 
 #include "mqtt/mqtt_client.h"
+#include "mqtt/mqtt_hub.h"
 #include "options/options_mqtt_options.h"
 
 namespace AqualinkAutomate::Test
@@ -55,6 +58,33 @@ public:
 	static void SetReconnectAttempts(Mqtt::MqttClient& client, std::uint16_t attempts)
 	{
 		client.m_ReconnectAttempts = attempts;
+	}
+};
+
+//=============================================================================
+// Friend test seam for the MQTT hub: drive the startup retained-topic
+// reconciliation (normally signal/timer-gated) directly.
+//=============================================================================
+
+class MqttHubReconcileTest
+{
+public:
+	/// Seed the set of retained topics "seen" on the broker during the startup window.
+	static void SeedSeenRetainedTopics(Mqtt::MqttHub& hub, const std::unordered_set<std::string>& topics)
+	{
+		hub.m_SeenRetainedTopics = topics;
+	}
+
+	/// Invoke the reconciliation pass directly (clears seen topics not owned by the device set).
+	static void CallReconcileRetainedTopics(Mqtt::MqttHub& hub)
+	{
+		hub.ReconcileRetainedTopics();
+	}
+
+	/// The set of per-device topics the current device set owns (device JSON + HA state topics).
+	static std::unordered_set<std::string> CallComputeOwnedDeviceTopics(const Mqtt::MqttHub& hub)
+	{
+		return hub.ComputeOwnedDeviceTopics();
 	}
 };
 

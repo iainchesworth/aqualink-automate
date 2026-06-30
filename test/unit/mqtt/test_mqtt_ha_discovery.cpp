@@ -856,6 +856,39 @@ BOOST_AUTO_TEST_CASE(Test_RemovedDevice_ClearsRetainedStateTopic)
 	BOOST_CHECK_MESSAGE(last->second, "the clearing publish must be retained");
 }
 
+BOOST_AUTO_TEST_CASE(Test_AdoptRetainedComponents_TombstonesEntitiesGoneSinceLastRun)
+{
+	// Startup broker reconciliation for HA discovery: adopting the broker's EXISTING retained config
+	// (from a prior run that had an "aux_aux5" switch) means the next config publish tombstones that
+	// entity, since no such device exists now - removing the ghost entity from Home Assistant.
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	ha.ConnectDataHub(data_hub);   // no aux devices this run
+
+	nlohmann::json old_config;
+	old_config["cmps"]["aux_aux5"] = { {"p", "switch"}, {"name", "Aux5"}, {"command_topic", "test/command/device/aux5"} };
+	old_config["cmps"]["orp"] = { {"p", "sensor"}, {"name", "ORP"} };   // a static entity still emitted
+	ha.AdoptRetainedComponents(old_config.dump());
+
+	ha.PublishDiscoveryConfigs();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	auto cmps = nlohmann::json::parse(queue.back().payload)["cmps"];
+
+	// The device entity from the old run, no longer present, is tombstoned (platform-only).
+	BOOST_REQUIRE(cmps.contains("aux_aux5"));
+	BOOST_CHECK_EQUAL(cmps["aux_aux5"].size(), 1u);
+	BOOST_CHECK_EQUAL(cmps["aux_aux5"]["p"], "switch");
+
+	// A static entity that is still emitted this run is NOT tombstoned.
+	BOOST_REQUIRE(cmps.contains("orp"));
+	BOOST_CHECK_GT(cmps["orp"].size(), 1u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 //=============================================================================

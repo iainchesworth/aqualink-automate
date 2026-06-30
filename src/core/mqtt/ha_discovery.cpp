@@ -177,6 +177,39 @@ namespace AqualinkAutomate::Mqtt
 		}
 	}
 
+	void HomeAssistantDiscovery::AdoptRetainedComponents(const std::string& retained_config_payload)
+	{
+		if (retained_config_payload.empty())
+		{
+			return;
+		}
+
+		try
+		{
+			const auto json = nlohmann::json::parse(retained_config_payload);
+			if (!json.contains("cmps") || !json["cmps"].is_object())
+			{
+				return;
+			}
+
+			std::size_t adopted = 0;
+			for (const auto& [key, component] : json["cmps"].items())
+			{
+				if (component.is_object() && component.contains("p") && component["p"].is_string())
+				{
+					m_PublishedComponentKeys.emplace(key, component["p"].get<std::string>());
+					++adopted;
+				}
+			}
+
+			LogDebug(Channel::Mqtt, [&] { return std::format("Adopted {} component(s) from the retained HA discovery config", adopted); });
+		}
+		catch (const std::exception& ex)
+		{
+			LogError(Channel::Mqtt, [&] { return std::format("Failed to adopt retained HA discovery config: {}", ex.what()); });
+		}
+	}
+
 	//=========================================================================
 	// Component builders
 	//=========================================================================

@@ -586,4 +586,51 @@ BOOST_AUTO_TEST_CASE(Test_RelabelledDevice_ClearsOldSlugTopic)
 	hub.Stop();
 }
 
+BOOST_AUTO_TEST_CASE(Test_StartupReconcile_ClearsUnownedRetainedTopics)
+{
+	// Startup broker reconciliation: a ghost retained topic left by a PRIOR (buggy) run - which the
+	// per-sweep diff cannot see because it starts each process with an empty published-set - is
+	// cleared by the post-connect sweep that subscribes, collects what the broker holds, and clears
+	// anything the current device set no longer owns.
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	settings.home_assistant_enabled = true;   // so HA short-state topics are part of the owned set
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->Devices.Add(MakeAuxOn("Pool Light"));
+	hub.ConnectDataHub(data_hub);
+
+	// The broker is serving the live device's topics PLUS ghost topics from a prior run.
+	const std::string owned_json  = "test/device/pool_light";
+	const std::string owned_state = "test/ha/aux_pool_light";
+	const std::string ghost_json  = "test/device/aux5";
+	const std::string ghost_state = "test/ha/aux_aux5";
+	Test::MqttHubReconcileTest::SeedSeenRetainedTopics(hub, { owned_json, owned_state, ghost_json, ghost_state });
+
+	Test::MqttHubReconcileTest::CallReconcileRetainedTopics(hub);
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+	auto clear_of = [&](const std::string& topic) -> std::optional<std::pair<std::string, bool>>
+	{
+		for (const auto& pending : queue)
+		{
+			if (pending.topic == topic) { return std::make_pair(pending.payload, pending.retain); }
+		}
+		return std::nullopt;
+	};
+
+	// Ghost topics cleared (empty + retained); owned topics left untouched.
+	auto gj = clear_of(ghost_json);
+	BOOST_REQUIRE_MESSAGE(gj.has_value(), "ghost device topic should be cleared");
+	BOOST_CHECK(gj->first.empty());
+	BOOST_CHECK(gj->second);
+	auto gs = clear_of(ghost_state);
+	BOOST_REQUIRE_MESSAGE(gs.has_value(), "ghost HA state topic should be cleared");
+	BOOST_CHECK(gs->first.empty());
+	BOOST_CHECK(gs->second);
+	BOOST_CHECK_MESSAGE(!clear_of(owned_json).has_value(), "owned device topic must not be cleared");
+	BOOST_CHECK_MESSAGE(!clear_of(owned_state).has_value(), "owned HA state topic must not be cleared");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -19,6 +19,7 @@
 #include "options/options_mqtt_options.h"
 #include "utility/json_serialization_helpers.h"
 
+namespace AqualinkAutomate::Test { class MqttHubReconcileTest; }
 
 namespace AqualinkAutomate::Mqtt
 {
@@ -153,6 +154,20 @@ namespace AqualinkAutomate::Mqtt
 		void PublishStatistics();
 
 		//---------------------------------------------------------------------
+		// RETAINED-TOPIC RECONCILIATION
+		//---------------------------------------------------------------------
+
+		/// The full set of per-device retained topics the current device set owns: the JSON
+		/// topic for every device plus (when HA is enabled) its HA short-state topic. Computed
+		/// with the same Slugify + TopicScheme the publishers use, so it matches them exactly.
+		std::unordered_set<std::string> ComputeOwnedDeviceTopics() const;
+
+		/// One-shot, post-connect sweep: clear (empty retained) every retained device/HA-state
+		/// topic the broker is serving that the current device set no longer owns - removing
+		/// duplicate/stale topics left by an earlier (buggy or differently-labelled) run.
+		void ReconcileRetainedTopics();
+
+		//---------------------------------------------------------------------
 		// MESSAGE HANDLING
 		//---------------------------------------------------------------------
 
@@ -202,6 +217,18 @@ namespace AqualinkAutomate::Mqtt
 		// broker) do not keep serving a stale/duplicate device. See PublishDeviceStatus().
 		std::unordered_set<std::string> m_PublishedDeviceTopics;
 
+		// Startup broker reconciliation: on connect we subscribe to the device/HA-state topic
+		// wildcards and collect every retained topic the broker is already serving, then once the
+		// grace window elapses (retained delivery is complete) clear any not owned by the current
+		// device set. This heals ghosts left by a PRIOR process (which the per-sweep diff above,
+		// seeded empty each start, cannot see). Re-armed on every (re)connect.
+		bool m_RetainedReconcilePending{ false };
+		std::chrono::steady_clock::time_point m_RetainedReconcileDeadline;
+		std::unordered_set<std::string> m_SeenRetainedTopics;
+		std::string m_DeviceTopicPrefix;   // "{prefix}/device/"
+		std::string m_HaStateTopicPrefix;  // "{prefix}/ha/"
+		static constexpr std::chrono::seconds RETAINED_RECONCILE_GRACE{ 10 };
+
 		// State
 		bool m_Running{ false };
 		bool m_StaticPublished{ false };
@@ -225,6 +252,9 @@ namespace AqualinkAutomate::Mqtt
 		static constexpr const char* STATUS_PREFIX = "status";
 		static constexpr const char* EVENT_PREFIX = "event";
 		static constexpr const char* COMMAND_PREFIX = "command";
+
+		// Test seam: drive the (signal/timer-gated) retained-topic reconciliation directly.
+		friend class AqualinkAutomate::Test::MqttHubReconcileTest;
 	};
 
 }
