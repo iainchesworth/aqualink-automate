@@ -53,6 +53,16 @@ namespace AqualinkAutomate::EquipmentCache
 		{
 			if (nullptr == device) { continue; }
 
+			// Never persist an identity-less generic auxillary: a device of type Auxillary that
+			// carries no HardwareLabelTrait cannot be reconciled by stable id on restore and would
+			// resurrect as a duplicate. Named devices (pumps/heaters/chlorinators) reconcile by their
+			// distinct label and properly identified auxes carry the hardware label, so both survive.
+			if (Traits::AuxillaryTypes::Auxillary == *(device->AuxillaryTraits[Traits::AuxillaryTypeTrait{}])
+				&& !device->AuxillaryTraits.Has(Traits::HardwareLabelTrait{}))
+			{
+				continue;
+			}
+
 			nlohmann::json d;
 			d["id"] = boost::uuids::to_string(device->Id());
 

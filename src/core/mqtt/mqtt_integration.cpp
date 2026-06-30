@@ -131,17 +131,43 @@ namespace AqualinkAutomate::Mqtt
 			if (m_HaDiscovery)
 			{
 				auto ha = m_HaDiscovery;
+				auto client = m_Hub->GetMqttClient();
+				m_HaConfigTopic = std::format("{}/device/{}/config", m_Settings.ha_discovery_prefix, m_Settings.ha_device_id);
 
-				m_HaConnectedConnection = m_Hub->GetMqttClient()->OnConnected.connect([ha]()
+				// One-shot seed: when the broker replays its retained discovery config, adopt its
+				// component list then publish a fresh config - any entity for a device that no longer
+				// exists is tombstoned (removed from HA) rather than left as a ghost.
+				m_HaConfigSeedConnection = client->OnMessageReceived.connect([this, ha](const std::string& topic, const std::string& payload)
+				{
+					if (m_HaSeedPending && topic == m_HaConfigTopic)
+					{
+						ha->AdoptRetainedComponents(payload);
+						m_HaSeedPending = false;
+						ha->PublishDiscoveryConfigs();
+					}
+				});
+
+				m_HaConnectedConnection = m_Hub->GetMqttClient()->OnConnected.connect([this, ha]()
 				{
 					ha->PublishOnline();
-					ha->PublishDiscoveryConfigs();
+
+					// Defer the first discovery publish until the existing retained config is read
+					// back (so removed entities can be tombstoned). Subscribe + arm the grace window.
+					m_HaSeedPending = true;
+					m_HaSeedDeadline = std::chrono::steady_clock::now() + HA_SEED_GRACE;
+					m_Hub->GetMqttClient()->Subscribe(m_HaConfigTopic, 0);
+
 					ha->PublishDeviceStates();
 				});
 
 				m_HaDevicesConnection = m_Hub->OnDevicesPublished.connect([this, ha]()
 				{
-					ha->PublishDiscoveryConfigs();
+					// While seeding, hold off republishing the discovery config so we do not overwrite
+					// the retained config before reading it back.
+					if (!m_HaSeedPending)
+					{
+						ha->PublishDiscoveryConfigs();
+					}
 					ha->PublishDeviceStates();
 					RegisterDynamicDeviceCommands();
 				});
@@ -169,6 +195,7 @@ namespace AqualinkAutomate::Mqtt
 		{
 			m_HaConnectedConnection.disconnect();
 			m_HaDevicesConnection.disconnect();
+			m_HaConfigSeedConnection.disconnect();
 
 			m_Hub->Stop();
 			LogInfo(Channel::Mqtt, "MQTT Integration stopped");
@@ -184,6 +211,14 @@ namespace AqualinkAutomate::Mqtt
 		if (m_Hub)
 		{
 			m_Hub->Poll();
+		}
+
+		// No retained discovery config arrived within the grace window (fresh broker / first run):
+		// publish discovery now so HA entities are not held back indefinitely.
+		if (m_HaDiscovery && m_HaSeedPending && std::chrono::steady_clock::now() >= m_HaSeedDeadline)
+		{
+			m_HaSeedPending = false;
+			m_HaDiscovery->PublishDiscoveryConfigs();
 		}
 	}
 

@@ -568,3 +568,157 @@ BOOST_AUTO_TEST_CASE(Test_HandleMessage_UnknownCommand_IsHarmless)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// Retained-topic lifecycle: a device that drops out (removed, or relabelled so its slug
+// changes) must have its previously-published retained topic cleared, so the broker stops
+// serving a stale/duplicate device.
+//=============================================================================
+
+namespace
+{
+	// Payload+retain of the LAST queued publish whose topic ends with `suffix`, or nullopt.
+	// Templated so the private PendingPublish element type is never named.
+	template <typename QueueT>
+	std::optional<std::pair<std::string, bool>> LastEntryForTopicEnding(const QueueT& queue, const std::string& suffix)
+	{
+		std::optional<std::pair<std::string, bool>> found;
+		for (const auto& pending : queue)
+		{
+			if (pending.topic.size() >= suffix.size()
+				&& 0 == pending.topic.compare(pending.topic.size() - suffix.size(), suffix.size(), suffix))
+			{
+				found = std::make_pair(pending.payload, pending.retain);
+			}
+		}
+		return found;
+	}
+
+	std::shared_ptr<Kernel::AuxillaryDevice> MakeAuxOn(const std::string& label)
+	{
+		namespace Traits = Kernel::AuxillaryTraitsTypes;
+		auto aux = std::make_shared<Kernel::AuxillaryDevice>();
+		aux->AuxillaryTraits.Set(Traits::AuxillaryTypeTrait{}, Traits::AuxillaryTypes::Auxillary);
+		aux->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
+		aux->AuxillaryTraits.Set(Traits::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::On);
+		return aux;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttHub_RetainedTopicLifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_RemovedDevice_ClearsRetainedDeviceTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+	hub.ConnectDataHub(data_hub);
+
+	hub.Start();
+	Test::MqttClientPacketTest::ForceConnectedState(*hub.GetMqttClient());
+
+	// First publish emits the device JSON topic with a real payload.
+	hub.PublishAllStatus();
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+	auto first = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE_MESSAGE(first.has_value(), "device/aux5 was not published");
+	BOOST_CHECK(!first->first.empty());
+
+	// Remove the device: the next sweep clears the now-vanished topic (empty + retained).
+	data_hub->Devices.Remove(aux);
+	hub.PublishAllStatus();
+
+	auto cleared = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE(cleared.has_value());
+	BOOST_CHECK_MESSAGE(cleared->first.empty(), "vanished device topic should be cleared with an empty payload");
+	BOOST_CHECK_MESSAGE(cleared->second, "the clearing publish must be retained");
+
+	hub.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_RelabelledDevice_ClearsOldSlugTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+	hub.ConnectDataHub(data_hub);
+
+	hub.Start();
+	Test::MqttClientPacketTest::ForceConnectedState(*hub.GetMqttClient());
+	hub.PublishAllStatus();
+
+	// The label is enumerated -> the slug changes from "aux5" to "pool_light".
+	aux->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, std::string("Pool Light"));
+	hub.PublishAllStatus();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+
+	// New slug carries the live payload; the old slug topic is cleared.
+	auto new_topic = LastEntryForTopicEnding(queue, "/device/pool_light");
+	BOOST_REQUIRE(new_topic.has_value());
+	BOOST_CHECK(!new_topic->first.empty());
+
+	auto old_topic = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE(old_topic.has_value());
+	BOOST_CHECK_MESSAGE(old_topic->first.empty(), "the stale slug topic should be cleared");
+	BOOST_CHECK(old_topic->second);
+
+	hub.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_StartupReconcile_ClearsUnownedRetainedTopics)
+{
+	// Startup broker reconciliation: a ghost retained topic left by a PRIOR (buggy) run - which the
+	// per-sweep diff cannot see because it starts each process with an empty published-set - is
+	// cleared by the post-connect sweep that subscribes, collects what the broker holds, and clears
+	// anything the current device set no longer owns.
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	settings.home_assistant_enabled = true;   // so HA short-state topics are part of the owned set
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->Devices.Add(MakeAuxOn("Pool Light"));
+	hub.ConnectDataHub(data_hub);
+
+	// The broker is serving the live device's topics PLUS ghost topics from a prior run.
+	const std::string owned_json  = "test/device/pool_light";
+	const std::string owned_state = "test/ha/aux_pool_light";
+	const std::string ghost_json  = "test/device/aux5";
+	const std::string ghost_state = "test/ha/aux_aux5";
+	Test::MqttHubReconcileTest::SeedSeenRetainedTopics(hub, { owned_json, owned_state, ghost_json, ghost_state });
+
+	Test::MqttHubReconcileTest::CallReconcileRetainedTopics(hub);
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+	auto clear_of = [&](const std::string& topic) -> std::optional<std::pair<std::string, bool>>
+	{
+		for (const auto& pending : queue)
+		{
+			if (pending.topic == topic) { return std::make_pair(pending.payload, pending.retain); }
+		}
+		return std::nullopt;
+	};
+
+	// Ghost topics cleared (empty + retained); owned topics left untouched.
+	auto gj = clear_of(ghost_json);
+	BOOST_REQUIRE_MESSAGE(gj.has_value(), "ghost device topic should be cleared");
+	BOOST_CHECK(gj->first.empty());
+	BOOST_CHECK(gj->second);
+	auto gs = clear_of(ghost_state);
+	BOOST_REQUIRE_MESSAGE(gs.has_value(), "ghost HA state topic should be cleared");
+	BOOST_CHECK(gs->first.empty());
+	BOOST_CHECK(gs->second);
+	BOOST_CHECK_MESSAGE(!clear_of(owned_json).has_value(), "owned device topic must not be cleared");
+	BOOST_CHECK_MESSAGE(!clear_of(owned_state).has_value(), "owned HA state topic must not be cleared");
+}
+
+BOOST_AUTO_TEST_SUITE_END()

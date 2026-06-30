@@ -161,6 +161,43 @@ BOOST_AUTO_TEST_CASE(ApplySnapshot_DistinctDevices_RestoreWithStableIdAndHardwar
 	BOOST_CHECK_EQUAL(std::string{ *(restored->AuxillaryTraits[Traits::HardwareLabelTrait{}]) }, "Aux2");
 }
 
+BOOST_AUTO_TEST_CASE(Snapshot_OmitsIdentityLessAuxillaryPlaceholder)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService source(io, *this, settings);
+
+	auto hub = Find<Kernel::DataHub>();
+
+	// An identity-less generic auxillary (type Auxillary, no HardwareLabelTrait): the legacy
+	// duplicate. It must NOT be persisted, else it resurrects on restore and republishes as a
+	// duplicate (it cannot be reconciled by stable id).
+	hub->Devices.Add(MakeDevice("Aux5", Traits::AuxillaryTypes::Auxillary));
+
+	// A properly identified aux (carries the hardware label) and a named device (pump) must both
+	// still be persisted.
+	auto identified = MakeDevice("Pool Light", Traits::AuxillaryTypes::Auxillary);
+	identified->AuxillaryTraits.Set(Traits::HardwareLabelTrait{}, std::string{ "Aux5" });
+	hub->Devices.Add(identified);
+	hub->Devices.Add(MakeDevice("Filter Pump", Traits::AuxillaryTypes::Pump));
+
+	const auto snapshot = source.Snapshot();
+
+	// Only the identified aux + the pump survive; the placeholder is dropped.
+	BOOST_REQUIRE_EQUAL(snapshot["devices"].size(), 2u);
+	bool saw_placeholder = false, saw_identified = false, saw_pump = false;
+	for (const auto& d : snapshot["devices"])
+	{
+		const std::string label = d.value("label", "");
+		if (label == "Aux5") { saw_placeholder = true; }
+		if (label == "Pool Light") { saw_identified = true; }
+		if (label == "Filter Pump") { saw_pump = true; }
+	}
+	BOOST_CHECK(!saw_placeholder);   // identity-less placeholder dropped
+	BOOST_CHECK(saw_identified);     // identified aux kept
+	BOOST_CHECK(saw_pump);           // named device kept
+}
+
 BOOST_AUTO_TEST_CASE(FileRoundTrip_SaveThenLoad)
 {
 	boost::asio::io_context io;
