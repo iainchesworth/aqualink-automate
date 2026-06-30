@@ -478,3 +478,93 @@ BOOST_AUTO_TEST_CASE(Test_PerBodyTemperatures_PublishedWithFreshnessShape)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// Inbound message routing (HandleMessage -> ProcessCommand). The hub subscribes
+// to the client's OnMessageReceived in its constructor, so firing that signal
+// drives the real parse + dispatch without a broker.
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttHub_MessageRouting)
+
+BOOST_AUTO_TEST_CASE(Test_HandleMessage_ValidJson_RoutedToHandler)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+	hub.Start();   // wires the client OnMessageReceived -> HandleMessage connection
+
+	std::optional<nlohmann::json> captured;
+	hub.RegisterCommand("ctrl", [&](const std::string&, const nlohmann::json& p) { captured = p; });
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("ctrl"), R"({"v":42})");
+
+	BOOST_REQUIRE(captured.has_value());
+	BOOST_CHECK_EQUAL(captured->value("v", 0), 42);
+}
+
+BOOST_AUTO_TEST_CASE(Test_HandleMessage_InvalidJson_FallsBackToRaw)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+	hub.Start();
+
+	std::optional<nlohmann::json> captured;
+	hub.RegisterCommand("ctrl", [&](const std::string&, const nlohmann::json& p) { captured = p; });
+
+	// Unparseable payload: the handler still runs, with the raw text wrapped as {"raw": ...}.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("ctrl"), "{ not valid json");
+
+	BOOST_REQUIRE(captured.has_value());
+	BOOST_REQUIRE(captured->contains("raw"));
+	BOOST_CHECK_EQUAL(captured->at("raw").get<std::string>(), "{ not valid json");
+}
+
+BOOST_AUTO_TEST_CASE(Test_HandleMessage_EmptyPayload_RoutedWithEmptyJson)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+	hub.Start();
+
+	bool called = false;
+	std::optional<nlohmann::json> captured;
+	hub.RegisterCommand("ctrl", [&](const std::string&, const nlohmann::json& p) { called = true; captured = p; });
+
+	// Empty payload bypasses JSON parsing entirely; the handler still fires with a null json.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("ctrl"), "");
+
+	BOOST_CHECK(called);
+	BOOST_REQUIRE(captured.has_value());
+	BOOST_CHECK(captured->is_null());
+}
+
+BOOST_AUTO_TEST_CASE(Test_HandleMessage_NonCommandTopic_Ignored)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+	hub.Start();
+
+	bool called = false;
+	hub.RegisterCommand("ctrl", [&](const std::string&, const nlohmann::json&) { called = true; });
+
+	// A status topic is not a command topic, so HandleMessage drops it before dispatch.
+	hub.GetMqttClient()->OnMessageReceived(hub.StatusTopic("ctrl"), R"({"v":1})");
+
+	BOOST_CHECK(!called);
+}
+
+BOOST_AUTO_TEST_CASE(Test_HandleMessage_UnknownCommand_IsHarmless)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+	hub.Start();
+
+	// No handler registered for "ghost": ProcessCommand logs and returns without throwing.
+	BOOST_CHECK_NO_THROW(hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("ghost"), R"({"v":1})"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
