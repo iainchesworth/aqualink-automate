@@ -96,7 +96,7 @@ The `Test` step runs the full test preset with **no `-L` label filter**, so unit
 When `do_package` is `true`, after the test step the job also:
 
 1. Runs `cpack --preset=<package_preset>`.
-2. Smoke-tests the package on a clean target — installs the `.deb` in a fresh `ubuntu:25.04` container (Linux), extracts the ZIP and runs the exe (Windows), or extracts the TGZ and runs the binary (macOS). Each asserts `aqualink-automate --version` succeeds. This catches a missing runtime dependency before the package is published.
+2. Smoke-tests the package on a clean target — installs the `.deb` in a fresh `debian:bookworm` container (Linux; the Raspberry Pi OS / glibc-2.36 baseline), extracts the ZIP and runs the exe (Windows), or extracts the TGZ and runs the binary (macOS). Each asserts `aqualink-automate --version` succeeds. This catches a missing runtime dependency before the package is published.
 3. Uploads the packages as an artifact named `packages-<configure_preset>` (for example `packages-config-linux-gcc`), with `retention-days: 30`.
 
 ### Version stamping for dispatch builds
@@ -231,7 +231,7 @@ Self-hosted jobs also run extra steps the hosted jobs skip — they clean the wo
 
 Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](https://github.com/iainchesworth/aqualink-automate/blob/main/cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
 
-**Important:** The Architecture table in `cicd/packer/README.md` currently lists the Linux base OS as Ubuntu 24.04 / GCC 14, but the Packer template provisions **Ubuntu 25.04 with GCC 15** (`cicd/packer/linux-runner.pkr.hcl`, `cicd/packer/scripts/linux/02-gcc-toolchain.sh`). The Windows runner base is Windows Server 2022. Trust the Packer template over the table where they disagree.
+The Linux runner base is **Ubuntu 26.04 LTS** (GCC 15, Clang/LLVM 21 — matching the `ubuntu:26.04` Docker base), provisioned by `cicd/packer/linux-runner.pkr.hcl` (boots `ISOs/ubuntu-26.04-autoinstall.iso`) and the `cicd/packer/scripts/linux/0{2,3}-*-toolchain.sh` scripts. The Windows runner base is Windows Server 2022. See the Architecture table in `cicd/packer/README.md`.
 
 ## Caching
 
