@@ -8,19 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
-## [Unreleased]
+## [0.9.0-beta.3] - 2026-06-30
+
+A bug-fix and hardening release on top of 0.9.0-beta.2. Seven user-facing fixes — the Trends view and Schedules page failing to load, duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.
 
 ### Fixed
 
 - **The Trends view now loads its history graphs.** Every API request that carried a query string — most visibly `GET /api/history/series?key=…&from=…&to=…`, which every Trends chart issues — was answered `400 Bad Request` before reaching its handler: the router parsed the whole request target (path **and** query) as a URL path, and the `?` that begins a query is not a valid path character, so the parse failed. The router now parses the target as an origin-form URL and matches on the path only, so query parameters route correctly.
 - **The Schedules page no longer breaks when two devices share a label.** The "Device" target dropdown keyed its options on the device label; two equipment items with the same label produced a duplicate key, which crashed Alpine's list reconciliation and took the whole schedules form down. The dropdown — which targets a device by label — now de-duplicates labels.
-
-## [0.9.0-beta.3] - 2026-06-30
-
-A bug-fix and hardening release on top of 0.9.0-beta.2. Five user-facing fixes — duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.
-
-### Fixed
-
 - **Duplicate auxiliary devices no longer appear in MQTT and Home Assistant.** A pre-stable-id cache placeholder (random UUID, generic `AuxN` label) and the live-discovered stable-id device for the same physical aux could both be published as separate entities (e.g. both `aux5` and `pool light`). The aux is now collapsed by identity at the first live touch — before its custom label is known — the identity-less placeholder is no longer persisted across restarts, and a removed or relabelled device has its now-stale retained device/state topics cleared and its Home Assistant discovery entity tombstoned. On startup the broker is reconciled against the live device set, so ghost retained topics left by a prior (buggy or differently-labelled) run are healed rather than served indefinitely.
 - **OneTouch and iAQ panel screens now render as the panel intends.** The LCD rows are NUL-padded fixed-width cells; the decoder previously ran that padding through a generic sanitiser, surfacing it as literal `?` (`More OneTouch??`, `Pool Heat?OFF?`, `Home???`), and the web UI collapsed the panel's leading-space centring. The padding is now stripped, interior NUL column-separators render as spaces, and centred/right-aligned rows keep their spacing. This applies to both the OneTouch (`JandyMessage_Message`/`_MessageLong`) and iAQ (PageMessage/PageButton/TitleMessage/TableMessage) display paths.
 - **Home Assistant and WebSocket consumers no longer churn on unchanged values.** Temperature/chemistry setters, per-button state, and the base device-status publisher re-fired on every (~1/sec) poll even when nothing had changed, flooding MQTT/WebSocket subscribers with identical payloads. Emits are now guarded to fan out only on a real change (values still re-stamp their timestamp for liveness).
