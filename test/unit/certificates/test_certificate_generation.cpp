@@ -10,6 +10,9 @@
 
 #include "application/application_defaults.h"
 #include "certificates/certificate_management.h"
+#include "exceptions/exception_certificate_notfound.h"
+#include "exceptions/exception_certificate_invalidformat.h"
+#include "options/options_web_options.h"
 
 namespace fs = std::filesystem;
 using namespace AqualinkAutomate;
@@ -105,6 +108,109 @@ BOOST_AUTO_TEST_CASE(EnsureSelfSignedMaterial_RefusesToGenerateForOperatorSpecif
 	Options::Web::SslCertificate operator_specified{ missing_dir / "their-cert.pem", missing_dir / "their-key.pem" };
 	const auto resolved = Certificates::EnsureSelfSignedMaterial(operator_specified);
 	BOOST_CHECK(!resolved.has_value());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// LoadSslCertificates: resolve + load TLS material into an ssl::context, or
+// throw a typed certificate exception when the configured material is missing
+// or unloadable.
+//=============================================================================
+
+namespace
+{
+	Options::Web::WebSettings EnabledHttpsSettings(const fs::path& cert, const fs::path& key)
+	{
+		Options::Web::WebSettings cfg;   // https_server_is_enabled defaults true
+		cfg.ssl_certificate = Options::Web::SslCertificate{ cert, key };
+		return cfg;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(TestSuite_LoadSslCertificates)
+
+BOOST_AUTO_TEST_CASE(LoadSslCertificates_HttpsDisabled_IsNoOp)
+{
+	Options::Web::WebSettings cfg;
+	cfg.https_server_is_enabled = false;
+
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+
+	// Disabled HTTPS short-circuits before any certificate resolution.
+	BOOST_CHECK_NO_THROW(Certificates::LoadSslCertificates(cfg, ctx));
+}
+
+BOOST_AUTO_TEST_CASE(LoadSslCertificates_OperatorMissingMaterial_ThrowsNotFound)
+{
+	const fs::path dir = fs::temp_directory_path() / "aqualink_loadssl_missing";
+	std::error_code rm;
+	fs::remove_all(dir, rm);
+
+	// Non-default, non-existent paths: EnsureSelfSignedMaterial refuses to fabricate
+	// material for operator-specified paths, so loading must fail loudly.
+	auto cfg = EnabledHttpsSettings(dir / "cert.pem", dir / "key.pem");
+
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+	BOOST_CHECK_THROW(Certificates::LoadSslCertificates(cfg, ctx), Exceptions::Certificate_NotFound);
+}
+
+BOOST_AUTO_TEST_CASE(LoadSslCertificates_ValidMaterial_LoadsSuccessfully)
+{
+	const fs::path dir = fs::temp_directory_path() / "aqualink_loadssl_valid";
+	std::error_code rm;
+	fs::remove_all(dir, rm);
+
+	const fs::path cert = dir / "cert.pem";
+	const fs::path key = dir / "key.pem";
+	BOOST_REQUIRE(Certificates::GenerateSelfSignedCertificate(cert, key));
+
+	auto cfg = EnabledHttpsSettings(cert, key);   // no ca_chain_certificate
+
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+	BOOST_CHECK_NO_THROW(Certificates::LoadSslCertificates(cfg, ctx));
+
+	fs::remove_all(dir, rm);
+}
+
+BOOST_AUTO_TEST_CASE(LoadSslCertificates_InvalidPem_ThrowsInvalidFormat)
+{
+	const fs::path dir = fs::temp_directory_path() / "aqualink_loadssl_garbage";
+	std::error_code rm;
+	fs::remove_all(dir, rm);
+	fs::create_directories(dir, rm);
+
+	const fs::path cert = dir / "cert.pem";
+	const fs::path key = dir / "key.pem";
+	// Both files exist (so they are accepted as present) but are not valid PEM.
+	{ std::ofstream(cert, std::ios::binary) << "not a certificate"; }
+	{ std::ofstream(key, std::ios::binary) << "not a key"; }
+
+	auto cfg = EnabledHttpsSettings(cert, key);
+
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+	BOOST_CHECK_THROW(Certificates::LoadSslCertificates(cfg, ctx), Exceptions::Certificate_InvalidFormat);
+
+	fs::remove_all(dir, rm);
+}
+
+BOOST_AUTO_TEST_CASE(LoadSslCertificates_MissingCaChain_ThrowsNotFound)
+{
+	const fs::path dir = fs::temp_directory_path() / "aqualink_loadssl_cachain";
+	std::error_code rm;
+	fs::remove_all(dir, rm);
+
+	const fs::path cert = dir / "cert.pem";
+	const fs::path key = dir / "key.pem";
+	BOOST_REQUIRE(Certificates::GenerateSelfSignedCertificate(cert, key));
+
+	auto cfg = EnabledHttpsSettings(cert, key);
+	cfg.ca_chain_certificate = dir / "missing-ca-chain.pem";   // configured but absent
+
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+	BOOST_CHECK_THROW(Certificates::LoadSslCertificates(cfg, ctx), Exceptions::Certificate_NotFound);
+
+	fs::remove_all(dir, rm);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
