@@ -5,6 +5,7 @@
 #include "formatters/temperature_formatter.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
 #include "localisation/translations_and_units_formatter.h"
+#include "utility/json_serialization_helpers.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -113,18 +114,12 @@ namespace AqualinkAutomate::Kernel
 
 		if (m_PoolSetpoint.has_value())
 		{
-			j["pool_setpoint"] = {
-				{"celsius", m_PoolSetpoint.value().InCelsius().value()},
-				{"fahrenheit", m_PoolSetpoint.value().InFahrenheit().value()}
-			};
+			j["pool_setpoint"] = Utility::SerializeTemperature(m_PoolSetpoint.value());
 		}
 
 		if (m_PoolSetpoint2.has_value())
 		{
-			j["pool_setpoint_2"] = {
-				{"celsius", m_PoolSetpoint2.value().InCelsius().value()},
-				{"fahrenheit", m_PoolSetpoint2.value().InFahrenheit().value()}
-			};
+			j["pool_setpoint_2"] = Utility::SerializeTemperature(m_PoolSetpoint2.value());
 		}
 
 		if (m_PoolHeater2Enabled.has_value())
@@ -134,10 +129,7 @@ namespace AqualinkAutomate::Kernel
 
 		if (m_SpaSetpoint.has_value())
 		{
-			j["spa_setpoint"] = {
-				{"celsius", m_SpaSetpoint.value().InCelsius().value()},
-				{"fahrenheit", m_SpaSetpoint.value().InFahrenheit().value()}
-			};
+			j["spa_setpoint"] = Utility::SerializeTemperature(m_SpaSetpoint.value());
 		}
 
 		return j;
