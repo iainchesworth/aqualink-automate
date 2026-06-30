@@ -1480,7 +1480,7 @@
 </ul>
 <h2 id="repository-configuration">Repository configuration<a class="headerlink" href="#repository-configuration" title="Permanent link">&para;</a></h2>
 <h3 id="docker-hub-credentials-optional-but-recommended">Docker Hub credentials (optional but recommended)<a class="headerlink" href="#docker-hub-credentials-optional-but-recommended" title="Permanent link">&para;</a></h3>
-<p>The <code>runtime</code>/<code>ci</code> Docker images build <code>FROM ubuntu:25.04</code> and <code>FROM node:22-bookworm-slim</code>, which are pulled from Docker Hub. Anonymous pulls share the runner's egress IP and are subject to Docker Hub's anonymous per-IP rate limit — a recurring CI reliability risk, especially on <strong>self-hosted runners</strong> (one shared IP across many jobs) and during Docker Hub CDN hiccups.</p>
+<p>The <code>runtime</code>/<code>ci</code> Docker images build <code>FROM ubuntu:26.04</code> and <code>FROM node:24-bookworm-slim</code>, which are pulled from Docker Hub. Anonymous pulls share the runner's egress IP and are subject to Docker Hub's anonymous per-IP rate limit — a recurring CI reliability risk, especially on <strong>self-hosted runners</strong> (one shared IP across many jobs) and during Docker Hub CDN hiccups.</p>
 <p>Configure these <strong>optional</strong> repository secrets to authenticate base-image pulls and get a higher rate limit:</p>
 <table>
 <thead>
@@ -1711,7 +1711,7 @@ tag (<code>workflow_dispatch</code>). The publish job preserves previously-publi
 <h3 id="release-fails-because-the-commit-is-not-on-main">Release fails because the commit is not on main<a class="headerlink" href="#release-fails-because-the-commit-is-not-on-main" title="Permanent link">&para;</a></h3>
 <p>The <code>resolve-version</code> job rejects any non-dry-run release whose commit is not an ancestor of <code>origin/main</code> (<code>git merge-base --is-ancestor</code>). Merge your changes to <code>main</code> first (<code>develop</code> → <code>main</code>), then tag or dispatch from a commit on <code>main</code>. To validate the pipeline from another branch without merging, use a dry run.</p>
 <h3 id="docker-build-fails-pulling-a-base-image-rate-limit-or-cdn-timeout">Docker build fails pulling a base image (rate limit or CDN timeout)<a class="headerlink" href="#docker-build-fails-pulling-a-base-image-rate-limit-or-cdn-timeout" title="Permanent link">&para;</a></h3>
-<p>Symptoms: <code>docker-publish</code> (release) or <code>docker-verify</code> (CI) fails while pulling <code>ubuntu:25.04</code> or <code>node:22-bookworm-slim</code>, with errors like <code>toomanyrequests: ... rate limit</code> or <code>dial tcp ...(production.cloudfront.docker.com): i/o timeout</code>.</p>
+<p>Symptoms: <code>docker-publish</code> (release) or <code>docker-verify</code> (CI) fails while pulling <code>ubuntu:26.04</code> or <code>node:24-bookworm-slim</code>, with errors like <code>toomanyrequests: ... rate limit</code> or <code>dial tcp ...(production.cloudfront.docker.com): i/o timeout</code>.</p>
 <ul>
 <li>The build steps already retry up to 3 times, so a one-off CDN timeout should self-heal — check whether the run eventually succeeded on a later attempt.</li>
 <li>If you see rate-limit (<code>toomanyrequests</code>) errors, configure the <code>DOCKERHUB_USERNAME</code> / <code>DOCKERHUB_TOKEN</code> secrets (see <a href="#docker-hub-credentials-optional-but-recommended">Docker Hub credentials</a>) so pulls are authenticated.</li>

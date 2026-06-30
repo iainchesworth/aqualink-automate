@@ -732,6 +732,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#post-apiequipmentcirculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/equipment/circulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiequipmentheater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/equipment/heater
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#post-apiequipmentiaq" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1572,6 +1594,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#post-apiequipmentcirculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/equipment/circulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiequipmentheater" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/equipment/heater
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#post-apiequipmentiaq" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1871,6 +1915,18 @@
 <td><code>200</code> JSON</td>
 <td><code>fields[]</code>, <code>model_number</code>, <code>fw_revision</code>.</td>
 </tr>
+<tr>
+<td>POST</td>
+<td><code>/api/equipment/circulation</code></td>
+<td><code>200</code> JSON</td>
+<td>Set circulation mode (<code>pool</code>/<code>spa</code>/<code>spillover</code>). <code>400</code> (bad value), <code>503</code> (no dispatcher). POST-only; non-<code>POST</code> returns a bare <code>405</code>.</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/equipment/heater</code></td>
+<td><code>200</code> JSON</td>
+<td>Enable/disable a heater by body of water (<code>pool</code>/<code>spa</code>/<code>solar</code>). <code>400</code> (bad value), <code>503</code> (no dispatcher). POST-only; non-<code>POST</code> returns a bare <code>405</code>.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="buttons">Buttons<a class="headerlink" href="#buttons" title="Permanent link">&para;</a></h3>
@@ -2030,6 +2086,12 @@
 <td><code>/api/diagnostics/recording</code></td>
 <td><code>200</code> JSON</td>
 <td>GET returns <code>{recording, file, bytes}</code>; POST starts/stops.</td>
+</tr>
+<tr>
+<td>GET / POST</td>
+<td><code>/api/diagnostics/profiling</code></td>
+<td><code>200</code> JSON</td>
+<td>GET reports <code>{enabled, running, backend, available}</code>; POST controls it (<code>start</code>/<code>stop</code>/<code>select</code>). <code>400</code> (bad body), <code>409</code> (no backend in this build), <code>503</code> (no controller).</td>
 </tr>
 </tbody>
 </table>
@@ -2295,17 +2357,40 @@
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">}</span>
 </code></pre></div>
 <p><strong>Note:</strong> There are two distinct <code>503</code> shapes here. A missing dispatcher returns <code>text/plain</code> "Command dispatcher not available". A command that ran but failed returns the per-field JSON body with the mapped status code.</p>
-<h3 id="post-apiequipmentiaq">POST /api/equipment/iaq<a class="headerlink" href="#post-apiequipmentiaq" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/iaq<span class="w"> </span><span class="se">\</span>
+<h3 id="post-apiequipmentcirculation">POST /api/equipment/circulation<a class="headerlink" href="#post-apiequipmentcirculation" title="Permanent link">&para;</a></h3>
+<p>Set the circulation mode (which body of water the system circulates).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/circulation<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;select_button&quot;: 3 }&#39;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;mode&quot;: &quot;spa&quot; }&#39;</span>
+</code></pre></div>
+<p><code>mode</code> is a string and must be one of <code>pool</code>, <code>spa</code>, or <code>spillover</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;spa&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>POST-only: any non-<code>POST</code> method returns a bare <code>405</code>. A missing/non-string <code>mode</code>, or a value outside the allowed set, returns <code>400</code> (<code>text/plain</code>). With no command dispatcher available the request returns <code>503</code> (<code>text/plain</code> "Command dispatcher not available"). The HTTP status otherwise follows the command-dispatch result (<code>400</code> invalid value, <code>503</code> no serial adapter / device not found, <code>422</code> unknown equipment type, <code>500</code> otherwise).</p>
+<h3 id="post-apiequipmentheater">POST /api/equipment/heater<a class="headerlink" href="#post-apiequipmentheater" title="Permanent link">&para;</a></h3>
+<p>Enable or disable a heater, identified by its body of water. <code>solar</code> is modelled as the shared heater.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/heater<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;body&quot;: &quot;spa&quot;, &quot;enable&quot;: true }&#39;</span>
+</code></pre></div>
+<ul>
+<li><code>body</code> is a string and must be one of <code>pool</code>, <code>spa</code>, or <code>solar</code>.</li>
+<li><code>enable</code> is a boolean.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;spa&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>POST-only: any non-<code>POST</code> method returns a bare <code>405</code>. A missing/non-string <code>body</code> (or a value outside the allowed set) or a missing/non-boolean <code>enable</code> returns <code>400</code> (<code>text/plain</code>). With no command dispatcher available the request returns <code>503</code> (<code>text/plain</code> "Command dispatcher not available"). The HTTP status otherwise follows the command-dispatch result (as for circulation, above).</p>
+<h3 id="post-apiequipmentiaq">POST /api/equipment/iaq<a class="headerlink" href="#post-apiequipmentiaq" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/iaq<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;select_button&quot;: 3 }&#39;</span>
 </code></pre></div>
 <p><code>select_button</code> is an integer in <code>0 .. 255</code>. Response: <code>200 {"select_button":{"status":"success","value":3}}</code>. A missing dispatcher returns <code>503</code>; a bad value returns <code>400</code>.</p>
 <h3 id="post-apiequipmentspaside-remotes">POST /api/equipment/spaside-remotes<a class="headerlink" href="#post-apiequipmentspaside-remotes" title="Permanent link">&para;</a></h3>
 <p>Two actions are supported. <strong><code>press</code></strong> actuates an emulated remote:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/spaside-remotes<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;action&quot;: &quot;press&quot;, &quot;address&quot;: 32, &quot;button&quot;: 1 }&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/spaside-remotes<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;action&quot;: &quot;press&quot;, &quot;address&quot;: 32, &quot;button&quot;: 1 }&#39;</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2334,9 +2419,9 @@
 </tbody>
 </table>
 <p><strong><code>assign</code></strong> programs a switch button to a function:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/spaside-remotes<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;action&quot;: &quot;assign&quot;, &quot;switch&quot;: 1, &quot;button&quot;: 2, &quot;function&quot;: &quot;Spa&quot; }&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8080/api/equipment/spaside-remotes<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;action&quot;: &quot;assign&quot;, &quot;switch&quot;: 1, &quot;button&quot;: 2, &quot;function&quot;: &quot;Spa&quot; }&#39;</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2367,22 +2452,22 @@
 <p><strong>Note:</strong> Two distinct <code>503</code> bodies exist. A null controller (dev/replay mode) returns <code>{"error":"Spa-side remote control is not available in this mode"}</code>. An <code>assign</code> with no capable controller returns <code>{"error":"No controller can program spa-switch assignments on this system"}</code>. A missing or unknown <code>action</code> returns <code>400</code>.</p>
 <h3 id="get-apihistoryseries">GET /api/history/series<a class="headerlink" href="#get-apihistoryseries" title="Permanent link">&para;</a></h3>
 <p>List all series, or query one. Returns <code>503</code> when history is disabled (no history database configured).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># List every series and its metadata</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>curl<span class="w"> </span>http://127.0.0.1:8080/api/history/series
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># List every series and its metadata</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>curl<span class="w"> </span>http://127.0.0.1:8080/api/history/series
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="p">[</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;temp/pool&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;first_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;last_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">900</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;device/4b8c1e2a-7f3d-4a9b-bc10-2f5e6d7a8b90&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;state&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pool Light&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;first_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;last_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="p">[</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;temp/pool&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;first_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;last_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">900</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;device/4b8c1e2a-7f3d-4a9b-bc10-2f5e6d7a8b90&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;state&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pool Light&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;first_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;last_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="p">]</span>
 </code></pre></div>
 <p><code>label</code> is the friendly display name. Device series are keyed by the stable
 button UUID (<code>device/&lt;uuid&gt;</code>) so a device that is renamed after discovery (e.g.
 <code>Aux5</code> → <code>Pool Light</code>) stays a single series; analog series use an empty label.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Query a single series within a time window</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>curl<span class="w"> </span><span class="s1">&#39;http://127.0.0.1:8080/api/history/series?key=pool_temp&amp;from=1700000000&amp;to=1700090000&amp;max_points=500&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Query a single series within a time window</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>curl<span class="w"> </span><span class="s1">&#39;http://127.0.0.1:8080/api/history/series?key=pool_temp&amp;from=1700000000&amp;to=1700090000&amp;max_points=500&#39;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pool_temp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;from&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;max_points&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="nt">&quot;points&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">28.1</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pool_temp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;from&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700090000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;max_points&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span><span class="nt">&quot;points&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">28.1</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
 <p>Query parameters: <code>key</code> selects a series; an unknown key returns <code>404</code>. <code>from</code> defaults to <code>0</code>, <code>to</code> defaults to "now", and <code>to &lt; from</code> returns <code>400</code>. <code>max_points</code> defaults to <code>500</code>, clamped to <code>1 .. 2000</code>.</p>
 <h2 id="websocket-protocol">WebSocket protocol<a class="headerlink" href="#websocket-protocol" title="Permanent link">&para;</a></h2>
@@ -2408,27 +2493,28 @@ button UUID (<code>device/&lt;uuid&gt;</code>) so a device that is renamed after
 <p>Neither handler processes inbound client messages — the channels are server-to-client only.</p>
 <h3 id="frame-envelope">Frame envelope<a class="headerlink" href="#frame-envelope" title="Permanent link">&para;</a></h3>
 <p>Every frame is a JSON object with two fields:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;EventType&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;EventType&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
-<p><code>type</code> is the name of a <code>WebSocket_EventTypes</code> value: <code>ChemistryUpdate</code>, <code>StatisticsUpdate</code>, <code>TemperatureUpdate</code>, <code>SystemStatusChange</code>, <code>SystemStateUpdate</code>, <code>ButtonStateChange</code>, <code>AlertTransition</code>, or <code>Unknown</code>.</p>
+<p><code>type</code> is the name of a <code>WebSocket_EventTypes</code> value: <code>ChemistryUpdate</code>, <code>StatisticsUpdate</code>, <code>TemperatureUpdate</code>, <code>CirculationUpdate</code>, <code>SystemStatusChange</code>, <code>SystemStateUpdate</code>, <code>ButtonStateChange</code>, <code>AlertTransition</code>, or <code>Unknown</code>.</p>
 <h3 id="what-each-endpoint-sends">What each endpoint sends<a class="headerlink" href="#what-each-endpoint-sends" title="Permanent link">&para;</a></h3>
 <p><code>/ws/equipment</code> broadcasts:</p>
 <ul>
 <li><code>ChemistryUpdate</code></li>
 <li><code>TemperatureUpdate</code></li>
+<li><code>CirculationUpdate</code> — circulation/heater mode changes</li>
 <li><code>ButtonStateChange</code></li>
 <li><code>SystemStatusChange</code></li>
 <li><code>AlertTransition</code> — <code>{ "condition": ..., "state": "raised" | "cleared", "ts": ..., "detail": ... }</code></li>
 </ul>
 <p>On connect, <code>/ws/equipment</code> enqueues exactly one <code>SystemStateUpdate</code> so a freshly connected client knows the current state immediately:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="p">{</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SystemStateUpdate&quot;</span><span class="p">,</span>
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">    </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span>
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">    </span><span class="nt">&quot;pool_configuration&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PoolOnly&quot;</span><span class="p">,</span>
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">    </span><span class="nt">&quot;equipment_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Normal&quot;</span>
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span><span class="p">}</span>
-<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p">{</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SystemStateUpdate&quot;</span><span class="p">,</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">    </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">    </span><span class="nt">&quot;pool_configuration&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PoolOnly&quot;</span><span class="p">,</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">    </span><span class="nt">&quot;equipment_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Normal&quot;</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="p">}</span>
 </code></pre></div>
 <p><code>state</code> is one of <code>ready</code>, <code>starting</code>, or <code>service_mode</code>.</p>
 <p><code>/ws/equipment/stats</code> sends <code>StatisticsUpdate</code> frames.</p>
@@ -2520,22 +2606,22 @@ button UUID (<code>device/&lt;uuid&gt;</code>) so a device that is renamed after
 </tbody>
 </table>
 <p>A minimal scrape config:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nt">scrape_configs</span><span class="p">:</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aqualink-automate</span>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;127.0.0.1:8080&#39;</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">    </span><span class="c1"># If a bearer token is configured:</span>
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="w">    </span><span class="c1"># authorization:</span>
-<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="w">    </span><span class="c1">#   credentials: &#39;&lt;token&gt;&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nt">scrape_configs</span><span class="p">:</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aqualink-automate</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;127.0.0.1:8080&#39;</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">    </span><span class="c1"># If a bearer token is configured:</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="w">    </span><span class="c1"># authorization:</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="w">    </span><span class="c1">#   credentials: &#39;&lt;token&gt;&#39;</span>
 </code></pre></div>
 <h2 id="viewing-the-api-spec">Viewing the API spec<a class="headerlink" href="#viewing-the-api-spec" title="Permanent link">&para;</a></h2>
 <p>The machine-readable OpenAPI spec is <a href="https://github.com/iainchesworth/aqualink-automate/blob/main/assets/web/api/swagger.yaml">swagger.yaml</a>. It is served as a <strong>static asset</strong>, not by a dedicated route handler, reachable at:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="err">GET /api/swagger.yaml</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="err">GET /api/swagger.yaml</span>
 </code></pre></div>
 <p>Because it is a static asset, it is served as raw YAML and (like all static assets) without authentication.</p>
 <p>To browse it as interactive Swagger UI, use the Docker <code>docs</code> profile:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>docs<span class="w"> </span>up
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c1"># Swagger UI is then at http://localhost:8080</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>docs<span class="w"> </span>up
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="c1"># Swagger UI is then at http://localhost:8080</span>
 </code></pre></div>
 <p>See <a href="../INSTALL/">INSTALL.md</a> for the Swagger UI docs profile and other deployment details.</p>
 <h2 id="related-documentation">Related documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>

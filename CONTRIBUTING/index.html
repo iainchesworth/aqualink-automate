@@ -870,6 +870,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#keeping-documentation-in-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping documentation in sync
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1207,6 +1218,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#keeping-documentation-in-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping documentation in sync
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1279,7 +1301,7 @@
 <li>A <strong>Branch Name</strong> check runs on every pull request and fails a non-conforming head branch (<code>.github/workflows/ci.yml</code>). <code>develop</code> and <code>main</code> are accepted as heads so the <code>develop</code> -&gt; <code>main</code> release-promotion PR is never blocked. It is a <a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging">required status check</a> on <code>develop</code> and <code>main</code>, so a non-conforming branch cannot merge.</li>
 <li>Push/creation-time enforcement (a server-side branch-name <strong>ruleset</strong>) is a GitHub organization feature and is not available on this user-owned repository, so a misnamed branch can exist locally — it just fails CI and, once the check is required, cannot merge.</li>
 </ul>
-<p>Continuous integration also runs on a <code>push</code> to any of these type namespaces and to <code>main</code>/<code>develop</code> (see <code>.github/workflows/ci.yml</code>).</p>
+<p>Continuous integration builds on a <code>push</code> only to the long-lived branches <code>main</code> and <code>develop</code>. Feature branches build via their <strong>pull request</strong> into <code>develop</code>/<code>main</code> instead — so a work-in-progress push to a branch that has no open PR runs no CI (see <code>.github/workflows/ci.yml</code>).</p>
 <h3 id="hotfix-branches">Hotfix branches<a class="headerlink" href="#hotfix-branches" title="Permanent link">&para;</a></h3>
 <p>A hotfix is an urgent fix that must reach production without waiting for the next <code>develop</code> release. Branch a hotfix off <code>main</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>switch<span class="w"> </span>main
@@ -1291,8 +1313,8 @@
 <h2 id="submitting-a-pull-request">Submitting a pull request<a class="headerlink" href="#submitting-a-pull-request" title="Permanent link">&para;</a></h2>
 <p>For a <strong>non-hotfix</strong> change:</p>
 <ol>
-<li>Branch off <code>develop</code> (for example <code>feature/my-new-feature</code>).</li>
-<li>Make your change, <strong>including appropriate test cases</strong>.</li>
+<li>Branch off <code>develop</code> (for example <code>feat/my-new-feature</code>).</li>
+<li>Make your change, <strong>including appropriate test cases</strong>, and <strong>update any documentation the change affects</strong> (see <a href="#keeping-documentation-in-sync">Keeping documentation in sync</a>).</li>
 <li>Run the full test suite and confirm it passes — see <a href="#building-and-testing-before-you-push">Building and testing before you push</a>.</li>
 <li>Commit using the <a href="#commit-message-format">Conventional Commits format</a>.</li>
 <li>Open a pull request targeting <code>develop</code> and address any review feedback.</li>
@@ -1424,6 +1446,18 @@
 </code></pre></div>
 <p>On Windows the equivalent presets are <code>config-windows-msvc-debug</code>, <code>build-windows-msvc-debug</code>, and <code>test-windows-msvc-debug</code>.</p>
 <p>All tests must pass and your change must include tests covering it. A bug fix must add a regression test that fails before the fix and passes after it.</p>
+<h2 id="keeping-documentation-in-sync">Keeping documentation in sync<a class="headerlink" href="#keeping-documentation-in-sync" title="Permanent link">&para;</a></h2>
+<p>Documentation is part of the change, not a follow-up. When a pull request alters observable behavior, update the doc that describes it <strong>in the same pull request</strong> — a doc that contradicts the code is treated as a defect in review.</p>
+<p>In particular:</p>
+<ul>
+<li><strong>HTTP routes, WebSocket events, or JSON schemas</strong> → update <code>assets/web/api/swagger.yaml</code> <em>and</em> <a href="../usage-and-api/">docs/usage-and-api.md</a>.</li>
+<li><strong>CLI flags, config keys, or defaults</strong> → update <a href="../configuration/">docs/configuration.md</a> (and the area-specific guide: MQTT/Home Assistant, hardware, Raspberry Pi).</li>
+<li><strong>Auth, TLS, or networking defaults</strong> → update <a href="../SECURITY/">docs/SECURITY.md</a>.</li>
+<li><strong>CI workflows, Packer/runner images, release flow</strong> → update <a href="../ci-cd/">docs/ci-cd.md</a> / <a href="../releasing/">docs/releasing.md</a>.</li>
+<li><strong>Build presets or install steps</strong> → update <a href="../INSTALL/">docs/INSTALL.md</a>.</li>
+<li><strong>Wire-protocol opcodes or message types</strong> → update the relevant protocol doc under <code>docs/</code>.</li>
+</ul>
+<p>Prefer durable references (symbols, route URLs, option long-names, section headings) over bare <code>file.cpp:NNN</code> line numbers, which rot as soon as code is inserted above them. The analysis/roadmap docs (<code>docs/async_migration_*.md</code>, <code>docs/cicd-redesign.md</code>) are dated snapshots — do not treat their line citations as current truth.</p>
 
 
 

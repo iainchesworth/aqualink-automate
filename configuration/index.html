@@ -1870,6 +1870,13 @@
 <td>Enable the MQTT client.</td>
 </tr>
 <tr>
+<td><code>--mqtt-protocol-version</code></td>
+<td></td>
+<td>enum</td>
+<td><code>3.1.1</code></td>
+<td>MQTT wire-protocol version the client speaks: <code>3.1.1</code> or <code>5.0</code>.</td>
+</tr>
+<tr>
 <td><code>--mqtt-host</code></td>
 <td></td>
 <td>string</td>
@@ -2093,6 +2100,13 @@
 <td>string</td>
 <td>none</td>
 <td>JSON cache of discovered equipment for an instant dashboard on restart. Empty disables caching.</td>
+</tr>
+<tr>
+<td><code>--temperature-staleness-threshold</code></td>
+<td></td>
+<td>uint</td>
+<td><code>600</code></td>
+<td>Age in seconds after which a reported temperature is flagged stale.</td>
 </tr>
 </tbody>
 </table>

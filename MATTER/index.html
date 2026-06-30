@@ -1067,7 +1067,7 @@ a separate Node.js process that consumes the existing HTTP/WebSocket equipment A
 presents the equipment as a Matter <em>Aggregator</em>. It does <strong>not</strong> link into the C++
 build — keeping the C++/MSVC build untouched and the image small. The sidecar depends
 on <a href="https://www.npmjs.com/package/@matter/main"><code>@matter/main</code></a> <code>^0.12.0</code> and <code>ws</code>, and
-requires <strong>Node.js ≥ 20</strong> (the published Docker image ships Node 22, which satisfies
+requires <strong>Node.js ≥ 20</strong> (the published Docker image ships Node 24, which satisfies
 that floor).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> Apple Home / Google / Alexa / SmartThings
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        │  Matter over IPv6 mDNS (UDP 5540 / 5353)
@@ -1084,8 +1084,8 @@ whichever controller is running advertises what it can do (<code>DeviceActuator<
 highest-priority one present. Three controllers can actuate equipment and heater
 setpoints, in precedence order:</p>
 <ol>
-<li><strong>Serial Adapter (RSSA, <code>0x48</code>)</strong> — <em>High</em>. A direct, stateless command channel.</li>
-<li><strong>AqualinkTouch / iAqualink2 (<code>0x33</code>)</strong> — <em>Medium</em>. Presses the on-screen
+<li><strong>Serial Adapter (RSSA, <code>0x48</code>/<code>0x49</code>)</strong> — <em>High</em>. A direct, stateless command channel.</li>
+<li><strong>AqualinkTouch / iAqualink2 (<code>0x30–33</code>)</strong> — <em>Medium</em>. Presses the on-screen
    <code>PageButton</code> matching the device by name (<code>0x11 + index</code>) for toggles, and uses the
    value-submit protocol (select field → <code>0x80</code> → control-data value) for setpoints +
    the chlorinator. These commands take effect immediately.</li>
@@ -1240,7 +1240,7 @@ current state.</p>
 </tr>
 <tr>
 <td>Docker <code>matter-builder</code> stage builds + prod-pruned sidecar boots</td>
-<td>✅ verified (node:22-bookworm-slim)</td>
+<td>✅ verified (node:24-bookworm-slim)</td>
 </tr>
 <tr>
 <td>Docker runtime stage (NodeSource + tini on ubuntu) + entrypoint</td>

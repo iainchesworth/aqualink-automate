@@ -1387,7 +1387,7 @@ from the <a href="https://github.com/iainchesworth/aqualink-automate/releases">G
 <tr>
 <td>CMake</td>
 <td>3.31</td>
-<td>3.31.6</td>
+<td>3.31.12</td>
 <td>Enforced — the root <code>CMakeLists.txt</code> and every preset pin 3.31 as a <code>FATAL_ERROR</code> floor.</td>
 </tr>
 <tr>
@@ -1524,7 +1524,7 @@ from the <a href="https://github.com/iainchesworth/aqualink-automate/releases">G
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">choco</span> <span class="n">install</span> <span class="n">git</span> <span class="n">cmake</span> <span class="n">ninja</span> <span class="n">visualstudio2022buildtools</span>
 </code></pre></div>
 <h2 id="cmake-presets">CMake presets<a class="headerlink" href="#cmake-presets" title="Permanent link">&para;</a></h2>
-<p>Presets are named <code>config-&lt;platform&gt;-&lt;compiler&gt;[-debug|-coverage]</code>. There are 12 named configure presets (plus three hidden base presets — <code>core</code>, <code>debug</code>, <code>release</code> — that the named presets inherit from). Every configure preset has a matching <code>build-*</code> and <code>test-*</code> preset; only the <strong>Release</strong> presets have a matching <code>pack-*</code> preset.</p>
+<p>Presets are named <code>config-&lt;platform&gt;-&lt;compiler&gt;[-debug|-coverage]</code>. There are 12 named configure presets (plus four hidden base presets — <code>core</code>, <code>debug</code>, <code>release</code>, <code>profiling</code> — that the named presets inherit from). Every configure preset has a matching <code>build-*</code> and <code>test-*</code> preset; only the <strong>Release</strong> presets have a matching <code>pack-*</code> preset.</p>
 <table>
 <thead>
 <tr>
@@ -1794,7 +1794,7 @@ from the <a href="https://github.com/iainchesworth/aqualink-automate/releases">G
 </code></pre></div>
 <p>Both the GCC and Clang/LLVM toolchains are available in the container, and the C++ IntelliSense, CMake Tools, and clangd extensions are installed automatically.</p>
 <h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
-<p>The Dockerfile is multi-stage (<code>base</code>, <code>dev</code>, <code>ci</code>, <code>matter-builder</code>, <code>runtime</code>); the default build target is <code>runtime</code>. The runtime image is built on <code>ubuntu:25.04</code> with <code>tini</code> as PID 1, Node.js 22 for the Matter bridge sidecar, and <code>curl</code> for the container health check. It runs as an unprivileged <code>aqualink</code> user (uid/gid 10000), exposes port 80, declares a <code>HEALTHCHECK</code> against <code>/api/health</code>, and its default command is <code>--address 0.0.0.0 --disable-https</code>.</p>
+<p>The Dockerfile is multi-stage (<code>base</code>, <code>dev</code>, <code>ci</code>, <code>matter-builder</code>, <code>runtime</code>); the default build target is <code>runtime</code>. The runtime image is built on <code>ubuntu:26.04</code> with <code>tini</code> as PID 1, Node.js 24 for the Matter bridge sidecar, and <code>curl</code> for the container health check. It runs as an unprivileged <code>aqualink</code> user (uid/gid 10000), exposes port 80, declares a <code>HEALTHCHECK</code> against <code>/api/health</code>, and its default command is <code>--address 0.0.0.0 --disable-https</code>.</p>
 <p><strong>Security:</strong> the default command binds to <code>0.0.0.0</code> (all interfaces) and disables HTTPS, which is appropriate for a container behind your own network boundary but exposes an <strong>unauthenticated</strong> HTTP API that can actuate pool equipment. Authentication is off by default, so the app logs a prominent startup warning whenever it binds a non-loopback address with no <code>--api-auth-token</code>. Before exposing the container beyond a trusted segment you should: set a strong <code>--api-auth-token</code> (32+ random chars), terminate TLS in front of it (reverse proxy) or enable HTTPS, and optionally set <code>--api-allowed-origin</code> / <code>--api-require-csrf-header</code>. If the open posture is deliberate (e.g. behind a trusted reverse proxy), pass <code>--insecure-no-auth</code> to acknowledge it and quiet the warning. Restrict access at the network layer regardless. See <a href="../configuration/">Configuration reference</a> for the authentication and TLS options.</p>
 <h3 id="build-and-run-the-runtime-image">Build and run the runtime image<a class="headerlink" href="#build-and-run-the-runtime-image" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>runtime<span class="w"> </span>-t<span class="w"> </span>aqualink-automate<span class="w"> </span>.
