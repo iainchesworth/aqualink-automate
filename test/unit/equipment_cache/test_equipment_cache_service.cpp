@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <system_error>
@@ -183,6 +184,146 @@ BOOST_AUTO_TEST_CASE(FileRoundTrip_SaveThenLoad)
 
 	std::filesystem::remove(path, ec);
 	std::filesystem::remove(path + ".tmp", ec);
+}
+
+//=============================================================================
+// Load / SaveNow guards (missing file, malformed JSON, no configured path).
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(Load_FileDoesNotExist_IsNoOp)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	settings.equipment_cache_file = (std::filesystem::temp_directory_path() / "aqualink_eqcache_absent.json").string();
+	std::error_code ec;
+	std::filesystem::remove(settings.equipment_cache_file, ec);   // ensure absent
+
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	BOOST_CHECK_NO_THROW(service.Load());
+	BOOST_CHECK(Find<Kernel::DataHub>()->Devices.FindByTrait(Traits::AuxillaryTypeTrait{}).empty());
+}
+
+BOOST_AUTO_TEST_CASE(Load_MalformedJson_IsCaughtAndIgnored)
+{
+	boost::asio::io_context io;
+	const auto path = (std::filesystem::temp_directory_path() / "aqualink_eqcache_bad.json").string();
+	{
+		std::ofstream out(path, std::ios::binary | std::ios::trunc);
+		out << "{ this is not valid json";
+	}
+
+	Options::Equipment::EquipmentSettings settings;
+	settings.equipment_cache_file = path;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	// The parse exception is caught and logged; Load must not propagate it.
+	BOOST_CHECK_NO_THROW(service.Load());
+	BOOST_CHECK(Find<Kernel::DataHub>()->Devices.FindByTrait(Traits::AuxillaryTypeTrait{}).empty());
+
+	std::error_code ec;
+	std::filesystem::remove(path, ec);
+}
+
+BOOST_AUTO_TEST_CASE(SaveNow_NoConfiguredFile_IsNoOp)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;   // no equipment_cache_file
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	Find<Kernel::DataHub>()->Devices.Add(MakeDevice("Filter Pump", Traits::AuxillaryTypes::Pump));
+
+	BOOST_CHECK_NO_THROW(service.SaveNow());
+}
+
+//=============================================================================
+// ApplySnapshot config adoption: the cached pool-config / system-board is only
+// adopted while the live value is still Unknown (live discovery always wins).
+//=============================================================================
+
+BOOST_AUTO_TEST_CASE(ApplySnapshot_AdoptsPoolConfig_WhenUnknown)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	auto hub = Find<Kernel::DataHub>();
+	BOOST_REQUIRE(hub->PoolConfiguration == Kernel::PoolConfigurations::Unknown);
+
+	nlohmann::json snapshot;
+	snapshot["pool_configuration"] = "SingleBody";
+	service.ApplySnapshot(snapshot);
+
+	BOOST_CHECK(hub->PoolConfiguration == Kernel::PoolConfigurations::SingleBody);
+}
+
+BOOST_AUTO_TEST_CASE(ApplySnapshot_IgnoresPoolConfig_WhenAlreadyKnown)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	auto hub = Find<Kernel::DataHub>();
+	hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::Auto);
+
+	nlohmann::json snapshot;
+	snapshot["pool_configuration"] = "SingleBody";
+	service.ApplySnapshot(snapshot);
+
+	// Live discovery already set it, so the cached value must NOT override.
+	BOOST_CHECK(hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_SharedEquipment);
+}
+
+BOOST_AUTO_TEST_CASE(ApplySnapshot_AdoptsSystemBoard_WhenUnknown)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	auto hub = Find<Kernel::DataHub>();
+	BOOST_REQUIRE(hub->SystemBoard == Kernel::SystemBoards::Unknown);
+
+	nlohmann::json snapshot;
+	snapshot["system_board"] = "RS8_Only";
+	service.ApplySnapshot(snapshot);
+
+	BOOST_CHECK(hub->SystemBoard == Kernel::SystemBoards::RS8_Only);
+}
+
+BOOST_AUTO_TEST_CASE(ApplySnapshot_MalformedDeviceId_RestoresWithFreshIdAndTraits)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	auto hub = Find<Kernel::DataHub>();
+
+	// A malformed "id" must not abort the restore: the device is recreated with a fresh
+	// id (deduped by label instead) and its other traits are still applied.
+	nlohmann::json snapshot;
+	snapshot["devices"] = nlohmann::json::array({
+		{ { "id", "not-a-uuid" }, { "label", "Spa Jet" }, { "type", "Auxillary" }, { "body_of_water", "Spa" } }
+	});
+	service.ApplySnapshot(snapshot);
+
+	auto restored = hub->Devices.FindByLabel("Spa Jet");
+	BOOST_REQUIRE_EQUAL(restored.size(), 1u);
+	BOOST_REQUIRE(restored.front()->AuxillaryTraits.Has(Traits::BodyOfWaterTrait{}));
+	BOOST_CHECK(*(restored.front()->AuxillaryTraits[Traits::BodyOfWaterTrait{}]) == Kernel::BodyOfWaterIds::Spa);
+}
+
+BOOST_AUTO_TEST_CASE(Snapshot_FreshHub_HasUnknownConfigAndNoDevices)
+{
+	boost::asio::io_context io;
+	Options::Equipment::EquipmentSettings settings;
+	EquipmentCache::EquipmentCacheService service(io, *this, settings);
+
+	const auto snapshot = service.Snapshot();
+
+	BOOST_CHECK_EQUAL(snapshot["pool_configuration"], "Unknown");
+	BOOST_CHECK_EQUAL(snapshot["system_board"], "Unknown");
+	BOOST_REQUIRE(snapshot.contains("devices"));
+	BOOST_CHECK(snapshot["devices"].empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
