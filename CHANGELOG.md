@@ -10,7 +10,7 @@ See [docs/releasing.md](docs/releasing.md) for how releases and version numbers 
 
 ## [0.9.0-beta.3] - 2026-06-30
 
-A bug-fix and hardening release on top of 0.9.0-beta.2. Four user-facing fixes — duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, and cleaner numeric API output — plus build-toolchain and test-coverage hardening with no other application behaviour change.
+A bug-fix and hardening release on top of 0.9.0-beta.2. Five user-facing fixes — duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.
 
 ### Fixed
 
