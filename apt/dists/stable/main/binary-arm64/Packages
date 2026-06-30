@@ -3,11 +3,11 @@ Architecture: arm64
 Depends: libc6 (>= 2.36), systemd
 Priority: optional
 Section: net
-Filename: pool/main/a/aqualink-automate/aqualink-automate_0.9.0~beta.2_arm64.deb
-Size: 12345612
-SHA256: 612a0e9b4e152fbc4c5f99172f9be1c78b7847d56b391db010a5b79167a35c34
-SHA1: 0aaf4fee106c0a6ef7366b181d05881afc1c3ff8
-MD5sum: 9409a952d312cb034a0f052462c6b9fc
+Filename: pool/main/a/aqualink-automate/aqualink-automate_0.9.0~beta.3_arm64.deb
+Size: 12354930
+SHA256: bef282f2452662804721c5e49ddf47e428455d4d98b1a1688c61c7ed1664e002
+SHA1: 73bf3b41d27f881ab55de882d86bc3523e8cf098
+MD5sum: 609fc6e4fbbb94449ce85d0b5d70988a
 Description: Control Jandy Aqualink RS pool equipment via common IoT integrations
  # Aqualink Automate
  .
@@ -103,6 +103,6 @@ Description: Control Jandy Aqualink RS pool equipment via common IoT integration
  This project was influenced by sfeakes&apos; [AqualinkD](https://github.com/sfeakes/AqualinkD). The original goal was a variant that also runs on Windows and macOS.
 Homepage: https://github.com/iainchesworth/aqualink-automate
 Maintainer: Iain Chesworth
-Version: 0.9.0~beta.2
+Version: 0.9.0~beta.3
 Installed-Size: 59243
 
