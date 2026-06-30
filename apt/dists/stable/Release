@@ -1,28 +1,28 @@
 Origin: Aqualink Automate
 Label: Aqualink Automate
 Codename: stable
-Date: Mon, 29 Jun 2026 12:06:06 UTC
+Date: Tue, 30 Jun 2026 03:00:40 UTC
 Architectures: amd64 arm64
 Components: main
 Description: Aqualink Automate APT repository
 MD5Sum:
- 35ef704a94f20b442a50e3abb7f46c03 6286 main/binary-amd64/Packages
- cdca4e5744dadf2455972e06a61be0c4 2731 main/binary-amd64/Packages.gz
+ e3ea684cac84e9e99761a6da05575c0d 6286 main/binary-amd64/Packages
+ 45584b84480156fc312448b5a4766250 2730 main/binary-amd64/Packages.gz
  d971d3bbe41152811ef0fd506cc8c6c1 133 main/binary-amd64/Release
- 6090e3eeee362a167253ed08b2fa2ca1 6286 main/binary-arm64/Packages
- fcb194e7bf31274fecf7168dbf7645f3 2731 main/binary-arm64/Packages.gz
+ b959d942599d5bd8df2b81ab39f1dba8 6286 main/binary-arm64/Packages
+ 1338bcfd6a2019eb15d5990aad8a96ef 2734 main/binary-arm64/Packages.gz
  17df63a7897ce330d6be74a7840c3061 133 main/binary-arm64/Release
 SHA1:
- 7cfe65786f860020bb012fcac5a5cd55b2111b38 6286 main/binary-amd64/Packages
- 376ab2f136de4a7d60d8ee1675df339b5ec9acfa 2731 main/binary-amd64/Packages.gz
+ c0806e8dff8f11093b8d6ae467a4db4b2ab0ba7f 6286 main/binary-amd64/Packages
+ 36b53ca7274630bd046b9d51d4d0e553912bd3bd 2730 main/binary-amd64/Packages.gz
  49b9046ea11419384cb6b70972826d28bcf18e79 133 main/binary-amd64/Release
- 4a0cb569fe4877b7e00ca9cea09392f19e06a8ac 6286 main/binary-arm64/Packages
- 505d2af51f6bf82bd7e8a7556af49fe2f85ff061 2731 main/binary-arm64/Packages.gz
+ 326383c27777bbb785e60fefea98b1ee36737b01 6286 main/binary-arm64/Packages
+ 93d7bec98f5d82883389262b37cb59bcfea3f31f 2734 main/binary-arm64/Packages.gz
  f734ef360d77d822fbd223b5183408a8900757dd 133 main/binary-arm64/Release
 SHA256:
- 039969c713a045040e0bbdd8ab7ee2637a5c2153ffe6e3eb4adc159c65cdfa94 6286 main/binary-amd64/Packages
- 31b13fc21ceec8c8a4643dfb1654e86b19f3951be8fb50cbdd1adc177d87c702 2731 main/binary-amd64/Packages.gz
+ 245e29179a93fb45071fac7c0cc5a20c76fd1dcef70670babb9306d0d85aa327 6286 main/binary-amd64/Packages
+ 4f1df02641624dd722aadf41a5aa922c8e7f20209402806574d9d35c009008d7 2730 main/binary-amd64/Packages.gz
  b930f48053dc93e634356edbe7f7e233fcaeb2689c3d5d59e92bdd64cfc8c76c 133 main/binary-amd64/Release
- 66f984f67c71816fcbe858a9a6ac897861f84b665c06d5a5c4a56ac25de6fea3 6286 main/binary-arm64/Packages
- fc50748e21926d8cdedaa6d2d3fbae418a3aceff66f4cf61a111716534c14de4 2731 main/binary-arm64/Packages.gz
+ e2631fc56551836e942070047b1fdd95c35a675a4234c78fbf16381ad53a26d7 6286 main/binary-arm64/Packages
+ 20360a1e1d83987121a3bfe26b41d87f7b1fe077e733fbdc766bfa5fc2351a25 2734 main/binary-arm64/Packages.gz
  7e3e72911a1127ccccfdd8769b410fe8d8e6a5f4af24a19080e79afdc9234f48 133 main/binary-arm64/Release
