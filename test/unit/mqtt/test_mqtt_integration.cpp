@@ -493,13 +493,16 @@ namespace
 	{
 	public:
 		std::vector<std::pair<Kernel::BodyOfWaterIds, bool>> heater_calls;
+		std::vector<std::uint8_t> pool_setpoints;
+		std::vector<std::uint8_t> spa_setpoints;
+		std::vector<std::pair<std::string, DeviceAction>> device_calls;
 
 		CommandResult ToggleByUuid(const boost::uuids::uuid&) override { return CommandResult::Success; }
 		CommandResult ToggleByLabel(const std::string&) override { return CommandResult::Success; }
 		CommandResult CommandByUuid(const boost::uuids::uuid&, DeviceAction) override { return CommandResult::Success; }
-		CommandResult CommandByLabel(const std::string&, DeviceAction) override { return CommandResult::Success; }
-		CommandResult SetPoolSetpoint(std::uint8_t) override { return CommandResult::Success; }
-		CommandResult SetSpaSetpoint(std::uint8_t) override { return CommandResult::Success; }
+		CommandResult CommandByLabel(const std::string& label, DeviceAction action) override { device_calls.emplace_back(label, action); return CommandResult::Success; }
+		CommandResult SetPoolSetpoint(std::uint8_t value) override { pool_setpoints.push_back(value); return CommandResult::Success; }
+		CommandResult SetSpaSetpoint(std::uint8_t value) override { spa_setpoints.push_back(value); return CommandResult::Success; }
 		CommandResult SetChlorinatorPercentage(std::uint8_t) override { return CommandResult::Success; }
 		CommandResult SetChlorinatorBoost(bool) override { return CommandResult::Success; }
 		CommandResult SetCirculationMode(Kernel::CirculationModes) override { return CommandResult::Success; }
@@ -538,6 +541,16 @@ namespace
 				heater->AuxillaryTraits.Set(Traits::BodyOfWaterTrait{}, body);
 			}
 			data_hub->Devices.Add(heater);
+		}
+
+		// Add a labelled auxillary device so DataHub::Auxillaries() returns it and the
+		// dynamic device/{slug} -> CommandByLabel route is registered for it.
+		void AddAux(const std::string& label)
+		{
+			auto aux = std::make_shared<Kernel::AuxillaryDevice>();
+			aux->AuxillaryTraits.Set(Traits::AuxillaryTypeTrait{}, Traits::AuxillaryTypes::Auxillary);
+			aux->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
+			data_hub->Devices.Add(aux);
 		}
 
 		// Connect hubs + dispatcher via the locator (the only overload that wires the
@@ -614,6 +627,154 @@ BOOST_AUTO_TEST_CASE(Test_HeaterCommand_NotRegistered_WhenBodyTraitMissing)
 	auto& hub = ConnectAndPublish();
 
 	BOOST_CHECK(!hub.HasCommand("heater/orphan_heater"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration setpoint-command tests
+//
+// The "setpoint" command takes {"target":"pool"|"spa","temperature":<celsius>}.
+// The temperature is converted from Celsius to the DataHub's system units (the
+// wire domain) and clamped to uint8_t before dispatch to SetPool/SetSpaSetpoint.
+// The command is registered by ConnectHubs(), so ConnectAndPublish() is enough.
+//=============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_MqttIntegration_SetpointCommands, HeaterCommandFixture)
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_Pool_Fahrenheit_ConvertsCelsiusToWire)
+{
+	data_hub->SystemTemperatureUnits(Kernel::TemperatureUnits::Fahrenheit);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("setpoint"));
+
+	// 25C -> round(25 * 9/5 + 32) = 77F on the wire.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"pool","temperature":25.0})");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->pool_setpoints.size(), 1u);
+	BOOST_CHECK_EQUAL(dispatcher->pool_setpoints[0], 77u);
+	BOOST_CHECK(dispatcher->spa_setpoints.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_Spa_Celsius_PassesThroughRounded)
+{
+	data_hub->SystemTemperatureUnits(Kernel::TemperatureUnits::Celsius);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("setpoint"));
+
+	// Celsius system units: the value is used directly (rounded), no F conversion.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"spa","temperature":39.0})");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->spa_setpoints.size(), 1u);
+	BOOST_CHECK_EQUAL(dispatcher->spa_setpoints[0], 39u);
+	BOOST_CHECK(dispatcher->pool_setpoints.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_UnknownTarget_NotDispatched)
+{
+	auto& hub = ConnectAndPublish();
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"deck","temperature":25.0})");
+
+	BOOST_CHECK(dispatcher->pool_setpoints.empty());
+	BOOST_CHECK(dispatcher->spa_setpoints.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_NonPositiveTemperature_NotDispatched)
+{
+	auto& hub = ConnectAndPublish();
+
+	// temperature <= 0 is rejected by the handler before any dispatch.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"pool","temperature":0.0})");
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"pool","temperature":-3.0})");
+
+	BOOST_CHECK(dispatcher->pool_setpoints.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_OutOfRange_ClampedToWireMax)
+{
+	data_hub->SystemTemperatureUnits(Kernel::TemperatureUnits::Fahrenheit);
+	auto& hub = ConnectAndPublish();
+
+	// 500C converts well past 255F and must clamp to the uint8_t wire maximum.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint"), R"({"target":"pool","temperature":500.0})");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->pool_setpoints.size(), 1u);
+	BOOST_CHECK_EQUAL(dispatcher->pool_setpoints[0], 255u);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Setpoint_HaPlainNumberTopic_Dispatches)
+{
+	data_hub->SystemTemperatureUnits(Kernel::TemperatureUnits::Celsius);
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("setpoint/pool"));
+
+	// The HA number-entity topic carries a bare number (Celsius), not a JSON object.
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("setpoint/pool"), "30");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->pool_setpoints.size(), 1u);
+	BOOST_CHECK_EQUAL(dispatcher->pool_setpoints[0], 30u);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttIntegration dynamic device-command tests
+//
+// Auxillary devices on the DataHub get a device/{slug} -> CommandByLabel route
+// registered from the hub's OnDevicesPublished signal. ON/OFF map to On/Off; an
+// unknown payload is dropped; and two labels that Slugify to the same key share
+// a single command (the first claimant wins) rather than silently shadowing.
+//=============================================================================
+
+BOOST_FIXTURE_TEST_SUITE(TestSuite_MqttIntegration_DeviceCommands, HeaterCommandFixture)
+
+BOOST_AUTO_TEST_CASE(Test_DeviceCommand_RegisteredForLabelledAux)
+{
+	AddAux("Pool Light");
+	auto& hub = ConnectAndPublish();
+
+	BOOST_CHECK(hub.HasCommand("device/pool_light"));
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeviceCommand_On_DispatchesCommandByLabel)
+{
+	AddAux("Pool Light");
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("device/pool_light"));
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("device/pool_light"), "ON");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->device_calls.size(), 1u);
+	BOOST_CHECK_EQUAL(dispatcher->device_calls[0].first, "Pool Light");
+	BOOST_CHECK(dispatcher->device_calls[0].second == Interfaces::ICommandDispatcher::DeviceAction::On);
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeviceCommand_UnknownPayload_NotDispatched)
+{
+	AddAux("Pool Light");
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("device/pool_light"));
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("device/pool_light"), "MAYBE");
+
+	BOOST_CHECK(dispatcher->device_calls.empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_DeviceCommand_SlugCollision_RegistersSingleHandler)
+{
+	// Two distinct labels that Slugify to the same key ("pool_light") must share one
+	// command: the first claimant wins and the second is skipped, so firing the topic
+	// dispatches exactly once (never a double registration / silent shadow).
+	AddAux("Pool Light");
+	AddAux("POOL LIGHT");
+	auto& hub = ConnectAndPublish();
+	BOOST_REQUIRE(hub.HasCommand("device/pool_light"));
+
+	hub.GetMqttClient()->OnMessageReceived(hub.CommandTopic("device/pool_light"), "OFF");
+
+	BOOST_REQUIRE_EQUAL(dispatcher->device_calls.size(), 1u);
+	BOOST_CHECK(dispatcher->device_calls[0].second == Interfaces::ICommandDispatcher::DeviceAction::Off);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
