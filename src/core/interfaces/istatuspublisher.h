@@ -3,7 +3,6 @@
 #include <concepts>
 #include <memory>
 #include <type_traits>
-#include <typeinfo>
 
 #include <boost/signals2.hpp>
 
@@ -44,8 +43,11 @@ namespace AqualinkAutomate::Interfaces
 			// Devices re-publish their status on every poll; only fan out the signal when the
 			// status actually changes. Statuses are compile-time tag types (see StatusTag), so
 			// identity is by concrete type - re-publishing the same status type is a genuine no-op
-			// for consumers (WebSocket / MQTT / EquipmentHub).
-			const bool changed = (nullptr == m_Status) || (typeid(*m_Status) != typeid(DEVICE_STATUS));
+			// for consumers (WebSocket / MQTT / EquipmentHub). The currently-published status is
+			// a DEVICE_STATUS iff a dynamic_cast to it succeeds (mirrors operator== below); this
+			// avoids a typeid on the polymorphic glvalue, which Clang flags under
+			// -Wpotentially-evaluated-expression.
+			const bool changed = (nullptr == m_Status) || (nullptr == dynamic_cast<const DEVICE_STATUS*>(m_Status.get()));
 
 			m_Status = std::make_shared<DEVICE_STATUS>(status);
 
