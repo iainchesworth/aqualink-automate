@@ -629,7 +629,8 @@ namespace AqualinkAutomate::Mqtt
 				{"value_mv", data_hub->ORP()().value()}
 			};
 			chemistry["ph"] = {
-				{"value", data_hub->pH()()}
+				// Re-round the float32 pH; a raw promotion to double emits noise (7.1 -> 7.0999999...).
+				{"value", Utility::RoundToDecimalPlaces(static_cast<double>(data_hub->pH()()), 1)}
 			};
 			chemistry["salt"] = {
 				{"value_ppm", data_hub->SaltLevel().value()}
@@ -707,17 +708,19 @@ namespace AqualinkAutomate::Mqtt
 
 		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
+			// Utilisation() is a fractional percentage; emit at 2 dp so the payload doesn't leak
+			// e.g. 33.33333333333333 (matches the HTTP equipment JSON and the {:.2f} log format).
 			bandwidth["read"] = {
 				{"total_bytes", statistics_hub->BandwidthMetrics.Read.TotalBytes},
-				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()},
-				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation()},
-				{"utilisation_5min", statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation()}
+				{"utilisation_1sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation(), 2)},
+				{"utilisation_30sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation(), 2)},
+				{"utilisation_5min", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation(), 2)}
 			};
 			bandwidth["write"] = {
 				{"total_bytes", statistics_hub->BandwidthMetrics.Write.TotalBytes},
-				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()},
-				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation()},
-				{"utilisation_5min", statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation()}
+				{"utilisation_1sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation(), 2)},
+				{"utilisation_30sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation(), 2)},
+				{"utilisation_5min", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation(), 2)}
 			};
 		}
 
