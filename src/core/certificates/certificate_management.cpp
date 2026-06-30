@@ -93,6 +93,20 @@ namespace AqualinkAutomate::Certificates
 		fs::create_directories(certificate_path.parent_path(), dir_ec);
 		fs::create_directories(private_key_path.parent_path(), dir_ec);
 
+		// The auto-generated material can land under the system temp directory, which
+		// is world-writable on shared hosts. Restrict the directory holding the private
+		// key to owner-only access so other local users can neither read the key nor
+		// pre-seed material that a later reuse-on-restart would trust. The key file
+		// itself is additionally locked to 0600 once written (below).
+		{
+			std::error_code perm_ec;
+			fs::permissions(private_key_path.parent_path(), fs::perms::owner_all, fs::perm_options::replace, perm_ec);
+			if (perm_ec)
+			{
+				LogWarning(Channel::Certificates, std::format("Could not restrict permissions on SSL material directory ({}): {}", private_key_path.parent_path().string(), perm_ec.message()));
+			}
+		}
+
 		// 2048-bit RSA keypair.
 		EvpPkeyPtr pkey(EVP_RSA_gen(2048), &EVP_PKEY_free);
 		if (!pkey)

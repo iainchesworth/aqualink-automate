@@ -103,7 +103,7 @@ namespace AqualinkAutomate::Auxillaries
 
 			// Preserve a cached custom label / body the live device does not yet carry, so pruning
 			// the placeholder before the Label-Aux page is seen does not lose enumerated info.
-			if (!keep_has_custom_label && IsCustomLabel(orphan_label))
+			if (!keep_has_custom_label && orphan_label.has_value() && IsCustomLabel(orphan_label))
 			{
 				keep->AuxillaryTraits.Set(LabelTrait{}, orphan_label.value());
 				keep_label = orphan_label;
