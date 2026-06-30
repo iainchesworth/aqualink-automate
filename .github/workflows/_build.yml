@@ -303,8 +303,8 @@ jobs:
                 autoconf autoconf-archive automake libtool pkg-config python3 \
                 binutils file rpm fakeroot >/dev/null
               ARCH=$(uname -m)
-              curl -fsSL "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-${ARCH}.tar.gz" | tar xz -C /opt
-              export PATH="/opt/cmake-3.31.6-linux-${ARCH}/bin:$PATH"
+              curl -fsSL "https://github.com/Kitware/CMake/releases/download/v3.31.12/cmake-3.31.12-linux-${ARCH}.tar.gz" | tar xz -C /opt
+              export PATH="/opt/cmake-3.31.12-linux-${ARCH}/bin:$PATH"
               # Restore exec bits on the maintainer scripts (lost on a Windows checkout).
               chmod +x packaging/deb/postinst packaging/deb/prerm packaging/deb/postrm packaging/rpm/*.sh packaging/tarball/*.sh
               git config --global --add safe.directory /work

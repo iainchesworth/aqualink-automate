@@ -301,7 +301,7 @@ jobs:
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       # Authenticate to Docker Hub when credentials are configured so base-image
-      # pulls (ubuntu:25.04, node:22-bookworm-slim) use the higher authenticated
+      # pulls (ubuntu:25.04, node:24-bookworm-slim) use the higher authenticated
       # rate limit instead of the anonymous per-IP quota. Gated so fork PRs (which
       # receive no secrets) still build anonymously.
       - name: Login to Docker Hub

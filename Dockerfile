@@ -6,7 +6,7 @@ FROM ubuntu:25.04 AS base
 
 ARG GCC_VERSION=15
 ARG LLVM_VERSION=21
-ARG CMAKE_VERSION=3.31.6
+ARG CMAKE_VERSION=3.31.12
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -162,7 +162,7 @@ RUN DESTDIR=/src/install/config-linux-gcc cmake --install build/config-linux-gcc
 # the glibc Node installed in the runtime stage. @matter/main and ws are pure JS, so
 # this is belt-and-braces, but it keeps the door open for any future native dep.
 
-FROM node:22-bookworm-slim AS matter-builder
+FROM node:24-bookworm-slim AS matter-builder
 
 WORKDIR /opt/matter-bridge
 
@@ -193,7 +193,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates for TLS; curl for the container HEALTHCHECK (also used here to
 # import the NodeSource signing key); tini as a tiny init that reaps zombies and
 # forwards signals to docker-entrypoint.sh (which supervises the app + Matter
-# sidecar); Node.js 22 (NodeSource) to run the Matter bridge sidecar; gosu so the
+# sidecar); Node.js 24 (NodeSource) to run the Matter bridge sidecar; gosu so the
 # entrypoint can drop from root to the configurable PUID/PGID. gnupg is only
 # needed to import the key, so it is purged afterwards; curl is intentionally kept
 # (a few hundred KB) so the HEALTHCHECK and compose examples can use the standard
@@ -202,7 +202,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg tini gosu \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get purge -y --auto-remove gnupg \
