@@ -88,7 +88,10 @@ namespace AqualinkAutomate::Messages
 		m_ButtonStatus = magic_enum::enum_cast<ButtonStatuses>(Text::ReadU8(message_bytes, Index_ButtonState)).value_or(ButtonStatuses::Unknown);
 		m_ButtonType = magic_enum::enum_cast<ButtonTypes>(Text::ReadU8(message_bytes, Index_ButtonType)).value_or(ButtonTypes::Unknown);
 
-		m_ButtonName = Text::ExtractTrailingAsciiPayload(message_bytes, Index_ButtonNameText);
+		// The button label (and its trailing state text) is a display line: an interior
+		// NUL separates the two fields ("Pool Heat" \0 "OFF") and becomes a space rather
+		// than a '?'; trailing NUL pad is stripped.
+		m_ButtonName = Text::ExtractTrailingDisplayLine(message_bytes, Index_ButtonNameText);
 
 		return true;
 	}

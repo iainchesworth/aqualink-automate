@@ -1943,6 +1943,7 @@ components:
                 - "Chlorinator"
                 - "Cleaner"
                 - "Heater"
+                - "Light"
                 - "Pump"
                 - "Spillover"
                 - "Sprinkler"

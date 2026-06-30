@@ -1,8 +1,12 @@
+#include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <set>
 #include <string>
 
 #include <boost/test/unit_test.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include "jandy/devices/onetouch_device.h"
 #include "jandy/devices/jandy_device_id.h"
@@ -390,6 +394,235 @@ BOOST_AUTO_TEST_CASE(TestChlorinator_RejectsWhileAnotherGoalBusy)
 		static_cast<int>(Devices::Capabilities::ActuationResult::Accepted));
 	BOOST_CHECK_EQUAL(static_cast<int>(device.SetChlorinatorPercentage(45)),
 		static_cast<int>(Devices::Capabilities::ActuationResult::NotSupported));
+}
+
+// =============================================================================
+// SanitiseFunctionText: trims surrounding whitespace and non-printable bytes,
+// leaving the displayed function/label text exactly (public+static helper).
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestSanitise_TrimsSurroundingWhitespace)
+{
+	BOOST_CHECK_EQUAL(OneTouchDevice::SanitiseFunctionText("   Pool Light   "), "Pool Light");
+}
+
+BOOST_AUTO_TEST_CASE(TestSanitise_PreservesInteriorSpaces)
+{
+	// Only the surrounding run is trimmed; interior spacing is part of the label.
+	BOOST_CHECK_EQUAL(OneTouchDevice::SanitiseFunctionText("Equipment ON/OFF"), "Equipment ON/OFF");
+}
+
+BOOST_AUTO_TEST_CASE(TestSanitise_StripsControlAndDelBytes)
+{
+	// Leading/trailing bytes < 0x20 and 0x7f (DEL) are trimmed like whitespace.
+	const std::string raw = std::string("\x01\x02") + "Spa" + std::string("\x7f\x1f");
+	BOOST_CHECK_EQUAL(OneTouchDevice::SanitiseFunctionText(raw), "Spa");
+}
+
+BOOST_AUTO_TEST_CASE(TestSanitise_AllWhitespaceYieldsEmpty)
+{
+	BOOST_CHECK(OneTouchDevice::SanitiseFunctionText("     ").empty());
+	BOOST_CHECK(OneTouchDevice::SanitiseFunctionText("").empty());
+}
+
+// =============================================================================
+// AvailableFunctions: the canonical spa-switch picker list. Model-agnostic
+// assertions (non-empty, already-sanitised, no duplicates) so the test does not
+// pin the exact catalogue.
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestAvailableFunctions_IsNonEmptyAndSanitised)
+{
+	OneTouchDevice device(device_type, *this, true);
+
+	const auto functions = device.AvailableFunctions();
+	BOOST_REQUIRE(!functions.empty());
+
+	std::set<std::string> seen;
+	for (const auto& fn : functions)
+	{
+		BOOST_CHECK(!fn.empty());
+		// Each entry is already in its sanitised (trimmed) form.
+		BOOST_CHECK_EQUAL(fn, OneTouchDevice::SanitiseFunctionText(fn));
+		// No duplicates: the picker cycles a set, not a list with repeats.
+		BOOST_CHECK_MESSAGE(seen.insert(fn).second, "duplicate function in catalogue: " + fn);
+	}
+}
+
+// =============================================================================
+// DescribeDiagnostics: the JSON surface served at /api/diagnostics. A fresh
+// emulated device exposes its identity, the ColdStart operating state, and the
+// navigator / spider-engine sub-objects (both are constructed up front).
+// =============================================================================
+
+BOOST_AUTO_TEST_CASE(TestDiagnostics_FreshEmulatedDeviceShape)
+{
+	OneTouchDevice device(device_type, *this, true);
+
+	const auto diag = device.DescribeDiagnostics();
+
+	BOOST_CHECK_EQUAL(diag.at("device_type").get<std::string>(), "OneTouch");
+	BOOST_CHECK_EQUAL(diag.at("device_id").get<std::string>(), "0x41");
+	BOOST_CHECK_EQUAL(diag.at("operating_state").get<std::string>(), "ColdStart");
+	BOOST_CHECK_EQUAL(diag.at("is_emulated").get<bool>(), true);
+
+	// Sub-objects / scalars every OneTouch diagnostic carries.
+	BOOST_CHECK(diag.contains("screen"));
+	BOOST_CHECK(diag.contains("navigator"));
+	BOOST_CHECK(diag.contains("spider_engine"));
+	BOOST_CHECK(diag.contains("scraping_stall_counter"));
+	BOOST_CHECK(diag.contains("highlighted_line"));
+	BOOST_CHECK(diag.contains("pending_key_command"));
+	BOOST_CHECK(diag.contains("is_running"));
+}
+
+BOOST_AUTO_TEST_CASE(TestDiagnostics_NonEmulatedFlag)
+{
+	OneTouchDevice device(device_type, *this, false);
+
+	const auto diag = device.DescribeDiagnostics();
+	BOOST_CHECK_EQUAL(diag.at("is_emulated").get<bool>(), false);
+}
+
+// =============================================================================
+// Operating-state machine driven through the screen seams (RenderScreenLineForTest
+// presents a page; DeliverStatusFrameForTest runs one real ProcessControllerUpdates).
+// Covers the ColdStart page-detection branches and the non-emulated fast-track.
+// =============================================================================
+
+namespace
+{
+	std::string OperatingStateOf(const OneTouchDevice& device)
+	{
+		return device.DescribeDiagnostics().at("operating_state").get<std::string>();
+	}
+
+	// Present the StartUp splash (cold-start screen): line 7 "REV ..." + line 5 "-..."
+	// match the StartUp detector, which is transient so the device waits on it.
+	void RenderStartUpSplash(FaultableOneTouchDevice& device)
+	{
+		device.RenderScreenLineForTest(5, "-RS8");
+		device.RenderScreenLineForTest(7, "REV T.0");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TestState_ColdStart_StaysOnTransientSplash)
+{
+	// The splash is a recognised-but-transient page: the device must remain in ColdStart
+	// and wait for the controller to advance, rather than starting the spider crawl.
+	FaultableOneTouchDevice device(device_type, *this, true);
+	BOOST_REQUIRE_EQUAL(OperatingStateOf(device), "ColdStart");
+
+	RenderStartUpSplash(device);
+	device.DeliverStatusFrameForTest();
+
+	BOOST_CHECK_EQUAL(OperatingStateOf(device), "ColdStart");
+}
+
+BOOST_AUTO_TEST_CASE(TestState_ColdStart_StaysOnUnrecognisedPage)
+{
+	// An unrecognised screen (no detector matches) keeps the device waiting in ColdStart.
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	device.RenderScreenLineForTest(0, "????????");
+	device.DeliverStatusFrameForTest();
+
+	BOOST_CHECK_EQUAL(OperatingStateOf(device), "ColdStart");
+}
+
+BOOST_AUTO_TEST_CASE(TestState_ColdStart_AdvancesOnRecognisedPage)
+{
+	// A recognised, non-transient page (System: line 9 "Equipment ON/OFF") means the
+	// controller is past the splash, so the device leaves ColdStart and begins scraping.
+	FaultableOneTouchDevice device(device_type, *this, true);
+
+	RenderRecognisedPage(device);
+	device.DeliverStatusFrameForTest();
+
+	BOOST_CHECK_NE(OperatingStateOf(device), "ColdStart");
+}
+
+BOOST_AUTO_TEST_CASE(TestState_NonEmulated_FastTracksToNormalOperation)
+{
+	// A passive (non-emulated) device never runs the spider crawl: the first controller
+	// update drops it straight into NormalOperation so it can observe screens.
+	FaultableOneTouchDevice device(device_type, *this, false);
+
+	device.DeliverStatusFrameForTest();
+
+	BOOST_CHECK_EQUAL(OperatingStateOf(device), "NormalOperation");
+	BOOST_CHECK(device.IsInNormalOperationForTest());
+}
+
+// =============================================================================
+// Goal servicing in NormalOperation: once a recovered emulated device accepts a
+// goal, subsequent Status frames run the matching per-frame ProcessStep (the
+// navigating phase). With the screen held on a single page the navigator cannot
+// complete, but the device stays coherently in NormalOperation and never throws.
+// =============================================================================
+
+namespace
+{
+	// Drive an emulated device into NormalOperation via the fault-recovery path (the only
+	// deterministic, crawl-free way to reach NormalOperation on an emulated device).
+	FaultableOneTouchDevice& RecoverToNormalOperation(FaultableOneTouchDevice& device)
+	{
+		device.ForceScrapingFaultedForTest();
+		RenderRecognisedPage(device);
+		for (uint32_t i = 0; i < 3; ++i)  // ONETOUCH_FAULT_RECOVERY_STATUS_FRAMES
+		{
+			device.DeliverStatusFrameForTest();
+		}
+		return device;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TestGoal_SetpointEdit_ServicedAcrossFrames)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+	RecoverToNormalOperation(device);
+	BOOST_REQUIRE(device.IsInNormalOperationForTest());
+
+	BOOST_REQUIRE(device.SetPoolSetpoint(82) == Capabilities::ActuationResult::Accepted);
+
+	// Each Status frame advances the value-edit ProcessStep's navigating phase.
+	for (int i = 0; i < 8; ++i)
+	{
+		BOOST_CHECK_NO_THROW(device.DeliverStatusFrameForTest());
+	}
+	BOOST_CHECK(device.IsInNormalOperationForTest());
+}
+
+BOOST_AUTO_TEST_CASE(TestGoal_Actuation_ServicedAcrossFrames)
+{
+	auto aux = MakeLabelledAux();
+
+	FaultableOneTouchDevice device(device_type, *this, true);
+	RecoverToNormalOperation(device);
+	BOOST_REQUIRE(device.IsInNormalOperationForTest());
+
+	BOOST_REQUIRE(device.ActuateDevice(aux, Capabilities::ActuationAction::Toggle) == Capabilities::ActuationResult::Accepted);
+
+	for (int i = 0; i < 8; ++i)
+	{
+		BOOST_CHECK_NO_THROW(device.DeliverStatusFrameForTest());
+	}
+	BOOST_CHECK(device.IsInNormalOperationForTest());
+}
+
+BOOST_AUTO_TEST_CASE(TestGoal_ChlorinatorBoost_ServicedAcrossFrames)
+{
+	FaultableOneTouchDevice device(device_type, *this, true);
+	RecoverToNormalOperation(device);
+	BOOST_REQUIRE(device.IsInNormalOperationForTest());
+
+	BOOST_REQUIRE(device.SetChlorinatorBoost(true) == Capabilities::ActuationResult::Accepted);
+
+	for (int i = 0; i < 8; ++i)
+	{
+		BOOST_CHECK_NO_THROW(device.DeliverStatusFrameForTest());
+	}
+	BOOST_CHECK(device.IsInNormalOperationForTest());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

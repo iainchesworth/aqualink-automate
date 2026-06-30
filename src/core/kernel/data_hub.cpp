@@ -1,5 +1,6 @@
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
+#include "kernel/hub_events/data_hub_config_event_button_state_change.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
 #include "kernel/hub_events/data_hub_config_event_circulation.h"
 #include "kernel/hub_events/data_hub_config_event_temperature.h"
@@ -13,6 +14,16 @@
 namespace AqualinkAutomate::Kernel
 {
 	
+	namespace
+	{
+		// A nullopt current value (never set) counts as a change so the first reading always emits;
+		// otherwise defer to Temperature::operator==.
+		bool TemperatureChanged(const std::optional<Kernel::Temperature>& current, const Kernel::Temperature& next)
+		{
+			return !current.has_value() || (*current != next);
+		}
+	}
+
 	DataHub::DataHub() = default;
 
 	void DataHub::EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const
@@ -45,6 +56,23 @@ namespace AqualinkAutomate::Kernel
 		// Signal that a circulation (mode / active-body) update has occurred.
 		auto update_event = std::make_shared<DataHub_ConfigEvent_Circulation>();
 		populate(*update_event);
+		ConfigUpdateSignal(update_event);
+	}
+
+	void DataHub::EmitButtonStateChange(const boost::uuids::uuid& button_id, std::string_view status, std::string_view label)
+	{
+		// Status processors re-scrape and re-publish on every poll; only fan out a button-state
+		// change when this button's (status, label) actually differs from the last published value.
+		auto entry = std::make_pair(std::string{ status }, std::string{ label });
+
+		if (auto it = m_LastButtonState.find(button_id); it != m_LastButtonState.end() && it->second == entry)
+		{
+			return;
+		}
+
+		m_LastButtonState[button_id] = std::move(entry);
+
+		auto update_event = std::make_shared<DataHub_ConfigEvent_ButtonStateChange>(button_id, status, label);
 		ConfigUpdateSignal(update_event);
 	}
 
@@ -242,9 +270,19 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::AirTemp(const Kernel::Temperature& air_temp)
 	{
+		// The controller re-reports temperatures every poll; only fan out the event on an actual
+		// value change. The timestamp is still re-stamped each call so staleness/liveness tracking
+		// (and the periodic MQTT/WebSocket heartbeat) continue to work.
+		const bool changed = TemperatureChanged(m_AirTemp, air_temp);
+
 		m_AirTemp = air_temp;
 		m_AirTempUpdatedAt = std::chrono::system_clock::now();
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Air Temp", air_temp.InCelsius().value());
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitTemperatureEvent([&air_temp](DataHub_ConfigEvent_Temperature& update_event)
 			{
@@ -254,6 +292,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::PoolTemp(const Kernel::Temperature& pool_temp)
 	{
+		const bool changed = TemperatureChanged(m_PoolTemp, pool_temp);
+
 		m_PoolTemp = pool_temp;
 		m_PoolTempUpdatedAt = std::chrono::system_clock::now();
 
@@ -264,6 +304,11 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp", pool_temp.InCelsius().value());
 
+		if (!changed)
+		{
+			return;
+		}
+
 		EmitTemperatureEvent([&pool_temp](DataHub_ConfigEvent_Temperature& update_event)
 			{
 				update_event.PoolTemp(pool_temp);
@@ -272,6 +317,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::SpaTemp(const Kernel::Temperature& spa_temp)
 	{
+		const bool changed = TemperatureChanged(m_SpaTemp, spa_temp);
+
 		m_SpaTemp = spa_temp;
 		m_SpaTempUpdatedAt = std::chrono::system_clock::now();
 
@@ -281,6 +328,11 @@ namespace AqualinkAutomate::Kernel
 		}
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp", spa_temp.InCelsius().value());
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitTemperatureEvent([&spa_temp](DataHub_ConfigEvent_Temperature& update_event)
 			{
@@ -322,6 +374,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::PoolTempSetpoint(const Kernel::Temperature& pool_temp_setpoint)
 	{
+		const bool changed = TemperatureChanged(m_PoolTempSetpoint, pool_temp_setpoint);
+
 		m_PoolTempSetpoint = pool_temp_setpoint;
 		m_PoolTempSetpointUpdatedAt = std::chrono::system_clock::now();
 
@@ -332,6 +386,11 @@ namespace AqualinkAutomate::Kernel
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint", pool_temp_setpoint.InCelsius().value());
 
+		if (!changed)
+		{
+			return;
+		}
+
 		EmitTemperatureEvent([&pool_temp_setpoint](DataHub_ConfigEvent_Temperature& update_event)
 			{
 				update_event.PoolSetpoint(pool_temp_setpoint);
@@ -340,9 +399,16 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::PoolTempSetpoint2(const Kernel::Temperature& pool_temp_setpoint_2)
 	{
+		const bool changed = TemperatureChanged(m_PoolTempSetpoint2, pool_temp_setpoint_2);
+
 		m_PoolTempSetpoint2 = pool_temp_setpoint_2;
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Pool Temp Setpoint 2", pool_temp_setpoint_2.InCelsius().value());
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitTemperatureEvent([&pool_temp_setpoint_2](DataHub_ConfigEvent_Temperature& update_event)
 			{
@@ -352,7 +418,14 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::PoolHeater2Enabled(bool pool_heater_2_enabled)
 	{
+		const bool changed = (m_PoolHeater2Enabled != pool_heater_2_enabled);
+
 		m_PoolHeater2Enabled = pool_heater_2_enabled;
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitTemperatureEvent([pool_heater_2_enabled](DataHub_ConfigEvent_Temperature& update_event)
 			{
@@ -362,6 +435,8 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::SpaTempSetpoint(const Kernel::Temperature& spa_temp_setpoint)
 	{
+		const bool changed = TemperatureChanged(m_SpaTempSetpoint, spa_temp_setpoint);
+
 		m_SpaTempSetpoint = spa_temp_setpoint;
 		m_SpaTempSetpointUpdatedAt = std::chrono::system_clock::now();
 
@@ -371,6 +446,11 @@ namespace AqualinkAutomate::Kernel
 		}
 
 		Factory::ProfilerFactory::Instance().Get()->PlotValue("Spa Temp Setpoint", spa_temp_setpoint.InCelsius().value());
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitTemperatureEvent([&spa_temp_setpoint](DataHub_ConfigEvent_Temperature& update_event)
 			{
@@ -496,7 +576,15 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::ORP(const Kernel::ORP& orp)
 	{
+		// Chemistry is re-reported every poll; only fan out the event on an actual value change.
+		const bool changed = !(m_ORP == orp);
+
 		m_ORP = orp;
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
 			{
@@ -506,7 +594,14 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::pH(const Kernel::pH& pH)
 	{
+		const bool changed = !(m_pH == pH);
+
 		m_pH = pH;
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
 			{
@@ -516,7 +611,14 @@ namespace AqualinkAutomate::Kernel
 
 	void DataHub::SaltLevel(const ppm_quantity& salt_level_in_ppm)
 	{
+		const bool changed = (m_SaltLevel != salt_level_in_ppm);
+
 		m_SaltLevel = salt_level_in_ppm;
+
+		if (!changed)
+		{
+			return;
+		}
 
 		EmitChemistryEvent([this](DataHub_ConfigEvent_Chemistry& update_event)
 			{

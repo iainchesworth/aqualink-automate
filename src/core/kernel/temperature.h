@@ -25,6 +25,11 @@ namespace AqualinkAutomate::Kernel
 		Temperature& operator=(Temperature&& other) noexcept = default;
 
 	public:
+		// Compares the underlying Kelvin quantity directly (no unit-conversion round-trip), so two
+		// temperatures built from the same reading compare equal.
+		bool operator==(const Temperature& other) const = default;
+
+	public:
 		boost::units::quantity<boost::units::absolute<boost::units::celsius::temperature>> InCelsius() const;
 		boost::units::quantity<boost::units::absolute<boost::units::fahrenheit::temperature>> InFahrenheit() const;
 

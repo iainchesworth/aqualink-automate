@@ -11,6 +11,30 @@ Whenever you add, modify, or remove any of the following, update `assets/web/api
 - HTTP status codes or error responses
 - Query parameters, path parameters, or request bodies
 
+## Documentation Accuracy
+
+The `docs/` tree and the root `README.md`/`CHANGELOG.md` are treated as part of the deliverable: **when you change behavior, update the doc that describes it in the same change.** A doc that contradicts the code is a defect, not just stale prose.
+
+When you touch a subsystem, check (and update if affected) its companion doc:
+
+| You change… | Update… |
+|---|---|
+| HTTP API routes, WebSocket event types, JSON request/response shapes | `assets/web/api/swagger.yaml` **and** `docs/usage-and-api.md` (route reference + WS event list) |
+| CLI flags / config keys / defaults (`src/**/options/`) | `docs/configuration.md` (and `docs/mqtt-home-assistant.md`, `docs/hardware-rs485-connectivity.md`, `docs/raspberry-pi.md` for their areas) |
+| Auth / TLS / bind / rate-limiting behavior | `docs/SECURITY.md` |
+| GitHub Actions workflows (`.github/workflows/`), Packer/runner images (`cicd/`) | `docs/ci-cd.md`, `docs/cicd-redesign.md`, `docs/releasing.md` |
+| CMake presets, build/install steps | `docs/INSTALL.md`, `docs/worktrees.md` |
+| Profiling/logging facade | `docs/profiling.md` |
+| Record/replay, mock harness | `docs/RECORD_REPLAY.md` |
+| Matter bridge, device-ID maps | `docs/MATTER.md` |
+| Jandy/Pentair wire protocol, opcodes, message types | the relevant protocol doc (`docs/to_master_decoding.md`, `docs/iaqualink2_init_handshake.md`, `docs/aqualink_rs_revisions.md`, `docs/alwin32_simulator_protocol.md`) |
+
+Rules of thumb:
+
+- **Prefer durable anchors over raw line numbers.** Cite symbols, function names, route URLs, option long-names, or section headers — not `file.cpp:NNN`. Bare line numbers drift the moment code is inserted above them and silently rot.
+- **Design/analysis docs are dated snapshots.** `docs/async_migration_*.md` and `docs/cicd-redesign.md` are point-in-time roadmaps. Do **not** trust their file:line citations as current truth; verify against the code before relying on them, and if you reconcile one, anchor it to symbols and date the reconciliation.
+- **Verify before you write.** Confirm a claim against the code (read the source, don't assume) before documenting it. If unsure, mark it explicitly as a hypothesis / pending capture rather than asserting it as fact.
+
 ## Options / Configuration
 
 CLI flags and the optional config file are merged by a monadic pipeline (Boost.program_options) defined in `src/core/options/options_registry.h` and assembled in `src/aqualink-automate.cpp`. Each subsystem contributes an `OptionsProcessor` + a settings struct (`src/core/options/options_<area>.{h,cpp}`; subsystem options under `src/<sub>/options/`). CLI args take precedence over the config file (first-write-wins into the `variables_map`); config-file keys are the option **long names** (flat INI, no sections).

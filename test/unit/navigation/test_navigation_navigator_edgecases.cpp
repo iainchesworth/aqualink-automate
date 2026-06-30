@@ -764,4 +764,95 @@ BOOST_AUTO_TEST_CASE(TestSetAquapure_PositionsCursorOnPoolRow_WithoutSelect)
 	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 3);
 }
 
+// =============================================================================
+// Initial state and target tracking
+// =============================================================================
+
+// A freshly-constructed Navigator is idle, unsynced and not complete - none of the
+// navigation getters report a destination before StartSync()/NavigateTo().
+BOOST_AUTO_TEST_CASE(TestInitialState_FreshNavigatorIsIdleAndUnsynced)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::Idle));
+	BOOST_CHECK(!nav.IsSynced());
+	BOOST_CHECK(!nav.IsComplete());
+	BOOST_CHECK(!nav.IsSuccess());
+	BOOST_CHECK(nav.GetCurrentPage() == PageId::Unknown);
+}
+
+// NavigateTo records the requested destination and enters the Navigating state.
+BOOST_AUTO_TEST_CASE(TestNavigateTo_RecordsTargetAndEntersNavigating)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	nav.StartSync();
+	auto system_content = MakePage({{0, "Equipment ON/OFF"}});
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(system_content, 0);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+
+	nav.NavigateTo(PageId::MenuHelp);
+
+	BOOST_CHECK(nav.GetTargetPage() == PageId::MenuHelp);
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetState()), static_cast<int>(Navigator::State::Navigating));
+	BOOST_CHECK(!nav.IsComplete());
+}
+
+// =============================================================================
+// NavigateToItem with an EMPTY label: the fixed target line is used directly
+// (no on-screen label search), so the cursor is walked to that line.
+// =============================================================================
+
+// Cursor below the fixed target line -> the Navigator walks it down (no label lookup).
+BOOST_AUTO_TEST_CASE(TestNavigateToItem_EmptyLabel_WalksToFixedLine)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	auto equip = MakePage({{0, "Equipment ON/OFF"}, {1, "Filter Pump"}});
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip, 0);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+	BOOST_REQUIRE(nav.GetCurrentPage() == PageId::EquipmentOnOff);
+
+	// Empty label -> use the fixed line 5; cursor at 0 -> walk down toward it.
+	nav.NavigateToItem(PageId::EquipmentOnOff, 5, "", PageId::Unknown);
+
+	auto cmd = nav.OnPageUpdate(equip, 0);
+	BOOST_REQUIRE(cmd.has_value());
+	BOOST_CHECK_EQUAL(static_cast<int>(cmd.value()), static_cast<int>(NavKeyCommand::LineDown));
+}
+
+// Cursor already on the fixed target line with no select target -> complete in place
+// (no Select; the device drives whatever editor the row hosts).
+BOOST_AUTO_TEST_CASE(TestNavigateToItem_EmptyLabel_AtLine_CompletesWithoutSelect)
+{
+	auto model = BuildTestModel();
+	Navigator nav(model);
+
+	auto equip = MakePage({{0, "Equipment ON/OFF"}, {1, "Filter Pump"}});
+	nav.StartSync();
+	for (uint32_t i = 0; i < Navigator::SYNC_REQUIRED_CONSISTENT_COUNT; ++i)
+	{
+		nav.OnPageUpdate(equip, 5);
+	}
+	BOOST_REQUIRE(nav.IsSynced());
+
+	nav.NavigateToItem(PageId::EquipmentOnOff, 5, "", PageId::Unknown);
+
+	auto cmd = nav.OnPageUpdate(equip, 5);
+	BOOST_CHECK(!cmd.has_value());
+	BOOST_CHECK(nav.IsComplete());
+	BOOST_CHECK(nav.IsSuccess());
+	BOOST_CHECK_EQUAL(static_cast<int>(nav.GetCursorLine()), 5);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

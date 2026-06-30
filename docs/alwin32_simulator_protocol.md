@@ -197,6 +197,12 @@ Presents as **AutoClear / AquaPure / AquaRite** (resource strings `0x2aec0`); fi
   - `payload[2]` is a **bit-packed status byte** (`0x4015b6`) — the `AquariteStatuses` enum is a
     true bitfield, one flag per bit.
   - `payload[3..4]` = a 16-bit field (`+0x90`) — **new**; identify on a capture.
+  - **Project status:** the above describes the *vendor simulator's* outbound frame. The
+    aqualink-automate `AQUARITE_PPM` message currently models **only** `[saltPPM÷100][status-bits]`
+    — `AquariteMessage_PPM` serializes/deserializes exactly the PPM byte (`Index_PPM`) and the status
+    byte (`Index_Status`) and does **not** (de)serialize the trailing 16-bit field
+    (`src/jandy/messages/aquarite/aquarite_message_ppm.{h,cpp}`). Treat the 16-bit field as an
+    unimplemented/pending item in the project, not part of its current wire model.
 
 * **No "get output level / setpoint" command — verified exhaustive (instruction-level).** The
   inbound dispatcher `0x4015dd` is the SWG's *only* master-message handler (`GetMasterMessage` has
@@ -242,8 +248,12 @@ Recovered by decoding all 62 `netIO` call sites (full table in
   time for it): `0x23` PageStart (payload `0x2a` = **EquipmentStatus** page type), `0x24`
   PageButton, `0x26` PageMessage, `0x27` page sub-message, `0x28` PageEnd, `0x31` ControlReady,
   `0x1c`/`0x1e` iAQ control/command. **Independently validates `iaq_protocol.md` from the master
-  side.** ⚠ One discrepancy to reconcile: the master builds **PageMessage as `0x26`**, whereas the
-  project's notes record PageMessage as `0x25` — worth checking against a capture.
+  side.** ⚠ Opcode-naming note (likely reconciled): the master builds what this RE labels
+  **PageMessage as `0x26`**, whereas the project records **`IAQ_PageMessage = 0x25`** and
+  **`IAQ_TableMessage = 0x26`** (`src/jandy/messages/jandy_message_ids.h`). The most plausible
+  reconciliation is that the master's "`0x26`" is the project's **TableMessage**, not its
+  PageMessage — i.e. a naming difference, not a wire-value conflict. The project's `0x25`/`0x26`
+  assignment stands unless a live capture shows otherwise.
 * **iAqualink2 WiFi-module command name table** (recovered from `netIO`'s debug logger,
   `NetIO.dll!0x16ba`) — the application command set of the iAqualink2 cloud module:
 

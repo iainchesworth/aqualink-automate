@@ -166,6 +166,25 @@ public:
 };
 ```
 
+### Follow the Rule of Zero or the Rule of Five — never the Rule of Three
+
+A class that does **not** directly own a resource should declare **none** of the special member functions (destructor, copy/move constructor, copy/move assignment) and let the compiler generate them — the **Rule of Zero**. Hold resources in members that already manage themselves (`std::unique_ptr`, `std::vector`, RAII wrappers) so the enclosing class needs nothing.
+
+```cpp
+// Rule of Zero — owns nothing directly, so compiler-generated members are correct.
+class DeviceState {
+    std::unique_ptr<Impl> m_Impl;   // member manages its own lifetime
+    std::vector<Reading>  m_History;
+    // no destructor, no copy/move declarations
+};
+```
+
+When a class **does** directly manage a resource, declare *all five* — or `= default` / `= delete` each deliberately — the **Rule of Five** (the `SerialPort` example above). **Never use the C++98 Rule of Three** (destructor + copy constructor + copy assignment, with the move operations omitted): a user-declared destructor **suppresses the implicit move operations**, so every "move" silently degrades to a copy — a performance, and sometimes correctness, bug. In C++23 always account for the move operations.
+
+- **Polymorphic bases** need a `virtual` (or `protected`) destructor. `virtual ~Base() = default;` is correct and *required* — it is not a Rule-of-Three offence; default the remaining members if the base must stay copyable/movable.
+- **Pimpl** types must declare the destructor and define it out-of-line in the `.cpp` (where `Impl` is complete), paired with defaulted or deleted move operations as appropriate.
+- Give **value types** a defaulted `operator==` (e.g. `Kernel::Temperature`, `Kernel::ORP`, `Kernel::pH`) rather than ad-hoc field comparisons, so equality lives with the type and stays consistent across callers.
+
 ### Use `[[nodiscard]]` on functions whose return value indicates success/failure
 
 ```cpp
@@ -506,6 +525,7 @@ When reviewing or writing code, verify:
 5. **Public API is `[[nodiscard]]`** where return value matters.
 6. **Templates are constrained** — concepts, not unconstrained `typename T`.
 7. **Resources are RAII-managed** — serial ports, files, GPIO, sockets.
+   - **Rule of Zero or Rule of Five, never the Rule of Three** — a class owning no resource declares no special members; one that does declares all five. A user destructor without declared move operations silently degrades moves to copies.
 8. **`constexpr` where possible** — protocol constants, CRC tables, default configs.
 9. **No new threads** — the app is single-threaded (one `io_context` + cooperative `poll()` loop); shared hub state is unsynchronised by design. Don't add `std::thread`/`std::jthread` or ad-hoc `std::atomic`/`std::mutex` (see `kernel-architecture`).
 10. **Naming follows conventions** — see section 10.

@@ -96,7 +96,11 @@ function schedulesView() {
                     if (b.ok) {
                         const bj = await b.json();
                         const list = Array.isArray(bj) ? bj : (bj.buttons || []);
-                        this.buttons = list.map((x) => x.label).filter(Boolean);
+                        // De-duplicate labels: the dropdown targets a device BY label, so a
+                        // repeated label is meaningless here — and a duplicate would collide
+                        // on the x-for :key, which crashes Alpine's list reconciliation and
+                        // takes down the whole schedules form.
+                        this.buttons = [...new Set(list.map((x) => x.label).filter(Boolean))];
                     }
                 } catch (_) { /* dropdown is best-effort */ }
             } catch (e) {

@@ -192,6 +192,7 @@ target_sources(
 	unit/kernel/test_kernel_equipment_versions.cpp
 	unit/kernel/test_kernel_body_of_water.cpp
 	unit/kernel/test_kernel_data_hub_circulation.cpp
+	unit/kernel/test_kernel_data_hub_telemetry.cpp
 	unit/kernel/test_kernel_status_conversions.cpp
 	unit/utility/test_utility_string_manipulation.cpp
 	unit/utility/test_utility_pool_configuration_decoder.cpp

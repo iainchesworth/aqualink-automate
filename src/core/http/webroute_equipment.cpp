@@ -119,7 +119,9 @@ namespace AqualinkAutomate::HTTP
 		// so the UI shows a "--" placeholder instead of a misleading zero.
 		{
 			const auto orp_mv = static_cast<uint16_t>(m_DataHub->ORP()().value());
-			const auto ph_value = static_cast<double>(m_DataHub->pH()());
+			// pH is stored as a float32 rounded to 0.1; promoting it raw to double would reintroduce
+			// noise (7.1 -> 7.099999904632568), so re-round at the JSON boundary to its real resolution.
+			const auto ph_value = Utility::RoundToDecimalPlaces(static_cast<double>(m_DataHub->pH()()), 1);
 			const auto salt_ppm = static_cast<uint16_t>(m_DataHub->SaltLevel().value());
 
 			nlohmann::json chemistry;

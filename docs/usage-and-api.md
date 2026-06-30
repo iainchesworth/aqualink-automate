@@ -115,6 +115,8 @@ All routes below are registered in a single block when the web server is enabled
 | GET | `/api/equipment` | `200` JSON | Full state block (temperatures, chemistry, configuration, devices, stats, version). |
 | GET | `/api/equipment/devices` | `200` JSON | Devices grouped as `auxillaries`, `heaters`, `pumps`. |
 | GET | `/api/equipment/version` | `200` JSON | `fields[]`, `model_number`, `fw_revision`. |
+| POST | `/api/equipment/circulation` | `200` JSON | Set circulation mode (`pool`/`spa`/`spillover`). `400` (bad value), `503` (no dispatcher). POST-only; non-`POST` returns a bare `405`. |
+| POST | `/api/equipment/heater` | `200` JSON | Enable/disable a heater by body of water (`pool`/`spa`/`solar`). `400` (bad value), `503` (no dispatcher). POST-only; non-`POST` returns a bare `405`. |
 
 ### Buttons
 
@@ -153,6 +155,7 @@ All routes below are registered in a single block when the web server is enabled
 | GET | `/api/diagnostics/mqtt` | `200` JSON | `enabled` + MQTT connection diagnostics. |
 | GET | `/api/diagnostics/matter` | `200` JSON | `enabled` + Matter sidecar status (cached). |
 | GET / POST | `/api/diagnostics/recording` | `200` JSON | GET returns `{recording, file, bytes}`; POST starts/stops. |
+| GET / POST | `/api/diagnostics/profiling` | `200` JSON | GET reports `{enabled, running, backend, available}`; POST controls it (`start`/`stop`/`select`). `400` (bad body), `409` (no backend in this build), `503` (no controller). |
 
 Non-`GET` requests to the read-only diagnostics routes return `405` with a JSON body.
 
@@ -335,6 +338,43 @@ curl -X POST http://127.0.0.1:8080/api/equipment/chlorinator \
 
 **Note:** There are two distinct `503` shapes here. A missing dispatcher returns `text/plain` "Command dispatcher not available". A command that ran but failed returns the per-field JSON body with the mapped status code.
 
+### POST /api/equipment/circulation
+
+Set the circulation mode (which body of water the system circulates).
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/equipment/circulation \
+  -H 'Content-Type: application/json' \
+  -d '{ "mode": "spa" }'
+```
+
+`mode` is a string and must be one of `pool`, `spa`, or `spillover`.
+
+```json
+{ "mode": "spa", "status": "success" }
+```
+
+POST-only: any non-`POST` method returns a bare `405`. A missing/non-string `mode`, or a value outside the allowed set, returns `400` (`text/plain`). With no command dispatcher available the request returns `503` (`text/plain` "Command dispatcher not available"). The HTTP status otherwise follows the command-dispatch result (`400` invalid value, `503` no serial adapter / device not found, `422` unknown equipment type, `500` otherwise).
+
+### POST /api/equipment/heater
+
+Enable or disable a heater, identified by its body of water. `solar` is modelled as the shared heater.
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/equipment/heater \
+  -H 'Content-Type: application/json' \
+  -d '{ "body": "spa", "enable": true }'
+```
+
+- `body` is a string and must be one of `pool`, `spa`, or `solar`.
+- `enable` is a boolean.
+
+```json
+{ "body": "spa", "enable": true, "status": "success" }
+```
+
+POST-only: any non-`POST` method returns a bare `405`. A missing/non-string `body` (or a value outside the allowed set) or a missing/non-boolean `enable` returns `400` (`text/plain`). With no command dispatcher available the request returns `503` (`text/plain` "Command dispatcher not available"). The HTTP status otherwise follows the command-dispatch result (as for circulation, above).
+
 ### POST /api/equipment/iaq
 
 ```bash
@@ -430,7 +470,7 @@ Every frame is a JSON object with two fields:
 { "type": "<EventType>", "payload": { } }
 ```
 
-`type` is the name of a `WebSocket_EventTypes` value: `ChemistryUpdate`, `StatisticsUpdate`, `TemperatureUpdate`, `SystemStatusChange`, `SystemStateUpdate`, `ButtonStateChange`, `AlertTransition`, or `Unknown`.
+`type` is the name of a `WebSocket_EventTypes` value: `ChemistryUpdate`, `StatisticsUpdate`, `TemperatureUpdate`, `CirculationUpdate`, `SystemStatusChange`, `SystemStateUpdate`, `ButtonStateChange`, `AlertTransition`, or `Unknown`.
 
 ### What each endpoint sends
 
@@ -438,6 +478,7 @@ Every frame is a JSON object with two fields:
 
 - `ChemistryUpdate`
 - `TemperatureUpdate`
+- `CirculationUpdate` — circulation/heater mode changes
 - `ButtonStateChange`
 - `SystemStatusChange`
 - `AlertTransition` — `{ "condition": ..., "state": "raised" | "cleared", "ts": ..., "detail": ... }`

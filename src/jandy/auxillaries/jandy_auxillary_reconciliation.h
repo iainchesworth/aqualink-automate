@@ -23,12 +23,16 @@ namespace AqualinkAutomate::Auxillaries
 	// it so actuation/power-center mapping work.
 	void EnsureAuxIdentity(const std::shared_ptr<Kernel::AuxillaryDevice>& device, JandyAuxillaryIds id);
 
-	// Remove cache-restored placeholders that share `label`, are auxillaries, and lack a
-	// stable aux identity (pre-upgrade caches persisted only the label, so they cannot be
-	// matched by stable id and would otherwise survive as duplicates). `keep` - the live
-	// device that now owns the identity - is never removed. One-time cleanup that fires on the
-	// first restart after upgrading from a label-only cache; a no-op thereafter.
-	void RemoveOrphanAuxPlaceholders(Kernel::DevicesGraph& devices, const std::string& label, const std::shared_ptr<Kernel::AuxillaryDevice>& keep);
+	// Remove cache-restored placeholders for the auxillary identified by `aux_id` that lack a
+	// stable aux identity, collapsing them onto `keep` (the live device that owns the identity,
+	// never removed). A placeholder "belongs" to this aux when its label OR hardware label parses
+	// to `aux_id`, or when it shares `keep`'s current label. Matching on the aux identity rather
+	// than only the (custom) label is what lets this fire at the FIRST live touch of the aux -
+	// before the custom label is even known - so a legacy random-id placeholder never reaches the
+	// MQTT/HA publishers as a duplicate. Any custom label / body-of-water the placeholder carries
+	// but `keep` does not yet have is transferred to `keep` before removal, so pruning early never
+	// loses cache-enumerated information.
+	void RemoveOrphanAuxPlaceholders(Kernel::DevicesGraph& devices, JandyAuxillaryIds aux_id, const std::shared_ptr<Kernel::AuxillaryDevice>& keep);
 
 }
 // namespace AqualinkAutomate::Auxillaries

@@ -66,7 +66,8 @@ namespace AqualinkAutomate::Messages
 
 		m_LineId = Text::ReadU8(message_bytes, Index_LineId);
 		m_Attribute = Text::ReadU8(message_bytes, Index_Attribute);
-		m_Line = Text::ExtractTrailingAsciiPayload(message_bytes, Index_LineText);
+		// Display line: NUL pad -> space / trailing pad stripped, leading spaces kept.
+		m_Line = Text::ExtractTrailingDisplayLine(message_bytes, Index_LineText);
 
 		LogDebug(Channel::Messages, [&]() { return std::format("Deserialised IAQMessage_TableMessage: LineId -> {}, Attribute -> {}, LineText -> '{}' ({} chars)", m_LineId, m_Attribute, m_Line, m_Line.length()); });
 

@@ -62,6 +62,17 @@ namespace AqualinkAutomate::Mqtt
 			auto command_wildcard = m_Client->BuildTopic("command/#");
 			m_Client->Subscribe(command_wildcard, 0);
 
+			// Arm startup broker reconciliation: subscribe to the per-device topic namespaces so
+			// the broker replays every retained device/HA-state topic it holds. We collect them
+			// while the grace window runs, then clear any the current device set no longer owns.
+			m_DeviceTopicPrefix = m_Client->BuildTopic("device/");
+			m_HaStateTopicPrefix = m_Client->BuildTopic("ha/");
+			m_Client->Subscribe(m_DeviceTopicPrefix + "#", 0);
+			m_Client->Subscribe(m_HaStateTopicPrefix + "#", 0);
+			m_SeenRetainedTopics.clear();
+			m_RetainedReconcilePending = true;
+			m_RetainedReconcileDeadline = std::chrono::steady_clock::now() + RETAINED_RECONCILE_GRACE;
+
 			// Publish initial status on connect
 			PublishAllStatus();
 		});
@@ -123,6 +134,13 @@ namespace AqualinkAutomate::Mqtt
 		}
 
 		auto now = std::chrono::steady_clock::now();
+
+		// One-shot startup broker reconciliation, once retained delivery has had time to complete.
+		if (m_RetainedReconcilePending && now >= m_RetainedReconcileDeadline)
+		{
+			m_RetainedReconcilePending = false;
+			ReconcileRetainedTopics();
+		}
 
 		// On-change publish (debounced). A hub change during protocol decode flags a
 		// pending publish; here we flush it once the debounce window has elapsed,
@@ -406,6 +424,10 @@ namespace AqualinkAutomate::Mqtt
 			std::size_t total_size = 0;
 			std::size_t device_count = 0;
 
+			// Topics published this sweep; diffed against the previous sweep below to clear any
+			// that vanished (device removed, or relabelled so its slug changed).
+			std::unordered_set<std::string> current_topics;
+
 			if (auto data_hub = m_DataHub.lock())
 			{
 				auto publish_device = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
@@ -437,7 +459,9 @@ namespace AqualinkAutomate::Mqtt
 
 					auto payload = j.dump();
 					total_size += payload.size();
-					m_Client->Publish(m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug)), payload, /*retain=*/true);
+					auto topic = m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug));
+					m_Client->Publish(topic, payload, /*retain=*/true);
+					current_topics.insert(std::move(topic));
 					++device_count;
 				};
 
@@ -470,6 +494,18 @@ namespace AqualinkAutomate::Mqtt
 				}
 			}
 
+			// Clear (empty retained payload) any device topic published last sweep that is gone now,
+			// so a removed or relabelled device does not linger in the broker as a retained ghost.
+			for (const auto& stale_topic : m_PublishedDeviceTopics)
+			{
+				if (!current_topics.contains(stale_topic))
+				{
+					m_Client->Publish(stale_topic, "", /*retain=*/true);
+					LogDebug(Channel::Mqtt, [&] { return std::format("Cleared retained device topic '{}'", stale_topic); });
+				}
+			}
+			m_PublishedDeviceTopics = std::move(current_topics);
+
 			zone->Value(total_size);
 			LogTrace(Channel::Mqtt, std::format("Published device status ({} devices)", device_count));
 
@@ -479,6 +515,68 @@ namespace AqualinkAutomate::Mqtt
 		{
 			LogError(Channel::Mqtt, std::format("Failed to publish device status: {}", ex.what()));
 		}
+	}
+
+	std::unordered_set<std::string> MqttHub::ComputeOwnedDeviceTopics() const
+	{
+		std::unordered_set<std::string> owned;
+
+		auto data_hub = m_DataHub.lock();
+		if (!data_hub)
+		{
+			return owned;
+		}
+
+		auto add = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
+		{
+			if (!device)
+			{
+				return;
+			}
+			auto label = device->AuxillaryTraits.TryGet(Kernel::AuxillaryTraitsTypes::LabelTrait{});
+			if (!label.has_value())
+			{
+				return;
+			}
+			auto slug = Slugify(label.value());
+			owned.insert(m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug)));
+			if (m_Settings.home_assistant_enabled)
+			{
+				owned.insert(m_Client->BuildTopic(TopicScheme::DeviceStateSubtopic(category, slug)));
+			}
+		};
+
+		for (const auto& device : data_hub->Auxillaries())   { add(TopicScheme::DeviceCategory::Auxillary, device); }
+		for (const auto& device : data_hub->Heaters())       { add(TopicScheme::DeviceCategory::Heater, device); }
+		for (const auto& device : data_hub->Pumps())         { add(TopicScheme::DeviceCategory::Pump, device); }
+		for (const auto& device : data_hub->Chlorinators())  { add(TopicScheme::DeviceCategory::Chlorinator, device); }
+
+		return owned;
+	}
+
+	void MqttHub::ReconcileRetainedTopics()
+	{
+		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::ReconcileRetainedTopics", std::source_location::current());
+
+		const auto owned = ComputeOwnedDeviceTopics();
+
+		std::size_t cleared = 0;
+		for (const auto& seen_topic : m_SeenRetainedTopics)
+		{
+			if (!owned.contains(seen_topic))
+			{
+				m_Client->Publish(seen_topic, "", /*retain=*/true);
+				LogDebug(Channel::Mqtt, [&] { return std::format("Broker reconciliation cleared stale retained topic '{}'", seen_topic); });
+				++cleared;
+			}
+		}
+
+		if (cleared > 0)
+		{
+			LogInfo(Channel::Mqtt, std::format("Startup broker reconciliation cleared {} stale retained device topic(s)", cleared));
+		}
+
+		m_SeenRetainedTopics.clear();
 	}
 
 	void MqttHub::PublishStatistics()
@@ -513,6 +611,14 @@ namespace AqualinkAutomate::Mqtt
 		auto zone = Factory::ProfilingUnitFactory::Instance().CreateZone("MqttHub::HandleMessage", std::source_location::current());
 		zone->Text(topic);
 		zone->Value(payload.size());
+
+		// While the startup reconciliation window is open, record retained device/HA-state topics
+		// the broker replays so ReconcileRetainedTopics() can clear any the current set no longer owns.
+		if (m_RetainedReconcilePending && !payload.empty()
+			&& (topic.starts_with(m_DeviceTopicPrefix) || topic.starts_with(m_HaStateTopicPrefix)))
+		{
+			m_SeenRetainedTopics.insert(topic);
+		}
 
 		if (!IsCommandTopic(topic))
 		{
@@ -629,7 +735,8 @@ namespace AqualinkAutomate::Mqtt
 				{"value_mv", data_hub->ORP()().value()}
 			};
 			chemistry["ph"] = {
-				{"value", data_hub->pH()()}
+				// Re-round the float32 pH; a raw promotion to double emits noise (7.1 -> 7.0999999...).
+				{"value", Utility::RoundToDecimalPlaces(static_cast<double>(data_hub->pH()()), 1)}
 			};
 			chemistry["salt"] = {
 				{"value_ppm", data_hub->SaltLevel().value()}
@@ -707,17 +814,19 @@ namespace AqualinkAutomate::Mqtt
 
 		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
+			// Utilisation() is a fractional percentage; emit at 2 dp so the payload doesn't leak
+			// e.g. 33.33333333333333 (matches the HTTP equipment JSON and the {:.2f} log format).
 			bandwidth["read"] = {
 				{"total_bytes", statistics_hub->BandwidthMetrics.Read.TotalBytes},
-				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()},
-				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation()},
-				{"utilisation_5min", statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation()}
+				{"utilisation_1sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation(), 2)},
+				{"utilisation_30sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation(), 2)},
+				{"utilisation_5min", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation(), 2)}
 			};
 			bandwidth["write"] = {
 				{"total_bytes", statistics_hub->BandwidthMetrics.Write.TotalBytes},
-				{"utilisation_1sec", statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()},
-				{"utilisation_30sec", statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation()},
-				{"utilisation_5min", statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation()}
+				{"utilisation_1sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation(), 2)},
+				{"utilisation_30sec", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation(), 2)},
+				{"utilisation_5min", Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation(), 2)}
 			};
 		}
 

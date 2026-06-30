@@ -58,7 +58,7 @@ Install these tools before building. Versions in the **Tested** column are what 
 | Tool | Minimum | Tested | Notes |
 |------|---------|--------|-------|
 | Git | any | — | Submodule support is required (vcpkg is a submodule). |
-| CMake | 3.31 | 3.31.6 | Enforced — the root `CMakeLists.txt` and every preset pin 3.31 as a `FATAL_ERROR` floor. |
+| CMake | 3.31 | 3.31.12 | Enforced — the root `CMakeLists.txt` and every preset pin 3.31 as a `FATAL_ERROR` floor. |
 | Ninja | any | — | Required generator. The build scripts only check for its presence, not its version. |
 | C++ compiler | C++23 support | GCC 15 / Clang 21 / MSVC (VS 2022+) | See below. |
 
@@ -144,7 +144,7 @@ choco install git cmake ninja visualstudio2022buildtools
 
 ## CMake presets
 
-Presets are named `config-<platform>-<compiler>[-debug|-coverage]`. There are 12 named configure presets (plus three hidden base presets — `core`, `debug`, `release` — that the named presets inherit from). Every configure preset has a matching `build-*` and `test-*` preset; only the **Release** presets have a matching `pack-*` preset.
+Presets are named `config-<platform>-<compiler>[-debug|-coverage]`. There are 12 named configure presets (plus four hidden base presets — `core`, `debug`, `release`, `profiling` — that the named presets inherit from). Every configure preset has a matching `build-*` and `test-*` preset; only the **Release** presets have a matching `pack-*` preset.
 
 | Configure preset | Platform | Compiler | Build type | Notable flags | `build-*` | `test-*` | `pack-*` |
 |------------------|----------|----------|-----------|---------------|:---------:|:--------:|:--------:|
@@ -267,7 +267,7 @@ Both the GCC and Clang/LLVM toolchains are available in the container, and the C
 
 ## Docker
 
-The Dockerfile is multi-stage (`base`, `dev`, `ci`, `matter-builder`, `runtime`); the default build target is `runtime`. The runtime image is built on `ubuntu:25.04` with `tini` as PID 1, Node.js 22 for the Matter bridge sidecar, and `curl` for the container health check. It runs as an unprivileged `aqualink` user (uid/gid 10000), exposes port 80, declares a `HEALTHCHECK` against `/api/health`, and its default command is `--address 0.0.0.0 --disable-https`.
+The Dockerfile is multi-stage (`base`, `dev`, `ci`, `matter-builder`, `runtime`); the default build target is `runtime`. The runtime image is built on `ubuntu:26.04` with `tini` as PID 1, Node.js 24 for the Matter bridge sidecar, and `curl` for the container health check. It runs as an unprivileged `aqualink` user (uid/gid 10000), exposes port 80, declares a `HEALTHCHECK` against `/api/health`, and its default command is `--address 0.0.0.0 --disable-https`.
 
 **Security:** the default command binds to `0.0.0.0` (all interfaces) and disables HTTPS, which is appropriate for a container behind your own network boundary but exposes an **unauthenticated** HTTP API that can actuate pool equipment. Authentication is off by default, so the app logs a prominent startup warning whenever it binds a non-loopback address with no `--api-auth-token`. Before exposing the container beyond a trusted segment you should: set a strong `--api-auth-token` (32+ random chars), terminate TLS in front of it (reverse proxy) or enable HTTPS, and optionally set `--api-allowed-origin` / `--api-require-csrf-header`. If the open posture is deliberate (e.g. behind a trusted reverse proxy), pass `--insecure-no-auth` to acknowledge it and quiet the warning. Restrict access at the network layer regardless. See [Configuration reference](configuration.md) for the authentication and TLS options.
 

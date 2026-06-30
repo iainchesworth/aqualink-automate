@@ -245,7 +245,7 @@ Workflows automatically use self-hosted runners when these variables are set. Re
 | `01-base-packages.sh` | build-essential, ca-certificates, curl, git, gpg, jq, pkg-config, tar, unzip, wget, zip; enables `discard` (continuous TRIM) on the root fs **and** sets `fstrim.timer` to hourly so the thin vmdk stays lean under churny CI |
 | `02-gcc-toolchain.sh` | gcc-15, g++-15, gcov-15 (from 26.04 LTS main repos; PPA fallback only on older bases), update-alternatives symlinks |
 | `03-llvm-toolchain.sh` | clang-21, clang-tidy-21, lld-21, libc++-21-dev, libc++abi-21-dev (from 26.04 LTS `universe`; apt.llvm.org fallback only on older bases), update-alternatives symlinks |
-| `04-cmake-ninja.sh` | CMake 3.31.6 (Kitware binary), ninja-build |
+| `04-cmake-ninja.sh` | CMake 3.31.12 (Kitware binary), ninja-build |
 | `05-docker.sh` | Docker Engine CE + buildx plugin; `data-root` → `/data/docker` (off the OS disk) |
 | `06-dev-tools.sh` | python3, gcovr, autoconf, automake, libtool |
 | `07-ccache.sh` | ccache (4 GB max on `/data/cache/ccache`, compression enabled) |

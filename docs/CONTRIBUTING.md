@@ -43,7 +43,7 @@ This convention is checked automatically:
 - A **Branch Name** check runs on every pull request and fails a non-conforming head branch (`.github/workflows/ci.yml`). `develop` and `main` are accepted as heads so the `develop` -> `main` release-promotion PR is never blocked. It is a [required status check](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging) on `develop` and `main`, so a non-conforming branch cannot merge.
 - Push/creation-time enforcement (a server-side branch-name **ruleset**) is a GitHub organization feature and is not available on this user-owned repository, so a misnamed branch can exist locally — it just fails CI and, once the check is required, cannot merge.
 
-Continuous integration also runs on a `push` to any of these type namespaces and to `main`/`develop` (see `.github/workflows/ci.yml`).
+Continuous integration builds on a `push` only to the long-lived branches `main` and `develop`. Feature branches build via their **pull request** into `develop`/`main` instead — so a work-in-progress push to a branch that has no open PR runs no CI (see `.github/workflows/ci.yml`).
 
 ### Hotfix branches
 
@@ -64,8 +64,8 @@ To work on more than one branch at a time on a single machine — or to fan work
 
 For a **non-hotfix** change:
 
-1. Branch off `develop` (for example `feature/my-new-feature`).
-2. Make your change, **including appropriate test cases**.
+1. Branch off `develop` (for example `feat/my-new-feature`).
+2. Make your change, **including appropriate test cases**, and **update any documentation the change affects** (see [Keeping documentation in sync](#keeping-documentation-in-sync)).
 3. Run the full test suite and confirm it passes — see [Building and testing before you push](#building-and-testing-before-you-push).
 4. Commit using the [Conventional Commits format](#commit-message-format).
 5. Open a pull request targeting `develop` and address any review feedback.
@@ -201,3 +201,18 @@ ctest --preset test-linux-gcc
 On Windows the equivalent presets are `config-windows-msvc-debug`, `build-windows-msvc-debug`, and `test-windows-msvc-debug`.
 
 All tests must pass and your change must include tests covering it. A bug fix must add a regression test that fails before the fix and passes after it.
+
+## Keeping documentation in sync
+
+Documentation is part of the change, not a follow-up. When a pull request alters observable behavior, update the doc that describes it **in the same pull request** — a doc that contradicts the code is treated as a defect in review.
+
+In particular:
+
+- **HTTP routes, WebSocket events, or JSON schemas** → update `assets/web/api/swagger.yaml` *and* [docs/usage-and-api.md](usage-and-api.md).
+- **CLI flags, config keys, or defaults** → update [docs/configuration.md](configuration.md) (and the area-specific guide: MQTT/Home Assistant, hardware, Raspberry Pi).
+- **Auth, TLS, or networking defaults** → update [docs/SECURITY.md](SECURITY.md).
+- **CI workflows, Packer/runner images, release flow** → update [docs/ci-cd.md](ci-cd.md) / [docs/releasing.md](releasing.md).
+- **Build presets or install steps** → update [docs/INSTALL.md](INSTALL.md).
+- **Wire-protocol opcodes or message types** → update the relevant protocol doc under `docs/`.
+
+Prefer durable references (symbols, route URLs, option long-names, section headings) over bare `file.cpp:NNN` line numbers, which rot as soon as code is inserted above them. The analysis/roadmap docs (`docs/async_migration_*.md`, `docs/cicd-redesign.md`) are dated snapshots — do not treat their line citations as current truth.

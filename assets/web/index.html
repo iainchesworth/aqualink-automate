@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0f172a">
     <title>Aqualink Automate</title>
@@ -803,7 +804,7 @@
                                                         <div class="emu-screen-line"
                                                              :class="{ 'emu-screen-line-highlighted': dev.highlighted_line === idx && dev.device_type === 'OneTouch' }">
                                                             <span class="emu-line-num" x-text="idx"></span>
-                                                            <span x-text="line || ' '"></span>
+                                                            <span class="emu-screen-text" x-text="line || ' '"></span>
                                                         </div>
                                                     </template>
                                                 </div>

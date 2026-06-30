@@ -198,8 +198,8 @@ namespace AqualinkAutomate::Devices
 				// device that already carries that id - a steady-state cache placeholder or one
 				// discovered earlier this run - is found by id (independent of any custom label)
 				// and updated in place. A LEGACY pre-stable-id cache placeholder (random id) is
-				// NOT matched here; it is reconciled + pruned later by PageProcessor_LabelAux (or
-				// the IAQ AuxStatus path) once the custom label is known.
+				// reconciled away here, at this first live touch of the aux, so it never reaches
+				// the MQTT/HA publishers as a duplicate (any cached custom label is preserved).
 				if (new_device->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}))
 				{
 					const auto aux_id = *(new_device->AuxillaryTraits[Auxillaries::JandyAuxillaryId{}]);
@@ -211,11 +211,18 @@ namespace AqualinkAutomate::Devices
 						{
 							existing->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{}, status_opt.value());
 						}
+						Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_id, existing);
 						continue;
 					}
 				}
 
 				JandyController::m_DataHub->Devices.Add(new_device);
+
+				// Collapse any legacy random-id placeholder for this aux onto the device just added.
+				if (auto aux_id_opt = new_device->AuxillaryTraits.TryGet(Auxillaries::JandyAuxillaryId{}); aux_id_opt.has_value())
+				{
+					Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_id_opt.value(), new_device);
+				}
 			}
 		}
 	}
@@ -751,9 +758,9 @@ namespace AqualinkAutomate::Devices
 					JandyController::m_DataHub->Devices.Add(aux_ptr);
 				}
 
-				// Drop any legacy label-only cache placeholder now superseded by this device
+				// Drop any legacy placeholder for this aux now superseded by this device
 				// (one-time cleanup when upgrading from a pre-stable-id cache).
-				Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_custom_label, aux_ptr);
+				Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_id.value(), aux_ptr);
 			}
 		}
 	}

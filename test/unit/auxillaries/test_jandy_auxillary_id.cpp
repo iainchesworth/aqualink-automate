@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(EnsureAuxIdentityGrantsIdentityAndIsIdempotent)
 	BOOST_CHECK_NO_THROW(Auxillaries::EnsureAuxIdentity(phantom, Auxillaries::JandyAuxillaryIds::Aux_5));
 }
 
-BOOST_AUTO_TEST_CASE(RemoveOrphanAuxPlaceholdersDropsOnlyTheLabelOnlyPlaceholder)
+BOOST_AUTO_TEST_CASE(RemoveOrphanAuxPlaceholdersDropsTheSharedLabelPlaceholder)
 {
 	Kernel::DevicesGraph devices;
 
@@ -158,11 +158,78 @@ BOOST_AUTO_TEST_CASE(RemoveOrphanAuxPlaceholdersDropsOnlyTheLabelOnlyPlaceholder
 	// Two "Swim Jet" now exist (placeholder + relabelled live) - the duplicate state.
 	BOOST_REQUIRE_EQUAL(devices.CountByLabel("Swim Jet"), 2u);
 
-	Auxillaries::RemoveOrphanAuxPlaceholders(devices, "Swim Jet", live);
+	Auxillaries::RemoveOrphanAuxPlaceholders(devices, Auxillaries::JandyAuxillaryIds::Aux_1, live);
 
 	// The label-only placeholder is gone; the identified live device is kept.
 	BOOST_CHECK_EQUAL(devices.CountByLabel("Swim Jet"), 1u);
-	BOOST_CHECK_EQUAL(devices.CountByLabel("Spa Jet"), 1u);   // a different label is untouched
+	BOOST_CHECK_EQUAL(devices.CountByLabel("Spa Jet"), 1u);   // a different aux is untouched
+}
+
+BOOST_AUTO_TEST_CASE(GenericPlaceholderPrunedAtFirstTouchByAuxIdentity)
+{
+	// The reported scenario: a legacy random-id placeholder labelled with the GENERIC aux name
+	// ("Aux5"), no aux identity. At the FIRST live touch the live device still carries only its
+	// generic label (the custom label is not enumerated yet) - the placeholder must still be
+	// collapsed away, matched by the aux id parsed from its own label.
+	Kernel::DevicesGraph devices;
+
+	auto orphan = MakeAux("Aux5", /*with_aux_id=*/false, Auxillaries::JandyAuxillaryIds::Aux_5);
+	// Add live under a temp label so Add's type+label dedup admits it, then give it the generic
+	// "Aux5" label it carries before the custom label is known.
+	auto live = MakeAux("__live__", /*with_aux_id=*/true, Auxillaries::JandyAuxillaryIds::Aux_5);
+	devices.Add(orphan);
+	devices.Add(live);
+	live->AuxillaryTraits.Set(Traits::LabelTrait{}, std::string{ "Aux5" });
+
+	BOOST_REQUIRE_EQUAL(devices.CountByLabel("Aux5"), 2u);
+
+	Auxillaries::RemoveOrphanAuxPlaceholders(devices, Auxillaries::JandyAuxillaryIds::Aux_5, live);
+
+	BOOST_REQUIRE_EQUAL(devices.CountByLabel("Aux5"), 1u);
+	// The survivor is the identified live device, not the placeholder.
+	BOOST_CHECK(devices.FindByLabel("Aux5").front()->AuxillaryTraits.Has(Auxillaries::JandyAuxillaryId{}));
+}
+
+BOOST_AUTO_TEST_CASE(CachedCustomLabelAndBodyTransferredBeforePruning)
+{
+	// A legacy placeholder that cached a custom label + body + hardware id but with a random id
+	// (so it is NOT matched by stable id). When collapsed onto the still-generic live device, the
+	// custom label/body must transfer across so the cache-enumerated info is not lost by pruning.
+	Kernel::DevicesGraph devices;
+
+	auto orphan = MakeAux("Pool Light", /*with_aux_id=*/false, Auxillaries::JandyAuxillaryIds::Aux_5);
+	orphan->AuxillaryTraits.Set(Traits::HardwareLabelTrait{}, std::string{ "Aux5" });
+	orphan->AuxillaryTraits.Set(Traits::BodyOfWaterTrait{}, Kernel::BodyOfWaterIds::Pool);
+
+	auto live = MakeAux("Aux5", /*with_aux_id=*/true, Auxillaries::JandyAuxillaryIds::Aux_5);
+	devices.Add(orphan);
+	devices.Add(live);
+
+	Auxillaries::RemoveOrphanAuxPlaceholders(devices, Auxillaries::JandyAuxillaryIds::Aux_5, live);
+
+	// Placeholder gone (matched via its hardware id); live now carries the cached custom label + body.
+	BOOST_CHECK_EQUAL(devices.CountByLabel("Pool Light"), 1u);
+	BOOST_CHECK_EQUAL(devices.CountByLabel("Aux5"), 0u);
+	BOOST_REQUIRE(live->AuxillaryTraits.Has(Traits::LabelTrait{}));
+	BOOST_CHECK_EQUAL(std::string{ *(live->AuxillaryTraits[Traits::LabelTrait{}]) }, "Pool Light");
+	BOOST_REQUIRE(live->AuxillaryTraits.Has(Traits::BodyOfWaterTrait{}));
+	BOOST_CHECK(*(live->AuxillaryTraits[Traits::BodyOfWaterTrait{}]) == Kernel::BodyOfWaterIds::Pool);
+}
+
+BOOST_AUTO_TEST_CASE(PlaceholderForADifferentAuxIsNotPruned)
+{
+	// A placeholder belonging to a different aux must never be collapsed onto this one.
+	Kernel::DevicesGraph devices;
+
+	auto orphan = MakeAux("Aux6", /*with_aux_id=*/false, Auxillaries::JandyAuxillaryIds::Aux_6);
+	auto live = MakeAux("Aux5", /*with_aux_id=*/true, Auxillaries::JandyAuxillaryIds::Aux_5);
+	devices.Add(orphan);
+	devices.Add(live);
+
+	Auxillaries::RemoveOrphanAuxPlaceholders(devices, Auxillaries::JandyAuxillaryIds::Aux_5, live);
+
+	BOOST_CHECK_EQUAL(devices.CountByLabel("Aux6"), 1u);   // different aux: untouched
+	BOOST_CHECK_EQUAL(devices.CountByLabel("Aux5"), 1u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

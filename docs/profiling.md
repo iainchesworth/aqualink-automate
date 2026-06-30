@@ -88,7 +88,7 @@ logged on the `Profiling` channel and profiling stays disabled (it does not fall
 back to a different backend):
 
 ```
-[Profiling] Requested profiler 'vtune' is not available in this build; profiling is disabled. Compiled-in backends: [tracy]
+[Profiling] Requested profiler 'VTune' is not available in this build; profiling is disabled. Compiled-in backends: [Tracy]
 ```
 
 ## Runtime control surface

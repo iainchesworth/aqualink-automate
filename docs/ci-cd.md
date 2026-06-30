@@ -20,19 +20,19 @@ The pipeline is five workflow files plus two composite actions, all under `.gith
 
 ## ci.yml
 
-`ci.yml` runs on every push to the working branches and on PRs into the integration and release branches.
+`ci.yml` builds on push only for the long-lived branches (`main`, `develop`); every other branch is exercised through its pull request into `develop` or `main`.
 
 ### Triggers
 
 ```yaml
 on:
   push:
-    branches: ["main", "develop", "feat/**", "fix/**", "docs/**", "ci/**", "test/**", "refactor/**", "chore/**", "build/**", "perf/**"]
+    branches: ["main", "develop"]
   pull_request:
     branches: ["develop", "main"]
 ```
 
-The `push` namespaces are the [allowed branch types](CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, …); a branch named outside them simply gets no push-triggered CI.
+Only `main` and `develop` build on push. Feature branches build via their `pull_request` into `develop`/`main` (the `pull_request` trigger targets those two branches). A WIP push to a branch that has no open PR runs no CI at all — and a push to a branch that *does* have a PR is already covered by the PR run, so this also avoids the push+PR double-run.
 
 Concurrency is keyed on the PR number (or the ref for branch pushes) with `cancel-in-progress: true`, so a new push supersedes an in-flight run for the same PR or branch.
 
@@ -44,7 +44,7 @@ Concurrency is keyed on the PR number (or the ref for branch pushes) with `cance
 | `build-and-test` | Per-OS matrix (see [_build.yml](#_buildyml)) | Calls `_build.yml` with no packaging. Configures, builds, and runs the full test suite on Linux, Windows, and macOS. |
 | `e2e-ui` | Linux | Builds only the app binary, then runs the Playwright UI suite four times — once per mode. |
 | `matter-bridge` | Linux | Node job in `matter-bridge/`: `npm ci`, typecheck (including the matter.js bridge), build, and unit tests. |
-| `version-check` | `ubuntu-latest` | PR-into-`main` only. Compares what `git describe` resolves on the PR head versus the base. **Non-blocking** — it emits a `::warning::` if the version looks unchanged, never a failure. |
+| `version-check` | `ubuntu-latest` | PR-into-`main` only. Compares what `git describe` resolves on the PR head versus the base. **Blocking at the job level** — when the resolved version is unchanged it emits `::error::` and `exit 1`, failing the job. It is, however, intentionally excluded from the `ci-status` aggregator's `needs` list, so a failed `version-check` does not by itself fail the aggregated `ci-status` required check. |
 | `docker-verify` | Linux | Builds the `ci` and `runtime` Docker targets, smoke-tests the runtime image with `--version`, and asserts the Matter sidecar is bundled. |
 
 **e2e-ui modes.** The four Playwright runs mirror the modes encoded in `playwright.config.ts`, selected by environment variable:
@@ -56,7 +56,7 @@ Concurrency is keyed on the PR number (or the ref for branch pushes) with `cance
 | history enabled | `AQUALINK_HISTORY_DB` | recorded series + chart |
 | scheduler enabled | `AQUALINK_SCHEDULES_FILE` | schedule CRUD |
 
-**docker-verify checks.** It builds the `ci` target, then the `runtime` target (tagged `aqualink-automate:verify`), runs `docker run --rm -e MATTER_ENABLED=false aqualink-automate:verify --version`, and confirms the bundled sidecar is present (`node --version` plus a test for `/opt/matter-bridge/dist/index.js`). Both Docker builds are wrapped in a bounded retry so a transient Docker Hub base-image timeout does not fail CI.
+**docker-verify checks.** It builds the `ci` target, then the `runtime` target (tagged `aqualink-automate:verify`), runs `docker run --rm -e MATTER_ENABLED=false aqualink-automate:verify --version`, and confirms the bundled sidecar is present (`node --version` plus a test for `/opt/matter-bridge/dist/index.js`). Both Docker builds are wrapped in a bounded retry so a transient Docker Hub base-image timeout does not fail CI. The `Dockerfile` base (both the build and runtime stages) is `ubuntu:25.04` — note this is a different release from the self-hosted runner image, which Packer provisions on Ubuntu 26.04 LTS (see [Provisioning](#provisioning) below).
 
 ## _build.yml
 
@@ -96,7 +96,7 @@ The `Test` step runs the full test preset with **no `-L` label filter**, so unit
 When `do_package` is `true`, after the test step the job also:
 
 1. Runs `cpack --preset=<package_preset>`.
-2. Smoke-tests the package on a clean target — installs the `.deb` in a fresh `ubuntu:25.04` container (Linux), extracts the ZIP and runs the exe (Windows), or extracts the TGZ and runs the binary (macOS). Each asserts `aqualink-automate --version` succeeds. This catches a missing runtime dependency before the package is published.
+2. Smoke-tests the package on a clean target — installs the `.deb` in a fresh `debian:bookworm` container (Linux; the glibc-2.36 / Raspberry Pi OS baseline), extracts the ZIP and runs the exe (Windows), or extracts the TGZ and runs the binary (macOS). Each asserts `aqualink-automate --version` succeeds. The Linux test deliberately uses `debian:bookworm` rather than the build image: it catches both a missing runtime dependency and a regression to a too-new glibc/libstdc++ baseline (which a newer-distro test would silently pass) before the package is published.
 3. Uploads the packages as an artifact named `packages-<configure_preset>` (for example `packages-config-linux-gcc`), with `retention-days: 30`.
 
 ### Version stamping for dispatch builds
@@ -107,7 +107,7 @@ A `workflow_dispatch` release build is for a tag that does not exist yet (`githu
 git tag "<version_tag>" HEAD   # only when do_package && event == workflow_dispatch
 ```
 
-**Note:** The version is resolved through this local tag, not by passing `-DDERIVED_VERSION_OVERRIDE`. `cmake/GitVersionDerivation.cmake` does honor `DERIVED_VERSION_OVERRIDE` (it is how the Docker image is versioned, since the build context omits `.git`), but no workflow passes it during packaging.
+**Note:** The version is also threaded explicitly into the configure step. `_build.yml` passes `-DDERIVED_VERSION_OVERRIDE=${{ inputs.version_tag || '0.0.0-dev' }}` (so a CI build with no tag stamps `0.0.0-dev`), and `cmake/GitVersionDerivation.cmake` honors `DERIVED_VERSION_OVERRIDE` (it is also how the Docker image is versioned, since the build context omits `.git`). For a `workflow_dispatch` release build the local tag created above lets `git describe` resolve the same `v*` version that is passed through as the override.
 
 ## release.yml
 
@@ -231,7 +231,7 @@ Self-hosted jobs also run extra steps the hosted jobs skip — they clean the wo
 
 Runner VM images are built with Packer under `cicd/packer/`. See [cicd/packer/README.md](https://github.com/iainchesworth/aqualink-automate/blob/main/cicd/packer/README.md) for the full provisioning, deployment, and registration procedure.
 
-**Important:** The Architecture table in `cicd/packer/README.md` currently lists the Linux base OS as Ubuntu 24.04 / GCC 14, but the Packer template provisions **Ubuntu 25.04 with GCC 15** (`cicd/packer/linux-runner.pkr.hcl`, `cicd/packer/scripts/linux/02-gcc-toolchain.sh`). The Windows runner base is Windows Server 2022. Trust the Packer template over the table where they disagree.
+The Linux runner base is **Ubuntu 26.04 LTS** (GCC 15, Clang/LLVM 21), provisioned by `cicd/packer/linux-runner.pkr.hcl` (boots `ISOs/ubuntu-26.04-autoinstall.iso`) and the `cicd/packer/scripts/linux/0{2,3}-*-toolchain.sh` scripts. Both the Architecture table in `cicd/packer/README.md` and the Packer template agree on this base. The Windows runner base is Windows Server 2022. (Note this 26.04 runner image is a different release from the `ubuntu:25.04` Docker base used by `Dockerfile`; see the docker-verify note above.)
 
 ## Caching
 

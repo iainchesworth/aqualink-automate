@@ -195,6 +195,25 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_ValidButton)
 	BOOST_CHECK_EQUAL(msg.ButtonName(), "Pool Light");
 }
 
+BOOST_AUTO_TEST_CASE(TestDeserialize_NulSeparatedLabelAndState)
+{
+	// Real capture (iaq_aux_setpoint.cap): the name payload is two NUL-separated
+	// fields -- the label "Pool Heat" and its current state "OFF" -- followed by a
+	// trailing NUL pad.  The interior NUL must render as a space (not '?') and the
+	// trailing pad must be stripped, giving "Pool Heat OFF" rather than "Pool Heat?OFF?".
+	std::vector<uint8_t> payload = {
+		0x02,       // ButtonIndex
+		0x00,       // ButtonStatus
+		0x00,       // unknown
+		0x01,       // ButtonType
+		'P','o','o','l',' ','H','e','a','t', 0x00, 'O','F','F', 0x00
+	};
+	auto pkt = MakePacket(0x33, 0x24, payload);
+	IAQMessage_PageButton msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.ButtonName(), "Pool Heat OFF");
+}
+
 BOOST_AUTO_TEST_CASE(TestDeserialize_InvalidEnumValues)
 {
 	// Unknown status 0x99 and type 0x99 -> both should map to Unknown
@@ -290,6 +309,20 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_Valid)
 	BOOST_CHECK_EQUAL(msg.Line(), "Equipment Status");
 }
 
+BOOST_AUTO_TEST_CASE(TestDeserialize_TrailingNulPadStripped)
+{
+	// Real capture (iaq_aux_setpoint.cap): "Air Temp" followed by the panel's NUL pad.
+	// The pad must not surface as "Air Temp?".
+	std::vector<uint8_t> payload = {
+		0x05, // LineId
+		'A','i','r',' ','T','e','m','p', 0x00, 0x00
+	};
+	auto pkt = MakePacket(0x33, 0x25, payload);
+	IAQMessage_PageMessage msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.Line(), "Air Temp");
+}
+
 BOOST_AUTO_TEST_CASE(TestDeserialize_TooShort_NoLineId)
 {
 	auto pkt = MakePacket(0x33, 0x25, {});
@@ -337,6 +370,20 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_Valid)
 	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
 
 	BOOST_CHECK_EQUAL(msg.Title(), "System Setup");
+}
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_CentredTitleTrailingNulPad)
+{
+	// A centred title: leading spaces position the word and a trailing NUL pad fills the
+	// cell.  The leading spaces (centring) must survive; the trailing pad must not become
+	// "?".
+	std::vector<uint8_t> payload = {
+		' ',' ',' ','H','o','m','e', 0x00, 0x00, 0x00
+	};
+	auto pkt = MakePacket(0x33, 0x2D, payload);
+	IAQMessage_TitleMessage msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.Title(), "   Home");
 }
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_TooShort)
@@ -395,6 +442,20 @@ BOOST_AUTO_TEST_CASE(TestDeserialize_Valid)
 	BOOST_CHECK_EQUAL(msg.LineId(), static_cast<uint8_t>(2));
 	BOOST_CHECK_EQUAL(msg.Attribute(), static_cast<uint8_t>(1));
 	BOOST_CHECK_EQUAL(msg.Line(), "Table Row");
+}
+
+BOOST_AUTO_TEST_CASE(TestDeserialize_TrailingNulPadStripped)
+{
+	// A table row padded with trailing NUL must decode without "?" junk.
+	std::vector<uint8_t> payload = {
+		0x02, // LineId
+		0x01, // Attribute
+		'R','o','w', 0x00, 0x00
+	};
+	auto pkt = MakePacket(0x33, 0x26, payload);
+	IAQMessage_TableMessage msg;
+	BOOST_REQUIRE(msg.DeserializeContents(std::span<const uint8_t>(pkt)));
+	BOOST_CHECK_EQUAL(msg.Line(), "Row");
 }
 
 BOOST_AUTO_TEST_CASE(TestDeserialize_TooShort_NoLineId)

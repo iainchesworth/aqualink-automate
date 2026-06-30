@@ -36,7 +36,7 @@ The release workflow validates every tag against `v<M>.<M>.<P>[-(alpha|beta|rc).
 
 ### Docker Hub credentials (optional but recommended)
 
-The `runtime`/`ci` Docker images build `FROM ubuntu:25.04` and `FROM node:22-bookworm-slim`, which are pulled from Docker Hub. Anonymous pulls share the runner's egress IP and are subject to Docker Hub's anonymous per-IP rate limit — a recurring CI reliability risk, especially on **self-hosted runners** (one shared IP across many jobs) and during Docker Hub CDN hiccups.
+The `runtime`/`ci` Docker images build `FROM ubuntu:26.04` and `FROM node:24-bookworm-slim`, which are pulled from Docker Hub. Anonymous pulls share the runner's egress IP and are subject to Docker Hub's anonymous per-IP rate limit — a recurring CI reliability risk, especially on **self-hosted runners** (one shared IP across many jobs) and during Docker Hub CDN hiccups.
 
 Configure these **optional** repository secrets to authenticate base-image pulls and get a higher rate limit:
 
@@ -232,7 +232,7 @@ The `resolve-version` job rejects any non-dry-run release whose commit is not an
 
 ### Docker build fails pulling a base image (rate limit or CDN timeout)
 
-Symptoms: `docker-publish` (release) or `docker-verify` (CI) fails while pulling `ubuntu:25.04` or `node:22-bookworm-slim`, with errors like `toomanyrequests: ... rate limit` or `dial tcp ...(production.cloudfront.docker.com): i/o timeout`.
+Symptoms: `docker-publish` (release) or `docker-verify` (CI) fails while pulling `ubuntu:26.04` or `node:24-bookworm-slim`, with errors like `toomanyrequests: ... rate limit` or `dial tcp ...(production.cloudfront.docker.com): i/o timeout`.
 
 - The build steps already retry up to 3 times, so a one-off CDN timeout should self-heal — check whether the run eventually succeeded on a later attempt.
 - If you see rate-limit (`toomanyrequests`) errors, configure the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` secrets (see [Docker Hub credentials](#docker-hub-credentials-optional-but-recommended)) so pulls are authenticated.

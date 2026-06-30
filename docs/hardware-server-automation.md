@@ -50,7 +50,7 @@ Download links and per-platform install steps are in [INSTALL.md](INSTALL.md#pre
 - **Linux is the primary hosting target.** It runs as a lightweight background service, supports the Docker image, and is the only platform where the Matter bridge can be commissioned. Choose Linux for any headless, always-on deployment.
 - **Windows and macOS are for desktop use.** The native binaries are real and supported, which makes a desktop a fine place to run or evaluate the application. They are not ideal as a 24/7 unattended host, and they cannot commission Matter over Docker (the host-networking requirement is Linux-only).
 
-**Footprint:** the runtime is a single native binary plus its bundled web assets and shared libraries. The Docker runtime image is based on `ubuntu:25.04` and runs the application as a non-root user (uid/gid `10000`, named `aqualink`). It bundles the Matter bridge sidecar and exposes HTTP on port `80`. A Raspberry Pi or any always-on Linux host can run it.
+**Footprint:** the runtime is a single native binary plus its bundled web assets and shared libraries. The Docker runtime image is based on `ubuntu:26.04` and runs the application as a non-root user (uid/gid `10000`, named `aqualink`). It bundles the Matter bridge sidecar and exposes HTTP on port `80`. A Raspberry Pi or any always-on Linux host can run it.
 
 ## Deployment paths
 

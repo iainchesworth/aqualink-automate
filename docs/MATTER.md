@@ -14,7 +14,7 @@ a separate Node.js process that consumes the existing HTTP/WebSocket equipment A
 presents the equipment as a Matter *Aggregator*. It does **not** link into the C++
 build — keeping the C++/MSVC build untouched and the image small. The sidecar depends
 on [`@matter/main`](https://www.npmjs.com/package/@matter/main) `^0.12.0` and `ws`, and
-requires **Node.js ≥ 20** (the published Docker image ships Node 22, which satisfies
+requires **Node.js ≥ 20** (the published Docker image ships Node 24, which satisfies
 that floor).
 
 ```
@@ -35,8 +35,8 @@ whichever controller is running advertises what it can do (`DeviceActuator`,
 highest-priority one present. Three controllers can actuate equipment and heater
 setpoints, in precedence order:
 
-1. **Serial Adapter (RSSA, `0x48`)** — *High*. A direct, stateless command channel.
-2. **AqualinkTouch / iAqualink2 (`0x33`)** — *Medium*. Presses the on-screen
+1. **Serial Adapter (RSSA, `0x48`/`0x49`)** — *High*. A direct, stateless command channel.
+2. **AqualinkTouch / iAqualink2 (`0x30–33`)** — *Medium*. Presses the on-screen
    `PageButton` matching the device by name (`0x11 + index`) for toggles, and uses the
    value-submit protocol (select field → `0x80` → control-data value) for setpoints +
    the chlorinator. These commands take effect immediately.
@@ -130,7 +130,7 @@ current state.
 | Sidecar typecheck + build (matter.js bridge)                            | ✅ `tsc` clean |
 | Sidecar boots → emits a valid commissioning QR + manual code            | ✅ verified |
 | `/api/diagnostics/matter` (enabled / opt-out / unreachable-sidecar)     | ✅ verified live on a replay fixture |
-| Docker `matter-builder` stage builds + prod-pruned sidecar boots        | ✅ verified (node:22-bookworm-slim) |
+| Docker `matter-builder` stage builds + prod-pruned sidecar boots        | ✅ verified (node:24-bookworm-slim) |
 | Docker runtime stage (NodeSource + tini on ubuntu) + entrypoint         | ✅ verified: both processes supervised, opt-out, SIGTERM, `--version` |
 | Full `docker compose up` of the runtime image                           | ⚙️ runs in CI (`docker-verify`) — the in-container C++ build needs a populated `deps/vcpkg`, which the local reuse-vcpkg worktree intentionally omits |
 | Physical pairing from Apple Home + a second ecosystem                   | 🔌 manual — requires hardware on the LAN (steps above) |

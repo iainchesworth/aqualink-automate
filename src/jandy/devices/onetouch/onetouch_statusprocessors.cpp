@@ -89,8 +89,7 @@ namespace AqualinkAutomate::Devices
 				{
 					pump_lbl = label_opt.value();
 				}
-				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string, pump_lbl);
-				m_DataHub->ConfigUpdateSignal(update_event);
+				m_DataHub->EmitButtonStateChange(pump->Id(), status_string, pump_lbl);
 			}
 		}
 	}
@@ -149,8 +148,7 @@ namespace AqualinkAutomate::Devices
 			{
 				heater_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(heater->Id(), status_string, heater_lbl);
 		}
 	}
 
@@ -208,8 +206,7 @@ namespace AqualinkAutomate::Devices
 			{
 				heater_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(heater->Id(), status_string, heater_lbl);
 		}
 	}
 
@@ -267,8 +264,7 @@ namespace AqualinkAutomate::Devices
 			{
 				heater_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(heater->Id(), status_string, heater_lbl);
 		}
 	}
 
@@ -326,8 +322,7 @@ namespace AqualinkAutomate::Devices
 			{
 				heater_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(heater->Id(), status_string, heater_lbl);
 		}
 	}
 
@@ -385,8 +380,7 @@ namespace AqualinkAutomate::Devices
 			{
 				chiller_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chiller->Id(), status_string, chiller_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(chiller->Id(), status_string, chiller_lbl);
 		}
 	}
 
@@ -537,8 +531,7 @@ namespace AqualinkAutomate::Devices
 			{
 				chlorinator_lbl = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(chlorinator->Id(), status_string, chlorinator_lbl);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(chlorinator->Id(), status_string, chlorinator_lbl);
 		}
 	}
 

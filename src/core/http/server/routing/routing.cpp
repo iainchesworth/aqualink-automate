@@ -411,13 +411,18 @@ namespace AqualinkAutomate::HTTP::Routing
 			std::string_view* matches_end = m.matches() + m.size();
 			std::string_view* ids_end = m.ids() + m.size();
 
-			if (auto path = boost::urls::parse_path(req.target()); path.has_error())
+			// Parse the request target as an origin-form URL (path [ "?" query ]) rather
+			// than as a bare path. parse_path requires the WHOLE input to be a valid path,
+			// so any request carrying a query string (e.g. /api/history/series?key=...)
+			// would fail to parse and be rejected 400 before ever reaching its handler.
+			// Routing only matches on the path, so the query is parsed and then ignored.
+			if (auto target_url = boost::urls::parse_origin_form(req.target()); target_url.has_error())
 			{
 				Factory::ProfilerFactory::Instance().Get()->Message("HTTP 400 Bad Request");
-				LogDebug(Channel::Web, [&] { return std::format("Supplied http path could not be parsed; error was -> {}", path.error().message()); });
+				LogDebug(Channel::Web, [&] { return std::format("Supplied http target could not be parsed; error was -> {}", target_url.error().message()); });
 				return HTTP::Responses::Response_400(req);
 			}
-			else if (auto p = http_routes.find_impl(*path, matches_it, ids_it, matches_end, ids_end); nullptr != p)
+			else if (auto p = http_routes.find_impl(target_url->encoded_segments(), matches_it, ids_it, matches_end, ids_end); nullptr != p)
 			{
 				// Registered route -> enforce security before dispatch, unless the
 				// route opts out (e.g. the unauthenticated /api/health liveness probe,
@@ -488,11 +493,13 @@ namespace AqualinkAutomate::HTTP::Routing
 			std::string_view* matches_end = m.matches() + m.size();
 			std::string_view* ids_end = m.ids() + m.size();
 
-			if (auto path = boost::urls::parse_path(target); path.has_error())
+			// Parse as origin-form (path [ "?" query ]) so a WebSocket upgrade target that
+			// carries a query string still routes on its path (see HTTP_OnRequest above).
+			if (auto target_url = boost::urls::parse_origin_form(target); target_url.has_error())
 			{
-				LogDebug(Channel::Web, [&] { return std::format("Supplied websocket path could not be parsed; error was -> {}", path.error().message()); });
+				LogDebug(Channel::Web, [&] { return std::format("Supplied websocket target could not be parsed; error was -> {}", target_url.error().message()); });
 			}
-			else if (auto p = ws_routes.find_impl(*path, matches_it, ids_it, matches_end, ids_end); nullptr == p)
+			else if (auto p = ws_routes.find_impl(target_url->encoded_segments(), matches_it, ids_it, matches_end, ids_end); nullptr == p)
 			{
 				LogDebug(Channel::Web, [&] { return std::format("Path '{}' was requested but no WS handler was available", target); });
 			}

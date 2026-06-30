@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CMAKE_VERSION="3.31.6"
+CMAKE_VERSION="3.31.12"
 
 echo "==> Installing CMake ${CMAKE_VERSION} and Ninja"
 

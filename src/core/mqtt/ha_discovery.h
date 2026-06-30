@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -43,6 +45,12 @@ namespace AqualinkAutomate::Mqtt
 
 		/// Publish current state for each dynamic device to per-device topics.
 		void PublishDeviceStates();
+
+		/// Seed the published-component set from an EXISTING retained discovery config (read back
+		/// from the broker at startup). Any component it lists that the next PublishDiscoveryConfigs
+		/// no longer emits is then tombstoned, so entity ghosts left by a prior run are removed from
+		/// Home Assistant. Safe to call before the first publish; ignores malformed payloads.
+		void AdoptRetainedComponents(const std::string& retained_config_payload);
 
 		//---------------------------------------------------------------------
 		// HELPERS (public for testability)
@@ -123,6 +131,16 @@ namespace AqualinkAutomate::Mqtt
 		std::shared_ptr<MqttClient> m_Client;
 		Options::Mqtt::MqttSettings m_Settings;
 		std::weak_ptr<Kernel::DataHub> m_DataHub;
+
+		// Discovery component keys published last cycle (key -> platform "p"). A component that
+		// disappears - a removed/relabelled device, or a config-gated entity (e.g. the Spa sensor
+		// on a pool-only system) - is tombstoned in the next bundled config (an empty component
+		// {"p": platform}) so Home Assistant drops the entity. See PublishDiscoveryConfigs().
+		std::unordered_map<std::string, std::string> m_PublishedComponentKeys;
+
+		// HA per-device state topics published last cycle; cleared with an empty retained payload
+		// when a device drops out so its state topic does not linger. See PublishDeviceStates().
+		std::unordered_set<std::string> m_PublishedStateTopics;
 	};
 
 }

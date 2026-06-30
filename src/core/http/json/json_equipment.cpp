@@ -120,20 +120,22 @@ namespace AqualinkAutomate::HTTP::JSON
 
 		je_stats["message_counts"] = message_counts;
 
+		// Utilisation() is a fractional percentage (bytes/sec over capacity); emit at 2 dp so the
+		// JSON matches the {:.2f} log line below instead of leaking e.g. 33.33333333333333.
 		nlohmann::json bandwidth_util_read;
 		bandwidth_util_read["total_bytes"] = statistics_hub->BandwidthMetrics.Read.TotalBytes;
-		bandwidth_util_read["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation();
-		bandwidth_util_read["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation();
-		bandwidth_util_read["average_utilisation_5min"] = statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation();
+		bandwidth_util_read["average_utilisation_1sec"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation(), 2);
+		bandwidth_util_read["average_utilisation_30sec"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_ThirtySecond.Utilisation(), 2);
+		bandwidth_util_read["average_utilisation_5min"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Read.Average_FiveMinute.Utilisation(), 2);
 		je_stats["bandwidth_read"] = bandwidth_util_read;
 
 		LogTrace(Channel::Web, std::format("Read bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Read.TotalBytes, statistics_hub->BandwidthMetrics.Read.Average_OneSecond.Utilisation()));
 
 		nlohmann::json bandwidth_util_write;
 		bandwidth_util_write["total_bytes"] = statistics_hub->BandwidthMetrics.Write.TotalBytes;
-		bandwidth_util_write["average_utilisation_1sec"] = statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation();
-		bandwidth_util_write["average_utilisation_30sec"] = statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation();
-		bandwidth_util_write["average_utilisation_5min"] = statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation();
+		bandwidth_util_write["average_utilisation_1sec"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation(), 2);
+		bandwidth_util_write["average_utilisation_30sec"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_ThirtySecond.Utilisation(), 2);
+		bandwidth_util_write["average_utilisation_5min"] = Utility::RoundToDecimalPlaces(statistics_hub->BandwidthMetrics.Write.Average_FiveMinute.Utilisation(), 2);
 		je_stats["bandwidth_write"] = bandwidth_util_write;
 
 		LogTrace(Channel::Web, std::format("Write bandwidth: {} total bytes, {:.2f}% utilisation (1 sec avg)", statistics_hub->BandwidthMetrics.Write.TotalBytes, statistics_hub->BandwidthMetrics.Write.Average_OneSecond.Utilisation()));

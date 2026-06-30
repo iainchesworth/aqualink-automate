@@ -58,6 +58,22 @@ BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_ChemistryEventCo
 		BOOST_CHECK(wse2_json["payload"]["ph"].is_number_float());
 		BOOST_CHECK_EQUAL(7.5f, wse2_json["payload"]["ph"]);
 	}
+
+	{
+		// Regression: pH is stored as a float32 rounded to 0.1. 7.1 is NOT exactly representable,
+		// so promoting it raw to double leaks 7.099999904632568 into the serialized payload. The
+		// ToJSON path must re-round at the JSON boundary so the dumped value reads cleanly as 7.1.
+		auto config_event_chem = std::make_shared<Kernel::DataHub_ConfigEvent_Chemistry>();
+		BOOST_REQUIRE(nullptr != config_event_chem);
+		config_event_chem->pH(7.1f);
+		HTTP::WebSocket_Event wse3(config_event_chem);
+
+		auto wse3_json = nlohmann::json::parse(wse3.Payload());
+		BOOST_REQUIRE(wse3_json["payload"].contains("ph"));
+		// Assert on the serialized text: the bug surfaces only in the dumped string form.
+		BOOST_CHECK_EQUAL(wse3_json["payload"]["ph"].dump(), "7.1");
+		BOOST_CHECK_EQUAL(7.1, wse3_json["payload"]["ph"].get<double>());
+	}
 }
 
 BOOST_AUTO_TEST_CASE(Test_WebsocketRoutes_WsEquipment_WebSocket_TemperatureEventConversion)

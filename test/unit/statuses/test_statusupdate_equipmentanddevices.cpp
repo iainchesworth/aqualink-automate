@@ -60,6 +60,35 @@ BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_IStatusPublisher)
     BOOST_CHECK_EQUAL(status_publisher.Status().lock()->StatusType(), "Normal");
 }
 
+BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_EmitsOncePerDistinctStatusType)
+{
+    // Regression: devices re-publish their status on every poll. IStatusPublisher must only fan
+    // out the StatusSignal when the status type actually changes, not on every repeated publish.
+    Interfaces::IStatusPublisher status_publisher(Devices::DeviceStatus_Initializing{});
+
+    int emit_count = 0;
+    auto connection = status_publisher.StatusSignal.connect(
+        [&emit_count](const Interfaces::IStatusPublisher::StatusType&)
+        {
+            ++emit_count;
+        });
+
+    // Re-publishing the same status type (the every-poll case) must be silent.
+    status_publisher.Status(Devices::DeviceStatus_Initializing{});
+    status_publisher.Status(Devices::DeviceStatus_Initializing{});
+    BOOST_CHECK_EQUAL(emit_count, 0);
+
+    // A genuine change fires exactly once; repeating it is silent again.
+    status_publisher.Status(Devices::DeviceStatus_Normal{});
+    status_publisher.Status(Devices::DeviceStatus_Normal{});
+    BOOST_CHECK_EQUAL(emit_count, 1);
+
+    // A third distinct status type fires again, and the latest status is retained.
+    status_publisher.Status(Devices::DeviceStatus_Unknown{});
+    BOOST_CHECK_EQUAL(emit_count, 2);
+    BOOST_CHECK_EQUAL(status_publisher.Status().lock()->StatusType(), "Unknown");
+}
+
 BOOST_AUTO_TEST_CASE(Test_EquipmentAndDevices_StatusUpdates_DeviceStatus)
 {
     Devices::DeviceStatus_Initializing device_status;
