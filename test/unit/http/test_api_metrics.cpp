@@ -148,6 +148,22 @@ BOOST_AUTO_TEST_CASE(Metrics_Exposition_CounterPassthrough)
 	BOOST_CHECK(body.find("aqualink_messages_total 10\n") != std::string::npos);
 }
 
+// Regression: a request target carrying a query string must still route to its
+// handler. The router previously parsed the whole target with parse_path, which
+// rejects the '?' that begins a query, so EVERY GET with query parameters (e.g.
+// /api/history/series?key=...&from=...&to=...) was answered 400 Bad Request
+// before reaching its route. Routing matches on the path only; the query is
+// ignored here but must not break path matching.
+BOOST_AUTO_TEST_CASE(Routing_TargetWithQueryString_RoutesToHandler)
+{
+	HTTP::Routing::Clear();
+	HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Metrics>(*this));
+
+	auto resp = RunGet(std::string{ HTTP::METRICS_ROUTE_URL } + "?from=1&to=2&max_points=500");
+	BOOST_CHECK_EQUAL(boost::beast::http::status::ok, resp.result());
+	BOOST_CHECK(resp.body().find("aqualink_build_info") != std::string::npos);
+}
+
 // With a bearer token configured, /metrics is rejected without credentials and
 // served with the correct token (same SecurityConfig enforcement as /api).
 BOOST_AUTO_TEST_CASE(Metrics_BearerAuth_RejectsMissingTokenServesWithToken)

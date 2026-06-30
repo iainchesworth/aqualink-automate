@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [Unreleased]
+
+### Fixed
+
+- **The Trends view now loads its history graphs.** Every API request that carried a query string — most visibly `GET /api/history/series?key=…&from=…&to=…`, which every Trends chart issues — was answered `400 Bad Request` before reaching its handler: the router parsed the whole request target (path **and** query) as a URL path, and the `?` that begins a query is not a valid path character, so the parse failed. The router now parses the target as an origin-form URL and matches on the path only, so query parameters route correctly.
+- **The Schedules page no longer breaks when two devices share a label.** The "Device" target dropdown keyed its options on the device label; two equipment items with the same label produced a duplicate key, which crashed Alpine's list reconciliation and took the whole schedules form down. The dropdown — which targets a device by label — now de-duplicates labels.
+
 ## [0.9.0-beta.3] - 2026-06-30
 
 A bug-fix and hardening release on top of 0.9.0-beta.2. Five user-facing fixes — duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.
