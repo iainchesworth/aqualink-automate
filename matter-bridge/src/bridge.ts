@@ -25,6 +25,7 @@ import {
   MatterKind,
 } from "./device-map.js";
 import { AqualinkIdentifyServer, AqualinkThermostatServer } from "./matter-servers.js";
+import { matterUniqueId, matterSerialNumber } from "./matter-ids.js";
 
 /** Celsius -> Matter centi-degrees (1/100 °C), the wire unit for measured/setpoint. */
 const toCenti = (c: number): number => Math.round(c * 100);
@@ -113,9 +114,11 @@ export class MatterBridge {
         vendorId: VendorId(this.config.vendorId),
         productName: this.config.productName,
         productId: this.config.productId,
-        // serialNumber must differ from uniqueId per the Matter spec.
-        serialNumber: `${this.config.uniqueId}-sn`,
-        uniqueId: this.config.uniqueId,
+        // BasicInformation caps both at 32 chars and requires them to differ (Core
+        // §11.1.6); config.uniqueId is a 52-char `aqualink-bridge-<uuid>`, so derive
+        // short, distinct values or the behavior fails its constraint check at init.
+        serialNumber: matterSerialNumber(this.config.uniqueId),
+        uniqueId: matterUniqueId(this.config.uniqueId),
         hardwareVersion: 1,
         hardwareVersionString: "1.0",
         softwareVersion: 1,
