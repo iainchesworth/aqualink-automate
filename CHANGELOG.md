@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.9.0-beta.3] - 2026-06-30
+
+A bug-fix and hardening release on top of 0.9.0-beta.2. Three user-facing fixes — panel display-line rendering, reduced MQTT/WebSocket churn, and cleaner numeric API output — plus build-toolchain and test-coverage hardening with no other application behaviour change.
+
+### Fixed
+
+- **OneTouch and iAQ panel screens now render as the panel intends.** The LCD rows are NUL-padded fixed-width cells; the decoder previously ran that padding through a generic sanitiser, surfacing it as literal `?` (`More OneTouch??`, `Pool Heat?OFF?`, `Home???`), and the web UI collapsed the panel's leading-space centring. The padding is now stripped, interior NUL column-separators render as spaces, and centred/right-aligned rows keep their spacing. This applies to both the OneTouch (`JandyMessage_Message`/`_MessageLong`) and iAQ (PageMessage/PageButton/TitleMessage/TableMessage) display paths.
+- **Home Assistant and WebSocket consumers no longer churn on unchanged values.** Temperature/chemistry setters, per-button state, and the base device-status publisher re-fired on every (~1/sec) poll even when nothing had changed, flooding MQTT/WebSocket subscribers with identical payloads. Emits are now guarded to fan out only on a real change (values still re-stamp their timestamp for liveness).
+- **Numeric API/WebSocket output is rounded to a sensible precision.** Unit conversions and float32→double promotion leaked floating-point noise into the JSON (e.g. pH `7.0999999`); temperature, pH, and bandwidth-utilisation values now snap to their real resolution.
+
+### Changed
+
+- **Build toolchain refreshed.** The dev/CI/runtime Docker images are rebased on Ubuntu 26.04 LTS, and the pinned CMake is bumped to 3.31.12 and Node.js to 24.
+- **Expanded automated test coverage** across the state hubs, navigator, MQTT client/integration, the OneTouch device, and the history/equipment-cache services, and the documentation tree was reconciled against the codebase.
+
 ## [0.9.0-beta.2] - 2026-06-30
 
 A bug-fix release on top of 0.9.0-beta.1. One user-facing Home Assistant fix; the remainder is build, CI, and test-coverage hardening with no application behaviour change.
