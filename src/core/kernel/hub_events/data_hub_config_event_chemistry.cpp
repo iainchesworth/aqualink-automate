@@ -6,6 +6,7 @@
 #include "formatters/orp_formatter.h"
 #include "formatters/ph_formatter.h"
 #include "kernel/hub_events/data_hub_config_event_chemistry.h"
+#include "utility/json_serialization_helpers.h"
 
 namespace AqualinkAutomate::Kernel
 {
@@ -62,7 +63,9 @@ namespace AqualinkAutomate::Kernel
 		if (m_pH.has_value())
 		{
 			auto ph = m_pH.value();
-			j["ph"] = static_cast<double>(ph());
+			// Re-round the float32 pH at the JSON boundary; a raw promotion to double reintroduces
+			// noise (7.1 -> 7.099999904632568) that nlohmann would emit verbatim.
+			j["ph"] = Utility::RoundToDecimalPlaces(static_cast<double>(ph()), 1);
 		}
 
 		if (m_SaltLevel.has_value())

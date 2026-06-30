@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <optional>
 
 #include <nlohmann/json.hpp>
@@ -34,12 +35,43 @@ namespace AqualinkAutomate::Utility
 		};
 	}
 
+	/// Round a double to `places` decimal places for JSON / display output.
+	///
+	/// nlohmann serializes a number_float as the shortest string that round-trips to that exact
+	/// double, so any value carrying sub-ULP noise from a unit conversion, a float->double
+	/// promotion, or fractional arithmetic leaks verbatim into the payload (e.g. a pH float32 of
+	/// 7.1 promotes to 7.099999904632568). Snapping to the quantity's real resolution before
+	/// emission collapses that noise. `factor` is built by repeated *10 so it is an exact power
+	/// of ten (1, 10, 100, ...), never the fuzz std::pow could introduce.
+	inline double RoundToDecimalPlaces(double value, int places) noexcept
+	{
+		double factor = 1.0;
+		for (int i = 0; i < places; ++i)
+		{
+			factor *= 10.0;
+		}
+		return std::round(value * factor) / factor;
+	}
+
+	/// Round a temperature reading to one decimal place for JSON / display output.
+	///
+	/// Temperatures are stored internally in Kelvin (boost::units) and reconstructed on every
+	/// read, so a whole-degree wire reading no longer round-trips exactly: 38.0C surfaces as
+	/// 100.39999999999992F and an echoed 72F reads back as 72.00000000000006F. The controller
+	/// only ever reports whole degrees (deci-Celsius at most), so 0.1 is the real resolution;
+	/// rounding to the nearest tenth collapses the noise and makes the output match the documented
+	/// swagger examples (e.g. spa_setpoint fahrenheit: 100.4, not 100.399...).
+	inline double RoundTemperatureForDisplay(double value) noexcept
+	{
+		return RoundToDecimalPlaces(value, 1);
+	}
+
 	/// Serialize a Temperature to JSON with celsius and fahrenheit fields.
 	inline nlohmann::json SerializeTemperature(const Kernel::Temperature& temp)
 	{
 		return {
-			{"celsius", temp.InCelsius().value()},
-			{"fahrenheit", temp.InFahrenheit().value()}
+			{"celsius", RoundTemperatureForDisplay(temp.InCelsius().value())},
+			{"fahrenheit", RoundTemperatureForDisplay(temp.InFahrenheit().value())}
 		};
 	}
 
