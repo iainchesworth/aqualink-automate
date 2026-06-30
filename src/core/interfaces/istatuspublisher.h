@@ -3,6 +3,7 @@
 #include <concepts>
 #include <memory>
 #include <type_traits>
+#include <typeinfo>
 
 #include <boost/signals2.hpp>
 
@@ -40,8 +41,18 @@ namespace AqualinkAutomate::Interfaces
 			requires std::derived_from<DEVICE_STATUS, Interfaces::IStatus>
 		void Status(const DEVICE_STATUS& status)
 		{
-			m_Status = std::make_shared<DEVICE_STATUS>(status);			
-			StatusSignal(StatusType(m_Status));
+			// Devices re-publish their status on every poll; only fan out the signal when the
+			// status actually changes. Statuses are compile-time tag types (see StatusTag), so
+			// identity is by concrete type - re-publishing the same status type is a genuine no-op
+			// for consumers (WebSocket / MQTT / EquipmentHub).
+			const bool changed = (nullptr == m_Status) || (typeid(*m_Status) != typeid(DEVICE_STATUS));
+
+			m_Status = std::make_shared<DEVICE_STATUS>(status);
+
+			if (changed)
+			{
+				StatusSignal(StatusType(m_Status));
+			}
 		}
 
 	private:
