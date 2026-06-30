@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -43,6 +44,7 @@ namespace AqualinkAutomate::Kernel
 	class DataHub_ConfigEvent_Temperature;
 	class DataHub_ConfigEvent_Chemistry;
 	class DataHub_ConfigEvent_Circulation;
+	class DataHub_ConfigEvent_ButtonStateChange;
 
 	enum class EquipmentMode
 	{
@@ -68,6 +70,12 @@ namespace AqualinkAutomate::Kernel
 
 	public:
 		mutable boost::signals2::signal<void(std::shared_ptr<Kernel::DataHub_ConfigEvent>)> ConfigUpdateSignal;
+
+	public:
+		// Emits a button-state-change event, de-duplicated per button. Status processors re-scrape
+		// and re-publish on every poll; this only fans out when the (status, label) for a button
+		// actually differs from the last published value, avoiding redundant WebSocket/MQTT churn.
+		void EmitButtonStateChange(const boost::uuids::uuid& button_id, std::string_view status, std::string_view label);
 
 	//---------------------------------------------------------------------
 	// EQUIPMENT CONFIGURATION
@@ -303,6 +311,10 @@ namespace AqualinkAutomate::Kernel
 		void EmitTemperatureEvent(const std::function<void(DataHub_ConfigEvent_Temperature&)>& populate) const;
 		void EmitChemistryEvent(const std::function<void(DataHub_ConfigEvent_Chemistry&)>& populate) const;
 		void EmitCirculationEvent(const std::function<void(DataHub_ConfigEvent_Circulation&)>& populate) const;
+
+	private:
+		// Last published (status, label) per button id, used to de-duplicate button-state changes.
+		std::map<boost::uuids::uuid, std::pair<std::string, std::string>> m_LastButtonState;
 
 	};
 
