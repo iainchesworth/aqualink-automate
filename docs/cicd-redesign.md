@@ -236,11 +236,11 @@ claims do not.
 1. **[CRITICAL] Assembly-only Docker rests on an undocumented glibc/ABI coupling and silently breaks
    on the GitHub-hosted fallback.** The install tree bundles only the vcpkg `.so`s into
    `lib/aqualink-automate/` (`CPackConfig.cmake:99`) — **not** `libstdc++`/`libc`, resolved from the
-   runtime base image. This works *today* only because the self-hosted Linux runner is Ubuntu 25.04 /
-   GCC 15 — identical to the `ubuntu:25.04` runtime base. The instant `_build.yml` runs on
+   runtime base image. This works *today* only because the self-hosted Linux runner is Ubuntu 26.04 /
+   GCC 15 — identical to the `ubuntu:26.04` runtime base. The instant `_build.yml` runs on
    `ubuntu-latest` (24.04: glibc 2.39, GCC 13 — the documented fallback), the artifact's
    `libstdc++`/`GLIBCXX`/`CXXABI` skew surfaces only at *container runtime, after publish*. **Fix:**
-   build the Linux artifact *inside* an `ubuntu:25.04` `container:` (pin the ABI baseline regardless of
+   build the Linux artifact *inside* an `ubuntu:26.04` `container:` (pin the ABI baseline regardless of
    host), or forbid the GitHub-hosted Linux fallback for the Docker-feeding artifact and assert
    runner-OS == runtime-base.
 2. **[CRITICAL] The matter sidecar is not in the install tree** — `docker build --target runtime` still

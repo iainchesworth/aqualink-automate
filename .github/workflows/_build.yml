@@ -248,7 +248,7 @@ jobs:
 
       # Persist the glibc-2.36 container's vcpkg binary cache. On self-hosted runners
       # $HOME/.cache survives across runs already; this restores it for the
-      # GitHub-hosted arm64 runner. Keyed separately from the host (Ubuntu-25.04)
+      # GitHub-hosted arm64 runner. Keyed separately from the host (Ubuntu-26.04)
       # cache so the two glibc baselines never share archives.
       - name: Cache vcpkg (glibc-2.36 container)
         if: ${{ inputs.do_package && runner.os == 'Linux' && !contains(matrix.runner, 'self-hosted') }}
