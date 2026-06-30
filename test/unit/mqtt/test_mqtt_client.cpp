@@ -300,3 +300,274 @@ BOOST_AUTO_TEST_CASE(Test_Publish_QueueOverflow_DropsOldest)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient last-will (LWT) tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Will)
+
+BOOST_AUTO_TEST_CASE(Test_GetWill_DefaultsToEmpty)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK(!client.GetWill().has_value());
+}
+
+BOOST_AUTO_TEST_CASE(Test_SetWill_StoresConfiguration)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.SetWill("status/availability", "offline", true);
+
+	const auto& will = client.GetWill();
+	BOOST_REQUIRE(will.has_value());
+	BOOST_CHECK_EQUAL(will->topic, "status/availability");
+	BOOST_CHECK_EQUAL(will->payload, "offline");
+	BOOST_CHECK_EQUAL(will->retain, true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SetWill_RetainDefaultsTrue)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.SetWill("status/availability", "offline");
+
+	const auto& will = client.GetWill();
+	BOOST_REQUIRE(will.has_value());
+	BOOST_CHECK_EQUAL(will->retain, true);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SetWill_RetainCanBeDisabled)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	client.SetWill("status/availability", "offline", false);
+
+	const auto& will = client.GetWill();
+	BOOST_REQUIRE(will.has_value());
+	BOOST_CHECK_EQUAL(will->retain, false);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient client-id generation tests
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_GenerateClientId)
+
+BOOST_AUTO_TEST_CASE(Test_GenerateClientId_FormatContract)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto id = Test::MqttClientPacketTest::CallGenerateClientId(client);
+
+	// "aqualink-" (9 chars) + 8 random hex chars.
+	BOOST_REQUIRE_EQUAL(id.size(), 17u);
+	BOOST_CHECK(id.starts_with("aqualink-"));
+
+	const auto suffix = id.substr(9);
+	BOOST_CHECK_EQUAL(suffix.size(), 8u);
+	for (char c : suffix)
+	{
+		BOOST_CHECK_MESSAGE(std::string("0123456789abcdef").find(c) != std::string::npos,
+			std::string("client-id suffix must be lowercase hex, saw: ") + c);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_GenerateClientId_ProducesDistinctValues)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	auto id1 = Test::MqttClientPacketTest::CallGenerateClientId(client);
+	auto id2 = Test::MqttClientPacketTest::CallGenerateClientId(client);
+
+	BOOST_CHECK_NE(id1, id2);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient reconnect-backoff tests (exponential growth, cap, saturation,
+// jitter bounds). delay_pre_jitter = base * 2^min(attempts, 10), capped at max;
+// jitter is added uniformly from [0, delay_pre_jitter / 4].
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_ReconnectDelay)
+
+namespace
+{
+	Options::Mqtt::MqttSettings MakeBackoffSettings(std::chrono::seconds initial, std::chrono::seconds max)
+	{
+		auto settings = Test::MakeMqttSettings();
+		settings.reconnect_delay_initial = initial;
+		settings.reconnect_delay_max = max;
+		return settings;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReconnectDelay_FirstAttemptIsBaseDelay)
+{
+	boost::asio::io_context ioc;
+	// base = 4s, attempts = 0 -> pre-jitter = 4, jitter in [0, 1].
+	Mqtt::MqttClient client(ioc, MakeBackoffSettings(std::chrono::seconds(4), std::chrono::seconds(3600)));
+	Test::MqttClientPacketTest::SetReconnectAttempts(client, 0);
+
+	auto delay = Test::MqttClientPacketTest::CallCalculateReconnectDelay(client).count();
+	BOOST_CHECK_GE(delay, 4);
+	BOOST_CHECK_LE(delay, 5);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReconnectDelay_GrowsExponentially)
+{
+	boost::asio::io_context ioc;
+	// base = 4s: attempt n -> pre-jitter = 4 * 2^n, jitter in [0, (4*2^n)/4].
+	Mqtt::MqttClient client(ioc, MakeBackoffSettings(std::chrono::seconds(4), std::chrono::seconds(100000)));
+
+	for (std::uint16_t n = 0; n <= 4; ++n)
+	{
+		Test::MqttClientPacketTest::SetReconnectAttempts(client, n);
+		const std::int64_t pre_jitter = static_cast<std::int64_t>(4) << n;
+		auto delay = Test::MqttClientPacketTest::CallCalculateReconnectDelay(client).count();
+		BOOST_CHECK_GE(delay, pre_jitter);
+		BOOST_CHECK_LE(delay, pre_jitter + pre_jitter / 4);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReconnectDelay_CappedAtMaxDelay)
+{
+	boost::asio::io_context ioc;
+	// base = 10s, max = 20s. attempt 5 -> pre-jitter = 10 * 32 = 320, capped to 20,
+	// jitter in [0, 5] -> result in [20, 25].
+	Mqtt::MqttClient client(ioc, MakeBackoffSettings(std::chrono::seconds(10), std::chrono::seconds(20)));
+	Test::MqttClientPacketTest::SetReconnectAttempts(client, 5);
+
+	auto delay = Test::MqttClientPacketTest::CallCalculateReconnectDelay(client).count();
+	BOOST_CHECK_GE(delay, 20);
+	BOOST_CHECK_LE(delay, 25);
+}
+
+BOOST_AUTO_TEST_CASE(Test_ReconnectDelay_SaturatesAtTenShifts)
+{
+	boost::asio::io_context ioc;
+	// base = 1s, huge cap. The shift is clamped at min(attempts, 10), so attempt 10,
+	// 11 and 50 all share pre-jitter = 1 * 2^10 = 1024 and jitter in [0, 256].
+	Mqtt::MqttClient client(ioc, MakeBackoffSettings(std::chrono::seconds(1), std::chrono::seconds(1000000)));
+
+	const std::int64_t pre_jitter = static_cast<std::int64_t>(1) << 10; // 1024
+
+	for (std::uint16_t n : { std::uint16_t{ 10 }, std::uint16_t{ 11 }, std::uint16_t{ 50 } })
+	{
+		Test::MqttClientPacketTest::SetReconnectAttempts(client, n);
+		auto delay = Test::MqttClientPacketTest::CallCalculateReconnectDelay(client).count();
+		BOOST_CHECK_GE(delay, pre_jitter);
+		BOOST_CHECK_LE(delay, pre_jitter + pre_jitter / 4);
+	}
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient subscribe / poll guard tests (synchronous early-return paths)
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Guards)
+
+BOOST_AUTO_TEST_CASE(Test_Subscribe_WhenNotConnected_IsHarmless)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	// Not connected: Subscribe() must log a warning and return without touching
+	// the endpoint (which is not started) — i.e. no throw, no state change.
+	BOOST_REQUIRE(!client->IsConnected());
+	BOOST_CHECK_NO_THROW(client->Subscribe("some/topic", 1));
+	BOOST_CHECK(!client->IsConnected());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Poll_WhenNotRunning_IsHarmless)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	// Not running: Poll() takes the early-return branch before any flush work.
+	BOOST_REQUIRE(!client->IsRunning());
+	BOOST_CHECK_NO_THROW(client->Poll());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Poll_WhenConnected_FlushesWithoutThrowing)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	// Force the connected/running state so Poll() runs the flush path
+	// (FlushIfConnected) rather than the early-return guard.
+	Test::MqttClientPacketTest::ForceConnectedState(*client);
+	client->Publish("topic/a", "payload_a");
+
+	BOOST_REQUIRE(client->IsRunning());
+	BOOST_CHECK_NO_THROW(client->Poll());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// MqttClient diagnostics-accessor tests (initial values)
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttClient_Diagnostics)
+
+BOOST_AUTO_TEST_CASE(Test_Diagnostics_InitialCounters)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.PublishQueueDepth(), 0u);
+	BOOST_CHECK_EQUAL(client.ReconnectAttempts(), 0u);
+	BOOST_CHECK_EQUAL(client.PublishedCount(), 0u);
+	BOOST_CHECK_EQUAL(client.DroppedCount(), 0u);
+	BOOST_CHECK(client.LastError().empty());
+}
+
+BOOST_AUTO_TEST_CASE(Test_Diagnostics_SettingsAccessorReflectsConfig)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	settings.broker_host = "broker.example";
+	settings.broker_port = 8883;
+	Mqtt::MqttClient client(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client.Settings().broker_host, "broker.example");
+	BOOST_CHECK_EQUAL(client.Settings().broker_port, 8883);
+}
+
+BOOST_AUTO_TEST_CASE(Test_Diagnostics_PublishQueueDepthTracksPublishes)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeClientTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+
+	BOOST_CHECK_EQUAL(client->PublishQueueDepth(), 0u);
+	client->Publish("topic/a", "a");
+	client->Publish("topic/b", "b");
+	BOOST_CHECK_EQUAL(client->PublishQueueDepth(), 2u);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

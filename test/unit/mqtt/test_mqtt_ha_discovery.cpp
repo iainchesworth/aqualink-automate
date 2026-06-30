@@ -436,6 +436,120 @@ BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_BinarySensorsHavePayloadOnOff)
 	}
 }
 
+// Regression: a binary_sensor whose value_template is a raw {{ value_json.x }}
+// passthrough renders a JSON boolean source as Python-capitalised "True"/"False",
+// which never matches the lowercase payload_on/payload_off ("true"/"false"). HA then
+// logs "No matching payload found" on every publish and the entity never settles.
+// The fix is to coerce inside the template ({{ 'true' if value_json.x else 'false' }}).
+//
+// This test (a) pins the three previously-broken bool sensors to the coercion form, and
+// (b) walks EVERY generated binary_sensor so any future entity that reintroduces the
+// raw-passthrough + lowercase-payload combo fails loudly here.
+BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_BooleanBinarySensorsCoerceLowercase)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	// A combo system so the spa/clean circulation sensors and both bodies are emitted.
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	data_hub->ApplyPoolConfiguration(Kernel::PoolConfigurations::DualBody_SharedEquipment, Kernel::ConfigurationSource::UserSpecified);
+	ha.ConnectDataHub(data_hub);
+
+	ha.PublishDiscoveryConfigs();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	BOOST_REQUIRE_EQUAL(queue.size(), 1);
+	auto payload = nlohmann::json::parse(queue[0].payload);
+	BOOST_REQUIRE(payload.contains("cmps"));
+	auto& cmps = payload["cmps"];
+
+	// A "raw passthrough" template emits the JSON value verbatim - no conditional, no
+	// filter, no explicit lowercase literal - so a bool source stringifies to "True"/"False".
+	auto is_raw_passthrough = [](const std::string& tmpl)
+	{
+		return tmpl.find("value_json") != std::string::npos
+			&& tmpl.find(" if ") == std::string::npos
+			&& tmpl.find('|') == std::string::npos
+			&& tmpl.find("'true'") == std::string::npos
+			&& tmpl.find("'false'") == std::string::npos;
+	};
+
+	// Documented exception: the alert binary_sensors read the AlertMonitor's consolidated
+	// document, which already publishes the STRING "true"/"false" (AlertMonitor::BuildStateJson),
+	// so a raw passthrough is correct there. They must NOT be "fixed" with the truthiness
+	// coercion - {{ 'true' if value_json.x else 'false' }} would render the string "false" as
+	// truthy and report a cleared alert as raised. Any other raw-passthrough bool sensor is a bug.
+	auto is_string_sourced_exception = [](const std::string& key)
+	{
+		return key.rfind("alert_", 0) == 0;
+	};
+
+	std::size_t bool_sensor_count = 0;
+	for (auto& [key, cmp] : cmps.items())
+	{
+		if (!cmp.contains("p") || cmp["p"] != "binary_sensor")
+		{
+			continue;
+		}
+
+		BOOST_REQUIRE_MESSAGE(cmp.contains("payload_on") && cmp.contains("payload_off"),
+			"binary_sensor missing payload_on/off: " + key);
+
+		const auto payload_on = cmp["payload_on"].get<std::string>();
+		const auto payload_off = cmp["payload_off"].get<std::string>();
+
+		// We only police the lowercase-boolean payload convention here.
+		if (!(payload_on == "true" && payload_off == "false"))
+		{
+			continue;
+		}
+
+		BOOST_REQUIRE_MESSAGE(cmp.contains("value_template"),
+			"bool binary_sensor missing value_template: " + key);
+		const auto tmpl = cmp["value_template"].get<std::string>();
+
+		if (is_string_sourced_exception(key))
+		{
+			continue;
+		}
+
+		++bool_sensor_count;
+
+		// The combo we are guarding against: a raw passthrough whose output would be
+		// "True"/"False" for a JSON-bool source.
+		BOOST_CHECK_MESSAGE(!is_raw_passthrough(tmpl),
+			"binary_sensor '" + key + "' uses a raw {{ value_json.x }} passthrough with lowercase "
+			"payload_on/off; a JSON-bool source renders 'True'/'False' and never matches. Coerce in "
+			"the template: {{ 'true' if value_json.x else 'false' }} (value_template was: " + tmpl + ")");
+
+		// And, positively, the template must emit literals that match the declared payloads.
+		BOOST_CHECK_MESSAGE(tmpl.find("'" + payload_on + "'") != std::string::npos,
+			"binary_sensor '" + key + "' value_template does not emit payload_on literal '" + payload_on + "': " + tmpl);
+		BOOST_CHECK_MESSAGE(tmpl.find("'" + payload_off + "'") != std::string::npos,
+			"binary_sensor '" + key + "' value_template does not emit payload_off literal '" + payload_off + "': " + tmpl);
+	}
+
+	// Sanity: the walk actually exercised the policed sensors (3 circulation/setpoint bool
+	// sensors + 3 temperature "stale" companions on a combo system), not zero.
+	BOOST_CHECK_GE(bool_sensor_count, 6u);
+
+	// Pin the three previously-broken sensors to the exact coercion form.
+	for (const auto* key : { "spa_mode", "clean_mode", "pool_heater_2_enabled" })
+	{
+		BOOST_REQUIRE_MESSAGE(cmps.contains(key), std::string("missing bool binary_sensor: ") + key);
+		auto& cmp = cmps[key];
+		BOOST_CHECK_EQUAL(cmp["p"], "binary_sensor");
+		BOOST_CHECK_EQUAL(cmp["payload_on"], "true");
+		BOOST_CHECK_EQUAL(cmp["payload_off"], "false");
+
+		const auto tmpl = cmp["value_template"].get<std::string>();
+		const std::string expected = std::string("{{ 'true' if value_json.") + key + " else 'false' }}";
+		BOOST_CHECK_EQUAL(tmpl, expected);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(Test_PublishDiscoveryConfigs_SwitchEntitiesHaveCommandTopic)
 {
 	boost::asio::io_context ioc;

@@ -316,7 +316,7 @@ namespace AqualinkAutomate::Mqtt
 			{"name", "Pool Heater 2 (TEMP2)"},
 			{"unique_id", UniqueId("pool_heater_2_enabled")},
 			{"state_topic", temperatures_topic},
-			{"value_template", "{{ value_json.pool_heater_2_enabled }}"},
+			{"value_template", "{{ 'true' if value_json.pool_heater_2_enabled else 'false' }}"},
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};
@@ -385,7 +385,7 @@ namespace AqualinkAutomate::Mqtt
 			{"name", "Spa Mode"},
 			{"unique_id", UniqueId("spa_mode")},
 			{"state_topic", circulation_topic},
-			{"value_template", "{{ value_json.spa_mode }}"},
+			{"value_template", "{{ 'true' if value_json.spa_mode else 'false' }}"},
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};
@@ -395,7 +395,7 @@ namespace AqualinkAutomate::Mqtt
 			{"name", "Clean Mode"},
 			{"unique_id", UniqueId("clean_mode")},
 			{"state_topic", circulation_topic},
-			{"value_template", "{{ value_json.clean_mode }}"},
+			{"value_template", "{{ 'true' if value_json.clean_mode else 'false' }}"},
 			{"payload_on", "true"},
 			{"payload_off", "false"}
 		};

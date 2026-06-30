@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.9.0-beta.2] - 2026-06-30
+
+A bug-fix release on top of 0.9.0-beta.1. One user-facing Home Assistant fix; the remainder is build, CI, and test-coverage hardening with no application behaviour change.
+
+### Fixed
+
+- **Home Assistant spa-mode, clean-mode, and second-pool-heater sensors now settle to a real on/off state.** The `Spa Mode`, `Clean Mode`, and `Pool Heater 2 (TEMP2)` binary sensors rendered their JSON-boolean source through a raw `value_template`, which Home Assistant's Jinja renders capitalised (`True`/`False`) — so it never matched the lowercase `payload_on`/`payload_off` and Home Assistant logged "No matching payload found" on every circulation/temperature publish, leaving the entities stuck. The templates now coerce to lowercase `true`/`false` (and map the not-reported case to `false`).
+
 ## [0.9.0-beta.1] - 2026-06-29
 
 A spa-control and dual-body feature release.

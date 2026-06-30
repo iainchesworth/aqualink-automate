@@ -686,7 +686,7 @@ namespace AqualinkAutomate::Mqtt
 
 						auto action_str = ParsePayloadString(payload);
 
-						bool enable;
+						bool enable = false;
 						if (action_str == "ON")
 						{
 							enable = true;
