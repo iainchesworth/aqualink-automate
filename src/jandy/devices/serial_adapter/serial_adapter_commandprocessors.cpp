@@ -141,8 +141,7 @@ namespace AqualinkAutomate::Devices
 			{
 				label = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, label);
-			JandyController::m_DataHub->ConfigUpdateSignal(update_event);
+			JandyController::m_DataHub->EmitButtonStateChange(aux_ptr->Id(), status_string, label);
 		}
 	}
 

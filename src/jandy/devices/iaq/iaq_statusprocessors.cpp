@@ -128,8 +128,7 @@ namespace AqualinkAutomate::Devices
 				{
 					label = label_opt.value();
 				}
-				auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(pump->Id(), status_string, label);
-				m_DataHub->ConfigUpdateSignal(update_event);
+				m_DataHub->EmitButtonStateChange(pump->Id(), status_string, label);
 			}
 		}
 
@@ -165,8 +164,7 @@ namespace AqualinkAutomate::Devices
 			{
 				heater_label = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(heater->Id(), status_string, heater_label);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(heater->Id(), status_string, heater_label);
 		};
 
 		update_heater("Pool Heat", msg.PoolHeaterStatus(), Kernel::BodyOfWaterIds::Pool);
@@ -363,8 +361,7 @@ namespace AqualinkAutomate::Devices
 			{
 				aux_label = label_opt.value();
 			}
-			auto update_event = std::make_shared<Kernel::DataHub_ConfigEvent_ButtonStateChange>(aux_ptr->Id(), status_string, aux_label);
-			m_DataHub->ConfigUpdateSignal(update_event);
+			m_DataHub->EmitButtonStateChange(aux_ptr->Id(), status_string, aux_label);
 
 			LogTrace(Channel::Devices, [&]() { return std::format("IAQ ({}): AuxStatus device {}: name='{}', status={}",
 				DeviceId(), magic_enum::enum_name(aux_id.value()), info.name, info.is_on ? "On" : "Off"); });
