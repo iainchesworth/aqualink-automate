@@ -406,6 +406,10 @@ namespace AqualinkAutomate::Mqtt
 			std::size_t total_size = 0;
 			std::size_t device_count = 0;
 
+			// Topics published this sweep; diffed against the previous sweep below to clear any
+			// that vanished (device removed, or relabelled so its slug changed).
+			std::unordered_set<std::string> current_topics;
+
 			if (auto data_hub = m_DataHub.lock())
 			{
 				auto publish_device = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
@@ -437,7 +441,9 @@ namespace AqualinkAutomate::Mqtt
 
 					auto payload = j.dump();
 					total_size += payload.size();
-					m_Client->Publish(m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug)), payload, /*retain=*/true);
+					auto topic = m_Client->BuildTopic(TopicScheme::DeviceJsonSubtopic(slug));
+					m_Client->Publish(topic, payload, /*retain=*/true);
+					current_topics.insert(std::move(topic));
 					++device_count;
 				};
 
@@ -469,6 +475,18 @@ namespace AqualinkAutomate::Mqtt
 					publish_device(TopicScheme::DeviceCategory::Chlorinator, device);
 				}
 			}
+
+			// Clear (empty retained payload) any device topic published last sweep that is gone now,
+			// so a removed or relabelled device does not linger in the broker as a retained ghost.
+			for (const auto& stale_topic : m_PublishedDeviceTopics)
+			{
+				if (!current_topics.contains(stale_topic))
+				{
+					m_Client->Publish(stale_topic, "", /*retain=*/true);
+					LogDebug(Channel::Mqtt, [&] { return std::format("Cleared retained device topic '{}'", stale_topic); });
+				}
+			}
+			m_PublishedDeviceTopics = std::move(current_topics);
 
 			zone->Value(total_size);
 			LogTrace(Channel::Mqtt, std::format("Published device status ({} devices)", device_count));

@@ -329,6 +329,11 @@ namespace AqualinkAutomate::Devices
 			aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::AuxillaryStatusTrait{},
 				info.is_on ? Kernel::AuxillaryStatuses::On : Kernel::AuxillaryStatuses::Off);
 
+			// Collapse any legacy random-id cache placeholder for this aux onto the live device at
+			// the first touch - before the custom label is known - so it never publishes as a
+			// duplicate (any cached custom label/body is transferred across).
+			Auxillaries::RemoveOrphanAuxPlaceholders(m_DataHub->Devices, aux_id.value(), aux_ptr);
+
 			// Update the label from the IAQ-provided name if non-empty.
 			if (!info.name.empty())
 			{
@@ -348,10 +353,6 @@ namespace AqualinkAutomate::Devices
 					}
 					aux_ptr->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::BodyOfWaterTrait{}, body_id);
 				}
-
-				// Drop any legacy label-only cache placeholder now superseded by this device
-				// (one-time cleanup when upgrading from a pre-stable-id cache).
-				Auxillaries::RemoveOrphanAuxPlaceholders(m_DataHub->Devices, info.name, aux_ptr);
 			}
 
 			// Signal that a button state change has occurred.

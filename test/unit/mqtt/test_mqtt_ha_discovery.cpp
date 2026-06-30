@@ -1,6 +1,8 @@
 #include <boost/test/unit_test.hpp>
 
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
@@ -9,6 +11,7 @@
 #include "alerting/alert_condition.h"
 #include "mqtt/ha_discovery.h"
 #include "mqtt/mqtt_client.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
 #include "kernel/data_hub.h"
 #include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "options/options_mqtt_options.h"
@@ -763,6 +766,94 @@ BOOST_AUTO_TEST_CASE(Test_Freshness_CompanionsPresent)
 
 	// Freeze-protect and setpoints are configured values - no stale companion.
 	BOOST_CHECK(!cmps.contains("freeze_protect_temp_stale"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// Retained-topic lifecycle: a device that drops out must have its discovery component
+// tombstoned (so HA deletes the entity) and its retained state topic cleared.
+//=============================================================================
+
+namespace
+{
+	std::shared_ptr<Kernel::AuxillaryDevice> MakeAuxOn(const std::string& label)
+	{
+		namespace Traits = Kernel::AuxillaryTraitsTypes;
+		auto aux = std::make_shared<Kernel::AuxillaryDevice>();
+		aux->AuxillaryTraits.Set(Traits::AuxillaryTypeTrait{}, Traits::AuxillaryTypes::Auxillary);
+		aux->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
+		aux->AuxillaryTraits.Set(Traits::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::On);
+		return aux;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(TestSuite_HaDiscovery_RetainedLifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_RemovedDevice_TombstonesDiscoveryComponent)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	ha.ConnectDataHub(data_hub);
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+
+	// First publish: the aux switch component is present and fully populated.
+	ha.PublishDiscoveryConfigs();
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+	{
+		auto cmps = nlohmann::json::parse(queue.back().payload)["cmps"];
+		BOOST_REQUIRE_MESSAGE(cmps.contains("aux_aux5"), "aux switch component was not published");
+		BOOST_CHECK(cmps["aux_aux5"].contains("command_topic"));
+	}
+
+	// Remove the device and republish: the component is tombstoned (reduced to just its platform)
+	// so Home Assistant deletes the entity rather than leaving a stale/duplicate one.
+	data_hub->Devices.Remove(aux);
+	ha.PublishDiscoveryConfigs();
+
+	auto cmps = nlohmann::json::parse(queue.back().payload)["cmps"];
+	BOOST_REQUIRE(cmps.contains("aux_aux5"));
+	BOOST_CHECK_EQUAL(cmps["aux_aux5"].size(), 1u);          // only the platform key remains
+	BOOST_CHECK_EQUAL(cmps["aux_aux5"]["p"], "switch");
+}
+
+BOOST_AUTO_TEST_CASE(Test_RemovedDevice_ClearsRetainedStateTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeTestSettings();
+	auto client = std::make_shared<Mqtt::MqttClient>(ioc, settings);
+	Mqtt::HomeAssistantDiscovery ha(client, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	ha.ConnectDataHub(data_hub);
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+
+	ha.PublishDeviceStates();
+	data_hub->Devices.Remove(aux);
+	ha.PublishDeviceStates();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*client);
+
+	// The last publish to the aux state topic clears it (empty + retained).
+	const std::string suffix = "ha/aux_aux5";
+	std::optional<std::pair<std::string, bool>> last;
+	for (const auto& pending : queue)
+	{
+		if (pending.topic.size() >= suffix.size()
+			&& 0 == pending.topic.compare(pending.topic.size() - suffix.size(), suffix.size(), suffix))
+		{
+			last = std::make_pair(pending.payload, pending.retain);
+		}
+	}
+	BOOST_REQUIRE_MESSAGE(last.has_value(), "aux state topic was never published");
+	BOOST_CHECK_MESSAGE(last->first.empty(), "vanished state topic should be cleared with an empty payload");
+	BOOST_CHECK_MESSAGE(last->second, "the clearing publish must be retained");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

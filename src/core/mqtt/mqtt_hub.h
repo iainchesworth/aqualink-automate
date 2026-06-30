@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/signals2.hpp>
@@ -194,6 +195,12 @@ namespace AqualinkAutomate::Mqtt
 
 		// Command handlers
 		std::unordered_map<std::string, CommandHandler> m_CommandHandlers;
+
+		// Device JSON topics published on the previous PublishDeviceStatus() sweep. A device
+		// that drops out (removed, or relabelled so its slug changes) leaves a retained topic
+		// behind; the next sweep clears it with an empty retained payload so consumers (and the
+		// broker) do not keep serving a stale/duplicate device. See PublishDeviceStatus().
+		std::unordered_set<std::string> m_PublishedDeviceTopics;
 
 		// State
 		bool m_Running{ false };

@@ -134,6 +134,10 @@ namespace AqualinkAutomate::Devices
 				break;
 			}
 
+			// Collapse any legacy random-id cache placeholder for this aux onto the live device at
+			// the first touch, so it never reaches the MQTT/HA publishers as a duplicate.
+			Auxillaries::RemoveOrphanAuxPlaceholders(JandyController::m_DataHub->Devices, aux_id, aux_ptr);
+
 			// Signal that a button state change has occurred.
 			auto status_string = Kernel::AuxillaryTraitsTypes::ConvertStatusToString(aux_ptr);
 			std::string label;

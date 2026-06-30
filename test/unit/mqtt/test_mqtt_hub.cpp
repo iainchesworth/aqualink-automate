@@ -10,6 +10,8 @@
 
 #include "mqtt/mqtt_hub.h"
 #include "mqtt/mqtt_client.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
 #include "kernel/data_hub.h"
 #include "kernel/equipment_hub.h"
 #include "kernel/statistics_hub.h"
@@ -473,6 +475,113 @@ BOOST_AUTO_TEST_CASE(Test_PerBodyTemperatures_PublishedWithFreshnessShape)
 	BOOST_CHECK(body->contains("current"));
 	BOOST_CHECK(body->contains("setpoint"));
 	BOOST_CHECK(body->contains("is_active"));
+
+	hub.Stop();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// Retained-topic lifecycle: a device that drops out (removed, or relabelled so its slug
+// changes) must have its previously-published retained topic cleared, so the broker stops
+// serving a stale/duplicate device.
+//=============================================================================
+
+namespace
+{
+	// Payload+retain of the LAST queued publish whose topic ends with `suffix`, or nullopt.
+	// Templated so the private PendingPublish element type is never named.
+	template <typename QueueT>
+	std::optional<std::pair<std::string, bool>> LastEntryForTopicEnding(const QueueT& queue, const std::string& suffix)
+	{
+		std::optional<std::pair<std::string, bool>> found;
+		for (const auto& pending : queue)
+		{
+			if (pending.topic.size() >= suffix.size()
+				&& 0 == pending.topic.compare(pending.topic.size() - suffix.size(), suffix.size(), suffix))
+			{
+				found = std::make_pair(pending.payload, pending.retain);
+			}
+		}
+		return found;
+	}
+
+	std::shared_ptr<Kernel::AuxillaryDevice> MakeAuxOn(const std::string& label)
+	{
+		namespace Traits = Kernel::AuxillaryTraitsTypes;
+		auto aux = std::make_shared<Kernel::AuxillaryDevice>();
+		aux->AuxillaryTraits.Set(Traits::AuxillaryTypeTrait{}, Traits::AuxillaryTypes::Auxillary);
+		aux->AuxillaryTraits.Set(Traits::LabelTrait{}, label);
+		aux->AuxillaryTraits.Set(Traits::AuxillaryStatusTrait{}, Kernel::AuxillaryStatuses::On);
+		return aux;
+	}
+}
+
+BOOST_AUTO_TEST_SUITE(TestSuite_MqttHub_RetainedTopicLifecycle)
+
+BOOST_AUTO_TEST_CASE(Test_RemovedDevice_ClearsRetainedDeviceTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+	hub.ConnectDataHub(data_hub);
+
+	hub.Start();
+	Test::MqttClientPacketTest::ForceConnectedState(*hub.GetMqttClient());
+
+	// First publish emits the device JSON topic with a real payload.
+	hub.PublishAllStatus();
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+	auto first = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE_MESSAGE(first.has_value(), "device/aux5 was not published");
+	BOOST_CHECK(!first->first.empty());
+
+	// Remove the device: the next sweep clears the now-vanished topic (empty + retained).
+	data_hub->Devices.Remove(aux);
+	hub.PublishAllStatus();
+
+	auto cleared = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE(cleared.has_value());
+	BOOST_CHECK_MESSAGE(cleared->first.empty(), "vanished device topic should be cleared with an empty payload");
+	BOOST_CHECK_MESSAGE(cleared->second, "the clearing publish must be retained");
+
+	hub.Stop();
+}
+
+BOOST_AUTO_TEST_CASE(Test_RelabelledDevice_ClearsOldSlugTopic)
+{
+	boost::asio::io_context ioc;
+	auto settings = MakeHubTestSettings();
+	Mqtt::MqttHub hub(ioc, settings);
+
+	auto data_hub = std::make_shared<Kernel::DataHub>();
+	auto aux = MakeAuxOn("Aux5");
+	data_hub->Devices.Add(aux);
+	hub.ConnectDataHub(data_hub);
+
+	hub.Start();
+	Test::MqttClientPacketTest::ForceConnectedState(*hub.GetMqttClient());
+	hub.PublishAllStatus();
+
+	// The label is enumerated -> the slug changes from "aux5" to "pool_light".
+	aux->AuxillaryTraits.Set(Kernel::AuxillaryTraitsTypes::LabelTrait{}, std::string("Pool Light"));
+	hub.PublishAllStatus();
+
+	auto& queue = Test::MqttClientPacketTest::GetPublishQueue(*hub.GetMqttClient());
+
+	// New slug carries the live payload; the old slug topic is cleared.
+	auto new_topic = LastEntryForTopicEnding(queue, "/device/pool_light");
+	BOOST_REQUIRE(new_topic.has_value());
+	BOOST_CHECK(!new_topic->first.empty());
+
+	auto old_topic = LastEntryForTopicEnding(queue, "/device/aux5");
+	BOOST_REQUIRE(old_topic.has_value());
+	BOOST_CHECK_MESSAGE(old_topic->first.empty(), "the stale slug topic should be cleared");
+	BOOST_CHECK(old_topic->second);
 
 	hub.Stop();
 }

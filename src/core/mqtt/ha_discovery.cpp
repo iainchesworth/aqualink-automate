@@ -53,11 +53,35 @@ namespace AqualinkAutomate::Mqtt
 			AddSystemComponents(cmps);
 			AddAlertComponents(cmps);
 			AddDynamicDeviceComponents(cmps);
+
+			// Tombstone components present last cycle but gone now so Home Assistant removes those
+			// entities. Device-based discovery treats a component reduced to just its platform
+			// ({"p": platform}) as a removal; this covers a relabelled/removed device (its slug-keyed
+			// component vanishes) and config-gated entities (e.g. the Spa sensors on a pool-only
+			// system). Record this cycle's live keys first so the tombstones themselves aren't tracked.
+			std::unordered_map<std::string, std::string> current_keys;
+			for (const auto& [key, component] : cmps.items())
+			{
+				if (component.contains("p") && component["p"].is_string())
+				{
+					current_keys.emplace(key, component["p"].get<std::string>());
+				}
+			}
+			for (const auto& [key, platform] : m_PublishedComponentKeys)
+			{
+				if (!current_keys.contains(key))
+				{
+					cmps[key] = nlohmann::json{ {"p", platform} };
+				}
+			}
+
 			payload["cmps"] = std::move(cmps);
 
 			auto topic = std::format("{}/device/{}/config",
 				m_Settings.ha_discovery_prefix, m_Settings.ha_device_id);
 			m_Client->Publish(topic, payload.dump(), /*retain=*/true);
+
+			m_PublishedComponentKeys = std::move(current_keys);
 
 			LogDebug(Channel::Mqtt, "Home Assistant device discovery payload published");
 		}
@@ -87,6 +111,9 @@ namespace AqualinkAutomate::Mqtt
 		{
 			std::size_t device_count = 0;
 
+			// State topics published this cycle; diffed below to clear any that vanished.
+			std::unordered_set<std::string> current_state_topics;
+
 			auto publish_device_state = [&](TopicScheme::DeviceCategory category, const std::shared_ptr<Kernel::AuxillaryDevice>& device)
 			{
 				if (!device)
@@ -106,6 +133,7 @@ namespace AqualinkAutomate::Mqtt
 				auto state = std::string(Kernel::AuxillaryTraitsTypes::ConvertStatusToString(device));
 
 				m_Client->Publish(state_topic, state, /*retain=*/true);
+				current_state_topics.insert(std::move(state_topic));
 				++device_count;
 			};
 
@@ -128,6 +156,18 @@ namespace AqualinkAutomate::Mqtt
 			{
 				publish_device_state(TopicScheme::DeviceCategory::Auxillary, device);
 			}
+
+			// Clear (empty retained payload) any state topic published last cycle that is gone now,
+			// so a removed or relabelled device leaves no stale retained state behind.
+			for (const auto& stale_topic : m_PublishedStateTopics)
+			{
+				if (!current_state_topics.contains(stale_topic))
+				{
+					m_Client->Publish(stale_topic, "", /*retain=*/true);
+					LogDebug(Channel::Mqtt, [&] { return std::format("Cleared retained HA state topic '{}'", stale_topic); });
+				}
+			}
+			m_PublishedStateTopics = std::move(current_state_topics);
 
 			LogTrace(Channel::Mqtt, [&] { return std::format("Published HA device states ({} devices)", device_count); });
 		}
