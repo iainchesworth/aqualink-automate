@@ -35,8 +35,8 @@ whichever controller is running advertises what it can do (`DeviceActuator`,
 highest-priority one present. Three controllers can actuate equipment and heater
 setpoints, in precedence order:
 
-1. **Serial Adapter (RSSA, `0x48`)** — *High*. A direct, stateless command channel.
-2. **AqualinkTouch / iAqualink2 (`0x33`)** — *Medium*. Presses the on-screen
+1. **Serial Adapter (RSSA, `0x48`/`0x49`)** — *High*. A direct, stateless command channel.
+2. **AqualinkTouch / iAqualink2 (`0x30–33`)** — *Medium*. Presses the on-screen
    `PageButton` matching the device by name (`0x11 + index`) for toggles, and uses the
    value-submit protocol (select field → `0x80` → control-data value) for setpoints +
    the chlorinator. These commands take effect immediately.

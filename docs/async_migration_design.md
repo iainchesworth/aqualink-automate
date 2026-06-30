@@ -2,8 +2,16 @@
   Generated 2026-06-18 by a multi-agent analysis workflow (8 subsystem surveys ->
   design synthesis -> 3 adversarial critiques -> merged roadmap). ANALYSIS ONLY:
   no production code was changed by this work (the only code change in the
-  originating branch is the vcpkg submodule bump to 2026.06.01). Every file:line
-  reference was verified against source during the analysis.
+  originating branch is the vcpkg submodule bump to 2026.06.01).
+
+  RECONCILED 2026-06-30: this is an analysis SNAPSHOT, reconciled with the code on
+  2026-06-30. Since the 2026-06-18 capture the MQTT client was rewritten onto the
+  async-mqtt library (2026-06-19) — so §8.2's "hand-rolled MQTT / no library" premise
+  is now FALSE and has been corrected — and src/aqualink-automate.cpp grew ~120 lines,
+  so every absolute file:line citation had drifted. This pass corrected §8.2,
+  re-anchored the Section 5 / Section 6 / Key-files line numbers to durable SYMBOL
+  anchors, and fixed two path/line facts (websocket header path, replay_paced line).
+  Treat any remaining bare ":NNN" as approximate.
 -->
 
 > Companion to the [async migration roadmap](async_migration_analysis.md) (the authoritative plan).
@@ -14,7 +22,7 @@
 
 aqualink-automate — migrating from the manual cooperative `Poll()` frame loop to a fully async boost::asio C++20-coroutine design.
 
-> Verified against source. Every `file:line` below was read or grepped during this analysis; where a survey claim was checked and holds, it is stated as fact. This is an analysis document — no code was edited.
+> This is an analysis document — no code was edited. The `file:line` citations were verified against source as of the 2026-06-18 capture; they have since been RECONCILED with the code on 2026-06-30 (see the banner above). Treat bare `:NNN` line numbers as approximate and prefer the symbol anchors.
 
 ---
 
@@ -38,7 +46,7 @@ The workload does not justify the risk. RS-485 is inherently serial and low-rate
 
 **What (A) changes vs. keeps:**
 
-- **Removes:** the `while(!shutdown)` frame loop (`src/aqualink-automate.cpp:754-806`), the two per-frame `io_context.poll()` drains (`:761,:788`), the idle `sleep_until` pacing (`:800-803`), and the four `Poll()` methods (`ProtocolTask::Poll`, `HttpServer::Poll`, `MqttClient/MqttHub/MqttIntegration::Poll`, `Restartable::PollAll`).
+- **Removes:** the `while (!shutdown)` frame loop (`src/aqualink-automate.cpp`, ~lines 867-943), the two per-frame `io_context.poll()` drains (~881 & ~921), the idle `sleep_until(frame_start + frame_period)` pacing (~936), and the four `Poll()` methods (`ProtocolTask::Poll`, `HttpServer::Poll`, `MqttClient/MqttHub/MqttIntegration::Poll`, `Restartable::PollAll`).
 - **Keeps unchanged:** the hubs, every signals2 emit site, every slot, the static per-message-type signal dispatch, the `MessageGeneratorRegistry`, the circular-buffer framing, the `scoped_connection` lifetime model — none of it needs touching, because the executor stays single-threaded.
 
 ### Why not (B) multi-threaded + strands
@@ -108,10 +116,10 @@ A small, consistent vocabulary. Pin to **boost::asio** (already the dependency; 
 
 | Subsystem | Current driver | Target shape (coroutine[s] to `co_spawn`) | How `Poll()` is removed | Effort |
 |---|---|---|---|---|
-| **main frame loop** (`aqualink-automate.cpp:754-806`) | hand-rolled `while(!shutdown)` + double `io_context.poll()` + idle `sleep_until` | `co_spawn` each subsystem (below), then `io_context.run()` on the main thread | The whole loop deleted; `run()` blocks on the reactor | large |
+| **main frame loop** (the `while (!shutdown)` loop, `aqualink-automate.cpp` ~867-943) | hand-rolled `while(!shutdown)` + double `io_context.poll()` + idle `sleep_until` | `co_spawn` each subsystem (below), then `io_context.run()` on the main thread | The whole loop deleted; `run()` blocks on the reactor | large |
 | **serial + ProtocolTask** (`protocol_thread.cpp:184`) | `protocol_task->Poll()` per frame; sync `read_some`/`write_some` in would_block loops | `SerialReadLoop`: `for(;;){ auto [ec,n] = co_await port.async_read_some(buf); frame+dispatch; }`. `SerialWriteLoop`: drains an outbound `channel`, `co_await async_write` | `Poll()` + `bool` return + `m_SingleReadPerPoll` + non-blocking-read shims all deleted | large |
 | **HTTP/WS server** (`http_server.cpp:680`) | accept/read/write already async; `Poll()` only kicks WS egress + erases done sessions | accept loop stays (already self-rearming); add a **per-connection WS writer coroutine** draining a channel; `try_send` from broadcast | `HttpServer::Poll` + `HttpSessionState::Poll` + `TryWsWrite` egress-kick deleted; session erase moves to coroutine exit | large |
-| **MQTT** (`mqtt_client.cpp:243`) | `mqtt_integration->Poll()` → 6-state would_block machine | `MqttSupervisor` loop: `co_await Connect()`, then `co_spawn {Reader, Writer(channel), Keepalive(timer)}`, await-any-fail, backoff timer, retry. `MqttHub` periodic/debounce → own timer loop | All three `Poll()` methods deleted; State enum kept only for diagnostics | large |
+| **MQTT** (`mqtt_client.cpp`, async-mqtt-backed) | `mqtt_integration->Poll()` → `MqttClient::Poll()` → `Impl::FlushIfConnected()` (drains the publish queue; async_mqtt owns connect/read/write/keepalive) | Replace the per-frame `FlushIfConnected()` drain with a co_spawned writer woken by `Publish()`; keep the existing `CalculateReconnectDelay` steady_timer reconnect | Per-frame `mqtt_integration->Poll()` call removed; the library already drives the endpoint under `run()` | small (RECONCILED 2026-06-30 — was "large") |
 | **navigation + spider** (`onetouch_device.cpp`, `navigator.cpp`) | signals2 slots re-enter `OnPageUpdate` per inbound frame; pending-status **counter** simulates "await page" | per-device `NavCoro`: page/status events arrive via a `channel`; `co_await AwaitPage(target, deadline)`; cursor/recovery become `while(...) co_await SendKeyAwaitStatus()` | No `Poll()` exists to remove; the per-frame re-entrant dispatch is replaced by the coroutine awaiting page/status events | large |
 | **devices + dispatch** (`command_dispatcher.cpp`, `serial_adapter_device.cpp`) | slots fire inline; commands queued, return optimistic `Success` | command path → `awaitable<CommandResult>` that completes when the ACK is actually emitted; pending-command queue → `channel` | n/a (no Poll); fire-and-forget queue becomes awaitable | large |
 | **Restartable watchdog** (`restartable.cpp:35`) | `PollAll()` per-frame sweep of `s_Instances` | one repeating `WatchdogLoop` `steady_timer` (e.g. 1s tick) calling `CheckWatchdog(now)` across `s_Instances` — minimal change | `PollAll()` deleted; the per-frame call in main removed | small |
@@ -126,12 +134,13 @@ A small, consistent vocabulary. Pin to **boost::asio** (already the dependency; 
 
 ## 5. Replacing the manual frame loop in `main()`
 
-Today (`src/aqualink-automate.cpp:754-806`): `while(!shutdown){ poll(); protocol->Poll(); Restartable::PollAll(); http/https/mqtt->Poll(); poll(); pace; }`.
+Today (the `while (!shutdown)` frame loop in `src/aqualink-automate.cpp`, ~lines 867-943): `while(!shutdown){ poll(); protocol->Poll(); Restartable::PollAll(); http/https/mqtt->Poll(); poll(); pace; }`.
 
 **Target:**
 
 ```cpp
-// after all subsystems constructed (serial ~:381, protocol ~:426, http ~:637, mqtt ~:668)
+// after all subsystems are constructed (serial / protocol / http / mqtt setup, all
+// before the `while (!shutdown)` loop at ~line 867 in src/aqualink-automate.cpp)
 asio::cancellation_signal root_cancel;
 auto spawn = [&](auto coro) {
     asio::co_spawn(io_context, std::move(coro),
@@ -154,19 +163,19 @@ io_context.run();   // single thread; sleeps in epoll/IOCP until real I/O or a t
 ```
 
 - **The idle `sleep_until` pacing is deleted outright.** `run()` blocks in the reactor; there are no wasted wakeups and the ~1ms worst-case dispatch latency vanishes.
-- **Capture-replay pacing must move into the producer.** Today replay timing lives in *two* places: the frame-loop `sleep_until(frame_start + replay_frame_period)` (`:800-803`, governed by `replay_paced`/`replay_frame_period` at `:742`) **and** `ProtocolTask::m_SingleReadPerPoll` (one chunk per Poll). Under `run()` both disappear, so the **`MockSerialPortImpl`/replay producer must self-pace**: between emitting chunks it does `co_await steady_timer(replay_frame_period)`. This is the *only* surviving use of a frame clock, and it belongs to the replay source, not the application. The fixture-replay tests (`test/integration/flows/`) gate this — they must keep passing.
-- **Tracy frame marks lose their natural cadence.** `EmitFrameMark("MainLoop")` (`:752,:805`) fired once per frame. Under `run()` there is no frame. Re-anchor it to a meaningful boundary — emit a frame mark per serial read-loop iteration (per RS-485 chunk), which is the closest analogue to "one unit of protocol work."
+- **Capture-replay pacing must move into the producer.** Today replay timing lives in *two* places: the frame-loop `sleep_until(frame_start + frame_period)` (the `std::this_thread::sleep_until(...)` at ~line 936, governed by the `replay_paced` flag — `const bool replay_paced = ...` at ~line 476 — and `replay_frame_period`) **and** `ProtocolTask::m_SingleReadPerPoll` (one chunk per Poll). Under `run()` both disappear, so the **`MockSerialPortImpl`/replay producer must self-pace**: between emitting chunks it does `co_await steady_timer(replay_frame_period)`. This is the *only* surviving use of a frame clock, and it belongs to the replay source, not the application. The fixture-replay tests (`test/integration/flows/`) gate this — they must keep passing.
+- **Tracy frame marks lose their natural cadence.** `profiler.Get()->EmitFrameMark("MainLoop")` (the initial emit before the loop at ~line 865 and the per-frame emit at ~line 942) fired once per frame. Under `run()` there is no frame. Re-anchor it to a meaningful boundary — emit a frame mark per serial read-loop iteration (per RS-485 chunk), which is the closest analogue to "one unit of protocol work."
 
 ---
 
 ## 6. Shutdown / cancellation strategy
 
-The existing ordered teardown (`aqualink-automate.cpp:812-896`) is **correct and subtle**, and the new design must reproduce its ordering exactly — it is not free to reshuffle.
+The existing ordered teardown (the **"STOP APPLICATION"** banner through the final `StopProfiling()`, `aqualink-automate.cpp` ~lines 945-1034) is **correct and subtle**, and the new design must reproduce its ordering exactly — it is not free to reshuffle.
 
-The verified critical constraints:
-1. **Serial cancel must precede protocol teardown** (`:816-820` then `:823`) — to unblock the read coroutine before its owner is destroyed.
-2. **`IRecordingController` must be `Unregister`'d before `serial_port.reset()`** (`:882-889`) — the HubLocator holds a null-deleter `shared_ptr` *aliasing* a SerialPort-owned `RecordingSerialPortImpl`; resetting the port first leaves a dangling alias.
-3. Alert monitor stops before the MQTT client its sink references (`:825-827`).
+The verified critical constraints (symbol-anchored; approximate line numbers in parentheses):
+1. **Serial cancel must precede protocol teardown** — `serial_port->cancel()` (~953-957) then `protocol_task.reset()` (~960) — to unblock the read coroutine before its owner is destroyed.
+2. **`IRecordingController` must be `Unregister`'d before `serial_port.reset()`** — `hub_locator.Unregister<Interfaces::IRecordingController>()` (~1025) then `serial_port.reset()` (~1027) — the HubLocator holds a null-deleter `shared_ptr` *aliasing* a SerialPort-owned `RecordingSerialPortImpl`; resetting the port first leaves a dangling alias.
+3. Alert monitor stops (`alert_monitor.Stop()`, ~964) before the MQTT client its sink references (MQTT stop ~995-1000).
 
 **Target sequence:**
 
@@ -175,9 +184,9 @@ SIGINT/SIGTERM → shutdown_signals handler → root_cancel.emit(cancellation_ty
 ```
 
 - The emit propagates the cancellation slot into every in-flight `async_read`/`async_write`/`async_wait`, which complete with `operation_aborted`. Each loop coroutine observes `ec == operation_aborted` and returns — **structured unwinding** drops the coroutine frames (and the buffers they own) in reverse spawn order automatically.
-- **Ordering that cancellation alone does not guarantee** (the IRecordingController alias, the serial-before-protocol rule, alert-before-mqtt) must be enforced by **awaiting** the relevant coroutines' completion in sequence rather than just `io_context.stop()`. Concretely: after `run()` returns (all roots cancelled), perform the *same* explicit reset order as `:822-896` — `protocol_task.reset()`, `alert_monitor.Stop()`, history/jandy/scheduler/cache stop, mqtt stop, http stop, `Routing::Clear()`, **`hub_locator.Unregister<IRecordingController>()` then `serial_port.reset()`**, `MessageGeneratorRegistry::Clear()`, `StopProfiling()` last. The cancellation makes the *coroutines* exit; the explicit teardown still owns the *object-destruction order*.
+- **Ordering that cancellation alone does not guarantee** (the IRecordingController alias, the serial-before-protocol rule, alert-before-mqtt) must be enforced by **awaiting** the relevant coroutines' completion in sequence rather than just `io_context.stop()`. Concretely: after `run()` returns (all roots cancelled), perform the *same* explicit reset order as the teardown after the STOP APPLICATION banner (~945-1034) — `serial_port->cancel()` (~953-957), `protocol_task.reset()` (~960), `alert_monitor.Stop()` (~964), history/jandy/scheduler/cache stop, mqtt stop (~995-1000), http stop (~1003-1012), `Routing::Clear()`, **`hub_locator.Unregister<IRecordingController>()` (~1025) then `serial_port.reset()` (~1027)**, `MessageGeneratorRegistry::Clear()`, `StopProfiling()` (~1034) last. The cancellation makes the *coroutines* exit; the explicit teardown still owns the *object-destruction order*.
 - Do **not** use a bare `io_context.stop()` for shutdown — it drops pending handlers without running their cancellation, which can strand a half-written WS close or a DISCONNECT packet. Prefer `root_cancel.emit(all)` and let `run()` drain to natural completion.
-- The `MqttClient`/`HttpServer` `Stop()` methods that synchronously write DISCONNECT / close sessions become: cancel the supervisor, then a **best-effort `async_write(DISCONNECT)` with a short timeout** before close. The `m_ConnectGeneration` staleness guard (`mqtt_client.cpp:476,501,563`) that discards late completion handlers is **retired in favour of the cancellation slot** — that is exactly what it was hand-rolling.
+- The `HttpServer::Stop()` method that synchronously closes sessions becomes: cancel the listener/sessions, draining any half-written WS close. For MQTT (RECONCILED 2026-06-30 — now async-mqtt-backed) `Stop()` should drive the **library's** close/disconnect rather than a hand-rolled DISCONNECT write; the old `m_ConnectGeneration` staleness guard no longer exists (async-mqtt owns connection lifecycle), so there is nothing left to retire there.
 
 ---
 
@@ -207,9 +216,34 @@ Net: the **decode/hub assertion surface is preserved by keeping a synchronous st
 
 `ProtocolTask::ConnectWriteSignal` (`protocol_thread.h:48-64`) connects a signals2 slot that `Serialize`s and calls `EnqueueWrite` → `m_WriteQueue.push_back` (`:234-236`). Producers are device ACK signals fired from *inside* the decode path. Under (A) this is still one thread, so the literal port is safe — but to remove `Poll()` the write queue must become a `channel` drained by `SerialWriteLoop`. **The slot must `try_send`/`async_send` onto the channel, never write the port.** This keeps the single-writer rule. `asio::async_write` replaces the manual `m_WriteOffset` partial-write bookkeeping (`:55-93`) and guarantees the whole buffer — verify equivalence for half-open TCP (a write error must surface as the writer coroutine's `ec`, triggering the same reconnect path the sync code got from would_block→hard-error).
 
-### 8.2 MQTT is hand-rolled — no library to lean on
+### 8.2 MQTT is library-backed — only app-level glue remains
 
-`vcpkg.json` has no MQTT dependency; the entire 3.1.1 state machine, framing, partial read/write, keepalive, reconnect backoff+jitter (`CalculateReconnectDelay`, `mqtt_client.cpp:1191`), LWT, and the security limits (`MAX_PUBLISH_QUEUE_SIZE=1000` drop-oldest, `MAX_READ_BUFFER_SIZE=1MB` tear-down) must be re-expressed as coroutines **without regression**. The connect chain is *already* async (`async_resolve`/`async_connect`/`async_handshake`, `:464,492,554`) and converts to `co_await` cleanly; the *steady-state* would_block machine is the work. Model it as `Reader` (loop `async_read_some` → frame-parse → `OnMessageReceived`), `Writer` (drain publish channel → `async_write`), `Keepalive` (`steady_timer`), joined by `awaitable_operators::operator||` so any child failing tears down the connection and re-enters backoff. CONNACK timeout becomes `async_read(...) || steady_timer(...)`. Reproduce drop-oldest by `try_receive`-then-`try_send` on the bounded channel.
+> **RECONCILED 2026-06-30.** This section's original premise — "vcpkg.json has no
+> MQTT dependency; the entire 3.1.1 state machine, framing, keepalive must be
+> re-expressed" — is **FALSE as of 2026-06-19**, when the MQTT client was rewritten
+> onto the **async-mqtt** library. The corrected reality follows.
+
+MQTT is now **library-backed**: `vcpkg.json` declares `{ "name": "async-mqtt",
+"features": ["tls"] }`, and `mqtt_client.cpp` includes `<async_mqtt/all.hpp>` and
+owns an `async_mqtt::endpoint` (`MqttClient::Impl`, a TCP or TLS
+`am::endpoint<am::role::client, am::protocol::mqtt|mqtts>`). The library owns the
+MQTT 3.1.1 wire concerns that this section originally scoped as migration work:
+framing/encode/decode, keepalive, the CONNECT/CONNACK handshake, and the async
+read/write completions — all driven by the host `io_context`. There is **no
+hand-rolled state machine, partial read/write bookkeeping, or `m_ConnectGeneration`
+staleness guard left to re-express**.
+
+What actually remains is thin app-level glue: (1) the bounded **drop-oldest** publish
+queue (`MqttClient::MAX_PUBLISH_QUEUE_SIZE = 1000`, mqtt_client.h) drained by
+`Impl::FlushIfConnected()`, which `MqttClient::Poll()` calls once per frame; and
+(2) the reconnect **backoff + jitter** (`MqttClient::CalculateReconnectDelay()`)
+applied via an `async_mqtt`/asio `steady_timer` (`m_ReconnectTimer.expires_after(...)`).
+Under `io_context::run()` the only genuinely poll-coupled piece is
+`FlushIfConnected()`: replace the per-frame call with a co_spawned writer woken when
+`Publish()` enqueues (or feed a bounded `experimental::channel`, reproducing
+drop-oldest via `try_receive`-then-`try_send`). The reconnect path is already
+timer-based and needs no change. This subsystem's effort drops from "large" to
+"small" — most of what this section originally described is now obviated.
 
 ### 8.3 Honest command completion surfaces a latent bug
 
@@ -249,11 +283,11 @@ Steps 1–5 deliver the headline win (frame loop gone, latency removed, lock-fre
 
 ## Key files (all absolute)
 
-- Frame loop / lifecycle / teardown: `R:\aqualink-automate\src\aqualink-automate.cpp` (io_context `:213`, signal_set `:745`, loop `:754-806`, teardown `:812-896`)
-- Serial engine: `R:\aqualink-automate\src\core\protocol\protocol_thread.cpp` (`:184` Poll), `...\protocol_thread.h` (`:48-64` ConnectWriteSignal)
-- Watchdog: `R:\aqualink-automate\src\core\devices\capabilities\restartable.cpp` (`:35` PollAll, `:14` s_Instances)
-- HTTP/WS: `R:\aqualink-automate\src\core\http\server\http_server.cpp` (`:680` Poll), `...\websocket_equipment.h` (`:52-61` unsynchronised note), `...\websocket_equipment.cpp` (`:82-115` Broadcast/Dequeue)
-- MQTT: `R:\aqualink-automate\src\core\mqtt\mqtt_client.cpp` (`:243` Poll, `:288` Publish), `...\mqtt_integration.cpp` (`:181` Poll)
+- Frame loop / lifecycle / teardown: `R:\aqualink-automate\src\aqualink-automate.cpp` (io_context `boost::asio::io_context io_context;` ~249, `signal_set` ~858, the `while (!shutdown)` loop ~867-943, teardown after the "STOP APPLICATION" banner ~945-1034). Citations RECONCILED 2026-06-30 — symbol-anchored; treat line numbers as approximate.
+- Serial engine: `R:\aqualink-automate\src\core\protocol\protocol_thread.cpp` (`ProtocolTask::Poll`), `R:\aqualink-automate\src\core\protocol\protocol_thread.h` (`ConnectWriteSignal`)
+- Watchdog: `R:\aqualink-automate\src\core\devices\capabilities\restartable.cpp` (`Restartable::PollAll`, the `s_Instances` global)
+- HTTP/WS: `R:\aqualink-automate\src\core\http\server\http_server.cpp` (`HttpServer::Poll`); the WS code is under `http\` (NOT `http\server\`): `R:\aqualink-automate\src\core\http\websocket_equipment.h` (the "intentionally unsynchronised" note) and `R:\aqualink-automate\src\core\http\websocket_equipment.cpp` (`Broadcast`/`DequeueMessage`)
+- MQTT (async-mqtt-backed): `R:\aqualink-automate\src\core\mqtt\mqtt_client.cpp` (`MqttClient::Poll` → `Impl::FlushIfConnected`, `Publish`, `CalculateReconnectDelay`), `R:\aqualink-automate\src\core\mqtt\mqtt_client.h` (`MAX_PUBLISH_QUEUE_SIZE`), `R:\aqualink-automate\src\core\mqtt\mqtt_integration.cpp` (`MqttIntegration::Poll`), `R:\aqualink-automate\vcpkg.json` (`async-mqtt` + `tls`)
 - Canonical coroutine example: `R:\aqualink-automate\src\core\alerting\webhook_sink.cpp` (`:49-104` awaitable chain, `:199-202` co_spawn)
 - Hubs/DI invariant: `R:\aqualink-automate\src\core\kernel\hub_locator.h` (`:33-34,78`)
 - Test harness: `R:\aqualink-automate\test\unit\support\unit_test_mockreplayharness.h`

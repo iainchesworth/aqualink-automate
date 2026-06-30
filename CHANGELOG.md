@@ -71,7 +71,7 @@ This release folds in an end-to-end security review. All hardened behaviour pres
 - **Smaller hardening fixes.** Reflected request targets in `405` error pages are HTML-escaped (reflected-XSS fix); malformed preferences input returns `400` instead of `500`; serial capture files are created `0600` and auto-stop at a 256 MiB cap (disk-fill DoS); broker-controlled MQTT topic strings are sanitized before logging (log-forging); and `--disable-content` is now honoured (it was parsed but never enforced, leaving the doc-root served).
 - **Open-bind and weak-token warnings.** Binding a non-loopback address with no auth token now logs a loud startup warning and requires an `--insecure-no-auth` acknowledgement; weak (`<16` character) tokens are also warned. Supply tokens via a file or environment rather than the command line.
 
-## [0.7.0-beta.1] - 2026-06-20
+## [0.7.0-beta.1] - 2026-06-27
 
 ### Added
 

@@ -144,7 +144,7 @@ choco install git cmake ninja visualstudio2022buildtools
 
 ## CMake presets
 
-Presets are named `config-<platform>-<compiler>[-debug|-coverage]`. There are 12 named configure presets (plus three hidden base presets — `core`, `debug`, `release` — that the named presets inherit from). Every configure preset has a matching `build-*` and `test-*` preset; only the **Release** presets have a matching `pack-*` preset.
+Presets are named `config-<platform>-<compiler>[-debug|-coverage]`. There are 12 named configure presets (plus four hidden base presets — `core`, `debug`, `release`, `profiling` — that the named presets inherit from). Every configure preset has a matching `build-*` and `test-*` preset; only the **Release** presets have a matching `pack-*` preset.
 
 | Configure preset | Platform | Compiler | Build type | Notable flags | `build-*` | `test-*` | `pack-*` |
 |------------------|----------|----------|-----------|---------------|:---------:|:--------:|:--------:|

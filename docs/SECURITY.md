@@ -69,7 +69,7 @@ Key points:
 - **Origin allow-list and CSRF header** are built into the routing layer and can be enabled:
   - `--api-allowed-origin <origin>` (repeatable) — when set, an API request or WebSocket upgrade whose `Origin` header is not on the list is rejected with HTTP 403. This blocks cross-site WebSocket hijacking and cross-origin reads. Leave unset to disable the check.
   - `--api-require-csrf-header` — when set, state-changing requests (`POST`/`PUT`/`PATCH`/`DELETE`) must carry an `X-Requested-With` header, mitigating cross-site request forgery from a browser. Defaults to off so existing programmatic clients are unaffected.
-- **Token strength / brute force.** The token is compared in constant time, but there is no per-IP lockout, so a short or low-entropy token can be guessed online. Use a long random token (32+ characters); the app warns at startup if the configured token is shorter than 16 characters.
+- **Token strength / brute force.** The token is compared in constant time, and the routing layer applies per-IP rate limiting: after 10 failed authentication attempts from a source IP within 60 seconds, that IP is refused with HTTP 429 for the rest of the window (a successful auth clears it). This blunts online guessing, but still use a long random token (32+ characters); the app warns at startup if the configured token is shorter than 16 characters.
 
 To require TLS for the API itself and pick certificates, see the `--cert`, `--cert-key`, and related flags in the [Configuration reference](configuration.md).
 

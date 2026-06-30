@@ -169,6 +169,7 @@ Publishing pool state to an MQTT broker, optionally with Home Assistant auto-dis
 | Option | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--mqtt` | | flag | off | Enable the MQTT client. |
+| `--mqtt-protocol-version` | | enum | `3.1.1` | MQTT wire-protocol version the client speaks: `3.1.1` or `5.0`. |
 | `--mqtt-host` | | string | `localhost` | Broker hostname or IP. |
 | `--mqtt-port` | | uint16 | `1883` | Broker port (auto-switches to `8883` with `--mqtt-tls` if you do not set a port). |
 | `--mqtt-tls` | | flag | off | Enable TLS for the broker connection. |
@@ -225,6 +226,7 @@ Pool topology and the discovered-equipment cache. Lives in the `Equipment` setti
 | --- | --- | --- | --- | --- |
 | `--pool-configuration` | | enum | `auto` | Installation type. Accepted: `pool-only`, `spa-only`, `combo`, `dual`, `auto`. |
 | `--equipment-cache-file` | | string | none | JSON cache of discovered equipment for an instant dashboard on restart. Empty disables caching. |
+| `--temperature-staleness-threshold` | | uint | `600` | Age in seconds after which a reported temperature is flagged stale. |
 
 `--pool-configuration` maps to the internal body model:
 
