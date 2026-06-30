@@ -479,6 +479,94 @@ nav .nav-controls {
 .sched-day-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .sched-form-actions { display: flex; gap: 0.5rem; align-items: center; }
 
+/* ---- Schedules: unified view (controller + app) ------------------------- */
+.sched-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.sched-view-toggle { display: inline-flex; border: 1px solid var(--border-color); border-radius: var(--radius-sm, 8px); overflow: hidden; }
+.sched-view-toggle button {
+    padding: 0.3rem 0.7rem;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    border: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+}
+.sched-view-toggle button.active { background: var(--accent); color: #fff; }
+
+.sched-owner-tag {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm, 8px);
+    margin-right: 0.4rem;
+    vertical-align: 0.05rem;
+}
+.sched-owner-tag.tag-controller { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-hover); }
+.sched-owner-tag.tag-app { background: color-mix(in srgb, var(--spa-water) 22%, transparent); color: var(--spa-water-deep); }
+
+.sched-enable-locked { color: var(--text-muted, #94a3b8); display: inline-flex; align-items: center; }
+.sched-row-disabled { opacity: 0.55; }
+.sched-row-conflict { border-color: var(--gauge-bad); box-shadow: inset 3px 0 0 var(--gauge-bad); }
+.sched-conflict-flag {
+    margin-left: 0.4rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--gauge-bad);
+    border: 1px solid var(--gauge-bad);
+    border-radius: var(--radius-sm, 8px);
+    padding: 0.05rem 0.35rem;
+}
+.sched-conflict-banner {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm, 8px);
+    background: color-mix(in srgb, var(--gauge-bad) 12%, transparent);
+    color: var(--gauge-bad);
+}
+.sched-conflict-count { font-weight: 600; }
+.sched-pending { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+
+/* timeline day view */
+.sched-timeline { margin-top: 0.75rem; }
+.sched-timeline-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.sched-legend { display: flex; gap: 0.9rem; font-size: 0.72rem; color: var(--text-muted, #94a3b8); }
+.sched-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.lg-swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; }
+.lg-swatch.lg-controller { background: var(--accent); }
+.lg-swatch.lg-app { background: var(--spa-water); transform: rotate(45deg); border-radius: 1px; }
+.lg-swatch.lg-conflict { background: var(--gauge-bad); transform: rotate(45deg); border-radius: 1px; }
+.sched-axis {
+    display: flex; justify-content: space-between;
+    padding-left: 118px;
+    margin-top: 0.6rem;
+    font-size: 0.68rem; color: var(--text-muted, #94a3b8);
+}
+.sched-trk-row { display: grid; grid-template-columns: 118px 1fr; align-items: center; }
+.sched-trk-label { font-size: 0.78rem; color: var(--text-primary); padding-right: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-trk { position: relative; height: 34px; border-bottom: 1px solid var(--border-color); }
+.sched-grid { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--border-color); }
+.sched-bar {
+    position: absolute; top: 7px; height: 20px;
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.sched-bar-off { opacity: 0.4; }
+.sched-bar-conflict { outline: 2px solid var(--gauge-bad); outline-offset: 1px; }
+.sched-mk {
+    position: absolute; top: 11px; width: 12px; height: 12px;
+    background: var(--spa-water);
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 2px;
+}
+.sched-mk-off { opacity: 0.4; }
+.sched-mk-conflict { background: var(--gauge-bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gauge-bad) 30%, transparent); }
+
 /* ---- Preferences form ---------------------------------------------------- */
 .prefs-form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 460px; margin: 0.5rem 0 1rem; }
 .prefs-input { max-width: 220px; }
