@@ -8,7 +8,7 @@
 #
 # Requirements: Docker (Docker Desktop on Windows/WSL2, or a Linux engine) with
 # arm64 emulation registered. Verify with:
-#     docker run --rm --platform linux/arm64 ubuntu:25.04 uname -m   # -> aarch64
+#     docker run --rm --platform linux/arm64 ubuntu:26.04 uname -m   # -> aarch64
 # If that prints anything other than aarch64, register QEMU once:
 #     docker run --privileged --rm tonistiigi/binfmt --install arm64
 #
@@ -27,7 +27,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VCPKG_SHA="$(git -C "$REPO" ls-tree HEAD deps/vcpkg | awk '{print $3}')"
-IMAGE="${AQ_ARM64_IMAGE:-ubuntu:25.04}"
+IMAGE="${AQ_ARM64_IMAGE:-ubuntu:26.04}"
 CACHE_VOL="${AQ_ARM64_CACHE_VOL:-aqlauto-vcpkg-arm64}"
 
 if [ -z "$VCPKG_SHA" ]; then

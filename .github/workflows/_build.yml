@@ -334,8 +334,8 @@ jobs:
       # they do not recompile). This is the same `cmake --install` tree the
       # Dockerfile assembles the runtime image from: the binary + bundled vcpkg libs
       # ($ORIGIN RPATH) + web/ssl assets. Linux only (the consumers are Linux), and
-      # built on the Ubuntu-25.04 runner so the binary's glibc/libstdc++ baseline
-      # matches the ubuntu:25.04 Docker runtime base.
+      # built on the host runner, whose glibc/libstdc++ baseline is <= the
+      # ubuntu:26.04 Docker runtime base, so the tree runs there.
       # ---------------------------------------------------------------------------
       # x64 only: the install tree feeds the (x64) Docker image + e2e-ui, and the
       # artifact name is fixed, so the arm64 Linux entry must NOT also upload it.
@@ -383,7 +383,7 @@ jobs:
       # OS baseline: glibc 2.36, gcc-12 system libstdc++) and run it. This is the
       # guard that the packages still run on a stock Pi — it catches both a missing
       # runtime dependency AND a regression to a too-new glibc/libstdc++ baseline
-      # (which an ubuntu:25.04 test would silently pass). Runs natively per arch.
+      # (which an ubuntu:26.04 test would silently pass). Runs natively per arch.
       - name: Smoke test — install package & run (Linux)
         if: inputs.do_package && runner.os == 'Linux'
         run: |

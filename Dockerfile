@@ -2,7 +2,7 @@
 # Stage: base (shared tooling for dev, ci, and runtime builds)
 # ==============================================================================
 
-FROM ubuntu:25.04 AS base
+FROM ubuntu:26.04 AS base
 
 ARG GCC_VERSION=15
 ARG LLVM_VERSION=21
@@ -10,9 +10,10 @@ ARG CMAKE_VERSION=3.31.6
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build toolchain:
-#   - GCC 15 (default in Ubuntu 25.04)
-#   - LLVM/Clang 21 from apt.llvm.org (compiler, linker, libc++, clang-tidy)
+# Install build toolchain (all from the Ubuntu 26.04 repos):
+#   - GCC 15 (default in Ubuntu 26.04)
+#   - LLVM/Clang 21 from universe (compiler, linker, libc++, clang-tidy) -- the
+#     stock Ubuntu packages, so no third-party apt.llvm.org repo is needed.
 #   - CMake 3.31+ via official binary (project requires 3.31)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -23,7 +24,6 @@ RUN apt-get update \
         ccache \
         curl \
         git \
-        gpg \
         libtool \
         linux-libc-dev \
         gcovr \
@@ -33,25 +33,19 @@ RUN apt-get update \
         unzip \
         wget \
         zip \
-    # GCC (available in default Ubuntu 25.04 repos)
+    # GCC (default toolchain in Ubuntu 26.04)
         build-essential \
         gcc-${GCC_VERSION} \
         g++-${GCC_VERSION} \
-    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION} \
-    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION} \
-    && update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION} ${GCC_VERSION} \
-    # LLVM/Clang from apt.llvm.org
-    && wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-        | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null \
-    && echo "deb http://apt.llvm.org/plucky/ llvm-toolchain-plucky-${LLVM_VERSION} main" \
-        > /etc/apt/sources.list.d/llvm.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    # LLVM/Clang (Ubuntu 26.04 universe)
         clang-${LLVM_VERSION} \
         clang-tidy-${LLVM_VERSION} \
         lld-${LLVM_VERSION} \
         libc++-${LLVM_VERSION}-dev \
         libc++abi-${LLVM_VERSION}-dev \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION} \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION} \
+    && update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION} ${GCC_VERSION} \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} ${LLVM_VERSION} \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} ${LLVM_VERSION} \
     && update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${LLVM_VERSION} ${LLVM_VERSION} \
@@ -186,7 +180,7 @@ RUN npm run build \
 #   - runtime-assembled : app from a prebuilt install tree staged into the context
 #                         (no recompile; used by release.yml docker-publish)
 
-FROM ubuntu:25.04 AS runtime-base
+FROM ubuntu:26.04 AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -279,11 +273,11 @@ COPY --from=ci /src/install/config-linux-gcc/ .
 #
 # The compiled install tree is staged into the build context at docker/context/
 # (release.yml docker-publish downloads installtree-linux-gcc there) and copied
-# straight in — NO vcpkg/source recompile. The install tree MUST be built on Ubuntu
-# 25.04 so its glibc/libstdc++ baseline matches this base image; release.yml builds
-# it on the 25.04 Linux runner. The from-source `runtime` stage (CI docker-verify)
-# remains the cold-build gate that catches any ABI/vcpkg/Dockerfile regression this
-# path cannot.
+# straight in — NO vcpkg/source recompile. The install tree's glibc/libstdc++
+# baseline must be EQUAL-OR-OLDER than this base image; release.yml builds it in the
+# glibc-2.36 container (see _build.yml) so the tree runs on both this base and a
+# stock Pi. The from-source `runtime` stage (CI docker-verify) remains the
+# cold-build gate that catches any ABI/vcpkg/Dockerfile regression this path cannot.
 
 FROM runtime-base AS runtime-assembled
 
@@ -291,7 +285,7 @@ FROM runtime-base AS runtime-assembled
 # (amd64 / arm64). Each install tree is built in the glibc-2.36 container for its
 # arch (release.yml docker-publish stages both under docker/context/ as
 # installtree-linux-gcc-<arch>.tar.gz); pick the matching one. The runtime base
-# (ubuntu:25.04, glibc 2.41) is newer than the package floor, so the tree runs.
+# (ubuntu:26.04, glibc 2.43) is newer than the package floor, so the tree runs.
 ARG TARGETARCH
 # The install tree arrives as a tarball (lossless symlinks + exec bits through the
 # CI artifact round-trip) and is unpacked here INSIDE the image, so it is correct
