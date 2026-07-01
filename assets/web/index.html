@@ -1351,142 +1351,232 @@
 
         <!-- ====== SCHEDULES VIEW (WS4) ====== -->
         <div x-show="route === 'schedules'" x-cloak x-data="schedulesView()" x-effect="if (route === 'schedules') onShown()">
+            <!-- Header: title + List/Timeline toggle + New schedule (reachable from both views) -->
             <div class="sched-header">
                 <div class="section-title">Schedules</div>
-                <div class="sched-view-toggle" x-show="editing === null">
-                    <button :class="{ active: view === 'list' }" @click="setView('list')">List</button>
-                    <button :class="{ active: view === 'timeline' }" @click="setView('timeline')">Timeline</button>
+                <div class="sched-header-actions">
+                    <div class="sched-view-toggle">
+                        <button :class="{ active: view === 'list' }" @click="setView('list')">List</button>
+                        <button :class="{ active: view === 'timeline' }" @click="setView('timeline')">Timeline</button>
+                    </div>
+                    <button class="sched-new-btn" @click="newSchedule()" :disabled="monitorOnly || !appAvailable">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                        New schedule
+                    </button>
                 </div>
             </div>
 
             <p class="trends-error" x-show="error" x-cloak x-text="error"></p>
 
+            <!-- App scheduler disabled (503) empty state -->
+            <div class="sched-empty-card" x-show="!appAvailable" x-cloak>
+                <span class="sched-empty-icon sched-empty-icon-muted">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3zM3 9h18M8 3v4M16 3v4"/></svg>
+                </span>
+                <div class="sched-empty-title">App scheduler disabled</div>
+                <div class="sched-empty-text">The app scheduler is not running. Start the server with a schedules file (<code>--schedules-file</code>) to create time-based actions.</div>
+                <div class="sched-empty-pill">GET /api/schedules · 503 Service Unavailable</div>
+            </div>
+
+            <div x-show="appAvailable">
+
             <!-- Conflict banner: app actions that contradict a controller program -->
             <div class="sched-conflict-banner" x-show="conflicts.length > 0 && editing === null" x-cloak>
-                <span class="sched-conflict-count" x-text="conflicts.length + (conflicts.length === 1 ? ' conflict' : ' conflicts')"></span>
-                <span class="text-xs">App actions clash with controller programs — see the flagged rows.</span>
+                <span class="sched-conflict-icon" aria-hidden="true">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+                </span>
+                <div class="sched-conflict-body">
+                    <div class="sched-conflict-count" x-text="conflicts.length + (conflicts.length === 1 ? ' schedule conflicts' : ' schedules conflict') + ' with a controller program'"></div>
+                    <div class="sched-conflict-list">
+                        <template x-for="cf in conflicts" :key="cf.key">
+                            <div class="sched-conflict-item"><span x-text="cf.name"></span> — <span x-text="cf.conflictMsg"></span></div>
+                        </template>
+                    </div>
+                </div>
             </div>
 
             <!-- ===== LIST VIEW (editing surface) ===== -->
             <div x-show="view === 'list' && editing === null">
-                <p class="text-muted text-xs" x-show="!appAvailable">App scheduling is disabled. Start the server with <code>--schedules-file &lt;path&gt;</code> to add app schedules. Controller schedules are shown read-only below.</p>
-                <button class="sched-new-btn" @click="newSchedule()" :disabled="monitorOnly || !appAvailable">+ New schedule</button>
 
                 <div class="sched-list">
+                    <!-- rows -->
                     <template x-for="e in unifiedEntries" :key="e.key">
                         <div class="sched-row" :class="{ 'sched-row-conflict': e.conflict, 'sched-row-disabled': !e.enabled }">
-                            <label class="sched-enable" x-show="e.owner === 'app'" :title="e.enabled ? 'Enabled' : 'Disabled'">
-                                <input type="checkbox" :checked="e.enabled" @change="toggleEnabled(e.raw)" :disabled="monitorOnly">
-                            </label>
-                            <span class="sched-enable sched-enable-locked" x-show="e.owner === 'controller'" title="Lives in the controller (read-only)">
-                                <i class="ti ti-lock" aria-hidden="true"></i>
-                            </span>
+                            <div class="sched-time-col">
+                                <div class="sched-time" :class="{ 'sched-time-controller': e.owner === 'controller' }" x-text="fmtMin(e.start)"></div>
+                                <div class="sched-time-end" x-show="e.owner === 'controller' && e.end !== null" x-text="'to ' + fmtMin(e.end)"></div>
+                            </div>
+                            <div class="sched-divider"></div>
                             <div class="sched-main">
                                 <div class="sched-name">
-                                    <span class="sched-owner-tag" :class="e.owner === 'controller' ? 'tag-controller' : 'tag-app'" x-text="e.owner === 'controller' ? 'Controller' : 'App'"></span>
                                     <span x-text="e.name"></span>
-                                    <span class="sched-conflict-flag" x-show="e.conflict" :title="e.conflictMsg">conflict</span>
+                                    <span class="sched-owner-tag" :class="e.owner === 'controller' ? 'tag-controller' : 'tag-app'" x-text="e.owner === 'controller' ? 'Controller' : 'App'"></span>
+                                    <span class="sched-conflict-flag" x-show="e.conflict" :title="e.conflictMsg">Conflict</span>
                                 </div>
                                 <div class="sched-meta">
-                                    <span x-text="e.owner === 'controller' ? e.summary : fmtMin(e.start)"></span>
-                                    · <span x-text="daySummary(e.days)"></span>
-                                    <template x-if="e.owner === 'app'"> · <span x-text="e.summary"></span></template>
+                                    <span x-text="daySummary(e.days)"></span> · <span x-text="e.summary"></span>
                                 </div>
+                                <div class="sched-row-conflict-msg" x-show="e.conflict && e.conflictMsg" x-cloak x-text="e.conflictMsg"></div>
                             </div>
                             <div class="sched-actions" x-show="e.owner === 'app'">
-                                <button class="trends-range-btn" @click="editSchedule(e.raw)" :disabled="monitorOnly">Edit</button>
-                                <button class="trends-range-btn" @click="remove(e.raw)" :disabled="monitorOnly">Delete</button>
+                                <button type="button" class="sched-switch" :class="{ on: e.enabled }" @click="toggleEnabled(e.raw)" :disabled="monitorOnly" :title="e.enabled ? 'Enabled' : 'Disabled'" role="switch" :aria-checked="e.enabled">
+                                    <span class="sched-switch-knob"></span>
+                                </button>
+                                <button type="button" class="sched-icon-btn" @click="editSchedule(e.raw)" :disabled="monitorOnly" title="Edit" aria-label="Edit">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                                </button>
+                                <button type="button" class="sched-icon-btn" @click="remove(e.raw)" :disabled="monitorOnly" title="Delete" aria-label="Delete">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                                </button>
+                            </div>
+                            <div class="sched-readonly" x-show="e.owner === 'controller'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                                Read-only
                             </div>
                         </div>
                     </template>
-                    <p class="text-muted text-xs" x-show="unifiedEntries.length === 0 && !loading && !controllerPending">No schedules yet.</p>
-                    <p class="text-muted text-xs sched-pending" x-show="controllerPending" x-cloak>
-                        <i class="ti ti-clock-pause" aria-hidden="true"></i>
-                        Controller schedules are pending — reading them from the OneTouch/IAQ menu is not wired up yet.
-                    </p>
+
+                    <!-- app empty state (scheduler on, no schedules) -->
+                    <div class="sched-empty-card" x-show="unifiedEntries.length === 0 && !loading && !controllerPending" x-cloak>
+                        <span class="sched-empty-icon sched-empty-icon-accent">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>
+                        </span>
+                        <div class="sched-empty-title">No schedules yet</div>
+                        <div class="sched-empty-text">Automate heating, filtration and lighting by time of day. Create your first schedule to get started.</div>
+                    </div>
+
+                    <!-- controller status note -->
+                    <div class="sched-note" x-show="controllerPending" x-cloak>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>
+                        Controller programs not captured yet — the controller's built-in schedules appear here once decoded from the bus.
+                    </div>
+                    <div class="sched-note sched-note-muted" x-show="controllerUnsupported" x-cloak>
+                        This controller doesn't expose its built-in programs.
+                    </div>
                 </div>
             </div>
 
             <!-- ===== TIMELINE VIEW (read-only day view) ===== -->
-            <div x-show="view === 'timeline' && editing === null" x-cloak class="sched-timeline">
-                <div class="sched-timeline-head">
-                    <div class="sched-days">
-                        <template x-for="d in days" :key="d.bit">
-                            <button type="button" class="sched-day-chip" :class="{ active: timelineDay === d.bit }" @click="setTimelineDay(d.bit)" x-text="d.label"></button>
+            <div x-show="view === 'timeline' && editing === null" x-cloak class="sched-timeline-card">
+                <div class="sched-days">
+                    <template x-for="d in days" :key="d.bit">
+                        <button type="button" class="sched-day-chip" :class="{ active: timelineDay === d.bit }" @click="setTimelineDay(d.bit)" x-text="d.label"></button>
+                    </template>
+                </div>
+
+                <p class="sched-timeline-empty" x-show="timelineRows.length === 0 && !loading">Nothing scheduled on this day.</p>
+
+                <template x-if="timelineRows.length > 0">
+                    <div class="sched-timeline-body">
+                        <template x-for="row in timelineRows" :key="row.label">
+                            <div class="sched-trk-row">
+                                <span class="sched-trk-label" x-text="row.label"></span>
+                                <div class="sched-trk">
+                                    <template x-for="e in row.spans" :key="e.key">
+                                        <div class="sched-bar" :class="{ 'sched-bar-conflict': e.conflict, 'sched-bar-off': !e.enabled }"
+                                             :style="`left:${barLeft(e)};width:${barWidth(e)}`" :title="`${e.name} · ${e.summary}`">
+                                            <span class="sched-bar-label" x-text="fmtMin(e.start) + '-' + fmtMin(e.end)"></span>
+                                        </div>
+                                    </template>
+                                    <template x-for="e in row.points" :key="e.key">
+                                        <div class="sched-mk" :class="{ 'sched-mk-conflict': e.conflict, 'sched-mk-off': !e.enabled }"
+                                             :style="`left:${pointLeft(e)}`" :title="`${e.name} · ${e.summary}`"></div>
+                                    </template>
+                                </div>
+                            </div>
                         </template>
-                    </div>
-                    <div class="sched-legend">
-                        <span><span class="lg-swatch lg-controller"></span>Controller</span>
-                        <span><span class="lg-swatch lg-app"></span>App</span>
-                        <span><span class="lg-swatch lg-conflict"></span>Conflict</span>
-                    </div>
-                </div>
-
-                <div class="sched-axis">
-                    <span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span>
-                </div>
-
-                <template x-for="row in timelineRows" :key="row.label">
-                    <div class="sched-trk-row">
-                        <span class="sched-trk-label" x-text="row.label"></span>
-                        <div class="sched-trk">
-                            <span class="sched-grid" style="left:25%"></span>
-                            <span class="sched-grid" style="left:50%"></span>
-                            <span class="sched-grid" style="left:75%"></span>
-                            <template x-for="e in row.spans" :key="e.key">
-                                <div class="sched-bar" :class="{ 'sched-bar-conflict': e.conflict, 'sched-bar-off': !e.enabled }"
-                                     :style="`left:${barLeft(e)};width:${barWidth(e)}`" :title="`${e.name} · ${e.summary}`"></div>
-                            </template>
-                            <template x-for="e in row.points" :key="e.key">
-                                <div class="sched-mk" :class="{ 'sched-mk-conflict': e.conflict, 'sched-mk-off': !e.enabled }"
-                                     :style="`left:${pointLeft(e)}`" :title="`${e.name} · ${e.summary}`"></div>
-                            </template>
+                        <!-- axis -->
+                        <div class="sched-axis-row">
+                            <div class="sched-trk-label"></div>
+                            <div class="sched-axis">
+                                <span class="sched-axis-tick" style="left:0">00:00</span>
+                                <span class="sched-axis-tick sched-axis-mid" style="left:25%">06:00</span>
+                                <span class="sched-axis-tick sched-axis-mid" style="left:50%">12:00</span>
+                                <span class="sched-axis-tick sched-axis-mid" style="left:75%">18:00</span>
+                                <span class="sched-axis-tick sched-axis-end" style="right:0">24:00</span>
+                                <span class="sched-axis-now" x-show="showNow" :style="`left:${nowLeft}`" x-cloak>now</span>
+                            </div>
                         </div>
                     </div>
                 </template>
-                <p class="text-muted text-xs" x-show="timelineRows.length === 0 && !loading">Nothing scheduled on this day.</p>
-                <p class="text-muted text-xs sched-pending" x-show="controllerPending" x-cloak>
-                    <i class="ti ti-clock-pause" aria-hidden="true"></i>
+
+                <div class="sched-legend">
+                    <span><span class="lg-swatch lg-controller"></span>Controller program (on→off)</span>
+                    <span><span class="lg-swatch lg-app"></span>App action (point in time)</span>
+                    <span><span class="lg-swatch lg-conflict"></span>Conflict</span>
+                </div>
+
+                <p class="sched-note" x-show="controllerPending" x-cloak>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>
                     Controller programs not shown — reading them is not wired up yet.
                 </p>
             </div>
 
-            <div x-show="editing !== null" x-cloak class="sched-form">
-                        <label class="sched-field">Name <input type="text" x-model="form.name" class="sched-input"></label>
-                        <label class="sched-field">Time <input type="time" x-model="form.time" class="sched-input"></label>
-                        <div class="sched-field">Days
-                            <div class="sched-days">
-                                <template x-for="d in days" :key="d.bit">
-                                    <button type="button" class="sched-day-chip" :class="{ active: hasDay(d.bit) }" @click="toggleDay(d.bit)" x-text="d.label"></button>
-                                </template>
-                            </div>
+            <!-- ===== EDIT / NEW FORM ===== -->
+            <div x-show="editing !== null" x-cloak class="sched-form-card">
+                <div class="sched-form-head">
+                    <span class="sched-form-title" x-text="editing === 'new' ? 'New schedule' : 'Edit schedule'"></span>
+                    <button type="button" class="sched-form-close" @click="cancel()" aria-label="Close">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
+                </div>
+                <div class="sched-form-body">
+                    <div class="sched-form-row-name">
+                        <div class="sched-field">
+                            <span class="sched-field-label">Name</span>
+                            <input type="text" x-model="form.name" class="sched-input" placeholder="e.g. Morning filtration">
                         </div>
-                        <label class="sched-field">Action
+                        <label class="sched-enabled-inline">
+                            <span>Enabled</span>
+                            <button type="button" class="sched-switch" :class="{ on: form.enabled }" @click="form.enabled = !form.enabled" role="switch" :aria-checked="form.enabled">
+                                <span class="sched-switch-knob"></span>
+                            </button>
+                        </label>
+                    </div>
+                    <div class="sched-field">
+                        <span class="sched-field-label">Days</span>
+                        <div class="sched-days">
+                            <template x-for="d in days" :key="d.bit">
+                                <button type="button" class="sched-day-chip" :class="{ active: hasDay(d.bit) }" @click="toggleDay(d.bit)" x-text="d.label"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="sched-form-row-time">
+                        <div class="sched-field">
+                            <span class="sched-field-label">Time</span>
+                            <input type="time" x-model="form.time" class="sched-input">
+                        </div>
+                        <div class="sched-field">
+                            <span class="sched-field-label">Action</span>
                             <select x-model="form.actionType" class="sched-input">
                                 <template x-for="a in actionTypes" :key="a.value">
                                     <option :value="a.value" x-text="a.label"></option>
                                 </template>
                             </select>
-                        </label>
-                        <label class="sched-field" x-show="isButtonAction(form.actionType)">Device
-                            <select x-model="form.target" class="sched-input">
-                                <template x-for="b in buttons" :key="b"><option :value="b" x-text="b"></option></template>
-                            </select>
-                        </label>
-                        <label class="sched-field" x-show="form.actionType === 'circulation_mode'">Mode
-                            <input type="text" x-model="form.target" class="sched-input" placeholder="e.g. Pool">
-                        </label>
-                        <label class="sched-field" x-show="isValueAction(form.actionType)">Value
-                            <input type="number" x-model.number="form.value" class="sched-input">
-                        </label>
-                        <label class="sched-field"><input type="checkbox" x-model="form.enabled"> Enabled</label>
-                        <div class="sched-form-actions">
-                            <button class="sched-new-btn" @click="save()" :disabled="monitorOnly">Save</button>
-                            <button class="trends-range-btn" @click="cancel()">Cancel</button>
                         </div>
                     </div>
+                    <div class="sched-field" x-show="isButtonAction(form.actionType)">
+                        <span class="sched-field-label">Target device</span>
+                        <select x-model="form.target" class="sched-input">
+                            <template x-for="b in buttons" :key="b"><option :value="b" x-text="b"></option></template>
+                        </select>
+                    </div>
+                    <div class="sched-field" x-show="form.actionType === 'circulation_mode'">
+                        <span class="sched-field-label">Mode</span>
+                        <input type="text" x-model="form.target" class="sched-input" placeholder="e.g. Pool">
+                    </div>
+                    <div class="sched-field" x-show="isValueAction(form.actionType)">
+                        <span class="sched-field-label">Value</span>
+                        <input type="number" x-model.number="form.value" class="sched-input">
+                    </div>
+                    <div class="sched-form-actions">
+                        <button type="button" class="sched-form-cancel" @click="cancel()">Cancel</button>
+                        <button type="button" class="sched-form-save" @click="save()" :disabled="monitorOnly">Save schedule</button>
+                    </div>
                 </div>
-            </template>
+            </div>
+
+            </div><!-- /appAvailable -->
         </div>
 
         <!-- ====== SETTINGS VIEW ====== -->

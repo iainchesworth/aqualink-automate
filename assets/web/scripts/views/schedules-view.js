@@ -248,6 +248,14 @@ function schedulesView() {
             return [...groups.values()];
         },
 
+        // The "now" marker is only meaningful when the timeline shows today.
+        get showNow() { return this.timelineDay === ((new Date().getDay() + 6) % 7); },
+        get nowLeft() {
+            const now = new Date();
+            const min = (now.getHours() * 60) + now.getMinutes();
+            return `${(min / 1440 * 100).toFixed(2)}%`;
+        },
+
         fmtMin(min) { return _schedFmtMin(min); },
         barLeft(e) { return `${(e.start / 1440 * 100).toFixed(2)}%`; },
         barWidth(e) {
