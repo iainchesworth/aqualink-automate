@@ -272,6 +272,7 @@ target_sources(
 	libaqualink-automate 
 	PRIVATE
 	platform/windows/application_defaults.cpp
+	platform/windows/secure_runtime_paths.cpp
 	platform/windows/firewall_manager.cpp
 	platform/windows/get_terminal_column_width.cpp
 	platform/windows/uac_elevation.cpp
@@ -309,6 +310,7 @@ target_sources(
 	libaqualink-automate
 	PRIVATE
 	platform/posix/application_defaults.cpp
+	platform/posix/secure_runtime_paths.cpp
 	platform/posix/firewall_manager.cpp
 	platform/posix/network_serial_port_timeout.cpp
 	platform/posix/safe_ctime.cpp
@@ -322,6 +324,7 @@ target_sources(
 	libaqualink-automate
 	PRIVATE
 	platform/posix/application_defaults.cpp
+	platform/posix/secure_runtime_paths.cpp
 	platform/posix/firewall_manager.cpp
 	platform/posix/network_serial_port_timeout.cpp
 	platform/posix/safe_ctime.cpp
