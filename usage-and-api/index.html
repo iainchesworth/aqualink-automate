@@ -1882,7 +1882,7 @@
 <td>GET</td>
 <td><code>/api/version</code></td>
 <td><code>200</code> JSON</td>
-<td>App + build metadata and uptime.</td>
+<td>App + build metadata and uptime. <code>git_info.uncommitted_changes</code> is the build-time working-tree state and means a <strong>tracked source file differed from the commit</strong> — it deliberately ignores exec-bit-only changes, untracked build artifacts, and the bootstrapped <code>deps/vcpkg</code> submodule, so a CI-released binary reports <code>false</code>.</td>
 </tr>
 </tbody>
 </table>
