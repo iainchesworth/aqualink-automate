@@ -1247,3 +1247,208 @@ a:hover {
     margin-top: 0.3rem;
     line-height: 1.45;
 }
+
+/* ============================================================================
+   Reskin shell — calm-premium nav / header / status / alerts / banners.
+   Appended last so these win over the legacy nav rules above at equal
+   specificity. Uses the new OKLCH tokens.
+   ============================================================================ */
+
+/* Page background glow (signature look). */
+body {
+    background: radial-gradient(1200px 600px at 50% -5%, var(--bg-glow), transparent 60%), var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+}
+
+/* --- Sticky nav ---------------------------------------------------------- */
+nav.app-nav {
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    backdrop-filter: saturate(1.6) blur(14px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: none;
+    color: var(--text);
+    padding: 0;
+}
+
+nav.app-nav .nav-inner {
+    max-width: var(--content-max);
+    padding: 12px 24px;
+    gap: 14px;
+}
+
+nav.app-nav .nav-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    gap: 10px;
+}
+
+nav.app-nav .nav-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+nav.app-nav .nav-brand-mark svg { width: 18px; height: 18px; }
+
+nav.app-nav .nav-links { gap: 2px; flex-wrap: wrap; }
+
+nav.app-nav .nav-link {
+    color: var(--text-dim);
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s, border-color .16s;
+}
+nav.app-nav .nav-link:hover { color: var(--text); background: var(--surface-2); }
+nav.app-nav .nav-link.active {
+    color: var(--text);
+    background: var(--surface-3);
+    border-color: var(--border);
+}
+
+nav.app-nav .nav-status { gap: 8px; flex-wrap: nowrap; }
+nav.app-nav .nav-controls { gap: 6px; }
+
+/* --- Connection chip ----------------------------------------------------- */
+.conn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    font: 600 12px/1 var(--font-ui);
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+.conn-chip .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+.conn-chip.is-online  .conn-dot { background: var(--good); box-shadow: 0 0 0 3px oklch(0.78 0.12 162 / .18); }
+.conn-chip.is-online  { color: var(--text); }
+.conn-chip.is-offline .conn-dot { background: var(--bad); animation: cmdPulse 1.4s ease-in-out infinite; }
+.conn-chip.is-offline { color: var(--bad); border-color: var(--bad); }
+
+/* --- Status pill --------------------------------------------------------- */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font: 600 12px/1 var(--font-ui);
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.status-pill .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status-pill.status-ready        { color: var(--good); background: oklch(0.78 0.12 162 / .14); }
+.status-pill.status-starting     { color: var(--warn); background: oklch(0.83 0.11 82 / .14); }
+.status-pill.status-disconnected { color: var(--bad);  background: oklch(0.68 0.16 25 / .14); }
+.status-pill.status-service      { color: var(--warn); background: oklch(0.83 0.11 82 / .14); }
+.status-pill.status-monitor      { color: var(--text-dim); background: var(--surface-3); }
+.status-pill .pill-spinner {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin360 .7s linear infinite;
+}
+
+/* --- Icon buttons (alerts / monitor / theme / logout) -------------------- */
+nav.app-nav .nav-icon-btn,
+nav.app-nav .theme-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: background .16s, color .16s, border-color .16s;
+}
+nav.app-nav .nav-icon-btn:hover,
+nav.app-nav .theme-toggle:hover { color: var(--text); background: var(--surface-3); border-color: var(--border-strong); }
+nav.app-nav .nav-icon-btn svg,
+nav.app-nav .theme-toggle svg { width: 17px; height: 17px; }
+nav.app-nav .nav-icon-btn.active,
+nav.app-nav .theme-toggle.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+nav.app-nav .alerts-bell.has-alerts { color: var(--bad); border-color: var(--bad); }
+
+/* --- Alerts dropdown ----------------------------------------------------- */
+.alerts-wrap { position: relative; display: inline-flex; }
+.alerts-badge {
+    position: absolute;
+    top: -5px; right: -5px;
+    min-width: 16px; height: 16px;
+    padding: 0 4px;
+    border-radius: 99px;
+    background: var(--bad);
+    color: #fff;
+    font: 700 10px/16px var(--font-ui);
+    text-align: center;
+}
+.alerts-dropdown {
+    position: absolute;
+    top: 44px; right: 0;
+    z-index: 120;
+    width: 320px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: floatIn .16s ease;
+}
+.alerts-dd-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px;
+    font: 600 13px/1 var(--font-display);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+.alerts-dd-count {
+    min-width: 20px; padding: 2px 7px; border-radius: 99px;
+    background: var(--surface-3); color: var(--text-dim);
+    font: 700 11px/1.2 var(--font-ui); text-align: center;
+}
+.alerts-dd-empty { padding: 20px 16px; color: var(--text-faint); font: 500 13px/1.4 var(--font-ui); text-align: center; }
+.alerts-dd-list { max-height: 320px; overflow-y: auto; }
+.alerts-dd-item { display: flex; gap: 11px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.alerts-dd-item:last-child { border-bottom: none; }
+.alerts-dd-sev { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; }
+.alerts-dd-sev.sev-bad  { background: var(--bad); }
+.alerts-dd-sev.sev-warn { background: var(--warn); }
+.alerts-dd-title  { font: 600 13px/1.3 var(--font-ui); color: var(--text); }
+.alerts-dd-detail { font: 500 12px/1.35 var(--font-ui); color: var(--text-dim); margin-top: 2px; }
+.alerts-dd-foot   { padding: 10px 16px; font: 500 11.5px/1.4 var(--font-ui); color: var(--text-faint); background: var(--surface-2); }
+
+/* --- Banners ------------------------------------------------------------- */
+.startup-banner, .service-banner {
+    border: none;
+    box-shadow: none;
+}
+.startup-banner .startup-banner-inner,
+.service-banner .service-banner-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 11px 24px;
+    font: 600 13.5px/1.3 var(--font-ui);
+}
+.startup-banner { background: oklch(0.83 0.11 82 / .12); color: var(--warn); border-bottom: 1px solid var(--border); }
+.service-banner { background: oklch(0.83 0.11 82 / .14); color: var(--warn); border-bottom: 1px solid var(--border); }
