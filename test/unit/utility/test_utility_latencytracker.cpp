@@ -340,4 +340,62 @@ BOOST_AUTO_TEST_CASE(Test_SerialLatencyMetrics_HasAllTrackers)
 	BOOST_CHECK_EQUAL(metrics.MessageProcessingLatency.GetSnapshot().sample_count, 1);
 }
 
+//-----------------------------------------------------------------------------
+// CUMULATIVE (SINCE-RESTART) AGGREGATE + WINDOW REPORTING  (E1)
+//-----------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(Test_CumulativeMean_SpansSamplesEvictedFromWindow)
+{
+	// Window holds only the 2 most-recent samples; the cumulative mean must still
+	// account for every sample ever recorded, not just the retained window.
+	LatencyPercentileTracker<> tracker(2, 60s);
+	tracker.Record(100ns);
+	tracker.Record(200ns);
+	tracker.Record(300ns);
+
+	auto snapshot = tracker.GetSnapshot();
+
+	// Window retains the last two (200, 300) -> window mean 250.
+	BOOST_CHECK_EQUAL(snapshot.sample_count, 2);
+	BOOST_CHECK_EQUAL(snapshot.mean.count(), 250);
+
+	// Cumulative mean spans all three (100 + 200 + 300) / 3 = 200.
+	BOOST_CHECK_EQUAL(tracker.TotalSampleCount(), 3);
+	BOOST_CHECK_EQUAL(tracker.CumulativeMean().count(), 200);
+}
+
+BOOST_AUTO_TEST_CASE(Test_CumulativeMean_EmptyTrackerIsZero)
+{
+	LatencyPercentileTracker<> tracker;
+	BOOST_CHECK_EQUAL(tracker.CumulativeMean().count(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(Test_CumulativeMean_ClearedByReset)
+{
+	LatencyPercentileTracker<> tracker;
+	tracker.Record(1000ns);
+	tracker.Record(3000ns);
+	BOOST_CHECK_EQUAL(tracker.CumulativeMean().count(), 2000);
+
+	tracker.Reset();
+	BOOST_CHECK_EQUAL(tracker.CumulativeMean().count(), 0);
+	BOOST_CHECK_EQUAL(tracker.TotalSampleCount(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(Test_WindowDuration_IsReported)
+{
+	LatencyPercentileTracker<> tracker(1000, 900s);
+	BOOST_CHECK(tracker.WindowDuration() == 900s);
+}
+
+BOOST_AUTO_TEST_CASE(Test_SerialLatencyMetrics_Use15MinuteWindow)
+{
+	// E1: the serial trackers report over a 15-minute (900s) window, not 60s, so
+	// the diagnostics "last 15 minutes" label is truthful.
+	SerialLatencyMetrics metrics;
+	BOOST_CHECK(metrics.ReadLatency.WindowDuration() == 900s);
+	BOOST_CHECK(metrics.WriteLatency.WindowDuration() == 900s);
+	BOOST_CHECK(metrics.MessageProcessingLatency.WindowDuration() == 900s);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

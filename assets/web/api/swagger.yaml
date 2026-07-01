@@ -2323,7 +2323,11 @@ components:
 
     LatencySnapshot:
       type: object
-      description: Latency percentile statistics in microseconds
+      description: >
+        Latency statistics in microseconds. The percentiles (p1..p99), min/max, mean
+        and sample_count describe the recent sliding window (see window_secs). The
+        alltime_min_us/alltime_max_us and cumulative_mean_us are since-restart figures
+        spanning every sample recorded, independent of the window.
       properties:
         p1_us:
           type: number
@@ -2346,14 +2350,25 @@ components:
         alltime_min_us:
           type: number
           format: double
+          description: Since-restart minimum, independent of the sliding window.
         alltime_max_us:
           type: number
           format: double
+          description: Since-restart maximum, independent of the sliding window.
         mean_us:
           type: number
           format: double
+          description: Arithmetic mean over the sliding window.
+        cumulative_mean_us:
+          type: number
+          format: double
+          description: Since-restart arithmetic mean over every sample recorded.
+        window_secs:
+          type: integer
+          description: Span of the sliding window the percentiles are computed over (900 = last 15 minutes).
         sample_count:
           type: integer
+          description: Number of samples currently within the sliding window.
 
     EquipmentVersionResponse:
       type: object

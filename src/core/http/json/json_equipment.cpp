@@ -97,7 +97,7 @@ namespace AqualinkAutomate::HTTP::JSON
 	}
 
 	using Utility::NanosToMicros;
-	using Utility::SerializeLatencySnapshot;
+	using Utility::SerializeLatency;
 
 	nlohmann::json GenerateJson_Equipment_Stats(const std::shared_ptr<Kernel::StatisticsHub>& statistics_hub)
 	{
@@ -143,9 +143,9 @@ namespace AqualinkAutomate::HTTP::JSON
 		// Latency percentiles
 		nlohmann::json latency_metrics;
 		auto read_snapshot = statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot();
-		latency_metrics["serial_read"] = SerializeLatencySnapshot(read_snapshot);
-		latency_metrics["serial_write"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot());
-		latency_metrics["message_processing"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot());
+		latency_metrics["serial_read"] = SerializeLatency(statistics_hub->LatencyMetrics.ReadLatency);
+		latency_metrics["serial_write"] = SerializeLatency(statistics_hub->LatencyMetrics.WriteLatency);
+		latency_metrics["message_processing"] = SerializeLatency(statistics_hub->LatencyMetrics.MessageProcessingLatency);
 		je_stats["latency"] = latency_metrics;
 
 		LogTrace(Channel::Web, std::format("Serial read latency: p50={:.2f}us, p99={:.2f}us ({} samples)",

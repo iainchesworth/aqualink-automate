@@ -19,7 +19,7 @@
 using namespace AqualinkAutomate::Logging;
 using AqualinkAutomate::Utility::Slugify;
 using AqualinkAutomate::Utility::NanosToMicros;
-using AqualinkAutomate::Utility::SerializeLatencySnapshot;
+using AqualinkAutomate::Utility::SerializeLatency;
 
 namespace AqualinkAutomate::Mqtt
 {
@@ -839,9 +839,9 @@ namespace AqualinkAutomate::Mqtt
 
 		if (auto statistics_hub = m_StatisticsHub.lock())
 		{
-			latency["serial_read"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.ReadLatency.GetSnapshot());
-			latency["serial_write"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.WriteLatency.GetSnapshot());
-			latency["message_processing"] = SerializeLatencySnapshot(statistics_hub->LatencyMetrics.MessageProcessingLatency.GetSnapshot());
+			latency["serial_read"] = SerializeLatency(statistics_hub->LatencyMetrics.ReadLatency);
+			latency["serial_write"] = SerializeLatency(statistics_hub->LatencyMetrics.WriteLatency);
+			latency["message_processing"] = SerializeLatency(statistics_hub->LatencyMetrics.MessageProcessingLatency);
 		}
 
 		return latency;

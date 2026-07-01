@@ -19,6 +19,9 @@ namespace AqualinkAutomate::Utility
 	}
 
 	/// Serialize a latency percentile snapshot to JSON.
+	///
+	/// `p1..p99`, `min`/`max`, `mean` and `sample_count` describe the recent sliding
+	/// window; `alltime_min_us`/`alltime_max_us` are the since-restart extremes.
 	inline nlohmann::json SerializeLatencySnapshot(const LatencyPercentileTracker<>::PercentileSnapshot& snapshot)
 	{
 		return {
@@ -33,6 +36,19 @@ namespace AqualinkAutomate::Utility
 			{"mean_us", NanosToMicros(snapshot.mean)},
 			{"sample_count", snapshot.sample_count}
 		};
+	}
+
+	/// Serialize a latency tracker to JSON: the sliding-window snapshot (percentiles,
+	/// min/max, mean, sample_count) plus the window span (`window_secs`) and the
+	/// cumulative since-restart aggregate (`alltime_min_us`/`alltime_max_us` from the
+	/// snapshot, plus `cumulative_mean_us`). This lets the diagnostics UI honestly
+	/// label its "last N minutes" window and its "since restart" figures.
+	inline nlohmann::json SerializeLatency(const LatencyPercentileTracker<>& tracker)
+	{
+		nlohmann::json j = SerializeLatencySnapshot(tracker.GetSnapshot());
+		j["window_secs"] = static_cast<std::int64_t>(tracker.WindowDuration().count());
+		j["cumulative_mean_us"] = NanosToMicros(tracker.CumulativeMean());
+		return j;
 	}
 
 	/// Round a double to `places` decimal places for JSON / display output.
