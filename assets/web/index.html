@@ -274,6 +274,9 @@
 
                 <!-- Status -->
                 <div class="summary-status">
+                    <span class="hero-status-pill"
+                          :class="$store.pool.systemStatus === 'Operational' ? 'is-ok' : 'is-warn'"
+                          x-text="($store.pool.systemStatus || 'Unknown').toUpperCase()"></span>
                     <div class="summary-status-row">
                         <span class="summary-status-dot" :class="pumpActive ? 'dot-active' : 'dot-inactive'" aria-hidden="true"></span>
                         <span x-text="'Pump ' + (pumpActive ? 'On' : 'Off')"></span>
@@ -296,28 +299,31 @@
                 <div class="card">
                     <div class="card-header">Circulation</div>
                     <div class="card-body">
-                        <button class="eq-control"
-                                :class="{ active: $store.pool.spaModeActive, 'cmd-sending': $store.pool.getCommandState('circulation') === 'sending', 'cmd-flash-ok': $store.pool.getCommandState('circulation') === 'applied', 'cmd-flash-bad': $store.pool.getCommandState('circulation') === 'rejected' || $store.pool.getCommandState('circulation') === 'timedout' }"
-                                :aria-pressed="$store.pool.spaModeActive"
-                                aria-label="Toggle spa mode"
-                                @click="$store.pool.toggleSpaMode(!$store.pool.spaModeActive)">
-                            <svg class="eq-control-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#icon-waves"></use></svg>
-                            <span class="eq-control-body">
-                                <span class="eq-control-label">Spa Mode</span>
-                                <span class="eq-control-status" x-text="$store.pool.spaModeActive ? 'Spa' : 'Pool'"></span>
+                        <div class="circ-row">
+                            <span class="circ-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 8c2.2-2 3.8-2 6 0s3.8 2 6 0 3.8-2 6 0M2 14c2.2-2 3.8-2 6 0s3.8 2 6 0 3.8-2 6 0"/></svg>
                             </span>
-                            <span class="eq-switch" :class="{ on: $store.pool.spaModeActive }" aria-hidden="true">
-                                <span class="eq-switch-knob"></span>
-                            </span>
-                            <!-- Command feedback -->
+                            <div class="circ-body">
+                                <div class="circ-title">Active Body</div>
+                                <div class="circ-sub" x-text="'Shared pump circulating: ' + ($store.pool.spaModeActive ? 'Spa' : 'Pool')"></div>
+                            </div>
+                            <div class="circ-seg" role="group" aria-label="Active body">
+                                <button type="button" class="circ-seg-btn" :class="{ active: !$store.pool.spaModeActive }"
+                                        :aria-pressed="!$store.pool.spaModeActive"
+                                        :disabled="$store.pool.getCommandState('circulation') === 'sending'"
+                                        @click="$store.pool.toggleSpaMode(false)">Pool</button>
+                                <button type="button" class="circ-seg-btn" :class="{ active: $store.pool.spaModeActive }"
+                                        :aria-pressed="$store.pool.spaModeActive"
+                                        :disabled="$store.pool.getCommandState('circulation') === 'sending'"
+                                        @click="$store.pool.toggleSpaMode(true)">Spa</button>
+                            </div>
+                        </div>
+                        <div class="circ-feedback">
                             <span class="cmd-badge cmd-applied" x-show="$store.pool.getCommandState('circulation') === 'applied'" x-transition.opacity>Applied</span>
                             <span class="cmd-badge cmd-rejected" x-show="$store.pool.getCommandState('circulation') === 'rejected'" x-transition.opacity>Rejected</span>
                             <span class="cmd-badge cmd-timedout" x-show="$store.pool.getCommandState('circulation') === 'timedout'" x-transition.opacity>Timed out</span>
                             <span class="cmd-badge cmd-blocked" x-show="$store.pool.getCommandState('circulation') === 'blocked'" x-transition.opacity x-text="$store.system.disableReason || 'Blocked'"></span>
-                            <span class="cmd-spinner-overlay" x-show="$store.pool.getCommandState('circulation') === 'sending'" aria-hidden="true">
-                                <span class="cmd-spinner"></span>
-                            </span>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -357,20 +363,6 @@
                 </div>
             </div>
             </div><!-- /.dash-cols -->
-
-            <!-- System info bar -->
-            <div class="system-info-bar mb-2" x-show="$store.pool.equipmentVersion.length > 0">
-                <template x-for="field in $store.pool.equipmentVersion" :key="field.label">
-                    <span class="system-info-item">
-                        <span class="system-info-label" x-text="field.label"></span>
-                        <span class="system-info-value" x-text="field.value"></span>
-                    </span>
-                </template>
-                <span class="system-info-item">
-                    <span class="system-info-label">Status</span>
-                    <span class="system-info-value" x-text="$store.pool.systemStatus"></span>
-                </span>
-            </div>
 
             <!-- Chemistry Gauges -->
             <div class="section-title">Water Chemistry</div>

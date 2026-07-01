@@ -2175,3 +2175,46 @@ main input[type="range"] { accent-color: var(--accent); }
 .setpoint-feedback { margin-left: auto; display: inline-flex; gap: 6px; }
 .setpoint-stepper { display: inline-flex; align-items: center; gap: 12px; }
 .setpoint-row-value { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; min-width: 74px; text-align: center; }
+
+/* --- Hero operational pill ---------------------------------------------- */
+.hero-status-pill {
+    align-self: flex-start;
+    font: 700 11px/1 var(--font-ui);
+    letter-spacing: .08em;
+    padding: 6px 11px;
+    border-radius: 99px;
+    margin-bottom: 4px;
+}
+.hero-status-pill.is-ok   { background: oklch(0.78 0.12 162 / .16); color: var(--good); }
+.hero-status-pill.is-warn { background: oklch(0.83 0.11 82 / .16);  color: var(--warn); }
+
+/* --- Circulation: Active Body + Pool/Spa segmented switch ---------------- */
+.circ-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 20px; border-radius: var(--radius-row);
+    background: var(--surface-2); border: 1px solid var(--border);
+}
+.circ-icon {
+    display: grid; place-items: center; flex: none;
+    width: 44px; height: 44px; border-radius: 13px;
+    background: var(--accent-soft); color: var(--accent);
+}
+.circ-icon svg { width: 22px; height: 22px; }
+.circ-body { flex: 1; min-width: 0; }
+.circ-title { font: 600 16px/1.2 var(--font-ui); color: var(--text); }
+.circ-sub { font-size: 13px; color: var(--text-faint); margin-top: 3px; }
+.circ-seg {
+    display: flex; gap: 4px; flex: none;
+    padding: 4px; border-radius: 13px;
+    background: var(--surface-3); border: 1px solid var(--border);
+}
+.circ-seg-btn {
+    padding: 9px 18px; border: none; background: transparent;
+    color: var(--text-dim); border-radius: 10px;
+    font: 600 13px/1 var(--font-ui); cursor: pointer;
+    transition: background .16s, color .16s;
+}
+.circ-seg-btn.active { background: var(--accent-soft); color: var(--accent); }
+.circ-seg-btn:disabled { opacity: .55; cursor: default; }
+.circ-feedback { display: flex; gap: 8px; margin-top: 12px; min-height: 0; }
+.circ-feedback:empty { display: none; }
