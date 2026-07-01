@@ -109,6 +109,27 @@ function settingsView() {
             }
         },
 
+        // "min – max" label for the Good band (the design's Target chip).
+        chemGoodLabel(gaugeKey) {
+            const v = this.values[gaugeKey];
+            return `${v.goodMin} – ${v.goodMax}`;
+        },
+
+        // Zone-bar segments (bad / okay / good / okay / bad) sized proportional to
+        // the band config across the full [badMin, badMax] display range.
+        chemZones(gaugeKey) {
+            const v = this.values[gaugeKey];
+            const span = (v.badMax - v.badMin) || 1;
+            const pct = (a, b) => Math.max(0, ((b - a) / span) * 100);
+            return [
+                { color: 'var(--bad)',  pct: pct(v.badMin, v.okayMin) },
+                { color: 'var(--warn)', pct: pct(v.okayMin, v.goodMin) },
+                { color: 'var(--good)', pct: pct(v.goodMin, v.goodMax) },
+                { color: 'var(--warn)', pct: pct(v.goodMax, v.okayMax) },
+                { color: 'var(--bad)',  pct: pct(v.okayMax, v.badMax) },
+            ];
+        },
+
         resetGauge(gaugeKey) {
             this.values[gaugeKey] = { ...bandDefaults[gaugeKey] };
             this.errors[gaugeKey] = '';

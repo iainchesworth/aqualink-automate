@@ -1542,18 +1542,18 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="settings-card-desc">
-                        Friendly dashboard names for auxiliaries. Blank keeps the original; the underlying
-                        control name (commands, MQTT, Home Assistant) is unchanged.
-                    </p>
-                    <div class="settings-field">
-                        <label for="show-aux-id">Show aux id in names (e.g. "Pool Light (Aux5)")</label>
-                        <input id="show-aux-id" type="checkbox" x-model="showAuxIdInLabel" @change="saveShowAuxId()">
-                    </div>
+                    <p class="settings-card-desc">Friendly dashboard names for auxiliaries. Blank keeps the original; the underlying control name (commands, MQTT, Home Assistant) is unchanged.</p>
+                    <label class="settings-toggle-row">
+                        <div class="settings-toggle-text">
+                            <div class="settings-toggle-title">Show aux id alongside names</div>
+                            <div class="settings-toggle-sub">Suffix each name with its protocol id — e.g. "Pool Light (Aux5)"</div>
+                        </div>
+                        <input type="checkbox" class="settings-switch" x-model="showAuxIdInLabel" @change="saveShowAuxId()" aria-label="Show aux id alongside names">
+                    </label>
                     <template x-if="deviceButtons().length > 0">
-                        <div>
+                        <div class="settings-name-grid">
                             <template x-for="button in deviceButtons()" :key="button.id">
-                                <div class="settings-field" x-show="button.label">
+                                <div class="settings-name-field" x-show="button.label">
                                     <label :for="'name-' + button.id" x-text="button.label"></label>
                                     <input :id="'name-' + button.id" type="text" class="settings-input"
                                            :placeholder="button.label" x-model="labelOverrides[button.label]">
@@ -1567,132 +1567,112 @@
 
             <!-- Chemistry Target Ranges -->
             <div class="section-title mt-2">Chemistry Target Ranges</div>
-            <p class="text-muted mb-1 text-xs">
-                Good / Okay / Bad ranges for each chemistry gauge. Values outside the Bad range
-                are shown as Bad. Saved to this browser and synced to the server.
-            </p>
-
-            <template x-for="gauge in gauges" :key="gauge.key">
-                <div class="card mb-2">
-                    <div class="card-body">
-                        <div class="settings-gauge-header">
-                            <strong x-text="gauge.label" class="settings-gauge-title"></strong>
-                            <button class="setpoint-btn settings-reset-btn"
-                                    @click="resetGauge(gauge.key)">Reset</button>
-                        </div>
-                        <div class="settings-range-grid">
-                            <div class="settings-range-head" aria-hidden="true">
-                                <span></span>
-                                <span>Min</span>
-                                <span></span>
-                                <span>Max</span>
+            <p class="text-muted mb-1 text-xs">The shaded band shows each gauge's Good / Okay / Bad zones. Type to adjust the thresholds — saved to this browser and synced to the server.</p>
+            <div class="settings-chem-grid">
+                <template x-for="gauge in gauges" :key="gauge.key">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="settings-gauge-header">
+                                <strong x-text="gauge.label" class="settings-gauge-title"></strong>
+                                <button class="settings-reset-btn" @click="resetGauge(gauge.key)">Reset</button>
                             </div>
-                            <template x-for="tier in ['good', 'okay', 'bad']" :key="tier">
-                                <div class="settings-range-row">
-                                    <span class="gauge-band-indicator settings-tier-label"
-                                          :class="'gauge-band-' + tier"
-                                          x-text="tier.charAt(0).toUpperCase() + tier.slice(1)"></span>
-                                    <input type="number" class="settings-input"
-                                           :step="gauge.step"
-                                           :aria-label="tier + ' minimum'"
-                                           :value="values[gauge.key][tier + 'Min']"
-                                           @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
-                                    <span class="range-separator">&#x2013;</span>
-                                    <input type="number" class="settings-input"
-                                           :step="gauge.step"
-                                           :aria-label="tier + ' maximum'"
-                                           :value="values[gauge.key][tier + 'Max']"
-                                           @change="updateValue(gauge.key, tier + 'Max', $event.target.value)">
-                                </div>
-                            </template>
+                            <div class="chem-target-line"><span class="chem-target-dot" aria-hidden="true"></span>Target <strong x-text="chemGoodLabel(gauge.key)"></strong></div>
+                            <div class="chem-zone-bar" aria-hidden="true">
+                                <template x-for="(z, i) in chemZones(gauge.key)" :key="i">
+                                    <div class="chem-zone-seg" :style="`width:${z.pct}%;background:${z.color}`"></div>
+                                </template>
+                            </div>
+                            <div>
+                                <template x-for="tier in ['good', 'okay', 'bad']" :key="tier">
+                                    <div class="chem-tier-row">
+                                        <span class="chem-tier-dot" :style="`background:${tier === 'good' ? 'var(--good)' : (tier === 'okay' ? 'var(--warn)' : 'var(--bad)')}`" aria-hidden="true"></span>
+                                        <span class="chem-tier-label" x-text="tier.charAt(0).toUpperCase() + tier.slice(1)"></span>
+                                        <input type="number" class="settings-input" :step="gauge.step" :aria-label="tier + ' minimum'"
+                                               :value="values[gauge.key][tier + 'Min']" @change="updateValue(gauge.key, tier + 'Min', $event.target.value)">
+                                        <span class="chem-tier-sep">&#x2013;</span>
+                                        <input type="number" class="settings-input" :step="gauge.step" :aria-label="tier + ' maximum'"
+                                               :value="values[gauge.key][tier + 'Max']" @change="updateValue(gauge.key, tier + 'Max', $event.target.value)">
+                                    </div>
+                                </template>
+                            </div>
+                            <p class="settings-hint" x-show="errors[gauge.key]" x-cloak x-text="errors[gauge.key]"></p>
                         </div>
                     </div>
-                </div>
-            </template>
+                </template>
+            </div>
 
-            <!-- Smart Home (Matter) — the design places this under Settings -->
+            <!-- Smart Home (Matter) -->
             <div class="section-title mt-2">Smart Home (Matter)</div>
-            <div class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Matter Bridge</span>
+            <div class="card mb-2 matter-card">
+                <div class="matter-head">
+                    <span class="matter-title">Matter Bridge</span>
                     <span class="badge"
                           :class="!matter.enabled ? 'badge-status-off' : (matter.paired ? 'badge-freq' : (matter.running ? 'badge-status-warn' : 'badge-status-off'))"
                           x-text="!matter.enabled ? 'Disabled' : (matter.paired ? ('Paired (' + (matter.fabrics ?? 0) + ')') : (matter.running ? 'Ready to pair' : 'Starting'))"></span>
                 </div>
-                <div class="card-body">
-                    <p class="settings-card-desc">Expose pool equipment to Matter-compatible smart-home ecosystems (Apple Home, Google Home, Alexa, SmartThings).</p>
-                    <p class="text-muted text-xs mt-0 mb-1" x-show="!matter.enabled">
-                        Matter is disabled. It is on by default; it was opted out with
-                        <code>--matter false</code> (or <code>matter = false</code> in the config).
-                    </p>
-                    <p class="text-muted text-xs mt-0 mb-1" x-show="matter.enabled &amp;&amp; matter.reachable === false">
-                        The Matter bridge sidecar is enabled but not answering yet (it may still be
-                        starting). Pairing details appear once it is ready.
-                    </p>
-                    <template x-if="matter.enabled &amp;&amp; matter.running &amp;&amp; !matter.paired">
-                        <div>
-                            <p class="text-muted text-xs mt-0 mb-1">
-                                Scan this code in Apple Home, Google Home, Alexa or SmartThings to add the pool.
-                            </p>
-                            <div x-ref="matterQr" class="matter-qr mb-1" aria-label="Matter commissioning QR code"></div>
-                            <div class="emu-kv-grid">
-                                <span class="emu-kv-key">Manual code</span>
-                                <span class="emu-kv-val"><code x-text="matter.manual_code || '--'"></code></span>
-                                <span class="emu-kv-key">QR payload</span>
-                                <span class="emu-kv-val"><code class="text-2xs" x-text="matter.qr_payload || '--'"></code></span>
-                            </div>
-                        </div>
-                    </template>
-                    <div class="emu-kv-grid" x-show="matter.enabled">
-                        <span class="emu-kv-key">Sidecar</span>
-                        <span class="emu-kv-val" x-text="matter.running ? 'running' : 'not running'"></span>
-                        <span class="emu-kv-key">Paired fabrics</span>
-                        <span class="emu-kv-val" x-text="matter.fabrics ?? 0"></span>
+                <p class="settings-card-desc">Expose pool equipment to Matter-compatible smart-home ecosystems (Apple Home, Google Home, Alexa, SmartThings).</p>
+                <template x-if="!matter.enabled">
+                    <div class="settings-unavailable">
+                        <span class="settings-unavailable-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3l18 18M10.7 5.1A9 9 0 0 1 18.9 13M5.1 10.7A9 9 0 0 0 13 18.9"/></svg></span>
+                        <div><div class="settings-unavailable-title">Matter disabled</div><div class="settings-unavailable-sub">On by default; it was opted out with <code>--matter false</code>.</div></div>
                     </div>
-                </div>
+                </template>
+                <template x-if="matter.enabled &amp;&amp; matter.reachable === false">
+                    <div class="settings-unavailable">
+                        <span class="settings-unavailable-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/></svg></span>
+                        <div><div class="settings-unavailable-title">Sidecar not answering</div><div class="settings-unavailable-sub">The Matter bridge is enabled but not responding yet. Pairing details appear once it's ready.</div></div>
+                    </div>
+                </template>
+                <template x-if="matter.enabled &amp;&amp; matter.running">
+                    <div class="matter-body">
+                        <div class="matter-info">
+                            <div class="matter-kv"><span>Sidecar</span><span x-text="matter.running ? 'Running' : 'Not running'"></span></div>
+                            <div class="matter-kv"><span>Paired fabrics</span><span x-text="matter.fabrics ?? 0"></span></div>
+                            <div class="matter-kv" x-show="matter.node_id"><span>Node ID</span><span x-text="matter.node_id"></span></div>
+                            <div class="matter-kv" x-show="matter.vendor_id"><span>Vendor ID</span><span x-text="matter.vendor_id"></span></div>
+                            <div class="matter-kv" x-show="matter.spec_version"><span>Spec</span><span x-text="matter.spec_version"></span></div>
+                        </div>
+                        <template x-if="!matter.paired &amp;&amp; matter.qr_payload">
+                            <div class="matter-qr-panel">
+                                <div x-ref="matterQr" class="matter-qr" aria-label="Matter commissioning QR code"></div>
+                                <div class="matter-qr-label">Scan to commission</div>
+                                <div class="matter-qr-code" x-text="matter.manual_code || '--'"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
             </div>
 
-            <!-- Profiling — the design places this under Settings -->
+            <!-- Profiling -->
             <div class="section-title mt-2">Profiling</div>
-            <div class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Performance Profiler</span>
-                    <span class="badge"
-                          :class="profiling.running ? 'badge-freq' : 'badge-status-off'"
+            <div class="card mb-2 matter-card">
+                <div class="matter-head">
+                    <span class="matter-title">Performance Profiler</span>
+                    <span class="badge" :class="profiling.running ? 'badge-freq' : 'badge-status-off'"
                           x-text="!profiling.enabled ? 'Disabled' : (profiling.running ? 'Running' : 'Paused')"></span>
                 </div>
-                <div class="card-body">
-                    <p class="settings-card-desc">
-                        Frame and zone-level performance capture, streamed live to an attached profiler.
-                        Backends are available only in a profiling-enabled build (<code>ENABLE_PROFILING=ON</code>).
-                    </p>
-                    <p class="text-muted text-xs mt-0 mb-1" x-show="!profiling.enabled">
-                        Profiling is not compiled into this build.
-                    </p>
-                    <div class="flex items-center gap-1 mb-1" x-show="profiling.enabled">
-                        <label class="inline-label" for="profiling-backend">Backend:</label>
-                        <select id="profiling-backend" class="settings-input"
-                                :disabled="profilingBusy"
-                                @change="selectProfilingBackend($event.target.value)"
-                                aria-label="Profiling backend">
+                <p class="settings-card-desc">Frame and zone-level performance capture, streamed live to an attached profiler. Adds minor overhead while running.</p>
+                <template x-if="!profiling.enabled">
+                    <div class="settings-unavailable">
+                        <span class="settings-unavailable-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3l18 18M10.7 5.1A9 9 0 0 1 18.9 13M5.1 10.7A9 9 0 0 0 13 18.9"/></svg></span>
+                        <div><div class="settings-unavailable-title">Profiling unavailable</div><div class="settings-unavailable-sub">No profiler backend compiled in. Rebuild with Tracy, Intel VTune or AMD uProf support (<code>ENABLE_PROFILING=ON</code>).</div></div>
+                    </div>
+                </template>
+                <template x-if="profiling.enabled">
+                    <div>
+                        <div class="prof-label">Backend</div>
+                        <div class="prof-backends">
                             <template x-for="b in profiling.available" :key="b">
-                                <option :value="b" :selected="b === profiling.backend" x-text="b"></option>
+                                <button type="button" class="prof-backend-btn" :class="{ active: b === profiling.backend }" :disabled="profilingBusy" @click="selectProfilingBackend(b)" x-text="b"></button>
                             </template>
-                        </select>
-                        <button class="btn btn-sm"
-                                :disabled="profilingBusy || profiling.running"
-                                @click="startProfiling()">Resume</button>
-                        <button class="btn btn-sm"
-                                :disabled="profilingBusy || !profiling.running"
-                                @click="stopProfiling()">Pause</button>
+                        </div>
+                        <div class="prof-controls">
+                            <button type="button" class="btn btn-sm" :disabled="profilingBusy || profiling.running" @click="startProfiling()">Resume</button>
+                            <button type="button" class="btn btn-sm btn-secondary" :disabled="profilingBusy || !profiling.running" @click="stopProfiling()">Pause</button>
+                            <span class="prof-state" x-text="profiling.running ? ('Capturing on ' + (profiling.backend || '--')) : 'Paused'"></span>
+                        </div>
                     </div>
-                    <div class="emu-kv-grid" x-show="profiling.enabled">
-                        <span class="emu-kv-key">Active backend</span>
-                        <span class="emu-kv-val"><code x-text="profiling.backend || '--'"></code></span>
-                        <span class="emu-kv-key">Available</span>
-                        <span class="emu-kv-val" x-text="(profiling.available && profiling.available.length) ? profiling.available.join(', ') : '--'"></span>
-                    </div>
-                </div>
+                </template>
             </div>
         </div>
 
