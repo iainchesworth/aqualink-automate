@@ -1138,7 +1138,7 @@
 </tr>
 <tr>
 <td>HTTPS certificate <strong>generated per install</strong></td>
-<td>If no certificate is configured, the app generates a unique self-signed cert + private key on first boot (the key is written <code>0600</code> and its SHA-256 fingerprint logged). No private key is shipped in the package or committed to the repo.</td>
+<td>If no certificate is configured, the app generates a unique self-signed cert + private key on first boot (the key is written <code>0600</code>, the directory holding it is restricted to owner-only <code>0700</code> — relevant when the install tree is read-only and material falls back to a world-writable temp directory — and its SHA-256 fingerprint logged). No private key is shipped in the package or committed to the repo.</td>
 <td>Supply your own trusted certificate with <code>--cert</code> / <code>--cert-key</code> (both required together), ideally from a CA your clients trust, at a persistent writable path.</td>
 </tr>
 </tbody>
