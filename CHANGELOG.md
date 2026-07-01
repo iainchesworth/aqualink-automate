@@ -10,11 +10,15 @@ See [docs/releasing.md](docs/releasing.md) for how releases and version numbers 
 
 ## [0.9.0-beta.5] - 2026-07-01
 
-A security-hardening release on top of 0.9.0-beta.4 that fully closes the auto-generated-key exposure only partially mitigated in beta.4. No application behaviour change on a normally-configured install.
+A security-hardening release on top of 0.9.0-beta.4 that fully closes the auto-generated-key exposure only partially mitigated in beta.4, plus a version-stamping fix. No application behaviour change on a normally-configured install.
 
 ### Security
 
 - **Auto-generated TLS key material no longer falls back to the world-writable system temp directory.** When no certificate is configured and the install tree is read-only (the common packaged case), beta.4 wrote the generated private key under the system temp directory and merely `chmod`-ed it afterward — a pattern still open to symlink/pre-creation attacks and to the reuse path trusting attacker-planted files, and still flagged by static analysis (SonarCloud S5443). The fallback now targets a **per-user private** directory instead — `$STATE_DIRECTORY` (systemd `StateDirectory`), then `$XDG_RUNTIME_DIR`, then `$HOME/.local/state` on Linux; `%LOCALAPPDATA%` on Windows — and each candidate is created owner-only (`0700`) and verified to be a self-owned, non-symlink directory before the key is written or an existing pair is reused. Another local user can therefore neither read the key nor pre-seed material the server would trust.
+
+### Fixed
+
+- **CI-built binaries no longer report "uncommitted changes" on the About page.** The build-time git-dirty probe (`GitWatcher`) ran a bare `git status --porcelain`, which the release build leg tripped by `chmod +x`-ing the packaging maintainer scripts (an exec-bit-only diff) and bootstrapping the `deps/vcpkg` submodule — so a clean, CI-released binary stamped itself dirty. The probe now ignores exec-bit-only changes, untracked build artifacts, and the bootstrapped submodule (so "dirty" means a tracked source file actually differs from the commit), and the packaging scripts are committed executable so the workflow `chmod` is a no-op.
 
 ## [0.9.0-beta.4] - 2026-07-01
 
