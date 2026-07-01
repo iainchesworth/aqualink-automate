@@ -9,9 +9,13 @@
  * display-only fields (min/max/unit/decimals/label) live here.
  */
 
-// Arc geometry: a 180-degree arc of radius r has length PI * r.
-const GAUGE_ARC_RADIUS = 45;
-const GAUGE_ARC_CIRCUMFERENCE = Math.PI * GAUGE_ARC_RADIUS;
+// Dial geometry: a ~270-degree ring (r=54) drawn as two SVG circles with
+// stroke-dasharray on a full circle. The SVG is rotated 135deg so the 90deg
+// opening sits at the bottom. Track shows the full 270deg arc; the value
+// circle shows `percentage` of it (its round line-cap forms the value dot).
+const GAUGE_RADIUS = 54;
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * GAUGE_RADIUS;   // full circle
+const GAUGE_ARC = 0.75 * GAUGE_CIRCUMFERENCE;             // 270deg visible dial
 
 function chemistryGauge(type) {
     // Display-only configuration (not user-editable; kept local to the gauge).
@@ -42,8 +46,14 @@ function chemistryGauge(type) {
     return {
         cfg,
 
-        // Total length of the 180-degree arc, for the SVG stroke-dasharray.
-        arcLength: GAUGE_ARC_CIRCUMFERENCE,
+        // 270deg dial dasharrays (drawn on a full circle): the track shows the
+        // whole visible arc; the value shows the filled fraction. The trailing
+        // full-circumference value hides the remainder.
+        get trackDash() { return `${GAUGE_ARC.toFixed(2)} ${GAUGE_CIRCUMFERENCE.toFixed(2)}`; },
+        get valueDash() {
+            const filled = this.numericValue === null ? 0 : (this.percentage / 100) * GAUGE_ARC;
+            return `${filled.toFixed(2)} ${GAUGE_CIRCUMFERENCE.toFixed(2)}`;
+        },
 
         get value() {
             const store = Alpine.store('pool');
@@ -74,11 +84,6 @@ function chemistryGauge(type) {
             return Math.max(0, Math.min(100,
                 ((this.numericValue - cfg.min) / (cfg.max - cfg.min)) * 100
             ));
-        },
-
-        get dashOffset() {
-            // 180-degree arc circumference derived from the radius (no magic literal).
-            return GAUGE_ARC_CIRCUMFERENCE - (this.percentage / 100) * GAUGE_ARC_CIRCUMFERENCE;
         },
 
         /** Three-tier band: 'good', 'okay', or 'bad' */

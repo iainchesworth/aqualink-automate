@@ -2156,16 +2156,17 @@ main input[type="range"] { accent-color: var(--accent); }
 .eq-control.cmd-flash-bad, .heater-toggle.cmd-flash-bad { animation: cmdRingBad 1.7s ease-out; border-color: var(--bad); }
 .eq-control.cmd-sending, .heater-toggle.cmd-sending { border-color: var(--accent); }
 
-/* --- Semicircular chemistry gauge arc (replaces the linear bar) ---------- */
-.gauge-arc-wrap { position: relative; width: 100%; max-width: 190px; margin: 10px auto 2px; }
-.gauge-arc { display: block; width: 100%; height: auto; overflow: visible; }
-.gauge-arc-track { stroke: var(--surface-3); stroke-width: 9; stroke-linecap: round; }
-.gauge-arc-fill  { stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 1.1s cubic-bezier(.22, 1, .36, 1), stroke .3s; }
-.gauge-arc-center { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; }
-.gauge-arc-center .gauge-value { display: block; font-size: 28px; }
-.gauge-card--empty .gauge-arc-fill { display: none; }
-.gauge-card { display: flex; flex-direction: column; }
-.gauge-range-labels { margin-top: 2px; }
+/* --- Chemistry ~270deg ring dial (design geometry) ---------------------- */
+.gauge-card { display: flex; flex-direction: column; align-items: center; }
+.gauge-card .gauge-header { width: 100%; }
+.chem-dial { position: relative; width: 140px; height: 140px; margin: 4px auto 0; }
+.chem-dial-svg { width: 140px; height: 140px; transform: rotate(135deg); }
+.chem-dial-track { stroke: var(--surface-3); }
+.chem-dial-value { transition: stroke-dasharray 1.1s cubic-bezier(.22, 1, .36, 1), stroke .3s; }
+.chem-dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.chem-dial-num { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.chem-dial-unit { font-size: 12px; color: var(--text-faint); margin-top: 3px; min-height: 14px; }
+.chem-dial-range { font-size: 11.5px; color: var(--text-faint); margin-top: 8px; text-align: center; }
 
 /* --- Dashboard two-column (Circulation + Setpoints) + flat steppers ------ */
 .dash-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }

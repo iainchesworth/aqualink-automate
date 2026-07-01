@@ -247,20 +247,22 @@
                         <span class="summary-label">Pool</span>
                         <span class="summary-temp" x-text="poolTempDisplay"></span>
                         <span class="summary-setpoint" x-show="$store.pool.poolSetpoint !== '--'"
-                              x-text="'Set: ' + (typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint)"></span>
+                              x-text="'Set ' + (typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.poolSetpoint)"></span>
                     </div>
                 </div>
 
-                <!-- Spa -->
+                <!-- Spa \u2014 dual-body systems only -->
+                <template x-if="$store.pool.hasDualBody">
                 <div class="summary-section">
                     <span class="summary-accent summary-accent--spa" aria-hidden="true"></span>
                     <div class="summary-section-body">
                         <span class="summary-label">Spa</span>
                         <span class="summary-temp" x-text="spaTempDisplay"></span>
                         <span class="summary-setpoint" x-show="$store.pool.spaSetpoint !== '--'"
-                              x-text="'Set: ' + (typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint)"></span>
+                              x-text="'Set ' + (typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' \u00B0C') : $store.pool.spaSetpoint)"></span>
                     </div>
                 </div>
+                </template>
 
                 <!-- Air -->
                 <div class="summary-section">
@@ -287,7 +289,7 @@
                     </div>
                     <div class="summary-status-row" x-show="hasChlorinator" x-cloak>
                         <span class="summary-status-dot" :class="chlorinatorActive ? 'dot-active' : 'dot-inactive'" aria-hidden="true"></span>
-                        <span x-text="'Chlor ' + (chlorinatorActive ? 'On' : 'Off')"></span>
+                        <span x-text="'Chlorinator ' + (chlorinatorActive ? 'On' : 'Off')"></span>
                     </div>
                 </div>
             </div>
@@ -377,26 +379,22 @@
                                   :class="'gauge-band-' + (band || '')"
                                   x-text="statusLabel"></span>
                         </div>
-                        <div class="gauge-arc-wrap" role="meter"
+                        <div class="chem-dial" role="meter"
                              :aria-label="cfg.label"
                              :aria-valuenow="numericValue"
                              :aria-valuemin="cfg.min"
                              :aria-valuemax="cfg.max">
-                            <svg class="gauge-arc" viewBox="0 0 100 56" aria-hidden="true">
-                                <path class="gauge-arc-track" d="M 5 50 A 45 45 0 0 1 95 50" fill="none"></path>
-                                <path class="gauge-arc-fill" d="M 5 50 A 45 45 0 0 1 95 50" fill="none"
-                                      x-show="numericValue !== null"
-                                      :stroke="statusColor"
-                                      :style="`stroke-dasharray:${arcLength};stroke-dashoffset:${dashOffset}`"></path>
+                            <svg class="chem-dial-svg" viewBox="0 0 140 140" aria-hidden="true">
+                                <circle class="chem-dial-track" cx="70" cy="70" r="54" fill="none" stroke-width="11" stroke-linecap="round" :stroke-dasharray="trackDash"></circle>
+                                <circle class="chem-dial-value" cx="70" cy="70" r="54" fill="none" stroke-width="11" stroke-linecap="round"
+                                        x-show="numericValue !== null" :stroke="statusColor" :stroke-dasharray="valueDash"></circle>
                             </svg>
-                            <div class="gauge-arc-center">
-                                <span class="gauge-value" x-text="displayValue" :style="`color:${statusColor}`"></span>
+                            <div class="chem-dial-center">
+                                <span class="chem-dial-num" :style="`color:${statusColor}`" x-text="numericValue === null ? '--' : numericValue.toFixed(cfg.decimals)"></span>
+                                <span class="chem-dial-unit" x-text="(cfg.unit || '').trim()"></span>
                             </div>
                         </div>
-                        <div class="gauge-range-labels">
-                            <span x-text="cfg.min + cfg.unit"></span>
-                            <span x-text="cfg.max + cfg.unit"></span>
-                        </div>
+                        <div class="chem-dial-range" x-text="cfg.min + ' – ' + cfg.max"></div>
                     </div>
                 </template>
 
