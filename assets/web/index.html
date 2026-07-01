@@ -1444,49 +1444,35 @@
                 </div>
                 <div class="card-body">
                     <p class="settings-card-desc">Stored on the server and applied live — no restart, shared across devices.</p>
-
-                    <div class="settings-group-label">Display</div>
-                    <div class="settings-field">
-                        <label for="pref-units">Temperature units</label>
-                        <select id="pref-units" x-model="prefs.temperature_units" class="settings-input settings-input-md">
-                            <option value="Celsius">Celsius</option>
-                            <option value="Fahrenheit">Fahrenheit</option>
-                        </select>
-                    </div>
-
-                    <div class="settings-group-label">Alerts</div>
-                    <div class="settings-field">
-                        <label for="pref-salt">Salt-low threshold</label>
-                        <div class="settings-field-input">
-                            <input id="pref-salt" type="number" min="0" max="6000" x-model.number="prefs.salt_low_ppm" class="settings-input settings-input-sm">
-                            <span class="settings-unit">ppm</span>
+                    <div class="settings-grid">
+                        <div class="settings-field">
+                            <label for="pref-units">Temperature units</label>
+                            <select id="pref-units" x-model="prefs.temperature_units" class="settings-input">
+                                <option value="Celsius">Celsius</option>
+                                <option value="Fahrenheit">Fahrenheit</option>
+                            </select>
                         </div>
-                        <span class="settings-hint">Warn when salt falls below this. Set 0 to disable.</span>
-                    </div>
-                    <div class="settings-field">
-                        <label for="pref-comms">Comms-loss timeout</label>
-                        <div class="settings-field-input">
-                            <input id="pref-comms" type="number" min="1" x-model.number="prefs.comms_timeout_seconds" class="settings-input settings-input-sm">
-                            <span class="settings-unit">seconds</span>
+                        <div class="settings-field">
+                            <label for="pref-retention">Retention <span class="settings-unit">days</span></label>
+                            <input id="pref-retention" type="number" min="1" x-model.number="prefs.retention_days" class="settings-input">
+                            <span class="settings-hint">How long recorded trends are kept before purging.</span>
                         </div>
-                        <span class="settings-hint">Raise a fault if no protocol message decodes for this long.</span>
-                    </div>
-                    <div class="settings-field">
-                        <label for="pref-webhook">Alert webhook URL</label>
-                        <input id="pref-webhook" type="text" x-model="prefs.webhook_url" class="settings-input" placeholder="https://example.com/hook">
-                        <span class="settings-hint">Optional. POST alert transitions to this http/https URL; blank disables.</span>
-                    </div>
-
-                    <div class="settings-group-label">History</div>
-                    <div class="settings-field">
-                        <label for="pref-retention">Retention</label>
-                        <div class="settings-field-input">
-                            <input id="pref-retention" type="number" min="1" x-model.number="prefs.retention_days" class="settings-input settings-input-sm">
-                            <span class="settings-unit">days</span>
+                        <div class="settings-field">
+                            <label for="pref-salt">Salt-low threshold <span class="settings-unit">ppm</span></label>
+                            <input id="pref-salt" type="number" min="0" max="6000" x-model.number="prefs.salt_low_ppm" class="settings-input">
+                            <span class="settings-hint">Warn when salt falls below this. Set 0 to disable.</span>
                         </div>
-                        <span class="settings-hint">How long recorded trends are kept before purging.</span>
+                        <div class="settings-field">
+                            <label for="pref-comms">Comms-loss timeout <span class="settings-unit">seconds</span></label>
+                            <input id="pref-comms" type="number" min="1" x-model.number="prefs.comms_timeout_seconds" class="settings-input">
+                            <span class="settings-hint">Raise a fault if no protocol message decodes for this long.</span>
+                        </div>
+                        <div class="settings-field settings-field-full">
+                            <label for="pref-webhook">Alert webhook URL <span class="settings-unit">optional</span></label>
+                            <input id="pref-webhook" type="text" x-model="prefs.webhook_url" class="settings-input" placeholder="https://example.com/hook">
+                            <span class="settings-hint">Optional. POST alert transitions to this http/https URL; blank disables.</span>
+                        </div>
                     </div>
-
                     <p class="trends-error" x-show="prefsError" x-cloak x-text="prefsError"></p>
                 </div>
             </div>
@@ -1704,33 +1690,6 @@
                 </div>
             </div>
 
-            <div class="section-title">Features</div>
-            <div class="feature-grid mb-3">
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-monitor"></use></svg>
-                    <div class="feature-label">Real-time Monitoring</div>
-                </div>
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-control"></use></svg>
-                    <div class="feature-label">Remote Control</div>
-                </div>
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-bolt"></use></svg>
-                    <div class="feature-label">WebSocket Updates</div>
-                </div>
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-chart"></use></svg>
-                    <div class="feature-label">Diagnostics</div>
-                </div>
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-mobile"></use></svg>
-                    <div class="feature-label">Mobile Responsive</div>
-                </div>
-                <div class="feature-card">
-                    <svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-feat-api"></use></svg>
-                    <div class="feature-label">REST API</div>
-                </div>
-            </div>
         </div>
 
     </main>

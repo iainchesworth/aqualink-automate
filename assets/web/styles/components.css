@@ -2218,3 +2218,9 @@ main input[type="range"] { accent-color: var(--accent); }
 .circ-seg-btn:disabled { opacity: .55; cursor: default; }
 .circ-feedback { display: flex; gap: 8px; margin-top: 12px; min-height: 0; }
 .circ-feedback:empty { display: none; }
+
+/* --- Settings: System Preferences 2-column field grid ------------------- */
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; }
+.settings-field-full { grid-column: 1 / -1; }
+.settings-grid .settings-input { width: 100%; }
+.settings-field > label .settings-unit { text-transform: none; font-weight: 500; margin-left: 4px; }
