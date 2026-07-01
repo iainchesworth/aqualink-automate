@@ -2248,3 +2248,18 @@ main input[type="range"] { accent-color: var(--accent); }
 .health-kv > span:last-child { color: var(--text); font-weight: 500; }
 .health-kv .val-ok { color: var(--good); }
 .health-kv .val-bad { color: var(--bad); }
+
+/* --- De-accordion: diagnostics section-toggle → flat, non-collapsing title */
+.section-toggle {
+    pointer-events: none;
+    cursor: default;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 22px 2px 12px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+.section-toggle .section-title { margin: 0; }
+.section-toggle-chevron { display: none; }

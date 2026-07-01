@@ -61,17 +61,19 @@ function diagnosticsView() {
             return val || fallback;
         },
 
-        // Collapsible section state (power-user sections collapsed by default)
-        showSerialHealth: false,
-        showMessageErrors: false,
-        showMessageStats: false,
-        showLogLevels: false,
-        showDeviceStatus: false,
+        // Section visibility. The design shows flat, always-visible cards (no
+        // accordions), so every panel defaults open; the toggle headers are
+        // neutered to plain section titles in CSS (.section-toggle).
+        showSerialHealth: true,
+        showMessageErrors: true,
+        showMessageStats: true,
+        showLogLevels: true,
+        showDeviceStatus: true,
         showEmulatedDevices: true,
         showActualDevices: true,
-        showRecording: false,
+        showRecording: true,
         showProfiling: false,
-        showMqtt: false,
+        showMqtt: true,
         showMatter: false,
 
         // MQTT broker status diagnostics
