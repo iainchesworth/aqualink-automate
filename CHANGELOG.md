@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.9.0-beta.4] - 2026-07-01
+
+A security-hardening and static-analysis cleanup release on top of 0.9.0-beta.3. One hardening fix to the auto-generated HTTPS key material; the remainder clears outstanding code-scanning findings with no application behaviour change.
+
+### Security
+
+- **The auto-generated HTTPS private key is now stored in an owner-only directory.** When no certificate is configured and the install tree is read-only, the self-signed key and certificate fall back to a world-writable system temp directory. The key file was already written `0600`, but its containing directory was unrestricted — leaving it readable by, or pre-seedable by, other local users on a shared host (the reuse-on-restart path would then trust that material). The directory holding the key is now restricted to owner-only (`0700`) before the key is written or an existing pair is trusted.
+
+### Changed
+
+- **Cleared outstanding static-analysis (code-scanning) findings.** A `std::optional` unwrap in the auxiliary reconciliation path — already guarded behind a helper the analyser could not see through — now carries an explicit `has_value()` check, and a `[[fallthrough]]` annotation in the Jandy startup coordinator was moved directly before its `case` label so it is recognised. No behaviour change.
+
 ## [0.9.0-beta.3] - 2026-06-30
 
 A bug-fix and hardening release on top of 0.9.0-beta.2. Seven user-facing fixes — the Trends view and Schedules page failing to load, duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.

@@ -73,6 +73,13 @@ BOOST_AUTO_TEST_CASE(GenerateSelfSigned_ProducesParseableUniqueMaterial)
 	BOOST_CHECK((perms & fs::perms::group_read) == fs::perms::none);
 	BOOST_CHECK((perms & fs::perms::others_read) == fs::perms::none);
 	BOOST_CHECK((perms & fs::perms::others_write) == fs::perms::none);
+
+	// The directory holding the private key must also be owner-only (0700) so that
+	// on a world-writable temp-directory fallback no other local user can read the
+	// key or pre-seed material for the reuse-on-restart path to trust.
+	const auto dir_perms = fs::status(dir).permissions();
+	BOOST_CHECK((dir_perms & fs::perms::group_all) == fs::perms::none);
+	BOOST_CHECK((dir_perms & fs::perms::others_all) == fs::perms::none);
 #endif
 
 	fs::remove_all(dir, rm);
