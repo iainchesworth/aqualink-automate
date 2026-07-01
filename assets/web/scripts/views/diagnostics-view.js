@@ -126,7 +126,6 @@ function diagnosticsView() {
             this.fetchEmulatedDevices();
             this.fetchActualDevices();
             this.fetchRecordingStatus();
-            this.fetchProfilingStatus();
             this.fetchMqtt();
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
@@ -138,19 +137,12 @@ function diagnosticsView() {
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
             }
-            if (!_diag.profilingTimer) {
-                _diag.profilingTimer = setInterval(() => this.fetchProfilingStatus(), 2000);
-            }
             this.fetchSpasideRemotes();
             if (!_diag.spasideTimer) {
                 _diag.spasideTimer = setInterval(() => this.fetchSpasideRemotes(), 2000);
             }
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
-            }
-            this.fetchMatter();
-            if (!_diag.matterTimer) {
-                _diag.matterTimer = setInterval(() => this.fetchMatter(), 2000);
             }
         },
 

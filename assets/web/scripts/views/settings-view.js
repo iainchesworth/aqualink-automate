@@ -63,8 +63,19 @@ function settingsView() {
         // e.g. "Pool Light (Aux5)". Display-only; the canonical label is unchanged.
         showAuxIdInLabel: false,
 
+        // Matter bridge status (sidecar status + commissioning QR) and Profiling
+        // backend control. These are /api/diagnostics/* surfaces the design places
+        // under Settings (not Diagnostics). Fetched once on init; profiling state
+        // also refreshes on each control action.
+        matter: { enabled: false },
+        profiling: { enabled: false, running: false, backend: '', available: [] },
+        profilingBusy: false,
+        _matterQrPayload: null,
+
         // Alpine auto-calls init() on the component.
         async init() {
+            this.fetchMatter();
+            this.fetchProfiling();
             try {
                 const resp = await fetch('/api/preferences');
                 if (!resp.ok) { return; }
@@ -184,5 +195,55 @@ function settingsView() {
                 this.prefsError = 'Save failed (network).';
             }
         },
+
+        // ---- Matter bridge (status + commissioning QR) ----
+        async fetchMatter() {
+            try {
+                const resp = await fetch('/api/diagnostics/matter');
+                if (!resp.ok) return;
+                this.matter = await resp.json();
+                this.$nextTick(() => this._renderMatterQr());
+            } catch (_) { /* offline / disabled: keep defaults */ }
+        },
+
+        _renderMatterQr() {
+            const payload = this.matter && this.matter.qr_payload;
+            const el = this.$refs && this.$refs.matterQr;
+            if (!el) return;
+            if (!payload || typeof window.QRCode === 'undefined') { el.innerHTML = ''; return; }
+            if (this._matterQrPayload === payload && el.childElementCount > 0) return;
+            this._matterQrPayload = payload;
+            el.innerHTML = '';
+            try {
+                new window.QRCode(el, { text: payload, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel.M });
+            } catch (_) { /* ignore render failure */ }
+        },
+
+        // ---- Profiling backend control ----
+        async fetchProfiling() {
+            try {
+                const resp = await fetch('/api/diagnostics/profiling');
+                if (!resp.ok) return;
+                this.profiling = await resp.json();
+            } catch (_) { /* offline / disabled: keep defaults */ }
+        },
+
+        async _postProfiling(payload, okMessage, failMessage) {
+            if (this.profilingBusy) return;
+            this.profilingBusy = true;
+            try {
+                const resp = await fetch('/api/diagnostics/profiling', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) { this.profiling = data; Alpine.store('toast').show(okMessage, 'info'); }
+                else { Alpine.store('toast').show(data.error || failMessage, 'error'); }
+            } catch (e) { Alpine.store('toast').show(failMessage, 'error'); }
+            finally { this.profilingBusy = false; }
+        },
+
+        async startProfiling() { await this._postProfiling({ action: 'start' }, 'Profiling resumed', 'Failed to resume profiling'); },
+        async stopProfiling() { await this._postProfiling({ action: 'stop' }, 'Profiling paused', 'Failed to pause profiling'); },
+        async selectProfilingBackend(backend) { if (!backend) return; await this._postProfiling({ action: 'select', backend }, `Profiling backend set to ${backend}`, 'Failed to select backend'); },
     };
 }
