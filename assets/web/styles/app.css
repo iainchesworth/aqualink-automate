@@ -1276,7 +1276,11 @@ nav.app-nav .nav-inner {
     max-width: var(--content-max);
     padding: 12px 24px;
     gap: 14px;
+    justify-content: flex-start;
 }
+/* nav-links takes the slack so the status pill + all header buttons group into
+   one right-aligned cluster (instead of space-between spreading them apart). */
+nav.app-nav .nav-links { margin-right: auto; }
 
 nav.app-nav .nav-brand {
     font-family: var(--font-display);
