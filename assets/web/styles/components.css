@@ -2225,3 +2225,26 @@ main input[type="range"] { accent-color: var(--accent); }
 .settings-field-full { grid-column: 1 / -1; }
 .settings-grid .settings-input { width: 100%; }
 .settings-field > label .settings-unit { text-transform: none; font-weight: 500; margin-left: 4px; }
+
+/* --- Diagnostics: System Health panel ----------------------------------- */
+.health-card { padding: 18px 22px; }
+.health-head { display: flex; align-items: center; gap: 14px; padding-bottom: 18px; }
+.health-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; flex: none; }
+.health-icon.is-ok { background: oklch(0.78 0.12 162 / .15); color: var(--good); }
+.health-icon.is-warn { background: oklch(0.83 0.11 82 / .15); color: var(--warn); }
+.health-icon svg { width: 20px; height: 20px; }
+.health-head-body { flex: 1; min-width: 0; }
+.health-title { font: 600 16px/1.2 var(--font-display); color: var(--text); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.health-endpoint { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-faint); background: none; padding: 0; }
+.health-sub { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
+.health-uptime { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; }
+.health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.health-sub-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-row); padding: 14px 16px; }
+.health-sub-title { display: flex; align-items: center; gap: 8px; font: 600 11px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
+.health-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.health-dot.is-ok { background: var(--good); }
+.health-dot.is-off { background: var(--text-faint); }
+.health-kv { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13px; color: var(--text-dim); }
+.health-kv > span:last-child { color: var(--text); font-weight: 500; }
+.health-kv .val-ok { color: var(--good); }
+.health-kv .val-bad { color: var(--bad); }

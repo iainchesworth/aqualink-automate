@@ -77,6 +77,9 @@ function diagnosticsView() {
         // MQTT broker status diagnostics
         mqtt: { enabled: false },
 
+        // System health (readiness + subsystem checks) from /api/health/detailed.
+        health: { ready: false, status: '', uptime_seconds: 0, checks: {} },
+
         // Matter bridge status diagnostics (sidecar status + commissioning QR)
         matter: { enabled: false },
 
@@ -115,6 +118,21 @@ function diagnosticsView() {
         globalLevel: '',
         logLevelsLoaded: false,
 
+        async fetchHealth() {
+            try {
+                const resp = await fetch('/api/health/detailed');
+                if (!resp.ok) return;
+                this.health = await resp.json();
+            } catch (_) { /* offline / auth: keep last */ }
+        },
+        _fmtUptime(s) {
+            s = Math.max(0, Math.floor(s || 0));
+            const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+            if (d) return `${d}d ${h}h`;
+            if (h) return `${h}h ${m}m`;
+            return `${m}m`;
+        },
+
         initChart() {
             Alpine.store('ws').connectStats();
 
@@ -127,6 +145,10 @@ function diagnosticsView() {
             this.fetchActualDevices();
             this.fetchRecordingStatus();
             this.fetchMqtt();
+            this.fetchHealth();
+            if (!_diag.healthTimer) {
+                _diag.healthTimer = setInterval(() => this.fetchHealth(), 2000);
+            }
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
                 _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
@@ -262,6 +284,11 @@ function diagnosticsView() {
             if (_diag.mqttTimer) {
                 clearInterval(_diag.mqttTimer);
                 _diag.mqttTimer = null;
+            }
+
+            if (_diag.healthTimer) {
+                clearInterval(_diag.healthTimer);
+                _diag.healthTimer = null;
             }
 
             if (_diag.matterTimer) {

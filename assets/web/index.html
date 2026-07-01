@@ -592,6 +592,44 @@
              x-data="diagnosticsView()"
              x-effect="if (route === 'diagnostics') { initChart() } else { destroyChart() }">
 
+            <!-- System Health -->
+            <div class="section-title mt-2">System Health</div>
+            <div class="card mb-2 health-card">
+                <div class="health-head">
+                    <span class="health-icon" :class="health.ready ? 'is-ok' : 'is-warn'" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    </span>
+                    <div class="health-head-body">
+                        <div class="health-title"><span x-text="health.ready ? 'Ready' : 'Not ready'"></span> <code class="health-endpoint">GET /api/health/detailed</code></div>
+                        <div class="health-sub" x-text="health.ready ? 'All subsystems nominal · configuration determined' : (health.status || 'Starting…')"></div>
+                    </div>
+                    <div class="health-uptime" x-show="health.uptime_seconds">uptime <span x-text="_fmtUptime(health.uptime_seconds)"></span></div>
+                </div>
+                <div class="health-grid">
+                    <div class="health-sub-card">
+                        <div class="health-sub-title"><span class="health-dot is-ok"></span>Configuration</div>
+                        <div class="health-kv"><span>Pool config</span><span x-text="health.checks?.configuration?.pool_configuration || '--'"></span></div>
+                        <div class="health-kv"><span>System board</span><span x-text="health.checks?.configuration?.system_board || '--'"></span></div>
+                        <div class="health-kv"><span>Mode</span><span x-text="health.checks?.configuration?.mode || '--'"></span></div>
+                        <div class="health-kv"><span>Validation</span><span :class="health.checks?.configuration?.equipment_validation?.passed ? 'val-ok' : 'val-bad'" x-text="health.checks?.configuration?.equipment_validation?.passed ? 'Passed' : 'Failed'"></span></div>
+                        <div class="health-kv"><span>Auxiliaries</span><span x-text="(health.checks?.configuration?.equipment_validation?.discovered_auxillaries ?? '–') + ' / ' + (health.checks?.configuration?.equipment_validation?.expected_auxillaries ?? '–')"></span></div>
+                        <div class="health-kv"><span>Power centers</span><span x-text="(health.checks?.configuration?.equipment_validation?.discovered_power_centers ?? '–') + ' / ' + (health.checks?.configuration?.equipment_validation?.expected_power_centers ?? '–')"></span></div>
+                    </div>
+                    <div class="health-sub-card">
+                        <div class="health-sub-title"><span class="health-dot is-ok"></span>Equipment</div>
+                        <div class="health-kv"><span>Status</span><span :class="health.checks?.equipment?.status === 'ok' ? 'val-ok' : ''" x-text="(health.checks?.equipment?.status || '--').toUpperCase()"></span></div>
+                        <div class="health-kv"><span>Devices</span><span x-text="health.checks?.equipment?.device_count ?? '--'"></span></div>
+                        <div class="health-kv"><span>Anomalies</span><span x-text="(health.checks?.configuration?.equipment_validation?.anomalies?.length) ? health.checks.configuration.equipment_validation.anomalies.length : 'None'"></span></div>
+                    </div>
+                    <div class="health-sub-card">
+                        <div class="health-sub-title"><span class="health-dot" :class="health.checks?.mqtt?.enabled ? 'is-ok' : 'is-off'"></span>MQTT</div>
+                        <div class="health-kv"><span>Enabled</span><span x-text="health.checks?.mqtt?.enabled ? 'Yes' : 'No'"></span></div>
+                        <div class="health-kv" x-show="health.checks?.mqtt?.enabled"><span>Running</span><span x-text="health.checks?.mqtt?.running ? 'Yes' : 'No'"></span></div>
+                        <div class="health-kv" x-show="health.checks?.mqtt?.enabled"><span>Connected</span><span x-text="health.checks?.mqtt?.connected ? 'Yes' : 'No'"></span></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="section-title mt-2">Serial Port Utilization</div>
 
             <!-- Bandwidth stats -->
