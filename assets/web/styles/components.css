@@ -1688,3 +1688,79 @@ html.dark .gauge-card {
 .matter-qr canvas {
     display: block;
 }
+
+/* ============================================================================
+   Reskin — shared card system + section titles + Dashboard hero.
+   Appended last (components.css loads after app.css) so these win. New tokens.
+   ============================================================================ */
+
+/* --- Cards (app-wide) ---------------------------------------------------- */
+.card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-md);
+    animation: floatIn .4s ease both;
+}
+html.dark .card { border-color: var(--border); }
+.card:hover { box-shadow: var(--shadow-md); }
+.card-header {
+    padding: 18px 22px 0;
+    border-bottom: none;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+}
+.card-body { padding: 20px 22px; }
+.card-body.p-0 { padding: 0; }
+
+/* --- Section eyebrow titles ---------------------------------------------- */
+.section-title {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 22px 2px 12px;
+}
+
+/* --- Dashboard hero strip ------------------------------------------------ */
+.summary-strip { padding: 6px 4px; gap: 4px; align-items: stretch; flex-wrap: wrap; }
+.summary-section { padding: 18px 22px; gap: 0; }
+.summary-accent { width: 3px; border-radius: 99px; top: 18px; bottom: 18px; }
+.summary-accent--pool { background: var(--accent); }
+.summary-accent--spa  { background: var(--spa); }
+.summary-section-body { padding-left: 4px; }
+.summary-label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--text-faint);
+}
+.summary-temp {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 44px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--text);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+}
+.summary-setpoint { color: var(--text-dim); font-size: 12.5px; margin-top: 4px; }
+.summary-divider { background: var(--border); }
+.summary-status { padding: 18px 22px; gap: 9px; justify-content: center; }
+.summary-status-row { color: var(--text-dim); font-size: 13px; font-weight: 500; }
+.summary-status-dot { width: 9px; height: 9px; }
+.summary-status-dot.dot-active { background: var(--good); box-shadow: 0 0 0 3px oklch(0.78 0.12 162 / .16); }
+.summary-status-dot.dot-inactive { background: var(--surface-3); border: 1px solid var(--border-strong); }
+
+/* --- System info bar ----------------------------------------------------- */
+.system-info-bar {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-row);
+}
