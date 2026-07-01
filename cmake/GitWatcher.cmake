@@ -143,7 +143,19 @@ function(GetGitState _working_dir)
     set(ENV{GIT_RETRIEVED_STATE} "true")
 
     # Get whether or not the working tree is dirty.
-    RunGitCommand(status --porcelain)
+    #
+    # This must mean "a tracked source file differs from HEAD", NOT "the build
+    # tooling touched the checkout". The release build leg (the glibc-2.36
+    # container in .github/workflows/_build.yml) mutates the working tree BEFORE
+    # the build-time check_git target runs: it `chmod +x`'s packaging scripts
+    # committed as mode 0644 (-> a mode-only diff) and bootstraps the deps/vcpkg
+    # submodule (-> a dirty submodule). A bare `status --porcelain` reports both
+    # and falsely stamps a clean, CI-released binary as having "uncommitted
+    # changes". So:
+    #   -c core.fileMode=false  -- ignore exec-bit-only changes (the chmod)
+    #   --untracked-files=no     -- ignore build artifacts left in the tree
+    #   --ignore-submodules=all  -- ignore the bootstrapped vcpkg submodule
+    RunGitCommand(-c core.fileMode=false status --porcelain --untracked-files=no --ignore-submodules=all)
     if(NOT exit_code EQUAL 0)
         set(ENV{GIT_IS_DIRTY} "false")
     else()

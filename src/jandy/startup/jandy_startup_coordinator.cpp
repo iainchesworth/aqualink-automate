@@ -66,8 +66,8 @@ namespace AqualinkAutomate::Jandy::Startup
 				magic_enum::enum_name(m_Plan.method), m_Plan.rationale));
 
 			m_Phase = Phase::Engaging;
-			[[fallthrough]];
 		}
+		[[fallthrough]];
 
 		case Phase::Engaging:
 		{
