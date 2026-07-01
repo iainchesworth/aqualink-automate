@@ -1269,7 +1269,7 @@
         </div>
 
         <!-- ====== TRENDS VIEW (WS2) ====== -->
-        <div x-show="route === 'trends'" x-cloak x-data="trendsView()" x-effect="if (route === 'trends') onShown()">
+        <div class="trends-view" x-show="route === 'trends'" x-cloak x-data="trendsView()" x-effect="if (route === 'trends') onShown()">
             <div class="trends-head">
                 <div class="section-title" style="margin:0">Trends</div>
                 <div class="trends-ranges" x-show="available">
@@ -1280,11 +1280,18 @@
             </div>
 
             <template x-if="!available">
-                <p class="text-muted text-xs">History is disabled. Start the server with <code>--history-db &lt;path&gt;</code> to record and chart time-series data.</p>
+                <div class="trends-empty-card">
+                    <span class="trends-empty-icon" aria-hidden="true">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/><path d="M2 2l20 20"/></svg>
+                    </span>
+                    <div class="trends-empty-title">History recording is disabled</div>
+                    <div class="trends-empty-text">No history database is configured, so trend samples aren't being stored. Start the server with a history database (<code>--history-db &lt;path&gt;</code>) to record temperatures, water chemistry and equipment runtime over time.</div>
+                    <div class="trends-empty-pill">/api/history/series · 503 Service Unavailable</div>
+                </div>
             </template>
 
             <template x-if="available">
-                <div>
+                <div class="trends-body">
                     <p class="trends-error" x-show="error" x-cloak x-text="error"></p>
 
                     <div class="trends-chart-card">

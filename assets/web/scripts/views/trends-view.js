@@ -20,6 +20,10 @@
 
 const _trends = { data: {}, geom: null, hoverIdx: null, bound: false };
 
+// Canvas <ctx.font> can't read CSS custom properties, so the reskin UI font is
+// spelled out here as a literal stack (matches --font-ui / 'Hanken Grotesk').
+const TREND_FONT = "\"Hanken Grotesk\", system-ui, sans-serif";
+
 const TREND_RANGES = [
     { label: '1h', seconds: 3600 },
     { label: '6h', seconds: 21600 },
@@ -28,13 +32,23 @@ const TREND_RANGES = [
     { label: '30d', seconds: 2592000 },
 ];
 
-// Stable colours for the well-known analog series; devices cycle a palette.
+// Stable colours for the well-known analog series, tied to the reskin design
+// tokens so the chart tracks the active theme/accent. Values here are CSS custom
+// property names; `_resolveColor()` turns them into concrete colours at draw time
+// (canvas strokeStyle can't read `var(--x)` itself). Devices cycle a palette.
 const TREND_COLORS = {
-    'temp/pool': '#0ea5e9', 'temp/spa': '#a78bfa', 'temp/air': '#10b981',
-    'chem/salt_ppm': '#eab308', 'chem/ph': '#a855f7', 'chem/orp': '#ec4899',
-    'swg/percent': '#38bdf8',
+    'temp/pool': 'var(--accent)', 'temp/spa': 'var(--spa)', 'temp/air': 'var(--good)',
+    'chem/salt_ppm': 'var(--warn)', 'chem/ph': 'var(--accent)', 'chem/orp': 'var(--bad)',
+    'swg/percent': 'var(--accent)',
 };
-const DEVICE_PALETTE = ['#0ea5e9', '#f59e0b', '#10b981', '#a855f7', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
+// Equipment lanes need several distinguishable hues; the reskin has no discrete
+// per-device tokens, so this palette is a fixed set of oklch hues chosen to read
+// on both the light and dark surfaces.
+const DEVICE_PALETTE = [
+    'oklch(0.72 0.13 250)', 'oklch(0.78 0.13 82)', 'oklch(0.76 0.12 162)',
+    'oklch(0.72 0.13 330)', 'oklch(0.68 0.16 25)', 'oklch(0.74 0.11 200)',
+    'oklch(0.70 0.14 300)', 'oklch(0.76 0.13 130)',
+];
 
 const TREND_LABELS = {
     'temp/pool': 'Pool', 'temp/spa': 'Spa', 'temp/air': 'Air',
@@ -78,6 +92,16 @@ function _fmt(key, unit, v) {
 function _cssVar(name, fallback) {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return v || fallback;
+}
+
+// Resolve a stored series colour to a concrete value the canvas can paint.
+// Series colours are kept as CSS token references (e.g. "var(--accent)") so the
+// HTML swatches theme automatically; the canvas can't read custom properties, so
+// unwrap `var(--x)` to its computed value here. Concrete colours pass through.
+function _resolveColor(color) {
+    if (typeof color !== 'string') return color;
+    const m = color.match(/^var\((--[\w-]+)\)$/);
+    return m ? _cssVar(m[1], '#888') : color;
 }
 
 function trendsView() {
@@ -303,8 +327,11 @@ function trendsView() {
             const plotW = cssW - GL - GR;
             const from = _trends.from, to = _trends.to, span = (to - from) || 1;
             const xAt = (t) => GL + ((t - from) / span) * plotW;
-            const muted = _cssVar('--text-muted', '#94a3b8');
-            const grid = _cssVar('--grid-color', 'rgba(0,0,0,0.06)');
+            // Canvas colours read the reskin tokens so the chart tracks the active
+            // theme/accent (the design uses --text-faint for axis text, --border for
+            // gridlines, --text-dim for panel headings).
+            const muted = _cssVar('--text-faint', '#94a3b8');
+            const grid = _cssVar('--border', 'rgba(0,0,0,0.06)');
 
             const tempY = TOP, chemY = TOP + TH + GAP, eqY = chemY + CH + GAP;
             _trends.geom = { GL, GR, plotW, from, to, span, xAt, tempY, TH, chemY, CH, eqY, EH };
@@ -320,13 +347,13 @@ function trendsView() {
                 if (!isFinite(lo)) { lo = 0; hi = 1; }
                 const pad = (hi - lo) * 0.15 || 1; lo -= pad; hi += pad;
                 ctx.strokeStyle = grid; ctx.fillStyle = muted; ctx.lineWidth = 0.5;
-                ctx.font = '11px var(--font-family, sans-serif)'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                ctx.font = `11px ${TREND_FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
                 for (let k = 0; k < 3; k++) {
                     const yy = tempY + 8 + k * (TH - 16) / 2, vv = hi - (hi - lo) * k / 2;
                     ctx.beginPath(); ctx.moveTo(GL, yy); ctx.lineTo(cssW - GR, yy); ctx.stroke();
                     ctx.fillText(vv.toFixed(1), GL - 6, yy);
                 }
-                tsel.forEach((s) => this._line(ctx, _trends.data[s.key], tempY + 8, TH - 16, lo, hi, s.color, xAt, ht));
+                tsel.forEach((s) => this._line(ctx, _trends.data[s.key], tempY + 8, TH - 16, lo, hi, _resolveColor(s.color), xAt, ht));
             } else this._empty(ctx, GL, plotW, tempY, TH, muted);
 
             // ---- Chemistry panel: auto-scaled overlay ----
@@ -342,7 +369,7 @@ function trendsView() {
                     let lo = Infinity, hi = -Infinity;
                     pts.forEach((p) => { lo = Math.min(lo, p.v); hi = Math.max(hi, p.v); });
                     if (hi - lo < 1e-6) hi = lo + 1;
-                    this._line(ctx, pts, chemY + 8, CH - 16, lo, hi, s.color, xAt, ht);
+                    this._line(ctx, pts, chemY + 8, CH - 16, lo, hi, _resolveColor(s.color), xAt, ht);
                 });
             } else this._empty(ctx, GL, plotW, chemY, CH, muted);
 
@@ -353,17 +380,17 @@ function trendsView() {
                     const ry = eqY + 16 + r * 20 + 5;
                     ctx.strokeStyle = grid; ctx.lineWidth = 0.5;
                     ctx.beginPath(); ctx.moveTo(GL, ry); ctx.lineTo(cssW - GR, ry); ctx.stroke();
-                    ctx.fillStyle = muted; ctx.font = '11px var(--font-family, sans-serif)';
+                    ctx.fillStyle = muted; ctx.font = `11px ${TREND_FONT}`;
                     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
                     ctx.fillText(s.name, GL + 2, ry - 9);
-                    this._timeline(ctx, _trends.data[s.key] || [], ry, s.color, xAt, from, to);
+                    this._timeline(ctx, _trends.data[s.key] || [], ry, _resolveColor(s.color), xAt, from, to);
                 });
             } else this._empty(ctx, GL, plotW, eqY + 10, EH - 10, muted);
 
             // ---- shared X axis ----
             ctx.strokeStyle = grid; ctx.lineWidth = 0.5;
             ctx.beginPath(); ctx.moveTo(GL, eqY + EH + 1); ctx.lineTo(cssW - GR, eqY + EH + 1); ctx.stroke();
-            ctx.fillStyle = muted; ctx.font = '11px var(--font-family, sans-serif)'; ctx.textBaseline = 'top';
+            ctx.fillStyle = muted; ctx.font = `11px ${TREND_FONT}`; ctx.textBaseline = 'top';
             const ticks = this._timeTicks();
             ticks.forEach((lab, i) => {
                 const x = GL + (i / (ticks.length - 1)) * plotW;
@@ -380,12 +407,12 @@ function trendsView() {
         },
 
         _panelLabel(ctx, text, x, y, muted, hint) {
-            ctx.fillStyle = _cssVar('--text-secondary', '#64748b');
-            ctx.font = '600 12px var(--font-family, sans-serif)';
+            ctx.fillStyle = _cssVar('--text-dim', '#64748b');
+            ctx.font = `600 12px ${TREND_FONT}`;
             ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
             ctx.fillText(text, x, y);
             if (hint) {
-                ctx.fillStyle = muted; ctx.font = '11px var(--font-family, sans-serif)';
+                ctx.fillStyle = muted; ctx.font = `11px ${TREND_FONT}`;
                 ctx.fillText('   ·   ' + hint, x + ctx.measureText(text).width, y);
             }
         },
@@ -427,7 +454,7 @@ function trendsView() {
         },
 
         _empty(ctx, GL, plotW, py, ph, muted) {
-            ctx.fillStyle = muted; ctx.font = '11px var(--font-family, sans-serif)';
+            ctx.fillStyle = muted; ctx.font = `11px ${TREND_FONT}`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('No series selected', GL + plotW / 2, py + ph / 2);
         },
