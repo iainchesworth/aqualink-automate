@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.10.0-beta.1] - 2026-07-02
+
+A major release headlined by a complete redesign of the web interface on a new "calm-premium" design system, plus a unified Schedules view, a net-new Detailed system view, and user-selectable theming. Under the hood the latency tracker gains a rolling 900-second window. All additions are backward-compatible.
+
+### Added
+
+- **Completely redesigned web UI.** Every view — the app shell (navigation, status, connection chip, alerts dropdown), the dashboard hero and controls (gauges, equipment, heater, SWG), the shared card system and primitives, Trends, Settings, Schedules, Diagnostics, and About — has been rebuilt on a new calm-premium design-token foundation for a consistent, modern look, including redrawn 270° chemistry gauge rings.
+- **Appearance settings.** A new Settings panel lets you switch between light and dark themes and choose an accent colour; the choice is remembered locally.
+- **Unified Schedules view.** The Schedules page now presents the app's schedules alongside the controller's internal schedules in a single merged list and 24-hour timeline, flagging overlapping entries as conflicts.
+- **Net-new Detailed view.** A new live system-state view surfaces per-subsystem cards — heating, SWG output/target, pump rows, system status, started/uptime, and heat source — at a glance.
+- **System Health panel in Diagnostics.** Diagnostics gains a dedicated System Health panel.
+- **Offline fonts.** The Bricolage and Hanken typefaces are now vendored locally as woff2, so the interface renders correctly with no external network access.
+- **Honest-control feedback.** Controls flash their command state so you can see that a command was sent and is being applied.
+- **Rolling latency window.** The latency percentile tracker now keeps a 900-second sliding window alongside its cumulative aggregate, giving both recent and lifetime views.
+
+### Changed
+
+- **Diagnostics rebuilt as flat, always-visible cards** (no more accordions), with three detail modals and the bandwidth chart's left legend doubling as its series toggle.
+- **Matter and Profiling moved from Diagnostics to Settings** to match the new information architecture.
+
+### Fixed
+
+- **About refetches the version on navigation**, fixing a startup race that could leave the version stale or empty.
+
 ## [0.9.0-beta.5] - 2026-07-01
 
 A security-hardening release on top of 0.9.0-beta.4 that fully closes the auto-generated-key exposure only partially mitigated in beta.4, plus a version-stamping fix. No application behaviour change on a normally-configured install.
