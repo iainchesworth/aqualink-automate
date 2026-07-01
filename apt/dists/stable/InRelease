@@ -4,44 +4,44 @@ Hash: SHA512
 Origin: Aqualink Automate
 Label: Aqualink Automate
 Codename: stable
-Date: Tue, 30 Jun 2026 13:01:35 UTC
+Date: Wed, 01 Jul 2026 03:51:43 UTC
 Architectures: amd64 arm64
 Components: main
 Description: Aqualink Automate APT repository
 MD5Sum:
- 650aaf0c2952ef689ffab4c57e35770c 6286 main/binary-amd64/Packages
- 4250d8eedf029771977e5ccc42a9e84d 2734 main/binary-amd64/Packages.gz
+ 1e47a551e565d5f1f4d8889ff8e3a16b 6286 main/binary-amd64/Packages
+ 388873a8bd59932a171039e0ae8cdb88 2730 main/binary-amd64/Packages.gz
  d971d3bbe41152811ef0fd506cc8c6c1 133 main/binary-amd64/Release
- f7bf256d583098bd0df2fb34f8a2a138 6286 main/binary-arm64/Packages
- ff6782975b87cb2a8d9189d304d0ed45 2735 main/binary-arm64/Packages.gz
+ 9489f624ad5c7a9fcb2481e110a8be21 6286 main/binary-arm64/Packages
+ 5a9807b8ae34fdee9454b1365b2cf72e 2731 main/binary-arm64/Packages.gz
  17df63a7897ce330d6be74a7840c3061 133 main/binary-arm64/Release
 SHA1:
- c2cf30b0f8fc0e70edc8a6ba9589ff68bdaf68ec 6286 main/binary-amd64/Packages
- b7cd626b9d181291f1d63e9528c3af85e167d526 2734 main/binary-amd64/Packages.gz
+ 0129fdcee6376a1d76c66b812a1d4d9d891eac69 6286 main/binary-amd64/Packages
+ e8fb9f1f7614edcc7dfbdb3960368c4b1663da64 2730 main/binary-amd64/Packages.gz
  49b9046ea11419384cb6b70972826d28bcf18e79 133 main/binary-amd64/Release
- 9e47f5553173beeaa55174b2eec976ceeded61e3 6286 main/binary-arm64/Packages
- 8791a560f7995c13f1802203715d1754422c2383 2735 main/binary-arm64/Packages.gz
+ 57c26d551b94995ffe7d3f1448a0c0b5273e199f 6286 main/binary-arm64/Packages
+ 4b9f1f59c1acf9245287331cc99954ed42239d8d 2731 main/binary-arm64/Packages.gz
  f734ef360d77d822fbd223b5183408a8900757dd 133 main/binary-arm64/Release
 SHA256:
- 9205a4305b7cad841217a71b2fb4c7b0c005ac35e882f9a577db6151ecd8d8c4 6286 main/binary-amd64/Packages
- 5263eea5c751a5d02cf85ab26ada8376917cec2b30029e931aed42c2e187be14 2734 main/binary-amd64/Packages.gz
+ 9403e5d845d9606d3bf11ff3e9a5479522a7ef955d5d6590596ea1caa4ee75c1 6286 main/binary-amd64/Packages
+ 167977d383bfb0a2a35a2be1fe5dbd2d446f349cbef44ad238cc69f4c17d23ad 2730 main/binary-amd64/Packages.gz
  b930f48053dc93e634356edbe7f7e233fcaeb2689c3d5d59e92bdd64cfc8c76c 133 main/binary-amd64/Release
- 78e7639cfb98952e7d3ecffa1793ff48202758dc9083bdfd31ed9397e3b6f93a 6286 main/binary-arm64/Packages
- 406a723e703e254c3e31af888b18a822aa7fea76aec819db72391223f88bbb96 2735 main/binary-arm64/Packages.gz
+ fffb1d55ff91eef00bc0228d46cb56b5419c18cf3e3c2a27949b9c887c7bee7e 6286 main/binary-arm64/Packages
+ 0d7e5efc59e4fc2378951aba092c82c25dbc1780ca410ad3def44111fee8f1b1 2731 main/binary-arm64/Packages.gz
  7e3e72911a1127ccccfdd8769b410fe8d8e6a5f4af24a19080e79afdc9234f48 133 main/binary-arm64/Release
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEExKp+OO+ZF5ZXHZEfgeRxctW1XrAFAmpDvi8ACgkQgeRxctW1
-XrDo/A/6AkETeo0aB7F4bJCcpa8Bht/U4pk+L8XnibAplHr5VDXpX0bs62Mi+cTR
-4clObCVG8dwd8ZJ7kP17Y6Z2b+nOmaBT0zIgi+oQArzL/CJzKqO2R08y0U/0MKvo
-M7Lbats9HvJxgCmGqsqTctUwd+ErsqKggfxt331lfMmsL59S92KL3adFZiXDLV/m
-MKzR8yA3lj0P4dq1EGfoyKp4sTVnp4GXKf6VCX64sE1QnH7/i4izeGXRCwA6szSX
-Iic007FNhChSFR351wWvCIFRhDoDQmY1eNGYg9i6q9mWiLSfs7pc0dc+yE/sUtd1
-XnPA3Z0HkQLOSYlHjQHzQT7csnEnaPTYFHA2iRI535RC8mAiMnFcmZJxGNrU/kdP
-D3rX9ZU00Ye8xBeSQpJ8C9EKVTiNqrvsGFfo4eSRX9/Npp/BR4BxwleKPkJlPBVh
-tvXsIinpx90fy5SY1lWwR6mnqChrUEVeiGf81lGbmk8vJTXAxt7uAZx+WDxIOyG6
-YnPZteQdlYKv866V/L09sG2jJTV4wVF1ZoiJNP7QB933ma92F5ssBA+/YhfT4oOl
-b0sVlngVHPNi5Dag5yumPMXJZ/P4qRY/ryc6nDlD3aZF5lFfdGVrTuknRWIyuZa3
-Du0WyJP60xtobJaSc46/9pg/nyZ2jH+qp2guxG1LpURnKZwaoME=
-=p3PU
+iQIzBAEBCgAdFiEExKp+OO+ZF5ZXHZEfgeRxctW1XrAFAmpEjs8ACgkQgeRxctW1
+XrBMmhAAm2lzvILKhIH9TN9FDbN+Z4+iMVmJLbent/zWuc3r3jhbQb5+mQT1t0tD
+n2QxphShXLkMQjDhUm4wxYgHJAahEQzacMkolOXAdZDMA3H9OXMW9E4+WIXvukx7
+YRdwGy4Z7++cvuTq9VSzzudRWJuFXD7QFuhmN1IrkxCehhvnx3YZqjZYvSh4xjmc
+Qm/h4lhgU5cUnZs5V3Hbk/b+5QRAUxAe38XU8PkUmx+vMhM5FE/wqL5r5MlftwG/
+as7ae+ZJ1GtmzQAEJoHUlgiQKJv9y5pMP8FOU4f7pmBQKVk6Qwjilr66440J/Zsj
+9RjUFGzEUTfxubayIRuB8ogGooOYRG6V8bcRLWfUZTqWIlU2TozpvDdFsm8Fxi4n
+JWM0SY7VzgVxU1r08krTPYvoh83IIM/2na/T5+tXtbRDHDZumyNcUj3RP5HtW0yG
+k1utCAyW/Ew8G61rzOT5eUI7CHZopbrE7aH4mW2i9v/7aLcD/4BdqVwZPykUsnu5
+gp6hD0tn/U37xi7AGkSJsdjMlT+pMeGZd4gHG06CcJaQDsvH4oHGWKATVrFojRUX
+OtTa8JgJ8+XFjK4SYVoyVs5EslupvSJ5YNjrYiuVDHRci1sMMDd1mu79n+i5Qlxw
+S3xePcCnf68m6UtjX7lS6SZGUJZxDMtt8hdwpCB0LveuaEVjt7Q=
+=h2zS
 -----END PGP SIGNATURE-----
