@@ -18,6 +18,7 @@
 #include <openssl/x509v3.h>
 
 #include "application/application_defaults.h"
+#include "application/secure_runtime_paths.h"
 #include "certificates/certificate_management.h"
 #include "exceptions/exception_certificate_invalidformat.h"
 #include "exceptions/exception_certificate_notfound.h"
@@ -92,6 +93,20 @@ namespace AqualinkAutomate::Certificates
 		std::error_code dir_ec;
 		fs::create_directories(certificate_path.parent_path(), dir_ec);
 		fs::create_directories(private_key_path.parent_path(), dir_ec);
+
+		// The auto-generated material can land under the system temp directory, which
+		// is world-writable on shared hosts. Restrict the directory holding the private
+		// key to owner-only access so other local users can neither read the key nor
+		// pre-seed material that a later reuse-on-restart would trust. The key file
+		// itself is additionally locked to 0600 once written (below).
+		{
+			std::error_code perm_ec;
+			fs::permissions(private_key_path.parent_path(), fs::perms::owner_all, fs::perm_options::replace, perm_ec);
+			if (perm_ec)
+			{
+				LogWarning(Channel::Certificates, std::format("Could not restrict permissions on SSL material directory ({}): {}", private_key_path.parent_path().string(), perm_ec.message()));
+			}
+		}
 
 		// 2048-bit RSA keypair.
 		EvpPkeyPtr pkey(EVP_RSA_gen(2048), &EVP_PKEY_free);
@@ -207,17 +222,36 @@ namespace AqualinkAutomate::Certificates
 			return std::nullopt;
 		}
 
-		// Prefer the configured directory (so material persists at the expected
-		// location on writable installs); fall back to a per-user runtime directory
-		// when the install tree is read-only (the common packaged case).
-		std::vector<fs::path> candidate_dirs;
-		candidate_dirs.push_back(configured.private_key.parent_path());
-		std::error_code tmp_ec;
-		candidate_dirs.push_back(fs::temp_directory_path(tmp_ec) / "aqualink-automate" / "ssl");
-
-		for (const auto& dir : candidate_dirs)
+		// Prefer the configured directory so material persists at the expected
+		// location on writable installs.
+		if (const fs::path dir = configured.private_key.parent_path(); DirectoryIsWritable(dir))
 		{
-			if (!DirectoryIsWritable(dir))
+			const fs::path cert_out = dir / "cert.pem";
+			const fs::path key_out = dir / "key.pem";
+
+			if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
+			{
+				LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));
+				return Options::Web::SslCertificate{ cert_out, key_out };
+			}
+
+			if (GenerateSelfSignedCertificate(cert_out, key_out))
+			{
+				return Options::Web::SslCertificate{ cert_out, key_out };
+			}
+		}
+
+		// Fall back to a per-user PRIVATE runtime directory when the install tree is
+		// read-only (the common packaged case). This is deliberately NOT the system
+		// temp directory: on a shared host that is world-writable, so another local
+		// user could read the generated key or pre-seed material the reuse path would
+		// otherwise trust. PrepareSecureDirectory creates each candidate owner-only and
+		// verifies it is a self-owned, non-symlink directory before it is used, so both
+		// the write and the reuse below happen only in a directory we control.
+		for (const fs::path& base : Application::SecureRuntimeStateDirectories())
+		{
+			const fs::path dir = base / "ssl";
+			if (!Application::PrepareSecureDirectory(dir))
 			{
 				continue;
 			}
@@ -225,7 +259,8 @@ namespace AqualinkAutomate::Certificates
 			const fs::path cert_out = dir / "cert.pem";
 			const fs::path key_out = dir / "key.pem";
 
-			// Reuse an already-generated pair in a fallback directory across restarts.
+			// Safe to reuse across restarts: the directory has just been verified as
+			// owner-only and self-owned, so an attacker cannot have planted these.
 			if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
 			{
 				LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));

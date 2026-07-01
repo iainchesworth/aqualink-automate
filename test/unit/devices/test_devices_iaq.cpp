@@ -12,12 +12,19 @@
 #include "jandy/devices/jandy_device_types.h"
 #include "jandy/messages/jandy_message_ids.h"
 
+#include "kernel/data_hub.h"
+#include "kernel/auxillary_devices/auxillary_device.h"
+#include "kernel/auxillary_traits/auxillary_traits_types.h"
+#include "kernel/body_of_water_ids.h"
+
 #include "support/unit_test_hublocatorinjector.h"
 #include "support/unit_test_mockreplayharness.h"
 #include "support/unit_test_protocolmessagebuilder.h"
 
 using namespace AqualinkAutomate;
 using namespace AqualinkAutomate::Devices;
+
+namespace IaqTraits = AqualinkAutomate::Kernel::AuxillaryTraitsTypes;
 
 namespace
 {
@@ -465,6 +472,236 @@ BOOST_AUTO_TEST_CASE(Heartbeat_AfterMainStatus_KeepsSystemStatusPage)
 		joined += '\n';
 	}
 	BOOST_CHECK(joined.find("System Status") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// MainStatus -> DataHub state
+//
+// ProcessMainStatus does not just render the screen: it is the single authority
+// that fans the decoded MainStatus out into the DataHub (circulation mode + active
+// body, the three temperatures, the filter pump, and the Pool/Spa/Solar heaters).
+// The screen-rendering tests above never inspect that DataHub state, so these
+// drive the same proven MainStatus frame and assert the decoded model.
+// =============================================================================
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_MainStatusDataHub_TestSuite)
+
+namespace
+{
+	void ReplayMainStatus(Test::MockReplayHarness& harness, const std::vector<uint8_t>& payload)
+	{
+		const uint8_t cmd_main_status = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_MainStatus);
+		harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_main_status, payload));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_PopulatesDataHubTemperatures)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	ReplayMainStatus(harness, MakeMainStatusPayload_CurrentFormat());
+
+	auto hub = harness.DataHub();
+	auto pool = hub->PoolTemp();
+	auto spa = hub->SpaTemp();
+	auto air = hub->AirTemp();
+
+	BOOST_REQUIRE(pool.has_value());
+	BOOST_REQUIRE(spa.has_value());
+	BOOST_REQUIRE(air.has_value());
+
+	// PoolTemp = pool_target (28C), SpaTemp = water_current (27C), AirTemp = air (24C).
+	BOOST_CHECK_CLOSE(pool.value().InCelsius().value(), 28.0, 0.01);
+	BOOST_CHECK_CLOSE(spa.value().InCelsius().value(), 27.0, 0.01);
+	BOOST_CHECK_CLOSE(air.value().InCelsius().value(), 24.0, 0.01);
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_PoolMode_SetsCirculationPool)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	// Default payload has spa_mode = 0x00 (Pool mode).
+	ReplayMainStatus(harness, MakeMainStatusPayload_CurrentFormat());
+
+	BOOST_CHECK(harness.DataHub()->CirculationMode == Kernel::CirculationModes::Pool);
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_SpaMode_SetsCirculationSpaAndAutoDetectsDualBody)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	auto payload = MakeMainStatusPayload_CurrentFormat();
+	payload[6] = 0x01;   // spa_mode ON (the byte after pump + pool_heat)
+	ReplayMainStatus(harness, payload);
+
+	auto hub = harness.DataHub();
+	BOOST_CHECK(hub->CirculationMode == Kernel::CirculationModes::Spa);
+	// Seeing spa mode on an otherwise-unconfigured IAQ infers a shared-equipment dual body.
+	BOOST_CHECK(hub->PoolConfiguration == Kernel::PoolConfigurations::DualBody_SharedEquipment);
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_CreatesFilterPump_TrackingPumpStatus)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	// First MainStatus: pump ON.
+	ReplayMainStatus(harness, MakeMainStatusPayload_CurrentFormat());
+
+	auto pumps = harness.DataHub()->FilterPumps();
+	BOOST_REQUIRE_EQUAL(pumps.size(), 1u);
+	auto status_on = pumps.front()->AuxillaryTraits.TryGet(IaqTraits::PumpStatusTrait{});
+	BOOST_REQUIRE(status_on.has_value());
+	BOOST_CHECK(status_on.value() == Kernel::PumpStatuses::Running);
+
+	// Second MainStatus: pump OFF -> the SAME pump flips status (no duplicate created).
+	auto payload_off = MakeMainStatusPayload_CurrentFormat();
+	payload_off[4] = 0x00;   // pump OFF
+	ReplayMainStatus(harness, payload_off);
+
+	auto pumps_after = harness.DataHub()->FilterPumps();
+	BOOST_REQUIRE_EQUAL(pumps_after.size(), 1u);
+	auto status_off = pumps_after.front()->AuxillaryTraits.TryGet(IaqTraits::PumpStatusTrait{});
+	BOOST_REQUIRE(status_off.has_value());
+	BOOST_CHECK(status_off.value() == Kernel::PumpStatuses::Off);
+}
+
+BOOST_AUTO_TEST_CASE(MainStatus_CreatesHeaters_WithDecodedStatus)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	// Payload: pool_heat = 0x01 (Heating), spa_heat = 0x00 (Off), solar = 0x00 (Off).
+	ReplayMainStatus(harness, MakeMainStatusPayload_CurrentFormat());
+
+	auto hub = harness.DataHub();
+
+	auto pool_heat = hub->Devices.FindByLabel("Pool Heat");
+	BOOST_REQUIRE_EQUAL(pool_heat.size(), 1u);
+	auto pool_status = pool_heat.front()->AuxillaryTraits.TryGet(IaqTraits::HeaterStatusTrait{});
+	BOOST_REQUIRE(pool_status.has_value());
+	BOOST_CHECK(pool_status.value() == Kernel::HeaterStatuses::Heating);
+
+	auto spa_heat = hub->Devices.FindByLabel("Spa Heat");
+	BOOST_REQUIRE_EQUAL(spa_heat.size(), 1u);
+	auto spa_status = spa_heat.front()->AuxillaryTraits.TryGet(IaqTraits::HeaterStatusTrait{});
+	BOOST_REQUIRE(spa_status.has_value());
+	BOOST_CHECK(spa_status.value() == Kernel::HeaterStatuses::Off);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// =============================================================================
+// AuxStatus -> DataHub auxillary devices
+//
+// ProcessAuxStatus decodes the IAQ AuxStatus (0x72) device list into the DataHub:
+// each entry creates/reconciles an auxillary device keyed by its stable aux id,
+// sets its on/off status, adopts the panel-provided label, and infers a body of
+// water from the label ("Spa"/"Pool"). The existing suite never exercises this.
+// Wire layout (see test_iaq_messages.cpp): num_devices, indices[], then per
+// device: status(1) type(1) pad(2) name_len(1) name[].
+// =============================================================================
+
+BOOST_AUTO_TEST_SUITE(IAQDevice_AuxStatusDataHub_TestSuite)
+
+namespace
+{
+	// Build one AuxStatus device entry (header + name) appended to `out`.
+	void AppendAuxDevice(std::vector<uint8_t>& out, bool is_on, uint8_t type, const std::string& name)
+	{
+		out.push_back(is_on ? 0x01 : 0x00);
+		out.push_back(type);
+		out.push_back(0x00);
+		out.push_back(0x00);
+		out.push_back(static_cast<uint8_t>(name.size()));
+		out.insert(out.end(), name.begin(), name.end());
+	}
+
+	void ReplayAuxStatus(Test::MockReplayHarness& harness, const std::vector<uint8_t>& payload)
+	{
+		const uint8_t cmd_aux = static_cast<uint8_t>(AqualinkAutomate::Messages::JandyMessageIds::IAQ_AuxStatus);
+		harness.Replay(Test::MessageBuilder::CreateValidChecksummedMessage(IAQ_DEVICE_ID, cmd_aux, payload));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(AuxStatus_CreatesLabelledAuxWithPoolBody)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	// One device: aux index 5, ON, label "Pool Light".
+	std::vector<uint8_t> payload = { 0x01, 0x05 };
+	AppendAuxDevice(payload, /*is_on=*/true, /*type=*/0x00, "Pool Light");
+	ReplayAuxStatus(harness, payload);
+
+	auto matches = harness.DataHub()->Devices.FindByLabel("Pool Light");
+	BOOST_REQUIRE_EQUAL(matches.size(), 1u);
+	auto aux = matches.front();
+
+	auto status = aux->AuxillaryTraits.TryGet(IaqTraits::AuxillaryStatusTrait{});
+	BOOST_REQUIRE(status.has_value());
+	BOOST_CHECK(status.value() == Kernel::AuxillaryStatuses::On);
+
+	// Label contains "Pool" -> body heuristic resolves to Pool.
+	auto body = aux->AuxillaryTraits.TryGet(IaqTraits::BodyOfWaterTrait{});
+	BOOST_REQUIRE(body.has_value());
+	BOOST_CHECK(body.value() == Kernel::BodyOfWaterIds::Pool);
+}
+
+BOOST_AUTO_TEST_CASE(AuxStatus_SpaLabel_ResolvesSpaBody)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	std::vector<uint8_t> payload = { 0x01, 0x05 };
+	AppendAuxDevice(payload, /*is_on=*/false, /*type=*/0x00, "Spa Jet");
+	ReplayAuxStatus(harness, payload);
+
+	auto matches = harness.DataHub()->Devices.FindByLabel("Spa Jet");
+	BOOST_REQUIRE_EQUAL(matches.size(), 1u);
+
+	auto body = matches.front()->AuxillaryTraits.TryGet(IaqTraits::BodyOfWaterTrait{});
+	BOOST_REQUIRE(body.has_value());
+	BOOST_CHECK(body.value() == Kernel::BodyOfWaterIds::Spa);
+
+	auto status = matches.front()->AuxillaryTraits.TryGet(IaqTraits::AuxillaryStatusTrait{});
+	BOOST_REQUIRE(status.has_value());
+	BOOST_CHECK(status.value() == Kernel::AuxillaryStatuses::Off);
+}
+
+BOOST_AUTO_TEST_CASE(AuxStatus_SecondMessage_UpdatesStatusInPlace)
+{
+	Test::MockReplayHarness harness;
+	auto device_id = std::make_shared<JandyDeviceType>(JandyDeviceId(IAQ_DEVICE_ID));
+	IAQDevice device(device_id, harness.HubLocatorRef(), /*is_emulated=*/false);
+
+	// First: aux 5 ON.
+	std::vector<uint8_t> on = { 0x01, 0x05 };
+	AppendAuxDevice(on, /*is_on=*/true, /*type=*/0x00, "Pool Light");
+	ReplayAuxStatus(harness, on);
+
+	// Second: same aux 5 OFF -> reconciled by stable id, no duplicate.
+	std::vector<uint8_t> off = { 0x01, 0x05 };
+	AppendAuxDevice(off, /*is_on=*/false, /*type=*/0x00, "Pool Light");
+	ReplayAuxStatus(harness, off);
+
+	auto matches = harness.DataHub()->Devices.FindByLabel("Pool Light");
+	BOOST_REQUIRE_EQUAL(matches.size(), 1u);
+	auto status = matches.front()->AuxillaryTraits.TryGet(IaqTraits::AuxillaryStatusTrait{});
+	BOOST_REQUIRE(status.has_value());
+	BOOST_CHECK(status.value() == Kernel::AuxillaryStatuses::Off);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

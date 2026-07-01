@@ -12,6 +12,7 @@ target_sources(
 	PRIVATE
 	unit/test_main.cpp
 	unit/application/test_application_defaults.cpp
+	unit/application/test_secure_runtime_paths.cpp
 	unit/auxillaries/test_jandy_auxillary_id.cpp
 	unit/concepts/test_concept_is_c_array.cpp
 	unit/certificates/test_certificate_generation.cpp

@@ -1758,7 +1758,11 @@ components:
               example: "2024-01-15"
             uncommitted_changes:
               type: boolean
-              description: Whether there are uncommitted changes
+              description: >-
+                Whether a tracked source file differed from the commit when the
+                binary was built. Exec-bit-only changes, untracked build
+                artifacts, and the bootstrapped deps/vcpkg submodule are ignored,
+                so a CI-released binary reports false.
               example: false
         server_start_time:
           type: string

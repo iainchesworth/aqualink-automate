@@ -78,6 +78,17 @@ namespace
 		boost::beast::http::read(client_stream, read_buffer, resp, ec);
 		BOOST_REQUIRE_MESSAGE(!ec || ec == boost::beast::http::error::end_of_stream, "Failed to read response: " + ec.message());
 
+		// False positive from clang-tidy's use-after-move checks. boost::beast::http::read()
+		// moves `resp` into an internal parser and, on the success path, moves the fully
+		// parsed message straight back out (`msg = p.release()` in http/impl/read.hpp), so
+		// `resp` is repopulated before we return it. The analyzer only traces beast's
+		// early-return error path — where `resp` is left moved-from — and cannot model that
+		// the BOOST_REQUIRE_MESSAGE above aborts the test on any hard read error. The mock
+		// stream here always delivers one complete response, so the repopulating success path
+		// is the one taken and `resp` is never actually returned in a moved-from state.
+		// (Both check names are listed because the diagnostic surfaces as clang-analyzer-
+		// cplusplus.Move under some clang-tidy builds and as bugprone-use-after-move under others.)
+		// NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 		return resp;
 	}
 

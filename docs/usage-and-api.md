@@ -106,7 +106,7 @@ All routes below are registered in a single block when the web server is enabled
 
 | Method | Path | Success | Notes |
 |---|---|---|---|
-| GET | `/api/version` | `200` JSON | App + build metadata and uptime. |
+| GET | `/api/version` | `200` JSON | App + build metadata and uptime. `git_info.uncommitted_changes` is the build-time working-tree state and means a **tracked source file differed from the commit** — it deliberately ignores exec-bit-only changes, untracked build artifacts, and the bootstrapped `deps/vcpkg` submodule, so a CI-released binary reports `false`. |
 
 ### Equipment
 

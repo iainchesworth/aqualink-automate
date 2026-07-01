@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/releasing.md](docs/releasing.md) for how releases and version numbers are cut.
 
+## [0.9.0-beta.5] - 2026-07-01
+
+A security-hardening release on top of 0.9.0-beta.4 that fully closes the auto-generated-key exposure only partially mitigated in beta.4, plus a version-stamping fix. No application behaviour change on a normally-configured install.
+
+### Security
+
+- **Auto-generated TLS key material no longer falls back to the world-writable system temp directory.** When no certificate is configured and the install tree is read-only (the common packaged case), beta.4 wrote the generated private key under the system temp directory and merely `chmod`-ed it afterward — a pattern still open to symlink/pre-creation attacks and to the reuse path trusting attacker-planted files, and still flagged by static analysis (SonarCloud S5443). The fallback now targets a **per-user private** directory instead — `$STATE_DIRECTORY` (systemd `StateDirectory`), then `$XDG_RUNTIME_DIR`, then `$HOME/.local/state` on Linux; `%LOCALAPPDATA%` on Windows — and each candidate is created owner-only (`0700`) and verified to be a self-owned, non-symlink directory before the key is written or an existing pair is reused. Another local user can therefore neither read the key nor pre-seed material the server would trust.
+
+### Fixed
+
+- **CI-built binaries no longer report "uncommitted changes" on the About page.** The build-time git-dirty probe (`GitWatcher`) ran a bare `git status --porcelain`, which the release build leg tripped by `chmod +x`-ing the packaging maintainer scripts (an exec-bit-only diff) and bootstrapping the `deps/vcpkg` submodule — so a clean, CI-released binary stamped itself dirty. The probe now ignores exec-bit-only changes, untracked build artifacts, and the bootstrapped submodule (so "dirty" means a tracked source file actually differs from the commit), and the packaging scripts are committed executable so the workflow `chmod` is a no-op.
+
+## [0.9.0-beta.4] - 2026-07-01
+
+A security-hardening and static-analysis cleanup release on top of 0.9.0-beta.3. One hardening fix to the auto-generated HTTPS key material; the remainder clears outstanding code-scanning findings with no application behaviour change.
+
+### Security
+
+- **The auto-generated HTTPS private key is now stored in an owner-only directory.** When no certificate is configured and the install tree is read-only, the self-signed key and certificate fall back to a world-writable system temp directory. The key file was already written `0600`, but its containing directory was unrestricted — leaving it readable by, or pre-seedable by, other local users on a shared host (the reuse-on-restart path would then trust that material). The directory holding the key is now restricted to owner-only (`0700`) before the key is written or an existing pair is trusted.
+
+### Changed
+
+- **Cleared outstanding static-analysis (code-scanning) findings.** A `std::optional` unwrap in the auxiliary reconciliation path — already guarded behind a helper the analyser could not see through — now carries an explicit `has_value()` check, and a `[[fallthrough]]` annotation in the Jandy startup coordinator was moved directly before its `case` label so it is recognised. No behaviour change.
+
 ## [0.9.0-beta.3] - 2026-06-30
 
 A bug-fix and hardening release on top of 0.9.0-beta.2. Seven user-facing fixes — the Trends view and Schedules page failing to load, duplicate auxiliary devices in MQTT/Home Assistant, panel display-line rendering, reduced MQTT/WebSocket churn, cleaner numeric API output, and a Matter bridge startup crash-loop — plus build-toolchain and test-coverage hardening with no other application behaviour change.
