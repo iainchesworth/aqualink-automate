@@ -677,309 +677,43 @@
                 </div>
             </div>
 
-            <!-- Utilization chart with window selector -->
-            <div class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Bandwidth Utilization</span>
-                    <div class="window-selector">
-                        <template x-for="opt in windowOptions" :key="opt.value">
-                            <button class="window-btn"
-                                    :class="{ active: windowSeconds === opt.value }"
-                                    @click="setWindow(opt.value)"
-                                    x-text="opt.label"></button>
-                        </template>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas x-ref="utilizationChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Latency percentiles -->
-            <div class="section-title">Communication Latency</div>
-            <!-- Uptime info -->
-            <div class="system-info-bar mb-1" x-show="$store.system.serverStartTime">
-                <span class="system-info-item">
-                    <span class="system-info-label">Started at</span>
-                    <span class="system-info-value" x-text="$store.system.serverStartTime ? new Date($store.system.serverStartTime).toLocaleString() : '--'"></span>
-                </span>
-                <span class="system-info-item">
-                    <span class="system-info-label">Uptime</span>
-                    <span class="system-info-value" x-text="formatUptime($store.system.uptimeSeconds)"></span>
-                </span>
-            </div>
-            <div x-show="$store.stats.latency" class="mb-2">
-                <template x-for="cat in [
-                    { key: 'serial_read', label: 'Serial Read' },
-                    { key: 'serial_write', label: 'Serial Write' },
-                    { key: 'message_processing', label: 'Message Processing' }
-                ]" :key="cat.key">
-                    <div class="card mb-1" x-show="$store.stats.latency?.[cat.key]">
-                        <div class="card-header" x-text="cat.label"></div>
-                        <div class="card-body">
-                            <div class="latency-section-label">Window (last 15m): min &ndash; max</div>
-                            <div class="latency-grid">
-                                <div class="latency-item">
-                                    <span class="latency-label">P1</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.p1_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">P50</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.p50_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">P95</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.p95_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">P99</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.p99_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">Min</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.min_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">Max</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.max_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">Mean</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.mean_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">Samples</span>
-                                    <span class="latency-value" x-text="($store.stats.latency?.[cat.key]?.sample_count || 0).toLocaleString()"></span>
-                                </div>
-                            </div>
-                            <div class="latency-section-label mt-1">Since restart: min / max</div>
-                            <div class="latency-grid">
-                                <div class="latency-item">
-                                    <span class="latency-label">Min</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_min_us)"></span>
-                                </div>
-                                <div class="latency-item">
-                                    <span class="latency-label">Max</span>
-                                    <span class="latency-value" x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_max_us)"></span>
-                                </div>
-                            </div>
+            <!-- Bandwidth utilization chart (FIX 1: Read/Write legend chips + Live indicator) -->
+            <div class="card mb-2 bw-card">
+                <div class="bw-head">
+                    <div>
+                        <div class="section-title bw-title">Bandwidth Utilization</div>
+                        <div class="bw-legend">
+                            <span class="bw-legend-item">
+                                <span class="bw-legend-swatch bw-swatch-read"></span>Read
+                                <strong x-text="($store.stats.bandwidthRead?.average_utilisation_1sec || 0).toFixed(1) + '%'"></strong>
+                            </span>
+                            <span class="bw-legend-item">
+                                <span class="bw-legend-swatch bw-swatch-write"></span>Write
+                                <strong x-text="($store.stats.bandwidthWrite?.average_utilisation_1sec || 0).toFixed(1) + '%'"></strong>
+                            </span>
                         </div>
                     </div>
-                </template>
-            </div>
-            <div x-show="!$store.stats.latency" class="text-center text-muted mb-2 p-2">Waiting for latency data...</div>
-
-            <!-- Device Status -->
-            <button class="section-toggle mb-1" @click="showDeviceStatus = !showDeviceStatus"
-                    :aria-expanded="showDeviceStatus" aria-controls="diag-device-status">
-                <span class="section-toggle-chevron" :class="{ open: showDeviceStatus }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Device Status</span>
-            </button>
-            <div id="diag-device-status" x-show="showDeviceStatus" x-transition.opacity x-cloak>
-            <div class="card mb-2">
-                <div class="card-body">
-                    <template x-if="$store.system.deviceStatuses.length > 0">
-                        <div class="device-status-list">
-                            <template x-for="dev in $store.system.deviceStatuses" :key="dev.key">
-                                <div class="device-status-row">
-                                    <span class="device-status-name" x-text="dev.sourceName"></span>
-                                    <span class="device-status-type" x-text="dev.sourceType"></span>
-                                    <span class="device-status-badge"
-                                          :class="dev.statusType === 'Normal' ? 'badge-status-normal' : (dev.statusType === 'Initializing' ? 'badge-status-warn' : 'badge-status-danger')"
-                                          x-text="dev.statusType"></span>
-                                    <span class="device-status-time" x-text="dev.lastSeen"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-                    <template x-if="$store.system.deviceStatuses.length === 0">
-                        <p class="text-muted mb-0 mt-0">No device status events received yet</p>
-                    </template>
-                </div>
-            </div>
-            </div>
-
-            <!-- Device sections (Emulated + Actual) — ONE shared card definition.
-                 Both sections render the identical deviceCard() component; the outer
-                 loop over deviceGroups() is the single source of truth and differs only
-                 by the bound device list, so the card is edited here once, not per
-                 section. (Previously the two grids were duplicated and had drifted.) -->
-            <template x-for="group in deviceGroups()" :key="group.key">
-                <div class="device-group">
-                    <button class="section-toggle mb-1" @click="$data[group.openKey] = !$data[group.openKey]"
-                            :aria-expanded="$data[group.openKey]" :aria-controls="'diag-' + group.key + '-devices'">
-                        <span class="section-toggle-chevron" :class="{ open: $data[group.openKey] }" aria-hidden="true">&#x25B8;</span>
-                        <span class="section-title" x-text="group.title"></span>
-                    </button>
-                    <div :id="'diag-' + group.key + '-devices'" x-show="$data[group.openKey]" x-transition.opacity x-cloak>
-                        <template x-if="group.devices.length === 0">
-                            <p class="text-muted mb-2 mt-0" x-text="group.empty"></p>
-                        </template>
-                        <div class="emu-device-grid">
-                            <template x-for="dev in group.devices" :key="dev.device_id">
-                                <article class="emu-device-card" x-data="deviceCard()">
-                                    <div class="emu-device-header">
-                                        <svg class="device-card-icon" aria-hidden="true" viewBox="0 0 24 24"><use :href="'#icon-' + iconKey(dev)"></use></svg>
-                                        <div class="device-card-titles">
-                                            <span class="emu-device-type" x-text="dev.device_type"></span>
-                                            <span class="device-card-role" x-text="role(dev)"></span>
-                                        </div>
-                                        <code class="emu-device-id" x-text="dev.device_id"></code>
-                                        <span class="device-emu-badge" :class="emuClass(dev)" x-text="emuLabel(dev)"></span>
-                                        <template x-if="dev.operating_state">
-                                            <span class="emu-state-badge" x-text="dev.operating_state" :class="stateClass(dev.operating_state)"></span>
-                                        </template>
-                                        <span class="device-activity-dot" :class="{ pulsing: isActive(dev) }"
-                                              :title="isActive(dev) ? 'Active' : 'Idle'" aria-hidden="true"></span>
-                                        <template x-if="dev.is_running !== undefined">
-                                            <span class="emu-running-dot" :class="dev.is_running ? 'connected' : 'disconnected'"
-                                                  :title="dev.is_running ? 'Watchdog running' : 'Watchdog stopped'"></span>
-                                        </template>
-                                    </div>
-                                    <div class="emu-device-body">
-                                        <p class="device-card-summary" x-text="summary(dev)"></p>
-
-                                        <!-- Spa-side remote keypad: program what each key does, and (emulated only)
-                                             press it. Joined by bus address to the rich /api/equipment/spaside-remotes
-                                             feed via spasideForDevice(); omitted when no match. The per-key switch:button
-                                             mapping + assignable/pressable flags come from the backend (no protocol
-                                             knowledge here). All handlers take the diagnostics `dev` (its device_id IS the
-                                             bus address, e.g. "0x10"), so no nested scope is needed. -->
-                                        <template x-if="dev.device_type === 'SpasideRemote' && spasideForDevice(dev)">
-                                            <div class="emu-device-section">
-                                                <div class="emu-section-label">
-                                                    Keypad
-                                                    <span class="text-muted text-xs" x-show="dev.is_emulated">— tap a key to press · &#9881; to program</span>
-                                                    <span class="text-muted text-xs" x-show="!dev.is_emulated">— observed · &#9881; to program</span>
-                                                </div>
-
-                                                <!-- Indicator LEDs the master is pushing (distinct from the keys: 2 on a
-                                                     Dual Spa Switch, up to 4 on a Spa Link). -->
-                                                <div class="spaside-indicators" x-show="dev.led_image_seen">
-                                                    <span class="emu-kv-key">Indicators</span>
-                                                    <template x-for="(state, i) in (dev.leds || [])" :key="i">
-                                                        <span class="badge" :class="spasideLedBadgeClass(state)"
-                                                              :title="'Indicator ' + (i+1) + ': ' + state" x-text="i+1"></span>
-                                                    </template>
-                                                </div>
-
-                                                <div class="spaside-keypad">
-                                                    <template x-for="grp in spasideKeyGroups(dev)" :key="grp.label || 'keys'">
-                                                        <div class="spaside-switch-group">
-                                                            <div class="spaside-switch-label" x-show="grp.label" x-text="grp.label"></div>
-                                                            <div class="spaside-key-grid">
-                                                                <template x-for="b in grp.buttons" :key="b.index">
-                                                                    <div class="spaside-key" :class="{ 'is-assigned': b.function, 'is-pending': b.pending }">
-                                                                        <!-- Press surface: enabled only on an emulated remote. -->
-                                                                        <button class="spaside-key-press"
-                                                                                :disabled="!b.pressable || spasideBusy"
-                                                                                @click="b.pressable && pressSpasideButton(dev.device_id, b.index)"
-                                                                                :title="b.pressable ? ('Press key ' + b.index) : 'Observed remote — its button cannot be pressed'">
-                                                                            <span class="spaside-key-index" x-text="b.index"></span>
-                                                                            <span class="spaside-key-fn" x-text="b.function || 'Unassigned'"></span>
-                                                                            <span class="spaside-key-pending" x-show="b.pending" x-text="'→ ' + b.requested"></span>
-                                                                        </button>
-                                                                        <!-- Program affordance: works on any remote whose key mapping is decoded. -->
-                                                                        <button class="spaside-key-edit"
-                                                                                :disabled="!b.assignable || spasideBusy || spasideAvailableFunctions.length === 0"
-                                                                                @click="toggleSpasideEdit(dev.device_id, b.index)"
-                                                                                :title="!b.assignable ? 'This remote’s key→switch mapping is not decoded yet'
-                                                                                        : (spasideAvailableFunctions.length === 0 ? 'No controller can program assignments right now'
-                                                                                        : 'Program this key’s function')"
-                                                                                aria-label="Program key">&#9881;</button>
-                                                                        <!-- Inline STRICT function picker (no free text). -->
-                                                                        <div class="spaside-key-editor"
-                                                                             x-show="spasideEditKey === spasideEditId(dev.device_id, b.index)" x-cloak>
-                                                                            <select class="settings-input spaside-fn-select" :disabled="spasideBusy"
-                                                                                    @change="setSpasideAssignment(b.switch, b.button, $event.target.value)">
-                                                                                <option value="" x-text="b.function ? 'Change function…' : 'Pick a function…'"></option>
-                                                                                <template x-for="fn in spasideAvailableFunctions" :key="fn">
-                                                                                    <option :value="fn" :selected="fn === b.function" x-text="fn"></option>
-                                                                                </template>
-                                                                            </select>
-                                                                        </div>
-                                                                    </div>
-                                                                </template>
-                                                            </div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <!-- Tailored detail sections (data-driven; no per-type markup) -->
-                                        <template x-for="(sec, si) in sections(dev)" :key="si">
-                                            <div class="emu-device-section">
-                                                <div class="emu-section-label" x-show="sec.label" x-text="sec.label"></div>
-                                                <div class="emu-kv-grid">
-                                                    <template x-for="(row, ri) in sec.rows" :key="ri">
-                                                        <div class="emu-kv-row">
-                                                            <span class="emu-kv-key" x-text="row[0]"></span>
-                                                            <span class="emu-kv-val" x-text="row[1]"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <!-- Screen content (devices that have a screen) -->
-                                        <template x-if="dev.screen">
-                                            <div class="emu-device-section">
-                                                <div class="emu-section-label">
-                                                    Screen
-                                                    <span class="emu-page-type" x-text="dev.screen.page_type"></span>
-                                                    <span class="emu-screen-mode" x-text="dev.screen.mode" x-show="dev.screen.mode && dev.screen.mode !== 'Normal'"></span>
-                                                </div>
-                                                <div class="emu-screen-lines">
-                                                    <template x-for="(line, idx) in dev.screen.lines" :key="idx">
-                                                        <div class="emu-screen-line"
-                                                             :class="{ 'emu-screen-line-highlighted': dev.highlighted_line === idx && dev.device_type === 'OneTouch' }">
-                                                            <span class="emu-line-num" x-text="idx"></span>
-                                                            <span class="emu-screen-text" x-text="line || ' '"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <!-- Recent commands (command-capable controllers) -->
-                                        <template x-if="recentCommands(dev).length">
-                                            <div class="emu-device-section">
-                                                <div class="emu-section-label">Recent Commands</div>
-                                                <div class="device-cmd-list">
-                                                    <template x-for="(cmd, ci) in recentCommands(dev)" :key="ci">
-                                                        <div class="device-cmd-row">
-                                                            <span class="device-cmd-time" x-text="fmtAge(cmd.age_seconds)"></span>
-                                                            <span class="device-cmd-desc" x-text="cmd.description"></span>
-                                                            <span class="device-cmd-outcome" :class="cmdOutcomeClass(cmd.outcome)" x-text="cmd.outcome"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <!-- Raw diagnostics (nothing lost; collapsed by default) -->
-                                        <details class="device-debug">
-                                            <summary class="device-debug-summary">Raw diagnostics</summary>
-                                            <pre class="emu-json-dump" x-text="rawJson(dev)"></pre>
-                                        </details>
-                                    </div>
-                                </article>
+                    <div class="bw-head-right">
+                        <span class="bw-live" :class="{ 'is-off': !$store.ws.statsConnected }">
+                            <span class="bw-live-dot"></span><span x-text="$store.ws.statsConnected ? 'Live' : 'Offline'"></span>
+                        </span>
+                        <div class="window-selector">
+                            <template x-for="opt in windowOptions" :key="opt.value">
+                                <button class="window-btn"
+                                        :class="{ active: windowSeconds === opt.value }"
+                                        @click="setWindow(opt.value)"
+                                        x-text="opt.label"></button>
                             </template>
                         </div>
                     </div>
                 </div>
-            </template>
+                <div class="chart-container bw-chart">
+                    <canvas x-ref="utilizationChart"></canvas>
+                </div>
+            </div>
 
-            <!-- Serial health metrics -->
-            <button class="section-toggle mb-1" @click="showSerialHealth = !showSerialHealth"
-                    :aria-expanded="showSerialHealth" aria-controls="diag-serial-health">
-                <span class="section-toggle-chevron" :class="{ open: showSerialHealth }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Serial Health</span>
-            </button>
-            <div id="diag-serial-health" x-show="showSerialHealth" x-transition.opacity x-cloak>
+            <!-- Serial health metrics (FIX 3: moved to after Bandwidth) -->
+            <div class="section-title">Serial Health</div>
             <div x-show="$store.stats.serial" class="stat-cards mb-2">
                 <div class="stat-card">
                     <div class="stat-card-label">Error Rate</div>
@@ -1003,15 +737,9 @@
                 </div>
             </div>
             <div x-show="!$store.stats.serial" class="text-center text-muted mb-2 p-2">Waiting for serial data...</div>
-            </div>
 
-            <!-- Message error metrics -->
-            <button class="section-toggle mb-1" @click="showMessageErrors = !showMessageErrors"
-                    :aria-expanded="showMessageErrors" aria-controls="diag-message-errors">
-                <span class="section-toggle-chevron" :class="{ open: showMessageErrors }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Message Errors</span>
-            </button>
-            <div id="diag-message-errors" x-show="showMessageErrors" x-transition.opacity x-cloak>
+            <!-- Message error metrics (FIX 4: after Serial Health, before Latency) -->
+            <div class="section-title">Message Errors</div>
             <div x-show="$store.stats.messageErrors" class="stat-cards mb-2">
                 <div class="stat-card">
                     <div class="stat-card-label">Checksum</div>
@@ -1039,189 +767,255 @@
                 </div>
             </div>
             <div x-show="!$store.stats.messageErrors" class="text-center text-muted mb-2 p-2">Waiting for error data...</div>
-            </div>
 
-            <!-- Message stats table -->
-            <button class="section-toggle mb-1" @click="showMessageStats = !showMessageStats"
-                    :aria-expanded="showMessageStats" aria-controls="diag-message-stats">
-                <span class="section-toggle-chevron" :class="{ open: showMessageStats }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Message Statistics</span>
-            </button>
-            <div id="diag-message-stats" x-show="showMessageStats" x-transition.opacity x-cloak>
-            <div class="card mb-2">
-                <div class="card-header">Message Statistics</div>
-                <div class="card-body p-0 overflow-x-auto">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Message</th>
-                                <th>Count</th>
-                                <th>Frequency</th>
-                                <th>Last Seen</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-if="$store.stats.messageCounts.length === 0">
-                                <tr><td colspan="4" class="text-center text-muted py-3">Waiting for data...</td></tr>
-                            </template>
-                            <template x-for="stat in $store.stats.messageCounts" :key="stat.name || stat.id">
-                                <tr>
-                                    <td><code x-text="stat.name || ('ID ' + stat.id)"></code></td>
-                                    <td x-text="(stat.count || 0).toLocaleString()"></td>
-                                    <td><span class="badge badge-freq" x-text="stat.frequency.toFixed(2) + ' msg/s'"></span></td>
-                                    <td class="text-muted tabular-muted" x-text="stat.lastSeen ? new Date(stat.lastSeen).toLocaleTimeString() : '--'"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Communication Latency (FIX 5: 3-column compact cards, same row) -->
+            <div class="section-title">Communication Latency</div>
+            <div x-show="$store.stats.latency" class="latency-cards mb-2">
+                <template x-for="cat in [
+                    { key: 'serial_read', label: 'Serial Read' },
+                    { key: 'serial_write', label: 'Serial Write' },
+                    { key: 'message_processing', label: 'Message Processing' }
+                ]" :key="cat.key">
+                    <div class="latency-card" x-show="$store.stats.latency?.[cat.key]">
+                        <div class="latency-card-head">
+                            <span class="latency-card-title" x-text="cat.label"></span>
+                            <span class="latency-window-pill"
+                                  x-text="'Last ' + (($store.stats.latency?.[cat.key]?.window_secs)
+                                        ? (($store.stats.latency[cat.key].window_secs % 60 === 0)
+                                            ? ($store.stats.latency[cat.key].window_secs / 60) + 'm'
+                                            : $store.stats.latency[cat.key].window_secs + 's')
+                                        : '15m')"></span>
+                        </div>
+                        <div class="latency-pct-grid">
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">P1</div>
+                                <div class="latency-pct-v" x-text="formatMicros($store.stats.latency?.[cat.key]?.p1_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">P50</div>
+                                <div class="latency-pct-v" x-text="formatMicros($store.stats.latency?.[cat.key]?.p50_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">P95</div>
+                                <div class="latency-pct-v" x-text="formatMicros($store.stats.latency?.[cat.key]?.p95_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">P99</div>
+                                <div class="latency-pct-v" x-text="formatMicros($store.stats.latency?.[cat.key]?.p99_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">Mean</div>
+                                <div class="latency-pct-v latency-pct-dim" x-text="formatMicros($store.stats.latency?.[cat.key]?.mean_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">Samples</div>
+                                <div class="latency-pct-v latency-pct-dim" x-text="($store.stats.latency?.[cat.key]?.sample_count || 0).toLocaleString()"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">Cum. Mean</div>
+                                <div class="latency-pct-v latency-pct-dim" x-text="formatMicros($store.stats.latency?.[cat.key]?.cumulative_mean_us)"></div>
+                            </div>
+                            <div class="latency-pct">
+                                <div class="latency-pct-k">Max</div>
+                                <div class="latency-pct-v latency-pct-dim" x-text="formatMicros($store.stats.latency?.[cat.key]?.max_us)"></div>
+                            </div>
+                        </div>
+                        <div class="latency-card-foot">
+                            <span class="latency-foot-label">Since restart</span>
+                            <span class="latency-foot-vals">
+                                <span>min <strong x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_min_us)"></strong></span>
+                                <span>max <strong x-text="formatMicros($store.stats.latency?.[cat.key]?.alltime_max_us)"></strong></span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
             </div>
-            </div>
+            <div x-show="!$store.stats.latency" class="text-center text-muted mb-2 p-2">Waiting for latency data...</div>
 
-            <!-- Log level controls -->
-            <button class="section-toggle mb-1" @click="showLogLevels = !showLogLevels"
-                    :aria-expanded="showLogLevels" aria-controls="diag-log-levels">
-                <span class="section-toggle-chevron" :class="{ open: showLogLevels }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Log Levels</span>
-            </button>
-            <div id="diag-log-levels" x-show="showLogLevels" x-transition.opacity x-cloak>
-            <div x-show="logLevelsLoaded" class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Per-Channel Log Levels</span>
-                    <div class="flex items-center gap-1">
-                        <label class="inline-label">Global:</label>
-                        <select class="inline-select"
-                                :value="globalLevel"
-                                @change="setGlobalLevel($event.target.value)">
-                            <option value="" disabled>Mixed</option>
-                            <template x-for="lvl in severityLevels" :key="lvl">
-                                <option :value="lvl" x-text="lvl" :selected="lvl === globalLevel"></option>
+            <!-- Device sections (FIX 6/7: compact clickable cards; rich detail moved to modal.
+                 Both Emulated + Actual render the same compact card via ONE shared
+                 deviceCard() definition; the outer deviceGroups() loop differs only by the
+                 bound list. The impl-only "Device Status" section was removed — superseded. -->
+            <template x-for="group in deviceGroups()" :key="group.key">
+                <div class="device-group" x-data="deviceCard()">
+                    <div class="section-title" x-text="group.title"></div>
+                    <div>
+                        <template x-if="group.devices.length === 0">
+                            <p class="text-muted mb-2 mt-0" x-text="group.empty"></p>
+                        </template>
+                        <div class="device-cards">
+                            <template x-for="dev in group.devices" :key="dev.device_id">
+                                <div class="device-mini-card"
+                                     @click="openDeviceModal(group.key, dev)"
+                                     role="button" tabindex="0"
+                                     @keydown.enter="openDeviceModal(group.key, dev)"
+                                     @keydown.space.prevent="openDeviceModal(group.key, dev)">
+                                    <div class="dmc-head">
+                                        <span class="dmc-dot" :style="`background:${cardDotColor(dev)}`"></span>
+                                        <span class="dmc-name" x-text="dev.device_type"></span>
+                                        <span class="dmc-role" x-text="emuLabel(dev)"></span>
+                                    </div>
+                                    <div class="dmc-summary-row">
+                                        <span class="dmc-summary" x-text="summary(dev)"></span>
+                                        <template x-if="dev.operating_state">
+                                            <span class="badge dmc-status" :class="stateClass(dev.operating_state)"
+                                                  x-text="dev.operating_state"></span>
+                                        </template>
+                                    </div>
+                                    <template x-if="hasSuppressedNote(dev)">
+                                        <div class="dmc-note">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                            <span x-text="suppressedNote(dev)"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!hasSuppressedNote(dev) && hasPassiveNote(dev)">
+                                        <div class="dmc-note">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                            <span x-text="passiveNote()"></span>
+                                        </div>
+                                    </template>
+                                    <div class="dmc-foot">
+                                        <code class="dmc-addr" x-text="dev.device_id"></code>
+                                        <span class="dmc-link">View diagnostics
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                                        </span>
+                                    </div>
+                                </div>
                             </template>
-                        </select>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body p-0 overflow-x-auto">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Channel</th>
-                                <th>Level</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="[ch, lvl] in Object.entries(logChannels).sort()" :key="ch">
-                                <tr>
-                                    <td><code x-text="ch"></code></td>
-                                    <td>
-                                        <select class="inline-select-sm"
-                                                :value="lvl"
-                                                @change="setChannelLevel(ch, $event.target.value)">
-                                            <template x-for="s in severityLevels" :key="s">
-                                                <option :value="s" x-text="s" :selected="s === lvl"></option>
-                                            </template>
-                                        </select>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+            </template>
+            <!-- Message Statistics + MQTT Broker side by side (FIX 8 + FIX 10) -->
+            <div class="section-title">Message Statistics &amp; MQTT</div>
+            <div class="msg-mqtt-grid mb-2">
+                <!-- Message Statistics compact card (top 6 + View all) -->
+                <div class="card msg-stats-card">
+                    <div class="mstat-head">
+                        <span class="mstat-title">Message Statistics</span>
+                        <span class="mstat-sub"><span x-text="msgTypeCount"></span> types &middot; top 6</span>
+                    </div>
+                    <div class="mstat-col-head">
+                        <span>Message Type</span>
+                        <span class="mstat-col-right"><span class="mstat-cw-count">Count &middot; Rate</span><span class="mstat-cw-last">Last seen</span></span>
+                    </div>
+                    <template x-if="msgTypeCount === 0">
+                        <div class="text-center text-muted py-3">Waiting for data...</div>
+                    </template>
+                    <template x-for="m in msgStatsTop()" :key="m.name || m.id">
+                        <div class="mstat-row">
+                            <span class="mstat-type" x-text="msgLabel(m)"></span>
+                            <span class="mstat-row-right">
+                                <span class="mstat-cw-count mstat-nums"><span class="mstat-count" x-text="(m.count || 0).toLocaleString()"></span><span class="mstat-rate" x-text="msgRate(m)"></span></span>
+                                <span class="mstat-cw-last mstat-last" x-text="msgLastSeen(m)"></span>
+                            </span>
+                        </div>
+                    </template>
+                    <button type="button" class="mstat-viewall" @click="openMsgModal()">
+                        View all <span x-text="msgTypeCount"></span> types
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                    </button>
                 </div>
-            </div>
-            <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2 p-2">Loading log levels...</div>
-            </div>
 
-            <!-- Serial Recording -->
-            <button class="section-toggle mb-1" @click="showRecording = !showRecording"
-                    :aria-expanded="showRecording" aria-controls="diag-recording">
-                <span class="section-toggle-chevron" :class="{ open: showRecording }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">Serial Recording</span>
-            </button>
-            <div id="diag-recording" x-show="showRecording" x-transition.opacity x-cloak>
-            <div class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Capture Serial Traffic</span>
-                    <span class="badge"
-                          :class="recording.recording ? 'badge-freq' : 'badge-status-off'"
-                          x-text="recording.recording ? 'Recording' : 'Idle'"></span>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted text-xs mt-0 mb-1">
-                        Record the raw RS-485 traffic to a capture file on the server.
-                        The file is in the replayable recorder format and can be dropped
-                        straight into <code>test/fixtures/</code>.
-                    </p>
-                    <div class="flex items-center gap-1 mb-1" x-show="!recording.recording">
-                        <label class="inline-label" for="recording-filename">File:</label>
-                        <input id="recording-filename" type="text" class="settings-input"
-                               x-model="recordingFilename"
-                               placeholder="capture.cap"
-                               aria-label="Capture file name">
-                        <button class="btn btn-sm"
-                                :disabled="recordingBusy || !recordingFilename"
-                                @click="startRecording()">Start</button>
+                <!-- MQTT Broker card -->
+                <div class="card mqtt-card">
+                    <div class="mqtt-head">
+                        <span class="mqtt-title">MQTT Broker</span>
+                        <span class="mqtt-status" :class="!mqtt.enabled ? 'is-off' : (mqtt.connected ? 'is-on' : 'is-warn')">
+                            <span class="mqtt-status-dot"></span>
+                            <span x-text="!mqtt.enabled ? 'Disabled' : (mqtt.connected ? 'Connected' : (mqtt.state || 'Disconnected'))"></span>
+                        </span>
                     </div>
-                    <div class="flex items-center gap-1 mb-1" x-show="recording.recording">
-                        <button class="btn btn-sm"
-                                :disabled="recordingBusy"
-                                @click="stopRecording()">Stop</button>
-                    </div>
-                    <div class="emu-kv-grid" x-show="recording.recording || recording.bytes > 0">
-                        <span class="emu-kv-key">File</span>
-                        <span class="emu-kv-val"><code x-text="recording.file || '--'"></code></span>
-                        <span class="emu-kv-key">Bytes written</span>
-                        <span class="emu-kv-val" x-text="formatBytes(recording.bytes)"></span>
-                    </div>
-                </div>
-            </div>
-            </div>
-
-            <!-- MQTT Status -->
-            <button class="section-toggle mb-1" @click="showMqtt = !showMqtt"
-                    :aria-expanded="showMqtt" aria-controls="diag-mqtt">
-                <span class="section-toggle-chevron" :class="{ open: showMqtt }" aria-hidden="true">&#x25B8;</span>
-                <span class="section-title">MQTT</span>
-            </button>
-            <div id="diag-mqtt" x-show="showMqtt" x-transition.opacity x-cloak>
-            <div class="card mb-2">
-                <div class="card-header card-header-split">
-                    <span>Broker Status</span>
-                    <span class="badge"
-                          :class="!mqtt.enabled ? 'badge-status-off' : (mqtt.connected ? 'badge-freq' : 'badge-status-warn')"
-                          x-text="!mqtt.enabled ? 'Disabled' : (mqtt.connected ? 'Connected' : (mqtt.state || 'Disconnected'))"></span>
-                </div>
-                <div class="card-body">
                     <p class="text-muted text-xs mt-0 mb-1" x-show="!mqtt.enabled">
                         MQTT is disabled. Start the server with <code>--mqtt-enabled</code> and broker options to
                         publish equipment state and accept commands.
                     </p>
-                    <div class="emu-kv-grid" x-show="mqtt.enabled">
-                        <span class="emu-kv-key">Broker</span>
-                        <span class="emu-kv-val"><code x-text="(mqtt.broker_host || '--') + ':' + (mqtt.broker_port || '')"></code><span class="text-muted text-2xs" x-show="mqtt.tls"> · TLS</span></span>
-                        <span class="emu-kv-key">State</span>
-                        <span class="emu-kv-val" x-text="mqtt.state || '--'"></span>
-                        <span class="emu-kv-key">Client ID</span>
-                        <span class="emu-kv-val"><code x-text="mqtt.client_id || '--'"></code></span>
-                        <span class="emu-kv-key">Topic prefix</span>
-                        <span class="emu-kv-val"><code x-text="mqtt.topic_prefix || '--'"></code></span>
-                        <span class="emu-kv-key">Home Assistant</span>
-                        <span class="emu-kv-val" x-text="mqtt.home_assistant_enabled ? ('discovery on · ' + (mqtt.ha_discovery_prefix || '')) : 'off'"></span>
-                        <span class="emu-kv-key">Published</span>
-                        <span class="emu-kv-val" x-text="(mqtt.published ?? 0).toLocaleString()"></span>
-                        <span class="emu-kv-key">Queue depth</span>
-                        <span class="emu-kv-val" x-text="mqtt.queue_depth ?? 0"></span>
-                        <span class="emu-kv-key">Dropped</span>
-                        <span class="emu-kv-val" x-text="mqtt.dropped ?? 0"></span>
-                        <span class="emu-kv-key">Reconnects</span>
-                        <span class="emu-kv-val" x-text="mqtt.reconnect_attempts ?? 0"></span>
+                    <div class="mqtt-kv" x-show="mqtt.enabled">
+                        <div class="mqtt-row"><span>Broker</span><span class="mqtt-val mqtt-mono"><span x-text="(mqtt.broker_host || '--') + ':' + (mqtt.broker_port || '')"></span><span class="text-muted text-2xs" x-show="mqtt.tls"> · TLS</span></span></div>
+                        <div class="mqtt-row"><span>Client ID</span><span class="mqtt-val" x-text="mqtt.client_id || '--'"></span></div>
+                        <div class="mqtt-row"><span>Topic prefix</span><span class="mqtt-val" x-text="mqtt.topic_prefix || '--'"></span></div>
+                        <div class="mqtt-row"><span>Home Assistant</span><span class="mqtt-val" x-text="mqtt.home_assistant_enabled ? ('discovery on · ' + (mqtt.ha_discovery_prefix || '')) : 'off'"></span></div>
+                        <div class="mqtt-row mqtt-row-top"><span>Published</span><span class="mqtt-val mqtt-num" x-text="(mqtt.published ?? 0).toLocaleString()"></span></div>
+                        <div class="mqtt-row"><span>Queue depth</span><span class="mqtt-val mqtt-num" x-text="mqtt.queue_depth ?? 0"></span></div>
+                        <div class="mqtt-row"><span>Dropped</span><span class="mqtt-val mqtt-num" x-text="mqtt.dropped ?? 0"></span></div>
+                        <div class="mqtt-row"><span>Reconnects</span><span class="mqtt-val mqtt-num" x-text="mqtt.reconnect_attempts ?? 0"></span></div>
                         <template x-if="mqtt.last_error">
-                            <span class="emu-kv-key">Last error</span>
-                        </template>
-                        <template x-if="mqtt.last_error">
-                            <span class="emu-kv-val" x-text="mqtt.last_error"></span>
+                            <div class="mqtt-row"><span>Last error</span><span class="mqtt-val" x-text="mqtt.last_error"></span></div>
                         </template>
                     </div>
                 </div>
             </div>
+
+            <!-- Log Levels summary card + Configure modal (FIX 9) -->
+            <div class="log-levels-head">
+                <div class="section-title" style="margin:0">Log Levels</div>
+                <button type="button" class="log-configure-btn" @click="openLogModal()" :disabled="!logLevelsLoaded">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h6"/></svg>
+                    Configure
+                </button>
+            </div>
+            <div x-show="logLevelsLoaded" class="card log-summary-card mb-2" @click="openLogModal()">
+                <div class="logsum-global">
+                    <span class="logsum-global-label">Global level</span>
+                    <span class="logsum-global-val">
+                        <span class="logsum-dot" :style="`background:${logLevelColor(globalLevel || _majorityLevel())}`"></span>
+                        <span x-text="logGlobalLabel"></span>
+                    </span>
+                </div>
+                <template x-if="logHasOverrides">
+                    <div class="logsum-overrides">
+                        <div class="logsum-over-label">Overrides <span class="logsum-over-count" x-text="logOverrideCount"></span></div>
+                        <div class="logsum-over-chips">
+                            <template x-for="o in logOverrides()" :key="o[0]">
+                                <span class="logsum-chip"><span class="logsum-chip-ch" x-text="o[0]"></span><span class="logsum-chip-lvl" :style="`color:${logLevelColor(o[1])}`" x-text="o[1]"></span></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!logHasOverrides">
+                    <div class="logsum-none">All channels inherit the global level.</div>
+                </template>
+            </div>
+            <div x-show="!logLevelsLoaded" class="text-center text-muted mb-2 p-2">Loading log levels...</div>
+
+            <!-- Serial Recording (FIX 11: record chip + status + captures/ prefix input + bytes box) -->
+            <div class="section-title">Serial Recording</div>
+            <div class="card recording-card mb-2">
+                <div class="rec-top">
+                    <span class="rec-icon"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg></span>
+                    <div class="rec-desc">
+                        <div class="rec-title">Capture bus traffic</div>
+                        <div class="rec-sub">Record raw RS-485 frames to a .cap file for offline analysis.</div>
+                    </div>
+                    <span class="badge rec-status" :class="recording.recording ? 'badge-freq' : 'badge-status-off'"
+                          x-text="recording.recording ? 'Recording' : 'Idle'"></span>
+                    <button type="button" class="rec-toggle"
+                            :disabled="recordingBusy || (!recording.recording && !recordingFilename)"
+                            @click="recording.recording ? stopRecording() : startRecording()"
+                            x-text="recording.recording ? 'Stop' : 'Record'"></button>
+                </div>
+                <div class="rec-fields">
+                    <div class="rec-field-file">
+                        <label class="rec-field-label">Capture file</label>
+                        <div class="rec-input-wrap" :class="{ 'is-disabled': recording.recording }">
+                            <span class="rec-input-prefix">captures/</span>
+                            <input type="text" class="rec-input"
+                                   x-model="recordingFilename"
+                                   :disabled="recording.recording"
+                                   spellcheck="false"
+                                   placeholder="capture.cap"
+                                   aria-label="Capture file name">
+                        </div>
+                    </div>
+                    <div class="rec-field-bytes">
+                        <label class="rec-field-label">Bytes written</label>
+                        <div class="rec-bytes-box" :class="{ 'is-active': recording.bytes > 0 }" x-text="formatBytes(recording.bytes)"></div>
+                    </div>
+                </div>
+                <div class="rec-hint">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg>
+                    The recording is in the replayable recorder format and can be dropped straight into <code>test/fixtures/</code>.
+                </div>
             </div>
 
             <!-- Matter Status -->
@@ -1231,6 +1025,245 @@
                 <span class="connection-dot connection-dot-sm" :class="$store.ws.statsConnected ? 'connected' : 'disconnected'"></span>
                 <span x-text="$store.ws.statsConnected ? 'Connected' : 'Disconnected'"></span>
             </div>
+
+            <!-- ===== Device-detail modal (FIX 6/7) ===== -->
+            <template x-if="modalOpen && selectedDevice()">
+                <div class="modal-overlay diag-modal-overlay" @click="closeModal()" x-data="deviceCard()">
+                    <div class="modal-content diag-modal" @click="stopProp($event)">
+                        <div class="diag-modal-head">
+                            <span class="diag-modal-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H4zM2 20h20M9 9h6M9 12h4"/></svg>
+                            </span>
+                            <div class="diag-modal-titles">
+                                <div class="diag-modal-name" x-text="selectedDevice()?.device_type"></div>
+                                <div class="diag-modal-addr" x-text="selectedDevice()?.device_id"></div>
+                            </div>
+                            <span class="dmc-role" x-text="emuLabel(selectedDevice())"></span>
+                            <template x-if="selectedDevice()?.operating_state">
+                                <span class="badge" :class="stateClass(selectedDevice().operating_state)" x-text="selectedDevice().operating_state"></span>
+                            </template>
+                            <button type="button" class="diag-modal-close" @click="closeModal()" aria-label="Close">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            </button>
+                        </div>
+                        <div class="diag-modal-body">
+                            <div class="diag-modal-summary" x-text="summary(selectedDevice())"></div>
+
+                            <!-- Tailored detail sections -->
+                            <template x-for="(sec, si) in sections(selectedDevice())" :key="si">
+                                <div class="diag-modal-section">
+                                    <div class="diag-modal-section-title" x-show="sec.label" x-text="sec.label"></div>
+                                    <div class="diag-modal-kv">
+                                        <template x-for="(row, ri) in sec.rows" :key="ri">
+                                            <div class="diag-modal-kv-row">
+                                                <span class="diag-modal-kv-k" x-text="row[0]"></span>
+                                                <span class="diag-modal-kv-v" x-text="row[1]"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Spa-side keypad (programmable + pressable) -->
+                            <template x-if="selectedDevice()?.device_type === 'SpasideRemote' && spasideForDevice(selectedDevice())">
+                                <div class="diag-modal-section">
+                                    <div class="diag-modal-section-title">
+                                        Observed Button Mapping
+                                        <span class="dmc-role" style="margin-left:8px">Read-only</span>
+                                    </div>
+                                    <div class="spaside-indicators" x-show="selectedDevice()?.led_image_seen" style="margin-bottom:12px">
+                                        <span class="emu-kv-key">Indicators</span>
+                                        <template x-for="(state, i) in (selectedDevice()?.leds || [])" :key="i">
+                                            <span class="badge" :class="spasideLedBadgeClass(state)"
+                                                  :title="'Indicator ' + (i+1) + ': ' + state" x-text="i+1"></span>
+                                        </template>
+                                    </div>
+                                    <div class="spaside-keypad">
+                                        <template x-for="grp in spasideKeyGroups(selectedDevice())" :key="grp.label || 'keys'">
+                                            <div class="spaside-switch-group">
+                                                <div class="spaside-switch-label" x-show="grp.label" x-text="grp.label"></div>
+                                                <div class="spaside-key-grid">
+                                                    <template x-for="b in grp.buttons" :key="b.index">
+                                                        <div class="spaside-key" :class="{ 'is-assigned': b.function, 'is-pending': b.pending }">
+                                                            <button class="spaside-key-press"
+                                                                    :disabled="!b.pressable || spasideBusy"
+                                                                    @click="b.pressable && pressSpasideButton(selectedDevice().device_id, b.index)"
+                                                                    :title="b.pressable ? ('Press key ' + b.index) : 'Observed remote — its button cannot be pressed'">
+                                                                <span class="spaside-key-index" x-text="b.index"></span>
+                                                                <span class="spaside-key-fn" x-text="b.function || 'Unassigned'"></span>
+                                                                <span class="spaside-key-pending" x-show="b.pending" x-text="'→ ' + b.requested"></span>
+                                                            </button>
+                                                            <button class="spaside-key-edit"
+                                                                    :disabled="!b.assignable || spasideBusy || spasideAvailableFunctions.length === 0"
+                                                                    @click="toggleSpasideEdit(selectedDevice().device_id, b.index)"
+                                                                    aria-label="Program key">&#9881;</button>
+                                                            <div class="spaside-key-editor"
+                                                                 x-show="spasideEditKey === spasideEditId(selectedDevice().device_id, b.index)" x-cloak>
+                                                                <select class="settings-input spaside-fn-select" :disabled="spasideBusy"
+                                                                        @change="setSpasideAssignment(b.switch, b.button, $event.target.value)">
+                                                                    <option value="" x-text="b.function ? 'Change function…' : 'Pick a function…'"></option>
+                                                                    <template x-for="fn in spasideAvailableFunctions" :key="fn">
+                                                                        <option :value="fn" :selected="fn === b.function" x-text="fn"></option>
+                                                                    </template>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Recent commands -->
+                            <template x-if="recentCommands(selectedDevice()).length">
+                                <div class="diag-modal-section">
+                                    <div class="diag-modal-section-title">Recent Commands</div>
+                                    <div class="diag-cmd-list">
+                                        <template x-for="(cmd, ci) in recentCommands(selectedDevice())" :key="ci">
+                                            <div class="diag-cmd-row">
+                                                <span class="diag-cmd-dot" :class="cmdOutcomeClass(cmd.outcome)"></span>
+                                                <span class="diag-cmd-desc" x-text="cmd.description"></span>
+                                                <span class="diag-cmd-outcome" :class="cmdOutcomeClass(cmd.outcome)" x-text="cmd.outcome"></span>
+                                                <span class="diag-cmd-age" x-text="fmtAge(cmd.age_seconds)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Panel screen -->
+                            <template x-if="hasScreen(selectedDevice())">
+                                <div class="diag-modal-section">
+                                    <div class="diag-modal-section-title">Panel Screen &middot; <span style="color:var(--accent)" x-text="screenTitle(selectedDevice())"></span></div>
+                                    <div class="diag-screen">
+                                        <template x-for="(line, idx) in screenLines(selectedDevice())" :key="idx">
+                                            <div class="diag-screen-line" :class="{ 'is-hl': isHighlighted(selectedDevice(), idx) }">
+                                                <span class="diag-screen-num" x-text="idx"></span>
+                                                <span x-text="line || ' '"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Raw diagnostics -->
+                            <div class="diag-modal-section">
+                                <div class="diag-modal-section-title">Raw Diagnostics</div>
+                                <div class="diag-raw">
+                                    <template x-for="rw in rawRows(selectedDevice())" :key="rw.k">
+                                        <div class="diag-raw-row"><span class="diag-raw-k" x-text="rw.k"></span><span class="diag-raw-v" x-text="rw.v"></span></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ===== Log-levels modal (FIX 9) ===== -->
+            <template x-if="logModalOpen">
+                <div class="modal-overlay diag-modal-overlay" @click="closeLogModal()">
+                    <div class="modal-content diag-modal" @click="stopProp($event)">
+                        <div class="diag-modal-head">
+                            <span class="diag-modal-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h6"/></svg>
+                            </span>
+                            <div class="diag-modal-titles">
+                                <div class="diag-modal-name">Log Levels</div>
+                                <div class="diag-modal-addr">Per-channel verbosity &middot; applied live</div>
+                            </div>
+                            <button type="button" class="diag-modal-close" @click="closeLogModal()" aria-label="Close">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            </button>
+                        </div>
+                        <div class="diag-modal-body">
+                            <div class="log-global-box">
+                                <div class="log-global-box-head">
+                                    <span class="log-global-box-title">Global level</span>
+                                    <span class="log-global-box-sub">All channels inherit this unless overridden</span>
+                                </div>
+                                <div class="log-seg">
+                                    <template x-for="lvl in severityLevels" :key="lvl">
+                                        <button type="button" class="log-seg-btn" :class="{ active: globalLevel === lvl }"
+                                                @click="setGlobalLevel(lvl)" x-text="lvl"></button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="log-filter-row">
+                                <input type="text" class="log-search" x-model="logSearch" placeholder="Search channels…">
+                                <button type="button" class="log-filter-btn" :class="{ active: logFilter === 'all' }" @click="logFilter = 'all'">All</button>
+                                <button type="button" class="log-filter-btn" :class="{ active: logFilter === 'overrides' }" @click="logFilter = 'overrides'">Overrides <span x-text="logOverrideCount"></span></button>
+                            </div>
+                            <div class="log-chan-list">
+                                <template x-for="[ch, lvl] in logFilteredChannels()" :key="ch">
+                                    <div class="log-chan-row">
+                                        <span class="log-chan-name"><span class="log-chan-dot" :style="`background:${logLevelColor(lvl)}`"></span><span x-text="ch"></span></span>
+                                        <div class="log-seg log-seg-sm">
+                                            <template x-for="s in severityLevels" :key="s">
+                                                <button type="button" class="log-seg-btn" :class="{ active: lvl === s }"
+                                                        @click="setChannelLevel(ch, s)" x-text="s"></button>
+                                            </template>
+                                        </div>
+                                        <button type="button" class="log-chan-reset" :class="{ 'is-active': logIsOverride(ch) }"
+                                                :disabled="!logIsOverride(ch)" @click="resetChannelLevel(ch)" title="Reset to global">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                                <template x-if="logFilteredChannels().length === 0">
+                                    <div class="text-center text-muted" style="padding:24px;font-size:13px">No channels match.</div>
+                                </template>
+                            </div>
+                            <template x-if="logHasOverrides">
+                                <div class="log-reset-all-row">
+                                    <button type="button" class="log-reset-all" @click="resetAllLogs()">Reset all to global</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ===== Message-statistics modal (FIX 8) ===== -->
+            <template x-if="msgModalOpen">
+                <div class="modal-overlay diag-modal-overlay" @click="closeMsgModal()">
+                    <div class="modal-content diag-modal" @click="stopProp($event)">
+                        <div class="diag-modal-head">
+                            <span class="diag-modal-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M11 20V8M17 20v-11"/></svg>
+                            </span>
+                            <div class="diag-modal-titles">
+                                <div class="diag-modal-name">Message Statistics</div>
+                                <div class="diag-modal-addr"><span x-text="msgTypeCount"></span> message types &middot; live</div>
+                            </div>
+                            <button type="button" class="diag-modal-close" @click="closeMsgModal()" aria-label="Close">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            </button>
+                        </div>
+                        <div class="diag-modal-body">
+                            <input type="text" class="log-search mb-1" style="width:100%" x-model="msgSearch" placeholder="Search message types…">
+                            <div class="mstat-col-head" style="position:sticky;top:0">
+                                <span>Message Type</span>
+                                <span class="mstat-col-right"><span class="mstat-cw-count">Count &middot; Rate</span><span class="mstat-cw-last">Last seen</span></span>
+                            </div>
+                            <template x-for="m in msgStatsFiltered()" :key="m.name || m.id">
+                                <div class="mstat-row">
+                                    <span class="mstat-type" x-text="msgLabel(m)"></span>
+                                    <span class="mstat-row-right">
+                                        <span class="mstat-cw-count mstat-nums"><span class="mstat-count" x-text="(m.count || 0).toLocaleString()"></span><span class="mstat-rate" x-text="msgRate(m)"></span></span>
+                                        <span class="mstat-cw-last mstat-last" x-text="msgLastSeen(m)"></span>
+                                    </span>
+                                </div>
+                            </template>
+                            <template x-if="msgStatsFiltered().length === 0">
+                                <div class="text-center text-muted" style="padding:24px;font-size:13px">No message types match.</div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- ====== TRENDS VIEW (WS2) ====== -->

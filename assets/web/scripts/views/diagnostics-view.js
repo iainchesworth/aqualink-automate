@@ -120,6 +120,27 @@ function diagnosticsView() {
         globalLevel: '',
         logLevelsLoaded: false,
 
+        // --- Modal state (design: device-detail, message-stats, log-levels) ----------
+        // Device-detail modal. selectedDeviceId + selectedDeviceGroup let the modal
+        // re-read the live device object from the polled lists each render, so the
+        // open modal keeps updating as new poll data arrives (rather than freezing a
+        // snapshot taken at click time).
+        modalOpen: false,
+        selectedDeviceId: null,
+        selectedDeviceGroup: null,
+
+        // Message-statistics modal (search over the full type list).
+        msgModalOpen: false,
+        msgSearch: '',
+
+        // Log-levels modal (per-channel search + all/overrides filter).
+        logModalOpen: false,
+        logSearch: '',
+        logFilter: 'all',      // 'all' | 'overrides'
+
+        // Escape closes whichever modal is open. Registered once in initChart().
+        _onKeydown: null,
+
         async fetchHealth() {
             try {
                 const resp = await fetch('/api/health/detailed');
@@ -167,6 +188,17 @@ function diagnosticsView() {
             }
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
+            }
+
+            // Escape closes any open diagnostics modal.
+            if (!this._onKeydown) {
+                this._onKeydown = (e) => {
+                    if (e.key !== 'Escape') return;
+                    if (this.modalOpen) { this.closeModal(); }
+                    else if (this.msgModalOpen) { this.closeMsgModal(); }
+                    else if (this.logModalOpen) { this.closeLogModal(); }
+                };
+                window.addEventListener('keydown', this._onKeydown);
             }
         },
 
@@ -307,6 +339,15 @@ function diagnosticsView() {
                 _diag.chart.destroy();
                 _diag.chart = null;
             }
+
+            if (this._onKeydown) {
+                window.removeEventListener('keydown', this._onKeydown);
+                this._onKeydown = null;
+            }
+            // Leaving the view drops any open modal so it doesn't reappear on return.
+            this.modalOpen = false;
+            this.msgModalOpen = false;
+            this.logModalOpen = false;
         },
 
         async fetchEmulatedDevices() {
@@ -741,7 +782,112 @@ function diagnosticsView() {
                 console.error('[diagnostics] failed to set global log level:', e);
                 Alpine.store('toast').show('Failed to set global log level', 'error');
             }
-        }
+        },
+
+        // ---- Device-detail modal --------------------------------------------------
+        // Open on a card click. We store id + group, then re-resolve the live object
+        // each render so the modal tracks the 2s poll.
+        openDeviceModal(group, dev) {
+            this.selectedDeviceGroup = group;
+            this.selectedDeviceId = dev && dev.device_id;
+            this.modalOpen = true;
+        },
+        closeModal() {
+            this.modalOpen = false;
+            this.selectedDeviceId = null;
+            this.selectedDeviceGroup = null;
+        },
+        // Live device object behind the open modal (or null once it disappears).
+        selectedDevice() {
+            if (!this.modalOpen || !this.selectedDeviceId) return null;
+            const list = this.selectedDeviceGroup === 'emulated' ? this.emulatedDevices : this.actualDevices;
+            return (Array.isArray(list) ? list : []).find(d => d.device_id === this.selectedDeviceId) || null;
+        },
+
+        // ---- Message-statistics modal ---------------------------------------------
+        openMsgModal() { this.msgSearch = ''; this.msgModalOpen = true; },
+        closeMsgModal() { this.msgModalOpen = false; },
+
+        // Message rows shaped for the card/modal templates. Sorted by count desc so the
+        // card's "top 6" is meaningful. `_msgRows()` is the shared source.
+        _msgRows() {
+            const rows = Array.isArray(this.$store.stats.messageCounts) ? this.$store.stats.messageCounts : [];
+            return rows.slice().sort((a, b) => (b.count || 0) - (a.count || 0));
+        },
+        get msgTypeCount() { return this._msgRows().length; },
+        msgStatsTop() { return this._msgRows().slice(0, 6); },
+        msgStatsFiltered() {
+            const q = (this.msgSearch || '').trim().toLowerCase();
+            const rows = this._msgRows();
+            if (!q) return rows;
+            return rows.filter(m => (m.name || ('ID ' + m.id)).toLowerCase().includes(q));
+        },
+        msgLabel(m) { return m.name || ('ID ' + m.id); },
+        msgRate(m) { return (m.frequency || 0).toFixed(2) + '/s'; },
+        msgLastSeen(m) { return m.lastSeen ? new Date(m.lastSeen).toLocaleTimeString() : '--'; },
+
+        // ---- Log-levels modal -----------------------------------------------------
+        openLogModal() { this.logSearch = ''; this.logFilter = 'all'; this.logModalOpen = true; },
+        closeLogModal() { this.logModalOpen = false; },
+
+        // Channels whose level differs from the (majority) global level = overrides.
+        logOverrides() {
+            const g = this.globalLevel;
+            // When globalLevel is '' (mixed), the majority is ambiguous; treat the
+            // most common level as the baseline so overrides stay meaningful.
+            const base = g || this._majorityLevel();
+            return Object.entries(this.logChannels)
+                .filter(([, lvl]) => lvl !== base)
+                .sort((a, b) => a[0].localeCompare(b[0]));
+        },
+        get logOverrideCount() { return this.logOverrides().length; },
+        get logHasOverrides() { return this.logOverrideCount > 0; },
+        _majorityLevel() {
+            const counts = {};
+            for (const lvl of Object.values(this.logChannels)) { counts[lvl] = (counts[lvl] || 0) + 1; }
+            let best = '', n = -1;
+            for (const [lvl, c] of Object.entries(counts)) { if (c > n) { n = c; best = lvl; } }
+            return best;
+        },
+        get logGlobalLabel() { return this.globalLevel || 'Mixed'; },
+        // A channel is "overridden" if it differs from the baseline level.
+        logIsOverride(ch) {
+            const base = this.globalLevel || this._majorityLevel();
+            return this.logChannels[ch] !== base;
+        },
+        // Filtered + sorted channel list for the modal table.
+        logFilteredChannels() {
+            const q = (this.logSearch || '').trim().toLowerCase();
+            let entries = Object.entries(this.logChannels).sort((a, b) => a[0].localeCompare(b[0]));
+            if (this.logFilter === 'overrides') { entries = entries.filter(([ch]) => this.logIsOverride(ch)); }
+            if (q) { entries = entries.filter(([ch]) => ch.toLowerCase().includes(q)); }
+            return entries;
+        },
+        // Reset one channel (and all channels) back to the baseline global level.
+        resetChannelLevel(ch) {
+            const base = this.globalLevel || this._majorityLevel();
+            if (base) { this.setChannelLevel(ch, base); }
+        },
+        async resetAllLogs() {
+            const base = this.globalLevel || this._majorityLevel();
+            if (base) { await this.setGlobalLevel(base); }
+        },
+
+        // A dot colour per severity, for the log summary/modal indicators.
+        logLevelColor(lvl) {
+            switch (lvl) {
+                case 'Trace':
+                case 'Debug': return 'var(--text-faint)';
+                case 'Info': return 'var(--good)';
+                case 'Notify': return 'var(--accent)';
+                case 'Warning': return 'var(--warn)';
+                case 'Error':
+                case 'Fatal': return 'var(--bad)';
+                default: return 'var(--text-dim)';
+            }
+        },
+
+        stopProp(e) { if (e) e.stopPropagation(); }
     };
 }
 
