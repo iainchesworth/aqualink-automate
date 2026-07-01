@@ -2166,3 +2166,12 @@ main input[type="range"] { accent-color: var(--accent); }
 .gauge-card--empty .gauge-arc-fill { display: none; }
 .gauge-card { display: flex; flex-direction: column; }
 .gauge-range-labels { margin-top: 2px; }
+
+/* --- Dashboard two-column (Circulation + Setpoints) + flat steppers ------ */
+.dash-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+.setpoint-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.setpoint-row:last-child { border-bottom: none; }
+.setpoint-row-label { font: 600 14px/1 var(--font-ui); color: var(--text); }
+.setpoint-feedback { margin-left: auto; display: inline-flex; gap: 6px; }
+.setpoint-stepper { display: inline-flex; align-items: center; gap: 12px; }
+.setpoint-row-value { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; min-width: 74px; text-align: center; }
