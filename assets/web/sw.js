@@ -43,6 +43,7 @@ const PRECACHE_URLS = [
   '/favicon.svg',
   '/styles/app.css',
   '/styles/components.css',
+  '/vendor/fonts/fonts.css',
   '/vendor/qrcode.min.js',
   '/vendor/alpine.min.js',
   '/vendor/chart.umd.min.js',
