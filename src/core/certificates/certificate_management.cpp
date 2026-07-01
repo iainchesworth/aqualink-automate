@@ -186,6 +186,42 @@ namespace AqualinkAutomate::Certificates
 		return true;
 	}
 
+	namespace Detail
+	{
+
+		std::optional<Options::Web::SslCertificate> GenerateOrReuseInDirectories(const std::vector<fs::path>& candidate_dirs)
+		{
+			std::error_code ec;
+
+			for (const auto& dir : candidate_dirs)
+			{
+				if (!DirectoryIsWritable(dir))
+				{
+					continue;
+				}
+
+				const fs::path cert_out = dir / "cert.pem";
+				const fs::path key_out = dir / "key.pem";
+
+				// Reuse an already-generated pair in a fallback directory across restarts.
+				if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
+				{
+					LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));
+					return Options::Web::SslCertificate{ cert_out, key_out };
+				}
+
+				if (GenerateSelfSignedCertificate(cert_out, key_out))
+				{
+					return Options::Web::SslCertificate{ cert_out, key_out };
+				}
+			}
+
+			return std::nullopt;
+		}
+
+	}
+	// namespace Detail
+
 	std::optional<Options::Web::SslCertificate> EnsureSelfSignedMaterial(const Options::Web::SslCertificate& configured)
 	{
 		std::error_code ec;
@@ -215,30 +251,7 @@ namespace AqualinkAutomate::Certificates
 		std::error_code tmp_ec;
 		candidate_dirs.push_back(fs::temp_directory_path(tmp_ec) / "aqualink-automate" / "ssl");
 
-		for (const auto& dir : candidate_dirs)
-		{
-			if (!DirectoryIsWritable(dir))
-			{
-				continue;
-			}
-
-			const fs::path cert_out = dir / "cert.pem";
-			const fs::path key_out = dir / "key.pem";
-
-			// Reuse an already-generated pair in a fallback directory across restarts.
-			if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
-			{
-				LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));
-				return Options::Web::SslCertificate{ cert_out, key_out };
-			}
-
-			if (GenerateSelfSignedCertificate(cert_out, key_out))
-			{
-				return Options::Web::SslCertificate{ cert_out, key_out };
-			}
-		}
-
-		return std::nullopt;
+		return Detail::GenerateOrReuseInDirectories(candidate_dirs);
 	}
 
 	void LoadSslCertificates(const AqualinkAutomate::Options::Web::WebSettings& cfg, boost::asio::ssl::context& ctx)

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <vector>
 
 #include <boost/asio/ssl/context.hpp>
 
@@ -28,6 +29,24 @@ namespace AqualinkAutomate::Certificates
 	// falling back to a writable runtime directory when that is read-only. Returns
 	// the cert+key paths actually in use, or std::nullopt if none could be produced.
 	std::optional<AqualinkAutomate::Options::Web::SslCertificate> EnsureSelfSignedMaterial(const AqualinkAutomate::Options::Web::SslCertificate& configured);
+
+	namespace Detail
+	{
+
+		// Walk 'candidate_dirs' in order and, in the FIRST directory that can be
+		// created and written to, either reuse an existing cert.pem/key.pem pair or
+		// generate a fresh self-signed pair there. Returns the cert+key paths in use,
+		// or std::nullopt if no candidate directory was usable.
+		//
+		// This is the read-only-install fallback that backs EnsureSelfSignedMaterial;
+		// it is exposed here (rather than kept in the .cpp's unnamed namespace) so the
+		// security-critical generate/reuse/skip-unwritable path can be unit-tested
+		// with controlled directories, without depending on the built-in default cert
+		// paths being writable.
+		std::optional<AqualinkAutomate::Options::Web::SslCertificate> GenerateOrReuseInDirectories(const std::vector<std::filesystem::path>& candidate_dirs);
+
+	}
+	// namespace Detail
 
 }
 // namespace AqualinkAutomate::Certificates
