@@ -49,7 +49,8 @@ test('chlorinator output control: API validates, and the slider renders when pre
   // materialises a chlorinator). The tile is x-show="present"/x-cloak until the
   // replayed AquaRite feed flips chlorinatorPresent, so allow it time to appear.
   await page.goto('/');
-  await expect(page.getByText('SWG Output')).toBeVisible({ timeout: 15_000 });
+  // Scope to the SWG tile: the Detailed view also has a "SWG output" kv row.
+  await expect(page.locator('.swg-card').getByText('SWG Output')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.swg-card .swg-slider')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.swg-card').getByRole('button', { name: 'Boost' })).toBeVisible({ timeout: 15_000 });
 });
