@@ -1988,3 +1988,20 @@ main input[type="range"] { accent-color: var(--accent); }
 
 /* --- Spinner ------------------------------------------------------------- */
 .spinner { border-color: var(--border); border-top-color: var(--accent); }
+
+/* --- Detailed view (net-new): live system-state key/value cards ---------- */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+}
+.detail-card .card-header { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); }
+.detail-kv { padding: 6px 22px 16px; }
+.kv-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.detail-kv > .kv-row:last-child,
+.detail-kv > div:last-child .kv-row:last-child { border-bottom: none; }
+.kv-k { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); }
+.kv-v { font-family: var(--font-display); font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }

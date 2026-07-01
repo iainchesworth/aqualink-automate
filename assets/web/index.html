@@ -129,6 +129,7 @@
             </a>
             <div class="nav-links">
                 <button class="nav-link" :class="{ active: isRoute('dashboard') }" @click="navigate('dashboard')">Dashboard</button>
+                <button class="nav-link" :class="{ active: isRoute('detailed') }" @click="navigate('detailed')">Detailed</button>
                 <button class="nav-link" :class="{ active: isRoute('trends') }" @click="navigate('trends')">Trends</button>
                 <button class="nav-link" :class="{ active: isRoute('schedules') }" @click="navigate('schedules')">Schedules</button>
                 <button class="nav-link" :class="{ active: isRoute('settings') }" @click="navigate('settings')">Settings</button>
@@ -540,6 +541,72 @@
             <!-- Last update -->
             <div class="text-muted text-center mt-2 text-2xs" x-show="lastUpdateText">
                 Last update: <span x-text="lastUpdateText"></span>
+            </div>
+        </div>
+
+        <!-- ====== DETAILED VIEW ====== -->
+        <div x-show="route === 'detailed'" x-cloak>
+            <div class="section-title">Live System State</div>
+            <div class="detail-grid">
+
+                <!-- Temperatures -->
+                <div class="card detail-card">
+                    <div class="card-header">Temperatures</div>
+                    <div class="detail-kv">
+                        <div class="kv-row"><span class="kv-k">Pool</span><span class="kv-v" x-text="$store.pool.poolTemp"></span></div>
+                        <div class="kv-row"><span class="kv-k">Pool setpoint</span><span class="kv-v" x-text="typeof $store.pool.poolSetpoint === 'object' ? ($store.pool.poolSetpoint.celsius?.toFixed(1) + ' °C') : $store.pool.poolSetpoint"></span></div>
+                        <template x-if="$store.pool.hasDualBody">
+                            <div>
+                                <div class="kv-row"><span class="kv-k">Spa</span><span class="kv-v" x-text="$store.pool.spaTemp"></span></div>
+                                <div class="kv-row"><span class="kv-k">Spa setpoint</span><span class="kv-v" x-text="typeof $store.pool.spaSetpoint === 'object' ? ($store.pool.spaSetpoint.celsius?.toFixed(1) + ' °C') : $store.pool.spaSetpoint"></span></div>
+                            </div>
+                        </template>
+                        <div class="kv-row"><span class="kv-k">Air</span><span class="kv-v" x-text="$store.pool.airTemp"></span></div>
+                    </div>
+                </div>
+
+                <!-- Water Chemistry -->
+                <div class="card detail-card">
+                    <div class="card-header">Water Chemistry</div>
+                    <div class="detail-kv">
+                        <div class="kv-row"><span class="kv-k">pH</span><span class="kv-v" x-text="$store.pool.ph"></span></div>
+                        <div class="kv-row"><span class="kv-k">ORP</span><span class="kv-v" x-text="$store.pool.orp === '--' ? '--' : ($store.pool.orp + ' mV')"></span></div>
+                        <div class="kv-row"><span class="kv-k">Salt</span><span class="kv-v" x-text="$store.pool.saltPpm === '--' ? '--' : ($store.pool.saltPpm + ' ppm')"></span></div>
+                        <template x-if="$store.pool.chlorinatorPresent">
+                            <div>
+                                <div class="kv-row"><span class="kv-k">SWG status</span><span class="kv-v" x-text="$store.pool.chlorinatorStatus"></span></div>
+                                <div class="kv-row"><span class="kv-k">SWG health</span><span class="kv-v" x-text="$store.pool.chlorinatorHealth"></span></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Circulation -->
+                <div class="card detail-card">
+                    <div class="card-header">Circulation</div>
+                    <div class="detail-kv">
+                        <template x-if="$store.pool.hasDualBody">
+                            <div class="kv-row"><span class="kv-k">Mode</span><span class="kv-v" x-text="$store.pool.spaModeActive ? 'Spa' : 'Pool'"></span></div>
+                        </template>
+                        <template x-if="!$store.pool.hasDualBody">
+                            <div class="kv-row"><span class="kv-k">Body</span><span class="kv-v">Pool</span></div>
+                        </template>
+                        <div class="kv-row"><span class="kv-k">System status</span><span class="kv-v" x-text="$store.pool.systemStatus"></span></div>
+                    </div>
+                </div>
+
+                <!-- System -->
+                <div class="card detail-card">
+                    <div class="card-header">System</div>
+                    <div class="detail-kv">
+                        <template x-for="field in $store.pool.equipmentVersion" :key="field.label">
+                            <div class="kv-row"><span class="kv-k" x-text="field.label"></span><span class="kv-v" x-text="field.value"></span></div>
+                        </template>
+                        <div class="kv-row"><span class="kv-k">State</span><span class="kv-v" x-text="$store.system.state"></span></div>
+                        <div class="kv-row" x-show="$store.system.uptime"><span class="kv-k">Uptime</span><span class="kv-v" x-text="$store.system.uptime"></span></div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
