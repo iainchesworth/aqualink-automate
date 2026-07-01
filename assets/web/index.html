@@ -551,7 +551,8 @@
                         <div class="kv-row"><span class="kv-k">Salt</span><span class="kv-v" x-text="$store.pool.saltPpm === '--' ? '--' : ($store.pool.saltPpm + ' ppm')"></span></div>
                         <template x-if="$store.pool.chlorinatorPresent">
                             <div>
-                                <div class="kv-row"><span class="kv-k">SWG status</span><span class="kv-v" x-text="$store.pool.chlorinatorStatus"></span></div>
+                                <div class="kv-row"><span class="kv-k">SWG output</span><span class="kv-v" x-text="$store.pool.swgGeneratingPercent === '--' ? '--' : ($store.pool.swgGeneratingPercent + ' %')"></span></div>
+                                <div class="kv-row"><span class="kv-k">SWG target</span><span class="kv-v" x-text="$store.pool.swgSetpointPercent === '--' ? '--' : ($store.pool.swgSetpointPercent + ' %')"></span></div>
                                 <div class="kv-row"><span class="kv-k">SWG health</span><span class="kv-v" x-text="$store.pool.chlorinatorHealth"></span></div>
                             </div>
                         </template>
@@ -568,9 +569,24 @@
                         <template x-if="!$store.pool.hasDualBody">
                             <div class="kv-row"><span class="kv-k">Body</span><span class="kv-v">Pool</span></div>
                         </template>
+                        <template x-for="b in ($store.pool.buttons || []).filter(x => /pump|filter|spillway/i.test(x.label))" :key="b.id">
+                            <div class="kv-row"><span class="kv-k" x-text="b.display_label || b.label"></span><span class="kv-v" x-text="b.status || '--'"></span></div>
+                        </template>
                         <div class="kv-row"><span class="kv-k">System status</span><span class="kv-v" x-text="$store.pool.systemStatus"></span></div>
                     </div>
                 </div>
+
+                <!-- Heating -->
+                <template x-if="($store.pool.buttons || []).some(b => /heat|solar/i.test(b.label))">
+                <div class="card detail-card">
+                    <div class="card-header">Heating</div>
+                    <div class="detail-kv">
+                        <template x-for="b in ($store.pool.buttons || []).filter(x => /heat|solar/i.test(x.label))" :key="b.id">
+                            <div class="kv-row"><span class="kv-k" x-text="b.display_label || b.label"></span><span class="kv-v" x-text="b.status || '--'"></span></div>
+                        </template>
+                    </div>
+                </div>
+                </template>
 
                 <!-- System -->
                 <div class="card detail-card">
