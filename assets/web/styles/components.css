@@ -1764,3 +1764,100 @@ html.dark .card { border-color: var(--border); }
     border: 1px solid var(--border);
     border-radius: var(--radius-row);
 }
+.system-info-label { color: var(--text-faint); }
+.system-info-value { color: var(--text); }
+
+/* --- Chemistry gauges ---------------------------------------------------- */
+.gauge-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-md);
+    padding: 20px 20px 18px;
+}
+html.dark .gauge-card { border-color: var(--border); }
+.gauge-label { font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; color: var(--text-faint); }
+.gauge-value { font-family: var(--font-display); font-weight: 600; font-size: 32px; letter-spacing: -0.01em; }
+.gauge-bar-track { height: 8px; background: var(--surface-3); border-radius: 99px; }
+.gauge-bar-fill { border-radius: 99px; transition: width 1.1s cubic-bezier(.22,1,.36,1), background .3s; }
+.gauge-bar-marker { background: var(--text); opacity: .35; }
+.gauge-range-labels { color: var(--text-faint); }
+.gauge-band-indicator { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 99px; letter-spacing: .04em; }
+.gauge-band-good { background: oklch(0.78 0.12 162 / .15); color: var(--good); }
+.gauge-band-okay { background: oklch(0.83 0.11 82 / .15);  color: var(--warn); }
+.gauge-band-bad  { background: oklch(0.68 0.16 25 / .15);  color: var(--bad); }
+
+/* --- SWG card ------------------------------------------------------------ */
+.swg-target { display: flex; align-items: center; gap: 12px; margin: 14px 0 12px; }
+.swg-target-label { font: 600 11px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); }
+.swg-target-value { font: 600 14px/1 var(--font-display); color: var(--text); font-variant-numeric: tabular-nums; margin-left: auto; }
+.swg-slider { flex: 1; accent-color: var(--accent); }
+.swg-actions { display: flex; align-items: center; gap: 8px; }
+.swg-set-btn, .swg-boost-btn {
+    padding: 8px 16px; border-radius: 10px; font: 600 12.5px/1 var(--font-ui);
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); cursor: pointer;
+    transition: background .16s, border-color .16s, opacity .16s;
+}
+.swg-set-btn { background: var(--accent); border-color: var(--accent); color: #06232b; }
+.swg-set-btn:disabled { opacity: .45; cursor: default; }
+.swg-boost-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* --- Equipment control tiles --------------------------------------------- */
+.control-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.eq-control {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-row);
+    padding: 14px 16px;
+    min-height: 66px;
+    transition: border-color .16s, transform .16s, box-shadow .16s, background .16s;
+}
+.eq-control:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.eq-control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eq-control.active { border-color: var(--accent); background: var(--accent-soft); }
+.eq-control-icon { color: var(--text-dim); }
+.eq-control.active .eq-control-icon { color: var(--accent); }
+.eq-control-label { font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--text); }
+.eq-control-status { font-size: 12px; color: var(--text-dim); }
+.eq-control.active .eq-control-status { color: var(--accent); }
+.eq-switch { width: 44px; height: 26px; border-radius: 99px; background: var(--surface-3); border: 1px solid var(--border-strong); }
+.eq-switch.on { background: var(--accent); border-color: var(--accent); }
+.eq-switch-knob { background: #fff; transition: transform .26s cubic-bezier(.34,1.4,.5,1); }
+
+/* --- Temperature setpoints ---------------------------------------------- */
+.expandable-row { padding: 15px 20px; }
+.expandable-label { font-family: var(--font-ui); font-weight: 600; color: var(--text); }
+.expandable-value, .expandable-edit-value { font-family: var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); }
+.setpoint-btn {
+    width: 34px; height: 34px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text);
+    font-size: 18px; line-height: 1; cursor: pointer; transition: background .16s, border-color .16s;
+}
+.setpoint-btn:hover { background: var(--surface-3); border-color: var(--accent); color: var(--accent); }
+
+/* --- Heater three-state rows -------------------------------------------- */
+.heater-toggle {
+    padding: 7px 15px; border-radius: 99px; border: 1px solid var(--border-strong);
+    background: var(--surface-2); color: var(--text-dim); font: 600 12.5px/1 var(--font-ui); cursor: pointer;
+    transition: background .16s, color .16s, border-color .16s;
+}
+.heater-toggle.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.heater-label { font-family: var(--font-ui); font-weight: 600; color: var(--text); }
+.heater-temp { font-family: var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); }
+.heater-status-badge { font: 700 11px/1 var(--font-ui); padding: 4px 10px; border-radius: 99px; letter-spacing: .04em; text-transform: uppercase; }
+.badge-status-off { background: var(--surface-3); color: var(--text-faint); }
+.badge-status-warn { background: oklch(0.83 0.11 82 / .15); color: var(--warn); }
+.badge-status-danger-glow { background: oklch(0.78 0.12 162 / .15); color: var(--good); animation: cmdPulse 1.6s ease-in-out infinite; }
+
+/* --- Command feedback badges -------------------------------------------- */
+.cmd-badge { font: 700 11px/1 var(--font-ui); padding: 4px 9px; border-radius: 99px; }
+.cmd-applied  { background: oklch(0.78 0.12 162 / .18); color: var(--good); }
+.cmd-rejected { background: oklch(0.68 0.16 25 / .18);  color: var(--bad); }
+.cmd-timedout { background: oklch(0.83 0.11 82 / .18);  color: var(--warn); }
+.cmd-blocked  { background: var(--surface-3); color: var(--text-dim); }
+.cmd-spinner { border-color: var(--accent); border-right-color: transparent; }
+
+/* --- Other equipment (read-only) ---------------------------------------- */
+.other-equip-label { font-family: var(--font-ui); font-weight: 500; color: var(--text); }
+.other-equip-status { color: var(--text-dim); }
+.other-equip-row { border-bottom: 1px solid var(--border); }
