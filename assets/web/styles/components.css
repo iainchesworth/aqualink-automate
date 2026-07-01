@@ -2155,3 +2155,14 @@ main input[type="range"] { accent-color: var(--accent); }
 .eq-control.cmd-flash-ok, .heater-toggle.cmd-flash-ok { animation: cmdRingOk 1.1s ease-out; border-color: var(--good); }
 .eq-control.cmd-flash-bad, .heater-toggle.cmd-flash-bad { animation: cmdRingBad 1.7s ease-out; border-color: var(--bad); }
 .eq-control.cmd-sending, .heater-toggle.cmd-sending { border-color: var(--accent); }
+
+/* --- Semicircular chemistry gauge arc (replaces the linear bar) ---------- */
+.gauge-arc-wrap { position: relative; width: 100%; max-width: 190px; margin: 10px auto 2px; }
+.gauge-arc { display: block; width: 100%; height: auto; overflow: visible; }
+.gauge-arc-track { stroke: var(--surface-3); stroke-width: 9; stroke-linecap: round; }
+.gauge-arc-fill  { stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 1.1s cubic-bezier(.22, 1, .36, 1), stroke .3s; }
+.gauge-arc-center { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; }
+.gauge-arc-center .gauge-value { display: block; font-size: 28px; }
+.gauge-card--empty .gauge-arc-fill { display: none; }
+.gauge-card { display: flex; flex-direction: column; }
+.gauge-range-labels { margin-top: 2px; }

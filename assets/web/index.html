@@ -400,17 +400,21 @@
                                   :class="'gauge-band-' + (band || '')"
                                   x-text="statusLabel"></span>
                         </div>
-                        <div class="gauge-value" x-text="displayValue" :style="`color:${statusColor}`"></div>
-                        <div class="gauge-bar-track" role="meter"
+                        <div class="gauge-arc-wrap" role="meter"
                              :aria-label="cfg.label"
                              :aria-valuenow="numericValue"
                              :aria-valuemin="cfg.min"
                              :aria-valuemax="cfg.max">
-                            <div class="gauge-bar-fill"
-                                 :style="`width:${percentage}%;background:${statusColor}`"></div>
-                            <div class="gauge-bar-marker"
-                                 :style="`left:${percentage}%`"
-                                 x-show="numericValue !== null"></div>
+                            <svg class="gauge-arc" viewBox="0 0 100 56" aria-hidden="true">
+                                <path class="gauge-arc-track" d="M 5 50 A 45 45 0 0 1 95 50" fill="none"></path>
+                                <path class="gauge-arc-fill" d="M 5 50 A 45 45 0 0 1 95 50" fill="none"
+                                      x-show="numericValue !== null"
+                                      :stroke="statusColor"
+                                      :style="`stroke-dasharray:${arcLength};stroke-dashoffset:${dashOffset}`"></path>
+                            </svg>
+                            <div class="gauge-arc-center">
+                                <span class="gauge-value" x-text="displayValue" :style="`color:${statusColor}`"></span>
+                            </div>
                         </div>
                         <div class="gauge-range-labels">
                             <span x-text="cfg.min + cfg.unit"></span>

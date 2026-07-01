@@ -42,6 +42,9 @@ function chemistryGauge(type) {
     return {
         cfg,
 
+        // Total length of the 180-degree arc, for the SVG stroke-dasharray.
+        arcLength: GAUGE_ARC_CIRCUMFERENCE,
+
         get value() {
             const store = Alpine.store('pool');
             let raw;
@@ -89,10 +92,10 @@ function chemistryGauge(type) {
 
         get statusColor() {
             switch (this.band) {
-                case 'good': return 'var(--gauge-good)';
-                case 'okay': return 'var(--gauge-warn)';
-                case 'bad':  return 'var(--gauge-bad)';
-                default:     return 'var(--text-muted)';
+                case 'good': return 'var(--good)';
+                case 'okay': return 'var(--warn)';
+                case 'bad':  return 'var(--bad)';
+                default:     return 'var(--text-faint)';
             }
         },
 
