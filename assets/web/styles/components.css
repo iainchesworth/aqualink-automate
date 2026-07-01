@@ -2148,3 +2148,10 @@ main input[type="range"] { accent-color: var(--accent); }
 .settings-tier-label { justify-self: start; }
 .range-separator { color: var(--text-faint); text-align: center; }
 .badge-good { background: oklch(0.78 0.12 162 / .18); color: var(--good); font: 700 11px/1 var(--font-ui); padding: 4px 9px; border-radius: 99px; }
+
+/* --- Cross-cutting: honest-control command-state flash ------------------- */
+@keyframes cmdRingOk  { 0% { box-shadow: 0 0 0 0 oklch(0.78 0.12 162 / .55); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@keyframes cmdRingBad { 0% { box-shadow: 0 0 0 0 oklch(0.68 0.16 25 / .55); }  100% { box-shadow: 0 0 0 7px transparent; } }
+.eq-control.cmd-flash-ok, .heater-toggle.cmd-flash-ok { animation: cmdRingOk 1.1s ease-out; border-color: var(--good); }
+.eq-control.cmd-flash-bad, .heater-toggle.cmd-flash-bad { animation: cmdRingBad 1.7s ease-out; border-color: var(--bad); }
+.eq-control.cmd-sending, .heater-toggle.cmd-sending { border-color: var(--accent); }

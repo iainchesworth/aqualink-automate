@@ -295,7 +295,7 @@
                     <div class="card-header">Circulation</div>
                     <div class="card-body">
                         <button class="eq-control"
-                                :class="{ active: $store.pool.spaModeActive, 'cmd-sending': $store.pool.getCommandState('circulation') === 'sending' }"
+                                :class="{ active: $store.pool.spaModeActive, 'cmd-sending': $store.pool.getCommandState('circulation') === 'sending', 'cmd-flash-ok': $store.pool.getCommandState('circulation') === 'applied', 'cmd-flash-bad': $store.pool.getCommandState('circulation') === 'rejected' || $store.pool.getCommandState('circulation') === 'timedout' }"
                                 :aria-pressed="$store.pool.spaModeActive"
                                 aria-label="Toggle spa mode"
                                 @click="$store.pool.toggleSpaMode(!$store.pool.spaModeActive)">
@@ -455,7 +455,7 @@
                             <div class="heater-row card" x-data="equipmentButton()">
                                 <div class="heater-row-inner">
                                     <button class="heater-toggle"
-                                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending' }"
+                                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending', 'cmd-flash-ok': cmdState(button) === 'applied', 'cmd-flash-bad': cmdState(button) === 'rejected' || cmdState(button) === 'timedout' }"
                                             :aria-pressed="isActive(button)"
                                             :aria-label="'Toggle ' + button.label"
                                             @click="$store.pool.setHeaterMode(button, !isActive(button))">
@@ -497,7 +497,7 @@
                 <template x-for="button in controlButtons()" :key="button.id">
                     <button class="eq-control"
                             x-data="equipmentButton()"
-                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending' }"
+                            :class="{ active: isActive(button), 'cmd-sending': cmdState(button) === 'sending', 'cmd-flash-ok': cmdState(button) === 'applied', 'cmd-flash-bad': cmdState(button) === 'rejected' || cmdState(button) === 'timedout' }"
                             :aria-pressed="isActive(button)"
                             :aria-label="(button.display_label || button.label) + ' — ' + statusLabel(button)"
                             @click="toggle(button)">
