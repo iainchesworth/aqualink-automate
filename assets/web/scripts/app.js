@@ -87,6 +87,13 @@ function app() {
                     // so uptime is current.
                     Alpine.store('pool')._fetchVersion();
                     break;
+
+                case 'about':
+                    // Refresh version + equipment version so the About page shows
+                    // live data even if the initial load raced the app's startup.
+                    Alpine.store('pool')._fetchVersion();
+                    Alpine.store('pool')._fetchEquipment();
+                    break;
             }
         },
 
