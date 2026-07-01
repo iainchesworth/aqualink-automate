@@ -33,7 +33,7 @@
     --radius-xl: 1.5rem;
     --transition: 0.2s ease;
     --grid-color: rgba(0, 0, 0, 0.06);
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-family: 'Hanken Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html.dark {
@@ -60,6 +60,93 @@ html.dark {
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
     --grid-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================================
+   Reskin design tokens — "calm-premium" (OKLCH, data-theme + data-accent).
+   Scoped under :root[data-theme=...] so they out-specify the legacy html.dark
+   rules above. Legacy tokens (--bg-primary, --text-primary, ...) remain until
+   each view is migrated; new surfaces use the tokens below.
+   ============================================================================ */
+:root {
+    --font-display: 'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif;
+    --font-ui: 'Hanken Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --radius-card: 22px;
+    --radius-row: 16px;
+    --radius-chip: 11px;
+    --content-max: 1180px;
+}
+
+:root[data-theme="dark"],
+:root:not([data-theme]) {
+    --bg: oklch(0.165 0.014 250);
+    --bg-glow: oklch(0.24 0.035 215);
+    --surface-1: oklch(0.205 0.015 250);
+    --surface-2: oklch(0.235 0.016 250);
+    --surface-3: oklch(0.275 0.017 250);
+    --nav-bg: oklch(0.18 0.014 250 / 0.78);
+    --border: oklch(0.36 0.018 250 / 0.55);
+    --border-strong: oklch(0.42 0.02 250 / 0.7);
+    --text: oklch(0.96 0.006 250);
+    --text-dim: oklch(0.745 0.012 250);
+    --text-faint: oklch(0.57 0.014 250);
+    --accent: oklch(0.745 0.105 200);
+    --accent-soft: oklch(0.745 0.105 200 / 0.15);
+    --spa: oklch(0.77 0.105 42);
+    --good: oklch(0.78 0.12 162);
+    --warn: oklch(0.83 0.11 82);
+    --bad: oklch(0.68 0.16 25);
+    --shadow-md: 0 1px 0 oklch(1 0 0 / .045) inset, 0 12px 32px -18px oklch(0 0 0 / .75);
+    --shadow-lg: 0 1px 0 oklch(1 0 0 / .06) inset, 0 28px 64px -26px oklch(0 0 0 / .85);
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    --bg: oklch(0.975 0.006 240);
+    --bg-glow: oklch(0.95 0.022 210);
+    --surface-1: oklch(1 0 0);
+    --surface-2: oklch(0.985 0.005 240);
+    --surface-3: oklch(0.96 0.006 240);
+    --nav-bg: oklch(1 0 0 / 0.8);
+    --border: oklch(0.905 0.008 240);
+    --border-strong: oklch(0.84 0.01 240);
+    --text: oklch(0.26 0.02 250);
+    --text-dim: oklch(0.46 0.018 250);
+    --text-faint: oklch(0.605 0.015 250);
+    --accent: oklch(0.56 0.12 205);
+    --accent-soft: oklch(0.56 0.12 205 / 0.1);
+    --spa: oklch(0.6 0.13 40);
+    --good: oklch(0.58 0.13 162);
+    --warn: oklch(0.66 0.13 78);
+    --bad: oklch(0.56 0.17 25);
+    --shadow-md: 0 1px 2px oklch(0 0 0 / .04), 0 14px 30px -20px oklch(0.4 0.05 250 / .35);
+    --shadow-lg: 0 2px 6px oklch(0 0 0 / .05), 0 30px 64px -30px oklch(0.4 0.05 250 / .4);
+    color-scheme: light;
+}
+
+/* Accent variants (applied regardless of theme). Default (teal) needs no attr. */
+:root[data-accent="azure"]  { --accent: oklch(0.7 0.115 238);  --accent-soft: oklch(0.7 0.115 238 / .15); }
+:root[data-accent="aqua"]   { --accent: oklch(0.78 0.1 178);   --accent-soft: oklch(0.78 0.1 178 / .15); }
+:root[data-accent="violet"] { --accent: oklch(0.66 0.13 292);  --accent-soft: oklch(0.66 0.13 292 / .15); }
+
+/* Motion — gated behind prefers-reduced-motion below. */
+@keyframes floatIn   { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPop  { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cmdspin   { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes toastIn   { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes cmdPulse  { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes spin360   { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 *, *::before, *::after {

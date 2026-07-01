@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data x-bind:class="$store.theme.isDark ? 'dark' : ''">
+<html lang="en" x-data x-bind:class="$store.theme.isDark ? 'dark' : ''" x-bind:data-theme="$store.theme.isDark ? 'dark' : 'light'" x-bind:data-accent="$store.accent ? $store.accent.name : 'teal'">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles/app.css">
     <link rel="stylesheet" href="/styles/components.css">
     <script defer src="/vendor/qrcode.min.js"></script>
@@ -1654,6 +1654,7 @@
     <!-- Store scripts -->
     <script src="/scripts/auth.js"></script>
     <script src="/scripts/stores/theme-store.js"></script>
+    <script src="/scripts/stores/accent-store.js"></script>
     <script src="/scripts/stores/toast-store.js"></script>
     <script src="/scripts/stores/alerts-store.js"></script>
     <script src="/scripts/stores/ws-store.js"></script>
