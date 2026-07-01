@@ -221,3 +221,158 @@ BOOST_AUTO_TEST_CASE(LoadSslCertificates_MissingCaChain_ThrowsNotFound)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+//=============================================================================
+// Read-only-install fallback (Detail::GenerateOrReuseInSecureDirectories).
+//
+// This is the security-critical branch that backs EnsureSelfSignedMaterial when
+// the built-in default cert/key directory is not writable (the common packaged
+// case): it walks per-user PRIVATE runtime directories in order and, in the
+// first one that PrepareSecureDirectory accepts, reuses or freshly generates a
+// per-install self-signed pair under an owner-only "ssl" leaf. Driving the
+// helper directly with controlled base directories exercises the generate /
+// reuse / skip-rejected-candidate / exhausted paths without depending on the
+// process's real runtime directories.
+//=============================================================================
+
+BOOST_AUTO_TEST_SUITE(TestSuite_CertificateSecureFallback)
+
+BOOST_AUTO_TEST_CASE(SecureFallback_GeneratesFreshPairInFirstUsableDirectory)
+{
+	const fs::path base = fs::temp_directory_path() / "aqualink_certfb_gen";
+	std::error_code rm;
+	fs::remove_all(base, rm);
+	fs::create_directories(base, rm);
+
+	const auto resolved = Certificates::Detail::GenerateOrReuseInSecureDirectories({ base });
+	BOOST_REQUIRE(resolved.has_value());
+
+	// Material must land under the "ssl" leaf of the chosen base directory.
+	const fs::path ssl_dir = base / "ssl";
+	BOOST_CHECK(resolved->certificate == ssl_dir / "cert.pem");
+	BOOST_CHECK(resolved->private_key == ssl_dir / "key.pem");
+	BOOST_REQUIRE(fs::exists(resolved->certificate));
+	BOOST_REQUIRE(fs::exists(resolved->private_key));
+
+	// The freshly generated material must be loadable by the TLS stack.
+	boost::asio::ssl::context ctx(boost::asio::ssl::context::tls_server);
+	boost::system::error_code ec;
+	ctx.use_certificate_file(resolved->certificate.string(), boost::asio::ssl::context::pem, ec);
+	BOOST_CHECK_MESSAGE(!ec, "generated certificate did not load: " << ec.message());
+	ctx.use_private_key_file(resolved->private_key.string(), boost::asio::ssl::context::pem, ec);
+	BOOST_CHECK_MESSAGE(!ec, "generated private key did not load: " << ec.message());
+
+#ifndef _WIN32
+	// The private key must be owner-only (0600) on disk...
+	const auto key_perms = fs::status(resolved->private_key).permissions();
+	BOOST_CHECK((key_perms & fs::perms::group_read) == fs::perms::none);
+	BOOST_CHECK((key_perms & fs::perms::others_read) == fs::perms::none);
+	BOOST_CHECK((key_perms & fs::perms::others_write) == fs::perms::none);
+
+	// ...and PrepareSecureDirectory must have restricted the containing dir to 0700.
+	const auto dir_perms = fs::status(ssl_dir).permissions();
+	BOOST_CHECK((dir_perms & fs::perms::group_all) == fs::perms::none);
+	BOOST_CHECK((dir_perms & fs::perms::others_all) == fs::perms::none);
+#endif
+
+	fs::remove_all(base, rm);
+}
+
+BOOST_AUTO_TEST_CASE(SecureFallback_ReusesExistingPairAcrossCalls)
+{
+	const fs::path base = fs::temp_directory_path() / "aqualink_certfb_reuse";
+	std::error_code rm;
+	fs::remove_all(base, rm);
+	fs::create_directories(base, rm);
+
+	// First call generates the pair.
+	const auto first = Certificates::Detail::GenerateOrReuseInSecureDirectories({ base });
+	BOOST_REQUIRE(first.has_value());
+	const std::string key_after_first = ReadFile(first->private_key);
+	const std::string cert_after_first = ReadFile(first->certificate);
+	BOOST_REQUIRE(!key_after_first.empty());
+
+	// Second call must REUSE the existing pair -- same paths, byte-identical
+	// material (i.e. it must not regenerate and clobber the persisted key).
+	const auto second = Certificates::Detail::GenerateOrReuseInSecureDirectories({ base });
+	BOOST_REQUIRE(second.has_value());
+	BOOST_CHECK(second->certificate == first->certificate);
+	BOOST_CHECK(second->private_key == first->private_key);
+	BOOST_CHECK(ReadFile(second->private_key) == key_after_first);
+	BOOST_CHECK(ReadFile(second->certificate) == cert_after_first);
+
+	fs::remove_all(base, rm);
+}
+
+BOOST_AUTO_TEST_CASE(SecureFallback_SkipsRejectedCandidateAndUsesNext)
+{
+	const fs::path base = fs::temp_directory_path() / "aqualink_certfb_skip";
+	std::error_code rm;
+	fs::remove_all(base, rm);
+
+	// First candidate: its "ssl" leaf already exists as a regular FILE, so
+	// PrepareSecureDirectory rejects it (not a directory). Cross-platform -- no
+	// reliance on POSIX-only symlink/ownership semantics.
+	const fs::path rejected_base = base / "rejected";
+	fs::create_directories(rejected_base, rm);
+	{ std::ofstream(rejected_base / "ssl") << "occupied"; }
+	BOOST_REQUIRE(fs::is_regular_file(rejected_base / "ssl"));
+
+	// Second candidate: usable.
+	const fs::path good_base = base / "good";
+	fs::create_directories(good_base, rm);
+
+	const auto resolved = Certificates::Detail::GenerateOrReuseInSecureDirectories({ rejected_base, good_base });
+	BOOST_REQUIRE(resolved.has_value());
+
+	// It must have fallen through to the second (usable) candidate.
+	BOOST_CHECK(resolved->certificate == good_base / "ssl" / "cert.pem");
+	BOOST_CHECK(resolved->private_key == good_base / "ssl" / "key.pem");
+	BOOST_CHECK(fs::exists(resolved->certificate));
+	BOOST_CHECK(fs::exists(resolved->private_key));
+
+#ifndef _WIN32
+	// On POSIX, additionally prove the symlink-redirect vector is rejected: a
+	// symlink planted at the "ssl" leaf must be refused (lstat, not followed).
+	const fs::path sym_base = base / "symlinked";
+	fs::create_directories(sym_base, rm);
+	std::error_code link_ec;
+	fs::create_directory_symlink(good_base, sym_base / "ssl", link_ec);
+	BOOST_REQUIRE_MESSAGE(!link_ec, "could not create test symlink: " << link_ec.message());
+
+	const fs::path good_base2 = base / "good2";
+	fs::create_directories(good_base2, rm);
+
+	const auto resolved_sym = Certificates::Detail::GenerateOrReuseInSecureDirectories({ sym_base, good_base2 });
+	BOOST_REQUIRE(resolved_sym.has_value());
+	BOOST_CHECK(resolved_sym->private_key == good_base2 / "ssl" / "key.pem");
+#endif
+
+	fs::remove_all(base, rm);
+}
+
+BOOST_AUTO_TEST_CASE(SecureFallback_ReturnsNulloptWhenNoCandidateIsUsable)
+{
+	const fs::path base = fs::temp_directory_path() / "aqualink_certfb_none";
+	std::error_code rm;
+	fs::remove_all(base, rm);
+	fs::create_directories(base, rm);
+
+	// Every candidate's "ssl" leaf is an existing regular file, so none can be
+	// secured as a directory. With no usable candidate the fallback yields nullopt
+	// (the caller then surfaces the "could not be generated" error).
+	const fs::path blocked_a = base / "a";
+	const fs::path blocked_b = base / "b";
+	for (const auto& b : { blocked_a, blocked_b })
+	{
+		fs::create_directories(b, rm);
+		std::ofstream(b / "ssl") << "occupied";
+	}
+
+	const auto resolved = Certificates::Detail::GenerateOrReuseInSecureDirectories({ blocked_a, blocked_b });
+	BOOST_CHECK(!resolved.has_value());
+
+	fs::remove_all(base, rm);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

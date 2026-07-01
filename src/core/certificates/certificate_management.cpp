@@ -201,6 +201,50 @@ namespace AqualinkAutomate::Certificates
 		return true;
 	}
 
+	namespace Detail
+	{
+
+		std::optional<Options::Web::SslCertificate> GenerateOrReuseInSecureDirectories(const std::vector<fs::path>& base_dirs)
+		{
+			std::error_code ec;
+
+			// Each base is a per-user PRIVATE runtime directory (see
+			// Application::SecureRuntimeStateDirectories). PrepareSecureDirectory creates
+			// the "ssl" leaf owner-only and verifies it is a real, self-owned, non-symlink
+			// directory before it is used, so both the write and the reuse below happen only
+			// in a directory we control -- defeating symlink / pre-seed attacks on a shared
+			// path. This is deliberately NOT the world-writable system temp directory.
+			for (const fs::path& base : base_dirs)
+			{
+				const fs::path dir = base / "ssl";
+				if (!Application::PrepareSecureDirectory(dir))
+				{
+					continue;
+				}
+
+				const fs::path cert_out = dir / "cert.pem";
+				const fs::path key_out = dir / "key.pem";
+
+				// Safe to reuse across restarts: the directory has just been verified as
+				// owner-only and self-owned, so an attacker cannot have planted these.
+				if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
+				{
+					LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));
+					return Options::Web::SslCertificate{ cert_out, key_out };
+				}
+
+				if (GenerateSelfSignedCertificate(cert_out, key_out))
+				{
+					return Options::Web::SslCertificate{ cert_out, key_out };
+				}
+			}
+
+			return std::nullopt;
+		}
+
+	}
+	// namespace Detail
+
 	std::optional<Options::Web::SslCertificate> EnsureSelfSignedMaterial(const Options::Web::SslCertificate& configured)
 	{
 		std::error_code ec;
@@ -242,38 +286,9 @@ namespace AqualinkAutomate::Certificates
 		}
 
 		// Fall back to a per-user PRIVATE runtime directory when the install tree is
-		// read-only (the common packaged case). This is deliberately NOT the system
-		// temp directory: on a shared host that is world-writable, so another local
-		// user could read the generated key or pre-seed material the reuse path would
-		// otherwise trust. PrepareSecureDirectory creates each candidate owner-only and
-		// verifies it is a self-owned, non-symlink directory before it is used, so both
-		// the write and the reuse below happen only in a directory we control.
-		for (const fs::path& base : Application::SecureRuntimeStateDirectories())
-		{
-			const fs::path dir = base / "ssl";
-			if (!Application::PrepareSecureDirectory(dir))
-			{
-				continue;
-			}
-
-			const fs::path cert_out = dir / "cert.pem";
-			const fs::path key_out = dir / "key.pem";
-
-			// Safe to reuse across restarts: the directory has just been verified as
-			// owner-only and self-owned, so an attacker cannot have planted these.
-			if (fs::exists(cert_out, ec) && fs::exists(key_out, ec))
-			{
-				LogInfo(Channel::Certificates, std::format("Reusing previously-generated self-signed certificate at {}", cert_out.string()));
-				return Options::Web::SslCertificate{ cert_out, key_out };
-			}
-
-			if (GenerateSelfSignedCertificate(cert_out, key_out))
-			{
-				return Options::Web::SslCertificate{ cert_out, key_out };
-			}
-		}
-
-		return std::nullopt;
+		// read-only (the common packaged case). Deliberately NOT the world-writable
+		// system temp directory; see Detail::GenerateOrReuseInSecureDirectories.
+		return Detail::GenerateOrReuseInSecureDirectories(Application::SecureRuntimeStateDirectories());
 	}
 
 	void LoadSslCertificates(const AqualinkAutomate::Options::Web::WebSettings& cfg, boost::asio::ssl::context& ctx)
