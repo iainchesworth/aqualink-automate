@@ -515,9 +515,12 @@
                 </div>
             </template>
 
-            <!-- Last update -->
-            <div class="text-muted text-center mt-2 text-2xs" x-show="lastUpdateText">
-                Last update: <span x-text="lastUpdateText"></span>
+            <!-- Freshness pill -->
+            <div class="freshness-wrap" x-show="lastUpdateText">
+                <span class="freshness-pill" :class="$store.ws.connected ? 'is-live' : 'is-stale'">
+                    <span class="freshness-dot" aria-hidden="true"></span>
+                    <span x-text="($store.ws.connected ? 'Live' : 'Stale') + ' · last update '"></span><span x-text="lastUpdateText"></span>
+                </span>
             </div>
         </div>
 
