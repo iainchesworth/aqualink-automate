@@ -2005,3 +2005,23 @@ main input[type="range"] { accent-color: var(--accent); }
 .detail-kv > div:last-child .kv-row:last-child { border-bottom: none; }
 .kv-k { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); }
 .kv-v { font-family: var(--font-display); font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* --- Settings: Appearance (theme toggle + accent picker) ----------------- */
+.seg-toggle { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-3); border-radius: 99px; border: 1px solid var(--border); }
+.seg-option { padding: 7px 18px; border: none; background: transparent; color: var(--text-dim); border-radius: 99px; font: 600 13px/1 var(--font-ui); cursor: pointer; transition: background .16s, color .16s; }
+.seg-option.active { background: var(--surface-1); color: var(--text); box-shadow: var(--shadow-md); }
+.accent-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.accent-swatch {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px 8px 10px; border-radius: 99px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text-dim);
+    font: 600 12.5px/1 var(--font-ui); text-transform: capitalize; cursor: pointer;
+    transition: border-color .16s, color .16s;
+}
+.accent-swatch:hover { border-color: var(--border-strong); color: var(--text); }
+.accent-swatch.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 3px var(--accent-soft); }
+.accent-swatch-dot { width: 16px; height: 16px; border-radius: 50%; }
+.accent-swatch[data-accent-swatch="teal"]   .accent-swatch-dot { background: oklch(0.745 0.105 200); }
+.accent-swatch[data-accent-swatch="azure"]  .accent-swatch-dot { background: oklch(0.7 0.115 238); }
+.accent-swatch[data-accent-swatch="aqua"]   .accent-swatch-dot { background: oklch(0.78 0.1 178); }
+.accent-swatch[data-accent-swatch="violet"] .accent-swatch-dot { background: oklch(0.66 0.13 292); }

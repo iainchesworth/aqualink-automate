@@ -1523,6 +1523,35 @@
 
             <div class="section-title mt-2">Settings</div>
 
+            <!-- Appearance (client-side prefs) -->
+            <div class="card mb-2 settings-card">
+                <div class="card-header">Appearance</div>
+                <div class="card-body">
+                    <p class="settings-card-desc">Stored in this browser only.</p>
+                    <div class="settings-group-label">Theme</div>
+                    <div class="settings-field">
+                        <div class="seg-toggle" role="group" aria-label="Theme">
+                            <button type="button" class="seg-option" :class="{ active: !$store.theme.isDark }" @click="if ($store.theme.isDark) $store.theme.toggle()">Light</button>
+                            <button type="button" class="seg-option" :class="{ active: $store.theme.isDark }" @click="if (!$store.theme.isDark) $store.theme.toggle()">Dark</button>
+                        </div>
+                    </div>
+                    <div class="settings-group-label">Accent</div>
+                    <div class="settings-field">
+                        <div class="accent-swatches" role="group" aria-label="Accent colour">
+                            <template x-for="opt in $store.accent.options" :key="opt">
+                                <button type="button" class="accent-swatch" :class="{ active: $store.accent.name === opt }"
+                                        :data-accent-swatch="opt" @click="$store.accent.set(opt)"
+                                        :aria-pressed="$store.accent.name === opt" :aria-label="opt">
+                                    <span class="accent-swatch-dot" aria-hidden="true"></span>
+                                    <span class="accent-swatch-name" x-text="opt"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <span class="settings-hint">Applied instantly and remembered on this device.</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- System Preferences -->
             <div class="card mb-2 settings-card">
                 <div class="card-header card-header-split">
