@@ -25,9 +25,10 @@ test('buttons API exposes a controllable flag; chlorinator/unknown are not contr
 
 test('dashboard has one consolidated chemistry section — no duplicate chlorinator card', async ({ page }) => {
   await page.goto('/');
-  // Exact match: the Trends view also has a "Water chemistry" group label, so a loose
-  // (case-insensitive substring) match would resolve to two elements across the SPA.
-  await expect(page.getByText('Water Chemistry', { exact: true })).toBeVisible();
+  // The dashboard section title and the Detailed view's card header both read
+  // "Water Chemistry" (both always in the DOM via x-show), so target the
+  // dashboard section title specifically.
+  await expect(page.locator('.section-title', { hasText: 'Water Chemistry' })).toBeVisible();
   await expect(page.getByText('Chemistry / Chlorinator')).toHaveCount(0);
 });
 
@@ -45,11 +46,12 @@ test('chlorinator output control: API validates, and the slider renders when pre
   expect([200, 503]).toContain((await request.post('/api/equipment/chlorinator', { data: { boost: true } })).status());
 
   // The target control is integrated into the SWG Output tile (the fixture
-  // materialises a chlorinator).
+  // materialises a chlorinator). The tile is x-show="present"/x-cloak until the
+  // replayed AquaRite feed flips chlorinatorPresent, so allow it time to appear.
   await page.goto('/');
-  await expect(page.getByText('SWG Output')).toBeVisible();
-  await expect(page.locator('.swg-card .swg-slider')).toBeVisible();
-  await expect(page.locator('.swg-card').getByRole('button', { name: 'Boost' })).toBeVisible();
+  await expect(page.getByText('SWG Output')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.swg-card .swg-slider')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.swg-card').getByRole('button', { name: 'Boost' })).toBeVisible({ timeout: 15_000 });
 });
 
 test('equipment controls render as switches for controllable devices only', async ({ page, request }) => {

@@ -29,30 +29,22 @@ test('Diagnostics page renders both device sections via the shared card', async 
   await page.goto('/');
   await page.locator('.nav-link', { hasText: 'Diagnostics' }).click();
 
-  for (const section of [
-    { title: 'Emulated Devices', id: '#diag-emulated-devices' },
-    { title: 'Actual Devices', id: '#diag-actual-devices' },
-  ]) {
-    const toggle = page.locator('.section-toggle', { hasText: section.title });
-    await expect(toggle).toBeVisible();
-    await toggle.scrollIntoViewIfNeeded();
+  for (const title of ['Emulated Devices', 'Actual Devices']) {
+    // Each section is a .device-group whose .section-title carries the name; the
+    // groups are always expanded in the redesign (no accordion toggle).
+    const group = page.locator('.device-group', { hasText: title });
+    await expect(group.locator('.section-title', { hasText: title })).toBeVisible({ timeout: 10_000 });
+    await group.scrollIntoViewIfNeeded();
 
-    // Sections default to expanded; open if a prior interaction collapsed it.
-    const panel = page.locator(section.id);
-    if (!(await panel.isVisible())) {
-      await toggle.click();
-    }
-    await expect(panel).toBeVisible({ timeout: 10_000 });
-
-    // Either tailored device cards render (icon + role from the shared component)
+    // Either tailored device cards render (name + role from the shared component)
     // or the section's empty-state shows. The replay fixture may expose no
     // controller devices, so assert structurally rather than on a fixed count.
-    const cards = panel.locator('.emu-device-card');
+    const cards = group.locator('.device-mini-card');
     if ((await cards.count()) > 0) {
-      await expect(cards.first().locator('.device-card-icon')).toBeVisible();
-      await expect(cards.first().locator('.device-card-role')).toBeVisible();
+      await expect(cards.first().locator('.dmc-name')).toBeVisible();
+      await expect(cards.first().locator('.dmc-role')).toBeVisible();
     } else {
-      await expect(panel.locator('p.text-muted')).toBeVisible();
+      await expect(group.locator('p.text-muted')).toBeVisible();
     }
   }
 });

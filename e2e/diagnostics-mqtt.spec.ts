@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /**
  * MQTT diagnostics: GET /api/diagnostics/mqtt always responds (200), returning
  * { enabled: false } when MQTT is disabled (the default replay fixture), and the
- * Diagnostics page surfaces a collapsible MQTT panel.
+ * Diagnostics page surfaces an always-visible MQTT broker panel.
  */
 
 test('MQTT diagnostics endpoint responds and reports disabled in replay', async ({ request }) => {
@@ -18,12 +18,8 @@ test('Diagnostics page shows the MQTT panel', async ({ page }) => {
   await page.goto('/');
   await page.locator('.nav-link', { hasText: 'Diagnostics' }).click();
 
-  const toggle = page.locator('.section-toggle', { hasText: 'MQTT' });
-  await expect(toggle).toBeVisible();
-  await toggle.scrollIntoViewIfNeeded();
-  await toggle.click();
-
-  const panel = page.locator('#diag-mqtt');
+  // The MQTT broker card is always visible in the redesign (no accordion toggle).
+  const panel = page.locator('.mqtt-card');
   await expect(panel).toBeVisible({ timeout: 10_000 });
-  await expect(panel.locator('.badge')).toHaveText('Disabled');
+  await expect(panel.locator('.mqtt-status')).toHaveText(/Disabled/);
 });

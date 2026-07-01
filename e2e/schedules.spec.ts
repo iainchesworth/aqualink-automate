@@ -16,7 +16,7 @@ test('Schedules shows a disabled message when the scheduler is off', async ({ pa
 
   await page.goto('/');
   await page.locator('.nav-link', { hasText: 'Schedules' }).click();
-  await expect(page.getByText(/Scheduler is disabled/i)).toBeVisible();
+  await expect(page.getByText(/App scheduler disabled/i)).toBeVisible();
 });
 
 test('Schedule CRUD works when the scheduler is on', async ({ page, request }) => {
