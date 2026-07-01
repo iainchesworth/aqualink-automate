@@ -575,7 +575,6 @@
                         <template x-for="b in ($store.pool.buttons || []).filter(x => /pump|filter|spillway/i.test(x.label))" :key="b.id">
                             <div class="kv-row"><span class="kv-k" x-text="b.display_label || b.label"></span><span class="kv-v" x-text="b.status || '--'"></span></div>
                         </template>
-                        <div class="kv-row"><span class="kv-k">System status</span><span class="kv-v" x-text="$store.pool.systemStatus"></span></div>
                     </div>
                 </div>
 
@@ -584,6 +583,7 @@
                 <div class="card detail-card">
                     <div class="card-header">Heating</div>
                     <div class="detail-kv">
+                        <div class="kv-row"><span class="kv-k">Heat source</span><span class="kv-v" x-text="(() => { const h = ($store.pool.buttons || []).find(b => /heat|solar/i.test(b.label) && b.status && !/off/i.test(b.status)); return h ? (h.display_label || h.label) : 'None'; })()"></span></div>
                         <template x-for="b in ($store.pool.buttons || []).filter(x => /heat|solar/i.test(x.label))" :key="b.id">
                             <div class="kv-row"><span class="kv-k" x-text="b.display_label || b.label"></span><span class="kv-v" x-text="b.status || '--'"></span></div>
                         </template>
@@ -599,6 +599,8 @@
                             <div class="kv-row"><span class="kv-k" x-text="field.label"></span><span class="kv-v" x-text="field.value"></span></div>
                         </template>
                         <div class="kv-row"><span class="kv-k">State</span><span class="kv-v" x-text="$store.system.state"></span></div>
+                        <div class="kv-row"><span class="kv-k">System status</span><span class="kv-v" x-text="$store.pool.systemStatus"></span></div>
+                        <div class="kv-row" x-show="$store.system.startedAt"><span class="kv-k">Started</span><span class="kv-v" x-text="$store.system.startedAt"></span></div>
                         <div class="kv-row" x-show="$store.system.uptime"><span class="kv-k">Uptime</span><span class="kv-v" x-text="$store.system.uptime"></span></div>
                     </div>
                 </div>
