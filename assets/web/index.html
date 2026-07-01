@@ -685,14 +685,16 @@
                     <div>
                         <div class="section-title bw-title">Bandwidth Utilization</div>
                         <div class="bw-legend">
-                            <span class="bw-legend-item">
+                            <button type="button" class="bw-legend-item" :class="{ 'is-off': !bwRead }"
+                                    :aria-pressed="bwRead" @click="toggleBw('read')" title="Toggle the Read series">
                                 <span class="bw-legend-swatch bw-swatch-read"></span>Read
                                 <strong x-text="($store.stats.bandwidthRead?.average_utilisation_1sec || 0).toFixed(1) + '%'"></strong>
-                            </span>
-                            <span class="bw-legend-item">
+                            </button>
+                            <button type="button" class="bw-legend-item" :class="{ 'is-off': !bwWrite }"
+                                    :aria-pressed="bwWrite" @click="toggleBw('write')" title="Toggle the Write series">
                                 <span class="bw-legend-swatch bw-swatch-write"></span>Write
                                 <strong x-text="($store.stats.bandwidthWrite?.average_utilisation_1sec || 0).toFixed(1) + '%'"></strong>
-                            </span>
+                            </button>
                         </div>
                     </div>
                     <div class="bw-head-right">

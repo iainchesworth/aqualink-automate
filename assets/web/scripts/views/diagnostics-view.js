@@ -61,6 +61,21 @@ function diagnosticsView() {
             return val || fallback;
         },
 
+        // Bandwidth chart series visibility, toggled from the left-hand legend
+        // (the built-in Chart.js legend is disabled). Read = dataset 0 (--accent),
+        // Write = dataset 1 (--spa) so the lines match the legend swatches.
+        bwRead: true,
+        bwWrite: true,
+        toggleBw(which) {
+            if (which === 'read') this.bwRead = !this.bwRead;
+            else this.bwWrite = !this.bwWrite;
+            const ch = _diag.chart;
+            if (!ch) return;
+            const idx = which === 'read' ? 0 : 1;
+            ch.setDatasetVisibility(idx, which === 'read' ? this.bwRead : this.bwWrite);
+            ch.update();
+        },
+
         // Section visibility. The design shows flat, always-visible cards (no
         // accordions), so every panel defaults open; the toggle headers are
         // neutered to plain section titles in CSS (.section-toggle).
@@ -208,7 +223,7 @@ function diagnosticsView() {
 
             const textColor = this._resolveColor('--text-secondary', '#94a3b8');
             const gridColor = this._resolveColor('--grid-color', 'rgba(148,163,184,0.15)');
-            const legendColor = this._resolveColor('--text-primary', '#e2e8f0');
+            const c = _bwColorSet();
 
             _diag.chart = new Chart(ctx, {
                 type: 'line',
@@ -217,8 +232,8 @@ function diagnosticsView() {
                         {
                             label: 'Read %',
                             data: [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderColor: c.read,
+                            backgroundColor: c.readFill,
                             borderWidth: 2,
                             tension: 0.4,
                             fill: true,
@@ -227,8 +242,8 @@ function diagnosticsView() {
                         {
                             label: 'Write %',
                             data: [],
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderColor: c.write,
+                            backgroundColor: c.writeFill,
                             borderWidth: 2,
                             tension: 0.4,
                             fill: true,
@@ -264,7 +279,9 @@ function diagnosticsView() {
                         }
                     },
                     plugins: {
-                        legend: { display: true, position: 'top', labels: { color: legendColor } },
+                        // Built-in legend disabled — the left-hand .bw-legend chips
+                        // are the interactive legend (see toggleBw()).
+                        legend: { display: false },
                         tooltip: { callbacks: { label: item => item.dataset.label + ': ' + item.parsed.y.toFixed(2) + '%' } }
                     },
                     animation: { duration: 0 }
@@ -892,11 +909,33 @@ function diagnosticsView() {
 }
 
 // Standalone function — no Alpine proxy involvement
+// Resolve the bandwidth series colors from CSS tokens so the chart lines match
+// the left-hand legend swatches (--accent = Read, --spa = Write) and re-track
+// live theme/accent changes. Fills are a translucent mix of the same colour.
+function _bwColorSet() {
+    const cs = getComputedStyle(document.documentElement);
+    const read = cs.getPropertyValue('--accent').trim() || '#10b981';
+    const write = cs.getPropertyValue('--spa').trim() || '#3b82f6';
+    return {
+        read,
+        write,
+        readFill: `color-mix(in srgb, ${read} 14%, transparent)`,
+        writeFill: `color-mix(in srgb, ${write} 14%, transparent)`
+    };
+}
+
 function _updateChartData(windowSeconds) {
     if (!_diag.chart) return;
 
     const h = window.__statsChartHistory;
     if (!h) return;
+
+    // Keep the line colours in sync with the current theme/accent tokens.
+    const c = _bwColorSet();
+    const d0 = _diag.chart.data.datasets[0];
+    const d1 = _diag.chart.data.datasets[1];
+    if (d0) { d0.borderColor = c.read; d0.backgroundColor = c.readFill; }
+    if (d1) { d1.borderColor = c.write; d1.backgroundColor = c.writeFill; }
 
     const now = Date.now();
     let startIdx = 0;
