@@ -44,7 +44,8 @@ test.describe('UI authentication', () => {
     const saltCard = page
       .locator('.gauge-card')
       .filter({ has: page.locator('.gauge-label', { hasText: 'Salt' }) });
-    await expect(saltCard.locator('.gauge-value')).toHaveText(/3200\s*ppm/i, { timeout: 15_000 });
+    await expect(saltCard.locator('.chem-dial-num')).toHaveText(/3200/, { timeout: 15_000 });
+    await expect(saltCard.locator('.chem-dial-unit')).toHaveText(/ppm/i);
   });
 
   test('reload stays logged in; logout returns to the login overlay', async ({ page }) => {
