@@ -2156,8 +2156,19 @@
 <td><code>204</code></td>
 <td><code>404</code>, <code>503</code>.</td>
 </tr>
+<tr>
+<td>GET</td>
+<td><code>/api/controller/schedules</code></td>
+<td><code>200</code> <code>{status, schedules[]}</code></td>
+<td><code>503</code> when the store is unavailable.</td>
+</tr>
 </tbody>
 </table>
+<p>App-side schedules (<code>/api/schedules</code>) are point actions the app fires; controller
+schedules (<code>/api/controller/schedules</code>) are the controller's own built-in
+on→off programs, read-only and reported as spans. <code>status</code> is <code>available</code>,
+<code>pending_capture</code> (parser not yet wired), or <code>unsupported</code>. The web UI merges
+both into one timeline. Writing controller schedules is not yet supported.</p>
 <h3 id="preferences">Preferences<a class="headerlink" href="#preferences" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
