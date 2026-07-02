@@ -75,6 +75,7 @@ target_sources(
 	http/webroute_equipment_devices.cpp
 	http/webroute_equipment_setpoints.cpp
 	http/webroute_equipment_version.cpp
+	http/webroute_controller_schedules.cpp
 	http/webroute_health.cpp
 	http/webroute_health_detailed.cpp
 	http/webroute_history.cpp
@@ -232,6 +233,7 @@ target_sources(
 	protocol/protocol_handler_read_handler_messages.cpp
 	protocol/protocol_handler_types.cpp
 	protocol/protocol_thread.cpp
+	scheduling/controller_schedule.cpp
 	scheduling/schedule.cpp
 	scheduling/scheduler_service.cpp
 	serial/serial_initialise.cpp

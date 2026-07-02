@@ -17,7 +17,7 @@ test('Trends shows a disabled message when history is off', async ({ page }) => 
 
   await page.goto('/');
   await page.locator('.nav-link', { hasText: 'Trends' }).click();
-  await expect(page.getByText(/History is disabled/i)).toBeVisible();
+  await expect(page.getByText(/History recording is disabled/i)).toBeVisible();
 });
 
 test('Trends lists series and renders the chart when history is on', async ({ page }) => {

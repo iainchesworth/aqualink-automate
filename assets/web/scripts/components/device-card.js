@@ -207,5 +207,58 @@ function deviceCard() {
         cmdOutcomeClass(outcome) { return outcome === 'Success' ? 'ok' : 'err'; },
 
         rawJson(d) { return JSON.stringify(d, null, 2); },
+
+        // ---- Compact-card presenters (design: 3-col grid of clickable cards) -------
+        // A short one-line status shown as a badge on the card. Real devices are
+        // "Passive decoder"; the note beneath spells out the suppression reason.
+        cardDotColor(d) { return this.isActive(d) ? 'var(--good)' : 'var(--warn)'; },
+
+        // A device carries a suppression note when a real device shadows an emulator.
+        hasSuppressedNote(d) {
+            return d && d.is_emulated && d.emulation_suppressed;
+        },
+        suppressedNote(d) {
+            return 'Real device detected — emulation suppressed, now passive.';
+        },
+
+        // Passive snooper note for real non-emulated decoders (design copy).
+        hasPassiveNote(d) {
+            return d && !d.is_emulated;
+        },
+        passiveNote() { return 'Passive snooper — never transmits on the bus.'; },
+
+        // ---- Modal presenters (the rich detail moved off the card, design ~1284) ---
+        // Screen present + title/lines for the "Panel Screen" block.
+        hasScreen(d) { return !!(d && d.screen && Array.isArray(d.screen.lines) && d.screen.lines.length); },
+        screenTitle(d) { return (d && d.screen && d.screen.page_type) || ''; },
+        screenLines(d) { return (d && d.screen && Array.isArray(d.screen.lines)) ? d.screen.lines : []; },
+
+        // Highlighted line index for OneTouch cursor rendering in the modal screen.
+        isHighlighted(d, idx) {
+            return d && d.device_type === 'OneTouch' && d.highlighted_line === idx;
+        },
+
+        // Spa-side observed button mapping for the modal (read-only). Groups keys by
+        // switch and surfaces the lit indicator LEDs. Takes the plain diagnostics dev.
+        hasConfig(d) { return d && d.device_type === 'SpasideRemote'; },
+        litIndicators(d) {
+            const leds = (d && Array.isArray(d.leds)) ? d.leds : [];
+            const out = [];
+            leds.forEach((state, i) => { if (state && state !== 'off') { out.push(i + 1); } });
+            return out;
+        },
+
+        // Raw JSON rendered as key/value rows for the modal's "Raw Diagnostics" block.
+        // Flattens one level so nested objects show as compact JSON strings.
+        rawRows(d) {
+            if (!d || typeof d !== 'object') return [];
+            return Object.entries(d).map(([k, v]) => {
+                let val;
+                if (v === null || v === undefined) { val = '--'; }
+                else if (typeof v === 'object') { val = JSON.stringify(v); }
+                else { val = String(v); }
+                return { k, v: val };
+            });
+        },
     };
 }

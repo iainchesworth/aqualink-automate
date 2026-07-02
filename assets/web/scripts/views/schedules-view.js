@@ -1,9 +1,15 @@
 /**
- * Schedules View — time-based automation (WS4).
+ * Schedules View — unified time-based automation.
  *
- * Lists schedules with enable toggles, an add/edit form (day-of-week chips,
- * time, action selector), and delete-with-confirm. Mutating controls are
- * disabled in monitor-only mode, consistent with the dashboard.
+ * Shows two complementary schedule sources on one surface:
+ *   - App schedules  (/api/schedules)            — point actions the app fires; editable.
+ *   - Controller schedules (/api/controller/...)  — the controller's own built-in
+ *                                                   on→off programs; read-only span.
+ *
+ * Both are merged into one model and rendered two ways: a chronological list
+ * (the editing surface) and a read-only 24-hour timeline "day view" for
+ * comprehension. Overlaps where an app action contradicts a controller program
+ * are flagged as conflicts. Mutating controls are disabled in monitor-only mode.
  */
 
 const SCHED_DAYS = [
@@ -37,6 +43,18 @@ function _schedIsValue(type) {
     return type === 'pool_setpoint' || type === 'spa_setpoint' || type === 'chlorinator_percent';
 }
 
+// "HH:MM" -> minutes from local midnight (0..1439). Tolerant of bad input.
+function _schedHm(t) {
+    const parts = String(t || '00:00').split(':');
+    const h = Number(parts[0]) || 0;
+    const m = Number(parts[1]) || 0;
+    return ((h * 60) + m) % 1440;
+}
+function _schedFmtMin(min) {
+    const m = ((min % 1440) + 1440) % 1440;
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
 function _schedToForm(s) {
     const f = _schedDefaultForm();
     f.name = s.name || '';
@@ -61,20 +79,26 @@ function _schedFormToPayload(f) {
 
 function schedulesView() {
     return {
-        available: true,
+        appAvailable: true,          // app scheduler enabled (--schedules-file)
         loading: false,
         error: '',
-        schedules: [],
-        buttons: [],     // device labels for the target dropdown
-        editing: null,   // null | 'new' | <uuid>
+        schedules: [],               // app-side point schedules
+        controller: { status: 'pending_capture', schedules: [] },
+        buttons: [],                 // device labels for the target dropdown
+        editing: null,               // null | 'new' | <uuid>
         form: _schedDefaultForm(),
         days: SCHED_DAYS,
         actionTypes: SCHED_ACTION_TYPES,
+        view: 'list',                // 'list' | 'timeline'
+        timelineDay: 0,              // bit 0..6 (Mon..Sun) shown in the timeline
         _loaded: false,
 
         onShown() {
-            if (this._loaded) { this.load(); return; }
-            this._loaded = true;
+            if (!this._loaded) {
+                this._loaded = true;
+                // Default the timeline to today (JS Sun=0..Sat=6 -> our Mon=0..Sun=6).
+                this.timelineDay = (new Date().getDay() + 6) % 7;
+            }
             this.load();
         },
 
@@ -87,9 +111,19 @@ function schedulesView() {
             this.error = '';
             try {
                 const resp = await fetch('/api/schedules');
-                if (resp.status === 503) { this.available = false; return; }
-                this.available = true;
-                if (resp.ok) { this.schedules = await resp.json(); }
+                if (resp.status === 503) { this.appAvailable = false; this.schedules = []; }
+                else { this.appAvailable = true; if (resp.ok) { this.schedules = await resp.json(); } }
+
+                try {
+                    const c = await fetch('/api/controller/schedules');
+                    if (c.ok) {
+                        const cj = await c.json();
+                        this.controller = {
+                            status: cj.status || 'pending_capture',
+                            schedules: Array.isArray(cj.schedules) ? cj.schedules : [],
+                        };
+                    }
+                } catch (_) { /* controller source is best-effort */ }
 
                 try {
                     const b = await fetch('/api/equipment/buttons');
@@ -121,11 +155,122 @@ function schedulesView() {
         },
 
         daySummary(mask) {
+            if ((mask & 0x7f) === 0x7f) { return 'Every day'; }
             return SCHED_DAYS.filter((d) => (mask & (1 << d.bit)) !== 0).map((d) => d.label).join(' ') || '—';
         },
 
-        newSchedule() { this.form = _schedDefaultForm(); this.editing = 'new'; this.error = ''; },
-        editSchedule(s) { this.form = _schedToForm(s); this.editing = s.uuid; this.error = ''; },
+        // --- unified model -------------------------------------------------
+
+        // The device/circuit an app action drives, for conflict-matching and
+        // timeline grouping. Setpoint/chlorinator/circulation map to friendly
+        // synthetic targets so they get their own timeline rows.
+        _appTarget(s) {
+            const a = s.action || {};
+            if (_schedIsButton(a.type)) { return a.target || ''; }
+            if (a.type === 'chlorinator_percent') { return 'Chlorinator'; }
+            if (a.type === 'pool_setpoint') { return 'Pool heater'; }
+            if (a.type === 'spa_setpoint') { return 'Spa heater'; }
+            if (a.type === 'circulation_mode') { return 'Circulation'; }
+            return '';
+        },
+
+        _within(t, start, end) {
+            if (end > start) { return t >= start && t < end; }
+            if (end < start) { return t >= start || t < end; }  // crosses midnight
+            return false;                                        // zero-length span
+        },
+
+        // Flag app actions that contradict an active controller program on a
+        // shared day: an OFF or TOGGLE on the same device inside the program's
+        // ON window. Mutates entries in place (sets .conflict + .conflictMsg).
+        _annotateConflicts(entries) {
+            const spans = entries.filter((e) => e.owner === 'controller' && e.kind === 'span' && e.enabled);
+            for (const e of entries) {
+                if (e.owner !== 'app' || !e.enabled) { continue; }
+                const type = (e.raw.action || {}).type;
+                if (type !== 'button_off' && type !== 'button_toggle') { continue; }
+                for (const sp of spans) {
+                    if (!sp.target || !e.target || sp.target.toLowerCase() !== e.target.toLowerCase()) { continue; }
+                    if ((sp.days & e.days) === 0) { continue; }
+                    if (this._within(e.start, sp.start, sp.end)) {
+                        e.conflict = true;
+                        sp.conflict = true;
+                        e.conflictMsg = `Turns ${e.target} ${type === 'button_off' ? 'off' : 'via toggle'} during the controller program (${_schedFmtMin(sp.start)}–${_schedFmtMin(sp.end)}).`;
+                    }
+                }
+            }
+        },
+
+        get unifiedEntries() {
+            const out = [];
+            for (const c of (this.controller.schedules || [])) {
+                out.push({
+                    key: `c:${c.id}`, owner: 'controller', editable: false, kind: 'span',
+                    name: c.name || c.target || '(program)', target: c.target || '',
+                    days: c.days_of_week || 0, enabled: c.enabled !== false,
+                    start: _schedHm(c.on_local), end: _schedHm(c.off_local),
+                    summary: `${c.on_local}–${c.off_local} on`, raw: c, conflict: false,
+                });
+            }
+            for (const s of (this.schedules || [])) {
+                out.push({
+                    key: `a:${s.uuid}`, owner: 'app', editable: true, kind: 'point',
+                    name: s.name || '(unnamed)', target: this._appTarget(s),
+                    days: s.days_of_week || 0, enabled: s.enabled !== false,
+                    start: _schedHm(s.time_local), end: null,
+                    summary: this.actionSummary(s), raw: s, conflict: false,
+                });
+            }
+            this._annotateConflicts(out);
+            out.sort((a, b) => (a.start - b.start) || a.owner.localeCompare(b.owner));
+            return out;
+        },
+
+        get conflicts() {
+            return this.unifiedEntries.filter((e) => e.conflict && e.owner === 'app');
+        },
+
+        get controllerPending() { return this.controller.status === 'pending_capture'; },
+        get controllerUnsupported() { return this.controller.status === 'unsupported'; },
+
+        // --- timeline ------------------------------------------------------
+
+        get timelineRows() {
+            const bit = this.timelineDay;
+            const active = this.unifiedEntries.filter((e) => (e.days & (1 << bit)) !== 0);
+            const groups = new Map();
+            for (const e of active) {
+                const key = e.target || e.name;
+                if (!groups.has(key)) { groups.set(key, { label: key, spans: [], points: [] }); }
+                const g = groups.get(key);
+                if (e.kind === 'span') { g.spans.push(e); } else { g.points.push(e); }
+            }
+            return [...groups.values()];
+        },
+
+        // The "now" marker is only meaningful when the timeline shows today.
+        get showNow() { return this.timelineDay === ((new Date().getDay() + 6) % 7); },
+        get nowLeft() {
+            const now = new Date();
+            const min = (now.getHours() * 60) + now.getMinutes();
+            return `${(min / 1440 * 100).toFixed(2)}%`;
+        },
+
+        fmtMin(min) { return _schedFmtMin(min); },
+        barLeft(e) { return `${(e.start / 1440 * 100).toFixed(2)}%`; },
+        barWidth(e) {
+            let d = e.end - e.start;
+            if (d <= 0) { d += 1440; }
+            return `${(d / 1440 * 100).toFixed(2)}%`;
+        },
+        pointLeft(e) { return `${(e.start / 1440 * 100).toFixed(2)}%`; },
+        setView(v) { this.view = v; },
+        setTimelineDay(bit) { this.timelineDay = bit; },
+
+        // --- CRUD (app schedules only) -------------------------------------
+
+        newSchedule() { this.form = _schedDefaultForm(); this.editing = 'new'; this.error = ''; this.view = 'list'; },
+        editSchedule(s) { this.form = _schedToForm(s); this.editing = s.uuid; this.error = ''; this.view = 'list'; },
         cancel() { this.editing = null; },
 
         toggleDay(bit) { this.form.days = this.form.days ^ (1 << bit); },

@@ -81,8 +81,11 @@ namespace AqualinkAutomate::Utility
 			// Prune samples that have fallen outside the time window.
 			PruneOldSamples(now);
 
-			// Update running statistics.
+			// Update running (lifetime / cumulative) statistics. These persist beyond
+			// the sliding window so a "since restart" view can be reported alongside
+			// the recent-window percentiles.
 			m_TotalSamples++;
+			m_CumulativeSumNs += static_cast<double>(latency.count());
 
 			if (m_TotalSamples == 1 || latency < m_AlltimeMin) { m_AlltimeMin = latency; }
 			if (latency > m_AlltimeMax) { m_AlltimeMax = latency; }
@@ -140,12 +143,33 @@ namespace AqualinkAutomate::Utility
 			return m_TotalSamples;
 		}
 
+		/// Returns the sliding-window duration (the span over which the GetSnapshot()
+		/// percentiles are computed). Reported so consumers can label the window (e.g.
+		/// "last 15 minutes") rather than assuming a fixed span.
+		std::chrono::seconds WindowDuration() const
+		{
+			return m_WindowDuration;
+		}
+
+		/// Returns the cumulative (since-restart) arithmetic mean across every sample
+		/// ever recorded, independent of the sliding window.
+		Duration CumulativeMean() const
+		{
+			if (m_TotalSamples == 0)
+			{
+				return Duration{ 0 };
+			}
+
+			return Duration{ static_cast<Duration::rep>(m_CumulativeSumNs / static_cast<double>(m_TotalSamples)) };
+		}
+
 		/// Clears all recorded samples.
 		void Reset()
 		{
 			m_Samples.clear();
 			m_Scratch.clear();
 			m_TotalSamples = 0;
+			m_CumulativeSumNs = 0.0;
 			m_AlltimeMin = Duration{ 0 };
 			m_AlltimeMax = Duration{ 0 };
 		}
@@ -199,8 +223,9 @@ namespace AqualinkAutomate::Utility
 		// const GetSnapshot() can borrow it without per-call allocation.
 		mutable std::vector<Duration> m_Scratch;
 
-		// Running statistics
+		// Running (cumulative / lifetime) statistics
 		std::size_t m_TotalSamples{ 0 };
+		double m_CumulativeSumNs{ 0.0 };
 		Duration m_AlltimeMin{ 0 };
 		Duration m_AlltimeMax{ 0 };
 	};
@@ -258,13 +283,13 @@ namespace AqualinkAutomate::Utility
 
 	public:
 		/// Latency for serial read operations (time from initiating read to receiving data).
-		LatencyPercentileTracker<> ReadLatency{ 1000, std::chrono::seconds(60) };
+		LatencyPercentileTracker<> ReadLatency{ 8192, std::chrono::seconds(900) };
 
 		/// Latency for serial write operations (time from initiating write to completion).
-		LatencyPercentileTracker<> WriteLatency{ 1000, std::chrono::seconds(60) };
+		LatencyPercentileTracker<> WriteLatency{ 8192, std::chrono::seconds(900) };
 
 		/// Latency for complete message processing (from receiving bytes to signaling handlers).
-		LatencyPercentileTracker<> MessageProcessingLatency{ 1000, std::chrono::seconds(60) };
+		LatencyPercentileTracker<> MessageProcessingLatency{ 8192, std::chrono::seconds(900) };
 	};
 
 }

@@ -60,7 +60,7 @@ function app() {
 
         _getRouteFromHash() {
             const hash = window.location.hash.replace('#', '');
-            const valid = ['dashboard', 'diagnostics', 'trends', 'schedules', 'settings', 'about'];
+            const valid = ['dashboard', 'detailed', 'diagnostics', 'trends', 'schedules', 'settings', 'about'];
             return valid.includes(hash) ? hash : 'dashboard';
         },
 
@@ -86,6 +86,13 @@ function app() {
                     // (initChart/destroyChart). But we re-fetch version info
                     // so uptime is current.
                     Alpine.store('pool')._fetchVersion();
+                    break;
+
+                case 'about':
+                    // Refresh version + equipment version so the About page shows
+                    // live data even if the initial load raced the app's startup.
+                    Alpine.store('pool')._fetchVersion();
+                    Alpine.store('pool')._fetchEquipment();
                     break;
             }
         },

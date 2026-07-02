@@ -174,6 +174,13 @@ Non-`GET` requests to the read-only diagnostics routes return `405` with a JSON 
 | GET | `/api/schedules/{uuid}` | `200` JSON | `404` unknown; `503`; `400` missing uuid. |
 | PUT | `/api/schedules/{uuid}` | `200` JSON | `400`, `404`, `503`. |
 | DELETE | `/api/schedules/{uuid}` | `204` | `404`, `503`. |
+| GET | `/api/controller/schedules` | `200` `{status, schedules[]}` | `503` when the store is unavailable. |
+
+App-side schedules (`/api/schedules`) are point actions the app fires; controller
+schedules (`/api/controller/schedules`) are the controller's own built-in
+on→off programs, read-only and reported as spans. `status` is `available`,
+`pending_capture` (parser not yet wired), or `unsupported`. The web UI merges
+both into one timeline. Writing controller schedules is not yet supported.
 
 ### Preferences
 

@@ -9,9 +9,10 @@ import { test, expect } from '@playwright/test';
  * reaches the browser via the /ws/equipment WebSocket (ChemistryUpdate ->
  * salt_level) and/or the GET /api/equipment REST snapshot (chemistry.salt_ppm).
  *
- * The dashboard renders the salt value in a "Salt" chemistry gauge whose
- * displayed text is "<ppm> ppm" (see assets/web/scripts/components/chemistry-gauge.js
- * -> displayValue = numericValue.toFixed(0) + ' ppm').
+ * The dashboard renders the salt value in a "Salt" chemistry dial that splits the
+ * reading into a numeric node (.chem-dial-num = "3200") and a unit node
+ * (.chem-dial-unit = "ppm") — see assets/web/scripts/components/chemistry-gauge.js
+ * (salt config: decimals 0, unit ' ppm').
  */
 test('dashboard renders the replayed AquaRite salt reading (3200 ppm)', async ({ page }) => {
   // Surface backend/UI console errors in the test log to aid debugging.
@@ -30,11 +31,10 @@ test('dashboard renders the replayed AquaRite salt reading (3200 ppm)', async ({
     .filter({ has: page.locator('.gauge-label', { hasText: 'Salt' }) });
   await expect(saltCard).toBeVisible();
 
-  const saltValue = saltCard.locator('.gauge-value');
-
   // The replayed PPM (3200) must appear once the WS/REST feed has been applied.
-  // chemistry-gauge formats it as "3200 ppm".
-  await expect(saltValue).toHaveText(/3200\s*ppm/i, { timeout: 15_000 });
+  // The redesigned dial splits it into a numeric node and a unit node.
+  await expect(saltCard.locator('.chem-dial-num')).toHaveText(/3200/, { timeout: 15_000 });
+  await expect(saltCard.locator('.chem-dial-unit')).toHaveText(/ppm/i);
 });
 
 /**

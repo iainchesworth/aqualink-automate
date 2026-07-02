@@ -480,6 +480,42 @@ paths:
         '503': { description: Scheduler is disabled }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/controller/schedules:
+    get:
+      tags:
+        - Schedules
+      summary: List the controller's internal schedules (read-only)
+      description: >
+        Returns the schedules stored inside the AquaLink controller itself (its
+        built-in timers/programs that turn equipment on/off). These are not
+        observable from the passive RS-485 stream; they are read by navigating
+        the OneTouch/IAQ "Program" menu pages. `status` reports source
+        availability: `available` (parsed and listed), `pending_capture` (a
+        capable device is present but the page parser is not yet wired) or
+        `unsupported` (no device exposes a schedule menu). Each entry is a SPAN
+        (on_local..off_local) rather than a point action, distinguishing it from
+        the app-side /api/schedules entries in a unified view. Writing controller
+        schedules is not yet supported.
+      operationId: listControllerSchedules
+      responses:
+        '200':
+          description: Source status plus the array of controller schedules
+          content:
+            application/json:
+              example:
+                status: "pending_capture"
+                schedules:
+                  - id: "program-1"
+                    name: "Filter pump"
+                    target: "Filter Pump"
+                    enabled: true
+                    days_of_week: 127
+                    on_local: "08:00"
+                    off_local: "12:00"
+        '503': { description: Controller schedule store is unavailable }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/preferences:
     get:
       tags:
@@ -2291,7 +2327,11 @@ components:
 
     LatencySnapshot:
       type: object
-      description: Latency percentile statistics in microseconds
+      description: >
+        Latency statistics in microseconds. The percentiles (p1..p99), min/max, mean
+        and sample_count describe the recent sliding window (see window_secs). The
+        alltime_min_us/alltime_max_us and cumulative_mean_us are since-restart figures
+        spanning every sample recorded, independent of the window.
       properties:
         p1_us:
           type: number
@@ -2314,14 +2354,25 @@ components:
         alltime_min_us:
           type: number
           format: double
+          description: Since-restart minimum, independent of the sliding window.
         alltime_max_us:
           type: number
           format: double
+          description: Since-restart maximum, independent of the sliding window.
         mean_us:
           type: number
           format: double
+          description: Arithmetic mean over the sliding window.
+        cumulative_mean_us:
+          type: number
+          format: double
+          description: Since-restart arithmetic mean over every sample recorded.
+        window_secs:
+          type: integer
+          description: Span of the sliding window the percentiles are computed over (900 = last 15 minutes).
         sample_count:
           type: integer
+          description: Number of samples currently within the sliding window.
 
     EquipmentVersionResponse:
       type: object

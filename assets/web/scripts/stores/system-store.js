@@ -33,6 +33,20 @@ document.addEventListener('alpine:init', () => {
         // Device status tracking (from SystemStatusChange events)
         deviceStatuses: [],
 
+        // Formatted server uptime + start time (from /api/version) for display.
+        get uptime() {
+            const s = this.uptimeSeconds;
+            if (s == null) return '';
+            const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+            if (d) return `${d}d ${h}h`;
+            if (h) return `${h}h ${m}m`;
+            return `${m}m`;
+        },
+        get startedAt() {
+            if (!this.serverStartTime) return '';
+            try { return new Date(this.serverStartTime).toLocaleString(); } catch (_) { return this.serverStartTime; }
+        },
+
         get state() {
             const wsConnected = Alpine.store('ws').connected;
 

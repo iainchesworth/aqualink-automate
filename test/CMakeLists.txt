@@ -74,6 +74,7 @@ target_sources(
 	unit/options/test_options_serial.cpp
 	unit/options/test_options_validators.cpp
 	unit/preferences/test_preferences_service.cpp
+	unit/scheduling/test_controller_schedule.cpp
 	unit/scheduling/test_schedule.cpp
 	unit/scheduling/test_scheduler_service.cpp
 	unit/startup/test_jandy_revision_capabilities.cpp

@@ -30,7 +30,7 @@
  * with the network-first strategy above, online freshness never depends on it.
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `aqualink-shell-${CACHE_VERSION}`;
 
 // Core app-shell assets to precache so the UI boots offline.  Kept deliberately
@@ -43,6 +43,7 @@ const PRECACHE_URLS = [
   '/favicon.svg',
   '/styles/app.css',
   '/styles/components.css',
+  '/vendor/fonts/fonts.css',
   '/vendor/qrcode.min.js',
   '/vendor/alpine.min.js',
   '/vendor/chart.umd.min.js',

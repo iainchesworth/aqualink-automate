@@ -33,7 +33,7 @@
     --radius-xl: 1.5rem;
     --transition: 0.2s ease;
     --grid-color: rgba(0, 0, 0, 0.06);
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-family: 'Hanken Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html.dark {
@@ -60,6 +60,93 @@ html.dark {
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
     --grid-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================================
+   Reskin design tokens — "calm-premium" (OKLCH, data-theme + data-accent).
+   Scoped under :root[data-theme=...] so they out-specify the legacy html.dark
+   rules above. Legacy tokens (--bg-primary, --text-primary, ...) remain until
+   each view is migrated; new surfaces use the tokens below.
+   ============================================================================ */
+:root {
+    --font-display: 'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif;
+    --font-ui: 'Hanken Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --radius-card: 22px;
+    --radius-row: 16px;
+    --radius-chip: 11px;
+    --content-max: 1180px;
+}
+
+:root[data-theme="dark"],
+:root:not([data-theme]) {
+    --bg: oklch(0.165 0.014 250);
+    --bg-glow: oklch(0.24 0.035 215);
+    --surface-1: oklch(0.205 0.015 250);
+    --surface-2: oklch(0.235 0.016 250);
+    --surface-3: oklch(0.275 0.017 250);
+    --nav-bg: oklch(0.18 0.014 250 / 0.78);
+    --border: oklch(0.36 0.018 250 / 0.55);
+    --border-strong: oklch(0.42 0.02 250 / 0.7);
+    --text: oklch(0.96 0.006 250);
+    --text-dim: oklch(0.745 0.012 250);
+    --text-faint: oklch(0.57 0.014 250);
+    --accent: oklch(0.745 0.105 200);
+    --accent-soft: oklch(0.745 0.105 200 / 0.15);
+    --spa: oklch(0.77 0.105 42);
+    --good: oklch(0.78 0.12 162);
+    --warn: oklch(0.83 0.11 82);
+    --bad: oklch(0.68 0.16 25);
+    --shadow-md: 0 1px 0 oklch(1 0 0 / .045) inset, 0 12px 32px -18px oklch(0 0 0 / .75);
+    --shadow-lg: 0 1px 0 oklch(1 0 0 / .06) inset, 0 28px 64px -26px oklch(0 0 0 / .85);
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    --bg: oklch(0.975 0.006 240);
+    --bg-glow: oklch(0.95 0.022 210);
+    --surface-1: oklch(1 0 0);
+    --surface-2: oklch(0.985 0.005 240);
+    --surface-3: oklch(0.96 0.006 240);
+    --nav-bg: oklch(1 0 0 / 0.8);
+    --border: oklch(0.905 0.008 240);
+    --border-strong: oklch(0.84 0.01 240);
+    --text: oklch(0.26 0.02 250);
+    --text-dim: oklch(0.46 0.018 250);
+    --text-faint: oklch(0.605 0.015 250);
+    --accent: oklch(0.56 0.12 205);
+    --accent-soft: oklch(0.56 0.12 205 / 0.1);
+    --spa: oklch(0.6 0.13 40);
+    --good: oklch(0.58 0.13 162);
+    --warn: oklch(0.66 0.13 78);
+    --bad: oklch(0.56 0.17 25);
+    --shadow-md: 0 1px 2px oklch(0 0 0 / .04), 0 14px 30px -20px oklch(0.4 0.05 250 / .35);
+    --shadow-lg: 0 2px 6px oklch(0 0 0 / .05), 0 30px 64px -30px oklch(0.4 0.05 250 / .4);
+    color-scheme: light;
+}
+
+/* Accent variants (applied regardless of theme). Default (teal) needs no attr. */
+:root[data-accent="azure"]  { --accent: oklch(0.7 0.115 238);  --accent-soft: oklch(0.7 0.115 238 / .15); }
+:root[data-accent="aqua"]   { --accent: oklch(0.78 0.1 178);   --accent-soft: oklch(0.78 0.1 178 / .15); }
+:root[data-accent="violet"] { --accent: oklch(0.66 0.13 292);  --accent-soft: oklch(0.66 0.13 292 / .15); }
+
+/* Motion — gated behind prefers-reduced-motion below. */
+@keyframes floatIn   { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPop  { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cmdspin   { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes toastIn   { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes cmdPulse  { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes spin360   { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 *, *::before, *::after {
@@ -478,6 +565,94 @@ nav .nav-controls {
 }
 .sched-day-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .sched-form-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* ---- Schedules: unified view (controller + app) ------------------------- */
+.sched-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.sched-view-toggle { display: inline-flex; border: 1px solid var(--border-color); border-radius: var(--radius-sm, 8px); overflow: hidden; }
+.sched-view-toggle button {
+    padding: 0.3rem 0.7rem;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    border: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+}
+.sched-view-toggle button.active { background: var(--accent); color: #fff; }
+
+.sched-owner-tag {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm, 8px);
+    margin-right: 0.4rem;
+    vertical-align: 0.05rem;
+}
+.sched-owner-tag.tag-controller { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-hover); }
+.sched-owner-tag.tag-app { background: color-mix(in srgb, var(--spa-water) 22%, transparent); color: var(--spa-water-deep); }
+
+.sched-enable-locked { color: var(--text-muted, #94a3b8); display: inline-flex; align-items: center; }
+.sched-row-disabled { opacity: 0.55; }
+.sched-row-conflict { border-color: var(--gauge-bad); box-shadow: inset 3px 0 0 var(--gauge-bad); }
+.sched-conflict-flag {
+    margin-left: 0.4rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--gauge-bad);
+    border: 1px solid var(--gauge-bad);
+    border-radius: var(--radius-sm, 8px);
+    padding: 0.05rem 0.35rem;
+}
+.sched-conflict-banner {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm, 8px);
+    background: color-mix(in srgb, var(--gauge-bad) 12%, transparent);
+    color: var(--gauge-bad);
+}
+.sched-conflict-count { font-weight: 600; }
+.sched-pending { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+
+/* timeline day view */
+.sched-timeline { margin-top: 0.75rem; }
+.sched-timeline-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.sched-legend { display: flex; gap: 0.9rem; font-size: 0.72rem; color: var(--text-muted, #94a3b8); }
+.sched-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.lg-swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; }
+.lg-swatch.lg-controller { background: var(--accent); }
+.lg-swatch.lg-app { background: var(--spa-water); transform: rotate(45deg); border-radius: 1px; }
+.lg-swatch.lg-conflict { background: var(--gauge-bad); transform: rotate(45deg); border-radius: 1px; }
+.sched-axis {
+    display: flex; justify-content: space-between;
+    padding-left: 118px;
+    margin-top: 0.6rem;
+    font-size: 0.68rem; color: var(--text-muted, #94a3b8);
+}
+.sched-trk-row { display: grid; grid-template-columns: 118px 1fr; align-items: center; }
+.sched-trk-label { font-size: 0.78rem; color: var(--text-primary); padding-right: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-trk { position: relative; height: 34px; border-bottom: 1px solid var(--border-color); }
+.sched-grid { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--border-color); }
+.sched-bar {
+    position: absolute; top: 7px; height: 20px;
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.sched-bar-off { opacity: 0.4; }
+.sched-bar-conflict { outline: 2px solid var(--gauge-bad); outline-offset: 1px; }
+.sched-mk {
+    position: absolute; top: 11px; width: 12px; height: 12px;
+    background: var(--spa-water);
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 2px;
+}
+.sched-mk-off { opacity: 0.4; }
+.sched-mk-conflict { background: var(--gauge-bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gauge-bad) 30%, transparent); }
 
 /* ---- Preferences form ---------------------------------------------------- */
 .prefs-form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 460px; margin: 0.5rem 0 1rem; }
@@ -1072,3 +1247,212 @@ a:hover {
     margin-top: 0.3rem;
     line-height: 1.45;
 }
+
+/* ============================================================================
+   Reskin shell — calm-premium nav / header / status / alerts / banners.
+   Appended last so these win over the legacy nav rules above at equal
+   specificity. Uses the new OKLCH tokens.
+   ============================================================================ */
+
+/* Page background glow (signature look). */
+body {
+    background: radial-gradient(1200px 600px at 50% -5%, var(--bg-glow), transparent 60%), var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+}
+
+/* --- Sticky nav ---------------------------------------------------------- */
+nav.app-nav {
+    background: var(--nav-bg);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    backdrop-filter: saturate(1.6) blur(14px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: none;
+    color: var(--text);
+    padding: 0;
+}
+
+nav.app-nav .nav-inner {
+    max-width: var(--content-max);
+    padding: 12px 24px;
+    gap: 14px;
+    justify-content: flex-start;
+}
+/* nav-links takes the slack so the status pill + all header buttons group into
+   one right-aligned cluster (instead of space-between spreading them apart). */
+nav.app-nav .nav-links { margin-right: auto; }
+
+nav.app-nav .nav-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    gap: 10px;
+}
+
+nav.app-nav .nav-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+nav.app-nav .nav-brand-mark svg { width: 18px; height: 18px; }
+
+nav.app-nav .nav-links { gap: 2px; flex-wrap: wrap; }
+
+nav.app-nav .nav-link {
+    color: var(--text-dim);
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s, border-color .16s;
+}
+nav.app-nav .nav-link:hover { color: var(--text); background: var(--surface-2); }
+nav.app-nav .nav-link.active {
+    color: var(--text);
+    background: var(--surface-3);
+    border-color: var(--border);
+}
+
+nav.app-nav .nav-status { gap: 8px; flex-wrap: nowrap; }
+nav.app-nav .nav-controls { gap: 6px; }
+
+/* --- Connection chip ----------------------------------------------------- */
+.conn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    font: 600 12px/1 var(--font-ui);
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+.conn-chip .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+.conn-chip.is-online  .conn-dot { background: var(--good); box-shadow: 0 0 0 3px oklch(0.78 0.12 162 / .18); }
+.conn-chip.is-online  { color: var(--text); }
+.conn-chip.is-offline .conn-dot { background: var(--bad); animation: cmdPulse 1.4s ease-in-out infinite; }
+.conn-chip.is-offline { color: var(--bad); border-color: var(--bad); }
+
+/* --- Status pill --------------------------------------------------------- */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font: 600 12px/1 var(--font-ui);
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.status-pill .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status-pill.status-ready        { color: var(--good); background: oklch(0.78 0.12 162 / .14); }
+.status-pill.status-starting     { color: var(--warn); background: oklch(0.83 0.11 82 / .14); }
+.status-pill.status-disconnected { color: var(--bad);  background: oklch(0.68 0.16 25 / .14); }
+.status-pill.status-service      { color: var(--warn); background: oklch(0.83 0.11 82 / .14); }
+.status-pill.status-monitor      { color: var(--text-dim); background: var(--surface-3); }
+.status-pill .pill-spinner {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin360 .7s linear infinite;
+}
+
+/* --- Icon buttons (alerts / monitor / theme / logout) -------------------- */
+nav.app-nav .nav-icon-btn,
+nav.app-nav .theme-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: background .16s, color .16s, border-color .16s;
+}
+nav.app-nav .nav-icon-btn:hover,
+nav.app-nav .theme-toggle:hover { color: var(--text); background: var(--surface-3); border-color: var(--border-strong); }
+nav.app-nav .nav-icon-btn svg,
+nav.app-nav .theme-toggle svg { width: 17px; height: 17px; }
+nav.app-nav .nav-icon-btn.active,
+nav.app-nav .theme-toggle.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+nav.app-nav .alerts-bell.has-alerts { color: var(--bad); border-color: var(--bad); }
+
+/* --- Alerts dropdown ----------------------------------------------------- */
+.alerts-wrap { position: relative; display: inline-flex; }
+.alerts-badge {
+    position: absolute;
+    top: -5px; right: -5px;
+    min-width: 16px; height: 16px;
+    padding: 0 4px;
+    border-radius: 99px;
+    background: var(--bad);
+    color: #fff;
+    font: 700 10px/16px var(--font-ui);
+    text-align: center;
+}
+.alerts-dropdown {
+    position: absolute;
+    top: 44px; right: 0;
+    z-index: 120;
+    width: 320px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: floatIn .16s ease;
+}
+.alerts-dd-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px;
+    font: 600 13px/1 var(--font-display);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+.alerts-dd-count {
+    min-width: 20px; padding: 2px 7px; border-radius: 99px;
+    background: var(--surface-3); color: var(--text-dim);
+    font: 700 11px/1.2 var(--font-ui); text-align: center;
+}
+.alerts-dd-empty { padding: 20px 16px; color: var(--text-faint); font: 500 13px/1.4 var(--font-ui); text-align: center; }
+.alerts-dd-list { max-height: 320px; overflow-y: auto; }
+.alerts-dd-item { display: flex; gap: 11px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.alerts-dd-item:last-child { border-bottom: none; }
+.alerts-dd-sev { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; }
+.alerts-dd-sev.sev-bad  { background: var(--bad); }
+.alerts-dd-sev.sev-warn { background: var(--warn); }
+.alerts-dd-title  { font: 600 13px/1.3 var(--font-ui); color: var(--text); }
+.alerts-dd-detail { font: 500 12px/1.35 var(--font-ui); color: var(--text-dim); margin-top: 2px; }
+.alerts-dd-foot   { padding: 10px 16px; font: 500 11.5px/1.4 var(--font-ui); color: var(--text-faint); background: var(--surface-2); }
+
+/* --- Banners ------------------------------------------------------------- */
+.startup-banner, .service-banner {
+    border: none;
+    box-shadow: none;
+}
+.startup-banner .startup-banner-inner,
+.service-banner .service-banner-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 11px 24px;
+    font: 600 13.5px/1.3 var(--font-ui);
+}
+.startup-banner { background: oklch(0.83 0.11 82 / .12); color: var(--warn); border-bottom: 1px solid var(--border); }
+.service-banner { background: oklch(0.83 0.11 82 / .14); color: var(--warn); border-bottom: 1px solid var(--border); }

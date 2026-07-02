@@ -87,7 +87,9 @@
 #include "equipment_cache/equipment_cache_service.h"
 
 // Core — scheduling (time-based automation)
+#include "scheduling/controller_schedule.h"
 #include "scheduling/scheduler_service.h"
+#include "http/webroute_controller_schedules.h"
 #include "http/webroute_schedules.h"
 
 // Core — MQTT, serial, protocol
@@ -604,6 +606,14 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		// Read-only snapshot of the controller's own internal schedules. Always
+		// present (independent of --schedules-file) so the route can report a
+		// status; the OneTouch/IAQ Program page processors fill it in once a
+		// capture has been decoded. Registered so the Jandy device side can resolve
+		// and populate it.
+		auto controller_schedule_store = std::make_shared<Scheduling::ControllerScheduleStore>();
+		hub_locator.Register<Scheduling::ControllerScheduleStore>(controller_schedule_store);
+
 		auto web_settings_result = settings.Get<Options::Web::WebSettings>();
 
 		std::unique_ptr<HTTP::HttpServer> http_server;
@@ -703,6 +713,7 @@ int main(int argc, char* argv[])
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Preferences>(preferences_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedule>(scheduler_service));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Schedules>(scheduler_service));
+			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_ControllerSchedules>(controller_schedule_store));
 			HTTP::Routing::Add(std::make_unique<HTTP::WebRoute_Version>());
 
 			HTTP::Routing::Add(std::make_unique<HTTP::WebSocket_Equipment>(hub_locator));

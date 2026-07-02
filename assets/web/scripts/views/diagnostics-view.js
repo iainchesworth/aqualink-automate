@@ -61,21 +61,41 @@ function diagnosticsView() {
             return val || fallback;
         },
 
-        // Collapsible section state (power-user sections collapsed by default)
-        showSerialHealth: false,
-        showMessageErrors: false,
-        showMessageStats: false,
-        showLogLevels: false,
-        showDeviceStatus: false,
+        // Bandwidth chart series visibility, toggled from the left-hand legend
+        // (the built-in Chart.js legend is disabled). Read = dataset 0 (--accent),
+        // Write = dataset 1 (--spa) so the lines match the legend swatches.
+        bwRead: true,
+        bwWrite: true,
+        toggleBw(which) {
+            if (which === 'read') this.bwRead = !this.bwRead;
+            else this.bwWrite = !this.bwWrite;
+            const ch = _diag.chart;
+            if (!ch) return;
+            const idx = which === 'read' ? 0 : 1;
+            ch.setDatasetVisibility(idx, which === 'read' ? this.bwRead : this.bwWrite);
+            ch.update();
+        },
+
+        // Section visibility. The design shows flat, always-visible cards (no
+        // accordions), so every panel defaults open; the toggle headers are
+        // neutered to plain section titles in CSS (.section-toggle).
+        showSerialHealth: true,
+        showMessageErrors: true,
+        showMessageStats: true,
+        showLogLevels: true,
+        showDeviceStatus: true,
         showEmulatedDevices: true,
         showActualDevices: true,
-        showRecording: false,
+        showRecording: true,
         showProfiling: false,
-        showMqtt: false,
+        showMqtt: true,
         showMatter: false,
 
         // MQTT broker status diagnostics
         mqtt: { enabled: false },
+
+        // System health (readiness + subsystem checks) from /api/health/detailed.
+        health: { ready: false, status: '', uptime_seconds: 0, checks: {} },
 
         // Matter bridge status diagnostics (sidecar status + commissioning QR)
         matter: { enabled: false },
@@ -115,6 +135,42 @@ function diagnosticsView() {
         globalLevel: '',
         logLevelsLoaded: false,
 
+        // --- Modal state (design: device-detail, message-stats, log-levels) ----------
+        // Device-detail modal. selectedDeviceId + selectedDeviceGroup let the modal
+        // re-read the live device object from the polled lists each render, so the
+        // open modal keeps updating as new poll data arrives (rather than freezing a
+        // snapshot taken at click time).
+        modalOpen: false,
+        selectedDeviceId: null,
+        selectedDeviceGroup: null,
+
+        // Message-statistics modal (search over the full type list).
+        msgModalOpen: false,
+        msgSearch: '',
+
+        // Log-levels modal (per-channel search + all/overrides filter).
+        logModalOpen: false,
+        logSearch: '',
+        logFilter: 'all',      // 'all' | 'overrides'
+
+        // Escape closes whichever modal is open. Registered once in initChart().
+        _onKeydown: null,
+
+        async fetchHealth() {
+            try {
+                const resp = await fetch('/api/health/detailed');
+                if (!resp.ok) return;
+                this.health = await resp.json();
+            } catch (_) { /* offline / auth: keep last */ }
+        },
+        _fmtUptime(s) {
+            s = Math.max(0, Math.floor(s || 0));
+            const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+            if (d) return `${d}d ${h}h`;
+            if (h) return `${h}h ${m}m`;
+            return `${m}m`;
+        },
+
         initChart() {
             Alpine.store('ws').connectStats();
 
@@ -126,8 +182,11 @@ function diagnosticsView() {
             this.fetchEmulatedDevices();
             this.fetchActualDevices();
             this.fetchRecordingStatus();
-            this.fetchProfilingStatus();
             this.fetchMqtt();
+            this.fetchHealth();
+            if (!_diag.healthTimer) {
+                _diag.healthTimer = setInterval(() => this.fetchHealth(), 2000);
+            }
             // Guard against a leaked interval if initChart() runs again before destroyChart().
             if (!_diag.emuDeviceTimer) {
                 _diag.emuDeviceTimer = setInterval(() => this.fetchEmulatedDevices(), 2000);
@@ -138,9 +197,6 @@ function diagnosticsView() {
             if (!_diag.recordingTimer) {
                 _diag.recordingTimer = setInterval(() => this.fetchRecordingStatus(), 2000);
             }
-            if (!_diag.profilingTimer) {
-                _diag.profilingTimer = setInterval(() => this.fetchProfilingStatus(), 2000);
-            }
             this.fetchSpasideRemotes();
             if (!_diag.spasideTimer) {
                 _diag.spasideTimer = setInterval(() => this.fetchSpasideRemotes(), 2000);
@@ -148,9 +204,16 @@ function diagnosticsView() {
             if (!_diag.mqttTimer) {
                 _diag.mqttTimer = setInterval(() => this.fetchMqtt(), 2000);
             }
-            this.fetchMatter();
-            if (!_diag.matterTimer) {
-                _diag.matterTimer = setInterval(() => this.fetchMatter(), 2000);
+
+            // Escape closes any open diagnostics modal.
+            if (!this._onKeydown) {
+                this._onKeydown = (e) => {
+                    if (e.key !== 'Escape') return;
+                    if (this.modalOpen) { this.closeModal(); }
+                    else if (this.msgModalOpen) { this.closeMsgModal(); }
+                    else if (this.logModalOpen) { this.closeLogModal(); }
+                };
+                window.addEventListener('keydown', this._onKeydown);
             }
         },
 
@@ -160,7 +223,7 @@ function diagnosticsView() {
 
             const textColor = this._resolveColor('--text-secondary', '#94a3b8');
             const gridColor = this._resolveColor('--grid-color', 'rgba(148,163,184,0.15)');
-            const legendColor = this._resolveColor('--text-primary', '#e2e8f0');
+            const c = _bwColorSet();
 
             _diag.chart = new Chart(ctx, {
                 type: 'line',
@@ -169,8 +232,8 @@ function diagnosticsView() {
                         {
                             label: 'Read %',
                             data: [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderColor: c.read,
+                            backgroundColor: c.readFill,
                             borderWidth: 2,
                             tension: 0.4,
                             fill: true,
@@ -179,8 +242,8 @@ function diagnosticsView() {
                         {
                             label: 'Write %',
                             data: [],
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderColor: c.write,
+                            backgroundColor: c.writeFill,
                             borderWidth: 2,
                             tension: 0.4,
                             fill: true,
@@ -216,7 +279,9 @@ function diagnosticsView() {
                         }
                     },
                     plugins: {
-                        legend: { display: true, position: 'top', labels: { color: legendColor } },
+                        // Built-in legend disabled — the left-hand .bw-legend chips
+                        // are the interactive legend (see toggleBw()).
+                        legend: { display: false },
                         tooltip: { callbacks: { label: item => item.dataset.label + ': ' + item.parsed.y.toFixed(2) + '%' } }
                     },
                     animation: { duration: 0 }
@@ -272,6 +337,11 @@ function diagnosticsView() {
                 _diag.mqttTimer = null;
             }
 
+            if (_diag.healthTimer) {
+                clearInterval(_diag.healthTimer);
+                _diag.healthTimer = null;
+            }
+
             if (_diag.matterTimer) {
                 clearInterval(_diag.matterTimer);
                 _diag.matterTimer = null;
@@ -286,6 +356,15 @@ function diagnosticsView() {
                 _diag.chart.destroy();
                 _diag.chart = null;
             }
+
+            if (this._onKeydown) {
+                window.removeEventListener('keydown', this._onKeydown);
+                this._onKeydown = null;
+            }
+            // Leaving the view drops any open modal so it doesn't reappear on return.
+            this.modalOpen = false;
+            this.msgModalOpen = false;
+            this.logModalOpen = false;
         },
 
         async fetchEmulatedDevices() {
@@ -720,16 +799,143 @@ function diagnosticsView() {
                 console.error('[diagnostics] failed to set global log level:', e);
                 Alpine.store('toast').show('Failed to set global log level', 'error');
             }
-        }
+        },
+
+        // ---- Device-detail modal --------------------------------------------------
+        // Open on a card click. We store id + group, then re-resolve the live object
+        // each render so the modal tracks the 2s poll.
+        openDeviceModal(group, dev) {
+            this.selectedDeviceGroup = group;
+            this.selectedDeviceId = dev && dev.device_id;
+            this.modalOpen = true;
+        },
+        closeModal() {
+            this.modalOpen = false;
+            this.selectedDeviceId = null;
+            this.selectedDeviceGroup = null;
+        },
+        // Live device object behind the open modal (or null once it disappears).
+        selectedDevice() {
+            if (!this.modalOpen || !this.selectedDeviceId) return null;
+            const list = this.selectedDeviceGroup === 'emulated' ? this.emulatedDevices : this.actualDevices;
+            return (Array.isArray(list) ? list : []).find(d => d.device_id === this.selectedDeviceId) || null;
+        },
+
+        // ---- Message-statistics modal ---------------------------------------------
+        openMsgModal() { this.msgSearch = ''; this.msgModalOpen = true; },
+        closeMsgModal() { this.msgModalOpen = false; },
+
+        // Message rows shaped for the card/modal templates. Sorted by count desc so the
+        // card's "top 6" is meaningful. `_msgRows()` is the shared source.
+        _msgRows() {
+            const rows = Array.isArray(this.$store.stats.messageCounts) ? this.$store.stats.messageCounts : [];
+            return rows.slice().sort((a, b) => (b.count || 0) - (a.count || 0));
+        },
+        get msgTypeCount() { return this._msgRows().length; },
+        msgStatsTop() { return this._msgRows().slice(0, 6); },
+        msgStatsFiltered() {
+            const q = (this.msgSearch || '').trim().toLowerCase();
+            const rows = this._msgRows();
+            if (!q) return rows;
+            return rows.filter(m => (m.name || ('ID ' + m.id)).toLowerCase().includes(q));
+        },
+        msgLabel(m) { return m.name || ('ID ' + m.id); },
+        msgRate(m) { return (m.frequency || 0).toFixed(2) + '/s'; },
+        msgLastSeen(m) { return m.lastSeen ? new Date(m.lastSeen).toLocaleTimeString() : '--'; },
+
+        // ---- Log-levels modal -----------------------------------------------------
+        openLogModal() { this.logSearch = ''; this.logFilter = 'all'; this.logModalOpen = true; },
+        closeLogModal() { this.logModalOpen = false; },
+
+        // Channels whose level differs from the (majority) global level = overrides.
+        logOverrides() {
+            const g = this.globalLevel;
+            // When globalLevel is '' (mixed), the majority is ambiguous; treat the
+            // most common level as the baseline so overrides stay meaningful.
+            const base = g || this._majorityLevel();
+            return Object.entries(this.logChannels)
+                .filter(([, lvl]) => lvl !== base)
+                .sort((a, b) => a[0].localeCompare(b[0]));
+        },
+        get logOverrideCount() { return this.logOverrides().length; },
+        get logHasOverrides() { return this.logOverrideCount > 0; },
+        _majorityLevel() {
+            const counts = {};
+            for (const lvl of Object.values(this.logChannels)) { counts[lvl] = (counts[lvl] || 0) + 1; }
+            let best = '', n = -1;
+            for (const [lvl, c] of Object.entries(counts)) { if (c > n) { n = c; best = lvl; } }
+            return best;
+        },
+        get logGlobalLabel() { return this.globalLevel || 'Mixed'; },
+        // A channel is "overridden" if it differs from the baseline level.
+        logIsOverride(ch) {
+            const base = this.globalLevel || this._majorityLevel();
+            return this.logChannels[ch] !== base;
+        },
+        // Filtered + sorted channel list for the modal table.
+        logFilteredChannels() {
+            const q = (this.logSearch || '').trim().toLowerCase();
+            let entries = Object.entries(this.logChannels).sort((a, b) => a[0].localeCompare(b[0]));
+            if (this.logFilter === 'overrides') { entries = entries.filter(([ch]) => this.logIsOverride(ch)); }
+            if (q) { entries = entries.filter(([ch]) => ch.toLowerCase().includes(q)); }
+            return entries;
+        },
+        // Reset one channel (and all channels) back to the baseline global level.
+        resetChannelLevel(ch) {
+            const base = this.globalLevel || this._majorityLevel();
+            if (base) { this.setChannelLevel(ch, base); }
+        },
+        async resetAllLogs() {
+            const base = this.globalLevel || this._majorityLevel();
+            if (base) { await this.setGlobalLevel(base); }
+        },
+
+        // A dot colour per severity, for the log summary/modal indicators.
+        logLevelColor(lvl) {
+            switch (lvl) {
+                case 'Trace':
+                case 'Debug': return 'var(--text-faint)';
+                case 'Info': return 'var(--good)';
+                case 'Notify': return 'var(--accent)';
+                case 'Warning': return 'var(--warn)';
+                case 'Error':
+                case 'Fatal': return 'var(--bad)';
+                default: return 'var(--text-dim)';
+            }
+        },
+
+        stopProp(e) { if (e) e.stopPropagation(); }
     };
 }
 
 // Standalone function — no Alpine proxy involvement
+// Resolve the bandwidth series colors from CSS tokens so the chart lines match
+// the left-hand legend swatches (--accent = Read, --spa = Write) and re-track
+// live theme/accent changes. Fills are a translucent mix of the same colour.
+function _bwColorSet() {
+    const cs = getComputedStyle(document.documentElement);
+    const read = cs.getPropertyValue('--accent').trim() || '#10b981';
+    const write = cs.getPropertyValue('--spa').trim() || '#3b82f6';
+    return {
+        read,
+        write,
+        readFill: `color-mix(in srgb, ${read} 14%, transparent)`,
+        writeFill: `color-mix(in srgb, ${write} 14%, transparent)`
+    };
+}
+
 function _updateChartData(windowSeconds) {
     if (!_diag.chart) return;
 
     const h = window.__statsChartHistory;
     if (!h) return;
+
+    // Keep the line colours in sync with the current theme/accent tokens.
+    const c = _bwColorSet();
+    const d0 = _diag.chart.data.datasets[0];
+    const d1 = _diag.chart.data.datasets[1];
+    if (d0) { d0.borderColor = c.read; d0.backgroundColor = c.readFill; }
+    if (d1) { d1.borderColor = c.write; d1.backgroundColor = c.writeFill; }
 
     const now = Date.now();
     let startIdx = 0;
